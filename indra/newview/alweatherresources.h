@@ -8,6 +8,7 @@
 #ifndef AL_WEATHER_RESOURCES_H
 #define AL_WEATHER_RESOURCES_H
 #include "alweathershelter.h"
+#include "lldrawbudget.h"
 #include "llrendertarget.h"
 #include "llglslshader.h"
 #include <glm/glm.hpp>
@@ -49,10 +50,17 @@ public:
     { return mBoundsValid && plan == mPlan && origin == mOrigin; }
     bool precipitationWithin(const glm::vec3& eye, const glm::dvec3& origin, U32 frame, F32 reach) const;
     void release();
-    // A tile patches the completed map between draws. Full replacements still
-    // use the other FBO and publish texture + transform atomically.
+    // Existing spare depth target accumulates an incomplete tile. Consumers
+    // retain the previous complete target until a tile (or replacement) finishes.
+    void beginTile(const ALWeatherShelter::Plan& plan);
+    void commitTile(ALWeatherShelter::Updates::Tile tile, bool replacement_complete);
+    void refreshStatus(const ALWeatherShelter::Updates& updates);
     void patch(bool enabled) { mPatching = enabled && ready(); }
     LLRenderTarget& writeTarget() { return mCover[mPatching ? mRead : 1 - mRead]; }
+    uint64_t mRefreshCursor = 0;
+    bool mRefreshComplete = false;
+    U64 mRefreshChunks = 1;
+    bool failed() const { return mCoverage == ALWeatherShelter::Coverage::FAILED; }
     void publish(const glm::mat4& matrix, F32 range, U32 batches, bool complete,
                  const glm::dvec3& origin, U32 place);
     void fail(ALWeatherShelter::Coverage state, const char* reason = nullptr);
@@ -74,6 +82,8 @@ private:
     LLRenderTarget mCover[2];
     U32 mRead = 0, mPlace = 0;
     bool mPatching = false;
+    ALWeatherShelter::Plan mStagingPlan;
+    bool mStaging = false;
     LLGLSLShader mReduction;
     U32 mMinimum = 0, mMinimumResolution = 0;
     bool mMinimumValid = false, mMinimumAttempted = false;

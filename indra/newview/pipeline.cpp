@@ -31486,12 +31486,17 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
 {
     const auto& weather = ALWeatherBridge::Controller::instance();
     const bool precipitation = weather.precipitationActive() && ALWeatherParticles::supported();
-    if (!weather.surfacesActive() && !precipitation && !mWeatherSurfaces.hasState()) return;
+    if (!weather.surfacesActive() && !precipitation && !mWeatherSurfaces.hasState())
+    {
+        mWeatherPrecipitationCoverCache.invalidate();
+        return;
+    }
     if (gCubeSnapshot || mWeatherSurfaces.mPreparedFrame == gFrameCount) return;
     mWeatherSurfaces.mPreparedFrame = gFrameCount;
     if ((!weather.surfacesActive() && !precipitation) || !sRenderDeferred)
     {
         mWeatherSurfaces.release();
+        mWeatherPrecipitationCoverCache.invalidate();
         return;
     }
     const auto& settings = weather.settings();
@@ -31506,7 +31511,14 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
     const std::array<F64, 3> anchor{std::floor(eye.mdV[0]/32.)*32.,
         std::floor(eye.mdV[1]/32.)*32., std::floor(eye.mdV[2]/32.)*32.};
     const auto plan = ALWeatherShelter::plan(anchor, settings.coverExtent, settings.coverResolution, {});
-    if (!mWeatherSurfaces.ready()) mWeatherPrecipitationCoverCache.invalidate();
+    // Initialization is also tiled. Do not restart its dirty mask each frame.
+    if (settings.advancedShelter && gFrameCount%3 != 0)
+    {
+        if (mWeatherSurfaces.ready()) mWeatherSurfaces.reuseForFrame(gFrameCount);
+        mWeatherSurfaces.refreshStatus(mWeatherPrecipitationCoverCache);
+        return;
+    }
+    if (mWeatherSurfaces.failed()) mWeatherPrecipitationCoverCache.invalidate();
     const bool reuse_cover = !mWeatherPrecipitationCoverCache.schedule(plan, plan, weather.placeSerial(),
         {origin.mdV[0], origin.mdV[1], origin.mdV[2]},
         LLPresentationTime::currentFrame().presentation_time, settings.shelterHz, 1);
@@ -31539,7 +31551,7 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
     ALWeatherResources::State saved_state;
     if (!mWeatherSurfaces.allocate(settings.coverResolution)) return;
     const auto tile = mWeatherPrecipitationCoverCache.tile();
-    mWeatherSurfaces.patch(!tile.full());
+    mWeatherSurfaces.beginTile(plan);
     LLRenderTarget& surface_target = mWeatherSurfaces.writeTarget();
     const auto release_map = [this]() { mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED); };
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
@@ -31591,22 +31603,32 @@ void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
 
     U32 surface_submissions = 0;
     if (!drawWeatherCover(camera, surface_target, view, projection, top_origin,
-                          clip_start, clip_end, surface_submissions, tile))
+                          clip_start, clip_end, surface_submissions, tile, &mWeatherSurfaces))
     {
         mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
         return;
     }
-    mWeatherSurfaces.buildIntervals(tile);
-    mWeatherSurfaces.setBounds(plan, glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]));
-    mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
-        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
-    mWeatherPrecipitationCoverCache.complete();
     mWeatherCoverWorkFrame = gFrameCount;
+    mWeatherPrecipitationCoverCache.noteWork(mWeatherSurfaces.mRefreshChunks);
+    if (mWeatherSurfaces.mRefreshComplete)
+    {
+        mWeatherPrecipitationCoverCache.complete();
+        const bool replacement_complete = mWeatherPrecipitationCoverCache.layerComplete();
+        mWeatherSurfaces.commitTile(tile, replacement_complete);
+        if (replacement_complete)
+        {
+            mWeatherSurfaces.setBounds(plan, glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]));
+            mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
+                glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+        }
+    }
+    if (mWeatherSurfaces.ready()) mWeatherSurfaces.reuseForFrame(gFrameCount);
+    mWeatherSurfaces.refreshStatus(mWeatherPrecipitationCoverCache);
 }
 
 bool LLPipeline::drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
     const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
-    F32 clip_start, F32 clip_end, U32& surface_submissions, ALWeatherShelter::Updates::Tile tile)
+    F32 clip_start, F32 clip_end, U32& surface_submissions, ALWeatherShelter::Updates::Tile tile, ALWeatherResources* budget_owner)
 {
     if (!gDeferredShadowProgram.isComplete() || !gDeferredShadowAlphaMaskProgram.isComplete() ||
         !gDeferredShadowFullbrightAlphaMaskProgram.isComplete() || !gDeferredTreeShadowProgram.isComplete() ||
@@ -31689,7 +31711,7 @@ bool LLPipeline::drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_targ
     gGLViewport[2] = static_cast<S32>(surface_target.getWidth());
     gGLViewport[3] = static_cast<S32>(surface_target.getWidth());
     glClearDepth(1.0);
-    glClear(GL_DEPTH_BUFFER_BIT);
+    if (!budget_owner || budget_owner->mRefreshCursor == 0) glClear(GL_DEPTH_BUFFER_BIT);
     const bool cleared = glGetError() == GL_NO_ERROR;
 
     LLCamera shadow_camera = camera;
@@ -31708,9 +31730,19 @@ bool LLPipeline::drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_targ
     // Unrigged opaque + alpha-mask world geometry only. Ordinary alpha blend
     // has no reliable "stops rain" material semantic; rigid worn attachments
     // are rejected centrally while this scoped filter is 1.
-    renderShadow(
-        view, tile_projection, shadow_camera, rain_occlusion_result,
-        true, true, false, false, false);
+    uint64_t unowned_cursor = 0;
+    {
+        LLDrawBudget budget(budget_owner ? budget_owner->mRefreshCursor : unowned_cursor);
+        renderShadow(
+            view, tile_projection, shadow_camera, rain_occlusion_result,
+            true, true, false, false, false);
+        gGL.flush(); // Immediate terrain/tree vertices must drain inside the budget scope.
+        if (budget_owner)
+        {
+            budget_owner->mRefreshComplete = budget.complete();
+            budget_owner->mRefreshChunks = budget.chunksBound();
+        }
+    }
     sShadowDrawFilter = saved_shadow_draw_filter;
 
     // Terrain is traversed inside renderShadow even when no caster batch is built.
@@ -31799,8 +31831,11 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
         (weather.precipitationActive() && ALWeatherParticles::supported());
     if (needs_vertical && !mWeatherSurfaces.readyForFrame(gFrameCount))
     {
-        mWeatherShelter.fail("Advanced shelter unknown: vertical cover failed; existing fallback");
-        return;
+        if (!mWeatherSurfaces.allocated())
+        {
+            mWeatherShelter.fail("Advanced shelter unknown: vertical cover failed; existing fallback");
+            return;
+        }
     }
     const LLVector3d eye = gAgent.getPosGlobalFromAgent(camera.getOrigin());
     const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
@@ -31828,9 +31863,12 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
             return;
         }
     }
-    // At most two cropped jobs per update, independent of view count. Distant
-    // work uses its own dirty tiles and never revisits unaffected regions.
-    for (U32 job = 0; job < 2; ++job)
+    if (mWeatherShelter.layers[0].failed() || mWeatherShelter.layers[1].failed())
+        mWeatherShelter.updates.invalidate();
+    // Basic and both tilted maps share one caster job per display frame.
+    // Reserve every third frame for basic cover when it has a consumer.
+    for (U32 job = 0; job < 1 && mWeatherCoverWorkFrame != gFrameCount &&
+         (!needs_vertical || gFrameCount%3 != 0); ++job)
     {
         if (!mWeatherShelter.updates.schedule(plans[0], plans[1], weather.placeSerial(), world_origin,
             LLPresentationTime::currentFrame().presentation_time, s.shelterHz)) break;
@@ -31840,21 +31878,7 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
         const auto tile = mWeatherShelter.updates.tile();
         auto& map = mWeatherShelter.layers[layer];
         map.mPreparedFrame = gFrameCount;
-        // The untilted distant recipe commonly equals WP2's completed cover.
-        // Reuse its content generation instead of another geometry traversal.
-        if (p.shear == std::array<F32, 2>{} && p.extent == s.coverExtent && p.resolution == s.coverResolution &&
-            mWeatherSurfaces.readyForFrame(gFrameCount) && mWeatherSurfaces.matches(p,
-                glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2])))
-        {
-            if (!map.copyFrom(mWeatherSurfaces))
-            {
-                mWeatherShelter.fail("Advanced shelter vertical reuse failed; coverage unknown, existing fallback");
-                return;
-            }
-            mWeatherShelter.updates.complete();
-            continue;
-        }
-        map.patch(!tile.full());
+        map.beginTile(p);
         const F64 top = p.center[2] + p.vertical;
         LLVector3 top_origin(F32(p.center[0] - p.shear[0]*top - origin.mdV[0]),
                              F32(p.center[1] - p.shear[1]*top - origin.mdV[1]), F32(top - origin.mdV[2]));
@@ -31868,7 +31892,7 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
         U32 batches = 0;
         const auto draw_layer = [&]()
         {
-            return drawWeatherCover(camera, map.writeTarget(), view, projection, top_origin, clip_start, clip_end, batches, tile);
+            return drawWeatherCover(camera, map.writeTarget(), view, projection, top_origin, clip_start, clip_end, batches, tile, &map);
         };
         bool drawn = false;
         if (layer == 0) { LL_PROFILE_GPU_ZONE("weather close map"); drawn = draw_layer(); }
@@ -31879,12 +31903,21 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
             mWeatherShelter.fail("Advanced shelter traversal failed; coverage unknown, existing fallback");
             return;
         }
-        map.buildIntervals(tile);
-        map.setBounds(p, glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]));
-        map.publish(projection * view, 2.f*p.vertical, batches, true,
-            glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
-        mWeatherShelter.updates.complete();
         mWeatherCoverWorkFrame = gFrameCount;
+        mWeatherShelter.updates.noteWork(map.mRefreshChunks);
+        if (map.mRefreshComplete)
+        {
+            mWeatherShelter.updates.complete();
+            const bool replacement_complete = mWeatherShelter.updates.layerComplete();
+            map.commitTile(tile, replacement_complete);
+            if (replacement_complete)
+            {
+                map.setBounds(p, glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]));
+                map.publish(projection * view, 2.f*p.vertical, batches, true,
+                    glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+            }
+        }
+        map.refreshStatus(mWeatherShelter.updates);
     }
     for (auto& map : mWeatherShelter.layers) if (map.ready()) map.reuseForFrame(gFrameCount);
     // Raster -> sampler ordering is guaranteed by GL command order after both

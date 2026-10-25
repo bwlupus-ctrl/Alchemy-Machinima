@@ -44,7 +44,7 @@ def refresh_counterexample():
     else:raise AssertionError('five 20-ms refreshes passed the budget')
 
 
-def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_context=False,gl=None,only_item=None):
+def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_context=False,gl=None,only_item=None,context_key=''):
     gl=gl or GL();print('WGL',gl.renderer,flush=True)
     tree=SourceTree(ref)
     pipe=tree.read('indra/newview/pipeline.cpp')
@@ -53,7 +53,7 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
     assert main.count('if (library) renderWeatherParticles(target, auxiliary);')==1,'disconnected native snowfall call'
     assert 'auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView)' in hook and 'mRT->deferredScreen' in hook,'incorrect native view/depth handoff'
     assert 'gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true, &capture->mWeatherExposure);' in tree.read('indra/newview/llprismlens.cpp'),'disconnected Prism/VCam precipitation'
-    native=build(tree,ROOT/'.tmp/weather_port/particles'/(mutation or 'baseline')/ref.replace('/','_')/str(os.getpid()),gl,mutation)
+    native=build(tree,ROOT/'.tmp/weather_port/particles'/(mutation or 'baseline')/ref.replace('/','_')/(str(os.getpid())+('_'+context_key if context_key else '')),gl,mutation)
     def set_(key,value):native.fixture_weather_set(('AlchemyWeather'+key).encode(),value)
     def step(t):native.fixture_weather_step(t)
     def metrics():
@@ -363,10 +363,19 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
     # Execute the whole production cover call with a 256-batch GL scene.
     caster=program('''uniform mat4 fixture_mvp;uniform vec4 fixture_rect;uniform float fixture_z;
 void main(){const vec2 p[6]=vec2[6](vec2(0,0),vec2(1,0),vec2(1,1),vec2(0,0),vec2(1,1),vec2(0,1));
-gl_Position=fixture_mvp*vec4(fixture_rect.xy+p[gl_VertexID]*fixture_rect.zw,fixture_z,1);}''',
+gl_Position=fixture_mvp*vec4(fixture_rect.xy+p[gl_VertexID%6]*fixture_rect.zw,fixture_z,1);}''',
         'uniform float fixture_alpha;void main(){if(fixture_alpha<.5)discard;}')
     native.cover_program(caster)
-    native.cover_prepare(0,0,0,1);a=cover_counts()
+    budgeted=hasattr(native,'cover_pending')
+    def settle_cover(x=0,frames=512):
+        if not budgeted:return
+        for _ in range(frames):
+            native.cover_prepare(x,0,0,0)
+            if native.cover_ready() and native.cover_pending()==0:return
+        raise AssertionError('cover refresh exceeded bounded settling frames')
+    native.cover_prepare(0,0,0,1)
+    settle_cover()
+    a=cover_counts()
     if hasattr(native,'cover_minimum'):
         native.cover_minimum.argtypes=[C.c_void_p];hierarchy=np.zeros(4,np.float64);native.cover_minimum(hierarchy.ctypes.data)
         print('cover hierarchy texture/valid/program/area',hierarchy.tolist(),flush=True)
@@ -375,10 +384,11 @@ gl_Position=fixture_mvp*vec4(fixture_rect.xy+p[gl_VertexID]*fixture_rect.zw,fixt
     assert np.array_equal(a,cover_counts()),'stationary precipitation repeats full cover traversal'
     native.cover_prepare(32.1,0,0,0);assert cover_counts()[0]==a[0]+1,'camera-cell cover invalidation missing'
     for i in range(4):native.cover_prepare(32.1,0,0,1)
-    if not profile_only and only_item is None:assert a[0]+2<=cover_counts()[0]<=a[0]+3,'bounded geometry region cover invalidation missing'
+    if not budgeted and not profile_only and only_item is None:assert a[0]+2<=cover_counts()[0]<=a[0]+3,'bounded geometry region cover invalidation missing'
     if hasattr(native,'cover_dirty') and not profile_only and only_item in (None,1):
         native.cover_dirty.argtypes=[C.c_double]*3
         for i in range(8):native.cover_prepare(32.1,0,0,0)
+        settle_cover(32.1)
         outside=cover_counts().copy()
         for i in range(120):
             native.cover_dirty(4096+i,0,4);native.cover_prepare(32.1,0,0,0)
@@ -398,12 +408,15 @@ gl_Position=fixture_mvp*vec4(fixture_rect.xy+p[gl_VertexID]*fixture_rect.zw,fixt
             return float(pixels[256,264])
         native.cover_animate(1)
         for i in range(8):native.cover_prepare(0,0,0,0)
+        settle_cover()
         assert canopy_depth()<.99,'animated canopy fixture missing'
         native.cover_animate(.4)
         for i in range(8):native.cover_prepare(0,0,0,0)
+        settle_cover()
         assert canopy_depth()>.999,'running texture animation retains stale canopy holes'
         native.cover_animate(1)
         for i in range(8):native.cover_prepare(0,0,0,0)
+        settle_cover()
     if only_item==3:return {'item':3,'status':'PASS'}
     print('PASS production cover traversal/cache: stationary reuse, camera cell and geometry revision',flush=True)
     cost_views=np.array([identity.T.copy(),identity.T.copy()],np.float32);cost_views[1,3,0]=-4096

@@ -31,6 +31,7 @@ set(llrender_SOURCE_FILES
 set(llrender_HEADER_FILES
     llcubemap.h
     llcubemaparray.h
+    lldrawbudget.h
     llfontgl.h
     llfontvertexbuffer.h
     llfontface.h

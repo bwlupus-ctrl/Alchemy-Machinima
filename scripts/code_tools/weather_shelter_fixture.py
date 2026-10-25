@@ -44,6 +44,10 @@ def build(tree, out, gl, mutation=None):
             'unsigned coverTraversals=0,coverBatches=0;GLuint casterProgram=0;void sceneDraw(const glm::mat4&,const glm::mat4&);')
         methods += '\n'+function(tree.read('indra/newview/alweatherresources.cpp'),'void ALWeatherResources::bind(')
         methods += '\n'+API+'\n'+COST_API
+        if 'beginTile' in tree.read('indra/newview/alweatherresources.h'):
+            methods += r'''
+extern "C" __declspec(dllexport) unsigned shelter_pending(){return fixturePipeline.mWeatherShelter.updates.pendingTiles();}
+'''
         if 'mWeatherPrecipitationCoverCache.schedule(' in methods:
             methods=methods.replace('if(dirty)++fixturePipeline.mWeatherGeometryRevision;', '''
  if(dirty){
@@ -109,7 +113,7 @@ int sceneKind=0;float roofOffset=0,roofHeight=4,roofAlpha=1;
 float oldRoofOffset=0,oldRoofWidth=8;
 int sceneMVP=-1,sceneRect=-1,sceneAlpha=-1,sceneZ=-1;
 bool forceAllocationFailure=false;unsigned forbiddenListenerWaits=0;
-U64 shelterTraversals=0;
+U64 shelterTraversals=0,coverTriangles=0;unsigned sceneVertices=6;
 void sceneDraw(const glm::mat4& view,const glm::mat4& projection){
  ++coverTraversals;
  glm::mat4 vp=projection*view;
@@ -151,7 +155,12 @@ void sceneDraw(const glm::mat4& view,const glm::mat4& projection){
   // Test geometry is synthesized by the vertex service; native shadow alpha
   // cutoff and discard rules execute in its unchanged fragment module.
   glUniform1f(sceneZ,batch.z);
+#ifdef LL_DRAW_BUDGET_H
+  unsigned offset=0,vertices=sceneVertices;
+  if(LLDrawBudget::take(0,offset,vertices)){glDrawArrays(GL_TRIANGLES,offset,vertices);++coverBatches;coverTriangles+=vertices/3;}
+#else
   glDrawArrays(GL_TRIANGLES,0,6);++coverBatches;
+#endif
  }
  glUseProgram(0);
 }
@@ -283,7 +292,7 @@ extern "C" __declspec(dllexport) void shelter_cost_setup(const unsigned* objects
  c.materialLine=glGetUniformLocation(c.material,"sample_line");
  for(unsigned i=0;i<2;++i){shelter_bind(c.programs[i],0);glGetUniformiv(c.programs[i],c.locations[i][13],&c.depthUnits[i]);}
 }
-extern "C" __declspec(dllexport) void shelter_cost_frame(int on,int dual,int tick){
+extern "C" __declspec(dllexport) void shelter_cost_refresh(int on,int tick){
  const double t=10+double(tick)/60;
  // The paired immutable baseline does not share Python's interleaved toggle.
  // Each native measurement must explicitly select its own production owner.
@@ -291,6 +300,9 @@ extern "C" __declspec(dllexport) void shelter_cost_frame(int on,int dual,int tic
  shelter_scene(0,float(tick%7)*.01f,4,1);
  fixture_weather_set("AlchemyWeatherWindDirection",270+double(tick%5)*.1);
  fixture_weather_step(t);shelter_prepare(t,double(tick%16)*.01,0,0,1);
+}
+extern "C" __declspec(dllexport) void shelter_cost_frame(int on,int dual,int tick){
+ shelter_cost_refresh(on,tick);
  fixtureShelterCost.consumers(on!=0,0);
  if(dual)fixtureShelterCost.consumers(on!=0,1);
 }

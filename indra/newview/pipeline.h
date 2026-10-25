@@ -845,7 +845,7 @@ public:
     bool drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
         const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
         F32 clip_start, F32 clip_end, U32& surface_submissions,
-        ALWeatherShelter::Updates::Tile tile = {});
+        ALWeatherShelter::Updates::Tile tile = {}, ALWeatherResources* budget_owner = nullptr);
     void dirtyWeatherDrawable(LLDrawable* drawable);
     void dirtyWeatherRegion(const LLVector3& low, const LLVector3& high);
     void generateWeatherAdvancedShelter(LLCamera& camera);

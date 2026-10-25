@@ -215529,7 +215529,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alweatherresources.cpp",
-              "line": 517,
+              "line": 561,
               "class": "ALWeatherShelterMaps",
               "function": "bind",
               "wired_class": "ALWeatherShelterMaps",

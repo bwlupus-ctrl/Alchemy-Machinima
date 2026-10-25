@@ -68,6 +68,7 @@ namespace ALWeatherShelter
                 for (U32 x = first[0]; x <= last[0]; ++x)
                 {
                     const U64 bit = U64(1) << (y*8 + x);
+                    if (!(mDirty[layer] & bit)) mSince[layer][y*8 + x] = mLast;
                     mDirty[layer] |= bit;
                     // Events can precede the frame's geometry flush. Retain
                     // one follow-up, just as WP7's original bounded scheduler.
@@ -81,6 +82,9 @@ namespace ALWeatherShelter
         if (!std::isfinite(seconds)) { invalidate(); mInitialized = false; return false; }
         const Plan requested[] = {close, distant};
         mLayerCount = layers;
+        // Worst owner opportunity at 60 Hz: every third display frame, plus
+        // one frame of cadence rounding. Paused views have no elapsed bound.
+        mSlotSeconds = std::max(1./std::clamp(hz, 5U, 60U), 3./60.) + 1./60.;
         const bool urgent = !mInitialized || place != mPlace || origin != mOrigin || seconds < mLast;
         mLast = seconds;
         if (!urgent && seconds + 1e-9 < mNext) return false;
@@ -89,8 +93,9 @@ namespace ALWeatherShelter
             if (urgent || !(requested[layer] == mPlans[layer]) || !mValid)
             {
                 mPlans[layer] = requested[layer];
-                mComplete[layer] = false;
+                mComplete[layer] = false; mBuilt[layer] = 0;
                 mDirty[layer] = ~U64(0); mFollowup[layer] = 0;
+                mSince[layer].fill(seconds); mWork[layer].fill(1);
             }
         }
         mInitialized = mValid = true; mPlace = place; mOrigin = origin;
@@ -99,26 +104,11 @@ namespace ALWeatherShelter
             const U32 layer = (mCursor + offset)%layers;
             if (!mDirty[layer]) continue;
             mSelected = layer; mCursor = (layer + 1)%layers;
-            if (!mComplete[layer]) mTile = {};
-            else
-            {
-                U32 bit = mTileCursor[layer];
-                while (!(mDirty[layer] & (U64(1) << bit))) bit = (bit + 1)%64;
-                mTileCursor[layer] = (bit + 1)%64;
-                mTile = {bit%8, bit/8, 1};
-                U32 low_x = 7, low_y = 7, high_x = 0, high_y = 0;
-                for (U32 index = 0; index < 64; ++index)
-                    if (mDirty[layer] & (U64(1) << index))
-                    {
-                        low_x = std::min(low_x, index%8); low_y = std::min(low_y, index/8);
-                        high_x = std::max(high_x, index%8); high_y = std::max(high_y, index/8);
-                    }
-                const U32 span = std::max(high_x-low_x, high_y-low_y) + 1;
-                // Coalesce a small moving caster's neighbouring tiles into one
-                // cropped traversal. Widespread churn still gets one tile.
-                if (span <= 4) mTile = {std::min(low_x, 8-span), std::min(low_y, 8-span), span};
-                else mTile = {std::min(bit%8, 4U), std::min(bit/8, 4U), 4};
-            }
+            U32 bit = mTileCursor[layer];
+            while (!(mDirty[layer] & (U64(1) << bit))) bit = (bit + 1)%64;
+            mTile = {bit%8, bit/8, 1};
+            // One display-frame job at the requested cadence; the rate never
+            // grants permission to batch the map's dirty regions together.
             mNext = seconds + 1./std::clamp(hz, 5U, 60U);
             return true;
         }
@@ -131,11 +121,41 @@ namespace ALWeatherShelter
             for (U32 x = mTile.x; x < mTile.x+mTile.size; ++x) mask |= U64(1) << (y*8+x);
         mDirty[mSelected] = (mDirty[mSelected] & ~mask) | (mFollowup[mSelected] & mask);
         mFollowup[mSelected] &= ~mask;
-        mComplete[mSelected] = true;
+        mSince[mSelected][mTile.y*8 + mTile.x] = mLast;
+        mBuilt[mSelected] |= mask;
+        mComplete[mSelected] = mBuilt[mSelected] == ~U64(0);
+        mTileCursor[mSelected] = (mTile.y*8 + mTile.x + 1)%64;
         // Finish initial paired publication immediately; subsequent dirty work
         // is round-robin, rate bounded and never builds both maps in a view.
         if (!mComplete[0] || (mLayerCount == 2 && (!mComplete[1] ||
             (mSelected == 0 && mDirty[1])))) mNext = 0.;
+    }
+    U32 Updates::pendingTiles() const
+    {
+        U32 count = 0;
+        for (U32 layer = 0; layer < mLayerCount; ++layer)
+            for (U64 bits = mDirty[layer]; bits; bits &= bits - 1) ++count;
+        return count;
+    }
+    F64 Updates::stalenessSeconds() const
+    {
+        U64 chunks = 0;
+        for (U32 layer = 0; layer < mLayerCount; ++layer)
+            for (U32 bit = 0; bit < 64; ++bit)
+            {
+                const U64 mask = U64(1) << bit;
+                if (mDirty[layer] & mask) chunks += std::max(U64(1), mWork[layer][bit]);
+                if (mFollowup[layer] & mask) chunks += std::max(U64(1), mWork[layer][bit]);
+            }
+        return chunks * mSlotSeconds;
+    }
+    F64 Updates::oldestSeconds() const
+    {
+        F64 age = 0.;
+        for (U32 layer = 0; layer < mLayerCount; ++layer)
+            for (U32 bit = 0; bit < 64; ++bit)
+                if (mDirty[layer] & (U64(1) << bit)) age = std::max(age, mLast - mSince[layer][bit]);
+        return age;
     }
     void Exposure::reset()
     {

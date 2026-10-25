@@ -10,6 +10,9 @@ from weather_compute_fixture import function
 
 def parts(tree, out):
     (out/'alweathercovercache.h').write_text(tree.read('indra/newview/alweathercovercache.h'), encoding='utf-8')
+    budgeted = 'beginTile' in tree.read('indra/newview/alweatherresources.h')
+    if budgeted:
+        (out/'lldrawbudget.h').write_text(tree.read('indra/llrender/lldrawbudget.h'), encoding='utf-8')
     pipe = tree.read('indra/newview/pipeline.cpp')
     cover = function(pipe, 'void LLPipeline::generateWeatherSurfaceCover(')
     draw = function(pipe, 'bool LLPipeline::drawWeatherCover(') if 'bool LLPipeline::drawWeatherCover(' in pipe else ''
@@ -99,7 +102,7 @@ struct LLPresentationTime {struct Frame {double presentation_time;};inline stati
     if regional:
         prefix=prefix.replace('ALWeatherCoverCache mWeatherPrecipitationCoverCache;U64 mWeatherGeometryRevision=0;',
             'ALWeatherShelter::Updates mWeatherPrecipitationCoverCache;U32 mWeatherCoverWorkFrame=~U32(0);')
-        prefix=prefix.replace('F32,F32,U32&);','F32,F32,U32&,ALWeatherShelter::Updates::Tile={});')
+        prefix=prefix.replace('F32,F32,U32&);','F32,F32,U32&,ALWeatherShelter::Updates::Tile={},ALWeatherResources* = nullptr);' if budgeted else 'F32,F32,U32&,ALWeatherShelter::Updates::Tile={});')
         prefix=prefix.replace(' void generateWeatherSurfaceCover(LLCamera&);', '''
  void dirtyWeatherRegion(const LLVector3&,const LLVector3&);
  void generateWeatherSurfaceCover(LLCamera&);''')
@@ -166,6 +169,17 @@ extern "C" __declspec(dllexport) void illumination_factors(float direct,float am
  for(int i=0;i<3;++i){ALEnvIntensity::supplied.mSunTint.mV[i]=i==0?r:i==1?g:b;ALEnvIntensity::supplied.mAmbTint.mV[i]=i==0?r:i==1?g:b;}}
 extern "C" __declspec(dllexport) void illumination_mode(int classic,float ambiance){auto& s=LLEnvironment::instance().sky;s.classic=classic;s.ambiance=ambiance;}
 '''
+    if budgeted:
+        api += r'''
+extern "C" __declspec(dllexport) unsigned cover_pending(){return fixturePipeline.mWeatherPrecipitationCoverCache.pendingTiles();}
+extern "C" __declspec(dllexport) unsigned cover_ready(){return coverage.ready();}
+extern "C" __declspec(dllexport) void cover_load(unsigned triangles){sceneVertices=triangles*3;}
+extern "C" __declspec(dllexport) void cover_budget(double* out){
+ out[0]=double(coverTriangles);out[1]=double(coverage.mRefreshCursor);out[2]=coverage.mRefreshComplete;
+ out[3]=fixturePipeline.mWeatherPrecipitationCoverCache.stalenessSeconds();
+ out[4]=fixturePipeline.mWeatherPrecipitationCoverCache.oldestSeconds();
+}
+'''
     # Closest real harness path: compile production drawWeatherCover unchanged,
     # including its cropped native renderShadow call. Scene membership/culling
     # and render-map sorting are simulated over 256 distinct world AABBs; each
@@ -178,6 +192,8 @@ extern "C" __declspec(dllexport) void illumination_mode(int classic,float ambian
     api=api.replace('casterProgram=p;', '''casterProgram=p;
  sceneMVP=glGetUniformLocation(p,"fixture_mvp");sceneRect=glGetUniformLocation(p,"fixture_rect");
  sceneAlpha=glGetUniformLocation(p,"fixture_alpha");sceneZ=glGetUniformLocation(p,"fixture_z");''')
+    if budgeted:
+        prefix='#include "lldrawbudget.h"\n'+prefix
     from weather_animation_fixture import extend as animation
     prefix,methods=animation(tree,prefix,methods)
     return prefix, methods, api

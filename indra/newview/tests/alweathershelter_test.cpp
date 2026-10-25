@@ -121,7 +121,12 @@ namespace tut
         Updates updates;
         const std::array<F64, 3> origin{256., 512., 0.};
         ensure("initial update", updates.schedule(a, a, 1, origin, 0., 30, 1));
-        updates.complete();
+        for (U32 tile = 0; tile < 64; ++tile)
+        {
+            ensure_equals("initialization is one tile", updates.tile().size, 1U);
+            updates.complete();
+            if (tile != 63) ensure("next initialization tile", updates.schedule(a, a, 1, origin, 0., 30, 1));
+        }
         ensure("static maps have no periodic traversal", !updates.schedule(a, a, 1, origin, 1., 30, 1));
         updates.dirty({4096.,4096.,0.}, {4100.,4100.,10.});
         ensure("outside motion stays clean", !updates.schedule(a, a, 1, origin, 1.01, 30, 1));
@@ -132,12 +137,14 @@ namespace tut
         ensure("coalesce new dirty revisions", !updates.schedule(a, a, 1, origin, 1.03, 30, 1));
         ensure("capture post-flush geometry once", updates.schedule(a, a, 1, origin, 1.06, 30, 1));
         updates.complete();
-        ensure("settling never becomes permanent polling", !updates.schedule(a, a, 1, origin, 1.2, 30, 1));
+        for (U32 frame = 0; frame < 128; ++frame)
+            if (updates.schedule(a, a, 1, origin, 1.2 + frame/60., 30, 1)) updates.complete();
+        ensure("settling never becomes permanent polling", !updates.schedule(a, a, 1, origin, 4., 30, 1));
         U32 jobs = 0;
         for (U32 frame = 0; frame < 120; ++frame)
         {
             updates.dirty({255.,511.,0.}, {257.,513.,8.});
-            if (updates.schedule(a, a, 1, origin, 2.+frame/60., 30, 1))
+            if (updates.schedule(a, a, 1, origin, 5.+frame/60., 30, 1))
             {
                 ensure("sustained invalidation never becomes a full traversal", !updates.tile().full());
                 ensure("sustained work cap", updates.tile().size <= 4);
@@ -145,9 +152,9 @@ namespace tut
             }
         }
         ensure("sustained refresh cadence", jobs >= 55 && jobs <= 60);
-        ensure("origin rebase invalidates immediately", updates.schedule(a, a, 1, {0.,0.,0.}, 4.01, 30, 1));
+        ensure("origin rebase invalidates immediately", updates.schedule(a, a, 1, {0.,0.,0.}, 8.01, 30, 1));
         updates.complete();
-        ensure("place never reuses previous roof", updates.schedule(a, a, 2, {0.,0.,0.}, 4.02, 30, 1));
+        ensure("place never reuses previous roof", updates.schedule(a, a, 2, {0.,0.,0.}, 8.02, 30, 1));
     }
     template<> template<> void surface_object::test<6>()
     {
@@ -187,5 +194,28 @@ namespace tut
         const auto a = sampled.update(0.2, config, {}), b = reference.update(0.2, config, {});
         ensure_equals("view sampling preserves the main scheduler", a.mStrikeId, b.mStrikeId);
         ensure_equals("view sampling preserves the main flash", a.mFlash, b.mFlash);
+    }
+    template<> template<> void surface_object::test<8>()
+    {
+        using namespace ALWeatherShelter;
+        Updates updates;
+        const auto p = plan({0., 0., 0.}, 128.f, 512, {});
+        U64 visited[2]{};
+        for (U32 frame = 0; frame < 256; ++frame)
+        {
+            // Sustained whole-volume churn must not reset either cursor or
+            // prevent the distant map from completing its initial publication.
+            updates.dirty({-128., -128., -64.}, {128., 128., 64.});
+            if (!updates.schedule(p, p, 1, {}, frame/60., 60)) continue;
+            const auto tile = updates.tile();
+            ensure_equals("hard per-job tile cap", tile.size, 1U);
+            visited[updates.selectedLayer()] |= U64(1) << (tile.y*8 + tile.x);
+            updates.noteWork(1);
+            updates.complete();
+        }
+        ensure_equals("close dirty rotation cannot starve tiles", visited[0], ~U64(0));
+        ensure_equals("distant dirty rotation cannot starve tiles", visited[1], ~U64(0));
+        ensure("live queue has a finite reported bound", updates.stalenessSeconds() > 0. &&
+            updates.stalenessSeconds() <= 256./15.);
     }
 }

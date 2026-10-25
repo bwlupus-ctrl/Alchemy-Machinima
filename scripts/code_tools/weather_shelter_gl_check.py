@@ -62,7 +62,7 @@ def contracts(tree):
     assert function(pipe,'void LLPipeline::generateWeatherRainOcclusion(')==function(SourceTree('330d012e161').read('indra/newview/pipeline.cpp'),'void LLPipeline::generateWeatherRainOcclusion('),'default legacy shelter changed'
 
 
-def run(ref='WORKTREE',mutation=None,cost=True):
+def run(ref='WORKTREE',mutation=None,cost=True,benchmark_context=False,gl=None,context_key=''):
     tree=SourceTree(ref);contracts(tree)
     if mutation in ('border-blend','surface-self'):
         original=tree
@@ -80,17 +80,32 @@ def run(ref='WORKTREE',mutation=None,cost=True):
                         assert a in source;source=source.replace(a,'float receiver=q.z;')
                 return source
         tree=BorderMutant()
-    gl=GL();print('WGL',gl.renderer,flush=True)
+    gl=gl or GL();print('WGL',gl.renderer,flush=True)
     # Resolve fixture dispatch/uniform locations once, just as the viewer does.
     # Dynamic ctypes wrapper creation/GC is not weather frame work.
     gl.fn=lru_cache(None)(gl.fn)
     gl.loc=lru_cache(None)(gl.loc)
-    native=build(tree,ROOT/'.tmp/weather_port/shelter'/(mutation or 'baseline')/str(os.getpid()),gl,mutation)
+    native=build(tree,ROOT/'.tmp/weather_port/shelter'/(mutation or 'baseline')/(str(os.getpid())+('_'+context_key if context_key else '')),gl,mutation)
     def set_(name,value):native.fixture_weather_set(('AlchemyWeather'+name).encode(),value)
     def step(t):native.fixture_weather_step(t)
     def metrics():
         a=np.zeros(14,np.float64);native.shelter_metrics(a.ctypes.data);return a
-    def prepare(t=1,x=0,y=0,z=0,dirty=0):native.shelter_prepare(t,x,y,z,dirty)
+    budgeted=hasattr(native,'shelter_pending')
+    actual_time=0.;request_time=0.
+    def prepare(t=1,x=0,y=0,z=0,dirty=0,settle=True):
+        nonlocal actual_time,request_time
+        if not budgeted:
+            native.shelter_prepare(t,x,y,z,dirty);return
+        actual_time+=max(1/60,t-request_time);request_time=t
+        native.shelter_prepare(actual_time,x,y,z,dirty)
+        if settle and np.isfinite([x,y,z]).all():
+            # Readbacks assert eventual correctness after the documented tiled
+            # latency. Cost/rate tests use one real display frame per call.
+            for _ in range(1024):
+                if native.shelter_pending()==0 and (not native.shelter_basic_allocated() or native.cover_pending()==0):break
+                actual_time+=1/60
+                native.shelter_prepare(actual_time,x,y,z,0)
+            else:raise AssertionError('shelter refresh exceeded bounded settling frames')
     def program(v,f):
         pr=gl.program()
         for source,stage in ((v,0x8B31),(f,0x8B30)):
@@ -235,7 +250,7 @@ weatherRainExposure(sampleAgent()+vec3(0,0,float(i)*.5)):1.0;result=vec4(open/12
     native.shelter_scene(0,20,4,1);guarded(1.4,dirty=1)
     assert sample(9)[0,0,0]>.99,'moving roof dirty update'
     counts=metrics()[0]
-    for i in range(1,10):guarded(1.4+i*.001,dirty=1)
+    for i in range(1,10):guarded(1.4+i*.001,dirty=1,settle=False)
     assert metrics()[0]-counts<=9,'unbounded dirty traversals'
     native.shelter_scene(0,0,4,.4);guarded(1.5,dirty=1)
     assert sample(4)[0,0,0]>.99,'native masked roof cutoff rejected transparent texel'
@@ -332,7 +347,7 @@ weatherRainExposure(sampleAgent()+vec3(0,0,float(i)*.5)):1.0;result=vec4(open/12
         proj=projection.T.copy();identity=np.eye(4,dtype=np.float32);origin=np.zeros(3,np.float64)
         from weather_rain_gl_check import RainRunner,native_adapter,UNIFORMS
         rain_base=RainRunner(tree,gl)
-        upload=native_adapter(tree,ROOT/'.tmp/weather_port/shelter/rain_upload'/str(os.getpid()))
+        upload=native_adapter(tree,ROOT/'.tmp/weather_port/shelter/rain_upload'/(str(os.getpid())+('_'+context_key if context_key else '')))
         rain_values=upload(1,20,12.5)
         native.shelter_rain_program.restype=C.c_uint
         rain_programs={False:rain_base.program,True:native.shelter_rain_program()}
@@ -361,6 +376,8 @@ weatherRainExposure(sampleAgent()+vec3(0,0,float(i)*.5)):1.0;result=vec4(open/12
         rain_pixels=np.empty((height//2,width//2,4),np.float32)
         gl.read(0,0,width//2,height//2,0x1908,0x1406,rain_pixels.ctypes.data)
         assert np.isfinite(rain_pixels).all() and np.count_nonzero(rain_pixels[...,:3])>100,'production rain cost draw is missing'
+        if benchmark_context:
+            return dict(gl=gl,native=native,set=set_,step=step,reset=target,counts=metrics,result=result)
         records=[];tick=0
         def work(on,dual=False,sample_index=None):
             nonlocal tick
@@ -452,9 +469,9 @@ def bindings(tree,native,metrics,set_,step,prepare):
     assert b'update <=' in native.shelter_status() and b'unknown' in native.shelter_status(),'update/coverage status'
     refresh_counts=[]
     for hz,start in ((5,20),(60,21)):
-        set_('ShelterUpdateHz',hz);step(start);prepare(start,dirty=1)
+        set_('ShelterUpdateHz',hz);step(start);prepare(start,dirty=1,settle=False)
         before=native.shelter_traversals()
-        for frame in range(1,31):prepare(start+frame/60,dirty=1)
+        for frame in range(1,31):prepare(start+frame/60,dirty=1,settle=False)
         refresh_counts.append(native.shelter_traversals()-before)
     assert refresh_counts[0]<=6 and refresh_counts[1]>refresh_counts[0]*3,'Update rate row has no observable bounded effect'
     set_('ShelterUpdateHz',30);step(4);prepare(4)

@@ -8,6 +8,7 @@
 #ifndef AL_WEATHER_SHELTER_H
 #define AL_WEATHER_SHELTER_H
 #include "alweatherbridge.h"
+#include <algorithm>
 
 namespace ALWeatherShelter
 {
@@ -50,7 +51,7 @@ namespace ALWeatherShelter
             bool full() const { return size == 8; }
         };
         // Bounded, spatial dirty work shared by basic cover and tilted shelter.
-        // Each call selects one tile or a cluster bounded to 1/4 of the map.
+        // Each call selects one tile, including initial/replacement maps.
         void dirty(const std::array<F64, 3>& low, const std::array<F64, 3>& high);
         bool schedule(const Plan& close, const Plan& distant, U32 place,
                       const std::array<F64, 3>& origin, F64 seconds, U32 hz, U32 layers = 2);
@@ -58,12 +59,17 @@ namespace ALWeatherShelter
         U32 selectedLayer() const { return mSelected; }
         Tile tile() const { return mTile; }
         void complete();
+        bool layerComplete() const { return mComplete[mSelected]; }
+        U32 pendingTiles() const;
+        void noteWork(U64 chunks) { mWork[mSelected][mTile.y*8 + mTile.x] = chunks; }
+        F64 stalenessSeconds() const;
+        F64 oldestSeconds() const;
         bool initialized() const { return mInitialized; }
         void publish() { mValid = true; }
         void invalidate() { mValid = false; }
     private:
         std::array<Plan, 2> mPlans{};
-        std::array<U64, 2> mDirty{}, mFollowup{};
+        std::array<U64, 2> mDirty{}, mFollowup{}, mBuilt{};
         std::array<bool, 2> mComplete{};
         U32 mSelected = 0, mCursor = 0, mLayerCount = 2;
         std::array<U32, 2> mTileCursor{};
@@ -71,7 +77,9 @@ namespace ALWeatherShelter
         bool mInitialized = false;
         std::array<F64, 3> mOrigin{};
         U32 mPlace = 0;
-        F64 mNext = 0., mLast = -1.;
+        F64 mNext = 0., mLast = -1., mSlotSeconds = 0.05;
+        std::array<std::array<U64, 64>, 2> mWork{};
+        std::array<std::array<F64, 64>, 2> mSince{};
         bool mValid = false;
     };
     constexpr U64 coverBytes(U32 resolution) { return U64(resolution) * resolution * 4 * 2; }

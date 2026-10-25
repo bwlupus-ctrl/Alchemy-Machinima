@@ -184,6 +184,7 @@ void check_framebuffer_status(){}
         methods+='\n'+ '\n'.join(function(resources,s) for s in (
           'ALWeatherResources::State::State(', 'ALWeatherResources::State::~State(',
           'void ALWeatherResources::prepare(', 'void ALWeatherResources::prepareIntervals(',
+          'void ALWeatherResources::beginTile(', 'void ALWeatherResources::commitTile(', 'void ALWeatherResources::refreshStatus(',
           'void ALWeatherResources::buildIntervals(', 'void ALWeatherResources::bindIntervals(', 'bool ALWeatherResources::copyFrom(',
           'void ALWeatherResources::setBounds(', 'bool ALWeatherResources::precipitationWithin(',
           'bool ALWeatherResources::allocate(', 'void ALWeatherResources::release(',
@@ -444,10 +445,12 @@ extern "C" __declspec(dllexport) void particles_cost_setup(unsigned fbo,unsigned
  auto& c=fixtureParticleCost;c.fbo=fbo;c.depth=depth;c.width=width;c.height=height;
  std::memcpy(&c.projection,projection,64);std::memcpy(c.views,views,128);
 }
-extern "C" __declspec(dllexport) void particles_cost_frame(int tick,int dual){
- auto& c=fixtureParticleCost;
+extern "C" __declspec(dllexport) void particles_cost_refresh(int tick){
  oldRoofOffset=roofOffset;oldRoofWidth=8;roofOffset=float(tick%7)*.01f;
  fixture_weather_step(100+double(tick)/60);cover_prepare(0,0,0,1);
+}
+extern "C" __declspec(dllexport) void particles_cost_frame(int tick,int dual){
+ auto& c=fixtureParticleCost;particles_cost_refresh(tick);
  render(c.fbo,c.depth,0,c.width,c.height,glm::value_ptr(c.views[0]),glm::value_ptr(c.projection),glm::value_ptr(c.identity),c.origin,-1);
  if(dual)render(c.fbo,c.depth,0,c.width,c.height,glm::value_ptr(c.views[1]),glm::value_ptr(c.projection),glm::value_ptr(c.identity),c.origin,-1);
 }

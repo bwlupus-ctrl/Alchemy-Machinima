@@ -176,6 +176,48 @@ void ALWeatherResources::prepareIntervals()
     mMinimumValid = false;
 #endif
 }
+void ALWeatherResources::beginTile(const ALWeatherShelter::Plan& plan)
+{
+    if (!mStaging || !(plan == mStagingPlan))
+    {
+        mStagingPlan = plan; mStaging = true; mRefreshCursor = 0;
+    }
+    mPatching = false;
+    mRefreshComplete = false;
+    if (!ready()) mCoverage = ALWeatherShelter::Coverage::INCOMPLETE;
+}
+void ALWeatherResources::commitTile(ALWeatherShelter::Updates::Tile tile, bool replacement_complete)
+{
+    mRefreshCursor = 0;
+    // A changed transform is published only after every replacement tile is
+    // complete. Until then the old texture and transform remain paired.
+    if (!matches(mStagingPlan, mOrigin) || !ready())
+    {
+        // Amortize the hierarchy alongside replacement leaves. Until every
+        // leaf is built, old-depth consumers use the exact sampling fallback;
+        // a hierarchy mixing two transforms is never advertised as valid.
+        buildIntervals(tile);
+        if (!replacement_complete) mMinimumValid = false;
+        return;
+    }
+    const U32 size = writeTarget().getWidth(), cell = size/8;
+    const U32 x = tile.x*cell, y = tile.y*cell, extent = tile.size*cell;
+    LLGLDisable no_scissor(GL_SCISSOR_TEST);
+    mCover[mRead].copyContents(writeTarget(), x, y, x+extent, y+extent,
+        x, y, x+extent, y+extent, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    mPatching = true;
+    buildIntervals(tile);
+}
+void ALWeatherResources::refreshStatus(const ALWeatherShelter::Updates& updates)
+{
+    // Replace rather than append on reused frames.
+    const auto suffix = mStatus.find("; refresh ");
+    if (suffix != std::string::npos) mStatus.erase(suffix);
+    mStatus += "; refresh " + std::to_string(updates.pendingTiles()) +
+        " tiles pending; oldest " + std::to_string(updates.oldestSeconds()) +
+        " s; 1 tile/frame, 16 draws/2048 triangles/frame; queue bound " +
+        std::to_string(updates.stalenessSeconds()) + " s at 60 Hz for observed caster load (including follow-up)";
+}
 void ALWeatherResources::buildIntervals(ALWeatherShelter::Updates::Tile tile)
 {
 #if !LL_DARWIN
@@ -294,7 +336,7 @@ void ALWeatherResources::release()
     if (mMinimum) glDeleteTextures(1, &mMinimum);
     mMinimum = mMinimumResolution = 0; mMinimumValid = mMinimumAttempted = false;
     mReduction.unload();
-    mPatching = false;
+    mPatching = false; mStaging = false; mRefreshCursor = 0;
     mSource = nullptr; ++mContent;
     mBoundsValid = false;
     for (auto& target : mCover) target.release();
@@ -487,9 +529,11 @@ void ALWeatherShelterMaps::publish(U32 frame)
 {
     const auto& weather = ALWeatherBridge::Controller::instance();
     if (!mReady || !layers[0].readyForFrame(frame) || !layers[1].readyForFrame(frame) ||
-        layers[0].mOrigin != layers[1].mOrigin || layers[0].mPlace != layers[1].mPlace)
+        layers[0].mOrigin != layers[1].mOrigin || layers[0].mPlace != layers[1].mPlace ||
+        layers[0].mPlace != weather.placeSerial())
     {
-        fail("Advanced shelter update failed; coverage unknown, existing fallback");
+        mStatus = "Advanced shelter refreshing; previous valid maps retained; " +
+            std::to_string(updates.pendingTiles()) + " tiles pending";
         return;
     }
     mOrigin = layers[0].mOrigin;
@@ -499,7 +543,7 @@ void ALWeatherShelterMaps::publish(U32 frame)
     const auto& s = weather.settings();
     mStatus = "Advanced shelter ready; near +/-" + std::to_string(U32(s.shelterNearExtent)) +
         " m, far +/-" + std::to_string(U32(s.shelterFarExtent)) + " m; update <=" +
-        std::to_string(s.shelterHz) + " Hz; outside coverage unknown; blended glass excluded";
+        std::to_string(s.shelterHz) + " Hz; outside coverage unknown; blended glass excluded; " + layers[0].status();
 }
 void ALWeatherShelterMaps::bind(LLGLSLShader* shader, const glm::dvec3& origin, U32 frame)
 {
