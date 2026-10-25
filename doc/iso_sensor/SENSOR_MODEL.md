@@ -21,6 +21,11 @@ n_e ~ Poisson(μ_e)
 - For `μ_e < 20`, use bounded inverse-CDF sampling on a hashed uniform. The loop is capped and the tail-error bound is documented.
 - Otherwise use `n_e = μ_e + sqrt(μ_e) · z`, with `z` drawn by Box–Muller from hashed uniforms.
 - The two regimes must be continuous across `λ = 20`.
+- The lower CDF is used through uniform 0.9999; above it, sum the survival
+  probability downwards from `min(64, ceil(λ + 10 sqrt(λ) + 6))`
+  (start at 3 for `λ < 1e-4`, at 6 for `λ < 0.01`, avoiding underflow).
+  This avoids subtracting a small tail from one in float32. The omitted tail
+  is below `2e-14` for `0 < λ < 20`; the uniform grid spacing is `2^-23`.
 
 ## 3. Dark current
 
@@ -100,12 +105,42 @@ C · Cᵀ = Σ_rgb = M · diag(σ²_R, σ²_G/2, σ²_B) · Mᵀ
 - Spatial correlation: decompose into luma and chroma. Luma stays at full resolution. Chroma comes from a half-resolution hash lattice with bilinear interpolation, divided by `sqrt(Σ w_i²)` so its variance is preserved.
 - Spatial filtering applies to the Gaussian part only. Poisson residuals are never filtered.
 
+For NoiseAmount `A` and ChromaAmount `c`, let `D = M^-1 C [axis,u,v]`,
+where `axis = normalize(C^T luma)` and `[axis,u,v]` is orthonormal. The
+Gaussian camera covariance is `S = A² D diag(1,c²,c²) D^T`. Apply this
+separately to shot and read noise; add the unfiltered low-count Poisson
+variance and the ADC variance separately. Section 8 is the physical `A=c=1`
+oracle, away from clipping rails.
+
+Define `V_G = D_G0² + c²(D_G1²+D_G2²)`. Reconstruct green sites from
+`G1 = μ_G + A (averageResidual + sqrt(V_G) z_difference)` and
+`G2 = μ_G + A (averageResidual - sqrt(V_G) z_difference)`, independently
+for Gaussian shot and read. Their marginal variance is `2 A² V_G` and
+their covariance is zero for every `A,c`. Low-count shot uses the two
+independent Poisson samples directly, regardless of `c`. Clip each well and
+digitise each site before averaging. This corrects the previously unspecified
+non-unit-chroma decomposition, which left the difference variance unchanged.
+
+The half-resolution lattice uses `position = 0.5 pixel + 0.25 + 0.5 bits`,
+where the two origin bits come from the avalanched capture clock, seed and
+stream. This gives symmetric sub-cell weights with a random pixel origin.
+Variance remains normalised;
+averaging over frames removes fixed two-pixel correlation modulation.
+
 ## 10. Hue-preserving clip
 
 ```
-t     = smoothstep(c_knee, e_sat, max_channel(pre-clip signal))
+q_i   = smoothstep(c_knee · e_sat, e_sat, pre_clip_i)
+t     = (q_R + q_G + q_B) / 3
 L_out = mix(L_clipped, luminance(L_clipped) · white, t)
 ```
+
+`c_knee` is the dimensionless knee fraction (0.8). `pre_clip_G` is the
+maximum of the two individual green sites, so a single saturated site is
+retained. The mix is continuous and monotonic in every pre-clip channel,
+and reaches full neutral only when all three camera channels saturate.
+This replaces the earlier peak-only equation, which reached neutral on
+the first saturated channel. Luminance uses `(0.2126,0.7152,0.0722)`.
 
 ## 11. Fixed-pattern noise
 
@@ -129,4 +164,7 @@ Initial presets use illustrative published-class values, labelled as illustrativ
 
 ## Determinism
 
-The random inputs come from a hash of `(pixel.xy, frame counter, seed, stream id)`. Fixed seed plus the same frame counter gives a bit-identical output.
+The random inputs come from an ordered hash of `(pixel.x, pixel.y, frame low,
+frame high, seed, stream id, domain)`. Spatial and capture/domain sub-tuples
+avalanche every component before a final avalanche combines them. Fixed seed
+plus the same frame counter gives a bit-identical output.

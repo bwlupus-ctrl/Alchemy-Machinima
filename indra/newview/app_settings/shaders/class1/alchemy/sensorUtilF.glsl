@@ -12,10 +12,9 @@ struct SensorParameters
 {
     vec4 physics; // FW, sigma_r, analog DN/e-, black pedestal DN
     vec4 scale; // white DN, K electrons/linear, g_N, highlight knee fraction
-    vec4 controls; // noise amount, chroma amount, total ISO gain, reserved
+    vec4 controls; // noise amount, chroma amount, total ISO gain, green read RMS
     mat3 cameraToWorking;
     mat3 workingToCamera;
-    mat3 readCholesky; // Cholesky(M diag(sigma_r^2 * (1,.5,1)) M^T)
     uvec4 clock; // capture-relative frame low/high, take seed, presentation stream
     mat3 readCameraBasis; // precomputed camera-space C*orthonormal luma/chroma rotation
 };
@@ -29,26 +28,35 @@ uint sensorHash(uint x)
     return x ^ (x >> 16u);
 }
 
+uint sensorContext(SensorParameters p)
+{
+    uint h = sensorHash(p.clock.x ^ 0x9e3779b9u);
+    h = sensorHash(h ^ p.clock.y);
+    h = sensorHash(h ^ p.clock.z);
+    return sensorHash(h ^ p.clock.w);
+}
+
 uint sensorKey(ivec2 pixel, SensorParameters p, uint domain)
 {
-    // Counter tuple, mixed by distinct odd constants before sensorUniform's
-    // avalanche. The uniform clock expression is shared by all lattice calls.
-    uint h = p.clock.x ^ (p.clock.y*0xc2b2ae35u);
-    h ^= p.clock.z*0x27d4eb2du;
-    h ^= p.clock.w*0x165667b1u;
-    return h ^ (uint(pixel.x)*0x9e3779b9u) ^ (uint(pixel.y)*0x85ebca6bu) ^ domain;
+    // Avalanche EACH component before combining the next. In particular,
+    // frame XOR domain must not permute the two green-site streams.
+    // Put the uniform prefix first so all lattice neighbours share its work.
+    uint spatial = sensorHash(uint(pixel.x) ^ 0x85ebca6bu);
+    spatial = sensorHash(spatial ^ uint(pixel.y));
+    return sensorHash(spatial ^ sensorHash(sensorContext(p) ^ domain));
 }
 
 float sensorUniform(uint key)
 {
+    // key is already avalanched by sensorKey (or explicitly sensorHash).
     // Open interval, 23 random bits; avoids log(0) and rounded-to-one uniforms.
-    return (float(sensorHash(key) >> 9u) + 0.5) * (1.0 / 8388608.0);
+    return (float(key >> 9u) + 0.5) * (1.0 / 8388608.0);
 }
 
 vec2 sensorNormalPair(uint key)
 {
     float radius = sqrt(-2.0 * log(sensorUniform(key)));
-    float theta = 6.283185307179586 * sensorUniform(key ^ 0x68bc21ebu);
+    float theta = 6.283185307179586 * sensorUniform(sensorHash(key ^ 0x68bc21ebu));
     return radius * vec2(cos(theta), sin(theta));
 }
 
@@ -75,9 +83,8 @@ bool sensorPoissonBlock(vec4 lambda, vec4 u, vec4 inverseK,
     return all(lessThanEqual(u,cdf));
 }
 
-vec4 sensorPoisson4(vec4 lambda, uvec4 key)
+vec4 sensorPoissonCDF(vec4 lambda, vec4 u)
 {
-    vec4 u = vec4(sensorUniform(key.x),sensorUniform(key.y),sensorUniform(key.z),sensorUniform(key.w));
     vec4 mass = exp(-lambda);
     vec4 cdf = mass;
     vec4 value = vec4(0.0);
@@ -105,6 +112,47 @@ vec4 sensorPoisson4(vec4 lambda, uvec4 key)
     if (sensorPoissonBlock(lambda,u,1.0/vec4(57,58,59,60),mass,cdf,value)) return value;
     if (sensorPoissonBlock(lambda,u,1.0/vec4(61,62,63,64),mass,cdf,value)) return value;
     return value;
+}
+
+float sensorPoissonUpper(float lambda, float u)
+{
+    // Sum the small survival probability, never 1-CDF. Start above the
+    // representable tail; this adaptive start also avoids PMF underflow for
+    // tiny lambda. The omitted tail is <2e-14 throughout 0<lambda<20.
+    if (lambda <= 1.0-u) return 0.0;
+    int top = lambda < 1e-4 ? 3 : (lambda < 0.01 ? 6 :
+        min(64, int(ceil(lambda + 10.0*sqrt(lambda) + 6.0))));
+    float mass = exp(-lambda);
+    for (int j=1; j<=64; ++j)
+    {
+        if (j > top) break;
+        mass *= lambda/float(j);
+    }
+    float survival = mass;
+    float target = 1.0-u;
+    for (int j=top; j>=1; --j)
+    {
+        if (survival > target) return float(j);
+        mass *= float(j)/lambda;
+        survival += mass;
+    }
+    return 0.0;
+}
+
+vec4 sensorPoissonQuantile(vec4 lambda, vec4 u)
+{
+    vec4 value = sensorPoissonCDF(lambda,min(u,vec4(0.9999)));
+    if (u.x > 0.9999) value.x = sensorPoissonUpper(lambda.x,u.x);
+    if (u.y > 0.9999) value.y = sensorPoissonUpper(lambda.y,u.y);
+    if (u.z > 0.9999) value.z = sensorPoissonUpper(lambda.z,u.z);
+    if (u.w > 0.9999) value.w = sensorPoissonUpper(lambda.w,u.w);
+    return value;
+}
+
+vec4 sensorPoisson4(vec4 lambda, uvec4 key)
+{
+    vec4 u = vec4(sensorUniform(key.x),sensorUniform(key.y),sensorUniform(key.z),sensorUniform(key.w));
+    return sensorPoissonQuantile(lambda,u);
 }
 
 float sensorPoisson(float lambda, uint key)
@@ -136,7 +184,11 @@ mat3 sensorCholesky(mat3 s)
 
 vec2 sensorChroma(ivec2 pixel, SensorParameters p, uint domain)
 {
-    vec2 position = vec2(pixel) * 0.5;
+    // Symmetric sub-cell weights plus a capture-relative random pixel origin
+    // remove fixed parity correlations across frames (including lag two).
+    uint context = sensorContext(p);
+    vec2 origin = 0.25 + 0.5*vec2(context & 1u,(context >> 1u) & 1u);
+    vec2 position = vec2(pixel) * 0.5 + origin;
     ivec2 cell = ivec2(floor(position));
     vec2 f = fract(position);
     vec4 w = vec4((1.0-f.x)*(1.0-f.y), f.x*(1.0-f.y), (1.0-f.x)*f.y, f.x*f.y);
@@ -163,7 +215,14 @@ vec3 sensorGaussian(mat3 c, ivec2 pixel, SensorParameters p, uint domain, out fl
     vec3 v = cross(axis, u);
     vec2 fullResolution = sensorNormalPair(sensorKey(pixel, p, domain));
     float luma = fullResolution.x;
-    companion = fullResolution.y;
+    vec3 greenRow = (transpose(p.workingToCamera * c))[1];
+    float greenLuma = dot(greenRow,axis);
+    float greenChromaU = dot(greenRow,u);
+    float greenChromaV = dot(greenRow,v);
+    // Difference and average have the SAME marginal variance. Thus G1/G2
+    // have variance 2*V_G and zero covariance for every chroma amount.
+    companion = fullResolution.y * sqrt(greenLuma*greenLuma +
+        p.controls.y*p.controls.y*(greenChromaU*greenChromaU+greenChromaV*greenChromaV));
     vec2 chroma = sensorChroma(pixel, p, domain ^ 0xc2b2ae35u) * p.controls.y;
     return c * (axis*luma + u*chroma.x + v*chroma.y);
 }
@@ -177,7 +236,7 @@ vec3 sensorGaussian(mat3 c, ivec2 pixel, SensorParameters p, uint domain)
 vec3 sensorReadGaussian(ivec2 pixel, SensorParameters p, out float companion)
 {
     vec2 fullResolution = sensorNormalPair(sensorKey(pixel,p,0x7eadu));
-    companion = fullResolution.y;
+    companion = fullResolution.y * p.controls.w;
     vec2 chroma = sensorChroma(pixel,p,0x7eadu ^ 0xc2b2ae35u) * p.controls.y;
     return p.readCameraBasis * vec3(fullResolution.x,chroma);
 }
@@ -199,6 +258,8 @@ struct SensorReadout
 {
     vec3 cameraElectrons; // signed, AFTER ADC black subtraction
     vec3 preClipElectrons; // captured BEFORE full-well / per-channel ADC clipping
+    vec2 greenPreClipElectrons; // individual sites, before full well and ADC
+    vec2 greenCameraElectrons; // individual sites, after integer ADC
 };
 
 SensorReadout sensorReadCamera(vec3 cameraLinear, ivec2 pixel, SensorParameters p)
@@ -215,7 +276,6 @@ SensorReadout sensorReadCamera(vec3 cameraLinear, ivec2 pixel, SensorParameters 
         {
             mat3 c = sensorCholesky(sensorCovariance(p.cameraToWorking, shotVariance));
             shotResidual = p.workingToCamera * sensorGaussian(c, pixel, p, 0x5a07u,greenShotDifference);
-            greenShotDifference *= sqrt(mu.y*0.5);
         }
         // The two green photosites are averaged, giving variance mu_G/2.
         // Discrete Poisson residuals are NEVER spatially filtered.
@@ -242,26 +302,31 @@ SensorReadout sensorReadCamera(vec3 cameraLinear, ivec2 pixel, SensorParameters 
         readResidual = p.controls.x * sensorReadGaussian(pixel,p,greenReadCompanion);
     SensorReadout result;
     result.preClipElectrons = photons + readResidual;
-    vec3 amplified = p.physics.z * (min(photons, vec3(p.physics.x)) + readResidual);
-    vec3 dn = round(clamp(amplified + p.physics.w, 0.0, p.scale.x));
-    result.cameraElectrons = (dn - p.physics.w) / p.physics.z;
+    vec2 amplified = p.physics.z * (min(photons.xz, vec2(p.physics.x)) + readResidual.xz);
+    vec2 dn = round(clamp(amplified + p.physics.w, 0.0, p.scale.x));
+    result.cameraElectrons.xz = (dn - p.physics.w) / p.physics.z;
     // Demosaiced green averages TWO photosites after each site's integer ADC.
     // Averaging before quantisation would incorrectly retain 1/12 DN^2 in G
     // instead of the required 1/24 (and would also clip the wells too late).
-    float greenReadDifference = p.physics.y * 0.707106781186548 * greenReadCompanion;
+    float greenReadDifference = greenReadCompanion;
     vec2 greenPhotons = photons.yy + p.controls.x*greenShotDifference*vec2(1,-1);
     vec2 greenRead = readResidual.yy + p.controls.x*greenReadDifference*vec2(1,-1);
+    result.greenPreClipElectrons = greenPhotons + greenRead;
+    result.preClipElectrons.y = max(result.greenPreClipElectrons.x,result.greenPreClipElectrons.y);
     vec2 greenDN = round(clamp(p.physics.z*(min(greenPhotons,vec2(p.physics.x))+greenRead) +
                               p.physics.w, 0.0, p.scale.x));
     result.cameraElectrons.y = (0.5*(greenDN.x+greenDN.y)-p.physics.w)/p.physics.z;
+    result.greenCameraElectrons = (greenDN-p.physics.w)/p.physics.z;
     return result;
 }
 
 vec3 sensorHueClip(vec3 clipped, vec3 preClipElectrons, SensorParameters p)
 {
     float eSat = min(p.physics.x, (p.scale.x-p.physics.w)/p.physics.z);
-    float peak = max(preClipElectrons.x, max(preClipElectrons.y, preClipElectrons.z));
-    float t = smoothstep(p.scale.w * eSat, eSat, peak);
+    vec3 coverage = smoothstep(vec3(p.scale.w * eSat),vec3(eSat),preClipElectrons);
+    // Partial clipping rolls off progressively. Full neutral requires every
+    // camera channel to saturate; the green lane is the per-site maximum.
+    float t = (coverage.x+coverage.y+coverage.z)/3.0;
     return mix(clipped, vec3(dot(clipped, vec3(0.2126,0.7152,0.0722))), t);
 }
 

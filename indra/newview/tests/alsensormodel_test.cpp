@@ -38,9 +38,17 @@ namespace tut
             close("K from base saturation", p.electronsPerLinear,
                   p.saturation / (0.18 * std::exp2(preset.headroom)));
             close("K fixed through all gain modes", derive(preset,25600.).electronsPerLinear, p.electronsPerLinear);
-            close("noise floor includes quantisation", p.noiseFloorLinear,
-                  std::sqrt(p.calibration.readNoise*p.calibration.readNoise +
-                            1./(12.*p.analogGain*p.analogGain)) / p.electronsPerLinear);
+            for (auto mode : {BrightnessMode::Neutral, BrightnessMode::Brightens})
+                for (double iso : {preset.baseISO,3200.,25600.})
+                {
+                    const auto q = derive(preset,iso,mode);
+                    const double floor = std::sqrt(q.calibration.readNoise*q.calibration.readNoise +
+                        1./(12.*q.analogGain*q.analogGain)) * (iso/preset.baseISO) / q.electronsPerLinear;
+                    close("noise floor includes total gain and quantisation",q.noiseFloorLinear,floor);
+                    close("noise floor stops",q.noiseFloorStops,std::log2(.18/floor));
+                    close("dynamic range at non-base ISO",q.dynamicRangeStops,
+                          std::log2(q.saturation/q.calibration.readNoise));
+                }
         }
     }
 
@@ -124,7 +132,8 @@ namespace tut
         ensure_equals("seed", u.clock[2], std::uint32_t(91));
         ensure_equals("stream", u.clock[3], std::uint32_t(7));
         ensure_equals("matrix offset std140", offsetof(Uniforms,cameraToWorking), std::size_t(48));
-        ensure_equals("clock offset std140", offsetof(Uniforms,clock), std::size_t(192));
+        ensure_equals("inverse offset std140", offsetof(Uniforms,workingToCamera), std::size_t(96));
+        ensure_equals("clock offset std140", offsetof(Uniforms,clock), std::size_t(144));
         for (int r = 0; r < 3; ++r)
             for (int c = 0; c < 3; ++c)
             {
@@ -162,8 +171,24 @@ namespace tut
                     }
                 for (int c = 1; c < 3; ++c)
                     close("chroma basis has zero working luminance",.2126*workingBasis[0][c]+.7152*workingBasis[1][c]+.0722*workingBasis[2][c],0.,1e-6);
-                ensure_equals("basis offset std140",offsetof(Uniforms,readCameraBasis),std::size_t(208));
-                ensure_equals("uniform size std140",sizeof(Uniforms),std::size_t(256));
+                ensure_equals("basis offset std140",offsetof(Uniforms,readCameraBasis),std::size_t(160));
+                ensure_equals("uniform size std140",sizeof(Uniforms),std::size_t(208));
             }
+    }
+
+    template<> template<>
+    void sensor_model_object::test<7>()
+    {
+        for (const auto& preset : illustrativePresets())
+            for (double iso : {preset.baseISO,3200.,25600.})
+                for (float chroma : {0.f,.5f,1.f,2.f,4.f})
+                {
+                    const auto p = derive(preset,iso);
+                    const auto u = pack(preset,p,0,0,0,1.f,chroma);
+                    const double variance = u.readCameraBasis[0][1]*u.readCameraBasis[0][1] +
+                        chroma*chroma*(u.readCameraBasis[1][1]*u.readCameraBasis[1][1] +
+                                       u.readCameraBasis[2][1]*u.readCameraBasis[2][1]);
+                    close("packed green difference matches average variance",u.controls[3]*u.controls[3],variance,1e-6);
+                }
     }
 }

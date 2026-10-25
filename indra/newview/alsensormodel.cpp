@@ -135,7 +135,6 @@ namespace ALSensorModel
         columns(inv, u.workingToCamera);
         const double v = c.readNoise * c.readNoise;
         const auto chol = cholesky(covariance(preset.cameraToWorking, {{v, v*.5, v}}));
-        columns(chol, u.readCholesky);
         // Same orthonormal rotation as sensorGaussian. Read covariance is
         // constant across the image, so factor this once rather than per pixel.
         const std::array<double,3> weights = {{.2126,.7152,.0722}};
@@ -163,9 +162,12 @@ namespace ALSensorModel
                     for (int k = 0; k < 3; ++k)
                         basis[row][col] += inv[row][j]*chol[j][k]*rotation[k][col];
         columns(basis,u.readCameraBasis);
+        const double chroma = u.controls[1];
+        u.controls[3] = static_cast<float>(std::sqrt(basis[1][0]*basis[1][0] +
+            chroma*chroma*(basis[1][1]*basis[1][1]+basis[1][2]*basis[1][2])));
         u.clock = {{static_cast<std::uint32_t>(frame), static_cast<std::uint32_t>(frame >> 32), seed, stream}};
         return u;
     }
 
-    static_assert(sizeof(Uniforms) == 256, "SensorParameters std140 packing");
+    static_assert(sizeof(Uniforms) == 208, "SensorParameters std140 packing");
 }

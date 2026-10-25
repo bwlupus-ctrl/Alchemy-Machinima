@@ -59,10 +59,9 @@ namespace ALSensorModel
     {
         std::array<float, 4> physics; // FW, sigma_r, a_m, B
         std::array<float, 4> scale; // W, K, g_N, knee/e_sat
-        std::array<float, 4> controls; // noise amount, chroma amount, total gain, reserved
+        std::array<float, 4> controls; // noise amount, chroma amount, total gain, green read RMS
         std::array<std::array<float, 4>, 3> cameraToWorking;
         std::array<std::array<float, 4>, 3> workingToCamera;
-        std::array<std::array<float, 4>, 3> readCholesky;
         std::array<std::uint32_t, 4> clock; // frame low, frame high, seed, stream
         std::array<std::array<float, 4>, 3> readCameraBasis; // fixed C*luma/chroma basis, in camera space
     };
