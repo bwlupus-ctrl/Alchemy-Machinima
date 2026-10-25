@@ -321,6 +321,7 @@ uniform int probe_plane;
 void main() {
     area_p = texelFetch(probe_positions,ivec2(gl_FragCoord.xy),0).xyz;
     area_n_geo = probe_plane != 0 ? vec3(0,0,1) : -normalize(area_p-area_world_light[0].xyz);
+    area_n_shade = area_n_geo;
     frag_color = vec4(vec3(awVisibility(0)),1);
 }'''
         self.program = runner._link('class3/deferred/areaShadowFilterF.glsl', [(text, text[:text.index('void main()')] + body)])
@@ -396,8 +397,16 @@ def mutant(r, subs, filename="areaShadowFilterF.glsl"):
 # The pre-fix behaviours, as shader-text controls. Each MUST be rejected by the check named in main().
 MUT_HARD_FACE = [('vec3 w = smoothstep(vec3(AW_OVERLAP*major),vec3(major),a);',
                   'vec3 w = vec3(a.x >= a.y && a.x >= a.z ? 1.0 : 0.0, (a.x < a.y && a.y >= a.z) ? 1.0 : 0.0, (a.x < a.z && a.y < a.z) ? 1.0 : 0.0);')]
-MUT_NO_PLANE_GUARD = [('vec4 plane = mix(vec4(zr),clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap)),vec4(lessThan(dens,vec4(-1.e-3))));',
-                       'vec4 plane = vec4(nd)/min(dens,vec4(-1.e-5));')]
+MUT_NO_PLANE_GUARD = [('vec4 plane = clamp(vec4(nd)/min(dens,vec4(-1.e-3)),vec4(zr-cap),vec4(zr+cap));',
+                       'vec4 plane = vec4(nd)/min(dens,vec4(-1.e-5));'),
+                      ('return vec4(lessThan((z+bias)*max(vec4(den+du,den+dr+du,den+dr,den),vec4(1.e-5)),vec4(receiver2)));',
+                       'return vec4(1.0);'),
+                      # Reconstruct the original unbounded/hard-horizon
+                      # failure. receiver_check independently removes ONLY
+                      # the forward bound and rejects partial background
+                      # attenuation on face, direction and detail paths.
+                      ('visibility = mix(1.0,visibility,awDetailHorizon(nl,r_map));', ''),
+                      ('const float AW_PLANE_COMPRESS = 0.25;', 'const float AW_PLANE_COMPRESS = 0.0;')]
 MUT_WIDE_OVERLAP = [('const float AW_OVERLAP = 0.95;', 'const float AW_OVERLAP = 0.5;')]
 # COST upper bound only (relight_world_cost.py): every tap reads all three faces, as if every receiver ray sat on a cube corner.
 MUT_ALL_FACES = [('const float AW_OVERLAP = 0.95;', 'const float AW_OVERLAP = 0.0;')]
@@ -915,6 +924,28 @@ _LOOK_GBUFFERS = {}
 LOOK_BASE = '18a07a3aca5'   # the commit before the LOOK controls: its shaders are the byte reference at the defaults
 
 
+class PreLookTree(G.SourceTree):
+    """Historical LOOK-free code with the current, independently gated resolve.
+
+    The receiver bug fix intentionally changes world visibility. Keep the
+    historical gather, filter, upsample and LOOK-free main as the byte oracle;
+    transplant only the world function definitions so this gate still tests
+    LOOK identity rather than requiring the diagnosed bug's output forever.
+    Cube-OFF identity retains its entirely historical reference in cube_off.
+    """
+    def __init__(self, current, reference=LOOK_BASE):
+        super().__init__(reference)
+        self.current = current
+
+    def read(self, path):
+        text = super().read(path)
+        if Path(path).name == 'areaShadowFilterF.glsl':
+            current = self.current.read(path)
+            start = '#if __VERSION__ >= 400'
+            text = text[:text.index(start)] + current[current.index(start):current.index('void main()')] + text[text.index('void main()'):]
+        return text
+
+
 def look_frame(r, raster, light, capsule_in_gbuffer=True, capsule_in_cube=True, look=dict(), owned=True, size=(640, 360), yaw=-54.462, pitch=28.635,
                steps=12, stats=None):
     """One resolved frame. Returns (visibility (H, W), floor mask, G-buffer). Uploads exactly what renderAreaShadows would (the contact band
@@ -988,7 +1019,7 @@ def look_checks(r, raster, mut_runner=None, mut_raster=None):
     v_def_s, _, _ = look_frame(r, raster, light, owned=False, look=dict(strength=1., contrast=1., world_amount=1., reach=0., screen_amount=1.))
     row('look_defaults_byte_identical_unmapped_channel', np.array_equal(v_none_s, v_def_s), dark_percent=dark_percent(v_none_s, mask))
     # 0b. ... and byte-identical to the shaders of the commit before the LOOK controls existed (LOOK_BASE), on the same frames.
-    base = RealRunner(G.SourceTree(LOOK_BASE), r.host, gl=r.gl)
+    base = RealRunner(PreLookTree(r.tree), r.host, gl=r.gl)
     base_raster = Raster(base)
     same = []
     for owned in (True, False):

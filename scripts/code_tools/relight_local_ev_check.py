@@ -285,7 +285,11 @@ def gl_checks(rows, before, ref, out, glm_include):
     assert not any(s in gl.renderer.lower() for s in ('gdi generic', 'llvmpipe', 'softpipe', 'swiftshader', 'lavapipe', 'software', 'basic render')), 'hardware GPU required'
     host = W.build_host(out, glm_include)
     try:
-        runners = [W.RealRunner(G.SourceTree(source), host, gl=gl) for source in (BASE, ref)]
+        # Keep EV's historical selection/lighting oracle and the same world
+        # receiver algorithm on both sides of its exact EV-zero comparison.
+        current_tree = G.SourceTree(ref)
+        runners = [W.RealRunner(W.PreLookTree(current_tree, BASE), host, gl=gl),
+                   W.RealRunner(current_tree, host, gl=gl)]
         programs = {id(r): [compose_program(r, path) for path in range(4)] for r in runners}
         # This receiver spans the native fade-to-screen hand-over too. Native
         # visibility above is deliberately independent of EV and the cube path

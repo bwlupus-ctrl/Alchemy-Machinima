@@ -429,7 +429,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     return 1;
 }
 '''
-    directory = Path(f'.tmp/relight_step6_dispatch_{os.getpid()}').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / f'relight_step6_dispatch_{os.getpid()}').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     vcvars = next((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob('*/Community/VC/Auxiliary/Build/vcvars64.bat'))
 

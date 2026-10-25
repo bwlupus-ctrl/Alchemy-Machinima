@@ -164,9 +164,14 @@ def evaluate(defaults,out,shader_ref='WORKTREE'):
     for flag in (False,True):
         for soft in (False,True):
             aircur[flag,soft]=r.native_visibility(cam,d,n,dict(e,detail_shadows=flag),dict(defaults,BDMergeSoftProjectorShadows=soft),airborne=True)
+    # Native/soft/airborne keep the unmodified historical byte oracle. The
+    # intentional world receiver fix has its own before/after/mutation gate;
+    # compare detail-OFF identity with that same world algorithm on both sides.
     r.tree=G.SourceTree(BASE)
     r.visibility=r.link_text(r.visibility_source,'BASE detail identity',extra=r.FRAGMENT_COMMON+['deferred/shadowUtil.glsl'],defines='#define SPOT_SHADOW 1\n')
+    r.tree=WG.PreLookTree(tree,BASE)
     r.filter=r._link('class3/deferred/areaShadowFilterF.glsl')
+    r.tree=G.SourceTree(BASE)
     base_e=dict(e,detail_shadows=False)
     base_defaults=dict(defaults,RenderSpotShadowDetailBias=False)
     vhead=r.native_visibility(cam,d,n,base_e,base_defaults);whead=world(cam,d,n,light,False,False)
@@ -187,6 +192,7 @@ def evaluate(defaults,out,shader_ref='WORKTREE'):
     if not receiver['passed']:failures.append('normal-map orientation/projector apex')
     result=dict(passed=not failures,shader_ref=shader_ref,grazing=grazing,receiver=receiver,rows=rows,motion=motion,base_identity=identity,identity_reference=BASE,failures=failures,
                 fixture='24cm head, 20.4mm nose, 10mm brows; affine skinning shear 0/0.002/0.004 at 60 Hz; independently intersected geometry and full production raster',
+                world_identity_reference='BASE with current world resolve functions only',
                 limits=dict(retention=.85,acne_false_dark_percent=.02,motion_p95=.06,motion_pop=.05))
     (out/'results.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8')
     print('[shadow-detail]', 'PASS' if result['passed'] else 'FAIL',failures,flush=True)

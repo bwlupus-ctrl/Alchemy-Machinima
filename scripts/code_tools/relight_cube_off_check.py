@@ -74,13 +74,15 @@ def main():
     ap.add_argument('--limit', type=int, default=0, help='debug: first N poses per scene')
     ap.add_argument('--jobs', type=int, default=16)
     ap.add_argument('--scenes', default='R,A,B,C')
+    ap.add_argument('--out', default='.tmp/cube_r1', help='scratch output directory')
     args = ap.parse_args()
     static_checks()
     import relight_3d_gl as G
     import relight_3d_plan as PL
     import relight_3d_scene as S
     import relight_3d_tasks as T
-    work = REPO / '.tmp' / 'cube_r1' / 'offwork'
+    out = (REPO / args.out).resolve()
+    work = out / 'offwork'
     work.mkdir(parents=True, exist_ok=True)
     tasks = []
     for name in args.scenes.split(','):
@@ -89,7 +91,6 @@ def main():
         tasks += [(name, i, str(work)) for i in range(n)]
     print('[cube-off] base %s vs WORKTREE, %d poses x 4 configs' % (args.base, len(tasks)), flush=True)
     base_tree, work_tree = G.SourceTree(args.base), G.SourceTree('WORKTREE')
-    out = REPO / '.tmp' / 'cube_r1'
     plans_base, _ = PL.compute_plans(base_tree, out)
     plans_work, _ = PL.compute_plans(work_tree, out)
     assert plans_base == plans_work, 'the planner differs between base and worktree'
