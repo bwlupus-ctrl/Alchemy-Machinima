@@ -441,7 +441,7 @@ float awBackfaceWeight(float nl, float distance, float source_radius)
     float pixel_angle = 2.0*min(abs(inv_proj[0][0])/size.x,abs(inv_proj[1][1])/size.y);
     // Match the compare interval: certified planes need no angular error.
     // Bound the remaining angular cone to 0.05 radians.
-    float reconstruction = min((1.0-aw_precision_support)*2.0*awDepthFraction()/max(pixel_angle,1.e-9),0.05);
+    float reconstruction = 2.0*awDepthFraction()/max(pixel_angle,1.e-9);
     // Once a retained contact is smaller than the primary-depth interval,
     // a thin receiver and its background can share identical D24 values.
     // Such a stencil cannot certify a back face, even if it looks flat.

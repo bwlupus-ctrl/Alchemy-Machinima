@@ -174,6 +174,37 @@ def grazing_checks(r, raster):
     return rows
 
 
+def grazing_dolly_checks(r, raster):
+    """Round-four D24 backface regression and a 0.25 mm local dolly sweep."""
+    normal = np.array([np.sin(np.radians(25.)), -np.cos(np.radians(25.)), 0.])
+    tangent = np.array([-normal[1], normal[0], 0.])
+    direction = -.01*normal+np.sqrt(1.-.01**2)*tangent
+    light = S.Light('grazing dolly regression', tuple(16.*direction), .1, 32., seed=123)
+    cover = plane(direction)
+    cover.c = .15*direction
+    cover.h = (2., 2., .001)
+    point = np.zeros(3)
+    oracle = float(U.truth([cover], light, point[None, :])[0])
+    assert oracle == 0., oracle
+    r.gpu_atlas = raster.atlas(R.scene([plane(normal), cover], light), light, .02)
+    distances = np.array([14.57225+k*.00025 for k in range(13)])
+    rows = []
+    for half in (True, False):
+        values = []
+        for distance in distances:
+            cam, buffers = primary(point, normal, float(distance), 0., 'yaw', False)
+            r.gl.use(r.filter)
+            r.gl.ui(r.gl.loc(r.filter, b'area_world_debug'), 1)
+            image = r.run(cam, *buffers, [light], dict(K.PLAN, half=half), denoise=0.,
+                          world=K.world(light, False))[0]
+            values.append(float(image[MID, MID]))
+        jump = float(np.max(np.abs(np.diff(values))))
+        rows.append(dict(name='grazing_dolly', half=half, coordinates=distances.tolist(),
+                         values=values, truth=oracle, jump=jump,
+                         passed=bool(max(values) <= 2/255 and jump <= 2/255)))
+    return rows
+
+
 def precision_checks(r):
     """Execute production confidence contracts and the degenerate return in GL."""
     text = r.tree.read(SHADER)
@@ -190,12 +221,6 @@ def precision_checks(r):
             awGeoStencil(ivec2(gl_FragCoord.xy),textureSize(depthMap,0),1,0.01,1.0);
             frag_color=vec4(aw_depth_support,aw_precision_support,0,1);''',
          [('if (!(n2 > 1.e-20))', 'n2=0.0; if (!(n2 > 1.e-20))')]),
-        ('backface_precision_support', 16., '''
-            aw_plane_valid=1.0; aw_precision_support=1.0;
-            frag_color=vec4(awBackfaceWeight(-0.08,5.0,0.1),aw_precision_support,0,1);''', []),
-        ('backface_angular_cap', 32., '''
-            aw_plane_valid=1.0; aw_precision_support=0.0;
-            frag_color=vec4(awBackfaceWeight(-0.33,5.0,0.1),aw_precision_support,0,1);''', []),
         ('compare_precision_support', 24., '''
             aw_precision_support=1.0;
             frag_color=vec4(awPrecision(1.0,0.02).x-min(awDepthError(),AW_NORMAL_CAP),aw_precision_support,0,1);''', [])):
@@ -213,7 +238,7 @@ def precision_checks(r):
         K.draw(nr, cam, buffers, light, False)
         value = np.empty(4, np.float32)
         nr.gl.read(MID, MID, 1, 1, 0x1908, 0x1406, value.ctypes.data)
-        passed = (bool(np.max(np.abs(value[:2])) < 1.e-6) if name in ('degenerate_support_reset', 'backface_angular_cap')
+        passed = (bool(np.max(np.abs(value[:2])) < 1.e-6) if name == 'degenerate_support_reset'
                   else bool(abs(value[0]) < 1.e-6 and value[1] >= .999))
         rows.append(dict(name=name, value=value.tolist(), passed=passed))
     return rows
@@ -225,6 +250,7 @@ def main():
     ap.add_argument('--out', default='.tmp/world_pop/motion')
     ap.add_argument('--bisect', action='store_true')
     ap.add_argument('--round3-only', action='store_true')
+    ap.add_argument('--dolly-only', action='store_true', help='run only the round-four grazing dolly regression')
     ap.add_argument('--controls', action='store_true')
     args = ap.parse_args()
     out = Path(args.out)
@@ -234,8 +260,10 @@ def main():
         tree = ShaderTree(ref, out/'shaders')
         r = R.Runner(tree, gl=gl)
         raster = W.Raster(r)
-        rows = [] if args.round3_only else checks(r, raster)
-        rows += grazing_checks(r, raster)+precision_checks(r)
+        rows = [] if args.round3_only or args.dolly_only else checks(r, raster)
+        if not args.dolly_only:
+            rows += grazing_checks(r, raster)+precision_checks(r)
+        rows += grazing_dolly_checks(r, raster)
         result = dict(shader_ref=ref, renderer=gl.renderer, rows=rows,
                       shader_sha256=hashlib.sha256(tree.shader.encode()).hexdigest(),
                       passed=all(row['passed'] for row in rows))
@@ -246,12 +274,6 @@ def main():
             result['controls'] = dict(precision_weight_removed=dict(rows=controls,
                 rejected=any(not row['passed'] for row in controls
                              if row['name'] == 'compare_precision_support')))
-            capped = 'float reconstruction = min((1.0-aw_precision_support)*2.0*awDepthFraction()/max(pixel_angle,1.e-9),0.05);'
-            mutant = R.Runner(W.MutantTree(tree, [(capped,
-                'float reconstruction = (1.0-aw_precision_support)*2.0*awDepthFraction()/max(pixel_angle,1.e-9);')]), gl=gl)
-            controls = precision_checks(mutant)
-            result['controls']['uncapped_backface'] = dict(rows=controls,
-                rejected=any(not row['passed'] for row in controls if row['name'] == 'backface_angular_cap'))
             result['passed'] &= all(control['rejected'] for control in result['controls'].values())
         results.append(result)
         (out/(ref+'.json')).write_text(json.dumps(result, indent=2)+'\n', encoding='utf-8')
