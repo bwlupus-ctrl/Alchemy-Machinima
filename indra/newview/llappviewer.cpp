@@ -35,6 +35,7 @@
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alclientheight.h"       // [ClientHeight] disconnect reset
 #include "alsettingsundohistory.h" // session-only exposure undo/redo
+#include "aldiopterpresetbank.h"
 #include "aldirectortheme.h"      // Director colour themes (applied after colours load)
 
 // Viewer includes
@@ -2748,6 +2749,7 @@ void LLAppViewer::initLoggingAndGetLastDuration()
 bool LLAppViewer::loadSettingsFromDirectory(const std::string& location_key,
                         bool set_defaults)
 {
+    ALScopedPresetMaterializing preset_guard;
     if (!mSettingsLocationList)
     {
         LL_ERRS() << "Invalid settings location list" << LL_ENDL;

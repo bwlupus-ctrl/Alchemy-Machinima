@@ -23,6 +23,7 @@
     ["light", "lamp", "fixture"],
     ["projector", "gobo", "cookie"],
     ["cue", "keyframe", "mark"],
-    ["look", "grade", "lut", "preset"]
+    ["look", "grade", "lut", "preset"],
+    ["iso", "sensor", "sensor noise", "dual native", "read noise", "camera sensor"]
   ]
 }

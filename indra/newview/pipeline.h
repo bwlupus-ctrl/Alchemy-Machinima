@@ -222,11 +222,37 @@ public:
     void generateImpostor(LLVOAvatar* avatar, bool preview_avatar = false, bool for_profile = false, LLViewerObject* specific_attachment = nullptr);
 
     void bindScreenToTexture();
+    struct FinalizeGuides
+    {
+        LLPipeline& pipeline;
+        const glm::mat4& projection;
+        const glm::mat4& modelview;
+        void operator()(LLRenderTarget* target, U32 attachment = 0) const;
+    };
     void renderFinalize();
+    void renderActorPathGuides(LLRenderTarget* target, const glm::mat4& projection,
+        const glm::mat4& modelview, U32 attachment);
+    void renderFinalizeScene(bool hdr, const FinalizeGuides& guides);
+    void renderFinalizeLegacy(bool hdr, LLRenderTarget*& src, LLRenderTarget*& dst, bool& diopter,
+        bool& fisheye, const FinalizeGuides& guides);
+    void renderFinalizePresent(LLRenderTarget* src, bool diopter, bool fisheye);
+    enum class SensorStage { Legacy, Exposure, Optics, Camera, Godrays };
+    LLGLSLShader* colorCorrectProgram(SensorStage stage, U32 permutation);
+    bool physicalCameraOrder() const { return mSensorPhysicalOrder; }
+    U32 sensorDiagnosticView(U32 view) const;
+    bool ensureSensorTargets();
+    void releaseSensorTargets();
+    void renderSensor(LLRenderTarget* src, LLRenderTarget* dst);
+    void sensorAAEncode(LLRenderTarget* src, LLRenderTarget* dst);
+    void sensorVignette(LLRenderTarget* src, LLRenderTarget* dst);
+    void sensorWarpUniforms(LLGLSLShader& shader, bool diopter, bool fisheye, LLRenderTarget* src);
+    void compositeSensorOverlay(LLRenderTarget* src, LLRenderTarget* dst,
+        bool diopter, bool fisheye, bool guides);
+
     void copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget* dst, LLRenderTarget* color_src = nullptr);
     void generateLuminance(LLRenderTarget* src, LLRenderTarget* dst);
     void generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history = true);
-    void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade);
+    void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade, SensorStage stage = SensorStage::Legacy);
     // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
     // before bloom/flare generation, so those optics respect the filtered scene.
     void applyOnLensFilters(LLRenderTarget* screen);
@@ -304,7 +330,7 @@ public:
     // it is reliably THIS frame's matrix at that point). This never changes
     // WHEN or HOW gGLLast{ModelView,Projection} themselves get updated --
     // velocity rendering depends on that timing untouched.
-    void renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview = nullptr, const F32* camera_projection = nullptr);
+    void renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview = nullptr, const F32* camera_projection = nullptr, bool sensor_overlay = false);
     // [RotoInk] CineOutlineLayer: which point in the HDR post chain the ink
     // pass runs at. Exactly one of these fires per frame (see
     // shouldRunRotoInkAt). The non-HDR pipeline has no such chain to place a
@@ -349,6 +375,8 @@ public:
     // Shared by the main color-correct pass and VC3 atlas shaders. Indices map
     // directly to gPrismPreviewProgram[8].
     bool worldHDREnabled() const;
+    // Empty when the main-camera sensor can run; safe for a throttled UI readout.
+    const char* sensorUnavailableReason() const;
     U32 worldPresentationPermutation() const;
     U32 colorCorrectPermutation(bool apply_tonemap, bool apply_color_grade) const;
     // Uploads the same live exposure/tonemap/grade controls used by
@@ -530,7 +558,7 @@ public:
     static AlphaPolicy resolveAlphaPolicy(const LLFace* facep);
 
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
-    void generateSMAABuffers(LLRenderTarget* src);
+    void generateSMAABuffers(LLRenderTarget* src, LLRenderTarget* detection = nullptr);
     void applySMAA(LLRenderTarget* src, LLRenderTarget* dst);
     void renderDoF(LLRenderTarget* src, LLRenderTarget* dst);
     void copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst);
@@ -1875,6 +1903,19 @@ public:
     LLVector2               mScreenScale;
 
     //water distortion texture (refraction)
+    // WP-B scratch is owned by the main presentation, independently of mRT.
+    LLRenderTarget mSensorPing[2];
+    LLRenderTarget mSensorRoto; // optional RGB10_A2 affine addition/transmission
+    bool mSensorWasEnabled = false;
+    bool mSensorDiagnostics = false;
+    bool mSensorPhysicalOrder = false;
+    bool mSensorNoise = false;
+    bool mSensorAllocated = false;
+    bool mSensorFailed = false;
+    U64 mSensorFrame = 0;
+    U32 mSensorLastViewerFrame = ~0u;
+    bool mSensorClockStarted = false;
+    U32 mSensorTakeSeed = 0;
     LLRenderTarget              mWaterDis;
 
     // RAW (pre-on-lens-filter) HDR scene snapshot for the ReShade bridge.

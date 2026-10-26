@@ -247,6 +247,26 @@ LLGLSLShader            gActorFxPBRGlowProgram;
 LLGLSLShader            gActorFxPBRSkinnedGlowProgram;
 LLGLSLShader            gDeferredPostProgram;
 LLGLSLShader            gDeferredPostProgramNoNear;
+
+// WP-B: main-presentation physical camera variants, never used by legacy feeds.
+LLGLSLShader gSensorCameraProgram[10]; // exposure, optics, four camera and four godray grades
+LLGLSLShader gSensorPassProgram;
+LLGLSLShader gSensorAAEncodeProgram;
+LLGLSLShader gSensorDoFProgram[2];
+LLGLSLShader gSensorDiopterGatherProgram[4];
+LLGLSLShader gSensorDiopterProgram;
+LLGLSLShader gSensorKaleidoProgram;
+LLGLSLShader gSensorFXAAProgram[4];
+LLGLSLShader gSensorSMAABlendProgram[4];
+LLGLSLShader gSensorSMAAEdgeProgram[4];
+LLGLSLShader gSensorDoFCombineProgram[2];
+LLGLSLShader gSensorDoFReduceProgram[2];
+LLGLSLShader gSensorGodrayProgram;
+LLGLSLShader gSensorVignetteProgram;
+LLGLSLShader gSensorBlitProgram;
+LLGLSLShader gSensorRotoProgram;
+LLGLSLShader gSensorOverlayProgram;
+
 LLGLSLShader            gDeferredCoFProgram;
 LLGLSLShader            gDeferredDoFCombineProgram;
 LLGLSLShader            gExposureProgram;
@@ -1250,6 +1270,7 @@ void LLViewerShaderMgr::setShaders()
 
 void LLViewerShaderMgr::unloadShaders()
 {
+    unloadSensorShaders();
     // A completed auxiliary Prism pass can retain shader addresses solely to
     // restore main-view screen uniforms on their next bind. Program unload
     // makes that tracking obsolete; clear it before variant storage changes.
@@ -1694,6 +1715,133 @@ bool LLViewerShaderMgr::loadShadersEffects()
 
     return success;
 
+}
+
+
+void LLViewerShaderMgr::unloadSensorShaders()
+{
+    const auto remove = [&](LLGLSLShader* shader)
+    {
+        mShaderList.erase(std::remove(mShaderList.begin(), mShaderList.end(), shader), mShaderList.end());
+        shader->unload();
+    };
+    for (auto& shader : gSensorCameraProgram) remove(&shader);
+    for (auto& shader : gSensorDoFProgram) remove(&shader);
+    for (auto& shader : gSensorDoFCombineProgram) remove(&shader);
+    for (auto& shader : gSensorDoFReduceProgram) remove(&shader);
+    for (auto& shader : gSensorDiopterGatherProgram) remove(&shader);
+    for (auto& shader : gSensorFXAAProgram) remove(&shader);
+    for (auto& shader : gSensorSMAABlendProgram) remove(&shader);
+    for (auto& shader : gSensorSMAAEdgeProgram) remove(&shader);
+    for (auto* shader : { &gSensorPassProgram, &gSensorAAEncodeProgram,
+        &gSensorDiopterProgram, &gSensorKaleidoProgram, &gSensorVignetteProgram,
+        &gSensorBlitProgram, &gSensorRotoProgram, &gSensorOverlayProgram, &gSensorGodrayProgram }) remove(shader);
+}
+
+bool LLViewerShaderMgr::loadSensorShaders()
+{
+    if (gSensorPassProgram.isComplete()) return true;
+    const auto register_shader = [&](LLGLSLShader& shader)
+    {
+        if (std::find(mShaderList.begin(), mShaderList.end(), &shader) == mShaderList.end())
+            mShaderList.push_back(&shader);
+        shader.mUniformsDirty = true;
+    };
+    // Clone source recipes, not program handles or legacy permutations.
+    const auto clone = [&](LLGLSLShader& dst, const LLGLSLShader& src)
+    {
+        dst.mName = "Sensor HDR " + src.mName;
+        dst.mFeatures = src.mFeatures;
+        dst.mShaderFiles = src.mShaderFiles;
+        dst.mShaderLevel = src.mShaderLevel;
+        dst.clearPermutations();
+        dst.addPermutations(src.mDefines);
+        dst.addPermutation("AL_SENSOR_HDR", "1");
+        register_shader(dst);
+    };
+    const auto simple = [&](LLGLSLShader& shader, const char* file)
+    {
+        shader.mName = std::string("Sensor ") + file;
+        shader.mFeatures = LLShaderFeatures();
+        shader.mFeatures.isDeferred = true;
+        shader.mShaderFiles = {
+            make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER),
+            make_pair(file, GL_FRAGMENT_SHADER) };
+        shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        shader.clearPermutations();
+        register_shader(shader);
+    };
+    bool ok = true;
+    LLGLSLShader* camera[] = { &gCGTonemapProgram, &gCGTonemapProgram,
+        &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
+        &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
+    for (U32 i = 0; i < 10; ++i)
+    {
+        auto& shader = gSensorCameraProgram[i];
+        clone(shader, *camera[i >= 6 ? i - 4 : i]);
+        shader.addPermutation(i == 0 ? "AL_SENSOR_EXPOSURE" :
+            i == 1 ? "AL_SENSOR_OPTICS" : i >= 6 ? "AL_SENSOR_GODRAYS" : "AL_SENSOR_CAMERA", "1");
+        ok = shader.createShader() && ok;
+    }
+    for (U32 i = 0; i < 2; ++i)
+    {
+        clone(gSensorDoFProgram[i], i ? gDeferredPostProgram : gDeferredPostProgramNoNear);
+        ok = gSensorDoFProgram[i].createShader() && ok;
+        clone(gSensorDoFReduceProgram[i], i ? gDeferredPostProgram : gDeferredPostProgramNoNear);
+        gSensorDoFReduceProgram[i].addPermutation("AL_SENSOR_DOF_REDUCE", "1");
+        ok = gSensorDoFReduceProgram[i].createShader() && ok;
+    }
+    for (U32 i = 0; i < 4; ++i)
+    {
+        clone(gSensorDiopterGatherProgram[i], gUltimateDiopterGatherProgram[i]);
+        ok = gSensorDiopterGatherProgram[i].createShader() && ok;
+        if (gFXAAProgram[i].isComplete())
+        {
+            clone(gSensorFXAAProgram[i], gFXAAProgram[i]);
+            ok = gSensorFXAAProgram[i].createShader() && ok;
+        }
+        if (gSMAANeighborhoodBlendProgram[i].isComplete())
+        {
+            clone(gSensorSMAAEdgeProgram[i], gSMAAEdgeDetectProgram[i]);
+            gSensorSMAAEdgeProgram[i].addPermutation("SMAA_PREDICATION", "0");
+            ok = gSensorSMAAEdgeProgram[i].createShader() && ok;
+            clone(gSensorSMAABlendProgram[i], gSMAANeighborhoodBlendProgram[i]);
+            ok = gSensorSMAABlendProgram[i].createShader() && ok;
+        }
+    }
+    for (U32 i = 0; i < 2; ++i)
+    {
+        clone(gSensorDoFCombineProgram[i], gDeferredDoFCombineProgram);
+        gSensorDoFCombineProgram[i].addPermutation("FRONT_BLUR", i ? "1" : "0");
+        ok = gSensorDoFCombineProgram[i].createShader() && ok;
+    }
+    clone(gSensorDiopterProgram, gUltimateDiopterProgram);
+    if (gVolumetricLightProgram.isComplete())
+    {
+        clone(gSensorGodrayProgram, gVolumetricLightProgram);
+        ok = gSensorGodrayProgram.createShader() && ok;
+    }
+    clone(gSensorKaleidoProgram, gUltimateKaleidoProgram);
+    clone(gSensorBlitProgram, gBlitWithEffectsProgram);
+    clone(gSensorRotoProgram, gCineOutlineProgram);
+    gSensorRotoProgram.addPermutation("AL_SENSOR_OVERLAY", "1");
+    for (auto* shader : { &gSensorDiopterProgram, &gSensorKaleidoProgram,
+                         &gSensorBlitProgram, &gSensorRotoProgram }) ok = shader->createShader() && ok;
+    simple(gSensorAAEncodeProgram, "alchemy/sensorAAEncodeF.glsl");
+    simple(gSensorVignetteProgram, "alchemy/sensorVignetteF.glsl");
+    simple(gSensorOverlayProgram, "alchemy/sensorOverlayF.glsl");
+    for (auto* shader : { &gSensorAAEncodeProgram, &gSensorVignetteProgram,
+                         &gSensorOverlayProgram }) ok = shader->createShader() && ok;
+    // Compile the pure WP-A utility as a separate production fragment unit.
+    simple(gSensorPassProgram, "alchemy/sensorF.glsl");
+    gSensorPassProgram.mShaderFiles.push_back(make_pair("alchemy/sensorUtilF.glsl", GL_FRAGMENT_SHADER));
+    ok = gSensorPassProgram.createShader() && ok;
+    if (!ok)
+    {
+        unloadSensorShaders();
+        LL_WARNS("Shader") << "Physical camera unavailable; keeping legacy presentation" << LL_ENDL;
+    }
+    return ok;
 }
 
 bool LLViewerShaderMgr::loadShadersDeferred()

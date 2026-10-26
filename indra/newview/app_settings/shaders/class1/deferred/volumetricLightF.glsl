@@ -39,5 +39,9 @@ void main()
 {
     vec2 tc = vary_fragcoord.xy;
     vec4 diff = texture2D(diffuseRect, tc);
+#ifdef AL_SENSOR_HDR
+    frag_color = vec4(0.0);
+#else
     frag_color = diff;
+#endif
 }

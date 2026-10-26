@@ -76,7 +76,12 @@
 
 /*[EXTRA_CODE_HERE]*/
 
+#ifdef AL_SENSOR_OVERLAY
+out vec4 frag_data[2];
+#define frag_color frag_data[0]
+#else
 out vec4 frag_color;
+#endif
 
 in vec2 vary_fragcoord;
 
@@ -1272,7 +1277,12 @@ void main()
     bool  can_shift = boil_px > 0.0 || dot(disp, disp) > 0.0 || has_copy;
     if (is_sky && !can_shift)
     {
+#ifdef AL_SENSOR_OVERLAY
+        frag_data[0] = vec4(0.0);
+        frag_data[1] = vec4(1.0);
+#else
         frag_color = scene;
+#endif
         return;
     }
 
@@ -1281,7 +1291,12 @@ void main()
     float M   = rotoSubjectMask(uv, z_c);
     if (M <= 1.0e-4)
     {
+#ifdef AL_SENSOR_OVERLAY
+        frag_data[0] = vec4(0.0);
+        frag_data[1] = vec4(1.0);
+#else
         frag_color = scene;
+#endif
         return;
     }
 
@@ -1367,7 +1382,12 @@ void main()
 
     if (line <= 1.0e-4 && extra <= 1.0e-4)
     {
+#ifdef AL_SENSOR_OVERLAY
+        frag_data[0] = vec4(0.0);
+        frag_data[1] = vec4(1.0);
+#else
         frag_color = scene;
+#endif
         return;
     }
 
@@ -1534,5 +1554,11 @@ void main()
     // pyramid, so clamp before writing.
     outc = min(outc, vec3(65000.0));
     float out_a = min(scene.a + cov * clamp(outline_params2.x, 0.0, 1.0), 65000.0);
+#ifdef AL_SENSOR_OVERLAY
+    frag_data[0] = vec4(blend == 1 ? vec3(0.0) : ink * cov, 0.0);
+    frag_data[1] = vec4(blend == 1 ? mix(vec3(1.0), ink, cov) :
+                             vec3(blend == 2 ? 1.0 : 1.0 - cov), 1.0);
+#else
     frag_color = vec4(outc, out_a);
+#endif
 }

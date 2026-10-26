@@ -29,6 +29,15 @@ in vec2 vary_fragcoord;
 
 uniform sampler2D diffuseRect;   // post-tonemap scene (ping-pong source)
 uniform vec2 screen_res;
+#ifdef AL_SENSOR_HDR
+uniform sampler2D exposureMap;
+uniform float exposure;
+uniform int tonemap_type;
+float sensorOpticsGain()
+{
+    return max(exposure * (tonemap_type == 8 ? 1.0 : texture(exposureMap, vec2(0.5)).r), 1e-5);
+}
+#endif
 
 // center.xy (uv), size, stretch
 uniform vec4 diopter_shape;
@@ -88,7 +97,14 @@ float ud_hash(vec2 p)
 
 // approximate display <-> working linear (self-contained; post chain is
 // already tone-mapped so a pure power curve is sufficient for gather energy)
-vec3 ud_lin(vec3 c)   { return pow(max(c, vec3(0.0)), vec3(2.2)); }
+vec3 ud_lin(vec3 c)
+{
+#ifdef AL_SENSOR_HDR
+    return c;
+#else
+    return pow(max(c, vec3(0.0)), vec3(2.2));
+#endif
+}
 
 // triangle mirror-repeat on [0,1]; out-of-frame samples reflect instead of
 // clamping to an edge streak or black border
@@ -514,6 +530,9 @@ vec3 ud_gather(vec2 uv, vec2 gatherCenter, float focusM, float magnify,
     vec2 px = 1.0 / screen_res;
 
     float hiBias = diopter_focus3.z;
+#ifdef AL_SENSOR_HDR
+    hiBias /= sensorOpticsGain();
+#endif
     float ce = diopter_aperture2.w * ud_radiusNorm(uv);
     vec2 rdir = uv - diopter_shape.xy;
     float rlen = length(rdir);
