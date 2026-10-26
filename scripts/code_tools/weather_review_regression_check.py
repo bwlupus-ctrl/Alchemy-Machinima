@@ -71,7 +71,7 @@ struct LLViewerShaderMgr {static LLViewerShaderMgr* instance(){static LLViewerSh
 using LLPipeline=Pipeline;
 HANDLER
 SETUP
-struct ALPanelWeatherSettings {static const std::vector<std::string>& trackedSettings();static void resetAllSettingsToDefaults();};
+struct ALPanelWeatherSettings {static const std::vector<std::string>& trackedSettings();static void resetAllSettingsToDefaults();struct SettingsBatch {};};
 TRACKED
 RESET
 void set(const char* name,bool value){if(gSavedSettings.values[name]==value)return;

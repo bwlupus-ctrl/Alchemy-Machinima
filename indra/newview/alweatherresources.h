@@ -51,6 +51,16 @@ public:
     { return mBoundsValid && plan == mPlan && origin == mOrigin; }
     bool precipitationWithin(const glm::vec3& eye, const glm::dvec3& origin, U32 frame, F32 reach) const;
     void release();
+    void invalidate()
+    {
+        mPreparedFrame = mPublishedFrame = ~U32(0);
+        mCoverage = ALWeatherShelter::Coverage::INCOMPLETE;
+        mBoundsValid = mStaging = mPatching = mMinimumValid = false;
+        mSource = nullptr;
+        mRefreshCursor = 0;
+        mRefreshComplete = false;
+        ++mContent;
+    }
     // Existing spare depth target accumulates an incomplete tile. Consumers
     // retain the previous complete target until a tile (or replacement) finishes.
     void beginTile(const ALWeatherShelter::Plan& plan);
@@ -112,6 +122,7 @@ public:
     void release();
     void suspend()
     {
+        for (auto& layer : layers) layer.invalidate();
         mPublishedFrame = preparedFrame = ~U32(0);
         updates.invalidate();
         mStatus = "Shelter off";

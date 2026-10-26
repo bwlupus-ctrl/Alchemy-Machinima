@@ -74,6 +74,7 @@ extern "C" __declspec(dllexport) void colors(float* rain,float* lightning){
 #include <functional>
 #include <string>
 #include <algorithm>
+const char* LLStringExplicit(const char* s){return s;}
 struct LLSD {
  std::string text; LLSD()=default; LLSD(const char* s):text(s){} LLSD(const std::string& s):text(s){} LLSD(int i):text(std::to_string(i)){}
  int asInteger() const{return std::stoi(text);} double asReal()const{return std::stod(text);} std::string asString()const{return text;}
@@ -137,6 +138,8 @@ struct Signal {template<class F>int connect(F){return 1;}};
 PRODUCTION_GLOBALS
 struct ALWeatherParticles {inline static bool available=true;static bool supported(){return available;}};
 struct ALPanelWeatherSettings {
+ static void beginSettingsBatch(){}static void endSettingsBatch(){}
+ BATCH_CLASS
  static void applyLibraryPreset(U32);static void stopPrecipitation();
  static void applyStartingSurfaces();static void clearSurfaces();
  static const std::string& surfaceStatus();
@@ -164,6 +167,7 @@ struct LLFloaterDirector {
  void bindWeatherPage(LLView*);void refreshWorldLensReadouts(const std::string&);
 };
 '''
+    prefix = prefix.replace('BATCH_CLASS', function(tree.read('indra/newview/alpanelweathersettings.h'), 'class SettingsBatch')+';' if 'class SettingsBatch' in tree.read('indra/newview/alpanelweathersettings.h') else '')
     suffix=r'''
 extern "C" void fixture_weather_set(const char*,double);
 extern "C" void fixture_weather_step(double);

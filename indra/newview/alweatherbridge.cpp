@@ -144,6 +144,7 @@ namespace ALWeatherBridge
                             const ALWeatherModel::Position& anchor, bool manual_strike)
     {
         if (iteration == mIteration || !std::isfinite(presentation) || presentation < 0.0) return;
+        mSuspended = false;
         mIteration = iteration;
         const Settings s = sanitize(settings);
         const auto config = configuration(s, simulator_x, simulator_y);
@@ -262,5 +263,27 @@ namespace ALWeatherBridge
             mLightningFrame = mLightning.update(now, lc, anchor);
             mLightningFrame.mStrikeStarted = started && mLightningFrame.mActive;
         }
+    }
+    void Controller::suspend()
+    {
+        if (mSuspended) return;
+        mSuspended = true;
+        mActive = mSimActive = false;
+        mIteration = ~U64(0);
+        mClock.reset();
+        mSnowDrift = {};
+        mLightning.reset();
+        mLightningFrame = {};
+        mLastStrike = 0;
+        mSurfaceCommand = 0;
+        mTeleportPending = true;
+    }
+    void Controller::rebase(const ALWeatherModel::Position& offset)
+    {
+        if (!ALWeatherModel::isFinite(offset)) return;
+        mLightning.rebase(offset);
+        mLightningFrame.mStrikeBase.mX += offset.mX;
+        mLightningFrame.mStrikeBase.mY += offset.mY;
+        mLightningFrame.mStrikeBase.mZ += offset.mZ;
     }
 }

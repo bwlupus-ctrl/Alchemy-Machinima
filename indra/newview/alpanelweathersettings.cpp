@@ -34,6 +34,7 @@
 #include "lltextbox.h"
 #include "lluri.h"
 #include "llviewercontrol.h"
+#include "llapp.h" // gDisconnected
 #include "pipeline.h"
 
 #include <algorithm>
@@ -44,6 +45,8 @@ static LLPanelInjector<ALPanelWeatherSettings>
 namespace
 {
 constexpr char PRESET_SUBDIR[] = "weather_presets";
+U32 sSettingsBatchDepth = 0;
+bool sLightningDistancesDirty = false;
 
 void registerWeatherResetControl()
 {
@@ -330,6 +333,7 @@ void ALPanelWeatherSettings::onClickResetAll()
 
 void ALPanelWeatherSettings::resetAllSettingsToDefaults()
 {
+    SettingsBatch batch;
     for (const std::string& name : trackedSettings())
     {
         if (LLControlVariable* control = gSavedSettings.getControl(name))
@@ -492,6 +496,7 @@ bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
     }
 
     ALPresetLook::Load load;
+    SettingsBatch batch;
     ALPresetLook::reset(trackedSettings());
 
     // Apply only this panel's allowlisted settings; preset data cannot name an
@@ -727,6 +732,11 @@ const std::string& ALPanelWeatherSettings::libraryStatus()
 }
 void ALPanelWeatherSettings::sanitizeLightningDistances()
 {
+    sLightningDistancesDirty = true;
+    if (sSettingsBatchDepth) return;
+    sLightningDistancesDirty = false;
+    // Repair writes emit setting signals too; never sanitize a half-repaired pair.
+    ++sSettingsBatchDepth;
     ALWeatherModel::Config config;
     config.mMinDistanceMeters = gSavedSettings.getF32("AlchemyWeatherLightningMinDistance");
     config.mMaxDistanceMeters = gSavedSettings.getF32("AlchemyWeatherLightningMaxDistance");
@@ -735,6 +745,17 @@ void ALPanelWeatherSettings::sanitizeLightningDistances()
         gSavedSettings.setF32("AlchemyWeatherLightningMinDistance", F32(config.mMinDistanceMeters));
     if (gSavedSettings.getF32("AlchemyWeatherLightningMaxDistance") != config.mMaxDistanceMeters)
         gSavedSettings.setF32("AlchemyWeatherLightningMaxDistance", F32(config.mMaxDistanceMeters));
+    --sSettingsBatchDepth;
+    sLightningDistancesDirty = false;
+}
+void ALPanelWeatherSettings::beginSettingsBatch()
+{
+    ++sSettingsBatchDepth;
+}
+void ALPanelWeatherSettings::endSettingsBatch()
+{
+    llassert(sSettingsBatchDepth);
+    if (--sSettingsBatchDepth == 0 && sLightningDistancesDirty) sanitizeLightningDistances();
 }
 std::string ALPanelWeatherSettings::requirements()
 {
@@ -753,6 +774,7 @@ std::string ALPanelWeatherSettings::requirements()
 }
 void ALPanelWeatherSettings::applyLibraryPreset(U32 preset)
 {
+    SettingsBatch batch;
     if (preset == 4 || preset > 8) return;
     auto settings = readLibrarySettings();
     ALWeatherUIModel::applyPreset(settings, preset);
@@ -803,6 +825,12 @@ void ALPanelWeatherSettings::stopPrecipitation()
 }
 void ALPanelWeatherSettings::updateLibraryWeather()
 {
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        suspendLibraryWeather();
+        return;
+    }
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     static LLCachedControl<U32> mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     static LLCachedControl<bool> persistent_wet(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", false);
@@ -894,4 +922,18 @@ void ALPanelWeatherSettings::updateLibraryWeather()
     const bool cover_changed = sSurfaceStatus != coverage;
     if (cover_changed) sSurfaceStatus = coverage;
     if (sLibraryUI.refresh(settings, bridge.state(), bridge.catchingUp(), bridge.clock().seconds()) || cover_changed || particles_changed) libraryChanged()();
+}
+
+void ALPanelWeatherSettings::suspendLibraryWeather()
+{
+    ALWeatherBridge::Controller::instance().suspend();
+    gPipeline.suspendWeather();
+    gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
+}
+
+void ALPanelWeatherSettings::rebaseLibraryWeather(const LLVector3& origin_shift)
+{
+    ALWeatherBridge::Controller::instance().rebase(
+        {-origin_shift.mV[VX], -origin_shift.mV[VY], -origin_shift.mV[VZ]});
+    gPipeline.rebaseWeather(origin_shift);
 }

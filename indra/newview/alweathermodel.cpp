@@ -17,6 +17,13 @@
 
 namespace ALWeatherModel
 {
+    void Controller::rebase(const Position& offset)
+    {
+        if (!isFinite(offset)) return;
+        mStrikeBase.mX += offset.mX;
+        mStrikeBase.mY += offset.mY;
+        mStrikeBase.mZ += offset.mZ;
+    }
     namespace
     {
         constexpr U64 FALLBACK_SEED = 0x9e3779b97f4a7c15ULL;

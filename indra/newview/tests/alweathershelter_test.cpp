@@ -242,4 +242,14 @@ namespace tut
         ensure("live queue has a finite reported bound", updates.stalenessSeconds() > 0. &&
             updates.stalenessSeconds() <= 256./15.);
     }
+    template<> template<> void surface_object::test<10>()
+    {
+        ALWeatherShelter::Exposure main, auxiliary;
+        main.update(1., 0.f);
+        auxiliary.update(1., 1.f);
+        ALWeatherShelter::Exposure::invalidateAll();
+        ensure_equals("arrival drops main shelter history", main.update(20., 1.f), 1.f);
+        ensure_equals("hidden auxiliary drops shelter history on next draw", auxiliary.update(20., 0.f), 0.f);
+        ensure("normal fading resumes after arrival", auxiliary.update(20.01, 1.f) > 0.f && auxiliary.update(20.01, 1.f) < 1.f);
+    }
 }
