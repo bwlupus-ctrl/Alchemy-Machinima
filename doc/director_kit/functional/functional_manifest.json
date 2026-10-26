@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "58cdecca7df08dcc3f6ef0579bd538d8b42c6128d56232a72694228c40b20fac",
+  "csv_sha256": "ac8ba3880a2d85987fdd5dd2b8b8d15413479ff3b7b259f3e7692cc460a4df28",
   "interactive_rows": 1997,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -48,7 +48,7 @@
   "entries": 4409,
   "pages": 38,
   "settings_declared": 3786,
-  "xui_files": 842,
+  "xui_files": 843,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -245296,9 +245296,9 @@
    "setting_source": "kit_row setting",
    "setting_type": "U32",
    "default": 1024,
-   "min": 256.0,
-   "max": 2048.0,
-   "increment": 1.0,
+   "min": null,
+   "max": null,
+   "increment": null,
    "combo_items": [
     {
      "label": "256 px",
@@ -245372,9 +245372,9 @@
    "setting_source": "kit_row setting",
    "setting_type": "U32",
    "default": 512,
-   "min": 256.0,
-   "max": 1024.0,
-   "increment": 1.0,
+   "min": null,
+   "max": null,
+   "increment": null,
    "combo_items": [
     {
      "label": "256 px",
@@ -245982,7 +245982,7 @@
     "setting": "AlchemyWeatherRainOcclusion",
     "type": "Boolean",
     "value": true,
-    "ui": "search reveals and focuses header; no Quick tile"
+    "ui": "search reveals and focuses header; Quick commits the real switch"
    },
    "restore": {
     "setting": "AlchemyWeatherRainOcclusion",
@@ -246004,7 +246004,7 @@
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
    "header_switch": true,
-   "header_quick": "reload"
+   "header_quick": "setting"
   },
   {
    "page": "weather_tab",
@@ -246098,7 +246098,7 @@
     "setting": "AlchemyWeatherLightningQualityEnabled",
     "type": "Boolean",
     "value": true,
-    "ui": "search reveals and focuses header; no Quick tile"
+    "ui": "search reveals and focuses header; Quick commits the real switch"
    },
    "restore": {
     "setting": "AlchemyWeatherLightningQualityEnabled",
@@ -246120,7 +246120,7 @@
    "owner": null,
    "evidence": "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
    "header_switch": true,
-   "header_quick": "reload"
+   "header_quick": "setting"
   },
   {
    "page": "weather_tab",
