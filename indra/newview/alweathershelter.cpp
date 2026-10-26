@@ -12,6 +12,20 @@
 
 namespace ALWeatherShelter
 {
+    bool visibleSurface(F32 alpha, bool invisible_texture)
+    {
+        return std::isfinite(alpha) && alpha > 0.f && !invisible_texture;
+    }
+    std::array<F32, 2> effectiveWind(F32 wind_x, F32 wind_y, F32 scale)
+    {
+        const auto bounded = [](F32 value, F32 fallback, F32 low, F32 high)
+        {
+            return std::clamp(std::isfinite(value) ? value : fallback, low, high);
+        };
+        const F32 wind_scale = bounded(scale, 1.f, 0.f, 8.f);
+        return {bounded(wind_x, 0.f, -50.f, 50.f) * wind_scale,
+                bounded(wind_y, 0.f, -50.f, 50.f) * wind_scale};
+    }
     bool auxiliaryAllowed(bool library, bool active, bool advanced)
     {
         return library ? active : advanced;

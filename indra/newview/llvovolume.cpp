@@ -30,6 +30,7 @@
 #include "alsteppedanimruntime.h"
 
 #include "llvovolume.h"
+#include "alweathershelter.h"
 
 #include <sstream>
 
@@ -4956,7 +4957,7 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
                                       LLVector4a* intersection,LLVector2* tex_coord, LLVector4a* normal, LLVector4a* tangent)
 
 {
-    if (!mbCanSelect
+    if ((!mbCanSelect && !ALWeatherShelter::VisibleSurfaceRay::active())
         || mDrawable->isDead()
         || !gPipeline.hasRenderType(mDrawable->getRenderType()))
     {
@@ -4971,7 +4972,8 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
         }
     }
 
-    if (getClickAction() == CLICK_ACTION_IGNORE && !LLFloater::isVisible(gFloaterTools))
+    if (!ALWeatherShelter::VisibleSurfaceRay::active() &&
+        getClickAction() == CLICK_ACTION_IGNORE && !LLFloater::isVisible(gFloaterTools))
     {
         return false;
     }
@@ -4984,7 +4986,8 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
 
     if (mDrawable->isState(LLDrawable::RIGGED))
     {
-        if ((pick_rigged) || LLToolMgr::getInstance()->inBuildMode())
+        if (!ALWeatherShelter::VisibleSurfaceRay::active() &&
+            ((pick_rigged) || LLToolMgr::getInstance()->inBuildMode()))
         {
             updateRiggedVolume(true, LLRiggedVolume::DO_NOT_UPDATE_FACES);
             volume = mRiggedVolume;
@@ -5051,15 +5054,21 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
             start_face = face;
             end_face = face+1;
         }
-        pick_transparent |= isHiglightedOrBeacon();
+        if (!ALWeatherShelter::VisibleSurfaceRay::active()) pick_transparent |= isHiglightedOrBeacon();
 
         // we *probably* shouldn't care about special cursor at all, but we *definitely*
         // don't care about special cursor for reflection probes -- makes alt-zoom
         // go through reflection probes on vehicles
-        bool special_cursor = mReflectionProbe.isNull() && specialHoverCursor();
+        bool special_cursor = !ALWeatherShelter::VisibleSurfaceRay::active() &&
+            mReflectionProbe.isNull() && specialHoverCursor();
 
         for (S32 i = start_face; i < end_face; ++i)
         {
+            if (ALWeatherShelter::VisibleSurfaceRay::active() && getTE(i) &&
+                !ALWeatherShelter::visibleSurface(getTE(i)->getColor().mV[3], getTE(i)->getID() == IMG_INVISIBLE))
+            {
+                continue;
+            }
             if (!special_cursor && !pick_transparent && getTE(i) && getTE(i)->getColor().mV[3] == 0.f)
             { //don't attempt to pick completely transparent faces unless
                 //pick_transparent is true

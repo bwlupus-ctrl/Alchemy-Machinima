@@ -12,6 +12,22 @@
 
 namespace ALWeatherShelter
 {
+    // Picking may reveal invisible scripted/beacon objects. A weather ray must
+    // instead test visible world surfaces, independent of those UI modes.
+    class VisibleSurfaceRay
+    {
+    public:
+        VisibleSurfaceRay() : mPrevious(sActive) { sActive = true; }
+        ~VisibleSurfaceRay() { sActive = mPrevious; }
+        static bool active() { return sActive; }
+        VisibleSurfaceRay(const VisibleSurfaceRay&) = delete;
+        VisibleSurfaceRay& operator=(const VisibleSurfaceRay&) = delete;
+    private:
+        inline static thread_local bool sActive = false;
+        bool mPrevious;
+    };
+    bool visibleSurface(F32 alpha, bool invisible_texture);
+    std::array<F32, 2> effectiveWind(F32 wind_x, F32 wind_y, F32 scale);
     // Each camera owns its own presentation-time fade, independent of draw order.
     class Exposure
     {

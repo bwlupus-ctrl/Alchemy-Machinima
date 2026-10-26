@@ -20584,6 +20584,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
 
             LLVector4a intersection;
             S32 face_hit = -1;
+            ALWeatherShelter::VisibleSurfaceRay visible_surface_ray;
             LLViewerObject* occluder = lineSegmentIntersectInWorld(
                 ray_start, ray_end,
                 /*pick_transparent*/ false,
@@ -20780,8 +20781,10 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
                 glm::value_ptr(inverse_projection));
             const F32 wind_scale =
                 finite_clamp(wind_scale_setting, 1.f, 0.f, 8.f);
-            const F32 wind_x = finite_clamp(library ? library_rain.windX : gWindVec.mV[VX], 0.f, -50.f, 50.f) * wind_scale;
-            const F32 wind_y = finite_clamp(library ? library_rain.windY : gWindVec.mV[VY], 0.f, -50.f, 50.f) * wind_scale;
+            const auto effective_wind = ALWeatherShelter::effectiveWind(
+                library ? library_rain.windX : gWindVec.mV[VX],
+                library ? library_rain.windY : gWindVec.mV[VY], wind_scale);
+            const F32 wind_x = effective_wind[0], wind_y = effective_wind[1];
             const LLColor3 rain_color_raw = rain_color_setting;
             const F32 rain_r =
                 finite_clamp(rain_color_raw.mV[0], 0.55f, 0.f, 4.f);
@@ -33614,8 +33617,12 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
         mWeatherShelter.fail("Advanced shelter unknown: non-finite camera/origin");
         return;
     }
-    auto shear = ALWeatherShelter::fallShear(weather.state().windMean[0], weather.state().windMean[1],
-        weather.active() && s.snowEnabled && s.precipType == 1 ? s.snowSpeed : s.shelterFallSpeed, s.shelterTilt);
+    static LLCachedControl<F32> wind_scale_setting(gSavedSettings, "AlchemyWeatherWindScale", 1.f);
+    const bool snow_shelter = weather.active() && s.snowEnabled && s.precipType == 1;
+    const auto effective_wind = ALWeatherShelter::effectiveWind(
+        weather.state().windMean[0], weather.state().windMean[1], snow_shelter ? 1.f : wind_scale_setting());
+    auto shear = ALWeatherShelter::fallShear(effective_wind[0], effective_wind[1],
+        snow_shelter ? s.snowSpeed : s.shelterFallSpeed, s.shelterTilt);
     // Stable angular/world lattices prevent tiny camera and mean-wind jitter
     // from replacing both complete maps on every update.
     for (auto& value : shear) value = std::floor(value*64.f + .5f)/64.f;

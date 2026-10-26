@@ -346,7 +346,9 @@ def run(mutation=None, source_ref='WORKTREE'):
     xml=ET.fromstring(current.read('indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml'))
     rows={r.get('widget'):r for r in xml.iter('kit_row')}
     tracked=function(current.read('indra/newview/alpanelweathersettings.cpp'),'const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()')
-    new_settings=sorted(set(table)-set(baseline))
+    # Current main adds unrelated controls after the immutable weather baseline.
+    # Keep the exact weather inventory gate scoped to the feature it validates.
+    new_settings=sorted(key for key in set(table)-set(baseline) if key.startswith('AlchemyWeather'))
     wp3={'AlchemyWeather'+n for n in ('SnowEnabled','PrecipType','SnowRate','SnowFlakeSize','SnowFallSpeed',
         'SnowRange','SnowParticleLimit','PrecipVisibilityEnabled','PrecipVisibilityAmount')}
     wp7={'AlchemyWeather'+n for n in ('AdvancedShelterEnabled','ShelterNearResolution','ShelterFarResolution',

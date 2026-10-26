@@ -14,6 +14,9 @@ from relight_3d_gl import GL, SourceTree, SHADERS
 from weather_cpu_check import ROOT
 from weather_compute_fixture import build, function
 
+# The trusted starting point is weather merged onto current main. Pin the
+# complete merge, including both main's shader changes and WP2 material hooks.
+MERGED_IDENTITY_REF = 'c2e1b15aa61d2d914b6880e02b1fa5e636726c75'
 
 def run(ref='WORKTREE'):
     gl=GL();print('WGL',gl.renderer,flush=True)
@@ -83,6 +86,7 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
     getsource=gl.fn('glGetShaderSource',None,C.c_uint,C.c_int,C.c_void_p,C.c_char_p)
     archive=subprocess.check_output(['git','archive','28a5d96de19',SHADERS],cwd=ROOT,timeout=30)
     files=tarfile.open(fileobj=io.BytesIO(archive))
+    merged_identity=SourceTree(MERGED_IDENTITY_REF)
     count=0
     for member in files:
         path=member.name
@@ -91,6 +95,9 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
         # preserve the EXTRA_CODE marker position and exact preamble assembly.
         stage=0x8B31 if path.endswith('V.glsl') else 0x8B30
         content=files.extractfile(member).read().decode('utf-8')
+        # Retain every historical file and compare every byte to the trusted
+        # merged starting point. No round-specific shader exemption is added.
+        expected=merged_identity.read(path) if merged_identity.exists(path) else content
         # Existing sources themselves are checked unchanged; preamble emitted
         # before/at their marker is measured with a small valid graphics shader.
         current_source=tree.read(path)
@@ -100,7 +107,8 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
             for hook in ('float weatherShelterSurfaceOpen(vec3 agent);\n',
                          '    if (weather_material_enabled == 2) return max(weatherShelterSurfaceOpen(agent),0.0);\n'):
                 current_source=current_source.replace(hook,'')
-        assert current_source==content,'existing shader modified: '+path
+                expected=expected.replace(hook,'')
+        assert current_source==expected,'existing shader modified: '+path
         marker='/*[EXTRA_CODE_HERE]*/\n' if '[EXTRA_CODE_HERE]' in content else ''
         fixture=marker+('void main(){gl_Position=vec4(0);}\n' if stage==0x8B31 else 'out vec4 frag_color;void main(){frag_color=vec4(1);}\n')
         (cls/'identity.glsl').write_text(fixture);(oldcls/'identity.glsl').write_text(fixture)

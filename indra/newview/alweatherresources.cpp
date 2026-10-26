@@ -223,28 +223,49 @@ void ALWeatherResources::buildIntervals(ALWeatherShelter::Updates::Tile tile)
 #if !LL_DARWIN
     if (!mMinimum || !mReduction.isComplete()) { mMinimumValid = false; return; }
     LL_PROFILE_GPU_ZONE("weather interval dirty updates");
-    GLint saved[6];
+    GLint saved[4][6];
     const GLenum names[] = {GL_IMAGE_BINDING_NAME, GL_IMAGE_BINDING_LEVEL, GL_IMAGE_BINDING_LAYERED,
         GL_IMAGE_BINDING_LAYER, GL_IMAGE_BINDING_ACCESS, GL_IMAGE_BINDING_FORMAT};
-    for (U32 i = 0; i < 6; ++i) glGetIntegeri_v(names[i], 0, &saved[i]);
+    for (U32 unit = 0; unit < 4; ++unit)
+        for (U32 i = 0; i < 6; ++i) glGetIntegeri_v(names[i], unit, &saved[unit][i]);
     mReduction.bind();
-    static const LLStaticHashedString input("cover_input"), level("cover_level"), rectangle("cover_rectangle"), depth_input("cover_depth_input");
+    static const LLStaticHashedString input("cover_input"), level("cover_level"), rectangle("cover_rectangle"), depth_input("cover_depth_input"), level_count("cover_levels");
     mReduction.uniform1i(input, 0);
     const U32 resolution = writeTarget().getWidth();
     U32 x = tile.x*resolution/8, y = tile.y*resolution/8;
     U32 end_x = x + tile.size*resolution/8, end_y = y + tile.size*resolution/8;
-    for (U32 mip = 0, size = resolution/2; size; size /= 2, ++mip)
+    // One 8x8 workgroup produces four successive levels using shared memory.
+    // Expand to workgroup boundaries so parents include unchanged neighbour
+    // leaves as well as this tile; incomplete replacements remain unpublished.
+    U32 total_levels = 0;
+    for (U32 size = resolution/2; size; size /= 2) ++total_levels;
+    for (U32 mip = 0; mip < total_levels;)
     {
         x /= 2; y /= 2; end_x = (end_x+1)/2; end_y = (end_y+1)/2;
+        const U32 size = resolution >> (mip+1);
+        x = x/8*8; y = y/8*8;
+        end_x = std::min(size, (end_x+7)/8*8);
+        end_y = std::min(size, (end_y+7)/8*8);
+        const U32 levels = std::min(4U, total_levels-mip);
         gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, mip ? mMinimum : writeTarget().getDepth(), false);
         mReduction.uniform1i(level, mip ? mip-1 : 0);
         mReduction.uniform1i(depth_input, mip ? 0 : 1);
         mReduction.uniform4f(rectangle, F32(x), F32(y), F32(end_x-x), F32(end_y-y));
-        glBindImageTexture(0, mMinimum, mip, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG32F);
+        mReduction.uniform1i(level_count, levels);
+        for (U32 unit = 0; unit < levels; ++unit)
+            glBindImageTexture(unit, mMinimum, mip+unit, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG32F);
         glDispatchCompute((end_x-x+7)/8, (end_y-y+7)/8, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+        // The next dispatch reads the last level produced by this group.
+        for (U32 i = 1; i < levels; ++i)
+        {
+            x /= 2; y /= 2; end_x = (end_x+1)/2; end_y = (end_y+1)/2;
+        }
+        mip += levels;
     }
-    glBindImageTexture(0, saved[0], saved[1], GLboolean(saved[2]), saved[3], saved[4], saved[5]);
+    for (U32 unit = 0; unit < 4; ++unit)
+        glBindImageTexture(unit, saved[unit][0], saved[unit][1], GLboolean(saved[unit][2]),
+            saved[unit][3], saved[unit][4], saved[unit][5]);
     mMinimumValid = glGetError() == GL_NO_ERROR;
 #endif
 }

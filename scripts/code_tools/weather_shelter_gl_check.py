@@ -283,6 +283,16 @@ weatherRainExposure(sampleAgent()+vec3(0,0,float(i)*.5)):1.0;result=vec4(open/12
     assert sample(9)[0,0,0]>.99,'Follow weather wind row has no observable effect'
     set_('ShelterTiltEnabled',1);step(.9);guarded(2.2)
     assert abs(sample(9)[0,0,0])<.01,'Follow weather wind tilt missing'
+    # Historical paired-cost refs predate Wind scale shelter support. The final
+    # regression gate separately requires the shared helper on current code.
+    if 'ALWeatherShelter::effectiveWind(' in function(tree.read('indra/newview/pipeline.cpp'),'void LLPipeline::generateWeatherAdvancedShelter('):
+        native.illumination_setting.argtypes=[C.c_char_p,C.c_double]
+        native.illumination_setting(b'AlchemyWeatherWindScale',0)
+        guarded(2.21,dirty=1)
+        assert sample(9)[0,0,0]>.99,'Wind scale zero still tilts shelter away from vertical rain'
+        native.illumination_setting(b'AlchemyWeatherWindScale',1)
+        guarded(2.22,dirty=1)
+        assert abs(sample(9)[0,0,0])<.01,'Wind scale one loses nonzero weather wind shelter'
     # Tiny changes in mean wind stay spatially continuous at stable receivers;
     # gusts are never inputs to the map planner.
     before_mean=sample(-2,12)
@@ -500,5 +510,3 @@ def main():
 
 
 if __name__=='__main__':main()
-
-

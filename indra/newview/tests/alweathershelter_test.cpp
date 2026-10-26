@@ -195,6 +195,30 @@ namespace tut
         ensure_equals("view sampling preserves the main scheduler", a.mStrikeId, b.mStrikeId);
         ensure_equals("view sampling preserves the main flash", a.mFlash, b.mFlash);
     }
+    template<> template<> void surface_object::test<9>()
+    {
+        using namespace ALWeatherShelter;
+        for (F32 scale : {0.f, 1.f})
+        {
+            const auto wind = effectiveWind(14.f, -7.f, scale);
+            const auto shear = fallShear(wind[0], wind[1], 28.f, true);
+            ensure_equals("streak and shelter share scaled horizontal wind", wind[0], 14.f*scale);
+            ensure_equals("streak and shelter share scaled vertical wind", wind[1], -7.f*scale);
+            ensure_equals("zero Wind scale leaves shelter vertical", shear[0], 0.5f*scale);
+            ensure_equals("unit Wind scale follows precipitation", shear[1], -0.25f*scale);
+        }
+        ensure("fully transparent faces cannot shelter rain", !visibleSurface(0.f, false));
+        ensure("invisible texture cannot shelter rain", !visibleSurface(1.f, true));
+        ensure("opaque roof shelters rain", visibleSurface(1.f, false));
+        ensure("ray policy starts outside picking override", !VisibleSurfaceRay::active());
+        {
+            VisibleSurfaceRay ray;
+            ensure("weather ray uses visible surfaces", VisibleSurfaceRay::active());
+            { VisibleSurfaceRay nested; }
+            ensure("nested ray restores outer policy", VisibleSurfaceRay::active());
+        }
+        ensure("weather ray restores picking policy", !VisibleSurfaceRay::active());
+    }
     template<> template<> void surface_object::test<8>()
     {
         using namespace ALWeatherShelter;

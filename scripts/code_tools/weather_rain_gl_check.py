@@ -118,6 +118,8 @@ extern "C" __declspec(dllexport) void uniforms(unsigned mode,float rate,double t
     if not preparation:
         # The pre-WP1 legacy snapshot has no library producer to compile.
         prefix = prefix.replace('#include "alweatherbridge.h"', '#include "stdtypes.h"')
+    if 'ALWeatherShelter::effectiveWind(' in body:
+        prefix = prefix.replace('#include "alweatherbridge.h"', '#include "alweathershelter.h"')
     source.write_text(prefix + mode + names + clock + rate + 'const float rain_pass_intensity=base_rain_intensity;\n' + body + suffix, encoding='utf-8')
     # A paired baseline must compile its own complete producer snapshot.
     producers = SOURCES if preparation else []
