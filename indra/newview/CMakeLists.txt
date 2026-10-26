@@ -368,6 +368,13 @@ set(viewer_SOURCE_FILES
     alfloaterultimatediopter.cpp
     alvcambonepov.cpp
     alweathermodel.cpp
+    slweather.cpp
+    alweatherbridge.cpp
+    alweatherresources.cpp
+    alweatherparticles.cpp
+    alweathershelter.cpp
+    alweatherclock.cpp
+    alweatheruimodel.cpp
     alsensormodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
@@ -1297,6 +1304,14 @@ set(viewer_HEADER_FILES
     alvcamautovol.h
     alviewfinder.h
     alweathermodel.h
+    slweather.h
+    alweatherbridge.h
+    alweatherresources.h
+    alweatherparticles.h
+    alweathercovercache.h
+    alweathershelter.h
+    alweatherclock.h
+    alweatheruimodel.h
     alsensormodel.h
     alsensorsettings.h
     alghostgroupmodel.h
@@ -2797,6 +2812,11 @@ if (BUILD_TESTING)
     aldanceballmodel.cpp
     alavatarstagingmodel.cpp
     alweathermodel.cpp
+    slweather.cpp
+    alweatherbridge.cpp
+    alweathershelter.cpp
+    alweatherclock.cpp
+    alweatheruimodel.cpp
     alsensormodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
@@ -2815,6 +2835,13 @@ if (BUILD_TESTING)
     llworldmap.cpp
     llworldmipmap.cpp
   )
+
+  set_source_files_properties(alweathershelter.cpp PROPERTIES
+    LL_TEST_ADDITIONAL_SOURCE_FILES "alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp")
+  set_source_files_properties(alweatherbridge.cpp PROPERTIES
+    LL_TEST_ADDITIONAL_SOURCE_FILES "slweather.cpp;alweatherclock.cpp;alweathermodel.cpp")
+  set_source_files_properties(alweatheruimodel.cpp PROPERTIES
+    LL_TEST_ADDITIONAL_SOURCE_FILES "alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp")
 
   set_source_files_properties(
     llprismgate.cpp

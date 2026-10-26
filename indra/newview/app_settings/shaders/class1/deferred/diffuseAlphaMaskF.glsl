@@ -42,6 +42,13 @@ void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
     mirrorClip(vary_position);
@@ -53,11 +60,15 @@ void main()
         discard;
     }
 
-    frag_data[0] = vec4(col.rgb, 0.0);
-    frag_data[1] = vec4(0,0,0,0); // spec
     vec3 nvn = normalize(vary_normal);
     // Match forward alpha when a card is rendered with culling disabled.
     nvn *= gl_FrontFacing ? 1.0 : -1.0;
+    vec4 weather_spec = vec4(0.0);
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    weatherMaterialLegacy(vary_position, nvn, col.rgb, weather_spec.rgb, weather_spec.a);
+#endif
+    frag_data[0] = vec4(col.rgb, 0.0);
+    frag_data[1] = weather_spec; // spec
 #ifdef HAS_SKIN
     // [TronA0] rigged mesh: avatar geometry -> tagged flag
     frag_data[2] = encodeNormal(nvn.xyz, 0, gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));

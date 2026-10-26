@@ -405,6 +405,11 @@ float shared_minimum_alpha() { return minimum_alpha; }
 #endif
 #endif
 
+
+// WP2: decoded material response precedes packing and lighting.
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -513,6 +518,7 @@ void main()
     // unless rig_rim_mode != 0, so the colour math is unchanged.
     float rim_fw = length(fwidth(norm));
 
+#ifndef HAS_WEATHER_MATERIAL
     vec3 light_dir = (sun_up_factor == 1) ? sun_dir : moon_dir;
     vec3 sunlit;
     vec3 amblit;
@@ -532,6 +538,9 @@ void main()
     vec2 frag = vary_fragcoord.xy / frag_w * 0.5 + 0.5;
 #ifdef HAS_SUN_SHADOW
     scol = sampleDirectionalShadow(pos, norm, frag);
+#endif
+
+
 #endif
 
 #ifdef HAS_ACTOR_FX
@@ -591,6 +600,41 @@ void main()
     vec3 actor_fx_authored_emission = colorEmissive
         * actorFxPbrAuthoredEmissiveResponse();
     col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
+#endif
+
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(GBUFFER_AVATAR_TAG)
+    vec3 weather_normal = norm, weather_color = col;
+    float weather_roughness = perceptualRoughness;
+    weatherMaterialLinear(vary_position, weather_normal, weather_color, weather_roughness, metallic);
+    if (dot(colorEmissive, colorEmissive) == 0.0)
+    {
+        norm = weather_normal; col = weather_color; perceptualRoughness = weather_roughness;
+    }
+#endif
+
+#ifdef HAS_WEATHER_MATERIAL
+    vec3 light_dir = (sun_up_factor == 1) ? sun_dir : moon_dir;
+    vec3 sunlit;
+    vec3 amblit;
+    vec3 additive;
+    vec3 atten;
+    calcAtmosphericVarsLinear(pos, norm, light_dir,
+                              sunlit, amblit, additive, atten);
+    if (classic_mode > 0)
+    {
+        sunlit *= 1.35;
+    }
+    vec3 sunlit_linear = sunlit;
+
+    float scol = 1.0;
+    float frag_w = abs(vary_fragcoord.z) > 1e-6
+        ? vary_fragcoord.z : (vary_fragcoord.z < 0.0 ? -1e-6 : 1e-6);
+    vec2 frag = vary_fragcoord.xy / frag_w * 0.5 + 0.5;
+#ifdef HAS_SUN_SHADOW
+    scol = sampleDirectionalShadow(pos, norm, frag);
+#endif
+
+
 #endif
 
     float gloss = 1.0 - perceptualRoughness;

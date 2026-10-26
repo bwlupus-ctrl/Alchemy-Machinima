@@ -465,6 +465,34 @@ namespace ALWeatherModel
         return true;
     }
 
+    bool Controller::scheduled(F64 strike_seconds, const Config& raw_config,
+                               const Position& base, F64 distance, U64 event_id)
+    {
+        const Config config = sanitizeConfig(raw_config);
+        if (!config.mEnabled || !std::isfinite(strike_seconds) || strike_seconds < 0.0 ||
+            !isFinite(base) || !std::isfinite(distance) || distance < 0.0 || event_id == 0)
+            return false;
+        if (!mInitialized || mConfiguredSeed != config.mSeed)
+        {
+            reset(config.mSeed);
+            mInitialized = true;
+            mConfiguredSeed = config.mSeed;
+            mRandomState = config.mSeed;
+        }
+        mWasEnabled = true;
+        mLastTime = mSimulationOrigin = mSimulationTime = strike_seconds;
+        mSimAccumulator = 0.0;
+        mStrikeStartTime = strike_seconds;
+        mStrikeBase = base;
+        mStrikeDistanceMeters = distance;
+        mBoltHeightMeters = config.mBoltHeightMeters;
+        mStrikeId = event_id;
+        mHasStrike = true;
+        mNextStrikeTime = std::numeric_limits<F64>::infinity();
+        mScheduledRatePerMinute = 0.0;
+        return true;
+    }
+
     Frame Controller::update(F64 now_seconds, const Config& raw_config,
                              const Position& anchor)
     {

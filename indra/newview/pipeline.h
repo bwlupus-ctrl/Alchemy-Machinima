@@ -42,6 +42,9 @@
 #include "llrender.h"
 #include "lldrawable.h"
 #include "llrendertarget.h"
+#include "alweatherresources.h"
+#include "alweatherparticles.h"
+#include "alweathercovercache.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 #include "lltimer.h"
 #include "llreflectionmapmanager.h"
@@ -437,7 +440,8 @@ public:
     F32 setupSpotLightVolumetricClassic(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
     // Viewer-native rain/lightning composite. Runs before HDR exposure and bloom
     // so lightning participates in the same photographic response as scene lights.
-    void renderWeather(LLRenderTarget* target);
+    void renderWeather(LLRenderTarget* target, bool auxiliary = false,
+                       ALWeatherShelter::Exposure* auxiliary_exposure = nullptr);
     // [BDMerge Froxel F0] hybrid froxel volumetrics: run the P1 media pass into the
     // Z-slice atlas and (optionally) the debug overlay. Fully gated on
     // BDMergeFroxelVolumetrics - a no-op (no alloc, no passes) when off.
@@ -887,6 +891,21 @@ public:
     // endPrismAuxiliaryState, keeping the main view byte-identical.
     void generatePrismSpotShadows(LLCamera& camera);
     void generateWeatherRainOcclusion(LLCamera& camera);
+    void generateWeatherSurfaceCover(LLCamera& camera);
+    bool drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
+        const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
+        F32 clip_start, F32 clip_end, U32& surface_submissions,
+        ALWeatherShelter::Updates::Tile tile = {}, ALWeatherResources* budget_owner = nullptr);
+    void dirtyWeatherDrawable(LLDrawable* drawable);
+    void dirtyWeatherRegion(const LLVector3& low, const LLVector3& high);
+    void generateWeatherAdvancedShelter(LLCamera& camera);
+    void bindWeatherMaterial(LLGLSLShader* shader);
+    ALWeatherResources mWeatherSurfaces;
+    ALWeatherShelterMaps mWeatherShelter;
+    ALWeatherParticles mWeatherParticles;
+    ALWeatherShelter::Updates mWeatherPrecipitationCoverCache;
+    U32 mWeatherCoverWorkFrame = ~U32(0);
+    void renderWeatherParticles(LLRenderTarget* target, bool auxiliary);
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);
 

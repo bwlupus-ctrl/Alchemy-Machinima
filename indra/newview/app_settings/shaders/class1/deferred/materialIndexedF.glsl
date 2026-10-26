@@ -281,6 +281,11 @@ float getEmissive(int mi, vec4 diffcol)
 #endif
 }
 
+
+// WP2: decoded material response precedes packing and lighting.
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -361,6 +366,16 @@ void main()
 #endif
 
     float emissive = getEmissive(mi, diffcol);
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(GBUFFER_AVATAR_TAG)
+
+    vec3 weather_normal = norm, weather_color = diffcol.rgb, weather_spec = spec.rgb;
+    float weather_gloss = glossiness;
+    weatherMaterialLegacy(vary_position, weather_normal, weather_color, weather_spec, weather_gloss);
+    if (emissive == 0.0)
+    {
+        norm = weather_normal; diffcol.rgb = weather_color; spec.rgb = weather_spec; glossiness = weather_gloss;
+    }
+#endif
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
 #ifdef HAS_SKIN

@@ -59,6 +59,8 @@ public:
     static bool setControlVisible(LLView*, bool);
     void        resolveBinding();
     void        refreshValue();
+    // Passive code-bound widget updates must also refresh observers (Quick).
+    static void notifyValueChanged(LLUICtrl* control);
     void        pollLiveValue();
     using amber_signal_t = boost::signals2::signal<void(bool)>;
     using value_signal_t = boost::signals2::signal<void()>;

@@ -61,6 +61,13 @@ bool alrSilOn();
 vec4 alrSilGBufferLegacy();
 #endif
 
+
+// WP2 material contract: after Actor FX, before G-buffer packing/forward lighting.
+bool weatherMaterialActive();
+void weatherMaterialLinear(vec3 p, inout vec3 n, inout vec3 c, inout float r, float m);
+void weatherMaterialLegacy(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 s, inout float g);
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -119,6 +126,9 @@ void main()
 #ifdef HAS_ACTOR_FX
     col.rgb = alrAlbedoSrgb(col.rgb);
     alrLegacySpec(alr_spec.rgb, alr_spec.a, alr_env);
+#endif
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+    weatherMaterialLegacy(vary_position, nvn, col.rgb, alr_spec.rgb, alr_spec.a);
 #endif
     frag_data[0] = vec4(col.rgb, 0.0);
     frag_data[1] = alr_spec; // spec/gloss

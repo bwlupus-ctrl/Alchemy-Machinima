@@ -5,15 +5,15 @@ Per-control rows: `doc/director_kit/wiring/wiring_table.csv`.
 
 Versions: **ORIG** = commit 9c25f75491a (git blobs); **V1** = working tree `floater_director.xml` + owner panels; **V2** = working tree `floater_director_v2.xml` + `panel_dpage_*.xml` + kit rows.
 
-Interactive controls: 1947 (of 2050 catalog rows; readout/text rows excluded from counts).
+Interactive controls: 1996 (of 2104 catalog rows; readout/text rows excluded from counts).
 
 ## Totals
 
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ORIG | 1619 | 1035 | 1 | 583 | 0 | 54 | 274 |
-| V1 | 1640 | 1045 | 1 | 594 | 0 | 52 | 255 |
-| V2 | 1761 | 1239 | 0 | 522 | 67 | 86 | 33 |
+| ORIG | 1619 | 1035 | 1 | 583 | 0 | 54 | 323 |
+| V1 | 1640 | 1045 | 1 | 594 | 0 | 52 | 304 |
+| V2 | 1805 | 1283 | 0 | 522 | 72 | 86 | 33 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
@@ -51,7 +51,7 @@ Interactive controls: 1947 (of 2050 catalog rows; readout/text rows excluded fro
 | tron_tab (Tron) | Look | 131 | 123 | 123 | 120 | 0 | 8 | 3 | 0 |
 | stepped_tab (Stepped) | Look | 66 | 0 | 0 | 62 | 0 | 4 | 0 | 0 |
 | actor_style_tab (Actor FX) | Look | 17 | 16 | 16 | 1 | 16 | 0 | 0 | 0 |
-| weather_tab (Weather) | World | 50 | 50 | 50 | 48 | 2 | 0 | 0 | 0 |
+| weather_tab (Weather) | World | 99 | 50 | 50 | 92 | 7 | 0 | 0 | 0 |
 | atmosphere_tab (Atmosphere) | World | 40 | 37 | 37 | 15 | 0 | 3 | 22 | 22 |
 | shadows_probes_tab (Shadows) | World | 39 | 37 | 37 | 37 | 0 | 2 | 0 | 0 |
 | temporal_tab (Time) | Capture | 16 | 13 | 13 | 16 | 0 | 0 | 0 | 0 |
@@ -60,7 +60,7 @@ Interactive controls: 1947 (of 2050 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1708 mockup rows + 342 page_sources-only (page, widget) rows = 2050 controls. page_sources.json lists 2050 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Catalog = 1762 mockup rows + 342 page_sources-only (page, widget) rows = 2104 controls. page_sources.json lists 2104 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
 Of the page_sources-only rows, 339 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
@@ -71,8 +71,8 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2827 LLFloaterDirector::bindFrameOrbitPage |
-| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:2820 LLFloaterDirector::bindFrameOrbitPage |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2979 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:2972 LLFloaterDirector::bindFrameOrbitPage |
 
 ### vcam_tab (1)
 
@@ -84,7 +84,7 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2319 LLFloaterDirector::bindLensFocusPage |
+| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2322 LLFloaterDirector::bindLensFocusPage |
 
 ### atmosphere_tab (22)
 
@@ -128,7 +128,7 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 ## V2 suspects: V2_SUSPECT_FLOATER_SCOPED (only support is LLFloaterDirector v1 path or a non-instantiated panel class)
 
-Total: 67 (of which previously wired in ORIG or V1: 62)
+Total: 72 (of which previously wired in ORIG or V1: 62)
 
 - **move_tab**: `group_run_combo`, `group_delay_spinner`, `btn_group_start`, `btn_group_stop`, `groups_list`, `btn_group_rename`, `btn_group_dissolve`
 - **dance_tab**: `dance_popout`
@@ -142,7 +142,7 @@ Total: 67 (of which previously wired in ORIG or V1: 62)
 - **exposure_tab**: `exposure_popout`
 - **actors_tab**: `am_reset_CineLightRigActorMaskBias`, `am_test_trigger`, `light_response_popout`
 - **actor_style_tab**: `actor_style_target`, `actor_style_reset`, `actor_style_look`, `actor_style_mode`, `actor_style_alpha`, `actor_style_dissolve_progress`, `actor_style_use_actor_hue`, `actor_style_hue`, `actor_style_brightness`, `actor_style_shimmer_amount`, `actor_style_shimmer_speed`, `actor_style_glitch`, `actor_style_effect_fps`, `actor_style_distortion`, `actor_style_distortion_amount`, `actor_style_pixel`
-- **weather_tab**: `weather_reset_all`, `weather_trigger`
+- **weather_tab**: `weather_reset_all`, `weather_library_preset`, `weather_library_apply`, `weather_library_stop`, `weather_trigger`, `weather_surface_apply`, `weather_surface_clear`
 - **director_settings_tab**: `settings_crash_backups`, `settings_restore_backup`, `settings_delete_backup`, `settings_reset_prompts`
 
 ## V1 regressions (wired in ORIG, not wired in V1)
@@ -188,11 +188,11 @@ Names present in the ORIG page closure but absent from the V1 closure: 214 entri
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-kit=1, kit=18, none=33, xui=1895.
+- V2 resolution by source: alias-kit=1, kit=18, none=33, xui=1944.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
 - Launcher-stub pages (V2 opens V1 floater): none.
 - Interactive rows missing in ALL three versions (mockup-only, never implemented): 1.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 1947 interactive.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 1996 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 
@@ -201,7 +201,7 @@ Names present in the ORIG page closure but absent from the V1 closure: 214 entri
 - Static analysis only. A C++ match inside a FLOATER-owned postBuild (LLFloaterDirector) does not prove the V2 copy is wired; such V2 controls are flagged `V2_SUSPECT_FLOATER_SCOPED` unless the enclosing function mentions `DirectorUIV2`. This flag is conservative and needs in-world confirmation.
 - A panel class counts as instantiated for a V2 page only when its XML is embedded in that page closure (`LLPanelInjector` registration name = file stem).
 - Kit rows (V2 `kit_row`/`kit_switch` with `widget=`) have no per-widget C++; WIRED_SETTING means the bound setting is declared (kit binding is generic in alkit*.cpp), not that the in-world behaviour was checked.
-- Control universe = the mockup rows (1947 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
+- Control universe = the mockup rows (1996 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
 - ORIG page owners are the HEAD owner files that exist at ORIG; ORIG floater_director.xml is always searched. ORIG C++ is read from the commit; V1/V2 C++ is the working tree.
 - Callbacks count as WIRED only when the name is referenced (not just defined) in top-level indra/newview/*.cpp. Registry names are matched as literals or identifiers.
 - Widget literal hits require a getChild/findChild/childSet/setCommitCallback/Registrar token within 3 lines before (or 1 line after) the literal, and the enclosing class must be one of the page owner classes from page_sources.json.

@@ -57,6 +57,7 @@
 #include "alprobedirty.h" // [ProbeOnDemand]
 #include "aldiopterrelevance.h"      // [Ultimate Diopter] shared armed-state helpers, wave 2
 #include "alweathermodel.h"
+#include "alweatherbridge.h"
 
 // library includes
 #include "llimagebmp.h"
@@ -215,52 +216,7 @@ namespace
 {
     ALWeatherModel::Controller sWeatherController;
 
-    struct WeatherShelterExposure
-    {
-        void reset()
-        {
-            mExposure = 1.f;
-            mLastPresentationTime = 0.0;
-            mInitialized = false;
-        }
-
-        F32 update(F64 presentation_time, F32 target)
-        {
-            target = llclamp(target, 0.f, 1.f);
-            if (!std::isfinite(presentation_time))
-            {
-                reset();
-                return target;
-            }
-            if (!mInitialized || presentation_time < mLastPresentationTime)
-            {
-                mExposure = target;
-                mLastPresentationTime = presentation_time;
-                mInitialized = true;
-                return mExposure;
-            }
-
-            // Exact exponential integration for a constant target makes the
-            // ease independent of frame subdivision and presentation-time only.
-            constexpr F64 RESPONSE_SECONDS = 0.2;
-            const F64 elapsed = llclamp(
-                presentation_time - mLastPresentationTime, 0.0, 1.0);
-            const F32 blend = static_cast<F32>(
-                1.0 - std::exp(-elapsed / RESPONSE_SECONDS));
-            mExposure = llclamp(
-                mExposure + (target - mExposure) * blend, 0.f, 1.f);
-            if (std::abs(target - mExposure) <= 0.001f)
-            {
-                mExposure = target;
-            }
-            mLastPresentationTime = presentation_time;
-            return mExposure;
-        }
-
-        F32 mExposure = 1.f;
-        F64 mLastPresentationTime = 0.0;
-        bool mInitialized = false;
-    };
+    using WeatherShelterExposure = ALWeatherShelter::Exposure;
 
     WeatherShelterExposure sWeatherShelterExposure;
 }
@@ -3135,6 +3091,9 @@ void LLPipeline::releaseGLBuffers()
     mProjVolRim.release();
     mProjVolRimValid = false;
     mWeatherRainHalf.release();
+    mWeatherSurfaces.release();
+    mWeatherShelter.release();
+    mWeatherParticles.release();
     mWeatherRainOcclusion.release();
     mWeatherRainOcclusionValid = false;
     mWeatherRainOcclusionFrame = 0;
@@ -4278,6 +4237,7 @@ void LLPipeline::allocDrawable(LLViewerObject *vobj)
 
 void LLPipeline::unlinkDrawable(LLDrawable *drawable)
 {
+    dirtyWeatherDrawable(drawable);
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
 
     assertInitialized();
@@ -5359,6 +5319,7 @@ void LLPipeline::markVisible(LLDrawable *drawablep, LLCamera& camera)
 
 void LLPipeline::markMoved(LLDrawable *drawablep, bool damped_motion)
 {
+    dirtyWeatherDrawable(drawablep);
     if (!drawablep)
     {
         //LL_ERRS() << "Sending null drawable to moved list!" << LL_ENDL;
@@ -5484,6 +5445,7 @@ void LLPipeline::shiftObjects(const LLVector3 &offset)
 
 void LLPipeline::markTextured(LLDrawable *drawablep)
 {
+    dirtyWeatherDrawable(drawablep);
     if (drawablep && !drawablep->isDead() && assertInitialized())
     {
         mRetexturedList.insert(drawablep);
@@ -5540,6 +5502,13 @@ void LLPipeline::markRebuild(LLSpatialGroup* group)
 {
     if (group && !group->isDead() && group->getSpatialPartition())
     {
+        const U32 type = group->getSpatialPartition()->mDrawableType;
+        if (type == RENDER_TYPE_VOLUME || type == RENDER_TYPE_TERRAIN || type == RENDER_TYPE_TREE)
+        {
+            const auto* extents = group->getExtents();
+            if (auto* bridge = group->getSpatialPartition()->asBridge()) dirtyWeatherDrawable(bridge);
+            else dirtyWeatherRegion(LLVector3(extents[0].getF32ptr()), LLVector3(extents[1].getF32ptr()));
+        }
         if (!group->hasState(LLSpatialGroup::IN_BUILD_Q1))
         {
             llassert_always(!mGroupQ1Locked);
@@ -5552,6 +5521,7 @@ void LLPipeline::markRebuild(LLSpatialGroup* group)
 
 void LLPipeline::markRebuild(LLDrawable *drawablep, LLDrawable::EDrawableFlags flag)
 {
+    dirtyWeatherDrawable(drawablep);
     if (drawablep && !drawablep->isDead() && assertInitialized())
     {
         if (!drawablep->isState(LLDrawable::IN_REBUILD_Q))
@@ -20196,8 +20166,44 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
-void LLPipeline::renderWeather(LLRenderTarget* target)
+void LLPipeline::renderWeatherParticles(LLRenderTarget* target, bool auxiliary)
 {
+    if (gCubeSnapshot || !sRenderDeferred || !target) return;
+    if (!ALWeatherBridge::Controller::instance().precipitationActive())
+    {
+        mWeatherParticles.suspend();
+        return;
+    }
+    const glm::mat4 view = auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView);
+    const glm::mat4 projection = auxiliary ? get_current_projection() : glm::make_mat4(gGLLastProjection);
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    glm::vec3 light(0.f);
+    if (const auto sky = LLEnvironment::instance().getCurrentSky())
+    {
+        const auto illumination = LLSettingsVOSky::illumination(*sky);
+        for (U32 i = 0; i < 3; ++i)
+            light[i] = llclamp(illumination.ambient.mV[i] * 0.9f + illumination.direct.mV[i] * 0.3f, 0.f, 4.f);
+    }
+    mWeatherParticles.render(*target, mRT->deferredScreen, view, projection,
+        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), light, mWeatherSurfaces, gFrameCount);
+}
+
+void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
+                               ALWeatherShelter::Exposure* auxiliary_exposure)
+{
+    static LLCachedControl<U32> control_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
+    const bool library = control_mode() == 1;
+    const auto& library_frame = ALWeatherBridge::Controller::instance();
+    const bool advanced_auxiliary = library_frame.settings().enabled && library_frame.settings().advancedShelter;
+    // Legacy auxiliary precipitation is an explicit Advanced shelter consumer.
+    if (auxiliary && !ALWeatherShelter::auxiliaryAllowed(library, library_frame.active(), advanced_auxiliary))
+    {
+        if (!gCubeSnapshot) mWeatherParticles.suspend();
+        if (auxiliary_exposure) auxiliary_exposure->reset();
+        return;
+    }
+    if (auxiliary && !auxiliary_exposure) return;
+    const bool legacy_auxiliary = auxiliary && !library;
     static bool sLightningSheetSnapshotValid = false;
     static U64 sLightningSheetStrikeId = 0;
     static F64 sLightningSheetStrikeTime = 0.0;
@@ -20213,6 +20219,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     if (!enabled())
     {
+        mWeatherParticles.suspend();
         sWeatherController.reset();
         sWeatherShelterExposure.reset();
         sLightningSheetSnapshotValid = false;
@@ -20231,6 +20238,9 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     {
         return;
     }
+
+    if (library) renderWeatherParticles(target, auxiliary);
+    else mWeatherParticles.suspend();
 
     LL_PROFILE_GPU_ZONE("weather");
 
@@ -20337,7 +20347,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     // Use the render iteration's frozen presentation clock, not a separate
     // wall-clock read. This stays monotonic in Live mode and is ready for
     // presentation scaling without coupling the model to viewer globals.
-    const F64 now =
+    const F64 now = library ? library_frame.clock().seconds() :
         LLPresentationTime::currentFrame().presentation_time;
     LLVector3 anchor_agent = gAgent.getPositionAgent();
     F32 anchor_ground = LLWorld::getInstance()->resolveLandHeightAgent(anchor_agent);
@@ -20371,15 +20381,17 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
         : 0.f;
     lightning_config.mSeed = lightning_seed_setting();
 
-    if (gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
+    if (!library && !legacy_auxiliary && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
     {
         gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
         sWeatherController.trigger(now, lightning_config, anchor);
     }
-    ALWeatherModel::Frame weather =
-        sWeatherController.update(now, lightning_config, anchor);
+    // Library timing/strikes are frozen before any view; no draw advances a scheduler.
+    ALWeatherModel::Frame weather = library ? library_frame.lightning() :
+        (legacy_auxiliary ? sWeatherController.sample(now, lightning_config) :
+            sWeatherController.update(now, lightning_config, anchor));
     const bool lightning_sheet_active =
-        use_lightning_quality && weather.mActive &&
+        !legacy_auxiliary && use_lightning_quality && weather.mActive &&
         weather_sky &&
         lightning_sheet_enabled_setting() &&
         finite_clamp(
@@ -20474,45 +20486,58 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     const F32 weather_color_variation =
         finite_clamp(weather.mColorVariation, 0.f, -1.f, 1.f);
 
-    const F32 base_rain_intensity = rain_enabled()
-        ? finite_clamp(rain_intensity_setting, 0.55f, 0.f, 1.f) * cloud_factor
+    const auto library_rain = library ? ALWeatherBridge::rain(
+        library_frame.state(), rain_intensity_setting(), rain_density_setting()) : ALWeatherBridge::Rain{};
+    const F32 base_rain_intensity = (library ? library_frame.active() : rain_enabled())
+        ? (library ? library_rain.intensity : finite_clamp(rain_intensity_setting, 0.55f, 0.f, 1.f) * cloud_factor)
         : 0.f;
     const bool splash_active =
         splash_enabled() &&
         finite_clamp(splash_density_setting, 0.65f, 0.f, 1.f) > 0.f;
     const bool wetness_active =
+        !(ALWeatherBridge::Controller::instance().surfacesActive() && mWeatherSurfaces.readyForFrame(gFrameCount)) &&
         wetness_enabled() &&
         finite_clamp(wetness_strength_setting, 0.35f, 0.f, 1.f) > 0.f;
     const bool lightning_wet_glint_active =
-        use_lightning_quality && weather.mActive &&
+        !legacy_auxiliary && use_lightning_quality && weather.mActive &&
         lightning_wet_glint_enabled_setting() &&
         finite_clamp(
             lightning_wet_glint_strength_setting, 0.75f, 0.f, 2.f) > 0.f &&
         wetness_active && base_rain_intensity > 0.f;
     const bool mist_active =
-        mist_enabled() &&
+        mist_enabled() && !mWeatherParticles.veilActive() &&
         finite_clamp(mist_strength_setting, 0.25f, 0.f, 1.f) > 0.f;
     const bool lens_active =
         lens_enabled() &&
         finite_clamp(lens_strength_setting, 0.25f, 0.f, 1.f) > 0.f;
     const bool surface_active =
-        splash_active || wetness_active || mist_active || lens_active;
+        !legacy_auxiliary && (splash_active || wetness_active || mist_active || lens_active);
 
     // A cover map is consumable only in the frame that produced it. This
     // prevents a camera teleport, origin shift, disabled producer, or failed
     // allocation from ever sampling stale world-space coverage.
     const bool rain_occlusion_current =
-        rain_occlusion_setting() &&
+        !auxiliary && rain_occlusion_setting() &&
         mWeatherRainOcclusionValid &&
         mWeatherRainOcclusionFrame == gFrameCount &&
         mWeatherRainOcclusion.getWidth() != 0 &&
         std::isfinite(mWeatherRainOcclusionDepthRange) &&
         mWeatherRainOcclusionDepthRange > 0.f;
-    const bool use_rain_occlusion =
+    const bool advanced_shelter = ALWeatherBridge::Controller::instance().settings().enabled &&
+        ALWeatherBridge::Controller::instance().settings().advancedShelter;
+    glm::dvec3 shelter_world_origin(0.);
+    bool advanced_rain = false;
+    if (advanced_shelter)
+    {
+        const LLVector3d shelter_origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        shelter_world_origin = glm::dvec3(shelter_origin.mdV[0], shelter_origin.mdV[1], shelter_origin.mdV[2]);
+        advanced_rain = mWeatherShelter.current(shelter_world_origin, gFrameCount);
+    }
+    const bool use_rain_occlusion = advanced_rain || (
         rain_occlusion_current &&
         gDeferredWeatherRainOcclusionProgram.isComplete() &&
         gDeferredWeatherRainOcclusionProgram.getTextureChannel(
-            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0;
+            LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP) >= 0);
     const bool use_surface_occlusion =
         rain_occlusion_current &&
         gDeferredWeatherSurfaceOcclusionProgram.isComplete() &&
@@ -20539,8 +20564,12 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     {
         const F32 shelter_height =
             finite_clamp(shelter_height_setting, 48.f, 8.f, 256.f);
-        const LLVector3 camera_position =
-            LLViewerCamera::getInstance()->getOrigin();
+        const LLVector3 camera_position = [auxiliary]()
+        {
+            if (!auxiliary) return LLViewerCamera::getInstance()->getOrigin();
+            const glm::vec3 eye(glm::inverse(get_current_modelview())[3]);
+            return LLVector3(eye.x, eye.y, eye.z);
+        }();
         F32 target_exposed = 1.f;
         if (camera_position.isFinite())
         {
@@ -20555,6 +20584,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
 
             LLVector4a intersection;
             S32 face_hit = -1;
+            ALWeatherShelter::VisibleSurfaceRay visible_surface_ray;
             LLViewerObject* occluder = lineSegmentIntersectInWorld(
                 ray_start, ray_end,
                 /*pick_transparent*/ false,
@@ -20585,18 +20615,21 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 }
             }
         }
-        exposed = sWeatherShelterExposure.update(now, target_exposed);
+        // An auxiliary camera never edits the main camera's shelter history.
+        exposed = auxiliary ? auxiliary_exposure->update(now, target_exposed) :
+            sWeatherShelterExposure.update(now, target_exposed);
     }
     else
     {
         // Disabling this optional gate is bit-for-bit factor 1 and raycast-free.
-        sWeatherShelterExposure.reset();
+        if (auxiliary) auxiliary_exposure->reset();
+        else sWeatherShelterExposure.reset();
     }
-    const F32 rain_pass_intensity =
+    const F32 rain_pass_intensity = advanced_rain && ALWeatherBridge::Controller::instance().settings().shelterDebug ? 1.f :
         base_rain_intensity * (use_rain_occlusion ? 1.f : exposed);
     const F32 surface_pass_intensity =
         base_rain_intensity * (use_surface_occlusion ? 1.f : exposed);
-    LLGLSLShader& rain_program = use_rain_occlusion
+    LLGLSLShader& rain_program = advanced_rain ? mWeatherShelter.rainProgram() : use_rain_occlusion
         ? gDeferredWeatherRainOcclusionProgram
         : gDeferredWeatherRainProgram;
     LLGLSLShader& surface_program = use_surface_occlusion
@@ -20611,7 +20644,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
         surface_pass_intensity > 0.f &&
         surface_active && surface_program.isComplete();
     const bool draw_lightning =
-        weather.mActive && lightning_program.isComplete();
+        !legacy_auxiliary && weather.mActive && lightning_program.isComplete();
     if (!draw_rain && !draw_surface && !draw_lightning)
     {
         return;
@@ -20623,8 +20656,8 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     // that same authoritative pair instead of depending on incidental post-pass
     // GL state.  The snapshot is current-frame here (renderDeferredLighting updates
     // gGLLast* before renderFinalize), despite the historical "Last" names.
-    const glm::mat4 modelview = glm::make_mat4(gGLLastModelView);
-    const glm::mat4 projection = glm::make_mat4(gGLLastProjection);
+    const glm::mat4 modelview = auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView);
+    const glm::mat4 projection = auxiliary ? get_current_projection() : glm::make_mat4(gGLLastProjection);
     const glm::mat4 inverse_modelview = glm::inverse(modelview);
     const glm::mat4 inverse_projection = glm::inverse(projection);
     const glm::mat4 view_projection = projection * modelview;
@@ -20676,7 +20709,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
     {
         const U32 divisor = llclamp(rain_divisor_setting(), 1U, 4U);
         bool low_resolution =
-            divisor > 1U &&
+            !auxiliary && divisor > 1U &&
             gDeferredWeatherRainUpsampleProgram.isComplete() &&
             target->getWidth() >= divisor * 4U &&
             target->getHeight() >= divisor * 4U;
@@ -20714,7 +20747,8 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
 
             bindDeferredShader(rain_program);
             S32 rain_occlusion_channel = -1;
-            if (use_rain_occlusion)
+            if (advanced_rain) mWeatherShelter.bind(&rain_program, shelter_world_origin, gFrameCount);
+            if (use_rain_occlusion && !advanced_rain)
             {
                 rain_occlusion_channel = rain_program.bindTexture(
                     LLShaderMgr::WEATHER_RAIN_OCCLUSION_MAP,
@@ -20747,8 +20781,10 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 glm::value_ptr(inverse_projection));
             const F32 wind_scale =
                 finite_clamp(wind_scale_setting, 1.f, 0.f, 8.f);
-            const F32 wind_x = finite_clamp(gWindVec.mV[VX], 0.f, -50.f, 50.f) * wind_scale;
-            const F32 wind_y = finite_clamp(gWindVec.mV[VY], 0.f, -50.f, 50.f) * wind_scale;
+            const auto effective_wind = ALWeatherShelter::effectiveWind(
+                library ? library_rain.windX : gWindVec.mV[VX],
+                library ? library_rain.windY : gWindVec.mV[VY], wind_scale);
+            const F32 wind_x = effective_wind[0], wind_y = effective_wind[1];
             const LLColor3 rain_color_raw = rain_color_setting;
             const F32 rain_r =
                 finite_clamp(rain_color_raw.mV[0], 0.55f, 0.f, 4.f);
@@ -20764,7 +20800,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 sTime, static_cast<F32>(std::fmod(now, 3600.0)));
             rain_program.uniform1f(sIntensity, rain_pass_intensity);
             rain_program.uniform1f(
-                sDensity, finite_clamp(rain_density_setting, 0.65f, 0.02f, 1.f));
+                sDensity, library ? library_rain.density : finite_clamp(rain_density_setting, 0.65f, 0.02f, 1.f));
             rain_program.uniform1f(
                 sFallSpeed, finite_clamp(rain_fall_speed_setting, 28.f, 1.f, 80.f));
             rain_program.uniform1f(
@@ -20778,7 +20814,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 finite_clamp(rain_near_setting, 0.65f, 0.f, 1.f));
             rain_program.uniform1f(
                 sGustStrength,
-                finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
+                library ? 0.f : finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
             rain_program.uniform1i(
                 sLayers, static_cast<S32>(llclamp(rain_layers_setting(), 1U, 3U)));
             rain_program.uniform1i(
@@ -20892,7 +20928,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target)
                 sLightning, weather_flash);
             surface_program.uniform1f(
                 sGustStrength,
-                finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
+                library ? 0.f : finite_clamp(rain_gust_setting, 0.35f, 0.f, 1.f));
             surface_program.uniform1f(
                 sGroundHeight, finite_clamp(anchor_ground, 0.f, -4096.f, 4096.f));
 
@@ -33178,6 +33214,508 @@ void LLPipeline::generateWeatherRainOcclusion(LLCamera& camera)
     mWeatherRainOcclusionDepthRange = depth_range;
     mWeatherRainOcclusionFrame = gFrameCount;
     mWeatherRainOcclusionValid = caster_batches > 0;
+}
+
+void LLPipeline::dirtyWeatherRegion(const LLVector3& low, const LLVector3& high)
+{
+    LL_PROFILE_GPU_ZONE("weather dirty regions");
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    if (!weather.settings().enabled || (!weather.surfacesActive() && !weather.precipitationActive() &&
+        !weather.settings().advancedShelter)) return;
+    if (!low.isFinite() || !high.isFinite()) return;
+    const auto a = gAgent.getPosGlobalFromAgent(low), b = gAgent.getPosGlobalFromAgent(high);
+    const std::array<F64, 3> world_low{a.mdV[0], a.mdV[1], a.mdV[2]};
+    const std::array<F64, 3> world_high{b.mdV[0], b.mdV[1], b.mdV[2]};
+    mWeatherPrecipitationCoverCache.dirty(world_low, world_high);
+    mWeatherShelter.updates.dirty(world_low, world_high);
+}
+
+void LLPipeline::dirtyWeatherDrawable(LLDrawable* drawable)
+{
+    if (!drawable || !drawable->getVObj() || drawable->getVObj()->isAvatar() ||
+        drawable->getVObj()->isAttachment()) return;
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    if (!weather.settings().enabled || (!weather.surfacesActive() && !weather.precipitationActive() &&
+        !weather.settings().advancedShelter)) return;
+    // Include the last submitted bounds and the new object transform. A move
+    // may be queued before its spatial bridge/VBO has caught up.
+    double low[3], high[3];
+    const bool previous = world_shadow_extents(drawable, low, high) &&
+        (low[0] != high[0] || low[1] != high[1] || low[2] != high[2]);
+    const auto position = drawable->getVObj()->getPositionAgent();
+    const F32 radius = drawable->getRadius();
+    if (!position.isFinite() || !std::isfinite(radius)) return;
+    for (U32 axis = 0; axis < 3; ++axis)
+    {
+        // Unbuilt point bounds are not an old caster at the agent origin.
+        low[axis] = previous ? std::min(low[axis], F64(position.mV[axis] - radius)) : position.mV[axis] - radius;
+        high[axis] = previous ? std::max(high[axis], F64(position.mV[axis] + radius)) : position.mV[axis] + radius;
+    }
+    dirtyWeatherRegion(LLVector3(F32(low[0]), F32(low[1]), F32(low[2])),
+                       LLVector3(F32(high[0]), F32(high[1]), F32(high[2])));
+}
+
+void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
+{
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    const bool precipitation = weather.precipitationActive() && ALWeatherParticles::supported();
+    if (!weather.surfacesActive() && !precipitation && !mWeatherSurfaces.hasState())
+    {
+        mWeatherPrecipitationCoverCache.invalidate();
+        return;
+    }
+    if (gCubeSnapshot || mWeatherSurfaces.mPreparedFrame == gFrameCount) return;
+    mWeatherSurfaces.mPreparedFrame = gFrameCount;
+    if ((!weather.surfacesActive() && !precipitation) || !sRenderDeferred)
+    {
+        mWeatherSurfaces.release();
+        mWeatherPrecipitationCoverCache.invalidate();
+        return;
+    }
+    const auto& settings = weather.settings();
+    const LLVector3d eye = gAgent.getPosGlobalFromAgent(camera.getOrigin());
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (!eye.isFinite() || !origin.isFinite())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    // A 32 m world cell preserves WP3's camera reuse and the texel lattice.
+    const std::array<F64, 3> anchor{std::floor(eye.mdV[0]/32.)*32.,
+        std::floor(eye.mdV[1]/32.)*32., std::floor(eye.mdV[2]/32.)*32.};
+    const auto plan = ALWeatherShelter::plan(anchor, settings.coverExtent, settings.coverResolution, {});
+    // Initialization is also tiled. Do not restart its dirty mask each frame.
+    if (settings.advancedShelter && gFrameCount%3 != 0)
+    {
+        if (mWeatherSurfaces.ready()) mWeatherSurfaces.reuseForFrame(gFrameCount);
+        mWeatherSurfaces.refreshStatus(mWeatherPrecipitationCoverCache);
+        return;
+    }
+    if (mWeatherSurfaces.failed()) mWeatherPrecipitationCoverCache.invalidate();
+    const bool reuse_cover = !mWeatherPrecipitationCoverCache.schedule(plan, plan, weather.placeSerial(),
+        {origin.mdV[0], origin.mdV[1], origin.mdV[2]},
+        LLPresentationTime::currentFrame().presentation_time, settings.shelterHz, 1);
+    if (reuse_cover && mWeatherSurfaces.ready())
+    {
+        mWeatherSurfaces.reuseForFrame(gFrameCount);
+        return;
+    }
+    if (reuse_cover) return; // Failed/unpublished maps retry only at the shared cadence.
+    if (!precipitation && !LLViewerShaderMgr::instance()->weatherMaterialsEnabled())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED,
+            "Persistent wet surfaces unavailable on this GPU; existing rain available");
+        return;
+    }
+    if (!gDeferredShadowProgram.isComplete() || !gDeferredShadowAlphaMaskProgram.isComplete() ||
+        !gDeferredShadowFullbrightAlphaMaskProgram.isComplete() || !gDeferredTreeShadowProgram.isComplete() ||
+        !gDeferredShadowGLTFAlphaMaskProgram.isComplete() || !gDeferredShadowCubeProgram.isComplete())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    // Indexed blend restoration requires GL 4.0; unavailable effects report failure.
+    if (!LLRender::indexedDrawBufferGuardSupported())
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    if (mWeatherSurfaces.allocationFailed(settings.coverResolution)) return;
+    ALWeatherResources::State saved_state;
+    if (!mWeatherSurfaces.allocate(settings.coverResolution)) return;
+    const auto tile = mWeatherPrecipitationCoverCache.tile();
+    mWeatherSurfaces.beginTile(plan);
+    LLRenderTarget& surface_target = mWeatherSurfaces.writeTarget();
+    const auto release_map = [this]() { mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED); };
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+    LL_PROFILE_GPU_ZONE("generateWeatherSurfaceCover");
+
+    const F32 extent = settings.coverExtent;
+    const U32 map_resolution = surface_target.getWidth();
+    // Snap in global space so an agent-coordinate origin shift at a region
+    // crossing cannot move the world-aligned texel grid.
+    LLVector3d center_global;
+    for (U32 axis = 0; axis < 3; ++axis) center_global.mdV[axis] = plan.center[axis];
+    if (!center_global.isFinite())
+    {
+        release_map();
+        return;
+    }
+    const F64 world_texel =
+        (2.0 * static_cast<F64>(extent)) /
+        static_cast<F64>(map_resolution);
+    center_global.mdV[VX] =
+        std::floor(center_global.mdV[VX] / world_texel + 0.5) *
+        world_texel;
+    center_global.mdV[VY] =
+        std::floor(center_global.mdV[VY] / world_texel + 0.5) *
+        world_texel;
+    center_global.mdV[VZ] =
+        std::floor(center_global.mdV[VZ] + 0.5);
+    const LLVector3 center_agent =
+        gAgent.getPosAgentFromGlobal(center_global);
+    if (!center_agent.isFinite())
+    {
+        release_map();
+        return;
+    }
+
+    const F32 vertical_half = llclamp(extent + 32.f, 64.f, 512.f);
+    const F32 clip_start = 0.1f;
+    const F32 clip_end = clip_start + vertical_half * 2.f;
+    const F32 depth_range = clip_end - clip_start;
+    LLVector3 top_origin = center_agent;
+    top_origin.mV[VZ] += vertical_half;
+
+    const glm::mat4 view = look(
+        top_origin, LLVector3(0.f, 0.f, -1.f),
+        LLVector3(0.f, 1.f, 0.f));
+    const glm::mat4 projection = glm::ortho(
+        -extent, extent, -extent, extent, clip_start, clip_end);
+    const glm::mat4 view_projection = projection * view;
+
+    U32 surface_submissions = 0;
+    if (!drawWeatherCover(camera, surface_target, view, projection, top_origin,
+                          clip_start, clip_end, surface_submissions, tile, &mWeatherSurfaces))
+    {
+        mWeatherSurfaces.fail(ALWeatherShelter::Coverage::FAILED);
+        return;
+    }
+    mWeatherCoverWorkFrame = gFrameCount;
+    mWeatherPrecipitationCoverCache.noteWork(mWeatherSurfaces.mRefreshChunks);
+    if (mWeatherSurfaces.mRefreshComplete)
+    {
+        mWeatherPrecipitationCoverCache.complete();
+        const bool replacement_complete = mWeatherPrecipitationCoverCache.layerComplete();
+        mWeatherSurfaces.commitTile(tile, replacement_complete);
+        if (replacement_complete)
+        {
+            mWeatherSurfaces.setBounds(plan, glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]));
+            mWeatherSurfaces.publish(view_projection, depth_range, surface_submissions, true,
+                glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+        }
+    }
+    if (mWeatherSurfaces.ready()) mWeatherSurfaces.reuseForFrame(gFrameCount);
+    mWeatherSurfaces.refreshStatus(mWeatherPrecipitationCoverCache);
+}
+
+bool LLPipeline::drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_target,
+    const glm::mat4& view, const glm::mat4& projection, const LLVector3& top_origin,
+    F32 clip_start, F32 clip_end, U32& surface_submissions, ALWeatherShelter::Updates::Tile tile, ALWeatherResources* budget_owner)
+{
+    if (!gDeferredShadowProgram.isComplete() || !gDeferredShadowAlphaMaskProgram.isComplete() ||
+        !gDeferredShadowFullbrightAlphaMaskProgram.isComplete() || !gDeferredTreeShadowProgram.isComplete() ||
+        !gDeferredShadowGLTFAlphaMaskProgram.isComplete() || !gDeferredShadowCubeProgram.isComplete()) return false;
+    const glm::mat4 saved_modelview = get_current_modelview();
+    const glm::mat4 saved_projection = get_current_projection();
+    const glm::mat4 saved_last_modelview = get_last_modelview();
+    const glm::mat4 saved_last_projection = get_last_projection();
+    const LLViewerCamera::eCameraID saved_camera_id =
+        LLViewerCamera::sCurCameraID;
+    S32 saved_viewport[4];
+    std::memcpy(saved_viewport, gGLViewport, sizeof(saved_viewport));
+    GLboolean saved_color_mask[4];
+    glGetBooleanv(GL_COLOR_WRITEMASK, saved_color_mask);
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+
+    pushRenderTypeMask();
+    andRenderTypeMask(
+        LLPipeline::RENDER_TYPE_TERRAIN,
+        LLPipeline::RENDER_TYPE_SIMPLE,
+        LLPipeline::RENDER_TYPE_ALPHA,
+        LLPipeline::RENDER_TYPE_ALPHA_PRE_WATER,
+        LLPipeline::RENDER_TYPE_ALPHA_POST_WATER,
+        LLPipeline::RENDER_TYPE_GLTF_PBR,
+        LLPipeline::RENDER_TYPE_FULLBRIGHT,
+        LLPipeline::RENDER_TYPE_BUMP,
+        LLPipeline::RENDER_TYPE_VOLUME,
+        LLPipeline::RENDER_TYPE_TREE,
+        LLPipeline::RENDER_TYPE_PASS_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_SIMPLE,
+        LLPipeline::RENDER_TYPE_PASS_BUMP,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT,
+        LLPipeline::RENDER_TYPE_PASS_SHINY,
+        LLPipeline::RENDER_TYPE_PASS_FULLBRIGHT_SHINY,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_MASK,
+        LLPipeline::RENDER_TYPE_PASS_MATERIAL_ALPHA_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP_MASK,
+        LLPipeline::RENDER_TYPE_PASS_SPECMAP_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP_MASK,
+        LLPipeline::RENDER_TYPE_PASS_NORMMAP_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC_MASK,
+        LLPipeline::RENDER_TYPE_PASS_NORMSPEC_EMISSIVE,
+        LLPipeline::RENDER_TYPE_PASS_GLTF_PBR,
+        LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK,
+        END_RENDER_TYPES);
+
+    LLGLDisable no_blend(GL_BLEND);
+    LLGLEnable scissor(GL_SCISSOR_TEST);
+    S32 saved_scissor[4];
+    glGetIntegerv(GL_SCISSOR_BOX, saved_scissor);
+    LLGLEnable depth_clamp(GL_DEPTH_CLAMP);
+    LLGLDepthTest depth_test(GL_TRUE, GL_TRUE, GL_LESS);
+    set_current_modelview(view);
+    set_current_projection(projection);
+    LLViewerCamera::sCurCameraID =
+        LLViewerCamera::CAMERA_WEATHER_RAIN_OCCLUSION;
+
+    surface_target.bindTarget();
+    const U32 tile_pixels = surface_target.getWidth()/8;
+    glViewport(tile.x*tile_pixels, tile.y*tile_pixels, tile.size*tile_pixels, tile.size*tile_pixels);
+    glScissor(tile.x*tile_pixels, tile.y*tile_pixels, tile.size*tile_pixels, tile.size*tile_pixels);
+    // Crop the projection as well as the raster viewport: production octree
+    // culling/sorting sees only this tile's casters, never the whole volume.
+    glm::mat4 crop(1.f);
+    crop[0][0] = crop[1][1] = 8.f/tile.size;
+    crop[3][0] = (8.f - 2.f*tile.x - tile.size)/tile.size;
+    crop[3][1] = (8.f - 2.f*tile.y - tile.size)/tile.size;
+    const glm::mat4 tile_projection = crop*projection;
+    set_current_projection(tile_projection);
+    const GLenum no_colour = GL_NONE;
+    glDrawBuffers(1, &no_colour); // This owner writes depth only.
+    glReadBuffer(GL_NONE);
+    gGLViewport[0] = 0;
+    gGLViewport[1] = 0;
+    gGLViewport[2] = static_cast<S32>(surface_target.getWidth());
+    gGLViewport[3] = static_cast<S32>(surface_target.getWidth());
+    glClearDepth(1.0);
+    if (!budget_owner || budget_owner->mRefreshCursor == 0) glClear(GL_DEPTH_BUFFER_BIT);
+    const bool cleared = glGetError() == GL_NO_ERROR;
+
+    LLCamera shadow_camera = camera;
+    shadow_camera.setOrigin(top_origin);
+    shadow_camera.lookDir(
+        LLVector3(0.f, 0.f, -1.f),
+        LLVector3(0.f, 1.f, 0.f));
+    shadow_camera.setNear(clip_start);
+    shadow_camera.setFar(clip_end);
+    LLViewerCamera::updateFrustumPlanes(
+        shadow_camera, true, false, true);
+
+    static LLCullResult rain_occlusion_result;
+    const U8 saved_shadow_draw_filter = sShadowDrawFilter; // [AlphaShadowCap]
+    sShadowDrawFilter = 1;
+    // Unrigged opaque + alpha-mask world geometry only. Ordinary alpha blend
+    // has no reliable "stops rain" material semantic; rigid worn attachments
+    // are rejected centrally while this scoped filter is 1.
+    uint64_t unowned_cursor = 0;
+    {
+        LLDrawBudget budget(budget_owner ? budget_owner->mRefreshCursor : unowned_cursor);
+        renderShadow(
+            view, tile_projection, shadow_camera, rain_occlusion_result,
+            true, true, false, false, false);
+        gGL.flush(); // Immediate terrain/tree vertices must drain inside the budget scope.
+        if (budget_owner)
+        {
+            budget_owner->mRefreshComplete = budget.complete();
+            budget_owner->mRefreshChunks = budget.chunksBound();
+        }
+    }
+    sShadowDrawFilter = saved_shadow_draw_filter;
+
+    // Terrain is traversed inside renderShadow even when no caster batch is built.
+    // Successful clear + traversal is COMPLETE_EMPTY, separate from legacy validity.
+    static const U32 caster_types[] = {
+        LLRenderPass::PASS_SIMPLE,
+        LLRenderPass::PASS_FULLBRIGHT,
+        LLRenderPass::PASS_SHINY,
+        LLRenderPass::PASS_BUMP,
+        LLRenderPass::PASS_FULLBRIGHT_SHINY,
+        LLRenderPass::PASS_MATERIAL,
+        LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE,
+        LLRenderPass::PASS_SPECMAP,
+        LLRenderPass::PASS_SPECMAP_EMISSIVE,
+        LLRenderPass::PASS_NORMMAP,
+        LLRenderPass::PASS_NORMMAP_EMISSIVE,
+        LLRenderPass::PASS_NORMSPEC,
+        LLRenderPass::PASS_NORMSPEC_EMISSIVE,
+        LLRenderPass::PASS_GLTF_PBR,
+        LLRenderPass::PASS_ALPHA_MASK,
+        LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK,
+        LLRenderPass::PASS_MATERIAL_ALPHA_MASK,
+        LLRenderPass::PASS_SPECMAP_MASK,
+        LLRenderPass::PASS_NORMMAP_MASK,
+        LLRenderPass::PASS_NORMSPEC_MASK,
+        LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK
+    };
+    U32 caster_batches = 0;
+    for (U32 type : caster_types)
+    {
+        caster_batches += rain_occlusion_result.getRenderMapSize(type);
+    }
+
+    const bool complete = cleared && glGetError() == GL_NO_ERROR;
+    // LLRenderTarget::flush uses gGLViewport when returning to the default
+    // framebuffer, so restore the global array before popping the target.
+    std::memcpy(gGLViewport, saved_viewport, sizeof(saved_viewport));
+    surface_target.flush();
+    glScissor(saved_scissor[0], saved_scissor[1], saved_scissor[2], saved_scissor[3]);
+    glViewport(
+        saved_viewport[0], saved_viewport[1],
+        saved_viewport[2], saved_viewport[3]);
+
+    set_current_modelview(saved_modelview);
+    set_current_projection(saved_projection);
+    set_last_modelview(saved_last_modelview);
+    set_last_projection(saved_last_projection);
+    LLViewerCamera::sCurCameraID = saved_camera_id;
+    popRenderTypeMask();
+    gGL.setColorMask(
+        saved_color_mask[0] != GL_FALSE,
+        saved_color_mask[1] != GL_FALSE,
+        saved_color_mask[2] != GL_FALSE,
+        saved_color_mask[3] != GL_FALSE);
+    if (saved_shader)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+
+    if (!complete) return false;
+    // Terrain has no render-map caster batches. Include its submitted faces in
+    // EMPTY/COVERED diagnostics, without making either count a validity predicate.
+    const bool terrain_submitted = std::any_of(mTerrainPools.begin(), mTerrainPools.end(),
+        [](const auto& entry)
+        {
+            return entry.second && entry.second->isFacePool() &&
+                !static_cast<LLFacePool*>(entry.second)->mDrawFace.empty();
+        });
+    surface_submissions = caster_batches > 0 || terrain_submitted ? 1U : 0U;
+    return true;
+}
+
+void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
+{
+    const auto& weather = ALWeatherBridge::Controller::instance();
+    const auto& s = weather.settings();
+    if (!s.enabled || !s.advancedShelter || gCubeSnapshot) return;
+    if (mWeatherShelter.preparedFrame == gFrameCount) return;
+    mWeatherShelter.preparedFrame = gFrameCount;
+    if (!sRenderDeferred || !mWeatherShelter.prepared()) return;
+    const bool needs_vertical = weather.surfacesActive() ||
+        (weather.precipitationActive() && ALWeatherParticles::supported());
+    if (needs_vertical && !mWeatherSurfaces.readyForFrame(gFrameCount))
+    {
+        if (!mWeatherSurfaces.allocated())
+        {
+            mWeatherShelter.fail("Advanced shelter unknown: vertical cover failed; existing fallback");
+            return;
+        }
+    }
+    const LLVector3d eye = gAgent.getPosGlobalFromAgent(camera.getOrigin());
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (!eye.isFinite() || !origin.isFinite())
+    {
+        mWeatherShelter.fail("Advanced shelter unknown: non-finite camera/origin");
+        return;
+    }
+    static LLCachedControl<F32> wind_scale_setting(gSavedSettings, "AlchemyWeatherWindScale", 1.f);
+    const bool snow_shelter = weather.active() && s.snowEnabled && s.precipType == 1;
+    const auto effective_wind = ALWeatherShelter::effectiveWind(
+        weather.state().windMean[0], weather.state().windMean[1], snow_shelter ? 1.f : wind_scale_setting());
+    auto shear = ALWeatherShelter::fallShear(effective_wind[0], effective_wind[1],
+        snow_shelter ? s.snowSpeed : s.shelterFallSpeed, s.shelterTilt);
+    // Stable angular/world lattices prevent tiny camera and mean-wind jitter
+    // from replacing both complete maps on every update.
+    for (auto& value : shear) value = std::floor(value*64.f + .5f)/64.f;
+    const std::array<F64, 3> world_eye{std::floor(eye.mdV[0]/32.)*32.,
+        std::floor(eye.mdV[1]/32.)*32., std::floor(eye.mdV[2]/32.)*32.};
+    const std::array<F64, 3> world_origin{origin.mdV[0], origin.mdV[1], origin.mdV[2]};
+    const ALWeatherShelter::Plan plans[] = {
+        ALWeatherShelter::plan(world_eye, s.shelterNearExtent, s.shelterNearResolution, shear),
+        ALWeatherShelter::plan(world_eye, s.shelterFarExtent, s.shelterFarResolution, shear)};
+    for (const auto& plan : plans)
+    {
+        if (!std::all_of(plan.center.begin(), plan.center.end(), [](F64 value) { return std::isfinite(value); }))
+        {
+            mWeatherShelter.fail("Advanced shelter unknown: invalid world-cell transform");
+            return;
+        }
+    }
+    if (mWeatherShelter.layers[0].failed() || mWeatherShelter.layers[1].failed())
+        mWeatherShelter.updates.invalidate();
+    // Basic and both tilted maps share one caster job per display frame.
+    // Reserve every third frame for basic cover when it has a consumer.
+    for (U32 job = 0; job < 1 && mWeatherCoverWorkFrame != gFrameCount &&
+         (!needs_vertical || gFrameCount%3 != 0); ++job)
+    {
+        if (!mWeatherShelter.updates.schedule(plans[0], plans[1], weather.placeSerial(), world_origin,
+            LLPresentationTime::currentFrame().presentation_time, s.shelterHz)) break;
+        ALWeatherResources::State saved_state;
+        const U32 layer = mWeatherShelter.updates.selectedLayer();
+        const auto& p = mWeatherShelter.updates.selectedPlan();
+        const auto tile = mWeatherShelter.updates.tile();
+        auto& map = mWeatherShelter.layers[layer];
+        map.mPreparedFrame = gFrameCount;
+        map.beginTile(p);
+        const F64 top = p.center[2] + p.vertical;
+        LLVector3 top_origin(F32(p.center[0] - p.shear[0]*top - origin.mdV[0]),
+                             F32(p.center[1] - p.shear[1]*top - origin.mdV[1]), F32(top - origin.mdV[2]));
+        glm::mat4 view(1.f);
+        view[2][0] = p.shear[0]; view[2][1] = p.shear[1];
+        view[3][0] = F32(origin.mdV[0] + p.shear[0]*origin.mdV[2] - p.center[0]);
+        view[3][1] = F32(origin.mdV[1] + p.shear[1]*origin.mdV[2] - p.center[1]);
+        view[3][2] = -top_origin.mV[VZ];
+        const F32 clip_start = 0.1f, clip_end = clip_start + 2.f*p.vertical;
+        const glm::mat4 projection = glm::ortho(-p.extent, p.extent, -p.extent, p.extent, clip_start, clip_end);
+        U32 batches = 0;
+        const auto draw_layer = [&]()
+        {
+            return drawWeatherCover(camera, map.writeTarget(), view, projection, top_origin, clip_start, clip_end, batches, tile, &map);
+        };
+        bool drawn = false;
+        if (layer == 0) { LL_PROFILE_GPU_ZONE("weather close map"); drawn = draw_layer(); }
+        else { LL_PROFILE_GPU_ZONE("weather distant map"); drawn = draw_layer(); }
+        if (!drawn)
+        {
+            map.fail(ALWeatherShelter::Coverage::FAILED);
+            mWeatherShelter.fail("Advanced shelter traversal failed; coverage unknown, existing fallback");
+            return;
+        }
+        mWeatherCoverWorkFrame = gFrameCount;
+        mWeatherShelter.updates.noteWork(map.mRefreshChunks);
+        if (map.mRefreshComplete)
+        {
+            mWeatherShelter.updates.complete();
+            const bool replacement_complete = mWeatherShelter.updates.layerComplete();
+            map.commitTile(tile, replacement_complete);
+            if (replacement_complete)
+            {
+                map.setBounds(p, glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]));
+                map.publish(projection * view, 2.f*p.vertical, batches, true,
+                    glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), weather.placeSerial());
+            }
+        }
+        map.refreshStatus(mWeatherShelter.updates);
+    }
+    for (auto& map : mWeatherShelter.layers) if (map.ready()) map.reuseForFrame(gFrameCount);
+    // Raster -> sampler ordering is guaranteed by GL command order after both
+    // write FBOs are unbound. No shader/image writer or listener readback exists.
+#if !LL_DARWIN
+    glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+#endif
+    mWeatherShelter.publish(gFrameCount);
+}
+
+void LLPipeline::bindWeatherMaterial(LLGLSLShader* shader)
+{
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (sRenderingHUDs || sShadowRender || !sRenderDeferred)
+    {
+        shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_ENABLED, 0);
+        return;
+    }
+    mWeatherSurfaces.bind(shader, glm::inverse(get_current_modelview()),
+        glm::dvec3(origin.mdV[0], origin.mdV[1], origin.mdV[2]), gFrameCount);
+    shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_EXCLUDED, 0);
 }
 
 void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,

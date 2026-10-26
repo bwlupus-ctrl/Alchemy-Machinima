@@ -31,6 +31,16 @@ public:
 
     // Shared with the Director weather kit page (llfloaterdirector.cpp bindWeatherPage).
     static void strikeLightningNow();
+    static void initializeLibraryWeather(); // settings notifications, including inactive status
+    static void updateLibraryWeather(); // idle, before any view; no draw-time work
+    static void applyLibraryPreset(U32 preset);
+    static void stopPrecipitation();
+    static void applyStartingSurfaces();
+    static void clearSurfaces();
+    static const std::string& surfaceStatus();
+    static const std::string& particleStatus();
+    static const std::string& libraryStatus();
+    static boost::signals2::signal<void()>& libraryChanged();
     static void confirmResetAll();
     static const std::vector<std::string>& trackedSettings();
     static std::vector<std::string> presetNames();

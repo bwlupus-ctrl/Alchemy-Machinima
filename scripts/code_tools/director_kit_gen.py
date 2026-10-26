@@ -324,8 +324,12 @@ def validate_data(data: dict) -> None:
     # Shaft engine selector (10/24): one row, 2207 -> 2208.
     # Merged into main after rim normals (10/24): 2214 + 7 shaft rows -> 2221.
     # ISO sensor WP-C: +23 rows (10 Sensor + 13 Custom sensor); 2221 -> 2244.
-    if len(pages) != 38 or row_count != 2244:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2244")
+    # WP1 weather port (10/25): +20 rows (14 settings, preset/apply/stop/status, two colours); 2214 -> 2234.
+    # WP2: ten surface settings, Apply/Clear commands and coverage status (+13).
+    # WP3: nine settings plus status; WP7: ten settings plus status (2257 -> 2268).
+    # Weather merged onto main (10/26): 2244 + 54 weather rows -> 2298.
+    if len(pages) != 38 or row_count != 2298:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2298")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

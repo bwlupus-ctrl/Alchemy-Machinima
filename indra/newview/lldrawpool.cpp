@@ -975,6 +975,11 @@ bool LLRenderPass::uploadActorFx(const LLDrawInfo& params, bool force_native)
             result = upload_actor_fx_style(owner, style, false);
         }
     }
+    if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr; shader && shader->mFeatures.hasWeatherMaterial)
+    {
+        shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_EXCLUDED,
+            params.mAttachedToAvatar || params.mAvatar.notNull() || params.mFullbright || params.mHasGlow);
+    }
     // [AvatarLightResponse] uploaded LAST (null owners => identity reset).
     uploadAvatarLightResponse(params.mActorFxOwner, params.mActorFxFallbackOwner);
     return result;

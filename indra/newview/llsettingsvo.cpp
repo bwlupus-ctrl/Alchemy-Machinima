@@ -915,22 +915,17 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
 
     F32 g = getGamma();
 
-    static LLCachedControl<bool> hdr(gSavedSettings, "RenderHDREnabled");
     static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
     static LLCachedControl<F32> auto_adjust_ambient_scale(gSavedSettings, "RenderSkyAutoAdjustAmbientScale", 0.75f);
     static LLCachedControl<F32> auto_adjust_hdr_scale(gSavedSettings, "RenderSkyAutoAdjustHDRScale", 2.f);
     static LLCachedControl<F32> auto_adjust_blue_horizon_scale(gSavedSettings, "RenderSkyAutoAdjustBlueHorizonScale", 1.f);
     static LLCachedControl<F32> auto_adjust_blue_density_scale(gSavedSettings, "RenderSkyAutoAdjustBlueDensityScale", 1.f);
     static LLCachedControl<F32> auto_adjust_sun_color_scale(gSavedSettings, "RenderSkyAutoAdjustSunColorScale", 1.f);
-    // [EnvIntensity] fallbacks aligned with settings.xml (all 1.0; the old 1.5
-    // fallbacks were unreachable but misleading).
-    static LLCachedControl<F32> sunlight_scale(gSavedSettings, "RenderSkySunlightScale", 1.0f);
-    static LLCachedControl<F32> sunlight_hdr_scale(gSavedSettings, "RenderHDRSkySunlightScale", 1.0f);
-    static LLCachedControl<F32> ambient_scale(gSavedSettings, "RenderSkyAmbientScale", 1.0f);
     static LLCachedControl<F32> tonemap_mix_setting(gSavedSettings, "RenderTonemapMix", 1.f);
 
     // sky is a "classic" sky following pre SL 7.0 shading
-    bool classic_mode = psky->canAutoAdjust() && !should_auto_adjust();
+    const auto lighting = illumination(*psky);
+    bool classic_mode = lighting.classic;
 
     if (!classic_mode)
     {
@@ -962,14 +957,10 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
     //    sunlit (sun OR moon) meets the matching EV / tint.
     // exp2f(0) == 1.0 exactly and the tints are exactly (1,1,1) at their
     // defaults, so 0 EV / no tint is bit-identical to stock.
-    const bool env_legacy_gamma = (psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f);
-    const ALEnvIntensity::Factors env = ALEnvIntensity::compute(classic_mode,
-                                                                env_legacy_gamma,
-                                                                ALEnvIntensity::isSamplingCapture(),
-                                                                getIsSunUp());
+    const auto& env = lighting.factors;
 
-    shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, hdr ? sunlight_hdr_scale : sunlight_scale); // compat only (stock)
-    shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, ambient_scale);                                // compat only (stock)
+    shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, lighting.sunlightScale); // compat only (stock)
+    shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, lighting.ambientScale);   // compat only (stock)
     shader->uniform1f(LLShaderMgr::SKY_SUN_EV_SCALE, env.mSunMul);                                   // [EnvIntensity v2] sun or moon
     shader->uniform1f(LLShaderMgr::SKY_GI_SCALE, env.mDiffMul);                                      // [EnvIntensity v2] probe diffuse
     shader->uniform1f(LLShaderMgr::SKY_AMB_SCALE, env.mAmbMul);                                      // [EnvIntensity v2] sky ambient
@@ -1028,6 +1019,30 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
     shader->uniform1f(LLShaderMgr::DISTANCE_MULTIPLIER, getDistanceMultiplier());
 
     shader->uniform1f(LLShaderMgr::GAMMA, g);
+}
+
+LLSettingsVOSky::Illumination LLSettingsVOSky::illumination(const LLSettingsSky& sky)
+{
+    static LLCachedControl<bool> hdr(gSavedSettings, "RenderHDREnabled", true);
+    static LLCachedControl<bool> adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
+    static LLCachedControl<F32> sunlight(gSavedSettings, "RenderSkySunlightScale", 1.f);
+    static LLCachedControl<F32> sunlight_hdr(gSavedSettings, "RenderHDRSkySunlightScale", 1.f);
+    static LLCachedControl<F32> ambient(gSavedSettings, "RenderSkyAmbientScale", 1.f);
+    Illumination result;
+    result.classic = sky.canAutoAdjust() && !adjust();
+    result.sunlightScale = hdr() ? sunlight_hdr() : sunlight();
+    result.ambientScale = ambient();
+    result.factors = ALEnvIntensity::compute(result.classic,
+        sky.getReflectionProbeAmbiance(adjust()) == 0.f, ALEnvIntensity::isSamplingCapture(), sky.getIsSunUp());
+    result.ambient = linearColor3(sky.getTotalAmbient());
+    result.direct = sky.getIsSunUp() ? linearColor3(sky.getSunDiffuse()) :
+        sky.getIsMoonUp() ? linearColor3(sky.getMoonDiffuse()) : LLColor3::black;
+    for (U32 channel = 0; channel < 3; ++channel)
+    {
+        result.ambient.mV[channel] *= result.ambientScale * result.factors.mAmbMul * result.factors.mAmbTint.mV[channel];
+        result.direct.mV[channel] *= result.sunlightScale * result.factors.mSunMul * result.factors.mSunTint.mV[channel];
+    }
+    return result;
 }
 
 const LLSettingsSky::parammapping_t& LLSettingsVOSky::getParameterMap() const

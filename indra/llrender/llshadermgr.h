@@ -51,6 +51,13 @@ public:
         PROJECTION_MATRIX,                  //  "projection_matrix"
         INVERSE_PROJECTION_MATRIX,          //  "inv_proj"
         MODELVIEW_PROJECTION_MATRIX,        //  "modelview_projection_matrix"
+        WEATHER_MATERIAL_ENABLED, // "weather_material_enabled"
+        WEATHER_MATERIAL_EXCLUDED, // "weather_material_excluded"
+        WEATHER_SURFACE_COVER_MATRIX, // "weather_surface_cover_matrix"
+        WEATHER_MATERIAL_VIEW_TO_AGENT, // "weather_material_view_to_agent"
+        WEATHER_MATERIAL_ORIGIN, // "weather_material_origin"
+        WEATHER_MATERIAL_WET, // "weather_material_wet"
+        WEATHER_MATERIAL_TIME_RANGE, // "weather_material_time_range"
         INVERSE_MODELVIEW_MATRIX,           //  "inv_modelview"
         IDENTITY_MATRIX,                    //  "identity_matrix"
         NORMAL_MATRIX,                      //  "normal_matrix"
@@ -953,6 +960,13 @@ public:
         AREA_SHADOW_SOURCE,
         RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off
         AREA_WORLD_ATLAS,                  // P1-lite world cube shadow atlas (D32F, compare mode none)
+        WEATHER_SURFACE_COVER_MAP,         // "weather_surface_cover_map"; after all existing samplers
+        WEATHER_SHELTER_CLOSE_MAP,
+        WEATHER_SHELTER_DISTANT_MAP,
+        WEATHER_SURFACE_COVER_MIN_MAP,
+        WEATHER_SHELTER_CLOSE_MIN_MAP,
+        WEATHER_SHELTER_DISTANT_MIN_MAP,
+        WEATHER_VEIL_MAP,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on
@@ -968,11 +982,20 @@ public:
     bool    linkProgramObject(GLuint obj, bool suppress_errors = false);
     bool    validateProgramObject(GLuint obj);
     GLuint loadShaderFile(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines = NULL, S32 texture_index_channels = -1);
+    static bool computeShadersSupported();
+    // Shader teardown accompanies GL-context teardown/reload.
+    inline static U32 sContextGeneration = 0;
+    static S32 shaderLanguageVersion(GLenum stage);
+    void clearShaderObjects();
+    bool ownsShaderObject(GLuint object) const;
 
     // Implemented in the application to actually point to the shader directory.
     virtual std::string getShaderDirPrefix(void) = 0; // Pure Virtual
 
     // Implemented in the application to actually update out of date uniforms for a particular shader
+    void prepareWeatherFeatures(LLGLSLShader* shader);
+    virtual bool weatherMaterialsEnabled() const { return false; }
+    virtual void updateWeatherUniforms(LLGLSLShader* shader) {} // Per-view material bindings, no simulation.
     virtual void updateShaderUniforms(LLGLSLShader * shader) = 0; // Pure Virtual
 
     void initShaderCache(bool enabled, const LLUUID& old_cache_version, const LLUUID& current_cache_version, bool second_instance);
@@ -986,6 +1009,9 @@ public:
     // Map of shader names to compiled
     std::map<std::string, GLuint> mVertexShaderObjects;
     std::map<std::string, GLuint> mFragmentShaderObjects;
+    // Owns compiled objects. The filename maps above are aliases for preloaded
+    // graphics feature modules, not a permutation cache.
+    std::map<std::string, GLuint> mShaderObjects;
 
     //global (reserved slot) shader parameters
     std::vector<std::string> mReservedAttribs;

@@ -48,6 +48,9 @@
 #include "alcinehaze.h"                // Atmosphere > Depth Haze reset and reference height
 #include "allenslooks.h"               // Lens > Filters infrared and soft-edge preset actions
 #include "alpanelweathersettings.h"    // World > Weather strike and reset-all
+#include "alweatheruimodel.h"
+#include "alweatherparticles.h"
+#include "llviewershadermgr.h"
 #include "alprojectorshaftlooks.h"
 #include "alprojectorshaftpresets.h"   // Atmosphere projector-shaft presets
 #include <boost/signals2.hpp>
@@ -2367,6 +2370,75 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
                 director->refreshWorldLensReadouts("world_group/weather_tab");
             }
         }));
+    mWorldLensConnections.emplace_back(ALPanelWeatherSettings::libraryChanged().connect(
+        [handle]()
+        {
+            if (LLFloaterDirector* director = handle.get()) director->refreshWorldLensReadouts("world_group/weather_tab");
+        }));
+    if (LLLineEditor* seed = root->findChild<LLLineEditor>("weather_library_seed"))
+    {
+        seed->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+        seed->setCommitCallback([](LLUICtrl* control, const LLSD&)
+        {
+            U32 value = 0;
+            if (ALWeatherUIModel::parseSeed(control->getValue().asString(), value))
+                gSavedSettings.setU32("AlchemyWeatherSeed", value);
+            control->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+        });
+        const auto seed_handle = seed->getDerivedHandle<LLLineEditor>();
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyWeatherSeed", [seed_handle](const LLSD&, const LLSD&)
+            {
+                if (LLLineEditor* editor = seed_handle.get())
+                {
+                    editor->setValue(std::to_string(gSavedSettings.getU32("AlchemyWeatherSeed")));
+                    ALKitRow::notifyValueChanged(editor);
+                }
+            }));
+    }
+    if (LLComboBox* preset = root->findChild<LLComboBox>("weather_library_preset"))
+    {
+        const LLHandle<LLComboBox> preset_handle = preset->getDerivedHandle<LLComboBox>();
+        auto sync_preset = [preset_handle]()
+        {
+            if (LLComboBox* combo = preset_handle.get())
+            {
+                const U32 type = gSavedSettings.getU32("AlchemyWeatherPrecipType");
+                const F32 rate = gSavedSettings.getF32(type == 1 ? "AlchemyWeatherSnowRate" : "AlchemyWeatherRainRate");
+                U32 selected = 4; // Custom after a direct rate edit.
+                for (U32 index = type == 1 ? 5 : 0; type != 2 && index < (type == 1 ? 9U : 4U); ++index)
+                    if (rate == ALWeatherUIModel::presetRate(index)) selected = index;
+                combo->setValue(static_cast<S32>(selected));
+                ALKitRow::notifyValueChanged(combo);
+            }
+        };
+        sync_preset();
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyWeatherRainRate", [sync_preset](const LLSD&, const LLSD&) { sync_preset(); }));
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyWeatherSnowRate", [sync_preset](const LLSD&, const LLSD&) { sync_preset(); }));
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyWeatherPrecipType", [sync_preset](const LLSD&, const LLSD&) { sync_preset(); }));
+        if (LLButton* apply = root->findChild<LLButton>("weather_library_apply"))
+        {
+            apply->setCommitCallback([preset_handle](LLUICtrl*, const LLSD&)
+            {
+                if (LLComboBox* combo = preset_handle.get()) ALPanelWeatherSettings::applyLibraryPreset(combo->getValue().asInteger());
+            });
+        }
+    }
+    if (LLButton* apply = root->findChild<LLButton>("weather_surface_apply"))
+    {
+        apply->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::applyStartingSurfaces(); });
+    }
+    if (LLButton* clear = root->findChild<LLButton>("weather_surface_clear"))
+    {
+        clear->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::clearSurfaces(); });
+    }
+    if (LLButton* stop = root->findChild<LLButton>("weather_library_stop"))
+    {
+        stop->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::stopPrecipitation(); });
+    }
     if (LLButton* trigger = root->findChild<LLButton>("weather_trigger"))
     {
         trigger->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::strikeLightningNow(); });
@@ -2375,6 +2447,66 @@ void LLFloaterDirector::bindWeatherPage(LLView* root)
     {
         reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::confirmResetAll(); });
     }
+    // Resolve once. Prerequisite changes update weak widget handles; draw() does no work.
+    std::vector<std::pair<LLHandle<LLUICtrl>, U32>> surfaces;
+    const std::pair<const char*, U32> surface_widgets[] = {
+        {"weather_surface_persistentWet", 0}, {"weather_surface_puddles", 1},
+        {"weather_surface_wetAmount", 1}, {"weather_surface_puddleAmount", 2},
+        {"weather_surface_rippleStrength", 2}, {"weather_surface_wetSeconds", 1},
+        {"weather_surface_drySeconds", 1}, {"weather_surface_startWetness", 1},
+        {"weather_surface_coverResolution", 1}, {"weather_surface_coverExtent", 1},
+        {"weather_surface_apply", 1}, {"weather_surface_clear", 1}
+    };
+    for (const auto& entry : surface_widgets)
+    {
+        if (LLUICtrl* control = root->findChild<LLUICtrl>(entry.first))
+            surfaces.emplace_back(control->getDerivedHandle<LLUICtrl>(), entry.second);
+    }
+    auto update_surfaces = [surfaces]()
+    {
+        const bool supported = LLPipeline::sRenderDeferred && LLViewerShaderMgr::instance()->weatherMaterialsSupported();
+        const bool wet = supported && gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled");
+        const bool puddles = wet && gSavedSettings.getBOOL("AlchemyWeatherPuddlesEnabled");
+        for (const auto& entry : surfaces)
+        {
+            if (LLUICtrl* control = entry.first.get())
+                control->setEnabled(entry.second == 0 ? supported : (entry.second == 1 ? wet : puddles));
+        }
+    };
+    update_surfaces();
+    for (const char* setting : {"RenderDeferred", "RenderTerrainPBRDetail",
+                              "AlchemyWeatherPersistentWetEnabled", "AlchemyWeatherPuddlesEnabled"})
+    {
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            setting, [update_surfaces](const LLSD&, const LLSD&) { update_surfaces(); }));
+    }
+    std::vector<std::pair<LLHandle<LLUICtrl>, U32>> snow;
+    const std::pair<const char*, U32> snow_widgets[] = {
+        {"weather_snow_snowEnabled", 0}, {"weather_snow_precipType", 0},
+        {"weather_snow_snowRate", 0}, {"weather_snow_flakeSize", 1},
+        {"weather_snow_snowSpeed", 1}, {"weather_snow_snowRange", 1},
+        {"weather_snow_snowLimit", 1}, {"weather_snow_visibility", 0},
+        {"weather_snow_visibilityAmount", 2}
+    };
+    for (const auto& entry : snow_widgets)
+        if (LLUICtrl* control = root->findChild<LLUICtrl>(entry.first))
+            snow.emplace_back(control->getDerivedHandle<LLUICtrl>(), entry.second);
+    auto update_snow = [snow]()
+    {
+        const bool supported = LLPipeline::sRenderDeferred && ALWeatherParticles::supported() && gPipeline.mWeatherParticles.available();
+        for (const auto& entry : snow)
+        {
+            if (LLUICtrl* control = entry.first.get())
+                control->setEnabled(supported && (entry.second == 0 ||
+                    (entry.second == 1 ? gSavedSettings.getBOOL("AlchemyWeatherSnowEnabled") :
+                                        gSavedSettings.getBOOL("AlchemyWeatherPrecipVisibilityEnabled"))));
+        }
+    };
+    update_snow();
+    mWorldLensConnections.emplace_back(ALPanelWeatherSettings::libraryChanged().connect(update_snow));
+    for (const char* setting : {"RenderDeferred", "AlchemyWeatherSnowEnabled", "AlchemyWeatherPrecipVisibilityEnabled"})
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            setting, [update_snow](const LLSD&, const LLSD&) { update_snow(); }));
 }
 
 // Atmosphere > Depth Haze (generated kit page). The From-camera and Reset-all buttons call the same
@@ -2397,6 +2529,26 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
 {
     if (page == "world_group/weather_tab")
     {
+        if (LLTextBox* snow = findChild<LLTextBox>("weather_snow_status"))
+        {
+            const std::string status = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
+                (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers" :
+                ALPanelWeatherSettings::particleStatus());
+            setTextIfChanged(snow, status);
+        }
+        if (LLTextBox* shelter = findChild<LLTextBox>("weather_shelter_status"))
+        {
+            static LLCachedControl<bool> advanced(gSavedSettings, "AlchemyWeatherAdvancedShelterEnabled", false);
+            setTextIfChanged(shelter, advanced() ? ALPanelWeatherSettings::surfaceStatus() : "Advanced shelter off");
+        }
+        if (LLTextBox* coverage = findChild<LLTextBox>("weather_surface_status"))
+        {
+            setTextIfChanged(coverage, ALPanelWeatherSettings::surfaceStatus());
+        }
+        if (LLTextBox* status = findChild<LLTextBox>("weather_library_status"))
+        {
+            setTextIfChanged(status, ALPanelWeatherSettings::libraryStatus());
+        }
         if (LLTextBox* note = findChild<LLTextBox>("weather_deferred_note"))
         {
             setTextIfChanged(note, "Weather requires Advanced Lighting Model (deferred rendering).");
@@ -3708,6 +3860,106 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     // mode can be applied AFTER its named preset (the preset apply path
     // writes the mode too, and the scene's own mode must win)
     static const std::vector<std::string> settings = {
+        // Weather creative intent, including the values of a named weather look.
+        // Debug visualizers/legacy strike seed and transient commands stay session-local.
+        "AlchemyWeatherEnabled",
+        "AlchemyWeatherControlMode",
+        "AlchemyWeatherLocalEnabled",
+        "AlchemyWeatherRainRate",
+        "AlchemyWeatherSnowEnabled",
+        "AlchemyWeatherPrecipType",
+        "AlchemyWeatherSnowRate",
+        "AlchemyWeatherSnowFlakeSize",
+        "AlchemyWeatherSnowFallSpeed",
+        "AlchemyWeatherSnowRange",
+        "AlchemyWeatherSnowParticleLimit",
+        "AlchemyWeatherPrecipVisibilityEnabled",
+        "AlchemyWeatherPrecipVisibilityAmount",
+        "AlchemyWeatherPrecipVariation",
+        "AlchemyWeatherWindSource",
+        "AlchemyWeatherWindDirection",
+        "AlchemyWeatherWindSpeed",
+        "AlchemyWeatherWindVariation",
+        "AlchemyWeatherWindGustiness",
+        "AlchemyWeatherWindDirVariation",
+        "AlchemyWeatherTransitionSeconds",
+        "AlchemyWeatherSeed",
+        "AlchemyWeatherStorm",
+        "AlchemyWeatherLightningTiming",
+        "AlchemyWeatherRainEnabled",
+        "AlchemyWeatherRainIntensity",
+        "AlchemyWeatherRainDensity",
+        "AlchemyWeatherRainFallSpeed",
+        "AlchemyWeatherRainMaxDistance",
+        "AlchemyWeatherRainSamples",
+        "AlchemyWeatherRainResolutionDivisor",
+        "AlchemyWeatherRainLayers",
+        "AlchemyWeatherRainVirtualShutter",
+        "AlchemyWeatherRainNearEmphasis",
+        "AlchemyWeatherRainGustStrength",
+        "AlchemyWeatherShelterFade",
+        "AlchemyWeatherShelterHeight",
+        "AlchemyWeatherRainOcclusion",
+        "AlchemyWeatherRainOcclusionResolution",
+        "AlchemyWeatherRainOcclusionExtent",
+        "AlchemyWeatherRainOcclusionBias",
+        "AlchemyWeatherRainOcclusionSoftness",
+        "AlchemyWeatherWindScale",
+        "AlchemyWeatherRainColor",
+        "AlchemyWeatherSplashEnabled",
+        "AlchemyWeatherSplashDensity",
+        "AlchemyWeatherSplashRingSize",
+        "AlchemyWeatherSplashLifetime",
+        "AlchemyWeatherSplashUpThreshold",
+        "AlchemyWeatherSplashMaxDistance",
+        "AlchemyWeatherPersistentWetEnabled",
+        "AlchemyWeatherPuddlesEnabled",
+        "AlchemyWeatherWetAmount",
+        "AlchemyWeatherPuddleAmount",
+        "AlchemyWeatherRippleStrength",
+        "AlchemyWeatherWetSeconds",
+        "AlchemyWeatherDrySeconds",
+        "AlchemyWeatherStartWetness",
+        "AlchemyWeatherAdvancedShelterEnabled",
+        "AlchemyWeatherShelterNearResolution",
+        "AlchemyWeatherShelterFarResolution",
+        "AlchemyWeatherShelterNearExtent",
+        "AlchemyWeatherShelterFarExtent",
+        "AlchemyWeatherShelterTiltEnabled",
+        "AlchemyWeatherShelterUpdateHz",
+        "AlchemyWeatherShelterBias",
+        "AlchemyWeatherShelterSoftness",
+        "AlchemyWeatherSurfaceCoverResolution",
+        "AlchemyWeatherSurfaceCoverExtent",
+        "AlchemyWeatherWetnessEnabled",
+        "AlchemyWeatherWetnessStrength",
+        "AlchemyWeatherMistEnabled",
+        "AlchemyWeatherMistStrength",
+        "AlchemyWeatherMistHeight",
+        "AlchemyWeatherLensDropsEnabled",
+        "AlchemyWeatherLensDropsStrength",
+        "AlchemyWeatherEEPCoupling",
+        "AlchemyWeatherLightningEnabled",
+        "AlchemyWeatherLightningRate",
+        "AlchemyWeatherLightningFlashDuration",
+        "AlchemyWeatherLightningBoltDuration",
+        "AlchemyWeatherLightningMinDistance",
+        "AlchemyWeatherLightningMaxDistance",
+        "AlchemyWeatherLightningBoltHeight",
+        "AlchemyWeatherLightningBoltWidth",
+        "AlchemyWeatherLightningBrightness",
+        "AlchemyWeatherLightningAmbient",
+        "AlchemyWeatherLightningColor",
+        "AlchemyWeatherLightningQualityEnabled",
+        "AlchemyWeatherLightningQualityTier",
+        "AlchemyWeatherLightningSheetEnabled",
+        "AlchemyWeatherLightningSheetStrength",
+        "AlchemyWeatherLightningCoronaStrength",
+        "AlchemyWeatherLightningWetGlintEnabled",
+        "AlchemyWeatherLightningWetGlintStrength",
+        "AlchemyWeatherLightningDistanceGrading",
+        "AlchemyWeatherLightningAfterglowStrength",
+        "AlchemyWeatherLightningEnergyCeiling",
         // Sensor look, including the complete Custom calibration. Debug gates stay session-local.
         "CineSensorEnabled", "CineSensorISO", "CineSensorPreset", "CineSensorBrightnessMode",
         "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",

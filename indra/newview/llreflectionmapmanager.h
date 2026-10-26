@@ -27,6 +27,7 @@
 #pragma once
 
 #include "alcineliveproberefresh.h" // [LiveProbeRefresh]
+#include "alweathershelter.h"
 #include "alprobedirty.h"           // [ProbeOnDemand]
 #include "alprobeschedule.h"        // [ProbeOnDemand]
 #include "llreflectionmap.h"
@@ -359,6 +360,8 @@ private:
     // [ProbeManualRate] frame counter for RenderProbeUpdateEveryNFrames (only
     // advanced while N > 1; an ordinary-probe tick is counter % N == 0)
     U32 mOrdThrottleCounter = 0;
+    ALWeatherShelter::ProbeRevision mWeatherProbeRevision;
+    ALWeatherShelter::ProbeRevision mWeatherCinematicRevision;
     // [ProbeManualRate] start op of a pass a Manual burst began after ending one
     U64 mCineContStartOp = 0;
 

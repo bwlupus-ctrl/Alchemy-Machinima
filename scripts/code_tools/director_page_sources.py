@@ -110,7 +110,8 @@ PAGE_OWNER_CLASSES = {
     "tron_tab": {"ALFloaterLightBox"},
     "actor_style_tab": {"LLFloaterDirector"},
     "stepped_tab": {"ALPanelSteppedAnim", "LLFloaterDirector"},
-    "weather_tab": {"ALPanelWeatherSettings"},
+    # WP1: generated local-weather commands/status live in the Director adapter.
+    "weather_tab": {"ALPanelWeatherSettings", "LLFloaterDirector"},
     "atmosphere_tab": {"ALPanelAtmosphericVolumes", "ALFloaterLightBox"},
     "projector_shafts_tab": {"ALPanelProjectorShafts", "ALFloaterLightBox"},
     "shadows_probes_tab": {"ALFloaterLightBox"},
@@ -127,6 +128,8 @@ WIDGET_NAME_OVERRIDES = {
 # Keep these explicit: a global same-name XUI lookup is not allowed to invent
 # the relationship.
 SETTING_OVERRIDES = {
+    # U32 seed has a validated text callback, avoiding float-spinner precision loss.
+    ("weather_tab", "weather_library_seed"): "AlchemyWeatherSeed",
     ("props_tab", "end_mode_combo"): "ActorMoverEndMode",
     ("ghosts_tab", "scale_spinner"): "TemporalWorldScale",
 }
@@ -144,7 +147,7 @@ KIT_ACTION_OVERRIDES = {
 
 def model_binding_override(page: str, widget: str) -> dict | None:
     def binding(file_name: str, line: int, class_name: str, function: str, pattern: str | None = None) -> dict:
-        if class_name in ("ALPanelGhostStudio", "LLPipeline"):
+        if class_name in ("ALPanelGhostStudio", "LLPipeline", "ALPanelWeatherSettings"):
             source = (ROOT / file_name).read_text(encoding="utf-8")
             match = re.search(r"(?m)^.*\b" + re.escape(class_name + "::" + function) + r"\s*\(", source)
             if match is None:
@@ -156,6 +159,19 @@ def model_binding_override(page: str, widget: str) -> dict | None:
             "pattern": pattern, "wiring_only": False, "text": "explicit scoped model binding",
         }
 
+    if page == "weather_tab" and widget in {
+        "weather_library_preset", "weather_library_apply", "weather_library_stop",
+        "weather_surface_apply", "weather_surface_clear"
+    }:
+        command = {"weather_library_stop": "stopPrecipitation", "weather_surface_apply": "applyStartingSurfaces",
+                   "weather_surface_clear": "clearSurfaces"}.get(widget, "applyLibraryPreset")
+        source = (ROOT / "indra/newview/llfloaterdirector.cpp").read_text(encoding="utf-8")
+        if f"ALPanelWeatherSettings::{command}(" not in source:
+            raise RuntimeError(f"missing Director weather callback consumer: {widget}")
+        hit = binding("indra/newview/alpanelweathersettings.cpp", 0, "ALPanelWeatherSettings", command)
+        hit.update(wired_class="LLFloaterDirector", wired_function="bindWeatherPage",
+                   text="WP1 native weather command; the preset selector is consumed when Apply is pressed")
+        return hit
     if page == "path_tab" and widget == "copy_to_combo":
         return binding("indra/newview/alpanelpatheditor.cpp", 1536, "ALPanelPathEditor", "refreshCopyCombo")
     if page == "move_tab" and widget == "group_run_combo":

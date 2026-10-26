@@ -1872,6 +1872,7 @@ struct PendingFileBrowse
 
 struct PrismInstance : LLPrismLens::SourceSlotData
 {
+    mutable ALWeatherShelter::Exposure mWeatherExposure;
     bool mOccupied = false;
     LLPointer<LLViewerMediaTexture> mMediaTexture;
     LLMediaFrame::Identity mMediaIdentity;
@@ -3836,6 +3837,7 @@ public:
         {
             gPipeline.releasePrismLensOutput(slot);
             PrismInstance& lens = mLenses[slot];
+            lens.mWeatherExposure.reset();
             if (lens.mediaUrlData()) stopPrivate(slot);
             lens.mHasOutput = false;
             if (lens.isGate()) LLPrismLens::gateOutputReleased(lens.mGateState);
@@ -3874,6 +3876,7 @@ public:
         bool changed = false;
         for (PrismInstance& capture : mLenses)
         {
+            capture.mWeatherExposure.reset();
             if (!capture.mOccupied)
             {
                 continue;
@@ -8730,6 +8733,7 @@ private:
         // retained. Capture-local removal may release only its retained output.
         PrismInstance& capture = mLenses[slot];
         capture.mHasOutput = false;
+        capture.mWeatherExposure.reset();
         if (capture.isGate()) LLPrismLens::gateOutputReleased(capture.mGateState);
         capture.mOutputWidth = 0;
         capture.mOutputHeight = 0;
@@ -11251,6 +11255,17 @@ void renderAuxiliaryView()
             if (!LLPipeline::sPrismPreviewRender)
             {
                 gPipeline.renderProjectorVolumetric(&rt.screen, /*aux_direct=*/true);
+            }
+
+            // Library rain/lightning and WP3 snow/visibility: same frozen frame,
+            // auxiliary depth/matrices and a world-cell list around THIS eye.
+            // The enclosing auxiliary state transaction restores all main GL/target state.
+            // Direct rain drawing avoids sharing the main half-resolution scratch target;
+            // Legacy maps/history remain main-owned. Advanced shelter samples
+            // the frozen world maps in both library and explicit legacy mode.
+            if (!LLPipeline::sPrismPreviewRender)
+            {
+                gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true, &capture->mWeatherExposure);
             }
 
             // renderDeferredLighting() flushes the scratch HDR screen. Copy the

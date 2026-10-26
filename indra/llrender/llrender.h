@@ -224,6 +224,7 @@ public:
     static U32 getInternalType(eTextureType type);
 
     U32 getCurrTexture(void) { return mCurrTexture; }
+    bool hasMipMaps() const { return mHasMipMaps; }
 
     eTextureType getCurrType(void) { return mCurrTexType; }
 
@@ -475,6 +476,11 @@ public:
     // applies separate blend functions to color and alpha
     void blendFunc(eBlendFactor color_sfactor, eBlendFactor color_dfactor,
                eBlendFactor alpha_sfactor, eBlendFactor alpha_dfactor);
+    void getBlendFunc(eBlendFactor& cs, eBlendFactor& cd, eBlendFactor& as, eBlendFactor& ad) const
+    {
+        cs = mCurrBlendColorSFactor; cd = mCurrBlendColorDFactor;
+        as = mCurrBlendAlphaSFactor; ad = mCurrBlendAlphaDFactor;
+    }
 
     // ---- indexed draw-buffer guard --------------------------------------
     // A GLOBAL glColorMask/glBlendFunc resets the per-attachment (indexed)
