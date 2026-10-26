@@ -1332,6 +1332,10 @@ def main():
         motion = reach_motion_checks(r,raster,out)
         rows.extend(motion)
         for row in motion: print('[world-gl]',row,flush=True)
+        import relight_world_motion_check as world_motion
+        rows.extend(world_motion.checks(r, raster))
+        import relight_world_avatar_check as world_avatar
+        rows.extend(world_avatar.checks(r, raster, out/'avatar'))
         rows.extend(contracts)
         result = dict(renderer=r.gl.renderer, rows=rows, diagnostics=diagnostics, passed=all(x['passed'] for x in rows))
         (out / 'results.json').write_text(json.dumps(result, indent=2))

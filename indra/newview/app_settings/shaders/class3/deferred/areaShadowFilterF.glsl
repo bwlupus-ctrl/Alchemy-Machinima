@@ -131,6 +131,10 @@ vec4 areaWeight(vec2 uv, float reach, out float ns_q, out float geo_q)
 // grows so a distant plane keeps its geometry, offset and early rejection.
 float aw_plane_valid = 1.0;
 float aw_depth_support = 0.0;
+// Planar confidence for angular precision, independent of depth refinement.
+// Exact constant-depth stencils certify their normal without requesting the
+// costly fractional-depth refinement used by nonconstant planes.
+float aw_precision_support = 0.0;
 uniform mat4 inv_proj;
 uniform vec4 area_world_depth; // inverse-projection depth denominator: high a,b; low a,b
 vec3 awPosition(vec2 uv, float depth)
@@ -228,6 +232,9 @@ float awTangent(ivec2 pixel, ivec2 size, ivec2 axis, int radius,
 }
 vec4 awGeoStencil(ivec2 pixel, ivec2 size, int radius, float footprint, float uncertainty)
 {
+    // Every return, including a degenerate cross product, owns fresh support.
+    aw_depth_support = 0.0;
+    aw_precision_support = 0.0;
     vec2 step_uv = 1.0/vec2(size);
     // Reuse the filter's constant-depth footprint, scaled to full resolution.
     // |dz/dd| times two D24 units includes storage and inverse-projection
@@ -246,6 +253,7 @@ vec4 awGeoStencil(ivec2 pixel, ivec2 size, int radius, float footprint, float un
     // isolated receiver surrounded by one background never qualifies.
     if (uncertainty <= 0.02*footprint && all(equal(vec4(dl,dr,dd,du),vec4(aw_centre_depth))))
     {
+        aw_precision_support = 1.0;
         return vec4(0,0,1,1);
     }
     vec3 l = dl < 1.0 && lo.x != pixel.x ? area_p-awPosition(ul,dl) : vec3(0,0,1.e9);
@@ -270,6 +278,7 @@ vec4 awGeoStencil(ivec2 pixel, ivec2 size, int radius, float footprint, float un
     float planar = 1.0-smoothstep(0.01*footprint+2.0*uncertainty,0.05*footprint+2.0*uncertainty,plane_residual);
     float support_weight = valid*planar*float(all(lessThan(vec4(dl,dr,dd,du),vec4(1.0))));
     aw_depth_support = support_weight;
+    aw_precision_support = support_weight;
     // Project primary-depth uncertainty onto the geometric plane separately
     // from the fixed shadow bias and normal-offset cap. Retain the plane and
     // its validity at distance; compensate only precision beyond 0.1 mm.
@@ -313,6 +322,7 @@ vec3 awGeoNormal(vec2 uv)
         if (all(equal(depth,vec4(aw_centre_depth))))
         {
             aw_plane_valid = 1.0;
+            aw_precision_support = 1.0;
             return vec3(0,0,1);
         }
     }
@@ -326,11 +336,13 @@ vec3 awGeoNormal(vec2 uv)
         float weight = smoothstep(float(r/2),float(r),radius);
         if (weight <= 0.0) break;
         float previous_support = aw_depth_support;
+        float previous_precision = aw_precision_support;
         vec4 coarse = awGeoStencil(pixel,size,r,footprint,uncertainty);
         float angular_noise = min(4.0*uncertainty/max(footprint*float(r/2),1.e-9),0.2);
         float agreement = 1.0-smoothstep(0.1+angular_noise,0.3+angular_noise,length(geometry.xyz-coarse.xyz));
         coarse.w *= mix(1.0,agreement,geometry.w);
         aw_depth_support = mix(previous_support,aw_depth_support,weight*coarse.w);
+        aw_precision_support = mix(previous_precision,aw_precision_support,weight*coarse.w);
         geometry.xyz = normalize(mix(geometry.xyz,coarse.xyz,weight*coarse.w));
         geometry.w = mix(geometry.w,max(geometry.w,coarse.w),weight);
     }
@@ -398,15 +410,23 @@ vec2 awPrecision(float nl, float footprint)
     {
         vec2 size = vec2(textureSize(depthMap,0));
         float pixel_angle = 2.0*min(abs(inv_proj[0][0])/size.x,abs(inv_proj[1][1])/size.y);
-        // D24 also bounds the direction error of a finite difference. Apply
-        // that uncertainty over the light's actual support, in the compare.
-        float angular_error = 2.0*fraction/max(pixel_angle,1.e-9);
+        // An unresolved stencil needs the conservative D24 angular interval.
+        // A certified plane already supplies its normal: reapplying a worst
+        // one-pixel error over the whole light footprint grows with camera
+        // depth and can erase every tap of a fixed foreground blocker at once.
+        // Keep the positional interval below even on a certified plane.
+        float angular_error = (1.0-aw_precision_support)*2.0*fraction/max(pixel_angle,1.e-9);
         float incidence = max(abs(nl),0.05);
         float plane_error = fraction*abs(dot(area_n_geo,area_p))/incidence;
         // Forward rejection cannot consume a precision interval wider than a
         // retained contact. Larger uncertainty belongs only to the self-plane
         // comparison; it must never hide a real foreground slab.
-        return vec2(plane_error+angular_error*footprint/incidence,min(plane_error,AW_NORMAL_CAP));
+        // Bound angular compensation to the existing five-centimetre receiver
+        // budget, including on curved/uncertified surfaces. Multiplying an
+        // uncertain normal by an entire rig-source footprint must not erase
+        // a separate caster. Keep positional uncertainty uncapped here: it
+        // accounts for actual distant D24 error, not footprint growth.
+        return vec2(plane_error+min(angular_error*footprint/incidence,AW_NORMAL_CAP),min(plane_error,AW_NORMAL_CAP));
     }
     return vec2(0.0);
 }
@@ -419,6 +439,8 @@ float awBackfaceWeight(float nl, float distance, float source_radius)
     if (nl >= -source) return 1.0;
     vec2 size = vec2(textureSize(depthMap,0));
     float pixel_angle = 2.0*min(abs(inv_proj[0][0])/size.x,abs(inv_proj[1][1])/size.y);
+    // Unweighted on purpose: a certified plane can still carry D24 normal
+    // jitter here, and narrowing this band flips grazing dollies 0 <-> 1.
     float reconstruction = 2.0*awDepthFraction()/max(pixel_angle,1.e-9);
     // Once a retained contact is smaller than the primary-depth interval,
     // a thin receiver and its background can share identical D24 values.
