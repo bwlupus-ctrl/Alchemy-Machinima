@@ -144,8 +144,8 @@ struct LLTextureEntry {Color color;int id=0;Color getColor()const{return color;}
 struct Texture {bool hasGLTexture(){return true;}bool getMask(LLVector2){return true;}};
 struct LLFace {LLTextureEntry entry;Texture texture;const LLTextureEntry* getTextureEntry(){return &entry;}
  Texture* getTexture(){return &texture;}LLVector2 surfaceToTexture(LLVector2 a,LLVector4a,LLVector4a){return a;}};
-struct LLDrawable {enum {RIGGED};LLFace faces[2];int count=1;bool isDead(){return false;}
- int getRenderType(){return 0;}bool isState(int){return false;}int getNumFaces(){return count;}
+struct LLDrawable {enum {RIGGED=1,FORCE_INVISIBLE=2};LLFace faces[2];int count=1,state=0;bool isDead(){return false;}
+ int getRenderType(){return 0;}bool isState(int flag){return (state&flag)!=0;}int getNumFaces(){return count;}
  LLFace* getFace(int i){return &faces[i];}};
 struct Pipeline {bool hasRenderType(int){return true;}}gPipeline;
 struct LLVolume {int count=1;int getNumVolumeFaces(){return count;}
@@ -171,6 +171,22 @@ struct LLVOVolume {bool mbCanSelect=true,beacon=false,script=false;int click=0;
         code += function(volume, 'bool LLVOVolume::lineSegmentIntersect(')
         code += r'''
 int main(){using namespace ALWeatherShelter;
+ // An opaque cine-rig emitter four metres above an outdoor camera is
+ // pickable in either state, but only its visible state may shelter rain.
+ for(bool invisible:{false,true}){
+  LLVOVolume emitter;emitter.drawable.state=invisible?LLDrawable::FORCE_INVISIBLE:0;
+  assert(emitter.drawable.faces[0].entry.color.mV[3]==1);
+  LLVector4a camera,sky,hit;sky.v[2]=16;int face=-1;
+  auto cast=[&](){return emitter.lineSegmentIntersect(camera,sky,-1,false,false,true,&face,&hit,nullptr,nullptr,nullptr);};
+  assert(!VisibleSurfaceRay::active());
+  assert(cast() && face==0 && hit.v[2]>camera.v[2]);
+  {VisibleSurfaceRay ray;
+   const bool sheltered=cast();
+   assert(sheltered==!invisible && "FORCE_INVISIBLE opaque emitter must leave outdoor rain visible");
+   if(sheltered)assert(face==0 && hit.v[2]>camera.v[2]);}
+  assert(!VisibleSurfaceRay::active());
+  assert(cast() && face==0 && hit.v[2]>camera.v[2]);
+ }
  for(bool beacon:{false,true})for(bool script:{false,true}){
   LLVOVolume object;object.beacon=beacon;object.script=script;
   LLVector4a start,end,hit;int face=-1;

@@ -4957,8 +4957,11 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
                                       LLVector4a* intersection,LLVector2* tex_coord, LLVector4a* normal, LLVector4a* tangent)
 
 {
+    // Shelter rays count only visible surfaces: client-only FORCE_INVISIBLE helpers
+    // (rig emitters, catchlight, live probe, manipulator proxies) never shelter rain.
     if ((!mbCanSelect && !ALWeatherShelter::VisibleSurfaceRay::active())
         || mDrawable->isDead()
+        || (ALWeatherShelter::VisibleSurfaceRay::active() && mDrawable->isState(LLDrawable::FORCE_INVISIBLE))
         || !gPipeline.hasRenderType(mDrawable->getRenderType()))
     {
         return false;
