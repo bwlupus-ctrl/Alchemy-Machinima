@@ -439,8 +439,8 @@ float awBackfaceWeight(float nl, float distance, float source_radius)
     if (nl >= -source) return 1.0;
     vec2 size = vec2(textureSize(depthMap,0));
     float pixel_angle = 2.0*min(abs(inv_proj[0][0])/size.x,abs(inv_proj[1][1])/size.y);
-    // Match the compare interval: certified planes need no angular error.
-    // Bound the remaining angular cone to 0.05 radians.
+    // Unweighted on purpose: a certified plane can still carry D24 normal
+    // jitter here, and narrowing this band flips grazing dollies 0 <-> 1.
     float reconstruction = 2.0*awDepthFraction()/max(pixel_angle,1.e-9);
     // Once a retained contact is smaller than the primary-depth interval,
     // a thin receiver and its background can share identical D24 values.
