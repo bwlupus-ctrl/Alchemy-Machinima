@@ -1,7 +1,11 @@
 # S-Log3 capture: colour stage (saturation matrix, highlight path-to-white, soft shoulder, camera gamut) — design brief
 
 **Date:** 2026-10-26
-**Status:** DESIGN ONLY. Nothing implemented, nothing built, **not yet adversarially reviewed**.
+**Status:** DESIGN ONLY. Nothing implemented, nothing built.
+**Review:** round 1 (independent Opus) found 2 must-fix, 5 should-fix and 4 nits. All were applied in
+rev 2. Claude re-verified the shoulder failure and the replacement numerically in float32. The rev-2
+edits aren't re-reviewed; the code review must attack §3 [B] and [D] and §4 first. The disposition is
+in the Appendix.
 **Process (per `CLAUDE.md`):** Opus adversarial review of this brief, then Codex implements (`--write`,
 `--prompt-file`), Opus reviews the code, loop to 0 must-fix, Claude builds once, the user tests.
 Codex never builds.
@@ -74,8 +78,11 @@ max(c,0) → EV → [A] saturation (Rec.709, luma-preserving, gamut-safe)
 - **Gamut-safe for `s > 1`:**
   - `s_max = min over channels with c_i < Y of  Y / (Y − c_i)` — the largest `s` that keeps every
     channel ≥ 0. If no channel is below Y, `s_max = ∞`.
-  - `s_eff = softKnee(s, s_max)`, easing into the limit, so already-saturated colours stop boosting
-    smoothly while muted colours get the full boost.
+  - `s_eff = 1 + (s_max − 1)·(1 − exp(−(s − 1)/(s_max − 1)))` for `s > 1`. It equals 1 at `s = 1` with
+    slope 1 (continuous with the `s ≤ 1` branch), never exceeds `s_max`, and tends to `s` as
+    `s_max → ∞`. If `s_max − 1 < 1e-4`, use `s_eff = s_max`. In float32 it can reach `s_max` exactly;
+    that gives a channel of exactly 0, never negative. Already-saturated colours stop boosting smoothly
+    while muted colours get the full boost.
   - Below `s = 1` it's always safe; skip the limiter.
 - Guard `Y ≤ 0` (black): leave `c` unchanged.
 
@@ -84,16 +91,31 @@ max(c,0) → EV → [A] saturation (Rec.709, luma-preserving, gamut-safe)
 As a colour gets bright, blend it toward its own luminance. Hot reds go orange-pink, then white, like a
 real sensor.
 
-- **Key on the hottest channel, not on Y.** A pure red at R = 35 has Y ≈ 7.4, which looks "moderate",
-  while its red channel is about to clip. `m = max(c.r, c.g, c.b)`.
+- **Key on the hottest channel of the ENCODED gamut, not on Y.** A pure red at R = 35 has Y ≈ 7.4, which
+  looks "moderate", while its red channel is about to clip. Clipping happens in the gamut that's
+  encoded, so `m = max(M·c)`, where `M` is the [C] matrix (identity for Rec.709). With a wide gamut, a
+  Rec.709 key would fire about 0.6 stops early (pure red (35, 0, 0) is (22.6, 3.06, 1.29) in
+  S-Gamut3.Cine). The mix itself stays in Rec.709.
 - `t = clamp((log2(m / 0.18) − knee_ev) / range_ev, 0, 1)`, then `w = strength · t²·(3 − 2t)`
   (smoothstep).
-- `c = mix(c, vec3(Y), w)`. **Luminance is preserved** (mixing toward Y keeps Y).
-- **Defaults when enabled:** `knee_ev = +3` (8× mid-grey), `range_ev = 3` (fully neutral by 64× unless
-  strength < 1), `strength = 1`.
-- **Worked check against the measured frame:** R = 35 gives `log2(35/0.18) ≈ 7.6`. So t = 1 and the pixel
-  goes fully neutral at strength 1. At strength 0.6 it becomes about (18.6, 4.8, 4.8): R/G falls from about
-  85 to about 3.9, with Y unchanged at about 7.76.
+- **Neutral target (a stated decision):** `N = Y + target·(m_709 − Y)`, where `m_709` is the Rec.709 max
+  channel, then `c = mix(c, vec3(N), w)`.
+  - `target = 0` is constant luminance: a hot red becomes a **grey** at its own Y. That's not what a
+    sensor does, and it makes the max channel **non-monotonic** at strength > 0.6 (a brighter input
+    gives a dimmer output; reviewer-proven, confirmed numerically: a 0.34% drop at strength 1).
+  - `target = 1` is a neutral at the max-channel level, like a sensor clipping to white: luminance
+    rises.
+  - **Default `target = 0.5`**: halfway. Claude's float32 sweep (hues: red, near-red, blue, orange,
+    green, violet; 0.05–200 linear; strengths 0.6, 0.8, 1.0) found the max channel **monotonic for
+    every target ≥ 0.5 at every strength tested.** `target` is clamped to [0.5, 1].
+- No channel goes negative (a convex mix of non-negative values). [D] handles any brightness the
+  target adds.
+- **Defaults when enabled:** `knee_ev = +3` (8× mid-grey), `range_ev = 3`, `target = 0.5`,
+  `strength = 1`.
+- **Worked check against the measured frame** (Rec.709 gamut; `log2(35/0.18) ≈ 7.6`, so t = 1):
+  - strength 0.6: (35, 0.4, 0.4) → about **(26.8, 13.0, 13.0)**. R/G falls from about 85 to about 2.1; Y
+    rises from 7.76 to 15.9;
+  - strength 1: fully neutral at about 21.4.
 
 ### [C] Camera gamut (optional)
 
@@ -107,6 +129,8 @@ A 3×3 from Rec.709 to the selected gamut. **D65 white for all, no chromatic ada
 | ARRI Wide Gamut 3 | LogC3 | R 0.6840, 0.3130 · G 0.2210, 0.8480 · B 0.0861, −0.1020 |
 
 - Cineon has no defined gamut: force Rec.709 when Cineon is selected.
+- Offer S-Gamut3.Cine **only with S-Log3**. No Sony camera pairs S-Log2 with S-Gamut3.Cine, so S-Log2
+  gets Rec.709 or S-Gamut3.
 - **Build the matrix on the CPU from the primaries, with a pure function** (standard RGB→XYZ from
   primaries and white, then `M = XYZ→target · Rec709→XYZ`). **Never hand-type matrix coefficients.**
   The primaries above are from memory; Codex must check them against Sony's S-Gamut3 / S-Gamut3.Cine
@@ -114,19 +138,37 @@ A 3×3 from Rec.709 to the selected gamut. **D65 white for all, no chromatic ada
 - Rec.709 sits inside all three wide gamuts, so non-negative input stays non-negative. The conversion
   is lossless; it adds no colour (the renderer works in Rec.709).
 - **Cost to state:** a wider gamut packs the same colours into fewer code values. An 8-bit recording may
-  band slightly more in saturated gradients; 10-bit capture is unaffected.
+  band slightly more in saturated gradients. The post target is `GL_RGB10_A2` (`pipeline.cpp:1341`), but
+  the window backbuffer and recorder bit depth aren't established, so whether a given capture is 10-bit
+  is **inference**.
 
 ### [D] Soft shoulder
 
 The goal is to stop channels hitting the code ceiling, without hue shifts.
 
-- `C` = the curve's linear ceiling (inverse OETF of code 1.0), computed on the CPU per curve (S-Log3 ≈
-  38.4). `C_eff = C − 0.18·toe`, because toe is added afterwards.
-- `m = max(c.r, c.g, c.b)` (in the encoded gamut). With start `S = C_eff · start_frac` (default 0.25,
-  i.e. 2 stops below the ceiling):
-  - if `m > S`: `m' = S + (C_eff − S)·(1 − exp(−(m − S)/(C_eff − S)))` and `c *= m'/m`.
-- **Ratio-preserving scale**, so hue holds. It's continuous with slope 1 at `S`, and `m'` approaches
-  `C_eff` but never reaches it.
+- **Ceilings** (inverse OETF of code 1.0, from the shader's own formulas; reviewer-computed): S-Log3
+  **38.421**, S-Log2 **13.758**, LogC3 EI800 **55.080**, Cineon **13.522**. The legal range maps code
+  after the clamp, so it doesn't change these.
+- **Target, not ceiling:** `T = OETF⁻¹(0.98) − 0.18·toe` (S-Log3: 32.085 at toe 0). Aiming at the
+  ceiling itself fails on the GPU: an exponential approach underflows in float32 and lands **exactly on
+  the ceiling** (code 255) for inputs around 200× and above. The measured 35–38× is a clip value, so
+  the true scene values can be far higher.
+- `m = max(c.r, c.g, c.b)` in the encoded gamut. Start `S = T · start_frac` (default 0.25).
+- If `m > S`: `x = (m − S)/(T − S)`, `m' = S + (T − S)·x/(1 + x)`, and `c *= m'/m`.
+  - **Rational, not exponential:** slope 1 at `S`, asymptote `T`, and a heavy tail that spreads
+    highlights across codes instead of packing everything above about 50× into the top few codes.
+  - Float32 check (Claude, S-Log3, start 0.25):
+
+    | Input m | Code /255 |
+    |---|---|
+    | 35 | 237.6 |
+    | 100 | 245.1 |
+    | 500 | 248.9 |
+    | 1e4 | 249.8 |
+    | 1e8 | 249.9 |
+
+    It never reaches 255.
+- **Ratio-preserving scale**, so hue holds. Since `m' ≤ T < C_eff`, no channel reaches the code ceiling.
 - **Interaction with B:** B removes most of the chroma that makes D necessary; D is the safety net for
   anything still hot (neutral highlights included).
 
@@ -135,16 +177,31 @@ The goal is to stop channels hitting the code ceiling, without hue shifts.
 ## 4. Plumbing
 
 - **New reserved uniforms**, appended **in lockstep** to the `llshadermgr.h` enum and the
-  `mReservedUniforms.push_back` list (precedent `llshadermgr.cpp:1677-1680`; the startup assert
-  catches a mismatch):
-  - `slog_color_params` (vec4): `.x` = s, `.y` = knee_ev, `.z` = range_ev, `.w` = strength;
-  - `slog_shoulder_params` (vec4): `.x` = S, `.y` = C_eff, `.z` = shoulder enable (0/1), `.w` = stage
-    enable (0/1);
+  `mReservedUniforms.push_back` list (precedent `llshadermgr.cpp:1675-1682`). **The lockstep check at
+  `llshadermgr.cpp:2146` is an `llassert`, which compiles out in Release** (`llerror.h:50-76`), so
+  verify the enum and the name list **by counting** (`CLAUDE.md` rule 6), or build RelWithDebInfo
+  once:
+  - `slog_color_params` (vec4): `.x` = **s − 1**, `.y` = knee_ev, `.z` = range_ev, `.w` = strength;
+  - `slog_shoulder_params` (vec4): `.x` = S, `.y` = T (the target, §3 [D]), `.z` = shoulder enable (0/1),
+    `.w` = stage enable (0/1);
+  - `slog_highlight_target` (float): the path-to-white target, clamped to [0.5, 1]. It's a fourth
+    reserved uniform, because the vec4s are full;
   - `slog_gamut_mat` (mat3), identity for Rec.709.
-- Declare them in `tonemapUtilF.glsl` beside `tonemap_params` (`:144`). Upload them in
-  `LLPipeline::colorCorrect` case 8 (`pipeline.cpp:12797`), **only when the stage is enabled**.
+- Declare them in `tonemapUtilF.glsl` beside `tonemap_params` (`:144`). Upload **all three, every
+  frame**, in `LLPipeline::colorCorrect` case 8 (`pipeline.cpp:12797`), with the enable flag carrying
+  the off state.
+  - `colorCorrect` picks one of four persistent program objects (`pipeline.cpp:12209-12216`), and each
+    keeps its uniforms between frames. "Upload only when enabled" would leave a stale `enable = 1` in a
+    program after the user turns the stage off, or after `RenderColorGrade` switches variants.
+- **Zero means identity:** encode saturation as `s − 1` in `.x`, so a zero-initialised or partly
+  uploaded block is identity, never `s = 0` (monochrome). Strength 0, shoulder off and enable 0 are also
+  identity at zero.
 - **Stage enable** = `s ≠ 1 || strength > 0 || shoulder on || gamut ≠ Rec.709`. When it's off, the
   shader takes the exact existing path.
+- `TONEMAP_PARAMS` is uploaded only in `colorCorrect`, and `applyToneMap` is called only from
+  `colorCorrectF` (water links `tonemapUtilF` but never calls the encoder), so there are no other
+  upload sites (reviewer-verified).
+- `uniformMatrix3fv(U32 index, …)` exists for the mat3 (`llglslshader.h:262`).
 
 ### Settings (`settings_alchemy.xml`, beside `:1298-1341`)
 
@@ -154,10 +211,11 @@ The goal is to stop channels hitting the code ceiling, without hue shifts.
 | `AlchemyToneMapSLogHighlightDesat` | F32 (strength) | 0.0 | 0–1 |
 | `AlchemyToneMapSLogHighlightKnee` | F32 (EV over mid-grey) | 3.0 | 0–8 |
 | `AlchemyToneMapSLogHighlightRange` | F32 (EV) | 3.0 | 0.5–6 |
+| `AlchemyToneMapSLogHighlightTarget` | F32 | 0.5 | 0.5–1 (0.5 = halfway, 1 = sensor white) |
 | `AlchemyToneMapSLogShoulder` | Boolean | false | — |
 | `AlchemyToneMapSLogShoulderStart` | F32 (fraction of ceiling) | 0.25 | 0.05–0.9 |
 | `AlchemyToneMapSLogGamut` | S32 | 0 | 0 Rec.709, 1 S-Gamut3.Cine, 2 S-Gamut3, 3 ARRI WG3 |
-| `AlchemyToneMapSLogZebra` | Boolean | false | — (§6) |
+| `AlchemyToneMapSLogZebra` | Boolean, **non-persistent** (starts off every launch) | false | — (§6) |
 
 ### UI (Lightbox S-Log section, below the EV row)
 
@@ -202,9 +260,22 @@ settings per gamut:
 of `C_eff`** (pixels that are clipping or would clip without the shoulder). This tells the user,
 before recording, exactly where the measured problem is.
 
-- It **renders into the backbuffer**, so in log mode **it would be recorded**. It must therefore switch
-  off automatically when the UI is hidden or Capture mode is armed. Log `[SLogColor] zebra suppressed
-  (capture)` when that happens.
+- It **renders into the backbuffer**, so in log mode **it would be recorded**. Rules:
+  - **Draw it in the final blit, not in `colorCorrect`.** `colorCorrect` runs before SMAA/FXAA/CAS
+    (`pipeline.cpp:21927`), which would soften the stripes. Feed the blit a pre-[D] "would clip" mask
+    from `colorCorrect`.
+  - **Main view only.** `renderFinalize` runs once per view (`altron.cpp:729`), and the GLTF material
+    preview calls `colorCorrect` with tonemapping on (`llgltfmaterialpreviewmgr.cpp:563`). So snapshots,
+    VCam/Prism feeds, auxiliary views and previews never get stripes.
+  - **Suppression signal:** use Capture mode's **raw armed state**, not
+    `LLViewerTexture::isCaptureModeActive()`. That accessor returns false under critical memory even when
+    Capture is pinned (`llviewertexture.cpp:513-519`), which would bring the stripes back mid-take. Also
+    suppress when the UI is hidden. The auto-arm signals can each be switched off (commit `0eaf483`), so
+    don't rely on them alone.
+  - **Non-persistent setting:** it starts off at every launch.
+  - Screen recorders often capture with the UI visible (inference), so the floater shows a red
+    "ZEBRA ON — will be recorded" warning while it's on.
+  - Log `[SLogColor] zebra suppressed (capture)` when it's suppressed.
 - Log a verdict line on any setting change: `[SLogColor] curve S-Log3, ceiling 38.42, C_eff …, shoulder
   start …, gamut …, stage ON/OFF`.
 
@@ -217,15 +288,25 @@ before recording, exactly where the measured problem is.
 - **Saturation:** `s = 1` is identity exactly; luminance is preserved for random colours and `s` in
   [0, 1.5]; `s = 0` gives `(Y, Y, Y)`; with the limiter, no channel goes below 0 for `s` up to 1.5 on
   fully saturated primaries.
-- **Path-to-white:** strength 0 is identity; luminance is preserved; with the defaults, `(35, 0.4, 0.4)`
-  goes fully neutral at strength 1; at strength 0.6, R/G for the same pixel lands within 3.7–4.1 (expected ≈ 3.88). Keying
-  on max-channel: a pure red with Y below the knee but R above it still desaturates.
+- **Saturation knee:** `s_eff(1) = 1`; slope 1 at 1; `s_eff ≤ s_max` in float32 up to `s = 1.5`.
+- **Path-to-white:**
+  - strength 0 is identity;
+  - with `target = 0.5`, defaults and the Rec.709 gamut, `(35, 0.4, 0.4)` at strength 0.6 gives
+    ≈ (26.83, 12.99, 12.99), within 1e-2. At strength 1 it gives a neutral ≈ 21.38;
+  - **monotonic:** the max channel is non-decreasing along geometric ramps (0.05–200) for the six hues
+    above, at target 0.5 and strengths 0.6, 0.8, 1.0 (float32). The test must FAIL with `target = 0`
+    and strength 1;
+  - the key uses the encoded-gamut max: with S-Gamut3.Cine, a pure red's knee fires later than with
+    Rec.709.
 - **Gamut:** the matrix from primaries maps D65 white `(1, 1, 1)` → `(1, 1, 1)` within 1e-5; Rec.709
   primaries map to non-negative triples; for Rec.709 → Rec.709 the matrix is identity; the inverse
   round-trips within 1e-5.
-- **Shoulder:** continuous and slope 1 at `S`; output is strictly below `C_eff` for any finite input;
-  hue (channel ratios) is preserved exactly; the ceiling per curve equals the inverse OETF of code 1.0
-  (S-Log3 ≈ 38.42).
+- **Shoulder:**
+  - continuous and slope 1 at `S`;
+  - **in float32**, output is ≤ `T` and the encoded code is ≤ 0.98 for m up to 1e8 (S-Log3: code
+    ≤ 249.9/255);
+  - hue (channel ratios) is preserved exactly;
+  - ceilings match: S-Log3 38.421, S-Log2 13.758, LogC3 55.080, Cineon 13.522 (±1e-3).
 
 **In-world, outcomes stated in advance** — reproduce the user's mirror/bathroom shot (red light near an
 avatar):
@@ -234,9 +315,10 @@ avatar):
    252–255.
 2. **Zebra on:** stripes appear on the left avatar's torso, legs and neon strip (the measured hot
    regions). Zebra off when Capture is armed: no stripes in the recording.
-3. **Shoulder on:** no channel reads above about 250 / 255 on those regions; hue unchanged.
-4. **Path-to-white 0.6:** the hottest reds read orange-pink; decoded R/G drops from about 85 to about 4;
-   brightness of grey and skin areas unchanged.
+3. **Shoulder on:** no channel reads above 250 / 255 anywhere (it's mathematically capped at code
+   0.98); hue unchanged.
+4. **Path-to-white 0.6 (target 0.5):** the hottest reds read pink-white rather than neon red; decoded R/G
+   on them drops from about 85 to about 2; grey and skin areas below the knee are unchanged.
 5. **Saturation 0.85:** overall chroma down; luminance (decoded Y) unchanged on a grey card.
 6. **Gamut S-Gamut3.Cine:** in Resolve, CST *S-Gamut3.Cine / S-Log3 → Rec.709* matches the Rec.709-gamut
    version of the same frame (CST *Rec.709 / S-Log3 → Rec.709*) within grading tolerance on a colour
@@ -252,3 +334,20 @@ avatar):
 - **D3 — Per-hue control** (Sony-style colour depth): deferred. Saturation plus path-to-white cover the
   measured case.
 - **D4 — Zebra threshold:** 90% of `C_eff`, fixed. A user-set threshold is deferred.
+- **D5 — Path-to-white target:** 0.5 (halfway between constant luminance and sensor white). 1.0 is
+  available for a harder "clips to white" camera look.
+
+---
+
+## Appendix — review round 1 disposition (applied in rev 2)
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | "Upload only when enabled" leaves a stale enable in persistent program objects | Upload every frame; zero-means-identity encoding (§4) |
+| M2 | The exponential shoulder hits the ceiling exactly in float32 (code 255 from about 200×) | Rational shoulder aimed at code 0.98; float32 test to 1e8 (§3 [D], §7) |
+| S1 | Constant-luminance path-to-white is non-monotonic at strength > 0.6 and goes grey, not white | Neutral target `Y + target·(m − Y)`, default 0.5, clamped ≥ 0.5; monotonic sweep test (§3 [B]) |
+| S2 | Key on the Rec.709 max, while clipping happens in the encoded gamut | Key on `max(M·c)` (§3 [B]) |
+| S3 | `softKnee` undefined | Defined, with properties and tests (§3 [A]) |
+| S4 | Zebra suppression leaky (memory-masked accessor, per-view `renderFinalize`, GLTF preview) | Raw armed state, main view only, non-persistent, on-screen warning (§6) |
+| S5 | The lockstep `llassert` compiles out in Release | Verify by counting (§4) |
+| N1–N4 | Zebra before AA; 10-bit unproven; S-Log2 + S-Gamut3.Cine unusual; line refs | Final-blit zebra; labelled inference; S-Gamut3.Cine only with S-Log3; refs fixed |
