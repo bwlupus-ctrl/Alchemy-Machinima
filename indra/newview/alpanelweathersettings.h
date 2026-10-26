@@ -40,6 +40,8 @@ public:
     static const std::string& surfaceStatus();
     static const std::string& particleStatus();
     static const std::string& libraryStatus();
+    static std::string requirements();
+    static void sanitizeLightningDistances();
     static boost::signals2::signal<void()>& libraryChanged();
     static void confirmResetAll();
     static const std::vector<std::string>& trackedSettings();
@@ -73,6 +75,7 @@ private:
     LLPanel* mControlsPanel = nullptr;
     LLTextBox* mDeferredNote = nullptr;
     LLButton* mTriggerButton = nullptr;
+    std::vector<boost::signals2::scoped_connection> mDistanceConnections;
 };
 
 #endif // AL_ALPANELWEATHERSETTINGS_H

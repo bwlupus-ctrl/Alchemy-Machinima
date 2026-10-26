@@ -34,10 +34,12 @@ def source(tree, out, mutation=None, particles=False):
         reader = reader.replace('s.wetAmount = c_wetAmount();', 's.wetAmount = 0.5f;')
     reader = reader.replace('{', '{\n        ++reads;', 1)
     update = function(panel, 'void ALPanelWeatherSettings::updateLibraryWeather()')
+    preset = function(panel, 'void ALPanelWeatherSettings::applyLibraryPreset(')
     initialization = ''
     initialize_call = ''
     if 'void ALPanelWeatherSettings::initializeLibraryWeather()' in panel:
         initialization = (function(panel, 'const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()') +
+                          (function(panel, 'void ALPanelWeatherSettings::sanitizeLightningDistances()') if 'void ALPanelWeatherSettings::sanitizeLightningDistances()' in panel else '') +
                           function(panel, 'void refreshInactiveLibraryWeather()') +
                           function(panel, 'void ALPanelWeatherSettings::initializeLibraryWeather()'))
         initialize_call = '\n'.join(line for line in function(
@@ -65,7 +67,10 @@ struct Settings {
  std::map<std::string,LLControlVariable> controls;
  LLControlVariable* getControl(const std::string& n){auto& c=controls[n];c.listeners=&listeners[n];return &c;}
  U32 getU32(const std::string& n){return static_cast<U32>(values[n]);}
+ void setU32(const std::string& n,U32 v){values[n]=v;}
  bool getBOOL(const std::string& n){return values[n]!=0;}
+ float getF32(const std::string& n){return float(values[n]);}
+ void setF32(const std::string& n,float v){if(values[n]==v)return;values[n]=v;for(auto& f:listeners[n])f();}
  void setBOOL(const std::string& n,bool v){values[n]=v;}
 } gSavedSettings;
 void setting_setup_signal_listener(Settings& settings,const std::string& name,std::function<void()> callback){
@@ -105,6 +110,8 @@ struct ALWeatherParticles {static bool supported(){PARTICLE_SUPPORTED}};
 struct Signal {void operator()(){++notifications;}};
 struct ALPanelWeatherSettings {static void updateLibraryWeather();static void initializeLibraryWeather();
  static const std::vector<std::string>& trackedSettings();
+ static void sanitizeLightningDistances();
+ static void applyLibraryPreset(U32);
  static Signal& libraryChanged(){static Signal s;return s;}};
 '''
     from weather_compute_fixture import declaration
@@ -152,7 +159,10 @@ extern "C" __declspec(dllexport) const char* fixture_weather_status(){
 extern "C" __declspec(dllexport) void fixture_weather_load(const char* key,double value){
  WeatherPreparationFixture::gSavedSettings.values[key]=value;
 }
+extern "C" __declspec(dllexport) void fixture_weather_preset(int preset){
+ using namespace WeatherPreparationFixture;initialize();ALPanelWeatherSettings::applyLibraryPreset(U32(preset));
+}
 '''.replace('IDLE_BLOCK', idle).replace('INITIALIZE_CALL', initialize_call)
     path = Path(out) / 'preparation.cpp'
-    path.write_text(prefix + reader + initialization + update + suffix, encoding='utf-8')
+    path.write_text(prefix + reader + initialization + preset + update + suffix, encoding='utf-8')
     return path

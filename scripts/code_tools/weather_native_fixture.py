@@ -83,8 +83,10 @@ struct LLGLSLShader;
 struct LLShaderMgr {
  std::vector<std::string> mReservedUniforms;
  bool enabled=true;
+ bool supported=true;
  static LLShaderMgr* instance(){static LLShaderMgr s;return &s;}
  bool weatherMaterialsEnabled(){return enabled;}
+ bool weatherMaterialsSupported(){return supported;}
  void prepareWeatherFeatures(LLGLSLShader*);
 };
 struct LLGLSLShader {
@@ -119,6 +121,7 @@ extern "C" __declspec(dllexport) int feature(const char* file,int enabled,int ex
  LLShaderMgr::instance()->prepareWeatherFeatures(&s);
  return s.mFeatures.hasWeatherMaterial && s.mDefines.count("HAS_WEATHER_MATERIAL");
 }
+extern "C" __declspec(dllexport) void capability(int supported){LLShaderMgr::instance()->supported=supported!=0;}
 '''
     if parts:
         return prefix, methods, entries, reserved

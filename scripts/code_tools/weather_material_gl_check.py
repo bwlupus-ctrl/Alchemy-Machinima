@@ -102,7 +102,13 @@ def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
         if regression == 'avatar-eyes': return
     for file,_ in INVENTORY:
         native_file=re.sub(r'^class\d+/', '', file).encode()
-        assert native_mapper.feature(native_file,0,0)==0, 'master-off native permutation enables weather '+file
+        resident = 'weatherMaterialsSupported()' in feature_prepare
+        eligible = native_file != b'deferred/diffuseAlphaMaskNoColorF.glsl'
+        assert native_mapper.feature(native_file,1,0)==int(eligible), 'native material inventory/exclusion changed '+file
+        assert native_mapper.feature(native_file,0,0)==int(resident and eligible), 'master toggle changes resident material inventory '+file
+        native_mapper.capability(0)
+        assert native_mapper.feature(native_file,1,0)==0, 'unsupported GPU enables weather material '+file
+        native_mapper.capability(1)
         for excluded in range(1,5):
             assert native_mapper.feature(native_file,1,excluded)==0, 'native excluded permutation enables weather '+file
     r = A.Runner(ref)

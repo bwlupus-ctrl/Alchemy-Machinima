@@ -165,4 +165,32 @@ namespace tut
             s.snowRange == 16.f && s.snowSpeed == 4.f && s.snowLimit == 131072U && s.visibilityAmount == 0.f && s.precipType == 2);
         ensure("new expensive defaults off", !s.snowEnabled && !s.visibility);
     }
+    template<> template<> void weather_bridge_object::test<7>()
+    {
+        ALWeatherBridge::Settings s;
+        s.enabled = s.local = true; s.mode = s.lightningTiming = 1;
+        s.storm = 1.f; s.rainRate = 80.f;
+        ALWeatherModel::Config lightning;
+        lightning.mEnabled = true;
+        lightning.mMinDistanceMeters = 45.; lightning.mMaxDistanceMeters = 140.;
+        ALWeatherBridge::Controller controller;
+        bool saw_strike = false;
+        for (U64 frame = 0; frame <= 7200; ++frame)
+        {
+            controller.update(frame, frame / 60., s, 0, 0, 1, lightning, {});
+            const auto& strike = controller.lightning();
+            if (!strike.mActive) continue;
+            saw_strike = true;
+            ensure("storm respects native cinematic range", strike.mStrikeDistanceMeters >= 45. && strike.mStrikeDistanceMeters <= 140.);
+        }
+        ensure("storm starts within bounded test time", saw_strike);
+        controller.update(7201, 120.1, s, 0, 0, 1, lightning, {}, true);
+        ensure("manual strike works with storm scheduler", controller.lightning().mActive);
+        s.lightningTiming = 0;
+        controller.update(7202, 120.2, s, 0, 0, 1, lightning, {}, true);
+        ensure("manual strike works with native scheduler", controller.lightning().mActive);
+        lightning.mEnabled = false;
+        controller.update(7203, 120.3, s, 0, 0, 1, lightning, {}, true);
+        ensure("manual strike preserves lightning enable gate", !controller.lightning().mActive);
+    }
 }

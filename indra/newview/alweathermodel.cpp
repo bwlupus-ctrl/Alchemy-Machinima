@@ -81,8 +81,9 @@ namespace ALWeatherModel
         output.mMinDistanceMeters = clampFinite(
             input.mMinDistanceMeters, 45.0, 0.0, MAX_DISTANCE_METERS);
         output.mMaxDistanceMeters = clampFinite(
-            input.mMaxDistanceMeters, 130.0, output.mMinDistanceMeters,
+            input.mMaxDistanceMeters, 130.0, 0.0,
             MAX_DISTANCE_METERS);
+        output.mMinDistanceMeters = std::min(output.mMinDistanceMeters, output.mMaxDistanceMeters);
         output.mBoltHeightMeters = clampFinite(
             input.mBoltHeightMeters, 160.0, 16.0,
             MAX_BOLT_HEIGHT_METERS);

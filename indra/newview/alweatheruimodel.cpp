@@ -54,6 +54,16 @@ bool ALWeatherUIModel::parseSeed(const std::string& text, U32& seed)
     seed = parsed;
     return true;
 }
+const char* ALWeatherUIModel::snowRequirement(const ALWeatherBridge::Settings& s)
+{
+    if (!s.enabled) return "Weather controls off - turn on Weather";
+    if (s.mode == 0) return "Library mode: Existing rain - apply a snow preset";
+    if (!s.local) return "Local weather off - enable it or apply a snow preset";
+    if (!s.snowEnabled) return "Falling snow off - enable it or apply a snow preset";
+    if (s.precipType == 0) return "Precipitation type is Rain - choose Snow or Mixed";
+    if (s.snowRate <= 0.f) return "Snow rate is zero - raise it or apply a snow preset";
+    return nullptr;
+}
 bool ALWeatherUIModel::refresh(const ALWeatherBridge::Settings& settings, const SLWeather::State& state,
                                bool catching_up, F64 weather_seconds)
 {
@@ -73,11 +83,11 @@ bool ALWeatherUIModel::refresh(const ALWeatherBridge::Settings& settings, const 
     mNextRefresh = weather_seconds + 0.1; // Live numeric readouts: at most 10 Hz.
     std::ostringstream out;
     out.imbue(std::locale::classic());
-    if (!s.enabled) out << "Weather off";
-    else if (s.mode == 0) out << "Existing rain";
+    if (!s.enabled) out << "Weather controls off - turn on Weather";
+    else if (s.mode == 0) out << "Library mode: Existing rain - apply a preset";
     else
     {
-        out << (s.local ? (s.precipType == 0 ? "Local rain" : (s.precipType == 1 ? "Local snow" : "Local mixed")) : "Clear")
+        out << (s.local ? (s.precipType == 0 ? "Local rain" : (s.precipType == 1 ? "Local snow" : "Local mixed")) : "Local weather off (clear)")
             << " - " << std::fixed << std::setprecision(1);
         if (s.precipType != 1)
             out << state.rainFall << " mm/h now; target " << (s.local ? s.rainRate : 0.f);

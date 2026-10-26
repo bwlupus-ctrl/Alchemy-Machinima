@@ -1131,32 +1131,8 @@ static void handleRigRimWrapAmount(const LLSD& value)
 
 static void setupWeatherMaterialListeners()
 {
-    // Settings are loaded before GL initialization. Remember the requested pair
-    // here, then check GPU support when processing a change on idle.
-    static bool requested = gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
-        gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled");
-    static bool pending = false;
-    auto changed = []()
-    {
-        if (pending) return;
-        pending = true;
-        doOnIdleOneTime([]()
-        {
-            pending = false;
-            const bool next = gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
-                gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled");
-            const bool changed = next != requested;
-            requested = next;
-            // Presets can change both controls: reload once for the final
-            // effective feature, and never for an unsupported permutation.
-            if (changed && LLViewerShaderMgr::instance()->weatherMaterialsSupported())
-            {
-                handleSetShaderChanged(LLSD());
-            }
-        });
-    };
-    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", changed);
-    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherEnabled", changed);
+    // Material permutations are resident; every bind uploads the runtime gate.
+    // No weather listener may reload the viewer's shader inventory.
 }
 
 void settings_setup_listeners()
@@ -1298,8 +1274,6 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderDeferredSSAO", handleSetShaderChanged);
     setupWeatherMaterialListeners();
     ALPanelWeatherSettings::initializeLibraryWeather();
-    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherRainOcclusion", handleSetShaderChanged);
-    setting_setup_signal_listener(gSavedSettings, "AlchemyWeatherLightningQualityEnabled", handleSetShaderChanged);
     // [BDMerge G3.3 Dust / review fix] the dust sampler + sampling code are a
     // compile-time permutation of projectorVolumetricF.glsl (PROJVOL_DUST_ENABLE,
     // added in llviewershadermgr.cpp) so Dust off costs no fragment texture unit;

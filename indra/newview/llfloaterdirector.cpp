@@ -50,6 +50,7 @@
 #include "alpanelweathersettings.h"    // World > Weather strike and reset-all
 #include "alweatheruimodel.h"
 #include "alweatherparticles.h"
+#include "llsliderctrl.h"
 #include "llviewershadermgr.h"
 #include "alprojectorshaftlooks.h"
 #include "alprojectorshaftpresets.h"   // Atmosphere projector-shaft presets
@@ -2360,6 +2361,58 @@ void LLFloaterDirector::bindLensFocusPage(LLView* root)
 // the v1 panel makes (alpanelweathersettings.cpp:135-138).
 void LLFloaterDirector::bindWeatherPage(LLView* root)
 {
+    // These explicit user actions select their required source. Settings loads,
+    // presets and undo do not infer mode from a secondary switch.
+    if (LLUICtrl* local = root->findChild<LLUICtrl>("weather_library_local"))
+        local->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            if (gSavedSettings.getBOOL("AlchemyWeatherLocalEnabled"))
+                gSavedSettings.setU32("AlchemyWeatherControlMode", 1);
+        });
+    if (LLUICtrl* snow = root->findChild<LLUICtrl>("weather_snow_snowEnabled"))
+        snow->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            if (!gSavedSettings.getBOOL("AlchemyWeatherSnowEnabled")) return;
+            gSavedSettings.setU32("AlchemyWeatherControlMode", 1);
+            gSavedSettings.setBOOL("AlchemyWeatherLocalEnabled", true);
+            if (gSavedSettings.getU32("AlchemyWeatherPrecipType") == 0)
+                gSavedSettings.setU32("AlchemyWeatherPrecipType", 1);
+        });
+    if (LLUICtrl* type = root->findChild<LLUICtrl>("weather_snow_precipType"))
+        type->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            gSavedSettings.setU32("AlchemyWeatherControlMode", 1);
+            gSavedSettings.setBOOL("AlchemyWeatherLocalEnabled", true);
+            gSavedSettings.setBOOL("AlchemyWeatherSnowEnabled", gSavedSettings.getU32("AlchemyWeatherPrecipType") != 0);
+        });
+    const auto minimum = root->findChild<LLSliderCtrl>("weather_lightning_min")->getDerivedHandle<LLSliderCtrl>();
+    const auto maximum = root->findChild<LLSliderCtrl>("weather_lightning_max")->getDerivedHandle<LLSliderCtrl>();
+    auto update_distances = [minimum, maximum]()
+    {
+        if (LLSliderCtrl* slider = minimum.get()) slider->setMaxValue(gSavedSettings.getF32("AlchemyWeatherLightningMaxDistance"));
+        if (LLSliderCtrl* slider = maximum.get()) slider->setMinValue(gSavedSettings.getF32("AlchemyWeatherLightningMinDistance"));
+    };
+    update_distances();
+    for (const char* name : {"AlchemyWeatherLightningMinDistance", "AlchemyWeatherLightningMaxDistance"})
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            name, [update_distances](const LLSD&, const LLSD&) { update_distances(); }));
+    const auto trigger_handle = root->findChild<LLButton>("weather_trigger")->getDerivedHandle<LLButton>();
+    auto update_trigger = [trigger_handle]()
+    {
+        if (LLButton* trigger = trigger_handle.get())
+        {
+            const bool master = gSavedSettings.getBOOL("AlchemyWeatherEnabled");
+            const bool lightning = gSavedSettings.getBOOL("AlchemyWeatherLightningEnabled");
+            trigger->setEnabled(LLPipeline::sRenderDeferred && master && lightning);
+            trigger->setToolTip(LLStringExplicit(!master ? "Weather controls off - turn on Weather" :
+                (!LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
+                (!lightning ? "Lightning off - enable Lightning" : "Fire one strike immediately; automatic timing is not required"))));
+        }
+    };
+    update_trigger();
+    for (const char* name : {"RenderDeferred", "AlchemyWeatherEnabled", "AlchemyWeatherLightningEnabled"})
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            name, [update_trigger](const LLSD&, const LLSD&) { update_trigger(); }));
     refreshWorldLensReadouts("world_group/weather_tab");
     LLHandle<LLFloaterDirector> handle = getDerivedHandle<LLFloaterDirector>();
     mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
@@ -2532,7 +2585,7 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
         if (LLTextBox* snow = findChild<LLTextBox>("weather_snow_status"))
         {
             const std::string status = !LLPipeline::sRenderDeferred ? "Requires Advanced Lighting Model" :
-                (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.3 compute, SSBO, images and barriers" :
+                (!ALWeatherParticles::supported() ? "Unavailable: requires OpenGL 4.5 compute and texture barriers" :
                 ALPanelWeatherSettings::particleStatus());
             setTextIfChanged(snow, status);
         }
@@ -2551,8 +2604,8 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
         }
         if (LLTextBox* note = findChild<LLTextBox>("weather_deferred_note"))
         {
-            setTextIfChanged(note, "Weather requires Advanced Lighting Model (deferred rendering).");
-            setVisibleIfChanged(note, !LLPipeline::sRenderDeferred);
+            setTextIfChanged(note, ALPanelWeatherSettings::requirements());
+            setVisibleIfChanged(note, true);
         }
     }
     else if (page == "world_group/atmosphere_tab")

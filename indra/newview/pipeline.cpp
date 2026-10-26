@@ -20191,6 +20191,14 @@ void LLPipeline::renderWeatherParticles(LLRenderTarget* target, bool auxiliary)
 void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
                                ALWeatherShelter::Exposure* auxiliary_exposure)
 {
+    // After a logout the UI keeps drawing while LLWorld is gone (disconnectViewer
+    // deletes it); weather reads the region list, so draw nothing until reconnect.
+    if (gDisconnected || !LLWorld::instanceExists())
+    {
+        if (!gCubeSnapshot) mWeatherParticles.suspend();
+        if (auxiliary_exposure) auxiliary_exposure->reset();
+        return;
+    }
     static LLCachedControl<U32> control_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     const bool library = control_mode() == 1;
     const auto& library_frame = ALWeatherBridge::Controller::instance();
@@ -20370,8 +20378,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     lightning_config.mMinDistanceMeters =
         finite_clamp(min_distance_setting, 45.f, 0.f, 512.f);
     lightning_config.mMaxDistanceMeters =
-        finite_clamp(max_distance_setting, 130.f,
-                     static_cast<F32>(lightning_config.mMinDistanceMeters), 512.f);
+        finite_clamp(max_distance_setting, 130.f, 0.f, 512.f);
     lightning_config.mBoltHeightMeters =
         finite_clamp(bolt_height_setting, 160.f, 16.f, 512.f);
     lightning_config.mQualityEnabled = use_lightning_quality;
@@ -20380,6 +20387,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
             lightning_afterglow_strength_setting, 0.35f, 0.f, 1.f)
         : 0.f;
     lightning_config.mSeed = lightning_seed_setting();
+    lightning_config = ALWeatherModel::sanitizeConfig(lightning_config);
 
     if (!library && !legacy_auxiliary && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
     {

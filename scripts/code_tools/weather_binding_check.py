@@ -102,6 +102,7 @@ struct LLView {
 struct LLUICtrl:LLView {
  LLSD value;std::function<void(LLUICtrl*,const LLSD&)> callback;
  bool enabled=true;void setEnabled(bool v){enabled=v;}
+ std::string tooltip;void setToolTip(const char* s){tooltip=s;}
  virtual ~LLUICtrl()=default;
  void setValue(const LLSD& v){value=v;}LLSD getValue()const{return value;}
  void setCommitCallback(std::function<void(LLUICtrl*,const LLSD&)> cb){callback=cb;}
@@ -109,6 +110,7 @@ struct LLUICtrl:LLView {
  void fire(){if(callback)callback(this,{});}
 };
 struct LLButton:LLUICtrl{};struct LLComboBox:LLUICtrl{};struct LLLineEditor:LLUICtrl{};struct LLTextBox:LLUICtrl{};
+struct LLSliderCtrl:LLUICtrl{float minimum=0,maximum=512;void setMinValue(float v){minimum=v;}void setMaxValue(float v){maximum=v;}};
 template<class T>T* LLView::findChild(const char* name){auto& p=widgets[name];if(!p)p=std::make_unique<T>();return dynamic_cast<T*>(p.get());}
 struct ALKitRow:LLView {
  LLUICtrl* control=nullptr;std::vector<std::function<void()>> changed;
@@ -139,7 +141,8 @@ struct ALPanelWeatherSettings {
  static void applyStartingSurfaces();static void clearSurfaces();
  static const std::string& surfaceStatus();
  static const std::string& particleStatus();
- static void strikeLightningNow(){}static void confirmResetAll(){}
+ static std::string requirements();
+ static void strikeLightningNow();static void confirmResetAll(){}
  static Signal& libraryChanged(){static Signal s;return s;}
  static const std::string& libraryStatus(){return sLibraryUI.status();}
 };
@@ -176,6 +179,10 @@ extern "C" __declspec(dllexport) void command(int preset,int action,const char* 
  if(action==2){auto* seed=root.findChild<LLLineEditor>("weather_library_seed");seed->setValue(text);seed->fire();}
  if(action==3)root.findChild<LLButton>("weather_surface_apply")->fire();
  if(action==4)root.findChild<LLButton>("weather_surface_clear")->fire();
+ if(action==5)root.findChild<LLUICtrl>("weather_snow_snowEnabled")->fire();
+ if(action==6)root.findChild<LLUICtrl>("weather_snow_precipType")->fire();
+ if(action==7)root.findChild<LLUICtrl>("weather_library_local")->fire();
+ if(action==8)root.findChild<LLButton>("weather_trigger")->fire();
 }
 extern "C" __declspec(dllexport) void trace(double* output){
  auto settings=readLibrarySettings();
@@ -291,7 +298,8 @@ extern "C" __declspec(dllexport) int surface_caps(int units,int guard){
  gGLManager.mNumTextureImageUnits=units;LLRender::guard=guard!=0;return LLViewerShaderMgr{}.weatherMaterialsEnabled();
 }
 extern "C" __declspec(dllexport) int surface_bind_count(){
- LLPipeline::weatherBinds=0;LLViewerShaderMgr{}.updateWeatherUniforms(nullptr);return LLPipeline::weatherBinds;
+ double output[9]{};LLGLSLShader shader{output};
+ LLPipeline::weatherBinds=0;LLViewerShaderMgr{}.updateWeatherUniforms(&shader);return LLPipeline::weatherBinds;
 }
 extern "C" __declspec(dllexport) int surface_row_enabled(const char* name){
  ALKitSettingWatch::instance().watchers.clear();
@@ -309,6 +317,9 @@ extern "C" __declspec(dllexport) const char* particle_readout(const char* status
     if mutation=='legacy-preset': commands=commands.replace('gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);','gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);\n    gSavedSettings.setBOOL("AlchemyWeatherRainEnabled", true);',1)
     if mutation=='snow-relief': commands=commands.replace('gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);','gSavedSettings.setF32("AlchemyWeatherRainRate", settings.rainRate);\n    gSavedSettings.setBOOL("AlchemyWeatherSnowReliefEnabled", true);',1)
     commands+=function(panel,'const std::string& ALPanelWeatherSettings::surfaceStatus(')
+    commands+=function(panel,'void ALPanelWeatherSettings::strikeLightningNow(')
+    if 'std::string ALPanelWeatherSettings::requirements()' in panel:
+        commands+=function(panel,'std::string ALPanelWeatherSettings::requirements()')
     if 'const std::string& ALPanelWeatherSettings::particleStatus(' in panel:
         commands+=function(panel,'const std::string& ALPanelWeatherSettings::particleStatus(')
     row_source=tree.read('indra/newview/alkitrow.cpp')

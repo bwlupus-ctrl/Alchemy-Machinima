@@ -18,6 +18,7 @@ class ALWeatherShelterMaps;
 class ALWeatherResources
 {
 public:
+    void preloadShaders();
     // Covers allocation and every early return as well as the complete shadow traversal.
     class State
     {
@@ -106,6 +107,7 @@ private:
 class ALWeatherShelterMaps
 {
 public:
+    void preloadShaders();
     void prepare();
     void release();
     void suspend()

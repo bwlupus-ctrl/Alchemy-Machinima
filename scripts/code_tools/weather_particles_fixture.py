@@ -6,13 +6,14 @@ GL calls are recorded as well as executed, making missing barriers/depth enables
 detectable on coherent drivers where a race may otherwise appear to work.
 """
 import ctypes as C
+import time
 import shutil
 from weather_cpu_check import ROOT, SOURCES
 from weather_compute_fixture import build as loader_build, function
 from weather_preparation_fixture import source as preparation_source
 
 
-def build(tree,out,gl,mutation=None,extension=None):
+def build(tree,out,gl,mutation=None,extension=None,compile_only=False):
     def extend(prefix,methods,suffix,entries):
         # Historical runs compile a complete snapshot, including local headers.
         for name in SOURCES:
@@ -183,7 +184,7 @@ void check_framebuffer_status(){}
         prefix+='#define LL_PROFILE_GPU_ZONE(x)\n'
         methods+='\n'+ '\n'.join(function(resources,s) for s in (
           'ALWeatherResources::State::State(', 'ALWeatherResources::State::~State(',
-          'void ALWeatherResources::prepare(', 'void ALWeatherResources::prepareIntervals(',
+          'void ALWeatherResources::preloadShaders(', 'void ALWeatherResources::prepare(', 'void ALWeatherResources::prepareIntervals(',
           'void ALWeatherResources::beginTile(', 'void ALWeatherResources::commitTile(', 'void ALWeatherResources::refreshStatus(',
           'void ALWeatherResources::buildIntervals(', 'void ALWeatherResources::bindIntervals(', 'bool ALWeatherResources::copyFrom(',
           'void ALWeatherResources::setBounds(', 'bool ALWeatherResources::precipitationWithin(',
@@ -191,7 +192,7 @@ void check_framebuffer_status(){}
           'void ALWeatherResources::publish(', 'void ALWeatherResources::fail(',
           'bool ALWeatherResources::precipitationCovers(', 'void ALWeatherResources::bindPrecipitation(') if s in resources)
         if 'void ALWeatherShelterMaps::prepare(' in resources:
-            methods += '\n' + '\n'.join(function(resources,s) for s in ('void ALWeatherResources::bindMap(', 'void ALWeatherShelterMaps::prepare(', 'void ALWeatherShelterMaps::release(', 'void ALWeatherShelterMaps::fail(', 'bool ALWeatherShelterMaps::current(', 'bool ALWeatherShelterMaps::covers(', 'bool ALWeatherShelterMaps::within(', 'void ALWeatherShelterMaps::publish(', 'void ALWeatherShelterMaps::bind(') if s in resources)
+            methods += '\n' + '\n'.join(function(resources,s) for s in ('void ALWeatherResources::bindMap(', 'void ALWeatherShelterMaps::preloadShaders(', 'void ALWeatherShelterMaps::prepare(', 'void ALWeatherShelterMaps::release(', 'void ALWeatherShelterMaps::fail(', 'bool ALWeatherShelterMaps::current(', 'bool ALWeatherShelterMaps::covers(', 'bool ALWeatherShelterMaps::within(', 'void ALWeatherShelterMaps::publish(', 'void ALWeatherShelterMaps::bind(') if s in resources)
         owner=tree.read('indra/newview/alweatherparticles.cpp')
         changes={
           'depth':('LLGLDepthTest depth_test(GL_TRUE, GL_FALSE, GL_LEQUAL);','LLGLDepthTest depth_test(GL_FALSE, GL_FALSE, GL_LEQUAL);'),
@@ -222,7 +223,16 @@ void check_framebuffer_status(){}
             assert 'if (generation == sContextGeneration) return supported;' in methods
             methods=methods.replace('if (generation == sContextGeneration) return supported;','')
         methods+='\n'+ '\n'.join(function(owner,s) for s in ('bool ALWeatherParticles::supported(',
-            'void ALWeatherParticles::release(', 'bool ALWeatherParticles::initialize(', 'void ALWeatherParticles::prepare(', 'void ALWeatherParticles::render('))
+            'void ALWeatherParticles::release(', 'void ALWeatherParticles::preloadShaders(', 'bool ALWeatherParticles::initialize(', 'void ALWeatherParticles::prepare(', 'void ALWeatherParticles::render(') if s in owner)
+        if 'void ALWeatherParticles::preloadShaders(' in owner:
+            factory=function(tree.read('indra/newview/llviewershadermgr.cpp'),'bool LLViewerShaderMgr::loadShadersDeferred()')
+            startup='\n'.join(line.replace('gPipeline.','fixturePipeline.') for line in factory.splitlines() if '.preloadShaders();' in line)
+            methods+='\nextern "C" __declspec(dllexport) void fixture_preload(){ ALWeatherResources::State saved;\n'+startup+'\n}\n'
+            release=function(tree.read('indra/newview/pipeline.cpp'),'void LLPipeline::releaseGLBuffers()')
+            calls='\n'.join('fixturePipeline.'+line.strip() for line in release.splitlines()
+                if line.strip() in ('mWeatherSurfaces.release();','mWeatherShelter.release();','mWeatherParticles.release();'))
+            assert len(calls.splitlines())==3
+            methods+='\nextern "C" __declspec(dllexport) void fixture_release_weather_resources(){\n'+calls+'\n}\n'
         fixture_api=API
         if 'mVeilBuffer' in tree.read('indra/newview/alweatherparticles.h'):
             fixture_api=fixture_api.replace('// SET_VEIL_BUFFER','veilIntermediateFBO=particles.mVeilBuffer.fbo;')
@@ -253,9 +263,12 @@ void check_framebuffer_status(){}
         return extension(*result) if extension else result
     lib=loader_build(tree,out,gl,extend)
     shaderdir=out/'class1/deferred';shaderdir.mkdir(parents=True,exist_ok=True)
-    for name in ('weatherSnowSim','weatherSnowV','weatherSnowF','weatherPrecipCoverF','weatherPrecipVeilF','weatherPrecipCompositeF','weatherShelterF','weatherCoverMinimum'):
+    for name in ('weatherSnowSim','weatherSnowV','weatherSnowF','weatherPrecipCoverF','weatherPrecipVeilF','weatherPrecipCompositeF','weatherShelterF','weatherCoverMinimum','weatherAdvancedRainF','postDeferredNoTCV'):
         if not tree.exists('indra/newview/app_settings/shaders/class1/deferred/'+name+'.glsl'): continue;
         text=tree.read('indra/newview/app_settings/shaders/class1/deferred/'+name+'.glsl')
+        if name=='weatherAdvancedRainF':
+            util=tree.read('indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl')
+            text='uniform sampler2D depthMap;uniform mat4 inv_proj;\n'+'\n'.join(function(util,s) for s in ('vec2 getScreenCoordinate(','float getDepth(','vec4 getPosition('))+'\n'+text
         if mutation=='view-seed' and name=='weatherSnowSim':
             a='^ snow_seed);';assert a in text;text=text.replace(a,'^ snow_seed ^ floatBitsToUint(snow_cell_relative.x));')
         if mutation=='ray-endpoint' and name=='weatherPrecipVeilF':
@@ -264,6 +277,12 @@ void check_framebuffer_status(){}
             text=text.replace('weatherPrecipExposedDistance(start,direction,distance_m)','distance_m*max(weatherPrecipOpen(start+direction*(z>=0.999999?8.0:distance_m)),0.0)')
             text=text.replace('z >= 0.999999 ? 3000.0 : min(length(eye),3000.0)', 'min(length(eye),3000.0)')
         (shaderdir/(name+'.glsl')).write_text(text,encoding='utf-8')
+    lib.weather_startup_ms=0.0
+    if not compile_only and 'void ALWeatherParticles::preloadShaders(' in tree.read('indra/newview/alweatherparticles.cpp'):
+        started=time.perf_counter()
+        lib.fixture_preload()
+        gl.fn('glFinish',None)() # Startup measurement only; never a production path.
+        lib.weather_startup_ms=(time.perf_counter()-started)*1000
     lib.fixture_weather_set.argtypes=[C.c_char_p,C.c_double];lib.fixture_weather_step.argtypes=[C.c_double]
     lib.render.argtypes=[C.c_uint,C.c_uint,C.c_uint,C.c_int,C.c_int,C.c_void_p,C.c_void_p,C.c_void_p,C.c_void_p,C.c_int]
     lib.metrics.argtypes=[C.c_void_p];lib.status.restype=C.c_char_p

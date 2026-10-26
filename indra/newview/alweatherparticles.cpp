@@ -31,15 +31,73 @@ bool ALWeatherParticles::supported()
 
 void ALWeatherParticles::release()
 {
-    mSimulation.unload(); mDraw.unload(); mVeil.unload(); mTiltedVeil.unload();
-    mVeilComposite.unload(); mVeilBuffer.release();
+    // Programs belong to the central shader inventory; resizing only drops resources.
+    mVeilBuffer.release();
     if (mBuffer) glDeleteBuffers(1, &mBuffer);
     if (mVAO) glDeleteVertexArrays(1, &mVAO);
     mBuffer = mVAO = 0; mCapacity = 0;
     mAttempted = mReady = mVeilActive = false;
-    mSnowReady = mVeilReady = mTiltedVeilReady = false;
-    mPosition = mTraits = -1;
     mStatus = "Falling snow off";
+}
+
+void ALWeatherParticles::preloadShaders()
+{
+    if (!supported())
+    {
+        mSnowReady = mVeilReady = mTiltedVeilReady = false;
+        return;
+    }
+    const auto load = [](LLGLSLShader& shader, const char* name, bool compute, bool veil, bool tilted = false)
+    {
+        shader.mName = name; shader.mShaderLevel = 1;
+        shader.mFeatures = LLShaderFeatures();
+        shader.mFeatures.attachNothing = true; // These stages are self-contained.
+        shader.mShaderFiles.clear(); shader.clearPermutations();
+        if (veil)
+        {
+            shader.addPermutation("SNOW_VEIL", "1");
+            shader.addPermutation("SNOW_VEIL_BUFFER", "1");
+            shader.addPermutation("WEATHER_PARTICLE_ADVANCED", tilted ? "1" : "0");
+        }
+        if (compute) shader.mShaderFiles.emplace_back("deferred/weatherSnowSim.glsl", LLGLSLShader::COMPUTE_STAGE);
+        else
+        {
+            shader.mShaderFiles.emplace_back("deferred/weatherSnowV.glsl", GL_VERTEX_SHADER);
+            shader.mShaderFiles.emplace_back(veil ? "deferred/weatherPrecipVeilF.glsl" : "deferred/weatherSnowF.glsl", GL_FRAGMENT_SHADER);
+            shader.mShaderFiles.emplace_back("deferred/weatherPrecipCoverF.glsl", GL_FRAGMENT_SHADER);
+            shader.mShaderFiles.emplace_back("deferred/weatherShelterF.glsl", GL_FRAGMENT_SHADER);
+        }
+        return shader.createShader();
+    };
+    mSnowReady = mSimulation.isComplete() && mDraw.isComplete();
+    if (!mSimulation.isComplete() || !mDraw.isComplete())
+    {
+        mSnowReady = load(mSimulation, "Weather Snow Cells", true, false) &&
+            load(mDraw, "Weather Snow Flakes", false, false);
+    }
+    if (mSnowReady)
+    {
+        mPosition = glGetAttribLocation(mDraw.mProgramObject, "position");
+        mTraits = glGetAttribLocation(mDraw.mProgramObject, "texcoord0");
+        mSnowReady = mPosition >= 0 && mTraits >= 0;
+    }
+    mTiltedVeilReady = mTiltedVeil.isComplete();
+    if (!mTiltedVeil.isComplete())
+        mTiltedVeilReady = load(mTiltedVeil, "Weather Tilted Precipitation Visibility", false, true, true);
+    mVeilReady = mVeil.isComplete();
+    if (!mVeil.isComplete())
+        mVeilReady = load(mVeil, "Weather Precipitation Visibility", false, true);
+    if (!mVeilComposite.isComplete())
+    {
+        mVeilComposite.mName = "Weather visibility depth-aware composite";
+        mVeilComposite.mShaderLevel = 1;
+        mVeilComposite.mFeatures = LLShaderFeatures();
+        mVeilComposite.mFeatures.attachNothing = true;
+        mVeilComposite.addPermutation("SNOW_VEIL", "1");
+        mVeilComposite.mShaderFiles.emplace_back("deferred/weatherSnowV.glsl", GL_VERTEX_SHADER);
+        mVeilComposite.mShaderFiles.emplace_back("deferred/weatherPrecipCompositeF.glsl", GL_FRAGMENT_SHADER);
+        mVeilComposite.createShader();
+    }
 }
 
 bool ALWeatherParticles::initialize(U32 cap)
@@ -47,61 +105,13 @@ bool ALWeatherParticles::initialize(U32 cap)
     const auto& settings = ALWeatherBridge::Controller::instance().settings();
     const bool veil = settings.visibility && settings.visibilityAmount > 0.f;
     if (!mAttempted || (settings.snowEnabled && !mSnowReady) ||
-        (veil && !(settings.advancedShelter ? mTiltedVeilReady : mVeilReady)))
+        (veil && (!(settings.advancedShelter ? mTiltedVeilReady : mVeilReady) || !mVeilBuffer.isComplete())))
     {
         mAttempted = true;
         if (!supported())
         {
             mStatus = "Unavailable: requires OpenGL 4.5 compute and texture barriers";
             return false;
-        }
-        const auto load = [](LLGLSLShader& shader, const char* name, bool compute, bool veil, bool tilted = false)
-        {
-            shader.mName = name; shader.mShaderLevel = 1;
-            shader.mFeatures = LLShaderFeatures();
-            shader.mFeatures.attachNothing = true; // These stages are self-contained.
-            shader.mShaderFiles.clear(); shader.clearPermutations();
-            if (veil)
-            {
-                shader.addPermutation("SNOW_VEIL", "1");
-                shader.addPermutation("SNOW_VEIL_BUFFER", "1");
-                shader.addPermutation("WEATHER_PARTICLE_ADVANCED", tilted ? "1" : "0");
-            }
-            if (compute) shader.mShaderFiles.emplace_back("deferred/weatherSnowSim.glsl", LLGLSLShader::COMPUTE_STAGE);
-            else
-            {
-                shader.mShaderFiles.emplace_back("deferred/weatherSnowV.glsl", GL_VERTEX_SHADER);
-                shader.mShaderFiles.emplace_back(veil ? "deferred/weatherPrecipVeilF.glsl" : "deferred/weatherSnowF.glsl", GL_FRAGMENT_SHADER);
-                shader.mShaderFiles.emplace_back("deferred/weatherPrecipCoverF.glsl", GL_FRAGMENT_SHADER);
-                shader.mShaderFiles.emplace_back("deferred/weatherShelterF.glsl", GL_FRAGMENT_SHADER);
-            }
-            return shader.createShader();
-        };
-        if (settings.snowEnabled && !mSnowReady)
-        {
-            mSnowReady = load(mSimulation, "Weather Snow Cells", true, false) &&
-                load(mDraw, "Weather Snow Flakes", false, false);
-            if (mSnowReady)
-            {
-                mPosition = glGetAttribLocation(mDraw.mProgramObject, "position");
-                mTraits = glGetAttribLocation(mDraw.mProgramObject, "texcoord0");
-                mSnowReady = mPosition >= 0 && mTraits >= 0;
-            }
-        }
-        if (veil && settings.advancedShelter && !mTiltedVeilReady)
-            mTiltedVeilReady = load(mTiltedVeil, "Weather Tilted Precipitation Visibility", false, true, true);
-        if (veil && !settings.advancedShelter && !mVeilReady)
-            mVeilReady = load(mVeil, "Weather Precipitation Visibility", false, true);
-        if (veil && !mVeilComposite.isComplete())
-        {
-            mVeilComposite.mName = "Weather visibility depth-aware composite";
-            mVeilComposite.mShaderLevel = 1;
-            mVeilComposite.mFeatures = LLShaderFeatures();
-            mVeilComposite.mFeatures.attachNothing = true;
-            mVeilComposite.addPermutation("SNOW_VEIL", "1");
-            mVeilComposite.mShaderFiles.emplace_back("deferred/weatherSnowV.glsl", GL_VERTEX_SHADER);
-            mVeilComposite.mShaderFiles.emplace_back("deferred/weatherPrecipCompositeF.glsl", GL_FRAGMENT_SHADER);
-            mVeilComposite.createShader();
         }
         // A reusable scalar half-resolution field fits the WP3 16 MiB cap at
         // 4K, including its cover maps and particle list. Allocation stays idle.
@@ -112,8 +122,7 @@ bool ALWeatherParticles::initialize(U32 cap)
         mReady = mReady && (!veil || (mVeilBuffer.isComplete() && mVeilComposite.isComplete()));
         if (!mReady)
         {
-            mSimulation.unload(); mDraw.unload(); mVeil.unload(); mTiltedVeil.unload();
-            mVeilComposite.unload(); mVeilBuffer.release();
+            mVeilBuffer.release();
             mStatus = "Unavailable: snowfall shader link failed (existing rain available)";
             return false;
         }
@@ -178,7 +187,8 @@ void ALWeatherParticles::prepare()
     if (!s.snowEnabled && (!s.visibility || s.visibilityAmount <= 0.f)) { suspend(); return; }
     const U32 cap = s.snowEnabled ? s.snowLimit : mCapacity;
     if (mReady && (!s.snowEnabled || mSnowReady) &&
-        (!s.visibility || s.visibilityAmount <= 0.f || (s.advancedShelter ? mTiltedVeilReady : mVeilReady)) && cap == mCapacity) return;
+        (!s.visibility || s.visibilityAmount <= 0.f ||
+         ((s.advancedShelter ? mTiltedVeilReady : mVeilReady) && mVeilBuffer.isComplete())) && cap == mCapacity) return;
     if (mAttempted && !mReady) return; // A failed session retries on GL teardown.
     ALWeatherResources::State saved_state;
     LLGLSLShader* previous = LLGLSLShader::sCurBoundShaderPtr;

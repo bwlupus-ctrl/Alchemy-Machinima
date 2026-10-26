@@ -20,6 +20,7 @@ public:
     static void applyPreset(ALWeatherBridge::Settings& settings, U32 preset);
     static void stop(ALWeatherBridge::Settings& settings);
     static bool parseSeed(const std::string& text, U32& seed);
+    static const char* snowRequirement(const ALWeatherBridge::Settings& settings);
     bool refresh(const ALWeatherBridge::Settings& settings, const SLWeather::State& state,
                  bool catching_up, F64 weather_seconds = 0.0);
     U64 revision() const { return mRevision; }

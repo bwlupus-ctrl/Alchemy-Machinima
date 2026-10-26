@@ -54,6 +54,7 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
     assert 'auxiliary ? get_current_modelview() : glm::make_mat4(gGLLastModelView)' in hook and 'mRT->deferredScreen' in hook,'incorrect native view/depth handoff'
     assert 'gPipeline.renderWeather(&rt.screen, /*auxiliary=*/true, &capture->mWeatherExposure);' in tree.read('indra/newview/llprismlens.cpp'),'disconnected Prism/VCam precipitation'
     native=build(tree,ROOT/'.tmp/weather_port/particles'/(mutation or 'baseline')/ref.replace('/','_')/(str(os.getpid())+('_'+context_key if context_key else '')),gl,mutation)
+    resident = 'void ALWeatherParticles::preloadShaders(' in tree.read('indra/newview/alweatherparticles.cpp')
     def set_(key,value):native.fixture_weather_set(('AlchemyWeather'+key).encode(),value)
     def step(t):native.fixture_weather_step(t)
     def metrics():
@@ -62,6 +63,9 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
         a=np.zeros(8,np.float64);native.weather_values(a.ctypes.data);return a
     def work():
         a=np.zeros(5,np.float64);native.work_counts(a.ctypes.data);return a
+    startup_programs = work()[2]
+    if resident: assert startup_programs==9, 'startup did not link the complete optional weather inventory'
+    if resident: print('PASS resident startup: 9 owner programs; warm-driver startup ms',native.weather_startup_ms,flush=True)
     def cover_counts():
         a=np.zeros(2,np.float64);native.cover_counts(a.ctypes.data);return a
     # Real float colour + depth attachments; occluders below are actually rasterized.
@@ -135,17 +139,42 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
     before=metrics()
     for i in range(12):render()
     assert np.array_equal(metrics(),before),'zero allocation/work while off'
+    if resident:
+        # Exact first-use flow, including the declared 20 s transition, default
+        # flake size/range/cap and variation. No artistic overrides stand in for
+        # the user's fresh-defaults -> master -> Apply Heavy snow sequence.
+        from weather_binding_check import settings_table
+        defaults={key:float({'true':'1','false':'0'}.get(info['Value'],info['Value']))
+            for key,info in settings_table(tree.read('indra/newview/app_settings/settings.xml')).items()
+            if key.startswith('AlchemyWeather') and info['Type'] in ('Boolean','U32','F32')}
+        for key,value in defaults.items():native.fixture_weather_set(key.encode(),value)
+        set_('Enabled',1);native.fixture_weather_preset(7)
+        for frame in range(1801):step(frame/60.)
+        reset_image();render()
+        assert metrics()[0]>0 and metrics()[2]>0 and image()[...,:3].sum()>0, 'fresh defaults -> master -> Apply Heavy snow has no visible native draw'
+        print('PASS exact fresh defaults -> master -> Apply Heavy snow -> 1800 frames: compute and visible default-size flakes',flush=True)
+        for key,value in defaults.items():native.fixture_weather_set(key.encode(),value)
+        step(31);native.fixture_release_weather_resources()
     set_('Enabled',1);set_('ControlMode',1);set_('LocalEnabled',1);set_('TransitionSeconds',0)
     step(.1);step(.2);render();before=work()
     for i in range(60):step(.2+i/60);render()
     assert np.array_equal(work(),before),'library-on/WP3-off performs GL work'
     print('PASS library-on/WP3-off: zero queries, programs, draws or state snapshots',flush=True)
-    set_('PrecipVariation',0);set_('PrecipType',1);set_('SnowEnabled',1);set_('SnowRate',12)
+    # Exercise the user's action path in the SAME native owner as prepare/draw.
+    # No manual writes to mode/local/snow/type may stand in for Apply preset.
+    set_('ControlMode',0);set_('LocalEnabled',0);set_('SnowEnabled',0);set_('PrecipType',0)
+    native.fixture_weather_preset(7)
+    set_('PrecipVariation',0)
     set_('SnowFlakeSize',.08);set_('SnowRange',32);set_('SnowParticleLimit',32768)
     cold=time.perf_counter();step(1);cold_ms=(time.perf_counter()-cold)*1000;step(1.1)
     hierarchy_program='weatherCoverMinimum.glsl' in tree.read('indra/newview/alweatherresources.cpp')
-    assert work()[2]==(3 if hierarchy_program else 2) and native.veil_program()==0,'snow-only enable compiles the disabled veil'
+    if resident:
+        assert work()[2]==startup_programs and native.veil_program()!=0, 'Snow toggle compiles a shader or loses a resident veil'
+    else:
+        assert work()[2]==(3 if hierarchy_program else 2) and native.veil_program()==0,'snow-only enable compiles the disabled veil'
     reset_image();render();open_image=image();a=particles();m=metrics()
+    assert m[0]>0 and m[2]>0 and open_image[...,:3].sum()>0, 'master -> Apply Heavy snow -> idle -> native compute/draw is invisible'
+    set_('SnowRate',12);step(1.1)
     assert native.draw_contract()&1,'MRT draw exposes sidecar attachments'
     assert native.draw_contract()&2,'depth texture barrier missing'
     assert native.draw_contract()&4,'sampled depth is writable'
@@ -290,6 +319,7 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
     # Veil only: measured once, nonnegative, rate/amount/depth monotonic and
     # unknown/covered depth suppressed. Existing mist is explicitly replaced.
     set_('SnowEnabled',0);set_('PrecipVisibilityEnabled',1);step(3)
+    if resident: assert work()[2]==startup_programs, 'Visibility toggle compiles a shader'
     veil=[]
     for amount in (0,.25,.5,1):
         set_('PrecipVisibilityAmount',amount);step(3);reset_image();v=metrics()[1];snow_draws=metrics()[0];render();m=metrics()
@@ -356,6 +386,7 @@ def run(ref='WORKTREE',mutation=None,cost=True,profile_only=False,benchmark_cont
     set_('SnowEnabled',1);set_('PrecipType',1);set_('SnowFlakeSize',.015);set_('SnowRate',1.5);set_('SnowRange',64);step(4)
     reset_image();render();render((4096,0,0));assert np.isfinite(image()).all(),'4K native permutations'
     result={'device':gl.renderer,'memory_bytes':32768*32+2*512*512*4,'veil_samples':veil,
+            'resident_startup_ms':native.weather_startup_ms if resident else 0,
             'cold_prepare_ms':cold_ms,'reenable_prepare_ms':reenable_ms,'hdr_format':'RGBA16F',
             'cost_scope':'Production idle, regional cover preparation/state/publication and particles/veil; renderShadow scene services simulate culling/sorting 256 world AABBs and draw real GL rectangles. Native octree/spatial bridges/VBO pools are not measured.'}
     if hierarchy_program:result['memory_bytes']+=(512*512-1)*8//3+256*1024
@@ -485,6 +516,11 @@ gl_Position=fixture_mvp*vec4(fixture_rect.xy+p[gl_VertexID%6]*fixture_rect.zw,fi
     assert b'Unavailable' in native.status(),'unsupported capability status'
     assert metrics()[0]==snow_draws_before_unsupported,'unsupported GL draws particles'
     assert gl.fn('glGetError',C.c_uint)()==0,'GL state error'
+    if resident:
+        assert work()[2]==startup_programs, 'runtime weather controls compile a shader'
+        programs=(native.draw_program(),native.veil_program())
+        native.fixture_release_weather_resources()
+        assert programs==(native.draw_program(),native.veil_program()), 'buffer/target recreation unloads resident weather programs'
     print('PASS weather-clock wind, single physical veil, cover, unsupported status',flush=True)
     return result
 
@@ -517,7 +553,18 @@ def binding_check(tree,status,mutation):
     native.particle_readout.argtypes=[C.c_char_p];native.particle_readout.restype=C.c_char_p
     assert b'Unavailable' in native.particle_readout(status),'unsupported status is hidden while off'
     native.snow_capability(1)
+    native.set(b'AlchemyWeatherEnabled',1)
+    native.set(b'AlchemyWeatherControlMode',1)
+    native.set(b'AlchemyWeatherLocalEnabled',1)
+    native.set(b'AlchemyWeatherSnowEnabled',1)
+    native.set(b'AlchemyWeatherPrecipType',1)
+    native.set(b'AlchemyWeatherSnowRate',5)
     assert native.particle_readout(status)==status,'Director particle status disconnected'
+    if 'ALWeatherUIModel::snowRequirement' in tracked:
+        native.set(b'AlchemyWeatherEnabled',0)
+        assert b'Weather controls off' in native.particle_readout(status), 'master blocker is hidden'
+        native.set(b'AlchemyWeatherEnabled',1)
+        assert native.particle_readout(status)==status, 'prerequisite readout overwrites the GPU status'
     assert 'preset["version"].asInteger() < 4' in tracked,'old presets do not disable WP3 gates'
     print('PASS all nine Director rows, snow presets/Blizzard/Stop/reset tracking/status/capability',flush=True)
 

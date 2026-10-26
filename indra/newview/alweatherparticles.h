@@ -17,6 +17,8 @@ class ALWeatherParticles
 {
 public:
     static bool supported();
+    // Optional programs are linked by the deferred shader inventory, never by a toggle.
+    void preloadShaders();
     // Called by the idle preparation phase, before recording any view.
     void prepare();
     void suspend() { mVeilActive = false; mStatus = "Falling snow off"; }

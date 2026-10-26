@@ -140,6 +140,22 @@ ALWeatherResources::State::~State()
     else LLGLSLShader::unbind();
 }
 
+void ALWeatherResources::preloadShaders()
+{
+#if !LL_DARWIN
+    if (!LLShaderMgr::computeShadersSupported()) return;
+    if (!mReduction.isComplete())
+    {
+        mReduction.mName = "Weather cover interval hierarchy";
+        mReduction.mShaderLevel = 1;
+        mReduction.mFeatures = LLShaderFeatures();
+        mReduction.mShaderFiles.clear();
+        mReduction.mShaderFiles.emplace_back("deferred/weatherCoverMinimum.glsl", GL_COMPUTE_SHADER);
+        if (!mReduction.createShader()) return; // Exact leaf walk remains available.
+    }
+#endif
+}
+
 void ALWeatherResources::prepare(U32 resolution)
 {
     if (allocationFailed(resolution)) return;
@@ -153,15 +169,7 @@ void ALWeatherResources::prepareIntervals()
     mMinimumAttempted = true;
     const U32 resolution = mCover[0].getWidth();
     if (!resolution || !LLShaderMgr::computeShadersSupported()) return;
-    if (!mReduction.isComplete())
-    {
-        mReduction.mName = "Weather cover interval hierarchy";
-        mReduction.mShaderLevel = 1;
-        mReduction.mFeatures = LLShaderFeatures();
-        mReduction.mShaderFiles.clear();
-        mReduction.mShaderFiles.emplace_back("deferred/weatherCoverMinimum.glsl", GL_COMPUTE_SHADER);
-        if (!mReduction.createShader()) return; // Exact leaf walk remains available.
-    }
+    if (!mReduction.isComplete()) return; // Startup failure uses the exact leaf walk.
     if (mMinimum && mMinimumResolution == resolution) return;
     if (mMinimum) glDeleteTextures(1, &mMinimum);
     glGenTextures(1, &mMinimum);
@@ -356,7 +364,7 @@ void ALWeatherResources::release()
 {
     if (mMinimum) glDeleteTextures(1, &mMinimum);
     mMinimum = mMinimumResolution = 0; mMinimumValid = mMinimumAttempted = false;
-    mReduction.unload();
+    // Keep the resident reduction program across off/resize and map reallocation.
     mPatching = false; mStaging = false; mRefreshCursor = 0;
     mSource = nullptr; ++mContent;
     mBoundsValid = false;
@@ -456,6 +464,35 @@ void ALWeatherResources::bindMap(LLGLSLShader* shader, S32 sampler, const LLStat
     shader->uniformMatrix4fv(matrix, 1, false, glm::value_ptr(mMatrix));
 }
 
+void ALWeatherShelterMaps::preloadShaders()
+{
+    bool barriers = false;
+#if !LL_DARWIN
+    barriers = glMemoryBarrier != nullptr;
+#endif
+    if (!LLRender::indexedDrawBufferGuardSupported() || gGLManager.mNumTextureImageUnits < 4 ||
+        gGLManager.mGLVersion < 4.19f || !barriers) return;
+    for (auto& layer : layers) layer.preloadShaders();
+    if (!mRain.isComplete())
+    {
+        mRain.mName = "Weather Advanced Shelter Rain";
+        mRain.mShaderLevel = 1;
+        mRain.mFeatures = LLShaderFeatures();
+        mRain.mFeatures.isDeferred = true;
+        mRain.mShaderFiles.clear(); mRain.clearPermutations();
+        mRain.addPermutation("WEATHER_RAIN_OCCLUSION", "1");
+        mRain.addPermutation("WEATHER_ADVANCED_SHELTER", "1");
+        mRain.mShaderFiles.emplace_back("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER);
+        mRain.mShaderFiles.emplace_back("deferred/weatherAdvancedRainF.glsl", GL_FRAGMENT_SHADER);
+        mRain.mShaderFiles.emplace_back("deferred/weatherShelterF.glsl", GL_FRAGMENT_SHADER);
+        if (!mRain.createShader())
+        {
+            fail("Advanced shelter shader failed; coverage unknown, existing fallback");
+            return;
+        }
+    }
+}
+
 void ALWeatherShelterMaps::prepare()
 {
     const auto& s = ALWeatherBridge::Controller::instance().settings();
@@ -494,21 +531,8 @@ void ALWeatherShelterMaps::prepare()
     for (auto& layer : layers) layer.prepareIntervals();
     if (!mRain.isComplete())
     {
-        mRain.mName = "Weather Advanced Shelter Rain";
-        mRain.mShaderLevel = 1;
-        mRain.mFeatures = LLShaderFeatures();
-        mRain.mFeatures.isDeferred = true;
-        mRain.mShaderFiles.clear(); mRain.clearPermutations();
-        mRain.addPermutation("WEATHER_RAIN_OCCLUSION", "1");
-        mRain.addPermutation("WEATHER_ADVANCED_SHELTER", "1");
-        mRain.mShaderFiles.emplace_back("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER);
-        mRain.mShaderFiles.emplace_back("deferred/weatherAdvancedRainF.glsl", GL_FRAGMENT_SHADER);
-        mRain.mShaderFiles.emplace_back("deferred/weatherShelterF.glsl", GL_FRAGMENT_SHADER);
-        if (!mRain.createShader())
-        {
-            fail("Advanced shelter shader failed; coverage unknown, existing fallback");
-            return;
-        }
+        fail("Advanced shelter shader failed at startup; coverage unknown, existing fallback");
+        return;
     }
     mReady = true;
     mStatus = "Advanced shelter preparing; coverage unknown";
@@ -516,7 +540,7 @@ void ALWeatherShelterMaps::prepare()
 void ALWeatherShelterMaps::release()
 {
     for (auto& layer : layers) layer.release();
-    mRain.unload();
+    // The central shader inventory owns program teardown.
     mReady = false; mAttemptGeneration = ~U32(0);
     mPublishedFrame = preparedFrame = ~U32(0);
     updates.invalidate();

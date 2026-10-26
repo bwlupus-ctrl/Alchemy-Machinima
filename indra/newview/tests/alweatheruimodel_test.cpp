@@ -34,7 +34,7 @@ namespace tut
         const U64 revision = ui.revision();
         ensure("status no redundant writes", !ui.refresh(s, {}, false) && ui.revision() == revision);
         s.mode = 0;
-        ensure("mode changes observable status", ui.refresh(s, {}, false) && ui.status() == "Existing rain");
+        ensure("mode changes explain the library gate", ui.refresh(s, {}, false) && ui.status() == "Library mode: Existing rain - apply a preset");
         U32 seed = 0;
         ensure("full U32 seed is exact", ALWeatherUIModel::parseSeed("4294967295", seed) && seed == 4294967295U);
         ensure("overflow seed rejected", !ALWeatherUIModel::parseSeed("4294967296", seed));
@@ -69,5 +69,22 @@ namespace tut
         ensure("stop clears both rates", s.rainRate == 0.f && s.snowRate == 0.f);
         ALWeatherUIModel::applyPreset(s, 1);
         ensure("rain preset selects rain layer", !s.snowEnabled && s.precipType == 0);
+    }
+    template<> template<> void weather_ui_object::test<3>()
+    {
+        ALWeatherBridge::Settings s;
+        ensure("master blocker", std::string(ALWeatherUIModel::snowRequirement(s)).find("Weather controls off") == 0);
+        s.enabled = true;
+        ensure("mode blocker", std::string(ALWeatherUIModel::snowRequirement(s)).find("Library mode: Existing rain") == 0);
+        s.mode = 1;
+        ensure("source blocker", std::string(ALWeatherUIModel::snowRequirement(s)).find("Local weather off") == 0);
+        s.local = true;
+        ensure("snow enable blocker", std::string(ALWeatherUIModel::snowRequirement(s)).find("Falling snow off") == 0);
+        s.snowEnabled = true;
+        ensure("type blocker", std::string(ALWeatherUIModel::snowRequirement(s)).find("Precipitation type is Rain") == 0);
+        s.precipType = 1; s.snowRate = 0.f;
+        ensure("rate blocker", std::string(ALWeatherUIModel::snowRequirement(s)).find("Snow rate is zero") == 0);
+        ALWeatherUIModel::applyPreset(s, 7);
+        ensure("Heavy snow opens every snowfall setting gate", ALWeatherUIModel::snowRequirement(s) == nullptr);
     }
 }
