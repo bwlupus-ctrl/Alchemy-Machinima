@@ -19,6 +19,16 @@
 #include <vector>
 namespace ALWorldShadow
 {
+// Preserve the low bits of the inverse projection's depth denominator. At
+// distance, rounding either coefficient to float can exceed D24 uncertainty.
+// These four scalars accompany the existing camera matrix; no image is stored.
+inline void splitReceiverDepth(double a, double b, float out[4])
+{
+    out[0] = static_cast<float>(a);
+    out[1] = static_cast<float>(b);
+    out[2] = static_cast<float>(a-static_cast<double>(out[0]));
+    out[3] = static_cast<float>(b-static_cast<double>(out[1]));
+}
 // The viewer supplies its native attachment visibility update (apply(mode)). The scope applies `shadow_mode` on entry and, on EVERY exit (also
 // an early return), `restore_mode`, which is CAPTURED BY VALUE AT CONSTRUCTION: a camera mode that changes while the cube passes run must not
 // change what is restored. OFF frames and disabled scopes never apply anything.

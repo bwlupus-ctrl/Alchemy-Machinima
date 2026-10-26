@@ -77,6 +77,9 @@ uniform vec4 kal_wave;
 // seamSoften, blend (master A/B), debugView (0 off / 1 wedges /
 // 2 center-protect / 3 subject mask), reserved
 uniform vec4 kal_look;
+#ifdef AL_SENSOR_HDR
+uniform int sensor_diagnostics;
+#endif
 // cellSizeVar, cellBreathe, cellSubdiv, cellMerge
 uniform vec4 kal_cell;
 // cellTint, reserved, reserved, reserved
@@ -730,6 +733,9 @@ void main()
     vec2 warpUV = mix(fuv, uv, max(hold, 1.0 - blendW));
 
     // ---- setup views ------------------------------------------------------
+#ifdef AL_SENSOR_HDR
+    if (sensor_diagnostics != 0) col = texture(diffuseRect, uv).rgb;
+#endif
     int dv = int(kal_look.z + 0.5);
     if (dv == 1)                                    // Wedges
     {
@@ -771,7 +777,11 @@ void main()
         col = vec3(h);
     }
 
+#ifdef AL_SENSOR_HDR
+    frag_data[0] = vec4(col, 1.0);
+#else
     frag_data[0] = vec4(clamp(col, 0.0, 1.0), 1.0);
+#endif
     frag_data[1] = vec4(0.0);
     frag_data[2] = vec4(warpUV, 0.0, 0.0);
 }

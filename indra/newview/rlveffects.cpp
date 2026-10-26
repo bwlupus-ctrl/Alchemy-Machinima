@@ -329,7 +329,15 @@ void RlvSphereEffect::setShaderUniforms(LLGLSLShader* pShader)
     pShader->uniform2f(LLShaderMgr::RLV_EFFECT_PARAM3, (GLfloat)(eDistExtend & (int)ESphereDistExtend::Min), (GLfloat)(eDistExtend & (int)ESphereDistExtend::Max));
 
     // Pass effect params
-    const glm::vec4 effectParams(glm::make_vec4(m_Params.get().mV));
+    glm::vec4 effectParams(glm::make_vec4(m_Params.get().mV));
+    if (gPipeline.physicalCameraOrder() && m_eMode == ESphereMode::Blend)
+    {
+        for (U32 channel = 0; channel < 3; ++channel)
+        {
+            const F32 value = effectParams[channel];
+            effectParams[channel] = value <= .04045f ? value / 12.92f : powf((value + .055f) / 1.055f, 2.4f);
+        }
+    }
     pShader->uniform4fv(LLShaderMgr::RLV_EFFECT_PARAM4, 1, glm::value_ptr(effectParams));
 }
 

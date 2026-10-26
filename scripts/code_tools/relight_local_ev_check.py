@@ -285,12 +285,17 @@ def gl_checks(rows, before, ref, out, glm_include):
     assert not any(s in gl.renderer.lower() for s in ('gdi generic', 'llvmpipe', 'softpipe', 'swiftshader', 'lavapipe', 'software', 'basic render')), 'hardware GPU required'
     host = W.build_host(out, glm_include)
     try:
-        runners = [W.RealRunner(G.SourceTree(source), host, gl=gl) for source in (BASE, ref)]
-        programs = {id(r): [compose_program(r, path) for path in range(4)] for r in runners}
+        # Keep historical selection/lighting and frozen 77348de6593 world
+        # functions as the independent EV-zero oracle.
+        current_tree = G.SourceTree(ref)
+        runners = [W.RealRunner(W.PreLookTree(current_tree, BASE), host, gl=gl),
+                   W.RealRunner(current_tree, host, gl=gl)]
+        frozen = W.RealRunner(W.PreLookTree(current_tree, ref), host, gl=gl)
+        programs = {id(r): [compose_program(r, path) for path in range(4)] for r in runners+[frozen]}
         # This receiver spans the native fade-to-screen hand-over too. Native
         # visibility above is deliberately independent of EV and the cube path
         # disables it only when the compiled production selector transfers it.
-        for r in runners:
+        for r in runners+[frozen]:
             for program in (r.gather, r.filter):
                 gl.use(program); gl.uf[2](gl.loc(program, b'area_native_clip'), 2, 6)
         scene, light = W.fixture(emitter='none')
@@ -298,7 +303,7 @@ def gl_checks(rows, before, ref, out, glm_include):
         g = S.cast_primary(scene, cam)
         _, depth, norm = S.encode_gbuffer(cam, g)
         near = CS.emitter_near(scene, light)
-        for r in runners:
+        for r in runners+[frozen]:
             r.gpu_atlas = W.Raster(r).atlas(scene, light, near)
         floor = (g['surf'] == 0) & (np.linalg.norm(g['pos'][..., :2], axis=2) < 8)
         cache = {}
@@ -342,7 +347,7 @@ def gl_checks(rows, before, ref, out, glm_include):
             return pixels
 
         failures, original_failures, compared = [], [], 0
-        zero, base_zero = {}, {}
+        zero, base_zero, base_visibility, historical_masks = {}, {}, {}, {}
         # Bright fixtures cover every rig/inclusion/path/quality/competition
         # combination; faint eligibility boundaries are exercised by C++ above.
         for source, sink, refs, r in ((before, original_failures, base_zero, runners[0]), (rows, failures, zero, runners[1])):
@@ -352,8 +357,33 @@ def gl_checks(rows, before, ref, out, glm_include):
                 k = key(row)
                 if row['ev'] == 0:
                     refs[k] = pixels
+                    if refs is base_zero:
+                        signature = (id(r),row['path'],row['native'],tuple(row['plan']),row['strength'],row['regular'])
+                        base_visibility[k] = cache[signature]
                     if refs is zero:
-                        assert pixels.tobytes() == base_zero[k].tobytes(), 'EV 0 GL byte identity'
+                        if row['path'] < 2:
+                            assert pixels.tobytes() == base_zero[k].tobytes(), 'EV 0 current production complete-frame historical byte identity'
+                        # EV-zero history freezes ONLY the intentionally
+                        # changed receiver algorithm, at actual 77348de6593.
+                        # All EV shape/brightness comparisons below still run
+                        # the complete current production world resolve.
+                        assert render(row, frozen).tobytes() == base_zero[k].tobytes(), 'EV 0 GL historical byte identity'
+                        # Select interiors on the historical visibility BEFORE
+                        # native composition (.8 is its controlled lit value),
+                        # then compare all composed colour/alpha bytes.
+                        mask_key=base_visibility[k].tobytes()
+                        if mask_key not in historical_masks:
+                            historical_masks[mask_key]=W.historical_geometry_mask(base_visibility[k],scene,g,light,floor)
+                        protected=historical_masks[mask_key]
+                        assert protected.sum()>100, 'insufficient historical EV receivers'
+                        if pixels[protected].tobytes() != base_zero[k][protected].tobytes():
+                            bad=protected&np.any(pixels!=base_zero[k],axis=2)
+                            detail=dict(case=k,receivers=int(protected.sum()),changed=int(bad.sum()),
+                                        max_difference=float(np.max(np.abs(pixels[protected]-base_zero[k][protected]))),
+                                        examples=[dict(x=int(x),y=int(y),before=base_zero[k][y,x].tolist(),after=pixels[y,x].tolist(),
+                                                       point=g['pos'][y,x].tolist()) for y,x in np.argwhere(bad)[:8]])
+                            (out/'historical_failure.json').write_text(json.dumps(detail,indent=2)+'\n')
+                            raise AssertionError(('EV 0 production historical interior byte identity',detail))
                     if row['slot'] >= 0:
                         assert np.any(pixels[:, :, 3][floor] < .7), ('positive shadow control', k)
                         assert np.any((pixels[:, :, 3][floor] > .1) & (pixels[:, :, 3][floor] < .9)), ('penumbra control', k)

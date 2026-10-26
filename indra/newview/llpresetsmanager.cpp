@@ -33,6 +33,7 @@
 // (2018-12-03), moved in 4ff6498a7e (2020-07-06). Gated by BDMergeCameraPresets.
 
 #include "llviewerprecompiledheaders.h"
+#include "aldiopterpresetbank.h"
 
 #include "llpresetsmanager.h"
 
@@ -576,6 +577,7 @@ bool LLPresetsManager::setPresetNamesInComboBox(const std::string& subdirectory,
 
 void LLPresetsManager::loadPreset(const std::string& subdirectory, std::string name)
 {
+    ALScopedPresetMaterializing preset_guard;
     if (LLTrans::getString(PRESETS_DEFAULT) == name)
     {
         name = PRESETS_DEFAULT;

@@ -39,6 +39,9 @@
 #include "alareashadowmath.h"
 
 #include "llviewercontrol.h"
+#include "aldiopterpresetbank.h"
+#include "alkithistory.h"
+#include "alsensorsettings.h"
 
 // Library includes
 #include "llwindow.h"   // getGamma()
@@ -1159,6 +1162,19 @@ static void setupWeatherMaterialListeners()
 void settings_setup_listeners()
 {
     LL_PROFILE_ZONE_SCOPED;
+    // Settings behavior must exist before the lazy Exposure page is opened.
+    // Restores own both preset and ISO, in either write order.
+    setting_setup_signal_listener(gSavedSettings, "CineSensorPreset", []()
+    {
+        if (!alDiopterIsPresetMaterializing() && !ALKitHistory::replaying())
+            gSavedSettings.setF32("CineSensorISO", static_cast<F32>(ALSensorSettings::preset().baseISO));
+    });
+    // Clear the old engine's label synchronously. Scene loading applies its
+    // preset after selecting the engine, before the renderer's deferred refresh.
+    setting_setup_signal_listener(gSavedSettings, "BDMergeProjectorVolumetricsEngine", []()
+    {
+        gSavedSettings.setString("BDMergeProjectorVolumetricsPreset", "");
+    });
     // Exposure history listens at the setting layer, so every editing surface
     // (including Debug Settings and Lightbox) shares one session history.
     ALExposureSettingsHistory::initialize();

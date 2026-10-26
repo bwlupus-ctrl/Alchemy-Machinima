@@ -250,6 +250,26 @@ LLGLSLShader            gActorFxPBRGlowProgram;
 LLGLSLShader            gActorFxPBRSkinnedGlowProgram;
 LLGLSLShader            gDeferredPostProgram;
 LLGLSLShader            gDeferredPostProgramNoNear;
+
+// WP-B: main-presentation physical camera variants, never used by legacy feeds.
+LLGLSLShader gSensorCameraProgram[10]; // exposure, optics, four camera and four godray grades
+LLGLSLShader gSensorPassProgram;
+LLGLSLShader gSensorAAEncodeProgram;
+LLGLSLShader gSensorDoFProgram[2];
+LLGLSLShader gSensorDiopterGatherProgram[4];
+LLGLSLShader gSensorDiopterProgram;
+LLGLSLShader gSensorKaleidoProgram;
+LLGLSLShader gSensorFXAAProgram[4];
+LLGLSLShader gSensorSMAABlendProgram[4];
+LLGLSLShader gSensorSMAAEdgeProgram[4];
+LLGLSLShader gSensorDoFCombineProgram[2];
+LLGLSLShader gSensorDoFReduceProgram[2];
+LLGLSLShader gSensorGodrayProgram;
+LLGLSLShader gSensorVignetteProgram;
+LLGLSLShader gSensorBlitProgram;
+LLGLSLShader gSensorRotoProgram;
+LLGLSLShader gSensorOverlayProgram;
+
 LLGLSLShader            gDeferredCoFProgram;
 LLGLSLShader            gDeferredDoFCombineProgram;
 LLGLSLShader            gExposureProgram;
@@ -285,9 +305,14 @@ LLGLSLShader            gTronWorldProgram;
 LLGLSLShader            gTronTrailProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
+LLGLSLShader            gDeferredProjectorVolumetricFullProgram;
+LLGLSLShader            gDeferredProjectorVolumetricClassicProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
+LLGLSLShader            gDeferredProjectorVolumetricClassicUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 LLGLSLShader            gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
+LLGLSLShader            gDeferredProjectorVolumetricClassicTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 LLGLSLShader            gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
+LLGLSLShader            gDeferredProjectorVolumetricClassicBloomFeedProgram; // [BDMerge G3.3 P3 item 4]
 LLGLSLShader            gDeferredWeatherRainProgram;
 LLGLSLShader            gDeferredWeatherRainOcclusionProgram;
 LLGLSLShader            gDeferredWeatherRainUpsampleProgram;
@@ -734,9 +759,14 @@ void LLViewerShaderMgr::finalizeShaderList()
     // [BDMerge G3.3] projector volumetrics links the same atmospherics/deferred
     // util set as G3.2, so register it too (keeps linked util externs satisfied).
     mShaderList.push_back(&gDeferredProjectorVolumetricProgram);
+    mShaderList.push_back(&gDeferredProjectorVolumetricFullProgram);
+    mShaderList.push_back(&gDeferredProjectorVolumetricClassicProgram);
     mShaderList.push_back(&gDeferredProjectorVolumetricUpsampleProgram); // [BDMerge G3.3 P1 item 3]
+    mShaderList.push_back(&gDeferredProjectorVolumetricClassicUpsampleProgram); // [BDMerge G3.3 P1 item 3]
     mShaderList.push_back(&gDeferredProjectorVolumetricTemporalProgram); // [BDMerge G3.3 Batch 1 A]
+    mShaderList.push_back(&gDeferredProjectorVolumetricClassicTemporalProgram); // [BDMerge G3.3 Batch 1 A]
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
+    mShaderList.push_back(&gDeferredProjectorVolumetricClassicBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gDeferredWeatherRainProgram);
     if (gSavedSettings.getBOOL("AlchemyWeatherRainOcclusion"))
     {
@@ -1264,6 +1294,7 @@ void LLViewerShaderMgr::setShaders()
 
 void LLViewerShaderMgr::unloadShaders()
 {
+    unloadSensorShaders();
     // A completed auxiliary Prism pass can retain shader addresses solely to
     // restore main-view screen uniforms on their next bind. Program unload
     // makes that tracking obsolete; clear it before variant storage changes.
@@ -1713,6 +1744,133 @@ bool LLViewerShaderMgr::loadShadersEffects()
 
 }
 
+
+void LLViewerShaderMgr::unloadSensorShaders()
+{
+    const auto remove = [&](LLGLSLShader* shader)
+    {
+        mShaderList.erase(std::remove(mShaderList.begin(), mShaderList.end(), shader), mShaderList.end());
+        shader->unload();
+    };
+    for (auto& shader : gSensorCameraProgram) remove(&shader);
+    for (auto& shader : gSensorDoFProgram) remove(&shader);
+    for (auto& shader : gSensorDoFCombineProgram) remove(&shader);
+    for (auto& shader : gSensorDoFReduceProgram) remove(&shader);
+    for (auto& shader : gSensorDiopterGatherProgram) remove(&shader);
+    for (auto& shader : gSensorFXAAProgram) remove(&shader);
+    for (auto& shader : gSensorSMAABlendProgram) remove(&shader);
+    for (auto& shader : gSensorSMAAEdgeProgram) remove(&shader);
+    for (auto* shader : { &gSensorPassProgram, &gSensorAAEncodeProgram,
+        &gSensorDiopterProgram, &gSensorKaleidoProgram, &gSensorVignetteProgram,
+        &gSensorBlitProgram, &gSensorRotoProgram, &gSensorOverlayProgram, &gSensorGodrayProgram }) remove(shader);
+}
+
+bool LLViewerShaderMgr::loadSensorShaders()
+{
+    if (gSensorPassProgram.isComplete()) return true;
+    const auto register_shader = [&](LLGLSLShader& shader)
+    {
+        if (std::find(mShaderList.begin(), mShaderList.end(), &shader) == mShaderList.end())
+            mShaderList.push_back(&shader);
+        shader.mUniformsDirty = true;
+    };
+    // Clone source recipes, not program handles or legacy permutations.
+    const auto clone = [&](LLGLSLShader& dst, const LLGLSLShader& src)
+    {
+        dst.mName = "Sensor HDR " + src.mName;
+        dst.mFeatures = src.mFeatures;
+        dst.mShaderFiles = src.mShaderFiles;
+        dst.mShaderLevel = src.mShaderLevel;
+        dst.clearPermutations();
+        dst.addPermutations(src.mDefines);
+        dst.addPermutation("AL_SENSOR_HDR", "1");
+        register_shader(dst);
+    };
+    const auto simple = [&](LLGLSLShader& shader, const char* file)
+    {
+        shader.mName = std::string("Sensor ") + file;
+        shader.mFeatures = LLShaderFeatures();
+        shader.mFeatures.isDeferred = true;
+        shader.mShaderFiles = {
+            make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER),
+            make_pair(file, GL_FRAGMENT_SHADER) };
+        shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        shader.clearPermutations();
+        register_shader(shader);
+    };
+    bool ok = true;
+    LLGLSLShader* camera[] = { &gCGTonemapProgram, &gCGTonemapProgram,
+        &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
+        &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
+    for (U32 i = 0; i < 10; ++i)
+    {
+        auto& shader = gSensorCameraProgram[i];
+        clone(shader, *camera[i >= 6 ? i - 4 : i]);
+        shader.addPermutation(i == 0 ? "AL_SENSOR_EXPOSURE" :
+            i == 1 ? "AL_SENSOR_OPTICS" : i >= 6 ? "AL_SENSOR_GODRAYS" : "AL_SENSOR_CAMERA", "1");
+        ok = shader.createShader() && ok;
+    }
+    for (U32 i = 0; i < 2; ++i)
+    {
+        clone(gSensorDoFProgram[i], i ? gDeferredPostProgram : gDeferredPostProgramNoNear);
+        ok = gSensorDoFProgram[i].createShader() && ok;
+        clone(gSensorDoFReduceProgram[i], i ? gDeferredPostProgram : gDeferredPostProgramNoNear);
+        gSensorDoFReduceProgram[i].addPermutation("AL_SENSOR_DOF_REDUCE", "1");
+        ok = gSensorDoFReduceProgram[i].createShader() && ok;
+    }
+    for (U32 i = 0; i < 4; ++i)
+    {
+        clone(gSensorDiopterGatherProgram[i], gUltimateDiopterGatherProgram[i]);
+        ok = gSensorDiopterGatherProgram[i].createShader() && ok;
+        if (gFXAAProgram[i].isComplete())
+        {
+            clone(gSensorFXAAProgram[i], gFXAAProgram[i]);
+            ok = gSensorFXAAProgram[i].createShader() && ok;
+        }
+        if (gSMAANeighborhoodBlendProgram[i].isComplete())
+        {
+            clone(gSensorSMAAEdgeProgram[i], gSMAAEdgeDetectProgram[i]);
+            gSensorSMAAEdgeProgram[i].addPermutation("SMAA_PREDICATION", "0");
+            ok = gSensorSMAAEdgeProgram[i].createShader() && ok;
+            clone(gSensorSMAABlendProgram[i], gSMAANeighborhoodBlendProgram[i]);
+            ok = gSensorSMAABlendProgram[i].createShader() && ok;
+        }
+    }
+    for (U32 i = 0; i < 2; ++i)
+    {
+        clone(gSensorDoFCombineProgram[i], gDeferredDoFCombineProgram);
+        gSensorDoFCombineProgram[i].addPermutation("FRONT_BLUR", i ? "1" : "0");
+        ok = gSensorDoFCombineProgram[i].createShader() && ok;
+    }
+    clone(gSensorDiopterProgram, gUltimateDiopterProgram);
+    if (gVolumetricLightProgram.isComplete())
+    {
+        clone(gSensorGodrayProgram, gVolumetricLightProgram);
+        ok = gSensorGodrayProgram.createShader() && ok;
+    }
+    clone(gSensorKaleidoProgram, gUltimateKaleidoProgram);
+    clone(gSensorBlitProgram, gBlitWithEffectsProgram);
+    clone(gSensorRotoProgram, gCineOutlineProgram);
+    gSensorRotoProgram.addPermutation("AL_SENSOR_OVERLAY", "1");
+    for (auto* shader : { &gSensorDiopterProgram, &gSensorKaleidoProgram,
+                         &gSensorBlitProgram, &gSensorRotoProgram }) ok = shader->createShader() && ok;
+    simple(gSensorAAEncodeProgram, "alchemy/sensorAAEncodeF.glsl");
+    simple(gSensorVignetteProgram, "alchemy/sensorVignetteF.glsl");
+    simple(gSensorOverlayProgram, "alchemy/sensorOverlayF.glsl");
+    for (auto* shader : { &gSensorAAEncodeProgram, &gSensorVignetteProgram,
+                         &gSensorOverlayProgram }) ok = shader->createShader() && ok;
+    // Compile the pure WP-A utility as a separate production fragment unit.
+    simple(gSensorPassProgram, "alchemy/sensorF.glsl");
+    gSensorPassProgram.mShaderFiles.push_back(make_pair("alchemy/sensorUtilF.glsl", GL_FRAGMENT_SHADER));
+    ok = gSensorPassProgram.createShader() && ok;
+    if (!ok)
+    {
+        unloadSensorShaders();
+        LL_WARNS("Shader") << "Physical camera unavailable; keeping legacy presentation" << LL_ENDL;
+    }
+    return ok;
+}
+
 bool LLViewerShaderMgr::loadShadersDeferred()
 {
     LL_PROFILE_ZONE_SCOPED;
@@ -1841,9 +1999,14 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gTronWorldProgram.unload(); // [TronT1]
         gTronTrailProgram.unload(); // [TronT3]
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
+        gDeferredProjectorVolumetricFullProgram.unload();
+        gDeferredProjectorVolumetricClassicProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
+        gDeferredProjectorVolumetricClassicUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
+        gDeferredProjectorVolumetricClassicTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
         gDeferredProjectorVolumetricBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.unload(); // [BDMerge G3.3 P3 item 4]
         gDeferredWeatherRainProgram.unload();
         gDeferredWeatherRainOcclusionProgram.unload();
         gDeferredWeatherRainUpsampleProgram.unload();
@@ -4571,6 +4734,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         // Match the deactivated A/B variant exactly in the binary-cache key.
         // Absent and explicit "0" hash differently: first OFF must reuse startup.
         gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_INTEGRATION_AB", "0");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_BUDGET_ENABLE", "0");
+        gDeferredProjectorVolumetricProgram.addPermutation("PROJVOL_HARD_BEAM",
+            gSavedSettings.getU32("BDMergeProjectorVolumetricsBeamShadows") == 1 ? "1" : "0");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
         // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
         // does not exist in the program, so no fragment texture unit is consumed
@@ -4599,6 +4765,15 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricF.glsl", GL_FRAGMENT_SHADER));
         gDeferredProjectorVolumetricProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gDeferredProjectorVolumetricProgram.createShader();
+        gPipeline.projectorVolumetricShaderLoaded(success,gDeferredProjectorVolumetricProgram.mShaderLevel,
+            mShaderLevel[SHADER_DEFERRED]);
+        if (gPipeline.mProjVolVariantFailed)
+        {
+            // A later mode change must retry the requested class, never bless
+            // a successful class1 black stub left by startup fallback.
+            gDeferredProjectorVolumetricProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = false;
+        }
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricProgram.mName << "', disabling!" << LL_ENDL;
@@ -4656,6 +4831,115 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricBloomFeedProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // Four optional Classic programs are compiled alongside New so an engine
+        // switch never rebuilds the entire deferred shader set.
+        gDeferredProjectorVolumetricClassicProgram.mName = "Projector Volumetric Light Classic Shader";
+        gDeferredProjectorVolumetricClassicProgram.mFeatures.isDeferred = true;
+        gDeferredProjectorVolumetricClassicProgram.mFeatures.calculatesAtmospherics = true;
+        gDeferredProjectorVolumetricClassicProgram.mFeatures.hasAtmospherics = true;
+        gDeferredProjectorVolumetricClassicProgram.mFeatures.hasShadows = true;
+        gDeferredProjectorVolumetricClassicProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricClassicProgram.clearPermutations();
+        gDeferredProjectorVolumetricClassicProgram.addPermutation("PROJVOL_CLASSIC_UTIL", "1");
+        if (alr_emissive_buffer_enabled())
+        {
+            gDeferredProjectorVolumetricClassicProgram.addPermutation("HAS_EMISSIVE", "1");
+        }
+        gDeferredProjectorVolumetricClassicProgram.addPermutation("SPOT_SHADOW", "1");
+        // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
+        // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
+        // does not exist in the program, so no fragment texture unit is consumed
+        // in this already sampler-heavy shader. Toggling the setting rebuilds
+        // shaders (handleSetShaderChanged listener in llviewercontrol.cpp) -
+        // same settings-driven pattern as GODRAYS_FADE above.
+        if (gSavedSettings.getBOOL("BDMergeProjectorVolumetricsDust"))
+        {
+            gDeferredProjectorVolumetricClassicProgram.addPermutation("PROJVOL_DUST_ENABLE", "1");
+        }
+        // [BDMerge G3.3 ConservativeShadow / round-2 review fix] The conservative
+        // airborne-shadow experiment is likewise a compile-time permutation: with
+        // the lever OFF (default) the gate uniform, the on-axis guards, the
+        // conservative shadow dispatch and the guarded normalize do not exist in
+        // the program at all, so the default-off march is instruction-identical
+        // to the legacy path (zero cost) rather than merely equivalent. Toggling
+        // the setting rebuilds shaders (handleSetShaderChanged listener in
+        // llviewercontrol.cpp), and the define feeds the program-binary cache
+        // key through mDefines (LLGLSLShader::hash), so both permutations cache
+        // and rebuild correctly.
+        if (gSavedSettings.getBOOL("BDMergeProjectorVolumetricsConservativeShadow"))
+        {
+            gDeferredProjectorVolumetricClassicProgram.addPermutation("PROJVOL_CONSERVATIVE_SHADOW", "1");
+        }
+        gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicUtil.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricClassicProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricClassicProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3 Phase 1 item 3] depth-aware bilateral upsample that resolves
+        // the half-res projector-volumetric march back to full resolution and
+        // composites it additively onto the linear HDR scene buffer. isDeferred so
+        // getPosition()/depthMap/inv_proj resolve for the depth weighting; no
+        // shadow set needed (the half-res pass already baked self-shadowing).
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mName = "Projector Volumetric Upsample Classic Shader";
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mFeatures.isDeferred = true;
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricClassicUpsampleProgram.clearPermutations();
+        gDeferredProjectorVolumetricClassicUpsampleProgram.addPermutation("PROJVOL_CLASSIC_UTIL", "1");
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicUtil.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicUpsampleF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicUpsampleProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricClassicUpsampleProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricClassicUpsampleProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3 Batch 1 A] Temporal reprojection resolve shader: blends the
+        // freshly-marched half-res shaft with the reprojected previous accumulation
+        // (neighborhood-clamped, depth/cut-rejected) into the history slot. Deferred
+        // so getPosition()/depthMap/inv_proj resolve for reprojection + disocclusion.
+        gDeferredProjectorVolumetricClassicTemporalProgram.mName = "Projector Volumetric Temporal Classic Shader";
+        gDeferredProjectorVolumetricClassicTemporalProgram.mFeatures.isDeferred = true;
+        gDeferredProjectorVolumetricClassicTemporalProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricClassicTemporalProgram.clearPermutations();
+        gDeferredProjectorVolumetricClassicTemporalProgram.addPermutation("PROJVOL_CLASSIC_UTIL", "1");
+        gDeferredProjectorVolumetricClassicTemporalProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricClassicTemporalProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicUtil.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicTemporalProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicTemporalF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicTemporalProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricClassicTemporalProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricClassicTemporalProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+
+        // [BDMerge G3.3 Phase 3 item 4] Bloom-feed shader: a small tent blur of the
+        // half-res projector-volumetric shaft, scaled by projvol_bloom_feed, additively
+        // composited into the HDR bloom pyramid base so bright shaft cores gain a soft
+        // glow halo. Not deferred (plain 2D texture pass, no depth reconstruction).
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.mName = "Projector Volumetric Bloom Feed Classic Shader";
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.mShaderFiles.clear();
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.clearPermutations();
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicBloomFeedF.glsl", GL_FRAGMENT_SHADER));
+        gDeferredProjectorVolumetricClassicBloomFeedProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gDeferredProjectorVolumetricClassicBloomFeedProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gDeferredProjectorVolumetricClassicBloomFeedProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
 

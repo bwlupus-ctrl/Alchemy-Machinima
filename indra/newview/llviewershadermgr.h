@@ -77,6 +77,8 @@ public:
     std::string loadBasicShaders();
     bool loadShadersEffects();
     bool loadShadersDeferred();
+    bool loadSensorShaders();
+    void unloadSensorShaders();
     bool loadShadersObject();
     bool loadShadersAvatar();
     bool loadShadersWater();
@@ -317,6 +319,26 @@ extern LLGLSLShader         gDeferredShadowGLTFAlphaBlendProgram;
 extern LLGLSLShader         gDeferredShadowFullbrightAlphaMaskProgram;
 extern LLGLSLShader         gDeferredPostProgram;
 extern LLGLSLShader         gDeferredPostProgramNoNear;
+
+// WP-B: main-presentation physical camera variants, never used by legacy feeds.
+extern LLGLSLShader gSensorCameraProgram[10]; // exposure, optics, four camera grades
+extern LLGLSLShader gSensorPassProgram;
+extern LLGLSLShader gSensorAAEncodeProgram;
+extern LLGLSLShader gSensorDoFProgram[2];
+extern LLGLSLShader gSensorDiopterGatherProgram[4];
+extern LLGLSLShader gSensorDiopterProgram;
+extern LLGLSLShader gSensorKaleidoProgram;
+extern LLGLSLShader gSensorFXAAProgram[4];
+extern LLGLSLShader gSensorSMAABlendProgram[4];
+extern LLGLSLShader gSensorSMAAEdgeProgram[4];
+extern LLGLSLShader gSensorDoFCombineProgram[2];
+extern LLGLSLShader gSensorDoFReduceProgram[2];
+extern LLGLSLShader gSensorGodrayProgram;
+extern LLGLSLShader gSensorVignetteProgram;
+extern LLGLSLShader gSensorBlitProgram;
+extern LLGLSLShader gSensorRotoProgram;
+extern LLGLSLShader gSensorOverlayProgram;
+
 extern LLGLSLShader         gDeferredCoFProgram;
 extern LLGLSLShader         gDeferredDoFCombineProgram;
 extern LLGLSLShader         gFXAAProgram[4];
@@ -349,7 +371,12 @@ extern LLGLSLShader         gTronWorldProgram;
 // [TronT3] Tron light-cycle trail ribbons (immediate-mode strips drawn inside renderTronWorld)
 extern LLGLSLShader         gTronTrailProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicUpsampleProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicTemporalProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricClassicBloomFeedProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
+extern LLGLSLShader         gDeferredProjectorVolumetricFullProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
 extern LLGLSLShader         gDeferredProjectorVolumetricTemporalProgram; // [BDMerge G3.3 Batch 1 A]
 extern LLGLSLShader         gDeferredProjectorVolumetricBloomFeedProgram; // [BDMerge G3.3 P3 item 4]

@@ -641,7 +641,11 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
             if child is not None and child.tag in CONTROL_TYPE:
                 etype = CONTROL_TYPE[child.tag]
             exercise = EXERCISE.get(etype, "none")
-            setting = row.get("setting", "")
+            # These presentations use typed code bindings: ISO is an F32 combo,
+            # and Seed is decimal text so all U32 values survive read-back.
+            sensor_code_settings = {"sensor_iso": "CineSensorISO", "sensor_seed": "CineSensorSeed"}
+            code_setting = sensor_code_settings.get(widget, "") if page == "exposure_tab" else ""
+            setting = row.get("setting", "") or code_setting
             sinfo = settings.get(setting, {}) if setting else {}
             stype = sinfo.get("type", "")
             default = sinfo.get("default")
@@ -767,6 +771,20 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "callbacks": callbacks or None, "owner": owner or None,
                 "evidence": rel(path),
             })
+            if code_setting:
+                entry["setting_source"] = "ALKitSettingBinding (typed sensor presentation)"
+            if page == "exposure_tab" and card.get("id") in {"sensor", "custom_sensor"}:
+                # Preset selection also changes ISO; restore both after a probe.
+                snapshot = [setting] if setting else []
+                snapshot += ["CineSensorISO", "CineSensorPreset", "CineSensorSeedFixed"]
+                entry["restore"] = {"snapshot_settings": list(dict.fromkeys(snapshot))}
+                if widget == "sensor_seed":
+                    entry["reveal_settings"] = [{"setting": "CineSensorSeedFixed", "value": True}]
+                    entry["test_value"] = "4294967295"
+                    # LLControlVariable stores U32 as the signed LLSD bit pattern.
+                    entry["expect"] = {"setting": "CineSensorSeed", "type": "U32", "value": -1}
+                elif card.get("id") == "custom_sensor":
+                    entry["reveal_settings"] = [{"setting": "CineSensorPreset", "value": 3}]
             if row.get("header_switch") == "true":
                 entry["header_switch"] = True
                 entry["setting_source"] = "kit_card/kit_option enable_setting" if setting else None

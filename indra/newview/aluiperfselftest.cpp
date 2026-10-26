@@ -4755,9 +4755,10 @@ private:
         // and keep every write under the materializing guard.  Otherwise an
         // alphabetical restore of CineDiopter* edits a preset-owned value
         // while the selector is non-Custom and snapshots the preset to disk.
+        // Sensor selection resets ISO, so restore its selector before the ISO snapshot.
         ALScopedPresetMaterializing preset_guard;
         static const char* const preset_selectors[] = {
-            "CineDiopterPreset", "CineDiopterKalPreset"
+            "CineDiopterPreset", "CineDiopterKalPreset", "CineSensorPreset"
         };
         for (const char* name : preset_selectors)
         {
@@ -4773,7 +4774,8 @@ private:
         for (const auto& saved : mFunctionalRestore)
         {
             if (saved.first == "CineDiopterPreset" ||
-                saved.first == "CineDiopterKalPreset") continue;
+                saved.first == "CineDiopterKalPreset" ||
+                saved.first == "CineSensorPreset") continue;
             if (mFunctionalShaderRestore.count(saved.first)) continue;
             if (LLControlVariable* control = gSavedSettings.getControl(saved.first).get())
             {

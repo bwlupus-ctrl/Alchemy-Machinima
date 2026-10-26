@@ -197,7 +197,7 @@ int main() {
     }
 }
 '''
-    directory = Path('.tmp/relight_contact_cpu').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / 'relight_contact_cpu').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     (directory/'contact.cpp').write_text(fixture, encoding='utf-8')
     vcvars = next((Path(os.environ['ProgramFiles'])/'Microsoft Visual Studio').glob(

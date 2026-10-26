@@ -18,6 +18,7 @@
 #include "alkitbinding.h"
 #include "alkitbar.h"
 #include "alkithistory.h"
+#include "aldiopterpresetbank.h"
 #include "alkitpage.h"
 #include "alkitpopover.h"
 #include "alkitrow.h"
@@ -1084,15 +1085,22 @@ private:
 class ALProjectorShaftPresetProvider final : public ALKitPresetProvider
 {
 public:
-    ALProjectorShaftPresetProvider() : mStore("projector_shafts", ALProjectorShaftPresets::trackedSettings()) {}
+    ALProjectorShaftPresetProvider()
+        : mStore("projector_shafts", ALProjectorShaftPresets::trackedSettings()),
+          mClassicStore("projector_shafts_classic", ALProjectorShaftPresets::trackedSettings()) {}
     const std::string& key() const override { return mKey; }
     void list(std::vector<Entry>& out) const override
     {
-        for (const ALProjectorShaftLooks::Look& look : ALProjectorShaftLooks::looks())
+        if (ALProjectorShaftPresets::classicEngine())
+        {
+            const auto& labels = ALProjectorShaftPresets::classicLabels();
+            for (size_t i = 0; i < labels.size(); ++i) out.push_back({std::to_string(i), labels[i], true});
+        }
+        else for (const ALProjectorShaftLooks::Look& look : ALProjectorShaftLooks::looks())
         {
             out.push_back({ look.id, look.label, true, look.description });
         }
-        for (const std::string& name : mStore.names())
+        for (const std::string& name : store().names())
         {
             out.push_back({ "u:" + name, name, false });
         }
@@ -1103,24 +1111,26 @@ public:
         {
             // Route through applyValues so the Dust permutation is written once, last, and only if it changes.
             LLSD values;
-            return mStore.values(id.substr(2), values) && ALProjectorShaftPresets::applyValues(values);
+            return store().values(id.substr(2), values) && ALProjectorShaftPresets::applyValues(values);
         }
         // Built-in: "b:*" ids, and the legacy "0".."7" ids a session may still hold.
         return ALProjectorShaftPresets::apply(id);
     }
     bool canSaveUser() const override { return true; }
-    bool saveUser(const std::string& name) override { return mStore.save(name); }
+    bool saveUser(const std::string& name) override { return store().save(name); }
     bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
-    bool deleteUser(const std::string& id) override { return canDelete(id) && mStore.remove(id.substr(2)); }
-    U64 revision() const override { return mStore.revision(); }
+    bool deleteUser(const std::string& id) override { return canDelete(id) && store().remove(id.substr(2)); }
+    U64 revision() const override { return store().revision(); }
     const std::vector<std::string>& trackedSettings() const override
     {
         return ALProjectorShaftPresets::trackedSettings();
     }
 
 private:
+    ALKitSnapshotStore& store() const { return ALProjectorShaftPresets::classicEngine() ? mClassicStore : mStore; }
     std::string                mKey = "projector_shafts";
     mutable ALKitSnapshotStore mStore;
+    mutable ALKitSnapshotStore mClassicStore;
 };
 
 void applySteppedConfig(const ALSteppedAnim::Config& c)
@@ -1949,6 +1959,12 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
     if (!root || !mBoundPages.insert(page).second)
     {
         return;
+    }
+    if (page == "projector_shafts_tab")
+    {
+        if (LLTextBox* cost = root->findChild<LLTextBox>("ps_shaft_cost"))
+            mShaftCost = cost->getDerivedHandle<LLTextBox>();
+        mShaftCostClock.forceDue();
     }
     if (page == "light_rim_tab")
     {
@@ -3322,6 +3338,11 @@ void LLFloaterDirector::addLauncherCard(const std::string& id,
 void LLFloaterDirector::refreshLauncherCards()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshLauncherCards");
+    if (LLTextBox* cost = mShaftCost.get())
+    {
+        if (isWidgetOnScreen(cost) && mShaftCostClock.due())
+            setTextIfChanged(cost,gPipeline.projectorShaftCostReadout());
+    }
     if (!mLauncherClock.due()) return;
     // Read live Preferences on refresh; no setting callback or shader listener.
     LLTextBox* status = mAreaShadowSLStatus.get();
@@ -3839,6 +3860,14 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     // mode can be applied AFTER its named preset (the preset apply path
     // writes the mode too, and the scene's own mode must win)
     static const std::vector<std::string> settings = {
+        // Sensor look, including the complete Custom calibration. Debug gates stay session-local.
+        "CineSensorEnabled", "CineSensorISO", "CineSensorPreset", "CineSensorBrightnessMode",
+        "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
+        "CineSensorCustomBaseISO", "CineSensorCustomSwitchISO", "CineSensorCustomHeadroom",
+        "CineSensorCustomLCGFullWell", "CineSensorCustomLCGReadNoise", "CineSensorCustomLCGAnalogBase",
+        "CineSensorCustomLCGPedestal", "CineSensorCustomLCGWhite", "CineSensorCustomHCGFullWell",
+        "CineSensorCustomHCGReadNoise", "CineSensorCustomHCGAnalogBase", "CineSensorCustomHCGPedestal",
+        "CineSensorCustomHCGWhite",
         // transport arming + countdown
         "DirectorArmMoves",
         "DirectorArmCamera",
@@ -4034,6 +4063,12 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     static const std::vector<std::string> settings_with_roto = []
     {
         std::vector<std::string> v = settings;
+        const auto& shafts = ALProjectorShaftPresets::trackedSettings();
+        // Engine and preset have one authoritative owner: projector_shafts.
+        // Do not replay stale duplicate selectors from scene["settings"].
+        for (const auto& name : shafts)
+            if (name != "BDMergeProjectorVolumetricsEngine" && name != "BDMergeProjectorVolumetricsPreset")
+                v.push_back(name);
         const std::vector<std::string>& roto = ALRotoInk::settings();
         v.insert(v.end(), roto.begin(), roto.end());
         const std::vector<std::string>& tron = ALTron::settings();
@@ -4364,6 +4399,7 @@ LLSD LLFloaterDirector::captureSceneData()
         }
     }
     scene["settings"] = settings;
+    scene["projector_shafts"] = ALProjectorShaftPresets::sceneData();
 
     // CineCam: active mode, and the ACTIVE named preset when one is selected
     // in the shared params panel (stored by name; applied via the panel on load)
@@ -4545,6 +4581,7 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     }
 
     ALKitHistory::ScopedSuspend history_suspend;
+    ALScopedPresetMaterializing preset_guard;
 
     const bool has_version = scene.has("version");
     U32 prism_offline_bindings = 0;
@@ -4614,6 +4651,8 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     // cast, marks, loco anims, subjects -- data only, nothing moves; members
     // not in world stay in the cast grayed "(away)"
     cast.applySceneData(scene);
+
+    ALProjectorShaftPresets::applySceneData(scene["projector_shafts"]);
 
     // only apply keys this floater owns: a scene file is data, not commands
     if (scene["settings"].isMap())

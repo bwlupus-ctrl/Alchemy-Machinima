@@ -320,11 +320,16 @@ def validate_data(data: dict) -> None:
     # My heading (10/24): +1 world-space self-avatar dial on Cast > Move; 2202 -> 2203.
     # Shadow detail (10/24): +8 per-fixture Detail/World shadow flags and +1 Detail shadow bias master; 2203 -> 2212.
     # Rim normals (10/24): +2 Advanced rows beside Smoothness: Smooth radius and Texture normals; 2212 -> 2214.
+    # Shaft Performance (10/24): five global caps/selectors + cost readout; two existing rows move. 2201 -> 2207.
+    # Shaft engine selector (10/24): one row, 2207 -> 2208.
+    # Merged into main after rim normals (10/24): 2214 + 7 shaft rows -> 2221.
+    # ISO sensor WP-C: +23 rows (10 Sensor + 13 Custom sensor); 2221 -> 2244.
     # WP1 weather port (10/25): +20 rows (14 settings, preset/apply/stop/status, two colours); 2214 -> 2234.
     # WP2: ten surface settings, Apply/Clear commands and coverage status (+13).
     # WP3: nine settings plus status; WP7: ten settings plus status (2257 -> 2268).
-    if len(pages) != 38 or row_count != 2268:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2268")
+    # Weather merged onto main (10/26): 2244 + 54 weather rows -> 2298.
+    if len(pages) != 38 or row_count != 2298:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2298")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -874,7 +879,8 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["undo_context"] = str(cfg["undo_context"])
     own = set(cfg.get("own_history", []))
     settings = [] if cfg.get("no_history") else sorted(
-        ({str(row["s"]) for row in all_rows(page) if row.get("s")} - own) | set(cfg.get("watch_extra", [])))
+        ({str(row.get("s") or row["code_setting"]) for row in all_rows(page)
+          if row.get("s") or row.get("code_setting")} - own) | set(cfg.get("watch_extra", [])))
     if settings:
         attrs["watch_settings"] = ",".join(settings)
     return attrs
@@ -1052,6 +1058,10 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                                                cfg.get("label_names", {})))
     declare_undo_owner(body, cfg, str(page.get("name", "")))
     preset = cfg.get("preset", {})
+    if preset.get("mode") == "provider" and preset.get("provider") == "projector_shafts":
+        # ALKitPresetStrip creates this real combo at runtime, with the same
+        # provider callbacks (New/Classic built-ins and saved user presets).
+        names.add("ps_preset:combo_box")
     if preset.get("mode") == "widgets":
         host = ET.SubElement(body, "kit_preset_host", {
             "name": page["name"].removesuffix("_tab") + "_preset_host"})
@@ -1654,7 +1664,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                 fields = [group["name"], page["name"], page.get("label", ""), group.get("label", ""),
                           section_for.get(ci, ""), card.get("id", ""), card.get("t", ""),
                           "" if oi is None else oi, row.get("w", ""), row.get("l", ""), row.get("k", ""),
-                          row.get("s", ""), str(row.get("dc") if row.get("dc") is not None
+                          row.get("s") or row.get("code_setting", ""), str(row.get("dc") if row.get("dc") is not None
                                                    else (0 if row.get("k") in ("dial", "arc") else 3)),
                           flags, row.get("kw", ""), row.get("h", "")]
                 # [Connectedness B8] Only index widgets that exist on their page: a row naming a widget the
@@ -2335,7 +2345,21 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         page_settings.add(shaft_page.get("master_setting"))
         checks.append(("shaft page history covers all controls without expanding look ownership",
                        page_settings == owned | {"BDMergeProjectorVolumetricsDust"} | extras and
-                       len(extras) == 18 and not (owned & extras)))
+                       len(extras) == 24 and not (owned & extras)))
+        shaft_rows = list(shafts.iter("kit_row"))
+        engine_control = shaft_rows[0].find("combo_box")
+        new_only = {"BDMergeProjectorVolumetrics" + suffix for suffix in (
+            "Definition", "MaxSteps", "BigConeCap", "FrameBudget", "BeamShadows",
+            "Equiangular", "AirborneTap", "CookieFootprint", "PyramidScissor")}
+        gated = [node for node in shafts.iter() if
+                 node.get("enabled_control") == "BDMergeProjectorVolumetricsEngine"]
+        checks.append(("shaft engine is first, New defaults on, only New controls are gated",
+                       shaft_rows[0].get("setting") == "BDMergeProjectorVolumetricsEngine" and
+                       engine_control is not None and
+                       [(n.get("label"), n.get("value")) for n in engine_control.findall("combo_box.item")] ==
+                       [("New", "1"), ("Classic", "0")] and
+                       {node.get("control_name") for node in gated} == new_only and len(gated) == 9 and
+                       all("New engine only" in node.get("tool_tip", "") for node in gated)))
         ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
                          {"yaw_spinner", "pitch_spinner", "roll_spinner"}]

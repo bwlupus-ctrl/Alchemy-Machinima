@@ -290,12 +290,48 @@ def check_section10():
         for start, count in hunks:
             end = start + max(count, 1) - 1
             assert end < lo or start > hi, '%s was modified (section 10 is untouched): hunk %d-%d inside %d-%d' % (sig, start, end, lo, hi)
+    # wip/shaft-perf (824f65e6df7, then dbcec8d2b36) batches New shaft
+    # draws and adds the frozen Classic draw/setup. These CONSUME the selected
+    # slots; they do not allocate or auction them. Permit their added read loop
+    # and explanatory comments only after checking the entire incoming bodies.
+    # All native allocation/generation assertions above remain unchanged.
+    shaft_ranges = []
+    for name, ref, original in (
+            ('renderProjectorVolumetricNew', '50c2d9d9a07', 'renderProjectorVolumetricNew'),
+            ('renderProjectorVolumetricClassic', 'c4d3614d3e7', 'renderProjectorVolumetric'),
+            ('setupSpotLightVolumetricClassic', 'c4d3614d3e7', 'setupSpotLightVolumetric')):
+        old = subprocess.check_output(['git', 'show', ref + ':indra/newview/pipeline.cpp'],
+                                      cwd=REPO, text=True, encoding='utf-8')
+        signature = ('F32' if name.startswith('setup') else 'void') + ' LLPipeline::'
+        lo, hi = function_range(pipe, signature + name + '(')
+        a, b = function_range(old, signature + original + '(')
+        expected = '\n'.join(old.splitlines()[a-1:b-1])
+        if 'Classic' in name:
+            expected = (expected.replace('gDeferredProjectorVolumetric', 'gDeferredProjectorVolumetricClassic')
+                        .replace('setupSpotLightVolumetric(', 'setupSpotLightVolumetricClassic(')
+                        .replace('renderProjectorVolumetric(', 'renderProjectorVolumetricClassic('))
+        assert '\n'.join(pipe.splitlines()[lo-1:hi-1]) == expected, 'shaft slot-consumer body changed: ' + name
+        shaft_ranges.append((lo, hi))
+    added = []
+    line_no = 0
+    for line in diff.splitlines():
+        hunk = re.match(r'^@@ -\d+(?:,\d+)? \+(\d+)', line)
+        if hunk:
+            line_no = int(hunk.group(1))
+        elif line.startswith('+') and not line.startswith('+++'):
+            added.append((line_no, line))
+            line_no += 1
+        elif line.startswith(' '):
+            line_no += 1
     for needle in ('bdmergeMaxSpotShadows()', 'mTargetShadowSpotLight'):
         # the auction/slot logic: no line of the diff outside the world sections may touch these
-        for line in diff.splitlines():
-            if line.startswith('+') and not line.startswith('+++') and needle in line and 'world' not in line.lower():
+        for number, line in added:
+            verified_shaft = (any(lo <= number < hi for lo, hi in shaft_ranges) and
+                              (line[1:].strip() == 'for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)' or
+                               line[1:].lstrip().startswith('//')))
+            if needle in line and 'world' not in line.lower() and not verified_shaft:
                 raise AssertionError('section 10 symbol touched: ' + line)
-    print('[world] section 10 PASS: allocateShadowBuffer, generateSunShadow, generatePrismSpotShadows have no diff against %s; no auction/slot-count line added' % BASE, flush=True)
+    print('[world] section 10 PASS: allocateShadowBuffer, generateSunShadow, generatePrismSpotShadows have no diff against %s; only verified shaft slot-consumer loops/comments added; auction unchanged' % BASE, flush=True)
 
 
 def check_picks():

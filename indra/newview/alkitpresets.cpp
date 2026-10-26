@@ -1,4 +1,5 @@
 #include "llviewerprecompiledheaders.h"
+#include "aldiopterpresetbank.h"
 #include "alkitpresets.h"
 #include "alpresetlook.h"
 #include "alrotoink.h"
@@ -194,6 +195,7 @@ LLSD snapshot(const std::vector<std::string>& settings)
 }
 void apply(const std::vector<std::string>& settings, const LLSD& values)
 {
+    ALScopedPresetMaterializing preset_guard;
     for (const std::string& name : settings)
         if (values.has(name))
             if (LLControlVariable* control = gSavedSettings.getControl(name)) control->set(values[name]);
@@ -452,7 +454,8 @@ bool ALKitPresetStrip::postBuild()
     }
     const std::string  prefix = presetPrefix(mPage);
     LLComboBox::Params combo_params;
-    combo_params.name = prefix + "_preset";
+    // Preserve the shared shaft panel's lookup contract on the v2 page.
+    combo_params.name = mProviderKey == "projector_shafts" ? "ps_preset" : prefix + "_preset";
     combo_params.rect = LLRect(0, 24, 190, 0);
     mCombo            = LLUICtrlFactory::create<LLComboBox>(combo_params);
     addChild(mCombo);
@@ -486,6 +489,7 @@ bool ALKitPresetStrip::postBuild()
         mConnections.emplace_back(
             ALKitSettingWatch::instance().watch(setting, [this](const LLSD&, const LLSD&) { trackedSettingChanged(); }));
     }
+    mShaftEngine = gSavedSettings.getU32("BDMergeProjectorVolumetricsEngine");
     refresh();
     return true;
 }
@@ -653,6 +657,17 @@ void ALKitPresetStrip::captureApplied(const std::string& id, const std::string& 
 
 void ALKitPresetStrip::trackedSettingChanged()
 {
+    if (mProviderKey == "projector_shafts")
+    {
+        const U32 engine = gSavedSettings.getU32("BDMergeProjectorVolumetricsEngine");
+        if (engine != mShaftEngine)
+        {
+            mShaftEngine = engine;
+            mAppliedId.clear(); mAppliedLabel.clear(); mAppliedValues.clear(); mModified = false;
+            refresh();
+            return;
+        }
+    }
     if (mApplying || mAppliedId.empty())
     {
         return;

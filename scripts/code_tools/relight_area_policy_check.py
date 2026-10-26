@@ -232,7 +232,7 @@ int main() {
     std::cout << "]}";
 }
 '''
-    directory = Path('.tmp/relight_step1_policy').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / 'relight_step1_policy').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     (directory / 'policy.cpp').write_text(fixture, encoding='utf-8')
     vcvars = next((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob(

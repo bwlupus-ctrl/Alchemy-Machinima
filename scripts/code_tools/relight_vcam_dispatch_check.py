@@ -48,6 +48,7 @@ def check_dispatch(g):
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <optional>
 #include <sstream>
@@ -162,12 +163,20 @@ struct mat4 {
     float m[4][4]={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
     const float* operator[](int column) const { return m[column]; }
 };
+// This fixture proves maps-OFF dispatch. Compiling the world-ON branch must
+// not silently turn camera inversion into an allowed OFF-frame operation.
+struct dmat4 {
+    dmat4(const mat4&) {}
+    const double* operator[](int) const { std::abort(); }
+};
+dmat4 inverse(const dmat4&) { std::abort(); }
 struct vec3 { float x,y,z; };
 vec3 make_vec3(const float* p) { return {p[0],p[1],p[2]}; }
 struct mat3 { float m[9]={}; mat3(const mat4&) {} };
 inline const float* value_ptr(const mat3& v) { return v.m; }
 }
 glm::mat4 get_current_modelview() { return {}; }
+glm::mat4 get_current_projection() { std::abort(); }
 glm::vec3 mul_mat4_vec3(glm::mat4,glm::vec3 p) { return p; }
 struct LLVOVolume { LLUUID id; LLUUID getID() const { return id; } float getLightRadius() const { return 5.f; } };
 LLVector4 light_shape_for_volume(const LLVOVolume*) { LLVector4 v;v.mV[3]=-1;return v; }
@@ -429,7 +438,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     return 1;
 }
 '''
-    directory = Path(f'.tmp/relight_step6_dispatch_{os.getpid()}').resolve()
+    directory = (Path(os.environ.get('RELIGHT_CHECK_OUT', '.tmp')) / f'relight_step6_dispatch_{os.getpid()}').resolve()
     directory.mkdir(parents=True, exist_ok=True)
     vcvars = next((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob('*/Community/VC/Auxiliary/Build/vcvars64.bat'))
 

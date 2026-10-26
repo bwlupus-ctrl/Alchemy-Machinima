@@ -375,6 +375,7 @@ set(viewer_SOURCE_FILES
     alweathershelter.cpp
     alweatherclock.cpp
     alweatheruimodel.cpp
+    alsensormodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp
@@ -1311,6 +1312,8 @@ set(viewer_HEADER_FILES
     alweathershelter.h
     alweatherclock.h
     alweatheruimodel.h
+    alsensormodel.h
+    alsensorsettings.h
     alghostgroupmodel.h
     alghostrotation.h
     alghostinteractionstate.h
@@ -2814,6 +2817,7 @@ if (BUILD_TESTING)
     alweathershelter.cpp
     alweatherclock.cpp
     alweatheruimodel.cpp
+    alsensormodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp
