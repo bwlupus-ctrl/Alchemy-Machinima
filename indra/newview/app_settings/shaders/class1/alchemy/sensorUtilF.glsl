@@ -262,8 +262,16 @@ struct SensorReadout
     vec3 cameraElectrons; // signed, AFTER ADC black subtraction
     vec3 preClipElectrons; // captured BEFORE full-well / per-channel ADC clipping
     vec2 greenPreClipElectrons; // individual sites, before full well and ADC
-    vec2 greenCameraElectrons; // individual sites, after integer ADC
+    vec2 greenCameraElectrons; // individual sites, after amount-controlled ADC
 };
+
+// Fade quantisation error with noise to avoid under-dithered DN steps below 1.
+vec2 sensorQuantise(vec2 dn, float amount)
+{
+    if (amount >= 1.0) return round(dn);
+    if (amount <= 0.0) return dn;
+    return dn + amount * (round(dn) - dn);
+}
 
 SensorReadout sensorReadCamera(vec3 cameraLinear, ivec2 pixel, SensorParameters p)
 {
@@ -306,18 +314,18 @@ SensorReadout sensorReadCamera(vec3 cameraLinear, ivec2 pixel, SensorParameters 
     SensorReadout result;
     result.preClipElectrons = photons + readResidual;
     vec2 amplified = p.physics.z * (min(photons.xz, vec2(p.physics.x)) + readResidual.xz);
-    vec2 dn = round(clamp(amplified + p.physics.w, 0.0, p.scale.x));
+    vec2 dn = sensorQuantise(clamp(amplified + p.physics.w, 0.0, p.scale.x), p.controls.x);
     result.cameraElectrons.xz = (dn - p.physics.w) / p.physics.z;
-    // Demosaiced green averages TWO photosites after each site's integer ADC.
-    // Averaging before quantisation would incorrectly retain 1/12 DN^2 in G
+    // Demosaiced green averages TWO photosites after each site's ADC.
+    // At amount 1, averaging before quantisation would retain 1/12 DN^2 in G
     // instead of the required 1/24 (and would also clip the wells too late).
     float greenReadDifference = greenReadCompanion;
     vec2 greenPhotons = photons.yy + p.controls.x*greenShotDifference*vec2(1,-1);
     vec2 greenRead = readResidual.yy + p.controls.x*greenReadDifference*vec2(1,-1);
     result.greenPreClipElectrons = greenPhotons + greenRead;
     result.preClipElectrons.y = max(result.greenPreClipElectrons.x,result.greenPreClipElectrons.y);
-    vec2 greenDN = round(clamp(p.physics.z*(min(greenPhotons,vec2(p.physics.x))+greenRead) +
-                              p.physics.w, 0.0, p.scale.x));
+    vec2 greenDN = sensorQuantise(clamp(p.physics.z*(min(greenPhotons,vec2(p.physics.x))+greenRead) +
+                              p.physics.w, 0.0, p.scale.x), p.controls.x);
     result.cameraElectrons.y = (0.5*(greenDN.x+greenDN.y)-p.physics.w)/p.physics.z;
     result.greenCameraElectrons = (greenDN-p.physics.w)/p.physics.z;
     return result;

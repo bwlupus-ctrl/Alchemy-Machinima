@@ -99,6 +99,7 @@ namespace ALSensorModel
         // Output clip / extrapolated output mid-grey:
         // (g*e_sat/K) / (0.18*g/g_N). Brightens cancels g in this ratio.
         p.headroomStops = std::log2(p.neutralGain * p.saturation / (0.18 * p.electronsPerLinear));
+        // Nominal physical readout (Noise amount 1); pixel ADC blending lives in GLSL.
         p.noiseFloorLinear = std::sqrt(c.readNoise*c.readNoise + 1./(12.*p.analogGain*p.analogGain)) *
                              p.gain / p.electronsPerLinear;
         p.noiseFloorStops = std::log2(0.18 / p.noiseFloorLinear);
