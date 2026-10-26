@@ -198,6 +198,30 @@ extern "C" __declspec(dllexport) void sensor_pack(int index, double iso, int bri
         return packed, dict(zip(('base','switch','H','g','gN','a','sat','K','headroom','floor','dr','hcg'),v.tolist()))
 
 
+def amount_adc_reference(source):
+    """Apply only the specified ADC revision to the historical noise oracle.
+
+    All original arithmetic remains untouched at amount >= 1. Below 1 the
+    historical shader needs the new rule to compare its noise implementation;
+    sensor_quant_gl_check independently checks the changed DN arithmetic.
+    """
+    helper = """vec2 sensorQuantiseReference(vec2 dn, float amount)
+{
+    if (amount >= 1.0) return round(dn);
+    if (amount <= 0.0) return dn;
+    return dn + amount * (round(dn) - dn);
+}
+
+"""
+    source = source.replace('SensorReadout sensorReadCamera(', helper+'SensorReadout sensorReadCamera(', 1)
+    source = source.replace('round(clamp(amplified + p.physics.w, 0.0, p.scale.x))',
+        'sensorQuantiseReference(clamp(amplified + p.physics.w, 0.0, p.scale.x), p.controls.x)')
+    source = source.replace('vec2 greenDN = round(clamp(', 'vec2 greenDN = sensorQuantiseReference(clamp(')
+    source = source.replace('p.physics.w, 0.0, p.scale.x));',
+                            'p.physics.w, 0.0, p.scale.x), p.controls.x);')
+    return source
+
+
 class Runner:
     def __init__(self, baseline_ref=None):
         self.gl = gl = G.GL()
@@ -211,6 +235,13 @@ class Runner:
             ['git','show',IDENTITY_REF+':'+SHADER.relative_to(ROOT).as_posix()],
             cwd=ROOT,text=True,encoding='utf-8',timeout=10)
         self.identity_programs = {}
+        self.revised_identity_sensor = amount_adc_reference(self.identity_sensor) if self.identity_sensor else None
+        self.revised_identity_programs = {}
+        self.head_sensor = subprocess.check_output(
+            ['git','show','HEAD:'+SHADER.relative_to(ROOT).as_posix()],
+            cwd=ROOT,text=True,encoding='utf-8',timeout=10)
+        self.head_programs = {}
+        self.head_identity_renders = 0
         self.identity_pixels = 0
         self.identity_renders = 0
         self.targets = {}
@@ -421,7 +452,10 @@ void main() {
             return
         source,programs = self.sensor,self.programs
         try:
-            self.sensor,self.programs = self.identity_sensor,self.identity_programs
+            if packed.view(np.float32)[8] < 1.:
+                self.sensor,self.programs = self.revised_identity_sensor,self.revised_identity_programs
+            else:
+                self.sensor,self.programs = self.identity_sensor,self.identity_programs
             self.prepare(packed,light,**kw)
             if texture is not None:
                 self.gl.bind_tex(0x0DE1,texture)
@@ -436,6 +470,17 @@ void main() {
                 raise AssertionError('BIT IDENTITY '+str(dict(kind=kw.get('kind',0),index=index,
                     observed=float(observed[index]),expected=float(expected[index]),
                     mismatched_components=int(mismatch.sum()))))
+            if packed.view(np.float32)[8] >= 1.:
+                self.sensor,self.programs = self.head_sensor,self.head_programs
+                self.prepare(packed,light,**kw)
+                if texture is not None:
+                    self.gl.bind_tex(0x0DE1,texture)
+                self.gl.draw(0x0004,0,6)
+                head = np.empty_like(observed)
+                self.gl.read(0,0,width,height,0x1908,0x1406,head.ctypes.data)
+                assert self.error()==0, 'HEAD reference OpenGL error'
+                assert np.array_equal(observed.view(np.uint32),head.view(np.uint32)), 'HEAD BIT IDENTITY'
+                self.head_identity_renders += 1
             self.identity_pixels += height*width
             self.identity_renders += 1
         finally:
@@ -715,7 +760,8 @@ class Suite:
         tail = rgb[-200:]
         mu = target[:,None]*np.array([1,.9,.1])
         f = u.view(np.float32)
-        measured = (np.rint(np.clip(p['a']*np.minimum(mu,float(f[0]))+float(f[3]),0,float(f[4])))-float(f[3]))/p['a']
+        # Noise amount is zero here: preserve fractional clamped DN.
+        measured = (np.clip(p['a']*np.minimum(mu,float(f[0]))+float(f[3]),0,float(f[4]))-float(f[3]))/p['a']
         clipped = measured@m.T*p['g']/p['K']
         t = np.clip((mu/p['sat']-.8)/.2,0,1)
         t = (t*t*(3-2*t)).mean(axis=1)
@@ -968,6 +1014,9 @@ class Suite:
                     okay &= row['passed']; rows.append(row)
         # Near the ADC rails compare each digitised site with its own preclip
         # value. Also check the independent-site marginal/covariance there.
+        def adc(signal, amount):
+            dn = np.clip(signal,0,float(f[4]))
+            return (dn+min(amount,1.)*(np.rint(dn)-dn)-float(f[3]))/4
         rails = []
         for rail,lam in (('black',0.),('ADC white',98.),('full well low-count',19.9),('full well Gaussian',98.)):
             for amount,chroma in ((.5,0.),(2.,.5),(4.,4.)):
@@ -982,13 +1031,13 @@ class Suite:
                 pre = self.r.samples(u,lam,kind=8,frames=4,mutation=mutation)[:,:,:,:2]
                 digitised = self.r.samples(u,lam,kind=9,frames=4,mutation=mutation)[:,:,:,:2]
                 physical = np.minimum(pre,float(f[0])) if 'full well' in rail else pre
-                oracle = (np.rint(np.clip(4*physical+float(f[3]),0,float(f[4])))-float(f[3]))/4
+                oracle = adc(4*physical+float(f[3]),amount)
                 # round()'s tie convention is implementation-defined in GLSL;
                 # random continuous inputs do not sit exactly on half codes.
                 signal=4*physical+float(f[3])
                 ulp_bound=8*np.finfo(np.float32).eps*np.maximum(np.abs(signal),1.)
-                lower=(np.rint(np.clip(signal-ulp_bound,0,float(f[4])))-float(f[3]))/4
-                upper=(np.rint(np.clip(signal+ulp_bound,0,float(f[4])))-float(f[3]))/4
+                lower=adc(signal-ulp_bound,amount)
+                upper=adc(signal+ulp_bound,amount)
                 error=float(max(np.max(lower-digitised),np.max(digitised-upper),0.))
                 # Independent marginal oracle at the rails, including the
                 # full-well-before-read order. Pointwise clipping preserves
@@ -1004,7 +1053,7 @@ class Suite:
                     reference_photons=lam+rng.standard_normal(shape)*math.sqrt(shot_variance)
                 read_variance=2*amount**2*float(np.sum((matrix(u,BASIS)[1]*np.array([1,chroma,chroma]))**2))
                 reference_signal=np.minimum(reference_photons,float(f[0]))+rng.standard_normal(shape)*math.sqrt(read_variance)
-                reference=(np.rint(np.clip(4*reference_signal+float(f[3]),0,float(f[4])))-float(f[3]))/4
+                reference=adc(4*reference_signal+float(f[3]),amount)
                 actual=digitised.reshape(-1,2)
                 actual_var,reference_var=actual.var(axis=0),reference.var(axis=0)
                 neff=count/8
@@ -1310,6 +1359,8 @@ class Suite:
                 progress('randomized bit identity '+str(index+1)+'/384 parameter sets')
         detail = dict(reference_commit=IDENTITY_REF,
             reference_shader_sha256=hashlib.sha256(self.r.identity_sensor.encode()).hexdigest(),
+            below_one_reference='historical shader with only specified ADC revision',
+            head_identity_renders=self.r.head_identity_renders,
             randomized_parameter_sets=384,randomized_pixels=self.r.identity_pixels-initial,
             all_suite_pixels=self.r.identity_pixels,all_suite_renders=self.r.identity_renders,
             mismatched_components=0,format='RGBA32F uint32 exact comparison')

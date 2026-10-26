@@ -37,6 +37,8 @@ class Runner:
         self.draw_buffers = self.gl.fn('glDrawBuffers', None, C.c_int, C.POINTER(C.c_uint))
         self.read_buffer = self.gl.fn('glReadBuffer', None, C.c_uint)
         self.sensor_u = None
+        self.head_sensor_programs = {}
+        self.head_sensor_identity_draws = 0
         print(self.gl.renderer, flush=True)
 
     def source(self, path, ref=None):
@@ -83,6 +85,8 @@ class Runner:
             gl.plog(pr, len(log), None, log)
             raise AssertionError(path+' LINK '+log.value.decode())
         self.programs[key] = pr
+        if path == 'class1/alchemy/sensorF.glsl' and not (ref or self.reference or mutation):
+            self.head_sensor_programs[pr] = self.program(path,defines,modules,vertex,ref='HEAD')
         return pr
 
     def target(self, name, w, h, count=1, fmt=0x881A):
@@ -178,6 +182,11 @@ class Runner:
             data=np.empty((h,w,4),np.float32)
             gl.read(0,0,w,h,0x1908,0x1406,data.ctypes.data)
             result.append(data)
+        if pr in self.head_sensor_programs and self.sensor_u is not None and self.sensor_u.view(np.float32)[8] >= 1.:
+            expected = self.draw(self.head_sensor_programs[pr],dst,w,h,textures,uniforms,
+                                 read=True,matrix=matrix)
+            assert all(np.array_equal(a.view(np.uint32),b.view(np.uint32)) for a,b in zip(result,expected)), 'WP-B sensor HEAD BIT IDENTITY'
+            self.head_sensor_identity_draws += 1
         return result
 
 
@@ -593,10 +602,14 @@ def run(args):
         review.tests(r,check)
         import sensor_post_fix2_gl_check as review2
         review2.tests(r,check)
+        if not args.reference:
+            check('sensor amount 1+ is bit-identical to HEAD over WP-B fixtures',
+                  r.head_sensor_identity_draws > 0, dict(draws=r.head_sensor_identity_draws))
     except Exception:
         error=traceback.format_exc(); print(error,flush=True)
         check('production shader variants compile/link',False,error)
     evidence=dict(checks=checks,error=error,renderer=r.gl.renderer,
+        head_sensor_identity_draws=r.head_sensor_identity_draws,
         commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True,timeout=15).strip(),
         cpp_sources={p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in
             ('indra/newview/pipeline.cpp','indra/newview/pipeline.h','indra/newview/llviewershadermgr.cpp',
