@@ -82,6 +82,9 @@ public:
         TERRAIN_TEXTURE_TRANSFORMS,           //  "terrain_texture_transforms" (GLTF)
 
         VIEWPORT,                           //  "viewport"
+        LOCAL_LIGHT_SIZE,                   // "local_light_size" (deferred single light)
+        LOCAL_LIGHT_SIZES,                  // "local_light_sizes" (forward / deferred batch)
+        LOCAL_LIGHT_SPEC_EXPONENT,          // "local_light_spec_exponent" (legacy LUT exponent)
         LIGHT_POSITION,                     //  "light_position"
         LIGHT_DIRECTION,                    //  "light_direction"
         LIGHT_ATTENUATION,                  //  "light_attenuation"

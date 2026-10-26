@@ -219,20 +219,21 @@ def dots_program(path):
         original = original.replace('getScreenCoord(vary_fragcoord)', 'vec2(.5)')
         original = original.replace('getPosition(tc).xyz', 'dotsPosition()')
         original = original.replace('getGBuffer(tc)', 'dotsBuffer()')
+        entry = 'void localLightMain(float source_radius)' if 'void localLightMain(float source_radius)' in original else 'void main()'
         if path == 'spot':
             # Observe the actual reflected term as a second readback component.
             # Extract its production expression rather than copying lighting.
             pattern = r'final_color \+= (color\.rgb \* texture2DLodSpecular\(stc\.xy,[^;]+);'
             original = re.sub(pattern, r'{ dotsReflected = \1; final_color += dotsReflected; }', original)
-            original = original.replace('void main()\n{', 'void main()\n{\nvec3 dotsReflected=vec3(0);', 1)
+            original = original.replace(entry+'\n{', entry+'\n{\nvec3 dotsReflected=vec3(0);', 1)
             reflected = 'dotsReflected'+(' + projectorImage' if 'vec3 relightProjectorImage(' in original else '')
             original = original.replace('frag_color.rgb = final_color * final_scale;',
                 'frag_color.rgb = (dotsComponent==2 ? '+reflected+' : final_color) * final_scale;')
-        header, body = original.split('void main()', 1)
+        header, body = original.split(entry, 1)
         for name, value in {'light_shape': 'dotsShape', 'trans_center': 'dotsOrigin',
                             'proj_origin': 'dotsOrigin'}.items():
             body = re.sub(r'\b'+name+r'\b', value, body)
-        original = header+'void main()'+body
+        original = header+entry+body
     else:
         original = original.replace('void main()', 'void unusedProductionMain()')
         common = 'dotsPosition(),vec3(0,0,1),vec4(dotsOrigin,1),vec3(0,0,-1),9./15.,1.5,1,'

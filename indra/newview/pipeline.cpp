@@ -11868,6 +11868,10 @@ void LLPipeline::setupHWLights()
         return;
     }
 
+    static LLCachedControl<F32> local_spec_exponent(gSavedSettings, "RenderSpecularExponent", 368.f);
+    gGL.setLocalLightSpecExponent(local_spec_exponent);
+    for (U32 i = 0; i < LL_NUM_LIGHT_UNITS; ++i) gGL.getLight(i)->setLocalLightSize(0.f);
+
     // [ActorMask] Fresh snapshots in this view's modelview.
     const bool actor_only = ALCineLightRigManager::anyActorOnly();
     mForwardLightSets.clear();
@@ -11990,6 +11994,7 @@ void LLPipeline::setupHWLights()
         light_state->setAmbient(LLColor4::black);
         light_state->setConstantAttenuation(0.f);
         light_state->setSize(light->getLightRadius() * 1.5f);
+        light_state->setLocalLightSize(ALEnvIntensity::localLightSize(light));
         light_state->setFalloff(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
         light_state->setRigRim(ALCineRigRim::paramsForVolume(light)); // [RigRim]
         if (light_shape_master_enabled())
@@ -27455,6 +27460,9 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     LLRenderTarget* deferred_light_target = &mRT->deferredLight;
 
     shader.bind();
+    static LLCachedControl<F32> local_spec_exponent(gSavedSettings, "RenderSpecularExponent", 368.f);
+    shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_SPEC_EXPONENT, local_spec_exponent);
+
     uploadDebugLightingTerm(shader);
     uploadSilhouetteFrame(shader);
     S32 channel = 0;
@@ -30979,6 +30987,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             static LLDrawable::drawable_vector_t spot_lights;
             static LLDrawable::drawable_vector_t fullscreen_spot_lights;
             static std::vector<LLVector4>        light_colors;
+            static std::vector<F32>              local_light_sizes;
             static std::vector<LLVector4>        light_shapes; // [RelightQ]
             static std::vector<LLVector4>        light_rims; // [RigRim]
             // [RigRim] Round-2 P2 fix: read once per call so the point-light
@@ -31133,6 +31142,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             mActorMaskF3PointPaths.push_back({ volume->getID(), true });
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, s);
+                        gDeferredLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                         gDeferredLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
@@ -31171,6 +31181,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         if (shape_active) light_shapes.push_back(deferredLightShape(volume));
                         fullscreen_lights.push_back(LLVector4(tc.x, tc.y, tc.z, s));
                         light_colors.push_back(LLVector4(col.mV[0], col.mV[1], col.mV[2], volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)));
+                        local_light_sizes.push_back(ALEnvIntensity::localLightSize(volume));
                         // [RigRim] Only staged when active; every consumer below checks the
                         // same function-constant rig_rim_active, so indices stay parallel.
                         if (rig_rim_active)
@@ -31218,6 +31229,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
                     gDeferredSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
                     gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, s);
+                    gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
                     gDeferredSpotLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                     gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                     gDeferredSpotLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
@@ -31242,6 +31254,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 LLVector4 light[max_count];
                 LLVector4 col[max_count];
                 LLVector4 shapes[max_count];
+                F32 source_size[max_count];
                 LLVector4 rim[max_count]; // [RigRim]
 
                 F32 far_z = 0.f;
@@ -31249,6 +31262,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 for (size_t i = 0, num_fullscreen_lights = fullscreen_lights.size(); i < num_fullscreen_lights; ++i)
                 {
                     if (shape_active) shapes[count] = light_shapes[i];
+                    source_size[count] = local_light_sizes[i];
                     light[count] = fullscreen_lights[i];
                     col[count] = light_colors[i];
                     // [RigRim] Round-2 P2 fix: skip packing the rim slot when off;
@@ -31266,6 +31280,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     {
                         U32 idx = count - 1;
                         bindDeferredShader(gDeferredMultiLightProgram[idx]);
+                        gDeferredMultiLightProgram[idx].uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, *std::max_element(source_size, source_size + count));
+                        gDeferredMultiLightProgram[idx].uniform1fv(LLShaderMgr::LOCAL_LIGHT_SIZES, count, source_size);
                         gDeferredMultiLightProgram[idx].uniform1i(LLShaderMgr::MULTI_LIGHT_COUNT, count);
                         gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::MULTI_LIGHT, count, light[0].mV);
                         gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, count, col[0].mV);
@@ -31325,6 +31341,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
                     gDeferredMultiSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
                     gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, light_size_final);
+                    gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
                     gDeferredMultiSpotLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                     gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, light_falloff_final);
                     gDeferredMultiSpotLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
@@ -31355,7 +31372,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 }
                 else
                 {
-                    struct ActorPoint { LLVector4 light, color, rim, shape; };
+                    struct ActorPoint { LLVector4 light, color, rim, shape; F32 source_size; };
                     std::map<U8, std::vector<ActorPoint>> actor_points;
                     std::map<U8, LLDrawable::drawable_vector_t> actor_spots;
                     const auto& registry = ALCineLightRigManager::instance();
@@ -31394,7 +31411,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                                 LLVector4(color.mV[0], color.mV[1], color.mV[2],
                                     volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)),
                                 rig_rim_active ? ALCineRigRim::paramsForVolume(volume) : LLVector4(0.f, 0.f, 0.f, 0.f),
-                                shape_active ? deferredLightShape(volume) : LLVector4(0.f, 0.f, 1.f, -1.f) });
+                                shape_active ? deferredLightShape(volume) : LLVector4(0.f, 0.f, 1.f, -1.f),
+                                ALEnvIntensity::localLightSize(volume) });
                         }
                     }
 
@@ -31410,6 +31428,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         for (size_t first = 0; first < group.second.size(); first += batch_size)
                         {
                             LLVector4 lights[batch_size], colors[batch_size], rims[batch_size], shapes[batch_size];
+                            F32 source_sizes[batch_size] = {};
                             for (U32 i = 0; i < batch_size; ++i)
                             {
                                 lights[i].set(0.f, 0.f, 1.e9f, 1.f);
@@ -31422,6 +31441,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             for (U32 i = 0; i < count; ++i)
                             {
                                 const auto& point = group.second[first + i];
+                                source_sizes[i] = point.source_size;
                                 lights[i] = point.light;
                                 colors[i] = point.color;
                                 rims[i] = point.rim;
@@ -31433,6 +31453,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             if (bindActorMask(shader) >= 0)
                             {
                                 shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, group.first);
+                                shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, *std::max_element(source_sizes, source_sizes + batch_size));
+                                shader.uniform1fv(LLShaderMgr::LOCAL_LIGHT_SIZES, batch_size, source_sizes);
                                 shader.uniform1i(LLShaderMgr::MULTI_LIGHT_COUNT, count);
                                 shader.uniform4fv(LLShaderMgr::MULTI_LIGHT, batch_size, lights[0].mV);
                                 shader.uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, batch_size, colors[0].mV);
@@ -31465,6 +31487,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, group.first);
                             shader.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
                             shader.uniform1f(LLShaderMgr::LIGHT_SIZE, volume->getLightRadius() * 1.5f);
+                            shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
                             shader.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, color.mV);
                             shader.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                             shader.uniform1i(LLShaderMgr::CLASSIC_MODE, psky->canAutoAdjust() ? 1 : 0);
@@ -31481,6 +31504,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
             // Clear does not free internal vector storage, so this is more efficient than creating new vectors each frame
             fullscreen_lights.clear();
+            local_light_sizes.clear();
             spot_lights.clear();
             fullscreen_spot_lights.clear();
             light_colors.clear();

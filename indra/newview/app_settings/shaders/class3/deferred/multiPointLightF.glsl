@@ -112,7 +112,25 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
-void main()
+void localLightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone,
+    out float nl, out vec3 diff, out vec3 spec);
+uniform float local_light_size; // maximum per-emitter radius in this draw
+uniform float local_light_sizes[LIGHT_COUNT];
+void localLightSpecular(inout vec3 spec, float roughness,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone);
+float localLightLegacy(sampler2D lut, float nh, float gloss, float radius, float distance, float cone);
+
+
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float local_size, float cone);
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance, float local_size, float cone);
+vec3 relightLegacySized(sampler2D lut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float local_size, float cone);
+vec3 relightLegacySized(sampler2D lut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance, float local_size, float cone);
+void localLightMain(bool size_active)
 {
     vec3 final_color = vec3(0, 0, 0);
     vec3 rim_color   = vec3(0, 0, 0); // [RigRim]
@@ -176,8 +194,8 @@ void main()
                 float fa = area_col.a;
                 if (length(delta) >= range) continue;
                 vec3 view = relightUnit(-pos,n);
-                final_color += area_col.rgb * 3.25 * relightPbr(diffuseColor,specularColor,
-                    perceptualRoughness,metallic,n,view,delta,range,fa,shape,1.0-gb.envIntensity);
+                final_color += area_col.rgb * 3.25 * relightPbrSized(diffuseColor,specularColor,
+                    perceptualRoughness,metallic,n,view,delta,range,fa,shape,1.0-gb.envIntensity,(size_active ? local_light_sizes[light_idx] : 0.0),0.0);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
                         relightAtten(length(delta),range,fa,shape)*area_col.rgb,
@@ -203,7 +221,12 @@ void main()
                 float nl = 0;
                 vec3 diff = vec3(0);
                 vec3 specPunc = vec3(0);
-                pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diff, specPunc);
+                // In the active kernel, zero per-emitter radius gives the original D.
+                // Avoid a second uniform branch for every light in this batch.
+                if (size_active)
+                    localLightPbr(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, local_light_sizes[light_idx],lightDist,0.0, nl, diff, specPunc);
+                else
+                    pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diff, specPunc);
                 specPunc *= 1.0 - gb.envIntensity; // [AvatarLightResponse] Tame carrier (0 for every non-avatar PBR pixel)
                 final_color += intensity * clamp(nl * (diff + specPunc), vec3(0), vec3(10));
 
@@ -234,8 +257,8 @@ void main()
                 if (length(delta) >= range) continue;
                 vec3 view = relightUnit(-pos,n);
                 vec3 highlight;
-                final_color += area_col.rgb * relightLegacy(lightFunc,diffuse,spec,
-                    n,view,delta,range,fa,shape,highlight);
+                final_color += area_col.rgb * relightLegacySized(lightFunc,diffuse,spec,
+                    n,view,delta,range,fa,shape,highlight,(size_active ? local_light_sizes[i] : 0.0),0.0);
                 if (rigRimMode() != 0)
                     rim_color += rigRimTermEx(n,view,relightUnit(delta,n),
                         relightAtten(length(delta),range,fa,shape)*area_col.rgb,
@@ -271,7 +294,7 @@ void main()
 
                         if (nh > 0.0)
                         {
-                            float scol = fres * texture(lightFunc, vec2(nh, spec.a)).r * gt / (nh * nl);
+                            float scol = fres * ((size_active ? local_light_sizes[i] : 0.0) > 0.0 ? localLightLegacy(lightFunc, nh, spec.a, (size_active ? local_light_sizes[i] : 0.0), lightDist, 0.0) : texture(lightFunc, vec2(nh, spec.a)).r) * gt / (nh * nl);
                             col += lit * scol * area_col.rgb * spec.rgb;
                         }
                     }
@@ -328,4 +351,18 @@ void main()
     vec4 dummy5 = rig_rim_lights[0];               // [RigRim]
     vec4 dummy6 = rig_rim_lights[LIGHT_COUNT - 1]; // [RigRim]
 #endif
+}
+
+// One runtime-uniform dispatch, with a literal-zero specialization of the original light math.
+void main()
+{
+    // With no visible specular, use the literal-zero kernel as well. This
+    // avoids both extra work and compiler rounding changes to diffuse-only pixels.
+    vec2 tc = getScreenCoord(vary_fragcoord);
+    GBufferInfo size_gb = getGBuffer(tc);
+    bool no_specular = GET_GBUFFER_FLAG(size_gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR)
+        ? size_gb.envIntensity >= 1.0
+        : all(equal(size_gb.specular.rgb, vec3(0.0)));
+    if (local_light_size <= 0.0 || no_specular) { localLightMain(false); return; }
+    localLightMain(true);
 }

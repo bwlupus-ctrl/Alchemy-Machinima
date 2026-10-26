@@ -1468,6 +1468,7 @@ ALProbeSched::EnvSample LLReflectionMapManager::gatherEnvSample()
     static LLCachedControl<F32> sun_ev(gSavedSettings, "AlchemyEnvSunEV", 0.f);
     static LLCachedControl<F32> moon_ev(gSavedSettings, "AlchemyEnvMoonEV", 0.f);
     static LLCachedControl<F32> local_light_ev(gSavedSettings, "AlchemyEnvLocalLightEV", 0.f);
+    static LLCachedControl<F32> local_light_size(gSavedSettings, "AlchemyEnvLocalLightSize", 0.f);
     static LLCachedControl<F32> shadow_lift_ev(gSavedSettings, "AlchemyEnvShadowLiftEV", 0.f);
     static LLCachedControl<F32> sun_kelvin(gSavedSettings, "AlchemyEnvSunKelvin", 6500.f);
     static LLCachedControl<LLColor4> sun_tint_color(gSavedSettings, "AlchemyEnvSunTintColor", LLColor4::white);
@@ -1482,6 +1483,7 @@ ALProbeSched::EnvSample LLReflectionMapManager::gatherEnvSample()
     st.mSunEV = (F32)sun_ev;
     st.mMoonEV = (F32)moon_ev;
     st.mLocalLightEV = (F32)local_light_ev;
+    st.mLocalLightSize = (F32)local_light_size;
     st.mShadowLiftEV = (F32)shadow_lift_ev;
     st.mSunKelvin = (F32)sun_kelvin;
     const LLColor4 sun_tint = sun_tint_color;

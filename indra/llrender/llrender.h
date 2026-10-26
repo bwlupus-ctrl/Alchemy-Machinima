@@ -262,6 +262,7 @@ public:
     void setSunPrimary(bool v);
     void setSize(F32 size);
     void setFalloff(F32 falloff);
+    void setLocalLightSize(F32 radius);
     void setLightShape(const LLVector4& shape);
     void setRigRim(const LLVector4& rim); // [RigRim]
 
@@ -286,6 +287,7 @@ protected:
     F32 mSpotCutoff;
     F32 mSize = 0.f;
     F32 mFalloff = 0.f;
+    F32 mLocalLightSize = 0.f;
     LLVector4 mLightShape{0.f, 0.f, 1.f, -1.f};
     LLVector4 mRigRim = LLVector4(0.f, 0.f, 0.f, 0.f); // [RigRim]
 };
@@ -414,6 +416,7 @@ public:
 
     void syncMatrices();
     void syncLightState();
+    void setLocalLightSpecExponent(F32 exponent);
     // [RigRim] Cheap per-frame gate plus the settings/validity signature used
     // by the fast-bind invalidation. Returns true when either changes and also
     // bumps the light-state hash so every cached program refreshes together.
@@ -585,6 +588,7 @@ private:
     U32 mMatHash[NUM_MATRIX_MODES];
     glm::mat4 mMatrix[NUM_MATRIX_MODES][LL_MATRIX_STACK_DEPTH];
     U32 mCurMatHash[NUM_MATRIX_MODES];
+    F32 mLocalLightSpecExponent = 368.f;
     U32 mLightHash;
     LLColor4 mAmbientLightColor;
     bool mLightShapeActive = false; // [RelightQ] upload gate, independent of shader permutations

@@ -37,9 +37,10 @@
                    top="0"
                    width="860">
       <panel label="Lighting" layout="topleft" name="env_adjust_tab">
+    <!-- Initial stack bound includes all layout panels; postBuild measures the visible stack before scroll fitting. -->
     <layout_stack name="outer_stack"
+                  height="571"
                   width="843"
-                  height="535"
                   follows="left|top|right"
                   animate="false"
                   top="0"
@@ -781,18 +782,18 @@
                     left="750"
                     top="34"
                     name="env_adv_toggle"
-                    tool_tip="Show or hide the Advanced exposure panel: Moon link, GI split (sky ambient / probe diffuse / probe reflections), Local lights EV, Sun temperature, Sun / Moon / Ambient tints and Shadow lift. Persists across sessions."
+                    tool_tip="Show or hide the Advanced exposure panel: Moon link, GI split (sky ambient / probe diffuse / probe reflections), Local lights EV and size, Sun temperature, Sun / Moon / Ambient tints and Shadow lift. Persists across sessions."
                     width="90"/>
         </layout_panel>
         <!-- [EnvIntensity v2] Advanced exposure panel. Hidden by default
              (AlchemyEnvIntensityAdvanced); applyEnvIntensityAdvanced() shows it
              and refits the floater from the measured scroll document. The stack
-             gains 110 + 3 (panel + charged spacing); the BDMerge strip gains 28
+             gains 146 + 3 (panel + charged spacing); the BDMerge strip gains 28
              because making the literal last panel visible refunds its spacing.
              Grid: 4 columns at left
              5 / 215 / 425 / 635 (content width 200): label (10 px) over a 160 px
              slider (text_width 46), unit text at +162, 18 px reset button at
-             +180. Rows at top 4 / 40 / 76 (34 px pitch). Every control binds
+             +180. Rows at top 4 / 40 / 76 / 112 (36 px pitch). Every control binds
              through control_name (viewer settings, never the EEP asset); the
              reset buttons and the Sun/Moon link label are wired in
              llfloaterenvironmentadjust.cpp. All sliders take the mouse wheel
@@ -802,7 +803,7 @@
                       bevel_style="in"
                       auto_resize="false"
                       user_resize="false"
-                      height="110"
+                      height="146"
                       min_height="110"
                       visible="false">
             <!-- Row 1, column 1: Moon (EV) + Link to Sun -->
@@ -1010,7 +1011,7 @@
                   height="10"
                   layout="topleft"
                   left="5"
-                  top="40"
+                  top="76"
                   name="env_amb_ev_label"
                   tool_tip="Sky ambient (EEP ambient) light on surfaces, in stops (EV), on top of the GI master."
                   width="200">Sky ambient (EV):</text>
@@ -1022,7 +1023,7 @@
                     initial_value="0"
                     layout="topleft"
                     left="5"
-                    top="53"
+                    top="89"
                     min_val="-3"
                     max_val="3"
                     name="env_amb_ev"
@@ -1036,14 +1037,14 @@
                   height="10"
                   layout="topleft"
                   left="167"
-                  top="56"
+                  top="92"
                   name="env_amb_ev_unit"
                   width="16">EV</text>
             <button follows="left|top"
                     height="20"
                     layout="topleft"
                     left="185"
-                    top="51"
+                    top="87"
                     name="env_amb_ev_reset"
                     scale_image="true"
                     image_overlay="Refresh_Off"
@@ -1055,7 +1056,7 @@
                   height="10"
                   layout="topleft"
                   left="215"
-                  top="40"
+                  top="76"
                   name="env_shadow_lift_label"
                   tool_tip="Raises the ambient / indirect term where the sun or moon does not reach, in stops (EV)."
                   width="200">Shadow lift (EV):</text>
@@ -1067,7 +1068,7 @@
                     initial_value="0"
                     layout="topleft"
                     left="215"
-                    top="53"
+                    top="89"
                     min_val="0"
                     max_val="2"
                     name="env_shadow_lift"
@@ -1081,14 +1082,14 @@
                   height="10"
                   layout="topleft"
                   left="377"
-                  top="56"
+                  top="92"
                   name="env_shadow_lift_unit"
                   width="16">EV</text>
             <button follows="left|top"
                     height="20"
                     layout="topleft"
                     left="395"
-                    top="51"
+                    top="87"
                     name="env_shadow_lift_reset"
                     scale_image="true"
                     image_overlay="Refresh_Off"
@@ -1100,7 +1101,7 @@
                   height="10"
                   layout="topleft"
                   left="425"
-                  top="40"
+                  top="76"
                   name="env_sun_kelvin_label"
                   tool_tip="Colour temperature of direct sun light on surfaces. 6500 K = no change."
                   width="200">Sun temperature (K):</text>
@@ -1112,7 +1113,7 @@
                     initial_value="6500"
                     layout="topleft"
                     left="425"
-                    top="53"
+                    top="89"
                     min_val="2000"
                     max_val="12000"
                     name="env_sun_kelvin"
@@ -1126,14 +1127,14 @@
                   height="10"
                   layout="topleft"
                   left="587"
-                  top="56"
+                  top="92"
                   name="env_sun_kelvin_unit"
                   width="16">K</text>
             <button follows="left|top"
                     height="20"
                     layout="topleft"
                     left="605"
-                    top="51"
+                    top="87"
                     name="env_sun_kelvin_reset"
                     scale_image="true"
                     image_overlay="Refresh_Off"
@@ -1145,7 +1146,7 @@
                   height="10"
                   layout="topleft"
                   left="635"
-                  top="40"
+                  top="76"
                   name="env_sun_tint_label"
                   tool_tip="Tint on direct sun light (swatch + strength). White or strength 0 = no tint; Kelvin still applies."
                   width="200">Sun tint:</text>
@@ -1156,7 +1157,7 @@
                           label_height="0"
                           layout="topleft"
                           left="635"
-                          top="52"
+                          top="88"
                           name="env_sun_tint_swatch"
                           tool_tip="Sun tint colour (sRGB picker). Multiplies direct sun light on surfaces after the Kelvin shift, luminance-normalised: a neutral sun keeps its brightness and only gains colour (max channel 4x). White = no tint. Not the sun disc, sky, specular or local lights. Viewer-side, never written into the sky."
                           width="18"/>
@@ -1168,7 +1169,7 @@
                     initial_value="1"
                     layout="topleft"
                     left="655"
-                    top="53"
+                    top="89"
                     min_val="0"
                     max_val="1"
                     name="env_sun_tint_strength"
@@ -1182,7 +1183,7 @@
                     height="20"
                     layout="topleft"
                     left="815"
-                    top="51"
+                    top="87"
                     name="env_sun_tint_reset"
                     scale_image="true"
                     image_overlay="Refresh_Off"
@@ -1194,7 +1195,7 @@
                   height="10"
                   layout="topleft"
                   left="5"
-                  top="76"
+                  top="112"
                   name="env_moon_tint_label"
                   tool_tip="Tint on direct moon light at night (swatch + strength). White or strength 0 = no tint."
                   width="200">Moon tint:</text>
@@ -1205,7 +1206,7 @@
                           label_height="0"
                           layout="topleft"
                           left="5"
-                          top="88"
+                          top="124"
                           name="env_moon_tint_swatch"
                           tool_tip="Moon tint colour (sRGB picker). Multiplies direct moon light on surfaces at night, luminance-normalised (max channel 4x). White = no tint. Not the moon disc, sky, specular or local lights. Viewer-side, never written into the sky."
                           width="18"/>
@@ -1217,7 +1218,7 @@
                     initial_value="1"
                     layout="topleft"
                     left="25"
-                    top="89"
+                    top="125"
                     min_val="0"
                     max_val="1"
                     name="env_moon_tint_strength"
@@ -1231,7 +1232,7 @@
                     height="20"
                     layout="topleft"
                     left="185"
-                    top="87"
+                    top="123"
                     name="env_moon_tint_reset"
                     scale_image="true"
                     image_overlay="Refresh_Off"
@@ -1243,7 +1244,7 @@
                   height="10"
                   layout="topleft"
                   left="215"
-                  top="76"
+                  top="112"
                   name="env_amb_tint_label"
                   tool_tip="Tint on sky ambient and probe irradiance (shadow side, interiors, corners). White or strength 0 = no tint."
                   width="200">Ambient tint:</text>
@@ -1254,7 +1255,7 @@
                           label_height="0"
                           layout="topleft"
                           left="215"
-                          top="88"
+                          top="124"
                           name="env_amb_tint_swatch"
                           tool_tip="Ambient tint colour (sRGB picker). Multiplies sky ambient, reflection-probe irradiance and the SSAO ceiling (the shadow side, probe-lit interiors, corners), luminance-normalised (max channel 4x). Not the sky dome, reflections, local lights or emissive. White = no tint; held at stock during probe captures. Viewer-side, never written into the sky."
                           width="18"/>
@@ -1266,7 +1267,7 @@
                     initial_value="1"
                     layout="topleft"
                     left="235"
-                    top="89"
+                    top="125"
                     min_val="0"
                     max_val="1"
                     name="env_amb_tint_strength"
@@ -1280,7 +1281,7 @@
                     height="20"
                     layout="topleft"
                     left="395"
-                    top="87"
+                    top="123"
                     name="env_amb_tint_reset"
                     scale_image="true"
                     image_overlay="Refresh_Off"
@@ -1293,7 +1294,7 @@
                     label="Reset advanced"
                     layout="topleft"
                     left="425"
-                    top="87"
+                    top="123"
                     name="env_adv_reset_all"
                     tool_tip="Reset every Advanced control to its default (Moon linked to Sun, all offsets 0 EV, 6500 K, white tints at strength 1, shadow lift off). The two master sliders above are not touched."
                     width="120"/>
@@ -1303,12 +1304,24 @@
                   height="20"
                   layout="topleft"
                   left="635"
-                  top="78"
+                  top="114"
                   name="env_adv_note"
                   tool_tip="Probe reflections (EV) is independent of the Sky light (GI) master: the master scales sky ambient and probe diffuse only. Mirrors and screen-space reflections skip the Probe reflections multiplier (they are mixed in after it). Two kinds of factor: source-light factors (Sun / Moon EV, Sun temperature, Sun / Moon tint, Local lights EV) scale the light itself, so they also reach probe captures and mirrors through the lit scene; display-time factors (GI master, Sky ambient, Probe diffuse, Probe reflections, Ambient tint, Shadow lift) are applied only when surfaces are shaded and held at stock inside probe captures, so they act exactly once. Legacy (non-HDR) skies: tints only ever dim channels. Material thumbnails follow the source-light factors via the sky probe."
                   width="205"
                   word_wrap="true">Probe reflections (EV) is independent of the GI master; mirrors / SSR skip that multiplier.</text>
-        </layout_panel>
+
+            <text follows="left|top" height="10" layout="topleft" left="215" top="40"
+                  name="env_local_size_label" tool_tip="Treats SL lights as small glowing spheres so reflections of nearby lights become soft sheens instead of hot dots. 0 = original. Radius in metres. Cine Light Rig fixtures keep their own source size." width="200">Local light size:</text>
+            <slider control_name="AlchemyEnvLocalLightSize" decimal_digits="2" follows="left|top"
+                    height="16" increment="0.01" initial_value="0" layout="topleft" left="215" top="53"
+                    min_val="0" max_val="0.5" name="env_local_size" text_width="46"
+                    tool_tip="Treats SL lights as small glowing spheres so reflections of nearby lights become soft sheens instead of hot dots. 0 = original. Radius in metres. Cine Light Rig fixtures keep their own source size." wheel_adjust="true" wheel_fine_div="5" width="160" can_edit_text="true"/>
+            <text follows="left|top" height="10" layout="topleft" left="377" top="56"
+                  name="env_local_size_unit" width="16">m</text>
+            <button follows="left|top" height="20" layout="topleft" left="395" top="51"
+                    name="env_local_size_reset" scale_image="true" image_overlay="Refresh_Off"
+                    image_overlay_alignment="center" tool_tip="Reset Local light size to 0 (original)" width="18"/>
+</layout_panel>
         <!-- [BDMerge B13] BD local Windlight presets strip: hidden by default,
              shown and wired only when BDMergeEnvLocalPresets is enabled
              (llfloaterenvironmentadjust.cpp postBuild). -->

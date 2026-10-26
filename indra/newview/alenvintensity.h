@@ -67,6 +67,10 @@ namespace ALEnvIntensity
     // alive. Never gated on captures (source-light term). obj may be null.
     F32 localLightEVScale(const LLViewerObject* obj);
 
+    // Specular source radius in metres, 0..0.5. Always zero for rig fixtures
+    // (IncludeRig is an EV-only option) and neutral material-preview lights.
+    F32 localLightSize(const LLViewerObject* obj);
+
     // Factor for the absolute SSAO irradiance ceiling (probe-diffuse factor;
     // identity in classic mode via LLRender::sClassicMode). SSAO never runs
     // inside a probe capture, so no capture gate is needed.

@@ -39,6 +39,7 @@ const ALExposureSettingsHistory::TrackedSetting TRACKED_SETTINGS[] =
     { "AlchemyEnvGIProbeDiffuseEV",    "Probe diffuse EV" },
     { "AlchemyEnvGIProbeSpecEV",       "Probe reflections EV" },
     { "AlchemyEnvLocalLightEV",        "Local lights EV" },
+    { "AlchemyEnvLocalLightSize",      "Local light size" },
     { "AlchemyEnvLocalLightIncludeRig", "Include rig lights" },
     { "AlchemyEnvSunKelvin",           "Sun temperature" },
     { "AlchemyEnvSunTintColor",        "Sun tint" },

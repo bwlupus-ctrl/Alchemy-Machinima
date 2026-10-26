@@ -38,6 +38,7 @@
 #include "hbxxh.h"
 #include "glm/gtc/type_ptr.hpp"
 
+
 #if GL_ARB_debug_output
 #ifndef APIENTRY
 #define APIENTRY
@@ -640,6 +641,15 @@ void LLLightState::setSize(F32 v)
     }
 }
 
+void LLLightState::setLocalLightSize(F32 radius)
+{
+    if (mLocalLightSize != radius)
+    {
+        ++gGL.mLightHash;
+        mLocalLightSize = radius;
+    }
+}
+
 void LLLightState::setFalloff(F32 v)
 {
     if (mFalloff != v)
@@ -915,6 +925,15 @@ void LLRender::setLightShapeActive(bool active)
     mLightShapeActive = active;
 }
 
+void LLRender::setLocalLightSpecExponent(F32 exponent)
+{
+    if (mLocalLightSpecExponent != exponent)
+    {
+        mLocalLightSpecExponent = exponent;
+        ++mLightHash;
+    }
+}
+
 void LLRender::syncLightState()
 {
     LLGLSLShader *shader = LLGLSLShader::sCurBoundShaderPtr;
@@ -937,6 +956,7 @@ void LLRender::syncLightState()
         LLVector2 size[LL_NUM_LIGHT_UNITS];
         const bool shape_active = mLightShapeActive;
         LLVector4 shapes[LL_NUM_LIGHT_UNITS];
+        F32 source_size[LL_NUM_LIGHT_UNITS];
         LLVector4 rim[LL_NUM_LIGHT_UNITS]; // [RigRim]
 
         for (U32 i = 0; i < LL_NUM_LIGHT_UNITS; i++)
@@ -944,6 +964,7 @@ void LLRender::syncLightState()
             LLLightState *light = &mLightState[i];
 
             if (shape_active) shapes[i] = light->mLightShape;
+            source_size[i] = light->mLocalLightSize;
             position[i]  = light->mPosition;
             direction[i] = light->mSpotDirection;
             attenuation[i].set(light->mLinearAtten, light->mQuadraticAtten, light->mSpecular.mV[2], light->mSpecular.mV[3]);
@@ -960,6 +981,8 @@ void LLRender::syncLightState()
         }
 
         if (shape_active) shader->uniform4fv(LLShaderMgr::LIGHT_SHAPES, LL_NUM_LIGHT_UNITS, shapes[0].mV);
+        shader->uniform1f(LLShaderMgr::LOCAL_LIGHT_SPEC_EXPONENT, mLocalLightSpecExponent);
+        shader->uniform1fv(LLShaderMgr::LOCAL_LIGHT_SIZES, LL_NUM_LIGHT_UNITS, source_size);
         shader->uniform4fv(LLShaderMgr::LIGHT_POSITION, LL_NUM_LIGHT_UNITS, position[0].mV);
         shader->uniform3fv(LLShaderMgr::LIGHT_DIRECTION, LL_NUM_LIGHT_UNITS, direction[0].mV);
         shader->uniform4fv(LLShaderMgr::LIGHT_ATTENUATION, LL_NUM_LIGHT_UNITS, attenuation[0].mV);

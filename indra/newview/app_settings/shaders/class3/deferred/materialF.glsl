@@ -149,6 +149,7 @@ uniform mat4 proj_mat;
 uniform mat4 inv_proj;
 uniform vec2 screen_res;
 
+uniform float local_light_sizes[8];
 uniform vec4 light_position[8];
 uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
@@ -191,7 +192,8 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, RELIGHT_PARAM vec4 rim,
+float localLightLegacy(sampler2D lut, float nh, float gloss, float radius, float distance, float cone);
+vec3 calcPointLightOrSpotLightKernel(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, float local_size, RELIGHT_PARAM vec4 rim,
     RigRimPixel rim_px // [RigRimQ] per-pixel quality inputs
 #ifdef HAS_ACTOR_FX
     , bool sil_on, float sil_keep, float rim_keep
@@ -224,7 +226,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
             float lookupNh = max(dot(n,relightUnit(representative+npos,n)),0.0);
             float fres = pow(1.0-vh,5.0)*.4+.5;
             float gt = max(0.0,min(2.0*nh*nv/vh,2.0*nh*da/vh));
-            float scol = fres*texture(lightFunc,vec2(lookupNh,spec.a)).r*gt/(nh*da);
+            float scol = fres*(local_size > 0.0 ? localLightLegacy(lightFunc,lookupNh,spec.a,local_size,length(delta),1.0-is_pointlight) : texture(lightFunc,vec2(lookupNh,spec.a)).r)*gt/(nh*da);
             float norm = relightLegacyNormalization(spec.a,specRadius,length(delta));
             scol *= norm*norm;
             vec3 speccol = clamp(clamp(da*attenuation,0.0,1.0)*scol*light_col*spec.rgb,vec3(0),vec3(1));
@@ -331,7 +333,9 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
 
             if (nh > 0.0)
             {
-                float scol = fres*texture(lightFunc, vec2(nh, spec.a)).r*gt / (nh*da);
+                float lobe = local_size > 0.0 ? localLightLegacy(lightFunc, nh, spec.a,
+                    local_size, length(lp.xyz-v), 1.0-is_pointlight) : texture(lightFunc, vec2(nh, spec.a)).r;
+                float scol = fres*lobe*gt / (nh*da);
                 vec3 speccol = lit*scol*light_col.rgb*spec.rgb;
                 speccol = clamp(speccol, vec3(0), vec3(1));
                 col += speccol;
@@ -377,6 +381,43 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
     if (classic_mode > 0)
         final_scale = 0.9;
     return max(col * final_scale, vec3(0.0, 0.0, 0.0));
+}
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, float local_size, RELIGHT_PARAM vec4 rim,
+    RigRimPixel rim_px // [RigRimQ] per-pixel quality inputs
+#ifdef HAS_ACTOR_FX
+    , bool sil_on, float sil_keep, float rim_keep
+#endif
+)
+{
+    if (local_size <= 0.0 || all(equal(spec.rgb,vec3(0.0))))
+        return calcPointLightOrSpotLightKernel(light_col,npos,diffuse,spec,v,n,lp,ln,la,fa,is_pointlight,glare,ambiance,0.0,RELIGHT_FORWARD rim,rim_px
+#ifdef HAS_ACTOR_FX
+, sil_on,sil_keep,rim_keep
+#endif
+);
+    return calcPointLightOrSpotLightKernel(light_col,npos,diffuse,spec,v,n,lp,ln,la,fa,is_pointlight,glare,ambiance,local_size,RELIGHT_FORWARD rim,rim_px
+#ifdef HAS_ACTOR_FX
+, sil_on,sil_keep,rim_keep
+#endif
+);
+}
+
+
+// Preserve the no-radius evaluator used by existing standalone regression gates.
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec,
+    vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight,
+    inout float glare, float ambiance, RELIGHT_PARAM vec4 rim, RigRimPixel rim_px
+#ifdef HAS_ACTOR_FX
+    , bool sil_on, float sil_keep, float rim_keep
+#endif
+)
+{
+    return calcPointLightOrSpotLight(light_col, npos, diffuse, spec, v, n, lp, ln,
+        la, fa, is_pointlight, glare, ambiance, 0.0, RELIGHT_FORWARD rim, rim_px
+#ifdef HAS_ACTOR_FX
+        , sil_on, sil_keep, rim_keep
+#endif
+    );
 }
 
 #else
@@ -511,6 +552,7 @@ void weatherMaterialLegacyLinear(vec3 p, inout vec3 n, inout vec3 c, inout vec3 
 #define WEATHER_KEEP_FORWARD_ALPHA 1
 void weatherMaterialMain(bool weather_apply)
 #else
+
 void main()
 #endif
 {
@@ -731,9 +773,9 @@ void main()
 
 // [RigRim] trailing rig_rim_lights[i] argument (+ [RigRimQ] rim_px)
 #ifdef HAS_ACTOR_FX
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, RELIGHT_DATA(i) rig_rim_lights[i], rim_px, alr_sil_on, alr_sil_keep, alr_rim_keep);
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, local_light_sizes[i], RELIGHT_DATA(i) rig_rim_lights[i], rim_px, alr_sil_on, alr_sil_keep, alr_rim_keep);
 #else
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, RELIGHT_DATA(i) rig_rim_lights[i], rim_px);
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, local_light_sizes[i], RELIGHT_DATA(i) rig_rim_lights[i], rim_px);
 #endif
 
     LIGHT_LOOP(1)

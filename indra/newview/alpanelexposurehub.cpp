@@ -40,6 +40,7 @@ const char* const RESET_SETTINGS[] =
     "AlchemyEnvGIProbeDiffuseEV",
     "AlchemyEnvGIProbeSpecEV",
     "AlchemyEnvLocalLightEV",
+    "AlchemyEnvLocalLightSize",
     "AlchemyEnvShadowLiftEV",
     "CineLightRigMasterEV",
     "CineLightRigHeadroomStops",

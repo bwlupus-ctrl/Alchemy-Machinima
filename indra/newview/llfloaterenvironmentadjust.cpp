@@ -136,6 +136,7 @@ namespace
         "AlchemyEnvGIProbeDiffuseEV",
         "AlchemyEnvGIProbeSpecEV",
         "AlchemyEnvLocalLightEV",
+        "AlchemyEnvLocalLightSize",
         "AlchemyEnvLocalLightIncludeRig",
         "AlchemyEnvSunKelvin",
         "AlchemyEnvSunTintColor",
@@ -158,6 +159,7 @@ namespace
     {
         { "env_moon_ev_reset",       "AlchemyEnvMoonEV",           nullptr },
         { "env_local_ev_reset",      "AlchemyEnvLocalLightEV",     nullptr },
+        { "env_local_size_reset",    "AlchemyEnvLocalLightSize",   nullptr },
         { "env_probe_diff_ev_reset", "AlchemyEnvGIProbeDiffuseEV", nullptr },
         { "env_probe_spec_ev_reset", "AlchemyEnvGIProbeSpecEV",    nullptr },
         { "env_amb_ev_reset",        "AlchemyEnvGIAmbientEV",      nullptr },
@@ -249,6 +251,7 @@ namespace
         "AlchemyEnvGIProbeDiffuseEV",
         "AlchemyEnvGIProbeSpecEV",
         "AlchemyEnvLocalLightEV",
+        "AlchemyEnvLocalLightSize",
         "AlchemyEnvSunKelvin",
         "AlchemyEnvSunTintColor",
         "AlchemyEnvSunTintStrength",
@@ -265,7 +268,7 @@ namespace
     const std::string ENV_INTENSITY_USER_PREFIX("user:");
     const std::string ENV_INTENSITY_USER_HEADER_VALUE("user_header");
 
-    // [EnvIntensity userpresets] built-in table row -> the shared 16-value struct
+    // [EnvIntensity userpresets] built-in table row -> the shared value struct
     // (the table itself is untouched; the field order there is positional).
     ALEnvIntensityPresets::Values env_intensity_builtin_values(const EnvIntensityPreset& p)
     {

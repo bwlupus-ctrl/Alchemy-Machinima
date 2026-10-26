@@ -1,5 +1,6 @@
 {
   "groups": [
+    ["local light size", "light size", "specular", "hotspot", "highlight", "neon", "bulb", "glare", "reflection"],
     ["exposure", "ev", "brightness"],
     ["rain", "rainy"],
     ["hard sun", "desert"],

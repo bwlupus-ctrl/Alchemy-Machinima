@@ -99,7 +99,7 @@ def production_file(name, level=3):
 
 # Modules from LLShaderMgr::attachShaderFeatures. No generated function stubs:
 # unresolved functions and vertex/fragment interface mismatches must fail linking.
-def link_production(file, defines, label, test_fragment=None):
+def link_production(file, defines, label, test_fragment=None, compile_only=False, defer_link=False):
     name=Path(file).name
     forward=name in ('alphaF.glsl','materialF.glsl','pbralphaF.glsl','sharedActorFxPbrF.glsl')
     # Global basic-shader defines accompany the per-program permutations.
@@ -116,6 +116,8 @@ def link_production(file, defines, label, test_fragment=None):
         fragment+=['deferred/reflectionProbeF.glsl','deferred/screenSpaceReflUtil.glsl']
     if 'HAS_EMISSIVE' in defines or 'HAS_ACTOR_FX' in defines:
         fragment+=['alchemy/avatarLightResponseF.glsl']
+    if 'HAS_WEATHER_MATERIAL' in defines:
+        fragment+=['deferred/weatherMaterialF.glsl','deferred/weatherShelterF.glsl']
     if 'HAS_ACTOR_FX' in defines:
         fragment+=['alchemy/actorFxDissolveF.glsl','alchemy/actorFxF.glsl']
     if name=='spotLightF.glsl': fragment+=['deferred/shadowUtil.glsl']
@@ -151,10 +153,17 @@ def link_production(file, defines, label, test_fragment=None):
     attach(pr,compile_part(text,defines,label))
     if test_fragment is not None:
         attach(pr,compile_part('void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.0-1.0,0,1);}',defines,label+' fullscreen',0x8B31))
+        if '#define main actorMaskedMain' in defines:
+            attach(pr,compile_part(read_shader(production_file('deferred/actorMaskGateV.glsl')),defines,label+' actor vertex gate',0x8B31))
     else:
         for module in vertices:
             attach(pr,compile_part(read_shader(production_file(module)),defines,label+' '+module,0x8B31))
-    link(pr);ok=I();getprog(pr,0x8B82,C.byref(ok))
+    if compile_only:
+        return pr
+    link(pr)
+    if defer_link:
+        return pr
+    ok=I();getprog(pr,0x8B82,C.byref(ok))
     if not ok.value:
         out=C.create_string_buffer(64000);plog(pr,len(out),None,out)
         raise AssertionError(label+' LINK '+out.value.decode())

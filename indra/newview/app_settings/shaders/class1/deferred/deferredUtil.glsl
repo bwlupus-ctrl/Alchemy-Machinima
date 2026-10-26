@@ -862,6 +862,123 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 }
 
 
+// [LocalLightSize] Roughness-widening form of Karis 2013 sphere lights.
+// Only D changes: centre-direction Fresnel, visibility, diffuse, cone, shadow
+// and attenuation remain exactly as before. The normalized lobe has peak
+// (alpha/alphaPrime)^2 of the original; shoulders may rise as it broadens.
+// Do not multiply this ratio a second time: it is already inside D'/D.
+float localLightAlpha(float alpha, float radius, float distance, float cone)
+{
+    // Share the reciprocal-length form with the caller's normalized light
+    // direction. The floor also keeps coincident emitters finite.
+    float invDistance = inversesqrt(max(distance * distance, 1.e-12));
+    return min(1.0, alpha + (radius / mix(2.0, 3.0, cone)) * invDistance);
+}
+float localLightGGXRatio(float nh, float alpha, float radius, float distance, float cone)
+{
+    alpha = max(alpha, 1.e-4);
+    float broadened = localLightAlpha(alpha, radius, distance, cone);
+    float norm = alpha / broadened;
+    float c2 = clamp(nh * nh, 0.0, 1.0);
+    // Stable, peak-normalized GGX shapes. Normalization is applied once.
+    float originalShapeDen = (1.0 - c2) / (alpha * alpha) + c2;
+    float wideShapeDen = (1.0 - c2) / (broadened * broadened) + c2;
+    float shapeRatio = originalShapeDen / wideShapeDen;
+    return (norm * norm) * (shapeRatio * shapeRatio);
+}
+uniform float local_light_spec_exponent;
+float localLightLegacy(sampler2D lut, float nh, float gloss, float radius, float distance, float cone)
+{
+    float exponent = max(gloss * gloss * local_light_spec_exponent, 0.0);
+    float alpha = sqrt(2.0 / (exponent + 2.0));
+    float broadened = localLightAlpha(alpha, radius, distance, cone);
+    float reduced = max(2.0 / (broadened * broadened) - 2.0, 0.0);
+    float lookup = exponent > 1.e-6 ? pow(clamp(nh, 0.0, 1.0), reduced / exponent) : 1.0;
+    float norm = alpha / broadened;
+    // Preserve the LUT's Blinn normalization, reducing its exponent through
+    // the X coordinate and applying the wider-lobe energy normalization.
+    return texture(lut, vec2(lookup, gloss)).r * (norm * norm);
+}
+void localLightSpecular(inout vec3 spec, float roughness,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone)
+{
+    vec3 hv = l + v;
+    float nh = dot(hv, hv) > 1.e-12 ? clamp(dot(n, normalize(hv)), 0.0, 1.0) : 0.0;
+    float r = max(roughness, MIN_PBR_ROUGHNESS);
+    spec *= localLightGGXRatio(nh, r * r, radius, distance, cone);
+}
+
+void localLightPbr(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 v, // surface point to camera
+                    vec3 l,
+                    float radius, float distance, float cone,
+                    out float nl,
+                    out vec3 diff,
+                    out vec3 spec) //surface point to light
+{
+    // make sure specular highlights from punctual lights don't fall off of polished surfaces
+    perceptualRoughness = max(perceptualRoughness, MIN_PBR_ROUGHNESS);
+
+    float alphaRoughness = perceptualRoughness * perceptualRoughness;
+
+    // Compute reflectance.
+    float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
+
+    // For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
+    // For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
+    float reflectance90 = clamp(reflectance * 25.0, 0.0, 1.0);
+    vec3 specularEnvironmentR0 = specularColor.rgb;
+    vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
+
+    vec3 h = normalize(l+v);                        // Half vector between both l and v
+    vec3 reflection = -normalize(reflect(v, n));
+    reflection.y *= -1.0f;
+
+    float NdotL = clamp(dot(n, l), 0.001, 1.0);
+    float NdotV = clamp(abs(dot(n, v)), 0.001, 1.0);
+    float NdotH = clamp(dot(n, h), 0.0, 1.0);
+    float LdotH = clamp(dot(l, h), 0.0, 1.0);
+    float VdotH = clamp(dot(v, h), 0.0, 1.0);
+
+    PBRInfo pbrInputs = PBRInfo(
+        NdotL,
+        NdotV,
+        NdotH,
+        LdotH,
+        VdotH,
+        perceptualRoughness,
+        metallic,
+        specularEnvironmentR0,
+        specularEnvironmentR90,
+        alphaRoughness,
+        diffuseColor,
+        specularColor
+    );
+
+    // Calculate the shading terms for the microfacet specular shading model
+    vec3 F = specularReflection(pbrInputs);
+    float G = geometricOcclusion(pbrInputs);
+    // Evaluate D at the wider alpha directly. F, G and diffuse retain the
+    // authored alpha; D already has the energy-normalized GGX numerator.
+    float sourceAlpha = localLightAlpha(alphaRoughness, radius, distance, cone);
+    float sourceAlphaSq = sourceAlpha * sourceAlpha;
+    float distributionDenom = (NdotH * sourceAlphaSq - NdotH) * NdotH + 1.0;
+    float D = sourceAlphaSq / (M_PI * distributionDenom * distributionDenom);
+
+    // Calculation of analytical lighting contribution
+    vec3 diffuseContrib = (1.0 - F) * diffuse(pbrInputs);
+    vec3 specContrib = F * G * D / (4.0 * NdotL * NdotV);
+
+    nl = NdotL;
+
+    diff = diffuseContrib;
+    spec = specContrib;
+}
+
+
 uniform vec2 relight_limits; // near floor (m), maximum physical boost
 uniform float relight_highlight_scale; // specular radius only; .w is a shadow channel
 uniform float relight_legacy_exponent; // same exponent used to build the gloss LUT
@@ -994,8 +1111,8 @@ float relightLegacyNormalization(float glossiness, float radius, float distance)
     float alpha = sqrt(2.0/(glossiness*glossiness*relight_legacy_exponent+2.0));
     return relightNormalization(alpha,radius,distance);
 }
-vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
-                vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance)
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+                vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance, float local_size, float cone)
 {
     if (dot(n,lv) <= -shape.x) return vec3(0); // whole sphere below horizon
     float d = length(lv);
@@ -1006,6 +1123,11 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     relightPunctual(diffuseColor,specularColor,roughness,metallic,n,v,centre,nl,diff,unused);
     relightPunctual(diffuseColor,specularColor,roughness,metallic,n,v,representative,nl,unused,spec);
     float alpha = pow(max(roughness, MIN_PBR_ROUGHNESS), 2.0);
+    if (local_size > 0.0)
+    {
+        float nh = max(dot(n, relightUnit(representative+v,n)),0.0);
+        spec *= localLightGGXRatio(nh,alpha,local_size,d,cone);
+    }
     // Verified Karis eq. 10: r/(3d), NOT r/(2d). Original alpha stays in D.
     float norm = relightNormalization(alpha,specRadius,d);
     float attenuation = relightAtten(attenDistance,range,falloff,shape);
@@ -1015,13 +1137,26 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     return attenuation * clamp(diff*relightRatio(n,lv,shape.x) +
         spec*max(dot(n,representative),0.0)*norm*norm*specKeep, vec3(0),vec3(10));
 }
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep,
+    float local_size, float cone)
+{
+    return relightPbrSized(diffuseColor,specularColor,roughness,metallic,n,v,lv,
+        range,falloff,shape,specKeep,length(lv),local_size,cone);
+}
+
+vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+                vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance)
+{
+    return relightPbrSized(diffuseColor,specularColor,roughness,metallic,n,v,lv,range,falloff,shape,specKeep,attenDistance,0.0,0.0);
+}
 vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
                 vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep)
 {
     return relightPbr(diffuseColor,specularColor,roughness,metallic,n,v,lv,range,falloff,shape,specKeep,length(lv));
 }
-vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
-                  vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance)
+vec3 relightLegacySized(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+                  vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance, float local_size, float cone)
 {
     highlight = vec3(0);
     if (dot(n,lv) <= -shape.x) return vec3(0); // whole sphere below horizon
@@ -1043,12 +1178,24 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
         float fres = pow(1.0-vh,5.0)*.4+.5;
         float gt = max(0.0,min(2.0*nh*nv/vh,2.0*nh*nl/vh));
         if (nh > 0.0 && nl > 0.0)
-            highlight = min(nl*6.0,1.0)*fres*texture(glossLut,vec2(lookupNh,spec.a)).r*gt/(nh*nl)*spec.rgb;
+            highlight = min(nl*6.0,1.0)*fres*(local_size > 0.0 ? localLightLegacy(glossLut,lookupNh,spec.a,local_size,length(lv),cone) : texture(glossLut,vec2(lookupNh,spec.a)).r)*gt/(nh*nl)*spec.rgb;
         float norm = relightLegacyNormalization(spec.a,specRadius,length(lv));
         highlight *= norm*norm;
     }
     highlight *= attenuation;
     return result*attenuation + highlight;
+}
+vec3 relightLegacySized(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float local_size, float cone)
+{
+    return relightLegacySized(glossLut,diffuse,spec,n,v,lv,range,falloff,shape,
+        highlight,length(lv),local_size,cone);
+}
+
+vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+                  vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance)
+{
+    return relightLegacySized(glossLut,diffuse,spec,n,v,lv,range,falloff,shape,highlight,attenDistance,0.0,0.0);
 }
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
                   vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight)
@@ -1437,7 +1584,7 @@ vec3 rigRimTermEx(vec3 n,            // shading normal (eye space)
 // existed and a parity build of pbralphaF / sharedActorFxPbrF could not link.
 // Unconditional definitions cost nothing: every non-parity program strips
 // them as unreferenced.
-vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+vec3 pbrCalcPointLightOrSpotLightRimKeepRefKernel(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
                     vec3 n, // normal
@@ -1447,7 +1594,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep, // [AvatarLightResponse] 1.0 = untouched
                     RigRimPixel px) // [RigRimQ]
 {
@@ -1459,8 +1606,8 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),lightSize,falloff,shape); // same physical model as direct light
-        vec3 direct = spot*spot*lightColor*3.25 * relightPbr(diffuseColor,specularColor,
-            perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
+        vec3 direct = spot*spot*lightColor*3.25 * relightPbrSized(diffuseColor,specularColor,
+            perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep,local_size,1.0-is_pointlight);
         vec3 rimLight = vec3(0);
         bool hasRim = rig_rim_mode != 0;
         if (hasRim)
@@ -1493,7 +1640,10 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         vec3 diffPunc = vec3(0);
         vec3 specPunc = vec3(0);
 
-        pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
+        if (local_size > 0.0)
+            localLightPbr(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, local_size,lightDist,1.0-is_pointlight, nl, diffPunc, specPunc);
+        else
+            pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
         specPunc *= spec_keep; // [AvatarLightResponse]
         color = intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
 
@@ -1515,6 +1665,25 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         final_scale = 0.9;
     return color * final_scale;
 }
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    RigRimPixel px) // [RigRimQ]
+{
+    // A completely suppressed specular term uses the unchanged zero-size kernel.
+    if (local_size <= 0.0 || spec_keep <= 0.0) { return pbrCalcPointLightOrSpotLightRimKeepRefKernel(diffuseColor,specularColor,perceptualRoughness,metallic,n,p,v,lp,ld,lightColor,lightSize,falloff,is_pointlight,ambiance,0.0,RELIGHT_FORWARD rim,spec_keep,px); }
+    else { return pbrCalcPointLightOrSpotLightRimKeepRefKernel(diffuseColor,specularColor,perceptualRoughness,metallic,n,p,v,lp,ld,lightColor,lightSize,falloff,is_pointlight,ambiance,local_size,RELIGHT_FORWARD rim,spec_keep,px); }
+}
+
 
 vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
@@ -1526,12 +1695,12 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep) // [AvatarLightResponse] 1.0 = untouched
 {
     return pbrCalcPointLightOrSpotLightRimKeepRef(diffuseColor, specularColor, perceptualRoughness, metallic,
                                                   n, p, v, lp, ld, lightColor, lightSize, falloff,
-                                                  is_pointlight, ambiance, RELIGHT_FORWARD rim, spec_keep,
+                                                  is_pointlight, ambiance, local_size, RELIGHT_FORWARD rim, spec_keep,
                                                   rigRimNeutralPixel(n.xyz));
 }
 
@@ -1539,7 +1708,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
 // final_scale is returned, never distributed, so the compatibility wrapper
 // below preserves today's add-then-multiply operation order exactly.
 // [RigRimQ] Trailing RigRimPixel; the px-less overload forwards a neutral pixel.
-void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+void pbrCalcPointLightOrSpotLightRimSplitKernel(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
                     vec3 n, // normal
@@ -1549,7 +1718,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep, // [AvatarLightResponse] 1.0 = untouched
                     RigRimPixel px, // [RigRimQ]
                     out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
@@ -1565,8 +1734,8 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         vec3 centre = relightUnit(delta,n);
         float spot = max(dot(-ld,centre),is_pointlight);
         float attenuation = relightAtten(length(delta),lightSize,falloff,shape); // same physical model as direct light
-        vec3 direct = spot*spot*lightColor*3.25 * relightPbr(diffuseColor,specularColor,
-            perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep);
+        vec3 direct = spot*spot*lightColor*3.25 * relightPbrSized(diffuseColor,specularColor,
+            perceptualRoughness,metallic,n,v,delta,lightSize,falloff,shape,spec_keep,local_size,1.0-is_pointlight);
         vec3 rimLight = vec3(0);
         bool hasRim = rig_rim_mode != 0;
         if (hasRim)
@@ -1603,7 +1772,10 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         vec3 diffPunc = vec3(0);
         vec3 specPunc = vec3(0);
 
-        pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
+        if (local_size > 0.0)
+            localLightPbr(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, local_size,lightDist,1.0-is_pointlight, nl, diffPunc, specPunc);
+        else
+            pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
         specPunc *= spec_keep; // [AvatarLightResponse]
         nonrim = intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
 
@@ -1624,6 +1796,27 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
     if (classic_mode > 0)
         light_scale = 0.9;
 }
+void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    RigRimPixel px, // [RigRimQ]
+                    out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
+                    out float light_scale)
+{
+    // A completely suppressed specular term uses the unchanged zero-size kernel.
+    if (local_size <= 0.0 || spec_keep <= 0.0) { pbrCalcPointLightOrSpotLightRimSplitKernel(diffuseColor,specularColor,perceptualRoughness,metallic,n,p,v,lp,ld,lightColor,lightSize,falloff,is_pointlight,ambiance,0.0,RELIGHT_FORWARD rim,spec_keep,px,nonrim,rim_raw,rim_on,light_scale); return; }
+    else { pbrCalcPointLightOrSpotLightRimSplitKernel(diffuseColor,specularColor,perceptualRoughness,metallic,n,p,v,lp,ld,lightColor,lightSize,falloff,is_pointlight,ambiance,local_size,RELIGHT_FORWARD rim,spec_keep,px,nonrim,rim_raw,rim_on,light_scale); }
+}
+
 
 void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
@@ -1635,14 +1828,14 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep, // [AvatarLightResponse] 1.0 = untouched
                     out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
                     out float light_scale)
 {
     pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,
         perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize,
-        falloff, is_pointlight, ambiance, RELIGHT_FORWARD rim, spec_keep, rigRimNeutralPixel(n.xyz),
+        falloff, is_pointlight, ambiance, local_size, RELIGHT_FORWARD rim, spec_keep, rigRimNeutralPixel(n.xyz),
         nonrim, rim_raw, rim_on, light_scale);
 }
 
@@ -1656,7 +1849,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep, // [AvatarLightResponse] 1.0 = untouched
                     RigRimPixel px) // [RigRimQ]
 {
@@ -1666,7 +1859,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
     float light_scale;
     pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,
         perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize,
-        falloff, is_pointlight, ambiance, RELIGHT_FORWARD rim, spec_keep, px, nonrim, rim_raw,
+        falloff, is_pointlight, ambiance, local_size, RELIGHT_FORWARD rim, spec_keep, px, nonrim, rim_raw,
         rim_on, light_scale);
     vec3 color = nonrim;
     if (rim_on)
@@ -1686,12 +1879,12 @@ vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep) // [AvatarLightResponse] 1.0 = untouched
 {
     return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic,
                                                n, p, v, lp, ld, lightColor, lightSize, falloff,
-                                               is_pointlight, ambiance, RELIGHT_FORWARD rim, spec_keep,
+                                               is_pointlight, ambiance, local_size, RELIGHT_FORWARD rim, spec_keep,
                                                rigRimNeutralPixel(n.xyz));
 }
 
@@ -1706,11 +1899,11 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    RELIGHT_PARAM vec4 rim) // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float local_size, RELIGHT_PARAM vec4 rim) // [RigRim] per-light rim params (rig_rim_lights[i])
 {
     return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic,
                                                n, p, v, lp, ld, lightColor, lightSize, falloff,
-                                               is_pointlight, ambiance, RELIGHT_FORWARD rim, 1.0);
+                                               is_pointlight, ambiance, local_size, RELIGHT_FORWARD rim, 1.0);
 }
 
 vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
@@ -1728,7 +1921,7 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
     // pre-RigRim body of this function.
     return pbrCalcPointLightOrSpotLightRim(diffuseColor, specularColor, perceptualRoughness, metallic,
                                            n, p, v, lp, ld, lightColor, lightSize, falloff,
-                                           is_pointlight, ambiance, RELIGHT_DEFAULT vec4(0.0));
+                                           is_pointlight, ambiance, 0.0, RELIGHT_DEFAULT vec4(0.0));
 }
 
 void calcDiffuseSpecular(vec3 baseColor, float metallic, inout vec3 diffuseColor, inout vec3 specularColor)
@@ -1848,4 +2041,123 @@ void waterClip(vec3 pos)
         }
     }
 
+}
+
+// Compatibility overloads: consumers without an emitter radius retain point-light shading.
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim,
+                    float spec_keep,
+                    RigRimPixel px)
+{
+    return pbrCalcPointLightOrSpotLightRimKeepRef(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim, spec_keep, px);
+}
+
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim,
+                    float spec_keep)
+{
+    return pbrCalcPointLightOrSpotLightRimKeepRef(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim, spec_keep);
+}
+
+void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim,
+                    float spec_keep,
+                    RigRimPixel px,
+                    out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
+                    out float light_scale)
+{
+    pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim, spec_keep, px, nonrim, rim_raw, rim_on, light_scale);
+}
+
+void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim,
+                    float spec_keep,
+                    out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
+                    out float light_scale)
+{
+    pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim, spec_keep, nonrim, rim_raw, rim_on, light_scale);
+}
+
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim,
+                    float spec_keep,
+                    RigRimPixel px)
+{
+    return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim, spec_keep, px);
+}
+
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim,
+                    float spec_keep)
+{
+    return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim, spec_keep);
+}
+
+vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n,
+                    vec3 p,
+                    vec3 v,
+                    vec3 lp,
+                    vec3 ld,
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    RELIGHT_PARAM vec4 rim)
+{
+    return pbrCalcPointLightOrSpotLightRim(diffuseColor, specularColor, perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize, falloff, is_pointlight, ambiance, 0.0, RELIGHT_FORWARD rim);
 }

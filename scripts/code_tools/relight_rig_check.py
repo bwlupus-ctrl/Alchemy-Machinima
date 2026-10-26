@@ -116,12 +116,13 @@ for rig_path in ('multiPoint','point','spot','alpha','material','pbralpha','pbrs
             original=re.sub(r'\blight\[\s*(?:light_idx|i)\s*\]', 'vec4(testPos+testLight,15)',original)
         else:
             # Keep declarations; replace references in main only.
-            header,body=original.split('void main()',1)
+            entry = 'void localLightMain(' if 'void localLightMain(' in original else 'void main()'
+            header,body=original.split(entry,1)
             for name,value in {'light_shape':'testShape','trans_center':'(testPos+testLight)',
                                'proj_origin':'(testPos+testLight)','falloff':'testFalloff',
                                'color':'vec3(testLightPower)'}.items():
                 body=re.sub(r'\b'+name+r'\b',value,body)
-            original=header+'void main()'+body
+            original=header+entry+body
         fragment=original.replace('/*[EXTRA_CODE_HERE]*/','/*[EXTRA_CODE_HERE]*/\n'+rig_inputs)
     else:
         file=('class3/deferred/materialF.glsl' if material else 'class2/deferred/alphaF.glsl' if alpha else
@@ -136,9 +137,11 @@ for rig_path in ('multiPoint','point','spot','alpha','material','pbralpha','pbrs
             args+='testPos,testNormal,vec4(testPos+testLight,1),vec3(0,0,-1),(12*(1+testFalloff)-9)/15,1+testFalloff,1,'
             if material: args+='glare,'
             args+='0,testShape,vec4(1,2,.5,-2),rigRimNeutralPixel(testNormal),true,testSilKeep,1'
+            if 'float local_size' in original: args=args.replace('0,testShape','0,0.0,testShape')
             call='vec3 c=calcPointLightOrSpotLight('+args+');'
         else:
             args='(testComponent==1 ? vec3(0) : vec3(.576)),vec3(.04),testRoughness,0,testNormal,testPos,vec3(0,0,1),testPos+testLight,vec3(0,0,-1),vec3(testLightPower),15,testFalloff,1,0,testShape,vec4(1,2,.5,-2),(testComponent==0 ? 0.0 : 1.0),rigRimNeutralPixel(testNormal)'
+            if 'float local_size' in original: args=args.replace('0,testShape','0,0.0,testShape')
             call=('vec3 c,r;bool on;float scale;pbrCalcPointLightOrSpotLightRimSplit('+args+',c,r,on,scale);c=(c+r)*scale;' if rig_path in ('pbrsplit','actorPbr') else
                   'vec3 c=pbrCalcPointLightOrSpotLightRimKeepRef('+args+');')
         fragment=original.replace('/*[EXTRA_CODE_HERE]*/','/*[EXTRA_CODE_HERE]*/\n'+rig_inputs)
