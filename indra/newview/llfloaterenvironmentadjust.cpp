@@ -223,6 +223,16 @@ namespace
         { "arctic_cold",           0.50f, 0.30f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 8500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(0.80f, 0.90f, 1.00f, 1.f), 0.40f, 0.40f },
         { "soft_fill",             0.00f, 0.00f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.80f },
         { "reflections_pop",       0.00f, 0.00f, true,       0.00f, 0.00f,  0.00f,   1.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.00f },
+        // Natural family: saved DAy Nat, Desert and MoonlightNat values, with authored overrides.
+        { "natural_day", 0.7999998927116394f, 1.1999999284744263f, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.19999989867210388f, 5300.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 1.399999976158142f },
+        { "natural_overcast", 0.2f, 1.5f, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.19999989867210388f, 6200.f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 1.6f },
+        { "natural_golden_hour", 1.0f, 1.0f, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.19999989867210388f, 3800.f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 1.2f },
+        { "natural_interior_day", 0.7999998927116394f, 0.9f, false, 0.0f, 0.0f, 0.5f, 0.0f, 0.6f, 5300.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 1.399999976158142f },
+        { "hard_sun", 1.2999998331069946f, 0.09999990463256836f, true, 0.0f, 0.0f, 0.9500000476837158f, 1.0999999046325684f, 0.5999999046325684f, 6500.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 0.19999998807907104f },
+        { "rainy_day", 0.3f, 0.6f, true, 0.0f, 0.0f, 0.8f, 1.4f, 0.8f, 6500.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 0.8f },
+        { "natural_moonlight", 3.299999952316284f, 1.4499999284744263f, true, 0.0f, 0.0f, 1.0f, 0.0f, 0.49999991059303284f, 6500.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 1.0500000715255737f },
+        { "rainy_night", 3.299999952316284f, 1.4499999284744263f, true, 0.0f, 0.0f, 1.0f, 1.2f, 0.9f, 6500.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 0.9f },
+        { "night_interior_neon", 1.5f, 1.4499999284744263f, true, 0.0f, 0.0f, 1.0f, 0.5f, 0.8f, 6500.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, ENV_TINT_WHITE, 1.0f, 0.8f },
     };
 
     // [EnvIntensity presets] Custom-detection: every setting a preset can
@@ -1209,7 +1219,7 @@ void LLFloaterEnvironmentAdjust::onEnvIntensityPresetSelected()
         return;
     }
     const std::string key = combo->getValue().asString();
-    if (key == "custom" || key.empty() || key == ENV_INTENSITY_USER_HEADER_VALUE)
+    if (key == "custom" || key.empty() || key == "natural_header" || key == ENV_INTENSITY_USER_HEADER_VALUE)
     {
         // Picking "Custom" changes nothing; re-derive the label so an exact
         // preset match is not left showing "Custom". (An empty value / the

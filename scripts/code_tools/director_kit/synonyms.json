@@ -1,6 +1,8 @@
 {
   "groups": [
     ["exposure", "ev", "brightness"],
+    ["rain", "rainy"],
+    ["hard sun", "desert"],
     ["brightness", "lamp", "power", "intensity", "picture ev"],
     ["shadow", "shadows", "probe", "shadow map"],
     ["fog", "haze", "atmosphere", "shafts", "volumetric", "rays", "godrays", "beams", "shaft"],

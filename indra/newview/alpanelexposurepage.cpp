@@ -97,6 +97,15 @@ const BuiltinPreset BUILTIN_PRESETS[] = {
     { "arctic_cold",        "Arctic Cold" },
     { "soft_fill",          "Soft Fill" },
     { "reflections_pop",    "Reflections Pop" },
+    { "natural_day", "Natural Day" },
+    { "natural_overcast", "Natural Overcast" },
+    { "natural_golden_hour", "Natural Golden Hour" },
+    { "natural_interior_day", "Natural Interior Day" },
+    { "hard_sun", "Hard Sun" },
+    { "rainy_day", "Rainy Day" },
+    { "natural_moonlight", "Natural Moonlight" },
+    { "rainy_night", "Rainy Night" },
+    { "night_interior_neon", "Night Interior / Neon" },
 };
 
 // The 16 settings a Light Intensity preset owns (alenvintensitypresets.h).

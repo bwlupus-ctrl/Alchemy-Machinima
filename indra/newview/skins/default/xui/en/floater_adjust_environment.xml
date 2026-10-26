@@ -745,6 +745,16 @@
                 <combo_box.item label="Arctic Cold" name="preset_arctic_cold" value="arctic_cold"/>
                 <combo_box.item label="Soft Fill" name="preset_soft_fill" value="soft_fill"/>
                 <combo_box.item label="Reflections Pop" name="preset_reflections_pop" value="reflections_pop"/>
+                <combo_box.item label="-- Natural --" name="preset_natural_header" value="natural_header" enabled="false"/>
+                <combo_box.item label="Natural Day" name="preset_natural_day" value="natural_day"/>
+                <combo_box.item label="Natural Overcast" name="preset_natural_overcast" value="natural_overcast"/>
+                <combo_box.item label="Natural Golden Hour" name="preset_natural_golden_hour" value="natural_golden_hour"/>
+                <combo_box.item label="Natural Interior Day" name="preset_natural_interior_day" value="natural_interior_day"/>
+                <combo_box.item label="Hard Sun" name="preset_hard_sun" value="hard_sun"/>
+                <combo_box.item label="Rainy Day" name="preset_rainy_day" value="rainy_day"/>
+                <combo_box.item label="Natural Moonlight" name="preset_natural_moonlight" value="natural_moonlight"/>
+                <combo_box.item label="Rainy Night" name="preset_rainy_night" value="rainy_night"/>
+                <combo_box.item label="Night Interior / Neon" name="preset_night_interior_neon" value="night_interior_neon"/>
                 <combo_box.item label="Custom" name="preset_custom" value="custom"/>
             </combo_box>
             <!-- [EnvIntensity userpresets] "Presets..." opens the Save / Load /
