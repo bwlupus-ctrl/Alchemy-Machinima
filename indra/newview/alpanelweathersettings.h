@@ -18,6 +18,7 @@
 class LLButton;
 class LLComboBox;
 class LLTextBox;
+class LLVector3;
 
 class ALPanelWeatherSettings final : public LLPanel
 {
@@ -33,6 +34,22 @@ public:
     static void strikeLightningNow();
     static void initializeLibraryWeather(); // settings notifications, including inactive status
     static void updateLibraryWeather(); // idle, before any view; no draw-time work
+    static void suspendLibraryWeather(); // no GL calls; safe during world teardown
+    static void rebaseLibraryWeather(const LLVector3& origin_shift);
+    // A range is one value during loads/resets/replay. Nested batches publish once.
+    static void beginSettingsBatch();
+    static void endSettingsBatch();
+    class SettingsBatch
+    {
+    public:
+        SettingsBatch() { beginSettingsBatch(); }
+        ~SettingsBatch() { finish(); }
+        void finish() { if (mOpen) { mOpen = false; endSettingsBatch(); } }
+        SettingsBatch(const SettingsBatch&) = delete;
+        SettingsBatch& operator=(const SettingsBatch&) = delete;
+    private:
+        bool mOpen = true;
+    };
     static void applyLibraryPreset(U32 preset);
     static void stopPrecipitation();
     static void applyStartingSurfaces();
@@ -40,6 +57,8 @@ public:
     static const std::string& surfaceStatus();
     static const std::string& particleStatus();
     static const std::string& libraryStatus();
+    static std::string requirements();
+    static void sanitizeLightningDistances();
     static boost::signals2::signal<void()>& libraryChanged();
     static void confirmResetAll();
     static const std::vector<std::string>& trackedSettings();
@@ -73,6 +92,7 @@ private:
     LLPanel* mControlsPanel = nullptr;
     LLTextBox* mDeferredNote = nullptr;
     LLButton* mTriggerButton = nullptr;
+    std::vector<boost::signals2::scoped_connection> mDistanceConnections;
 };
 
 #endif // AL_ALPANELWEATHERSETTINGS_H

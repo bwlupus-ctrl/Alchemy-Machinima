@@ -7,6 +7,7 @@
 
 #include "alsettingsundohistory.h"
 #include "alkithistory.h"
+#include "alpanelweathersettings.h"
 #include "alkitpage.h"
 #include "alundovalue.h"
 
@@ -203,6 +204,7 @@ private:
     {
         ALKitHistory::ScopedReplay replay;
         mApplying = true;
+        ALPanelWeatherSettings::SettingsBatch weather_batch;
         bool skipped = false;
         auto filter = [&skipped, use_new_value](const ALSettingsUndoHistoryModel::Change& change)
         {
@@ -241,6 +243,7 @@ private:
                 apply_change(*change);
             }
         }
+        weather_batch.finish();
         mApplying = false;
         if (skipped)
             LLNotificationsUtil::add("SystemMessageTip",

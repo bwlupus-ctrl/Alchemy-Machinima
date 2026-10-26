@@ -159,7 +159,7 @@ public:
     /* virtual */ std::string getShaderDirPrefix(void);
 
     bool weatherMaterialsEnabled() const override;
-    bool weatherMaterialsSupported() const;
+    bool weatherMaterialsSupported() const override;
     void updateWeatherUniforms(LLGLSLShader* shader) override;
     /* virtual */ void updateShaderUniforms(LLGLSLShader * shader);
 

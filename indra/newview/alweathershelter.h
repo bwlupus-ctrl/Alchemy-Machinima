@@ -33,8 +33,12 @@ namespace ALWeatherShelter
     {
     public:
         void reset();
+        // Also reaches auxiliary cameras that were not drawn during transit.
+        static void invalidateAll() { ++sEpoch; }
         F32 update(F64 presentation_time, F32 target);
     private:
+        inline static U64 sEpoch = 0;
+        U64 mEpoch = 0;
         F32 mExposure = 1.f;
         F64 mLastPresentationTime = 0.0;
         bool mInitialized = false;

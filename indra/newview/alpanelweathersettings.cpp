@@ -19,6 +19,7 @@
 #include "llworld.h"
 #include "llenvironment.h"
 #include "llsettingssky.h"
+#include "llsliderctrl.h"
 #include "llviewershadermgr.h"
 
 #include "aluirefresh.h"            // [DirFix] D13 diff-guarded writes
@@ -33,6 +34,7 @@
 #include "lltextbox.h"
 #include "lluri.h"
 #include "llviewercontrol.h"
+#include "llapp.h" // gDisconnected
 #include "pipeline.h"
 
 #include <algorithm>
@@ -43,6 +45,8 @@ static LLPanelInjector<ALPanelWeatherSettings>
 namespace
 {
 constexpr char PRESET_SUBDIR[] = "weather_presets";
+U32 sSettingsBatchDepth = 0;
+bool sLightningDistancesDirty = false;
 
 void registerWeatherResetControl()
 {
@@ -201,6 +205,17 @@ bool ALPanelWeatherSettings::postBuild()
     updateControlGroup();
     refreshPresetList();
     updateDeferredAvailability();
+    const auto minimum = getChild<LLSliderCtrl>("weather_lightning_min")->getDerivedHandle<LLSliderCtrl>();
+    const auto maximum = getChild<LLSliderCtrl>("weather_lightning_max")->getDerivedHandle<LLSliderCtrl>();
+    auto update_distances = [minimum, maximum]()
+    {
+        if (LLSliderCtrl* slider = minimum.get()) slider->setMaxValue(gSavedSettings.getF32("AlchemyWeatherLightningMaxDistance"));
+        if (LLSliderCtrl* slider = maximum.get()) slider->setMinValue(gSavedSettings.getF32("AlchemyWeatherLightningMinDistance"));
+    };
+    update_distances();
+    for (const char* name : {"AlchemyWeatherLightningMinDistance", "AlchemyWeatherLightningMaxDistance"})
+        mDistanceConnections.emplace_back(gSavedSettings.getControl(name)->getSignal()->connect(
+            [update_distances](LLControlVariable*, const LLSD&, const LLSD&) { update_distances(); }));
     return true;
 }
 
@@ -318,6 +333,7 @@ void ALPanelWeatherSettings::onClickResetAll()
 
 void ALPanelWeatherSettings::resetAllSettingsToDefaults()
 {
+    SettingsBatch batch;
     for (const std::string& name : trackedSettings())
     {
         if (LLControlVariable* control = gSavedSettings.getControl(name))
@@ -480,6 +496,7 @@ bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
     }
 
     ALPresetLook::Load load;
+    SettingsBatch batch;
     ALPresetLook::reset(trackedSettings());
 
     // Apply only this panel's allowlisted settings; preset data cannot name an
@@ -672,20 +689,28 @@ namespace
     void refreshInactiveLibraryWeather()
     {
         // Active status follows the frozen simulation in updateLibraryWeather().
-        // Inactive status has no frame work; startup and setting changes publish it.
-        if (gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
+        // Every setting notification also refreshes prerequisites, even when a
+        // numeric status string has not changed (e.g. Lightning off -> on).
+        const bool preparing = gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
             (gSavedSettings.getU32("AlchemyWeatherControlMode") == 1 ||
-             gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled"))) return;
-        auto& bridge = ALWeatherBridge::Controller::instance();
-        if (sLibraryUI.refresh(readLibrarySettings(), bridge.state(), false, bridge.clock().seconds()))
+             gSavedSettings.getBOOL("AlchemyWeatherPersistentWetEnabled"));
+        if (!preparing)
         {
-            ALPanelWeatherSettings::libraryChanged()();
+            auto& bridge = ALWeatherBridge::Controller::instance();
+            sLibraryUI.refresh(readLibrarySettings(), bridge.state(), false, bridge.clock().seconds());
         }
+        ALPanelWeatherSettings::libraryChanged()();
     }
 }
 
 void ALPanelWeatherSettings::initializeLibraryWeather()
 {
+    sanitizeLightningDistances();
+    for (const char* name : {"AlchemyWeatherLightningMinDistance", "AlchemyWeatherLightningMaxDistance"})
+    {
+        gSavedSettings.getControl(name)->getSignal()->connect(
+            [](LLControlVariable*, const LLSD&, const LLSD&) { sanitizeLightningDistances(); });
+    }
     for (const auto& name : trackedSettings())
     {
         if (LLControlVariable* control = gSavedSettings.getControl(name))
@@ -705,8 +730,51 @@ const std::string& ALPanelWeatherSettings::libraryStatus()
 {
     return sLibraryUI.status();
 }
+void ALPanelWeatherSettings::sanitizeLightningDistances()
+{
+    sLightningDistancesDirty = true;
+    if (sSettingsBatchDepth) return;
+    sLightningDistancesDirty = false;
+    // Repair writes emit setting signals too; never sanitize a half-repaired pair.
+    ++sSettingsBatchDepth;
+    ALWeatherModel::Config config;
+    config.mMinDistanceMeters = gSavedSettings.getF32("AlchemyWeatherLightningMinDistance");
+    config.mMaxDistanceMeters = gSavedSettings.getF32("AlchemyWeatherLightningMaxDistance");
+    config = ALWeatherModel::sanitizeConfig(config);
+    if (gSavedSettings.getF32("AlchemyWeatherLightningMinDistance") != config.mMinDistanceMeters)
+        gSavedSettings.setF32("AlchemyWeatherLightningMinDistance", F32(config.mMinDistanceMeters));
+    if (gSavedSettings.getF32("AlchemyWeatherLightningMaxDistance") != config.mMaxDistanceMeters)
+        gSavedSettings.setF32("AlchemyWeatherLightningMaxDistance", F32(config.mMaxDistanceMeters));
+    --sSettingsBatchDepth;
+    sLightningDistancesDirty = false;
+}
+void ALPanelWeatherSettings::beginSettingsBatch()
+{
+    ++sSettingsBatchDepth;
+}
+void ALPanelWeatherSettings::endSettingsBatch()
+{
+    llassert(sSettingsBatchDepth);
+    if (--sSettingsBatchDepth == 0 && sLightningDistancesDirty) sanitizeLightningDistances();
+}
+std::string ALPanelWeatherSettings::requirements()
+{
+    const auto s = readLibrarySettings();
+    if (!s.enabled) return "Weather controls off - turn on Weather.";
+    if (!LLPipeline::sRenderDeferred) return "Requires Advanced Lighting Model.";
+    std::string text = s.mode == 0 ? "Library mode: Existing rain - apply a preset." :
+        (!s.local ? "Local weather off - enable Local weather or apply a preset." :
+         "Library rain uses existing streaks with physical rates, bands and wind.");
+    if (!gSavedSettings.getBOOL("AlchemyWeatherLightningEnabled")) text += " Lightning off - enable Lightning.";
+    else if (s.mode == 1 && s.lightningTiming == 1 && (!s.local || s.storm <= 0.f))
+        text += " Automatic lightning needs Local weather and Storm amount > 0.";
+    else if ((s.mode == 0 || s.lightningTiming == 0) && gSavedSettings.getF32("AlchemyWeatherLightningRate") <= 0.f)
+        text += " Strikes/min is zero; use Strike now or raise the rate.";
+    return text;
+}
 void ALPanelWeatherSettings::applyLibraryPreset(U32 preset)
 {
+    SettingsBatch batch;
     if (preset == 4 || preset > 8) return;
     auto settings = readLibrarySettings();
     ALWeatherUIModel::applyPreset(settings, preset);
@@ -721,6 +789,12 @@ void ALPanelWeatherSettings::applyLibraryPreset(U32 preset)
 }
 const std::string& ALPanelWeatherSettings::particleStatus()
 {
+    if (const char* reason = ALWeatherUIModel::snowRequirement(readLibrarySettings()))
+    {
+        static std::string requirement;
+        requirement = reason;
+        return requirement;
+    }
     return sParticleStatus;
 }
 const std::string& ALPanelWeatherSettings::surfaceStatus()
@@ -751,6 +825,12 @@ void ALPanelWeatherSettings::stopPrecipitation()
 }
 void ALPanelWeatherSettings::updateLibraryWeather()
 {
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        suspendLibraryWeather();
+        return;
+    }
     static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
     static LLCachedControl<U32> mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     static LLCachedControl<bool> persistent_wet(gSavedSettings, "AlchemyWeatherPersistentWetEnabled", false);
@@ -842,4 +922,18 @@ void ALPanelWeatherSettings::updateLibraryWeather()
     const bool cover_changed = sSurfaceStatus != coverage;
     if (cover_changed) sSurfaceStatus = coverage;
     if (sLibraryUI.refresh(settings, bridge.state(), bridge.catchingUp(), bridge.clock().seconds()) || cover_changed || particles_changed) libraryChanged()();
+}
+
+void ALPanelWeatherSettings::suspendLibraryWeather()
+{
+    ALWeatherBridge::Controller::instance().suspend();
+    gPipeline.suspendWeather();
+    gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
+}
+
+void ALPanelWeatherSettings::rebaseLibraryWeather(const LLVector3& origin_shift)
+{
+    ALWeatherBridge::Controller::instance().rebase(
+        {-origin_shift.mV[VX], -origin_shift.mV[VY], -origin_shift.mV[VZ]});
+    gPipeline.rebaseWeather(origin_shift);
 }

@@ -616,7 +616,7 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             child.set("show_readout", "false")
         for src, dst in (("mn", "min_val"), ("mx", "max_val"),
                          ("st", "increment"), ("dc", "decimal_digits")):
-            if src in row:
+            if src in row and child.tag in {"slider", "spinner", "compass_dial"}:
                 child.set(dst, scalar(row[src]))
         if row.get("allow_text_entry") and child.tag == "combo_box":
             child.set("allow_text_entry", "true")
@@ -679,7 +679,7 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     if kind == "text" and row.get("hint"):
         attrs["label"] = str(row["hint"])
     for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("st", "increment"), ("dc", "decimal_digits")):
-        if src in row:
+        if src in row and tag in {"slider", "spinner", "compass_dial"}:
             attrs[dst] = scalar(row[src])
     if row.get("allow_text_entry") and tag == "combo_box":
         attrs["allow_text_entry"] = "true"
@@ -2125,13 +2125,14 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                         for node in ET.fromstring(payload).iter()
                         if node.get("enable_quick") == "setting" or node.get("master_quick") == "setting"]
         reload_settings = quick_safety_tripwire(config.get("header_quick_allowlist", {}), {str(p): p.read_text(encoding="utf-8") for p in (ROOT / "indra/newview").rglob("*.cpp")})
-        # Projector Shafts page (10/23): the Projector Cones header became a page master, 14 -> 13.
-        checks.append(("only 14 reviewed setting headers/masters are Quick-safe; allowlist and tripwire agree",
-                       len(safe_headers) == 14 and all((node.get("enable_setting") or node.get("master_setting")) and
+        # Weather shelter/quality now use resident variants, adding two reviewed
+        # runtime headers. Their reload regressions are planted explicitly below.
+        checks.append(("only 16 reviewed setting headers/masters are Quick-safe; allowlist and tripwire agree",
+                       len(safe_headers) == 16 and all((node.get("enable_setting") or node.get("master_setting")) and
                        (node.get("enable_setting") or node.get("master_setting")) not in reload_settings for node in safe_headers)))
         reload_settings |= quick_unsafe_listener_settings((ROOT / "indra/newview/llviewercontrol.cpp").read_text(encoding="utf-8").replace("RlvSettingNames::Main", '"RestrainedLove"'))
         rejects = []
-        for setting in ("AlchemyWeatherRainOcclusion", "AlchemyWeatherLightningQualityEnabled", "RenderShadowDetail",
+        for setting in ("RenderShadowDetail",
                         "RenderTransparentWater", "RenderEnableEmissiveBuffer", "DebugQualityPerformance",
                         "RenderDepthOfField"):
             fixture = ET.fromstring(f'<kit_card enable_widget="master" enable_setting="{setting}"/>')
@@ -2140,7 +2141,21 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                 rejects.append(False)
             except GenError:
                 rejects.append(setting in reload_settings)
-        checks.append(("real weather/direct/wrapped/cross-file quality and GL-buffer listeners reject Quick-safe classification", all(rejects)))
+        checks.append(("real direct/wrapped/cross-file quality and GL-buffer listeners reject Quick-safe classification", all(rejects)))
+        for setting in ("AlchemyWeatherRainOcclusion", "AlchemyWeatherLightningQualityEnabled"):
+            fixture = ET.fromstring(f'<kit_card enable_widget="master" enable_setting="{setting}"/>')
+            classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture", reload_settings,
+                                  {setting: "reviewed resident runtime variant"})
+            checks.append((f"resident weather {setting} remains Quick-safe", fixture.get("enable_quick") == "setting"))
+            planted = f'setting_setup_signal_listener(gSavedSettings, "{setting}", [](auto value) {{ handleSetShaderChanged(value); }});'
+            unsafe = quick_unsafe_listener_settings(planted)
+            try:
+                classify_header_quick(fixture, {"fixture/master": "setting"}, "fixture", unsafe,
+                                      {setting: "reviewed resident runtime variant"})
+                rejected = False
+            except GenError:
+                rejected = True
+            checks.append((f"restored weather reload on {setting} rejects Quick-safe classification", rejected))
         synthetic = '''
             void handleRenderDeferredChanged() { manager->setShaders(); }
             bool wrapper() { handleRenderDeferredChanged(); return true; }

@@ -14,7 +14,9 @@
   "BDMergeLocalFogVolumes": "Reviewed: no listeners; plain runtime setting.",
   "AlchemyWeatherRainEnabled": "Reviewed: no listeners; plain runtime setting.",
   "AlchemyWeatherSplashEnabled": "Reviewed: no listeners; plain runtime setting.",
-  "AlchemyWeatherLightningEnabled": "Reviewed: no listeners; plain runtime setting."
+  "AlchemyWeatherLightningEnabled": "Reviewed: no listeners; plain runtime setting.",
+  "AlchemyWeatherRainOcclusion": "Reviewed: resident startup variant, selected at runtime; no shader reload listener.",
+  "AlchemyWeatherLightningQualityEnabled": "Reviewed: resident startup variant, selected at runtime; no shader reload listener."
  },
  "header_quick_policy": {
   "light_group/projector_shafts_tab/projector_cones_enable_check": "setting",
@@ -62,9 +64,9 @@
   "world_group/atmosphere_tab/localfog_master": "setting",
   "world_group/weather_tab/weather_rain_enabled": "setting",
   "world_group/weather_tab/weather_splash_enabled": "setting",
-  "world_group/weather_tab/weather_rain_occlusion": "reload",
+  "world_group/weather_tab/weather_rain_occlusion": "setting",
   "world_group/weather_tab/weather_lightning_enabled": "setting",
-  "world_group/weather_tab/weather_lightning_quality_enabled": "reload"
+  "world_group/weather_tab/weather_lightning_quality_enabled": "setting"
  },
  "page_features": {
   "camera_group/shot_tab": {"bulk_subject_assignment": true}

@@ -56,8 +56,10 @@ namespace ALWeatherBridge
                     const ALWeatherModel::Config& lightning,
                     const ALWeatherModel::Position& anchor, bool manual_strike = false);
         void teleportSucceeded() { mTeleportPending = true; }
+        void suspend();
+        void rebase(const ALWeatherModel::Position& offset);
         bool active() const { return mActive; }
-        bool surfacesActive() const { return mSettings.enabled && mSettings.persistentWet; }
+        bool surfacesActive() const { return !mSuspended && mSettings.enabled && mSettings.persistentWet; }
         const Settings& settings() const { return mSettings; }
         void applyStartingSurfaces() { mSurfaceCommand = 1; }
         void clearSurfaces() { mSurfaceCommand = 2; }
@@ -84,6 +86,7 @@ namespace ALWeatherBridge
         U32 mSurfaceCommand = 0, mSurfaceSerial = 0, mMode = 0;
         bool mSimActive = false;
         bool mActive = false, mTeleportPending = false;
+        bool mSuspended = false;
     };
 }
 #endif

@@ -906,6 +906,9 @@ public:
     ALWeatherShelter::Updates mWeatherPrecipitationCoverCache;
     U32 mWeatherCoverWorkFrame = ~U32(0);
     void renderWeatherParticles(LLRenderTarget* target, bool auxiliary);
+    void suspendWeather(); // invalidate only; no GL work during logout/teleport
+    void invalidateWeatherSpatial();
+    void rebaseWeather(const LLVector3& origin_shift);
     LLRenderTarget* getSunShadowTarget(U32 i);
     LLRenderTarget* getSpotShadowTarget(U32 i);
 

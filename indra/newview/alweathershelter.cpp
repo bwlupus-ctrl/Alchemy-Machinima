@@ -173,12 +173,14 @@ namespace ALWeatherShelter
     }
     void Exposure::reset()
     {
+        mEpoch = sEpoch;
         mExposure = 1.f;
         mLastPresentationTime = 0.0;
         mInitialized = false;
     }
     F32 Exposure::update(F64 presentation_time, F32 target)
     {
+        if (mEpoch != sEpoch) reset();
         target = std::clamp(target, 0.f, 1.f);
         if (!std::isfinite(presentation_time))
         {

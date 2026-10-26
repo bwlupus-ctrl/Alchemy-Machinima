@@ -144,6 +144,7 @@ namespace ALWeatherBridge
                             const ALWeatherModel::Position& anchor, bool manual_strike)
     {
         if (iteration == mIteration || !std::isfinite(presentation) || presentation < 0.0) return;
+        mSuspended = false;
         mIteration = iteration;
         const Settings s = sanitize(settings);
         const auto config = configuration(s, simulator_x, simulator_y);
@@ -222,7 +223,7 @@ namespace ALWeatherBridge
         }
         mLightningFrame = {};
         if (!mActive) return;
-        auto lc = lightning;
+        auto lc = ALWeatherModel::sanitizeConfig(lightning);
         lc.mEnabled = lc.mEnabled && active;
         if (s.lightningTiming != mTiming)
         {
@@ -246,16 +247,43 @@ namespace ALWeatherBridge
                 if (strike.serial <= mLastStrike || strike.t0 > now) continue;
                 mLastStrike = strike.serial;
                 const F64 horizontal = std::hypot(strike.dir[0], strike.dir[1]);
+                // The upstream atmosphere models 300..10000 m channels. Native
+                // cinematic bolts use the artist's bounded placement radius.
+                const F64 fraction = std::clamp((strike.dist - 300.0) / 9700.0, 0.0, 1.0);
+                const F64 distance = lc.mMinDistanceMeters + fraction *
+                    (lc.mMaxDistanceMeters - lc.mMinDistanceMeters);
                 const ALWeatherModel::Position base{
-                    anchor.mX + strike.dir[0] / std::max(horizontal, 1.e-6) * strike.dist,
-                    anchor.mY + strike.dir[1] / std::max(horizontal, 1.e-6) * strike.dist, anchor.mZ};
+                    anchor.mX + strike.dir[0] / std::max(horizontal, 1.e-6) * distance,
+                    anchor.mY + strike.dir[1] / std::max(horizontal, 1.e-6) * distance, anchor.mZ};
                 // Lifetime serials deduplicate delivery only. The scheduler's hash
                 // derives from seed/slot and survives a deterministic storm restart.
                 const U64 visual_id = (U64(s.seed) << 32) | strike.hash;
-                started = mLightning.scheduled(strike.t0, lc, base, strike.dist, visual_id ? visual_id : 1) || started;
+                started = mLightning.scheduled(strike.t0, lc, base, distance, visual_id ? visual_id : 1) || started;
             }
             mLightningFrame = mLightning.update(now, lc, anchor);
             mLightningFrame.mStrikeStarted = started && mLightningFrame.mActive;
         }
+    }
+    void Controller::suspend()
+    {
+        if (mSuspended) return;
+        mSuspended = true;
+        mActive = mSimActive = false;
+        mIteration = ~U64(0);
+        mClock.reset();
+        mSnowDrift = {};
+        mLightning.reset();
+        mLightningFrame = {};
+        mLastStrike = 0;
+        mSurfaceCommand = 0;
+        mTeleportPending = true;
+    }
+    void Controller::rebase(const ALWeatherModel::Position& offset)
+    {
+        if (!ALWeatherModel::isFinite(offset)) return;
+        mLightning.rebase(offset);
+        mLightningFrame.mStrikeBase.mX += offset.mX;
+        mLightningFrame.mStrikeBase.mY += offset.mY;
+        mLightningFrame.mStrikeBase.mZ += offset.mZ;
     }
 }

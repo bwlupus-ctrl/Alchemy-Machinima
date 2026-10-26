@@ -25,13 +25,17 @@ def parts(tree, out):
 #define LL_PROFILE_GPU_ZONE(x)
 constexpr int VX=0,VY=1,VZ=2;
 constexpr unsigned GL_DEPTH_CLAMP=0x864F,GL_LESS=0x0201,GL_DEPTH_BUFFER_BIT=0x100;
-U32 gFrameCount=1;bool gCubeSnapshot=false;
+U32 gFrameCount=1;bool gCubeSnapshot=false,gDisconnected=false,worldExists=true,regionExists=true;int teleportState=0;
+struct LLWorld {static bool instanceExists(){return worldExists;}};
+struct LLAgent {enum {TELEPORT_NONE=0};};
+struct LLVector3;
+struct ALPanelWeatherSettings {static void suspendLibraryWeather();static void rebaseLibraryWeather(const LLVector3&);};
 struct LLVector3 {float mV[3]{};LLVector3()=default;LLVector3(float x,float y,float z):mV{x,y,z}{}
  bool isFinite()const{return std::isfinite(mV[0])&&std::isfinite(mV[1])&&std::isfinite(mV[2]);}
  inline static const LLVector3 zero;};
 const LLVector3 LLVector3::zero{};
 struct LLVector3d {double mdV[3]{};bool isFinite()const{return std::isfinite(mdV[0])&&std::isfinite(mdV[1])&&std::isfinite(mdV[2]);}};
-struct Agent {LLVector3d origin{};LLVector3d getPosGlobalFromAgent(const LLVector3& p){return {{origin.mdV[0]+p.mV[0],origin.mdV[1]+p.mV[1],origin.mdV[2]+p.mV[2]}};}
+struct Agent {int getTeleportState(){return teleportState;}void* getRegion(){return regionExists?this:nullptr;}LLVector3d origin{};LLVector3d getPosGlobalFromAgent(const LLVector3& p){return {{origin.mdV[0]+p.mV[0],origin.mdV[1]+p.mV[1],origin.mdV[2]+p.mV[2]}};}
  LLVector3 getPosAgentFromGlobal(const LLVector3d& p){return {float(p.mdV[0]-origin.mdV[0]),float(p.mdV[1]-origin.mdV[1]),float(p.mdV[2]-origin.mdV[2])};}} gAgent;
 struct LLCamera {LLVector3 eye;LLVector3 getOrigin()const{return eye;}void setOrigin(LLVector3 p){eye=p;}
  void lookDir(LLVector3,LLVector3){}void setNear(float){}void setFar(float){}};
@@ -131,6 +135,16 @@ struct LLSettingsVOSky {
 };
 '''
         prefix+='\n'+function(tree.read('indra/newview/llsettingsvo.cpp'),'LLSettingsVOSky::Illumination LLSettingsVOSky::illumination(')+'\n'
+    if 'void LLPipeline::suspendWeather()' in pipe:
+        prefix = prefix.replace('struct LLPipeline {', 'ALWeatherModel::Controller sWeatherController;ALWeatherShelter::Exposure sWeatherShelterExposure;bool sLightningSheetSnapshotValid=false;\nstruct LLPipeline {')
+        prefix = prefix.replace(' void generateWeatherSurfaceCover(LLCamera&);', ' void suspendWeather();void invalidateWeatherSpatial();void rebaseWeather(const LLVector3&);bool mWeatherRainOcclusionValid=false;U32 mWeatherRainOcclusionFrame=0;\n void generateWeatherSurfaceCover(LLCamera&);', 1)
+        prefix += '\nvoid ALPanelWeatherSettings::suspendLibraryWeather(){ALWeatherBridge::Controller::instance().suspend();fixturePipeline.suspendWeather();}\n'
+        cover += '\n' + function(pipe, 'void LLPipeline::suspendWeather()')
+        for method in ('void LLPipeline::invalidateWeatherSpatial()', 'void LLPipeline::rebaseWeather('):
+            if method in pipe: cover += '\n' + function(pipe, method)
+        panel = tree.read('indra/newview/alpanelweathersettings.cpp')
+        if 'void ALPanelWeatherSettings::rebaseLibraryWeather(' in panel:
+            cover += '\n' + function(panel, 'void ALPanelWeatherSettings::rebaseLibraryWeather(').replace('gPipeline.', 'fixturePipeline.')
     methods = cover + '\n' + draw + '\n' + advanced + '\n' + function(pipe, 'void LLPipeline::renderWeatherParticles(')
     api = r'''
 extern "C" __declspec(dllexport) void cover_program(unsigned p){casterProgram=p;}
@@ -141,6 +155,33 @@ extern "C" __declspec(dllexport) void cover_prepare(double x,double y,double z,i
 extern "C" __declspec(dllexport) void cover_counts(double* out){out[0]=coverTraversals;out[1]=coverBatches;}
 extern "C" __declspec(dllexport) void evaluated_sky(int sun,int moon,float ambient,float daylight,float moonlight){
  auto& s=LLEnvironment::instance().sky;s.sun=sun;s.moon=moon;s.ambient={{ambient,ambient,ambient,0}};s.diffuse=LLColor3(daylight);s.moonDiffuse=LLColor3(moonlight);}
+'''
+    if 'void LLPipeline::suspendWeather()' in pipe:
+        api += r'''
+extern "C" __declspec(dllexport) int cover_transition(){
+ ALPanelWeatherSettings::suspendLibraryWeather();
+ return !coverage.ready() && !coverage.mBoundsValid && !coverage.mStaging && !coverage.mPatching &&
+  !coverage.mMinimumValid && coverage.mPublishedFrame==~U32(0) &&
+  !fixturePipeline.mWeatherShelter.layers[0].ready() && !fixturePipeline.mWeatherShelter.layers[1].ready() &&
+  fixturePipeline.mWeatherPrecipitationCoverCache.pendingTiles()==0 && !particles.veilActive() &&
+  !ALWeatherBridge::Controller::instance().lightning().mActive;
+}
+'''
+    if 'void LLPipeline::rebaseWeather(' in pipe:
+        api += r'''
+extern "C" __declspec(dllexport) int cover_crossing(double x,double y,double z){
+ auto& bridge=ALWeatherBridge::Controller::instance();
+ const auto wetness=bridge.state().wetness;const auto clock=bridge.clock().seconds();
+ const auto drift=bridge.snowDrift();const auto serial=bridge.surfaceSerial();const auto place=bridge.placeSerial();
+ const auto active=bridge.active();const auto veil=particles.veilActive();
+ ALPanelWeatherSettings::rebaseLibraryWeather(LLVector3(float(x),float(y),float(z)));
+ gAgent.origin.mdV[0]+=x;gAgent.origin.mdV[1]+=y;gAgent.origin.mdV[2]+=z;
+ return !coverage.ready() && !coverage.mBoundsValid && !coverage.mMinimumValid &&
+  !fixturePipeline.mWeatherShelter.layers[0].ready() && !fixturePipeline.mWeatherShelter.layers[1].ready() &&
+  !fixturePipeline.mWeatherRainOcclusionValid && fixturePipeline.mWeatherPrecipitationCoverCache.pendingTiles()==0 &&
+  bridge.clock().seconds()==clock && bridge.state().wetness==wetness && bridge.snowDrift()==drift &&
+  bridge.surfaceSerial()==serial && bridge.placeSerial()==place && bridge.active()==active && particles.veilActive()==veil;
+}
 '''
     if regional:
         api=api.replace('++gFrameCount;if(dirty)++fixturePipeline.mWeatherGeometryRevision;', '''

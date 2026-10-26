@@ -5,6 +5,7 @@ are counted fixtures. No viewer build. --source-ref can check the pre-fix commit
 """
 import argparse
 import ctypes as C
+import re
 import subprocess
 
 from relight_3d_gl import SourceTree
@@ -19,6 +20,7 @@ def execute(out, code, name, args=()):
     executable = compiler_command(out, [path], name)
     result = subprocess.run([str(executable), *args], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
+    return result.stdout
 
 
 def reload_check(tree, out):
@@ -33,6 +35,13 @@ def reload_check(tree, out):
             line for line in registration.splitlines()
             if 'setting_setup_signal_listener' in line and any('"' + key + '"' in line for key in
                 ('AlchemyWeatherEnabled', 'AlchemyWeatherPersistentWetEnabled'))) + '\n}'
+    direct = '\n'.join(line for line in registration.splitlines()
+        if 'setting_setup_signal_listener' in line and 'AlchemyWeather' in line
+        and not any('"' + key + '"' in line for key in ('AlchemyWeatherEnabled', 'AlchemyWeatherPersistentWetEnabled')))
+    setup = setup.replace('void registerListeners(){', 'void registerListeners(){\n' + direct)
+    panel = tree.read('indra/newview/alpanelweathersettings.cpp')
+    tracked = function(panel, 'const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()')
+    reset = function(panel, 'void ALPanelWeatherSettings::resetAllSettingsToDefaults()')
     code = r'''
 #include <functional>
 #include <map>
@@ -40,11 +49,16 @@ def reload_check(tree, out):
 #include <vector>
 #include <iostream>
 #include <type_traits>
+#include <chrono>
 struct LLSD {};
 int destroyed=0,restored=0,reloads=0,releases=0;
 bool supported=true;
+void set(const char*,bool);
+struct LLControlVariable {std::string name;void resetToDefault(bool){set(name.c_str(),false);}};
 struct Settings {std::map<std::string,bool> values;
- bool getBOOL(const char* name){return values[name];}} gSavedSettings;
+ bool getBOOL(const char* name){return values[name];}
+ void setBOOL(const char* name,bool v){set(name,v);}
+ LLControlVariable* getControl(const std::string& name){static LLControlVariable c;c.name=name;return &c;}} gSavedSettings;
 std::map<std::string,std::function<void()>> listeners;
 std::vector<std::function<void()>> pending;
 void doOnIdleOneTime(std::function<void()> f){pending.push_back(f);}
@@ -57,28 +71,40 @@ struct LLViewerShaderMgr {static LLViewerShaderMgr* instance(){static LLViewerSh
 using LLPipeline=Pipeline;
 HANDLER
 SETUP
+struct ALPanelWeatherSettings {static const std::vector<std::string>& trackedSettings();static void resetAllSettingsToDefaults();struct SettingsBatch {};};
+TRACKED
+RESET
 void set(const char* name,bool value){if(gSavedSettings.values[name]==value)return;
- gSavedSettings.values[name]=value;listeners.at(name)();}
+ gSavedSettings.values[name]=value;if(listeners.count(name))listeners.at(name)();}
 void flush(){auto work=std::move(pending);pending.clear();for(auto& f:work)f();}
 bool count(int expected){flush();if(reloads!=expected||destroyed!=expected||restored!=expected||releases!=expected){
  std::cerr<<"unexpected weather reload counts: "<<reloads<<","<<destroyed<<","<<restored<<","<<releases<<" expected "<<expected;return false;}return true;}
 int main(int argc,char**){
  const char* master="AlchemyWeatherEnabled";const char* wet="AlchemyWeatherPersistentWetEnabled";
  if(argc>1){gSavedSettings.values[master]=true;gSavedSettings.values[wet]=true;registerListeners();
-  set(master,false);return count(1)?0:1;}
+  set(master,false);return count(0)?0:1;}
  registerListeners();
  for(int i=0;i<30;++i){set(master,true);if(!count(0))return 1;set(master,false);if(!count(0))return 1;}
  set(wet,true);if(!count(0))return 1;
- set(master,true);set(wet,false);set(wet,true);if(!count(1))return 1;
- set(master,false);set(master,true);if(!count(1))return 1;
- set(master,false);if(!count(2))return 1;
- set(master,true);set(wet,false);if(!count(2))return 1;
- set(wet,true);if(!count(3))return 1;
- supported=false;set(master,false);if(!count(3))return 1;
- set(master,true);if(!count(3))return 1;
+ set(master,true);set(wet,false);set(wet,true);if(!count(0))return 1;
+ set(master,false);set(master,true);if(!count(0))return 1;
+ set(master,false);if(!count(0))return 1;
+ set(master,true);set(wet,false);if(!count(0))return 1;
+ set(wet,true);if(!count(0))return 1;
+ supported=false;set(master,false);if(!count(0))return 1;
+ set(master,true);if(!count(0))return 1;
+ double maximum=0.;
+ for(int repeat=0;repeat<100;++repeat){
+  const auto start=std::chrono::steady_clock::now();
+  for(const auto& key:ALPanelWeatherSettings::trackedSettings()){set(key.c_str(),true);flush();set(key.c_str(),false);flush();}
+  ALPanelWeatherSettings::resetAllSettingsToDefaults();
+  maximum=std::max(maximum,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
+  if(!count(0))return 1;
+ }
+ std::cout<<"100 complete weather toggle/reset cycles: zero shader reloads; maximum CPU fixture cycle "<<maximum<<" ms (viewer/GPU hitch unmeasured)\n";
 }
-'''.replace('HANDLER', handler).replace('SETUP', setup)
-    execute(out, code, 'reload')
+'''.replace('HANDLER', handler).replace('SETUP', setup).replace('TRACKED', tracked).replace('RESET', reset)
+    print(execute(out, code, 'reload'), end='')
     execute(out, code, 'reload_start_enabled', ('enabled',))
 
 
@@ -157,15 +183,25 @@ def status_check(tree, out):
     def counts():
         data = (C.c_double * 4)();lib.fixture_weather_counts(data);return tuple(data)
     failures = []
+    explicit = 'Weather controls off - turn on Weather' in tree.read('indra/newview/alweatheruimodel.cpp')
+    off_status = 'Weather controls off - turn on Weather' if explicit else 'Weather off'
+    mode_status = 'Library mode: Existing rain - apply a preset' if explicit else 'Existing rain'
     def expect(expected, label):
         if status() != expected: failures.append(label + ': ' + repr(status()) + ' expected ' + expected)
-    expect('Weather off', 'startup inactive status')
-    set_('Enabled', 1);expect('Existing rain', 'mode-0 master enable before a frame')
-    set_('Enabled', 0);expect('Weather off', 'mode-0 master disable before a frame')
+    expect(off_status, 'startup inactive status')
+    set_('Enabled', 1);expect(mode_status, 'mode-0 master enable before a frame')
+    notification_count = counts()[3]
+    set_('LightningEnabled', 1)
+    assert counts()[3] > notification_count, 'steady mode-0 prerequisites stay stale on Lightning edit'
+    set_('LightningEnabled', 0)
+    set_('Enabled', 0);expect(off_status, 'mode-0 master disable before a frame')
     set_('Enabled', 1);set_('ControlMode', 1);set_('LocalEnabled', 1);lib.fixture_weather_step(1.)
-    set_('Enabled', 0);lib.fixture_weather_step(2.);expect('Weather off', 'cleanup status')
-    set_('ControlMode', 0);set_('Enabled', 1);expect('Existing rain', 'mode-0 reenable after cleanup')
-    set_('Enabled', 0);expect('Weather off', 'mode-0 disable after cleanup')
+    notification_count = counts()[3]
+    set_('LightningEnabled', 1)
+    assert counts()[3] > notification_count, 'active prerequisites wait for numeric status changes'
+    set_('Enabled', 0);lib.fixture_weather_step(2.);expect(off_status, 'cleanup status')
+    set_('ControlMode', 0);set_('Enabled', 1);expect(mode_status, 'mode-0 reenable after cleanup')
+    set_('Enabled', 0);expect(off_status, 'mode-0 disable after cleanup')
     before = counts()
     for i in range(120): lib.fixture_weather_step(3. + i / 60.)
     assert before == counts(), 'inactive frames perform preparation or status work'
@@ -174,7 +210,7 @@ def status_check(tree, out):
     startup.fixture_weather_load.argtypes = [C.c_char_p, C.c_double]
     startup.fixture_weather_status.restype = C.c_char_p
     startup.fixture_weather_load(b'AlchemyWeatherEnabled', 1)
-    if startup.fixture_weather_status() != b'Existing rain': failures.append('startup enabled mode-0 status is blank or stale')
+    if startup.fixture_weather_status() != mode_status.encode(): failures.append('startup enabled mode-0 status is blank or stale')
     assert not failures, '; '.join(failures)
 
 

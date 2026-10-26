@@ -28,6 +28,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpanelweathersettings.h"
 #include "alflareenergy.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 #include "alactormaskdiagnostics.h" // [ActorMask] WP7
@@ -215,6 +216,7 @@ bool gShiftFrame = false;
 namespace
 {
     ALWeatherModel::Controller sWeatherController;
+    bool sLightningSheetSnapshotValid = false;
 
     using WeatherShelterExposure = ALWeatherShelter::Exposure;
 
@@ -20166,8 +20168,40 @@ void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
     }
 }
 
+void LLPipeline::invalidateWeatherSpatial()
+{
+    mWeatherSurfaces.invalidate();
+    mWeatherShelter.suspend();
+    mWeatherPrecipitationCoverCache.invalidate();
+    mWeatherCoverWorkFrame = ~U32(0);
+    mWeatherRainOcclusionValid = false;
+    mWeatherRainOcclusionFrame = 0;
+}
+
+void LLPipeline::rebaseWeather(const LLVector3& origin_shift)
+{
+    invalidateWeatherSpatial();
+    sWeatherController.rebase({-origin_shift.mV[VX], -origin_shift.mV[VY], -origin_shift.mV[VZ]});
+}
+
+void LLPipeline::suspendWeather()
+{
+    invalidateWeatherSpatial();
+    mWeatherParticles.suspend();
+    ALWeatherShelter::Exposure::invalidateAll();
+    sWeatherShelterExposure.reset();
+    sWeatherController.reset();
+    sLightningSheetSnapshotValid = false;
+}
+
 void LLPipeline::renderWeatherParticles(LLRenderTarget* target, bool auxiliary)
 {
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        ALPanelWeatherSettings::suspendLibraryWeather();
+        return;
+    }
     if (gCubeSnapshot || !sRenderDeferred || !target) return;
     if (!ALWeatherBridge::Controller::instance().precipitationActive())
     {
@@ -20191,6 +20225,15 @@ void LLPipeline::renderWeatherParticles(LLRenderTarget* target, bool auxiliary)
 void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
                                ALWeatherShelter::Exposure* auxiliary_exposure)
 {
+    // After a logout the UI keeps drawing while LLWorld is gone (disconnectViewer
+    // deletes it); weather reads the region list, so draw nothing until reconnect.
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        ALPanelWeatherSettings::suspendLibraryWeather();
+        if (auxiliary_exposure) auxiliary_exposure->reset();
+        return;
+    }
     static LLCachedControl<U32> control_mode(gSavedSettings, "AlchemyWeatherControlMode", 0U);
     const bool library = control_mode() == 1;
     const auto& library_frame = ALWeatherBridge::Controller::instance();
@@ -20204,7 +20247,6 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     }
     if (auxiliary && !auxiliary_exposure) return;
     const bool legacy_auxiliary = auxiliary && !library;
-    static bool sLightningSheetSnapshotValid = false;
     static U64 sLightningSheetStrikeId = 0;
     static F64 sLightningSheetStrikeTime = 0.0;
     static U64 sLightningSheetSeed = 0;
@@ -20370,8 +20412,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
     lightning_config.mMinDistanceMeters =
         finite_clamp(min_distance_setting, 45.f, 0.f, 512.f);
     lightning_config.mMaxDistanceMeters =
-        finite_clamp(max_distance_setting, 130.f,
-                     static_cast<F32>(lightning_config.mMinDistanceMeters), 512.f);
+        finite_clamp(max_distance_setting, 130.f, 0.f, 512.f);
     lightning_config.mBoltHeightMeters =
         finite_clamp(bolt_height_setting, 160.f, 16.f, 512.f);
     lightning_config.mQualityEnabled = use_lightning_quality;
@@ -20380,6 +20421,7 @@ void LLPipeline::renderWeather(LLRenderTarget* target, bool auxiliary,
             lightning_afterglow_strength_setting, 0.35f, 0.f, 1.f)
         : 0.f;
     lightning_config.mSeed = lightning_seed_setting();
+    lightning_config = ALWeatherModel::sanitizeConfig(lightning_config);
 
     if (!library && !legacy_auxiliary && gSavedSettings.getBOOL("AlchemyWeatherLightningTrigger"))
     {
@@ -33257,6 +33299,12 @@ void LLPipeline::dirtyWeatherDrawable(LLDrawable* drawable)
 
 void LLPipeline::generateWeatherSurfaceCover(LLCamera& camera)
 {
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        ALPanelWeatherSettings::suspendLibraryWeather();
+        return;
+    }
     const auto& weather = ALWeatherBridge::Controller::instance();
     const bool precipitation = weather.precipitationActive() && ALWeatherParticles::supported();
     if (!weather.surfacesActive() && !precipitation && !mWeatherSurfaces.hasState())
@@ -33594,6 +33642,12 @@ bool LLPipeline::drawWeatherCover(LLCamera& camera, LLRenderTarget& surface_targ
 
 void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
 {
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        ALPanelWeatherSettings::suspendLibraryWeather();
+        return;
+    }
     const auto& weather = ALWeatherBridge::Controller::instance();
     const auto& s = weather.settings();
     if (!s.enabled || !s.advancedShelter || gCubeSnapshot) return;
@@ -33707,6 +33761,13 @@ void LLPipeline::generateWeatherAdvancedShelter(LLCamera& camera)
 
 void LLPipeline::bindWeatherMaterial(LLGLSLShader* shader)
 {
+    if (gDisconnected || !LLWorld::instanceExists() || !gAgent.getRegion() ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE)
+    {
+        ALPanelWeatherSettings::suspendLibraryWeather();
+        shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_ENABLED, 0);
+        return;
+    }
     const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
     if (sRenderingHUDs || sShadowRender || !sRenderDeferred)
     {

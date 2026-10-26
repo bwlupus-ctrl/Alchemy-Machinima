@@ -26,6 +26,7 @@
 
 
 #include "llviewerprecompiledheaders.h"
+#include "alpanelweathersettings.h"
 
 #include "llagent.h"
 #include "alreflectanim.h"
@@ -1091,6 +1092,14 @@ void LLAgent::setRegion(LLViewerRegion *regionp)
     llassert(regionp);
     if (mRegionp != regionp)
     {
+        if (!mRegionp || gDisconnected || getTeleportState() != TELEPORT_NONE)
+            ALPanelWeatherSettings::suspendLibraryWeather();
+        else
+        {
+            LLVector3 origin_shift;
+            origin_shift.setVec(regionp->getOriginGlobal() - mRegionp->getOriginGlobal());
+            ALPanelWeatherSettings::rebaseLibraryWeather(origin_shift);
+        }
 
         LL_INFOS("AgentLocation","Teleport") << "Moving agent into region: handle " << regionp->getHandle()
                                              << " id " << regionp->getRegionID()
@@ -4775,6 +4784,8 @@ void LLAgent::setTeleportState(ETeleportState state)
                           << " Previous state: "
                           << teleportStateName(mTeleportState) << "(" << mTeleportState << ")"
                           << LL_ENDL;
+    if (state != TELEPORT_NONE)
+        ALPanelWeatherSettings::suspendLibraryWeather();
     mTeleportState = state;
     if (mTeleportState > TELEPORT_NONE && gSavedSettings.getBOOL("FreezeTime"))
     {

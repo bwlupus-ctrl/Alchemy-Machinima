@@ -177,7 +177,7 @@ class RainRunner:
         gl.teximage(0x0DE1,0,internal,data.shape[1],data.shape[0],0,fmt,0x1406,data.ctypes.data)
         return tex
 
-    def render(self, values, auxiliary=False, covered=False, size=(127,73), render_size=None, low=None):
+    def render(self, values, auxiliary=False, covered=False, size=(127,73), render_size=None, low=None, cover_enabled=True):
         gl = self.gl; width,height=size
         draw_width,draw_height=render_size or size
         for cap in [0x0B71,0x0BE2,0x0C11,0x8DB9,0x0B44]: gl.disable(cap)
@@ -209,7 +209,7 @@ class RainRunner:
         if self.occlusion:
             self.texture(2,np.full((16,16),0.0 if covered else 1.0,np.float32),0x822E,0x1903)
             gl.ui(gl.loc(self.program,b'weather_rain_occlusion_map'),2)
-            gl.ui(gl.loc(self.program,b'weather_rain_occlusion_enabled'),1)
+            gl.ui(gl.loc(self.program,b'weather_rain_occlusion_enabled'),int(cover_enabled))
             packed=np.ascontiguousarray((np.eye(4,dtype=np.float32)/128).T);packed[3,3]=1
             gl.matrix(gl.loc(self.program,b'weather_rain_occlusion_matrix'),1,0,packed.ctypes.data_as(C.POINTER(C.c_float)))
             for key,val in [('depth_range',256),('bias',0.12),('softness',0.35)]:
@@ -238,6 +238,9 @@ def run(mutation=None):
     for tree in (current,baseline):
         mgr=tree.read('indra/newview/llviewershadermgr.cpp')
         section=mgr[mgr.index('gDeferredWeatherRainProgram.mName ='):mgr.index('gDeferredWeatherRainUpsampleProgram.mName =')]
+        # Only residency changed: compare the full unchanged program recipes
+        # after normalizing their old setting/new hardware startup predicate.
+        section=re.sub(r'const bool rain_occlusion\s*=\s*[^;]+;', 'const bool rain_occlusion = CAPABILITY;', section)
         if tree is current: current_permutations=section
         else: assert section==current_permutations, 'rain permutations changed'
     out=ROOT/'.tmp/weather_port/gl'/ (mutation or 'baseline')

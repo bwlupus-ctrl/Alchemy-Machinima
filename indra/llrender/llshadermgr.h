@@ -995,6 +995,7 @@ public:
     // Implemented in the application to actually update out of date uniforms for a particular shader
     void prepareWeatherFeatures(LLGLSLShader* shader);
     virtual bool weatherMaterialsEnabled() const { return false; }
+    virtual bool weatherMaterialsSupported() const { return false; }
     virtual void updateWeatherUniforms(LLGLSLShader* shader) {} // Per-view material bindings, no simulation.
     virtual void updateShaderUniforms(LLGLSLShader * shader) = 0; // Pure Virtual
 

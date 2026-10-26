@@ -331,6 +331,30 @@ weatherRainExposure(sampleAgent()+vec3(0,0,float(i)*.5)):1.0;result=vec4(open/12
     assert metrics()[2]==0,'master-off retained valid shelter stamp'
     set_('Enabled',1);step(10);guarded(10)
     assert np.array_equal(session,metrics()[[3,4,5,11]]),'master toggle recreated session resources/program'
+    if hasattr(native, 'cover_crossing'):
+        native.cover_crossing.argtypes = [C.c_double] * 3
+        # Keep the same world camera/roof, move only their agent-space origin.
+        reference = sample(-8,16)
+        assert np.min(reference[...,:3]) < .5 and np.max(reference[...,:3]) > .5, 'crossing fixture needs roof and open sky'
+        assert native.cover_crossing(256,256,0), 'crossing resets simulation or retains stale spatial state'
+        assert metrics()[2] == 0, 'old shelter stamp survives the origin shift'
+        assert np.max(sample(-264,-240,kind=1,y=-256)[...,:3]) < -.99, 'unpublished crossing cache exposes stale roof'
+        guarded(10.01,x=-256,y=-256)
+        assert metrics()[2] == 1, 'crossing fails to publish cover for the new origin'
+        assert np.allclose(reference,sample(-264,-240,y=-256),atol=2e-5), 'origin shift changes world-space roof exposure'
+        assert native.cover_crossing(-256,-256,0), 'reverse crossing resets simulation or retains stale maps'
+        guarded(10.02)
+        assert metrics()[2] == 1 and np.array_equal(reference,sample(-8,16)), 'reverse crossing fails to restore world-space exposure'
+        assert np.array_equal(session,metrics()[[3,4,5,11]]), 'crossing recreates resident resources/programs'
+        print('PASS crossing preserves simulation; old cover rejected; rebased cover matches world roof in both directions', flush=True)
+    if hasattr(native, 'cover_transition'):
+        assert metrics()[2] == 1, 'transition fixture needs published cover'
+        assert native.cover_transition(), 'teleport retains cover, staging, intervals, particles or lightning'
+        assert metrics()[2] == 0, 'teleport retains published shelter'
+        step(10.1);guarded(10.1)
+        assert metrics()[2] == 1, 'arrival fails to rebuild complete shelter'
+        assert np.array_equal(session, metrics()[[3,4,5,11]]), 'arrival recreates resident resources/programs'
+        print('PASS teleport invalidates basic/tilted cover, staging, intervals, veil and lightning; arrival rebuilds', flush=True)
     result={'device':gl.renderer,'source_ref':ref,'memory_bytes':int(metrics()[5]),'scene_objects':256,
         'scope':'Whole production idle, basic + tilted cover traversal/cull services, dirty/angular/moving-roof updates, publication, full production rain shaders/native uploads (half-resolution main, full-resolution auxiliary), production snowfall/veil owner and wet-material coverage; scene services are fixtures.'}
     assert result['memory_bytes']<=16*1024*1024,'WP7 exceeds 16 MiB'

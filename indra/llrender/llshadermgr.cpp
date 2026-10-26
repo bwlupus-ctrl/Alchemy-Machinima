@@ -128,7 +128,8 @@ void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
     if (features->hasSkinning || features->hasObjectSkinning ||
         shader->mDefines.count("HAS_SKIN") || shader->mDefines.count("AVATAR_GEOMETRY") ||
         shader->mDefines.count("IS_HUD") || shader->mDefines.count("MATERIAL_VELOCITY")) return;
-    if (!weatherMaterialsEnabled()) return;
+    // Compile the supported inventory once. Weather settings only change uniforms.
+    if (!weatherMaterialsSupported()) return;
     // Native material inventory. Fullbright, water, HUD beauty and avatar helpers are excluded.
     // diffuseAlphaMaskNoColorF is rigid avatar eyes and has no skinning tag.
     for (const auto& file : shader->mShaderFiles)

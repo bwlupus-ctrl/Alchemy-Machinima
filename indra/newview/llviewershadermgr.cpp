@@ -768,7 +768,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredProjectorVolumetricBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gDeferredProjectorVolumetricClassicBloomFeedProgram); // [BDMerge G3.3 P3 item 4]
     mShaderList.push_back(&gDeferredWeatherRainProgram);
-    if (gSavedSettings.getBOOL("AlchemyWeatherRainOcclusion"))
+    if (gGLManager.mNumTextureImageUnits >= 16)
     {
         mShaderList.push_back(&gDeferredWeatherRainOcclusionProgram);
         mShaderList.push_back(&gDeferredWeatherSurfaceOcclusionProgram);
@@ -776,13 +776,11 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredWeatherRainUpsampleProgram);
     mShaderList.push_back(&gDeferredWeatherSurfaceProgram);
     mShaderList.push_back(&gDeferredWeatherLightningProgram);
-    if (gSavedSettings.getBOOL(
-            "AlchemyWeatherLightningQualityEnabled") &&
-        gSavedSettings.getBOOL("RenderHDREnabled") &&
+    if (gSavedSettings.getBOOL("RenderHDREnabled") &&
         gGLManager.mGLVersion > 4.05f)
     {
         // Quality EEP parameters are uploaded explicitly by renderWeather().
-        // Keep it out of ongoing environment propagation while it is disabled.
+        // Runtime weather controls never change the resident shader inventory.
         mShaderList.push_back(&gDeferredWeatherLightningQualityProgram);
     }
     mShaderList.push_back(&gFroxelMediaProgram); // [BDMerge Froxel F0]
@@ -1084,8 +1082,8 @@ void LLViewerShaderMgr::setShaders()
     // materials; on a 16-unit GPU it is one and shared indexed replay naturally
     // falls back to exact scalar commands.
     LLGLSLShader::sIndexedGLTFChannels = llclamp(
-        (gGLManager.mNumTextureImageUnits - (weatherMaterialsEnabled() ? 1 : 0)) / 4, 1, 8);
-    const S32 SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = weatherMaterialsEnabled() ? 11 : 10;
+        (gGLManager.mNumTextureImageUnits - (weatherMaterialsSupported() ? 1 : 0)) / 4, 1, 8);
+    const S32 SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = weatherMaterialsSupported() ? 11 : 10;
     const S32 indexed_gltf_texture_units = llmax(
         gGLManager.mNumTextureImageUnits
             - SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS,
@@ -4959,8 +4957,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             success = true;
         }
 
-        const bool rain_occlusion =
-            gSavedSettings.getBOOL("AlchemyWeatherRainOcclusion");
+        const bool rain_occlusion = gGLManager.mNumTextureImageUnits >= 16;
         if (rain_occlusion)
         {
             // Compile the occlusion path as a separate optional permutation.
@@ -5050,15 +5047,11 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             success = true;
         }
 
-        if (gSavedSettings.getBOOL(
-                "AlchemyWeatherLightningQualityEnabled") &&
-            gSavedSettings.getBOOL("RenderHDREnabled") &&
+        if (gSavedSettings.getBOOL("RenderHDREnabled") &&
             gGLManager.mGLVersion > 4.05f)
         {
-            // Compile the opt-in program as an independent permutation. The
-            // setting listener requests a shader reload on toggle, including
-            // preset/reset changes, so the default-off state pays no compile
-            // or resident-program cost.
+            // Compile once with the deferred inventory. The quality switch
+            // selects this resident program in renderWeather(), without reloads.
             gDeferredWeatherLightningQualityProgram.mName =
                 "Weather Lightning Quality Shader";
             gDeferredWeatherLightningQualityProgram.mFeatures.isDeferred =
@@ -6108,6 +6101,15 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         << (!success ? "FAILED" : gOnLensNoIR ? "READY-NO-IR" : "READY")
         << " soft_edge=" << (gLensSoftEdgeProgram.isComplete() ? "READY" : "DISABLED")
         << LL_ENDL;
+    if (success)
+    {
+        // Optional weather programs are resident even while controls are off.
+        // Their owners retain programs across map/buffer resize; unloadShaders()
+        // unloads every registered instance on inventory/context teardown.
+        gPipeline.mWeatherSurfaces.preloadShaders();
+        gPipeline.mWeatherShelter.preloadShaders();
+        gPipeline.mWeatherParticles.preloadShaders();
+    }
     return success;
 }
 
@@ -6853,6 +6855,7 @@ bool LLViewerShaderMgr::weatherMaterialsSupported() const
 void LLViewerShaderMgr::updateWeatherUniforms(LLGLSLShader* shader)
 {
     if (weatherMaterialsEnabled()) gPipeline.bindWeatherMaterial(shader);
+    else shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_ENABLED, 0);
 }
 
 void LLViewerShaderMgr::updateShaderUniforms(LLGLSLShader * shader)

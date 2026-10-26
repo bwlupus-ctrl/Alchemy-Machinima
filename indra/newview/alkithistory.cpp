@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkithistory.h"
+#include "alpanelweathersettings.h"
 #include "alkitbinding.h"
 #include "alkitpage.h"
 #include "alkitrow.h"
@@ -485,6 +486,7 @@ bool ALKitHistory::replay(Step& step, bool redo)
 {
     ScopedReplay guard;
     mReplaying = true;
+    ALPanelWeatherSettings::SettingsBatch weather_batch;
     bool ok    = true;
     // A shared setting may have been edited on another page since this step.
     // Drop conflicting entries from the replay branch as well as this replay.
@@ -571,6 +573,7 @@ bool ALKitHistory::replay(Step& step, bool redo)
                 break;
         }
     }
+    weather_batch.finish();
     mReplaying = false;
     return ok;
 }

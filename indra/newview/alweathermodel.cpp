@@ -17,6 +17,13 @@
 
 namespace ALWeatherModel
 {
+    void Controller::rebase(const Position& offset)
+    {
+        if (!isFinite(offset)) return;
+        mStrikeBase.mX += offset.mX;
+        mStrikeBase.mY += offset.mY;
+        mStrikeBase.mZ += offset.mZ;
+    }
     namespace
     {
         constexpr U64 FALLBACK_SEED = 0x9e3779b97f4a7c15ULL;
@@ -81,8 +88,9 @@ namespace ALWeatherModel
         output.mMinDistanceMeters = clampFinite(
             input.mMinDistanceMeters, 45.0, 0.0, MAX_DISTANCE_METERS);
         output.mMaxDistanceMeters = clampFinite(
-            input.mMaxDistanceMeters, 130.0, output.mMinDistanceMeters,
+            input.mMaxDistanceMeters, 130.0, 0.0,
             MAX_DISTANCE_METERS);
+        output.mMinDistanceMeters = std::min(output.mMinDistanceMeters, output.mMaxDistanceMeters);
         output.mBoltHeightMeters = clampFinite(
             input.mBoltHeightMeters, 160.0, 16.0,
             MAX_BOLT_HEIGHT_METERS);

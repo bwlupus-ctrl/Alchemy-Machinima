@@ -632,4 +632,24 @@ namespace tut
         ensure("quality bolt is zero at its cutoff",
                at_cutoff.mQualityBolt == 0.f);
     }
+    template<> template<> void weather_model_object::test<16>()
+    {
+        const auto config = enabledConfig();
+        Controller crossed, reference;
+        const Position offset{-256., 256., 0.};
+        crossed.trigger(0., config, anchor()); reference.trigger(0., config, anchor());
+        for (U32 tick = 0; tick < 3600; ++tick)
+        {
+            if (tick == 6) crossed.rebase(offset);
+            auto moved = anchor();
+            if (tick >= 6) { moved.mX += offset.mX; moved.mY += offset.mY; }
+            const auto a = crossed.update(tick / 60., config, moved);
+            const auto b = reference.update(tick / 60., config, anchor());
+            ensure("legacy crossing preserves flash and future schedule", a.mActive == b.mActive &&
+                a.mStrikeId == b.mStrikeId && a.mStrikeTime == b.mStrikeTime && a.mFlash == b.mFlash);
+            if (tick >= 6 && a.mActive)
+                ensure("legacy bolts rebase without moving in world space", std::abs(a.mStrikeBase.mX - b.mStrikeBase.mX - offset.mX) < 1.e-9 &&
+                    std::abs(a.mStrikeBase.mY - b.mStrikeBase.mY - offset.mY) < 1.e-9);
+        }
+    }
 }

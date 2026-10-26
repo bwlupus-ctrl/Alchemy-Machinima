@@ -183,6 +183,7 @@ std::vector<std::string> fixtureSettings(const std::string& prefix)
 
 void reset(const std::vector<std::string>& settings)
 {
+    ALPanelWeatherSettings::SettingsBatch weather_batch;
     for (const std::string& name : settings)
         if (LLControlVariable* control = gSavedSettings.getControl(name)) control->resetToDefault(true);
 }
@@ -195,6 +196,7 @@ LLSD snapshot(const std::vector<std::string>& settings)
 }
 void apply(const std::vector<std::string>& settings, const LLSD& values)
 {
+    ALPanelWeatherSettings::SettingsBatch weather_batch;
     ALScopedPresetMaterializing preset_guard;
     for (const std::string& name : settings)
         if (values.has(name))
@@ -202,6 +204,7 @@ void apply(const std::vector<std::string>& settings, const LLSD& values)
 }
 Load::Load(const std::string& label)
 {
+    ALPanelWeatherSettings::beginSettingsBatch();
     // Focus is not provenance: timers/cues must not join or close an open user
     // gesture, even while its page has keyboard focus or mouse capture.
     if (sLoadDepth++ == 0 && !ALKitHistory::hasInputSource())
@@ -226,6 +229,7 @@ void Load::recordState(const std::string& key, std::function<bool(bool, std::str
 bool replaying() { return ALKitHistory::replaying(); }
 Load::~Load()
 {
+    ALPanelWeatherSettings::endSettingsBatch();
     if (mHistory)
     {
         mHistory->finishGesture();

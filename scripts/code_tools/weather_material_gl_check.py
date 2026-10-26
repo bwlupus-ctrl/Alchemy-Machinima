@@ -42,6 +42,36 @@ INVENTORY = [
 ]
 
 
+def off_inventory(tree):
+    """Viewer-built material bits and terrain detail/mapping/paint settings."""
+    factory = function(tree.read('indra/newview/llviewershadermgr.cpp'), 'bool LLViewerShaderMgr::loadShadersDeferred()')
+    for token in ('U32 alpha_mode = i & 0x3;', '(i & 0x8)', '(i & 0x4)', 'if (alpha_mode == 1)',
+                  '"TERRAIN_PBR_DETAIL"', '"TERRAIN_PAINT_TYPE"', '"TERRAIN_PLANAR_TEXTURE_SAMPLE_COUNT"'):
+        assert token in factory, 'viewer permutation contract changed: ' + token
+    constants = tree.read('indra/newview/llviewershadermgr.h')
+    minimum = int(re.search(r'TERRAIN_PBR_DETAIL_MIN\s*=\s*(-?\d+)', constants)[1])
+    maximum = int(re.search(r'TERRAIN_PBR_DETAIL_MAX\s*=\s*(-?\d+)', constants)[1])
+    paints = int(re.search(r'TERRAIN_PAINT_TYPE_COUNT\s*=\s*(\d+)', constants)[1])
+    from weather_binding_check import settings_table
+    settings = settings_table(tree.read('indra/newview/app_settings/settings.xml'))
+    blend = float(settings['RenderTerrainPBRTriplanarBlendFactor']['Value'])
+    result = []
+    for index in range(16):
+        alpha = index & 3
+        defs = f'#define DIFFUSE_ALPHA_MODE {alpha}\n#define HAS_ACTOR_FX 1\n'
+        if index & 8: defs += '#define HAS_NORMAL_MAP 1\n'
+        if index & 4: defs += '#define HAS_SPECULAR_MAP 1\n'
+        if alpha: defs += '#define HAS_ALPHA_MASK 1\n'
+        result.append(('class3/deferred/materialF.glsl', defs))
+        if alpha != 1:
+            result.append(('class1/deferred/materialIndexedF.glsl', defs + '#define GLTF_INDEXED_CHANNELS 2\n'))
+    for detail in range(minimum, maximum + 1):
+        for mapping in (1, 3):
+            for paint in range(paints):
+                result.append(('class1/deferred/pbrterrainF.glsl', f'#define TERRAIN_PBR_DETAIL {detail}\n#define TERRAIN_PLANAR_TEXTURE_SAMPLE_COUNT {mapping}\n#define TERRAIN_PAINT_TYPE {paint}\n#define TERRAIN_TRIPLANAR_BLEND_FACTOR {blend:.2f}\n'))
+    return result
+
+
 def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
     tree = SourceTree(ref)
     helper = tree.read(SHADERS + '/class1/deferred/weatherMaterialF.glsl')
@@ -102,7 +132,13 @@ def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
         if regression == 'avatar-eyes': return
     for file,_ in INVENTORY:
         native_file=re.sub(r'^class\d+/', '', file).encode()
-        assert native_mapper.feature(native_file,0,0)==0, 'master-off native permutation enables weather '+file
+        resident = 'weatherMaterialsSupported()' in feature_prepare
+        eligible = native_file != b'deferred/diffuseAlphaMaskNoColorF.glsl'
+        assert native_mapper.feature(native_file,1,0)==int(eligible), 'native material inventory/exclusion changed '+file
+        assert native_mapper.feature(native_file,0,0)==int(resident and eligible), 'master toggle changes resident material inventory '+file
+        native_mapper.capability(0)
+        assert native_mapper.feature(native_file,1,0)==0, 'unsupported GPU enables weather material '+file
+        native_mapper.capability(1)
         for excluded in range(1,5):
             assert native_mapper.feature(native_file,1,excluded)==0, 'native excluded permutation enables weather '+file
     r = A.Runner(ref)
@@ -139,12 +175,18 @@ vec4 diffuseLookup(vec2 uv){
     def vertex(source, defs):
         # Derive the fixture interface from each unmodified production fragment.
         names = {}
-        for qualifier, ty, name, count in re.findall(r'(?:(flat)\s+)?\bin\s+(vec[234]|float|int)\s+(\w+)\s*(?:\[(\d+)\])?\s*;', source):
+        for qualifier, ty, pre_count, name, post_count in re.findall(r'(?:(flat)\s+)?\bin\s+(vec[234]|float|int)\s*(?:\[(\d+)\])?\s+(\w+)\s*(?:\[(\d+)\])?\s*;', source):
+            count = pre_count or post_count
+            if name == 'vary_coords' and '#define TERRAIN_PLANAR_TEXTURE_SAMPLE_COUNT 3\n' in defs:
+                # Both conditional declarations occur in the source; triplanar
+                # uses the larger production interface, flat uses the last one.
+                count = max(int(count or 0), names.get(name, ('', '', 0))[2])
             names[name] = (qualifier, ty, int(count) if count else 0)
         declarations = []; assignments = []
         for name, (q, ty, count) in names.items():
             declarations.append((q+' ' if q else '')+'out '+ty+' '+name+(f'[{count}]' if count else '')+';')
             if name in ('vary_position','pos'): value = 'P'
+            elif name == 'vary_vertex_normal': value = 'vec3(0,0,1)'
             elif name in ('vary_normal','vary_norm'): value = 'mat3(fixtureWorldToView)*vec3(0,0,1)'
             elif name == 'vary_sign' or name == 'vary_signs': value = '1.0'
             elif name == 'vary_tangent' or name == 'vary_tangents': value = ('vec4(mat3(fixtureWorldToView)*vec3(1,0,0),1)' if ty=='vec4' else 'mat3(fixtureWorldToView)*vec3(1,0,0)')
@@ -166,13 +208,13 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
  vec3 P=mat3(fixtureWorldToView)*(vec3(xy*2.0+fixtureShift,0.0)-fixtureCamera);
 '''+ '\n'.join(assignments)+'\n}'
 
-    def program(file, defs, baseline=False, extra='', weather=True, sidecars=True):
+    def program(file, defs, baseline=False, extra='', weather=True, sidecars=True, emissive=True):
         owner = old if baseline else r
         src = owner.source(file)
         if mutation == 'forward-coverage' and file == 'class3/deferred/materialF.glsl':
             src = src.replace('visible_diffuse.a = authored_visible_alpha;', '').replace('surface_coverage.y = authored_surface_alpha;', '')
         pr = gl.program()
-        defines = '#define REFMAP_LEVEL 1\n#define HAS_EMISSIVE 1\n' + defs + extra
+        defines = '#define REFMAP_LEVEL 1\n' + ('#define HAS_EMISSIVE 1\n' if emissive else '') + defs + extra
         if sidecars: defines += '#define HAS_VISIBLE_DIFFUSE 1\n'
         if weather and not baseline: defines += '#define HAS_WEATHER_MATERIAL 1\n'
         for module in A.COMMON:
@@ -182,10 +224,13 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
                 gl.attach(pr,owner.compile(owner.source(module),defines,module))
         if not baseline and weather: gl.attach(pr, owner.compile(helper, defines, 'weatherMaterial'))
         if 'diffuseLookup(' in src: gl.attach(pr, owner.compile(lookup, defines, 'lookup fixture'))
+        interface = src
         if 'pbrterrainF' in file:
-            gl.attach(pr, owner.compile(owner.source('class1/deferred/pbrterrainUtilF.glsl'), defines, 'terrain utility'))
+            utility = owner.source('class1/deferred/pbrterrainUtilF.glsl')
+            gl.attach(pr, owner.compile(utility, defines, 'terrain utility'))
+            interface += '\n' + utility
         gl.attach(pr, owner.compile(src, defines, file))
-        gl.attach(pr, owner.compile(vertex(src, defines), defines, file+' vertex',0x8B31))
+        gl.attach(pr, owner.compile(vertex(interface, defines), defines, file+' vertex',0x8B31))
         for i in range(4): A.bindout(pr,i,('frag_data[%d]'%i).encode())
         A.bindout(pr,0,b'frag_color')
         for i,name in enumerate(('visible_diffuse','surface_coverage','alr_rimsplit_parity_mask'),1):
@@ -196,7 +241,8 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
         all_programs.append(pr)
         if not baseline and weather and file != 'class1/deferred/diffuseAlphaMaskNoColorF.glsl':
             indexed=4 if gl.loc(pr,b'tex0')>=0 else 0
-            native_mapper.map_program(pr,indexed,1 if 'GLTF_INDEXED_CHANNELS' in defines else 0)
+            material_channels = re.search(r'#define GLTF_INDEXED_CHANNELS (\d+)', defines)
+            native_mapper.map_program(pr,indexed,int(material_channels[1]) if material_channels else 0)
             get_uniform = gl.fn('glGetUniformiv',None,C.c_uint,C.c_int,C.POINTER(C.c_int))
             get_active = gl.fn('glGetActiveUniform',None,C.c_uint,C.c_uint,C.c_int,C.POINTER(C.c_int),C.POINTER(C.c_int),C.POINTER(C.c_uint),C.c_void_p)
             units = {}
@@ -242,6 +288,8 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
         r.bind(pr,'tex0',1,A.diffuse)
         r.set(pr,'terrain_texture_scale',1.)
         r.set(pr,'terrain_paint_type',0)
+        r.set(pr,'metallicFactors',0.,0.,0.,0.)
+        r.set(pr,'roughnessFactors',.7,.7,.7,.7)
         for i in range(4):
             r.set(pr,f'baseColorFactors[{i}]',1.,1.,1.,1.)
             r.set(pr,f'orm_factors[{i}]',1.,.7,0.)
@@ -257,7 +305,7 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             r.set(pr,f'mat_env_intensity[{i}]',0.)
             r.set(pr,f'mat_emissive_brightness[{i}]',emission)
             r.set(pr,f'mat_minimum_alpha[{i}]',0.)
-        for key in ['detail_0','detail_1','detail_2','detail_3','alpha_ramp','detail_0_base_color','detail_1_base_color','detail_2_base_color','detail_3_base_color','basecolor0','diffuse0']:
+        for key in ['detail_0','detail_1','detail_2','detail_3','alpha_ramp','paint_map','detail_0_base_color','detail_1_base_color','detail_2_base_color','detail_3_base_color','basecolor0','diffuse0']:
             r.bind(pr,key,1,A.diffuse)
         for key in ['detail_0_normal','detail_1_normal','detail_2_normal','detail_3_normal','normalmap0','bump0']:
             r.bind(pr,key,9,A.flat_normal)
@@ -353,6 +401,19 @@ void main(){vec2 xy=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
             assert np.array_equal(emitting,draw(after,1,emission=.5)), 'emitting surface is coated '+file
         effects.append(file)
         print('material PASS',file,flush=True)
+    if regression is None:
+        combinations = off_inventory(tree)
+        for file, defs in combinations:
+            for emissive in (False, True):
+                before = program(file, defs, True, emissive=emissive)
+                resident = program(file, defs, emissive=emissive)
+                disabled = program(file, defs, weather=False, emissive=emissive)
+                for emission in (0., .5):
+                    authored = draw(before, emission=emission)
+                    assert np.array_equal(authored, draw(resident, emission=emission)), 'viewer permutation weather OFF identity ' + file + defs
+                    assert np.array_equal(authored, draw(disabled, emission=emission)), 'viewer permutation feature OFF identity ' + file + defs
+                    identity += 2
+        print('viewer OFF inventory PASS', len(combinations), 'material-map/alpha/terrain combinations x 2 emissive layouts x 2 emission inputs', flush=True)
     if regression in ('sampler', 'forward-coverage'): return
     for file,defs in [INVENTORY[0],INVENTORY[6],INVENTORY[10],INVENTORY[11],INVENTORY[12],INVENTORY[13]]:
         avatar=program(file,defs,extra='#define HAS_SKIN 1\n#define GBUFFER_AVATAR_TAG 1\n')

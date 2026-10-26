@@ -95,6 +95,8 @@ namespace ALWeatherModel
 
         // Clears active/scheduled state and deterministically reseeds.
         void reset(U64 seed = 0x416c6368656d79ULL);
+        // Agent-origin shift only: retain the current strike and its timeline.
+        void rebase(const Position& offset);
 
         U64 strikeCount() const { return mStrikeId; }
 

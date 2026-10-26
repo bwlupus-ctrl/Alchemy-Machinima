@@ -165,4 +165,104 @@ namespace tut
             s.snowRange == 16.f && s.snowSpeed == 4.f && s.snowLimit == 131072U && s.visibilityAmount == 0.f && s.precipType == 2);
         ensure("new expensive defaults off", !s.snowEnabled && !s.visibility);
     }
+    template<> template<> void weather_bridge_object::test<7>()
+    {
+        ALWeatherBridge::Settings s;
+        s.enabled = s.local = true; s.mode = s.lightningTiming = 1;
+        s.storm = 1.f; s.rainRate = 80.f;
+        ALWeatherModel::Config lightning;
+        lightning.mEnabled = true;
+        lightning.mMinDistanceMeters = 45.; lightning.mMaxDistanceMeters = 140.;
+        ALWeatherBridge::Controller controller;
+        bool saw_strike = false;
+        for (U64 frame = 0; frame <= 7200; ++frame)
+        {
+            controller.update(frame, frame / 60., s, 0, 0, 1, lightning, {});
+            const auto& strike = controller.lightning();
+            if (!strike.mActive) continue;
+            saw_strike = true;
+            ensure("storm respects native cinematic range", strike.mStrikeDistanceMeters >= 45. && strike.mStrikeDistanceMeters <= 140.);
+        }
+        ensure("storm starts within bounded test time", saw_strike);
+        controller.update(7201, 120.1, s, 0, 0, 1, lightning, {}, true);
+        ensure("manual strike works with storm scheduler", controller.lightning().mActive);
+        s.lightningTiming = 0;
+        controller.update(7202, 120.2, s, 0, 0, 1, lightning, {}, true);
+        ensure("manual strike works with native scheduler", controller.lightning().mActive);
+        lightning.mEnabled = false;
+        controller.update(7203, 120.3, s, 0, 0, 1, lightning, {}, true);
+        ensure("manual strike preserves lightning enable gate", !controller.lightning().mActive);
+    }
+    template<> template<> void weather_bridge_object::test<8>()
+    {
+        ALWeatherBridge::Settings s;
+        s.enabled = s.local = s.snowEnabled = s.persistentWet = true;
+        s.mode = s.precipType = 1;
+        ALWeatherModel::Config lightning;
+        lightning.mEnabled = true;
+        ALWeatherBridge::Controller controller;
+        controller.update(1, 1., s, 3, 4, 1, lightning, {}, true);
+        ensure("active before transit", controller.precipitationActive() && controller.surfacesActive() && controller.lightning().mActive);
+        const U32 place = controller.placeSerial();
+        controller.suspend();
+        controller.suspend();
+        ensure("transit disables every bridge consumer", !controller.active() && !controller.precipitationActive() &&
+            !controller.surfacesActive() && !controller.lightning().mActive && controller.snowDrift() == std::array<F64, 3>{});
+        controller.update(2, 1000., s, 3, 4, 1, lightning, {});
+        ensure("same-region arrival changes place", controller.placeSerial() > place);
+        ensure("arrival starts clean without transit catchup or old strike", controller.clock().seconds() == 0. &&
+            !controller.catchingUp() && !controller.lightning().mActive && controller.precipitationActive());
+        const U32 arrived = controller.placeSerial();
+        controller.suspend();
+        controller.update(3, 1001., s, 3, 4, 2, lightning, {});
+        ensure("inter-region teleport also starts a fresh place", controller.placeSerial() > arrived && controller.surfacesActive());
+    }
+    template<> template<> void weather_bridge_object::test<9>()
+    {
+        for (U32 mode : {0U, 1U}) for (U32 timing : {0U, 1U})
+        {
+            ALWeatherBridge::Settings s;
+            s.enabled = s.local = s.snowEnabled = s.persistentWet = true;
+            s.mode = mode; s.lightningTiming = timing; s.precipType = 2;
+            s.rainRate = 80.f; s.snowRate = 8.f; s.storm = 1.f;
+            s.transition = 20.f; s.startWetness = 0.7f;
+            ALWeatherModel::Config lightning; lightning.mEnabled = true; lightning.mRatePerMinute = 60.;
+            ALWeatherBridge::Controller crossed, reference;
+            crossed.applyStartingSurfaces(); reference.applyStartingSurfaces();
+            const ALWeatherModel::Position offset{-256., -256., 0.};
+            U32 place = 0, surfaces = 0, cleared = 0;
+            for (U64 frame = 0; frame <= 7200; ++frame)
+            {
+                if (frame == 120) { s.rainRate = 120.f; s.snowRate = 12.f; }
+                if (frame == 180)
+                {
+                    place = crossed.placeSerial(); surfaces = crossed.surfaceSerial(); cleared = crossed.clearSerial();
+                    const auto clock = crossed.clock().seconds();
+                    const auto wetness = crossed.state().wetness;
+                    const auto drift = crossed.snowDrift();
+                    crossed.rebase(offset);
+                    ensure("origin shift leaves clock/wetness/drift untouched", crossed.clock().seconds() == clock &&
+                        crossed.state().wetness == wetness && crossed.snowDrift() == drift);
+                    ensure("crossing retains wet surfaces", crossed.surfacesActive() && wetness > 0.6f);
+                }
+                const ALWeatherModel::Position anchor = frame >= 180 ? offset : ALWeatherModel::Position{};
+                crossed.update(frame, frame / 60., s, 3, 4, frame >= 180 ? 2 : 1, lightning, anchor, frame == 179);
+                reference.update(frame, frame / 60., s, 3, 4, 1, lightning, {}, frame == 179);
+                ensure("crossing retains clock and transition trajectory", crossed.clock().seconds() == reference.clock().seconds() &&
+                    crossed.state().rainFall == reference.state().rainFall && crossed.state().snowFall == reference.state().snowFall);
+                ensure("crossing retains wetness and snow drift", crossed.state().wetness == reference.state().wetness &&
+                    crossed.snowDrift() == reference.snowDrift());
+                const auto& a = crossed.lightning(); const auto& b = reference.lightning();
+                ensure("crossing retains active flash and future strike schedule", a.mActive == b.mActive &&
+                    a.mStrikeId == b.mStrikeId && a.mStrikeTime == b.mStrikeTime && a.mFlash == b.mFlash);
+                if (frame >= 180)
+                {
+                    ensure("crossing never resets place or surfaces", crossed.placeSerial() == place &&
+                        crossed.surfaceSerial() == surfaces && crossed.clearSerial() == cleared);
+                    if (a.mActive) ensure("active and future bolts retain their world position", a.mStrikeBase.mX == b.mStrikeBase.mX + offset.mX &&
+                        a.mStrikeBase.mY == b.mStrikeBase.mY + offset.mY && a.mStrikeBase.mZ == b.mStrikeBase.mZ);
+                }
+            }
+        }
+    }
 }
