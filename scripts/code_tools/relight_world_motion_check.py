@@ -132,11 +132,100 @@ def checks(r, raster):
     return rows
 
 
+def grazing_checks(r, raster):
+    """Fixed near-horizon caster, including the exact round-three yaw pop."""
+    rows = []
+    normal = np.array([0., -1., 0.])
+    for incidence in (.01, .025, .05, .1):
+        direction = np.array([np.sqrt(1.-incidence**2), -incidence, 0.])
+        light = S.Light('grazing camera regression', tuple(5.*direction), .5, 32., seed=123)
+        cover = plane(direction)
+        cover.c = .1*direction
+        cover.h = (.02, .2, .001)
+        point = np.zeros(3)
+        oracle = float(U.truth([cover], light, point[None, :])[0])
+        assert oracle == 0., oracle
+        r.gpu_atlas = raster.atlas(R.scene([plane(normal), cover], light), light, .02)
+        for half in (True, False):
+            plan = dict(K.PLAN, half=half)
+            anchor = None
+            for distance in (3., 12., 44.5, 60., 80., 100., 128.):
+                for motion in ('yaw', 'orbit'):
+                    angles = np.arange(-1., 1.01, .25)
+                    values = []
+                    for angle in angles:
+                        cam, buffers = primary(point, normal, distance, angle, motion, False)
+                        r.gl.use(r.filter)
+                        r.gl.ui(r.gl.loc(r.filter, b'area_world_debug'), 1)
+                        image = r.run(cam, *buffers, [light], plan, denoise=0.,
+                                      world=K.world(light, False))[0]
+                        values.append(float(image[MID, MID]))
+                    if anchor is None:
+                        anchor = values[len(values)//2]
+                    jump = float(np.max(np.abs(np.diff(values))))
+                    row = dict(name='grazing_'+motion, incidence=incidence, distance=distance,
+                        half=half, coordinates=angles.tolist(), values=values, truth=oracle,
+                        anchor=anchor, maximum=max(values), jump=jump,
+                        passed=bool(max(values) <= min(.9, anchor+4/255) and
+                                    np.ptp(values) <= 4/255 and jump <= 2/255))
+                    rows.append(row)
+        print('[world-motion] grazing', incidence, 'failures',
+              sum(not row['passed'] for row in rows if row['incidence'] == incidence), flush=True)
+    return rows
+
+
+def precision_checks(r):
+    """Execute production confidence contracts and the degenerate return in GL."""
+    text = r.tree.read(SHADER)
+    target = 'area_n_geo = awGeoNormal(texel);'
+    if target not in text:
+        return [dict(name='precision_contract', applicable=False,
+                     reason='pre-series shader has no reconstruction support state', passed=True)]
+    normal = np.array([0., -1., 0.])
+    light = S.Light('precision contract', (0., -5., 0.), .1, 32., seed=123)
+    rows = []
+    for name, distance, body, extra in (
+        ('degenerate_support_reset', 12., '''
+            aw_depth_support=1.0; aw_precision_support=1.0;
+            awGeoStencil(ivec2(gl_FragCoord.xy),textureSize(depthMap,0),1,0.01,1.0);
+            frag_color=vec4(aw_depth_support,aw_precision_support,0,1);''',
+         [('if (!(n2 > 1.e-20))', 'n2=0.0; if (!(n2 > 1.e-20))')]),
+        ('backface_precision_support', 16., '''
+            aw_plane_valid=1.0; aw_precision_support=1.0;
+            frag_color=vec4(awBackfaceWeight(-0.08,5.0,0.1),aw_precision_support,0,1);''', []),
+        ('backface_angular_cap', 32., '''
+            aw_plane_valid=1.0; aw_precision_support=0.0;
+            frag_color=vec4(awBackfaceWeight(-0.33,5.0,0.1),aw_precision_support,0,1);''', []),
+        ('compare_precision_support', 24., '''
+            aw_precision_support=1.0;
+            frag_color=vec4(awPrecision(1.0,0.02).x-min(awDepthError(),AW_NORMAL_CAP),aw_precision_support,0,1);''', [])):
+        class DiagnosticTree(G.SourceTree):
+            def read(self, path):
+                source = r.tree.read(path)
+                if str(path) == SHADER:
+                    for before, after in extra+[(target, target+body+'return;')]:
+                        assert before in source, before
+                        source = source.replace(before, after)
+                return source
+        mutant = DiagnosticTree('WORKTREE')
+        nr = R.NormalRunner(mutant, gl=r.gl)
+        cam, buffers = primary(np.zeros(3), normal, distance, 0., 'yaw', False)
+        K.draw(nr, cam, buffers, light, False)
+        value = np.empty(4, np.float32)
+        nr.gl.read(MID, MID, 1, 1, 0x1908, 0x1406, value.ctypes.data)
+        passed = (bool(np.max(np.abs(value[:2])) < 1.e-6) if name in ('degenerate_support_reset', 'backface_angular_cap')
+                  else bool(abs(value[0]) < 1.e-6 and value[1] >= .999))
+        rows.append(dict(name=name, value=value.tolist(), passed=passed))
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--shader-ref', default='WORKTREE')
     ap.add_argument('--out', default='.tmp/world_pop/motion')
     ap.add_argument('--bisect', action='store_true')
+    ap.add_argument('--round3-only', action='store_true')
+    ap.add_argument('--controls', action='store_true')
     args = ap.parse_args()
     out = Path(args.out)
     gl = G.GL()
@@ -144,10 +233,26 @@ def main():
     for ref in REFS if args.bisect else [args.shader_ref]:
         tree = ShaderTree(ref, out/'shaders')
         r = R.Runner(tree, gl=gl)
-        rows = checks(r, W.Raster(r))
+        raster = W.Raster(r)
+        rows = [] if args.round3_only else checks(r, raster)
+        rows += grazing_checks(r, raster)+precision_checks(r)
         result = dict(shader_ref=ref, renderer=gl.renderer, rows=rows,
                       shader_sha256=hashlib.sha256(tree.shader.encode()).hexdigest(),
                       passed=all(row['passed'] for row in rows))
+        if args.controls:
+            mutant = R.Runner(W.MutantTree(tree, [
+                ('(1.0-aw_precision_support)*', '')]), gl=gl)
+            controls = precision_checks(mutant)
+            result['controls'] = dict(precision_weight_removed=dict(rows=controls,
+                rejected=any(not row['passed'] for row in controls
+                             if row['name'] == 'compare_precision_support')))
+            capped = 'float reconstruction = min((1.0-aw_precision_support)*2.0*awDepthFraction()/max(pixel_angle,1.e-9),0.05);'
+            mutant = R.Runner(W.MutantTree(tree, [(capped,
+                'float reconstruction = (1.0-aw_precision_support)*2.0*awDepthFraction()/max(pixel_angle,1.e-9);')]), gl=gl)
+            controls = precision_checks(mutant)
+            result['controls']['uncapped_backface'] = dict(rows=controls,
+                rejected=any(not row['passed'] for row in controls if row['name'] == 'backface_angular_cap'))
+            result['passed'] &= all(control['rejected'] for control in result['controls'].values())
         results.append(result)
         (out/(ref+'.json')).write_text(json.dumps(result, indent=2)+'\n', encoding='utf-8')
     (out/'results.json').write_text(json.dumps(results, indent=2)+'\n', encoding='utf-8')
