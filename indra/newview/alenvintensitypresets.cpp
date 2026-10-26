@@ -118,12 +118,44 @@ namespace
         return out;
     }
 
+    // These names were valid user names before the Natural family was added.
+    // Keep existing disk entries loadable; checkName still rejects new saves.
+    bool isNaturalReservedName(const std::string& name)
+    {
+        static const char* const RESERVED[] =
+        {
+            "Natural",
+            "Natural Day",
+            "Natural Overcast",
+            "Natural Golden Hour",
+            "Natural Interior Day",
+            "Hard Sun",
+            "Rainy Day",
+            "Natural Moonlight",
+            "Rainy Night",
+            "Night Interior / Neon",
+        };
+        const std::string norm = normalizeName(name);
+        for (const char* r : RESERVED)
+        {
+            if (norm == normalizeName(r))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Built-in Quick Preset labels (floater_adjust_environment.xml combo
     // env_intensity_preset) + the combo's own "Custom" and section header. The
     // keys ("golden_hour") normalise onto the same strings. A new built-in preset
     // must be added here too.
     bool isReservedName(const std::string& name)
     {
+        if (isNaturalReservedName(name))
+        {
+            return true;
+        }
         static const char* const RESERVED[] =
         {
             "Stock", "Golden Hour", "Blue Hour", "Overcast Soft", "Noon Punch",
@@ -916,7 +948,9 @@ namespace
                 for (LLSD::map_const_iterator it = root.beginMap(); it != root.endMap(); ++it)
                 {
                     std::string clean;
-                    if (checkName(it->first, clean) != NAME_OK || clean != it->first)
+                    const NameCheck name_check = checkName(it->first, clean);
+                    if ((name_check != NAME_OK &&
+                         !(name_check == NAME_RESERVED && isNaturalReservedName(clean))) || clean != it->first)
                     {
                         ++rejected;
                         continue;

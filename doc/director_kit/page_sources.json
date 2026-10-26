@@ -862,7 +862,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 1018,
+          "line": 1028,
           "widget": "env_amb_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -923,7 +923,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 928,
+          "line": 938,
           "widget": "env_probe_diff_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -984,7 +984,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 973,
+          "line": 983,
           "widget": "env_probe_spec_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1045,7 +1045,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 883,
+          "line": 893,
           "widget": "env_local_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1106,7 +1106,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 869,
+          "line": 879,
           "widget": "env_local_include_rig",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1167,7 +1167,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 828,
+          "line": 838,
           "widget": "env_moon_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1228,7 +1228,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 814,
+          "line": 824,
           "widget": "env_moon_linked",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1289,7 +1289,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 1063,
+          "line": 1073,
           "widget": "env_shadow_lift",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -165769,7 +165769,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 883,
+              "line": 893,
               "widget": "env_local_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -165872,7 +165872,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 1063,
+              "line": 1073,
               "widget": "env_shadow_lift",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -165975,7 +165975,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 814,
+              "line": 824,
               "widget": "env_moon_linked",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166078,7 +166078,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 828,
+              "line": 838,
               "widget": "env_moon_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166181,7 +166181,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 1018,
+              "line": 1028,
               "widget": "env_amb_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166284,7 +166284,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 928,
+              "line": 938,
               "widget": "env_probe_diff_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166387,7 +166387,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 973,
+              "line": 983,
               "widget": "env_probe_spec_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166490,7 +166490,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 869,
+              "line": 879,
               "widget": "env_local_include_rig",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -167238,7 +167238,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 192,
+              "line": 201,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -167392,7 +167392,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 194,
+              "line": 203,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -167667,7 +167667,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 190,
+              "line": 199,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -167678,7 +167678,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 199,
+              "line": 208,
               "class": "ALPanelExposurePage",
               "function": "<inline callback>",
               "wired_class": "ALPanelExposurePage",
@@ -167794,7 +167794,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 191,
+              "line": 200,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -167805,7 +167805,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 201,
+              "line": 210,
               "class": "ALPanelExposurePage",
               "function": "<inline callback>",
               "wired_class": "ALPanelExposurePage",
@@ -168215,7 +168215,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 197,
+              "line": 206,
               "class": "ALFloaterLightBox",
               "function": "showTab",
               "wired_class": "ALPanelExposurePage",
@@ -168370,7 +168370,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 218,
+              "line": 227,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168381,7 +168381,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 219,
+              "line": 228,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelExposurePage",
@@ -168392,7 +168392,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 221,
+              "line": 230,
               "class": "ALPanelExposurePage",
               "function": "alKitSetTypedControl",
               "wired_class": "ALPanelExposurePage",
@@ -168706,7 +168706,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 223,
+              "line": 232,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168717,7 +168717,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 229,
+              "line": 238,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelExposurePage",
@@ -168728,7 +168728,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 234,
+              "line": 243,
               "class": "ALPanelExposurePage",
               "function": "getU32",
               "wired_class": "ALPanelExposurePage",
@@ -168780,7 +168780,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 216,
+              "line": 225,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168832,7 +168832,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 217,
+              "line": 226,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",

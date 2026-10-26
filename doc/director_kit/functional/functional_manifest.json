@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "2c68c78c02b3b2879d8cd6e1fcbe56b7519d3ee7b3212e35bbbf323ba890dfe5",
+  "csv_sha256": "abb2641798329703e5009946dbe7f98ecdd6ed0f134c583c12fa462543478bf0",
   "interactive_rows": 1996,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -48,7 +48,7 @@
   "entries": 4407,
   "pages": 38,
   "settings_declared": 3785,
-  "xui_files": 843,
+  "xui_files": 842,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -36236,7 +36236,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitLevel (settings.xml); literal-only llfloaterdirector.cpp:3898 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitLevel (settings.xml); literal-only llfloaterdirector.cpp:3998 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36288,7 +36288,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitZoom (settings.xml); literal-only llfloaterdirector.cpp:3903 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitZoom (settings.xml); literal-only llfloaterdirector.cpp:4003 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36340,7 +36340,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitMaxRadius (settings.xml); literal-only llfloaterdirector.cpp:3900 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitMaxRadius (settings.xml); literal-only llfloaterdirector.cpp:4000 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36392,7 +36392,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitSmoothing (settings.xml); literal-only llfloaterdirector.cpp:3904 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitSmoothing (settings.xml); literal-only llfloaterdirector.cpp:4004 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36444,7 +36444,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitOffsetUp (settings.xml); literal-only llfloaterdirector.cpp:3901 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitOffsetUp (settings.xml); literal-only llfloaterdirector.cpp:4001 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36496,7 +36496,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitMinRadius (settings.xml); literal-only llfloaterdirector.cpp:3899 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitMinRadius (settings.xml); literal-only llfloaterdirector.cpp:3999 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36548,7 +36548,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitOffsetLeft (settings.xml); literal-only llfloaterdirector.cpp:3902 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitOffsetLeft (settings.xml); literal-only llfloaterdirector.cpp:4002 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "takes_tab",
@@ -50202,7 +50202,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "setting AlchemyToneMapAMDExposure (settings_alchemy.xml); cpp alpanelexposurehub.cpp:72 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:192 ALPanelExposurePage::postBuild"
+   "evidence": "setting AlchemyToneMapAMDExposure (settings_alchemy.xml); cpp alpanelexposurehub.cpp:72 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:201 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50254,7 +50254,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "setting AlchemyToneMapSLogEV (settings_alchemy.xml); cpp alpanelexposurehub.cpp:74 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:194 ALPanelExposurePage::postBuild"
+   "evidence": "setting AlchemyToneMapSLogEV (settings_alchemy.xml); cpp alpanelexposurehub.cpp:74 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:203 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50352,7 +50352,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "cpp alpanelexposurehub.cpp:70 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:190 ALPanelExposurePage::postBuild"
+   "evidence": "cpp alpanelexposurehub.cpp:70 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:199 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50400,7 +50400,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "cpp alpanelexposurehub.cpp:71 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:191 ALPanelExposurePage::postBuild"
+   "evidence": "cpp alpanelexposurehub.cpp:71 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:200 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50599,7 +50599,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "cpp alpanelexposurehub.cpp:131 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:197 ALPanelExposurePage::postBuild"
+   "evidence": "cpp alpanelexposurehub.cpp:131 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:206 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -80531,7 +80531,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:20683 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:20684 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -80683,7 +80683,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:20685 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:20686 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -80785,7 +80785,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:20688 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:20689 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -80837,7 +80837,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:20689 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:20690 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -80889,7 +80889,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:20690 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:20691 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -80941,7 +80941,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:20691 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:20692 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -80993,7 +80993,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:20692 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:20693 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81045,7 +81045,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:20693 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:20694 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81097,7 +81097,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:20694 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:20695 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81199,7 +81199,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:20701 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:20702 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81251,7 +81251,7 @@
    "increment": 0.001,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:20703 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:20704 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81268,7 +81268,7 @@
    "csv_index": 1586,
    "card": "rain_cover",
    "card_title": "Rain shelter",
-   "row_label": "Fallback cover",
+   "row_label": "Rain shelter",
    "xui_file": "indra/newview/skins/default/xui/en/panel_weather_settings.xml",
    "xui_line": 161,
    "widget_name": "weather_shelter_fade",
@@ -81503,7 +81503,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21153 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21156 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81703,7 +81703,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21154 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21157 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81755,7 +81755,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21152 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21155 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82202,7 +82202,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21164 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21167 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82404,7 +82404,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21171 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21174 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
