@@ -18,6 +18,7 @@
 #include "alkitbinding.h"
 #include "alkitbar.h"
 #include "alkithistory.h"
+#include "aldiopterpresetbank.h"
 #include "alkitpage.h"
 #include "alkitpopover.h"
 #include "alkitrow.h"
@@ -3707,6 +3708,14 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     // mode can be applied AFTER its named preset (the preset apply path
     // writes the mode too, and the scene's own mode must win)
     static const std::vector<std::string> settings = {
+        // Sensor look, including the complete Custom calibration. Debug gates stay session-local.
+        "CineSensorEnabled", "CineSensorISO", "CineSensorPreset", "CineSensorBrightnessMode",
+        "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
+        "CineSensorCustomBaseISO", "CineSensorCustomSwitchISO", "CineSensorCustomHeadroom",
+        "CineSensorCustomLCGFullWell", "CineSensorCustomLCGReadNoise", "CineSensorCustomLCGAnalogBase",
+        "CineSensorCustomLCGPedestal", "CineSensorCustomLCGWhite", "CineSensorCustomHCGFullWell",
+        "CineSensorCustomHCGReadNoise", "CineSensorCustomHCGAnalogBase", "CineSensorCustomHCGPedestal",
+        "CineSensorCustomHCGWhite",
         // transport arming + countdown
         "DirectorArmMoves",
         "DirectorArmCamera",
@@ -4420,6 +4429,7 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     }
 
     ALKitHistory::ScopedSuspend history_suspend;
+    ALScopedPresetMaterializing preset_guard;
 
     const bool has_version = scene.has("version");
     U32 prism_offline_bindings = 0;

@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "d9a13315b7356742f1c64444165d05bbb7ec972b33b13629c454207d454b1e71",
+  "csv_sha256": "628aa36d3a0c9e4209ad560f6771c7664761a647acb9cc0c73970b52866ec147",
   "interactive_rows": 1947,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -683,7 +683,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1461 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2422 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1462 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2423 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -731,7 +731,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1470 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2426 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1471 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2427 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -781,7 +781,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1462 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2423 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1463 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2424 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -831,7 +831,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1463 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2424 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1464 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2425 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -884,7 +884,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1469 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2425 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1470 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2426 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -929,7 +929,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1472 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2428 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1473 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2429 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -974,7 +974,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1473 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2429 LLFloaterDirector::bindMovePage"
+   "evidence": "cpp llfloaterdirector.cpp:1474 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2430 LLFloaterDirector::bindMovePage"
   },
   {
    "page": "move_tab",
@@ -12416,7 +12416,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1615 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2725 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1616 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2726 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "dance_tab",
@@ -16237,7 +16237,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1541 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2553 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1542 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2554 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16287,7 +16287,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1546 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2555 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1547 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2556 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16337,7 +16337,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1547 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2556 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1548 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2557 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16387,7 +16387,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1548 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2557 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1549 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2558 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16437,7 +16437,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1549 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2558 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1550 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2559 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16487,7 +16487,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1551 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2560 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1552 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2561 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16537,7 +16537,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1552 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2561 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1553 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2562 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16587,7 +16587,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1553 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2562 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1554 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2563 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16720,7 +16720,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1554 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2563 LLFloaterDirector::bindAnimatePage",
+   "evidence": "cpp llfloaterdirector.cpp:1555 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2564 LLFloaterDirector::bindAnimatePage",
    "options": [
     {
      "label": "Idle",
@@ -16791,7 +16791,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1555 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2564 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1556 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2565 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16839,7 +16839,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1556 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2565 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1557 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2566 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16887,7 +16887,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1557 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2566 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1558 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2567 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16932,7 +16932,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1560 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2568 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1561 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2569 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -16982,7 +16982,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1577 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2624 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp llfloaterdirector.cpp:1578 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2625 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -17025,7 +17025,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelAnimPreview::postBuild",
-   "evidence": "cpp alpanelanimpreview.cpp:57 ALPanelAnimPreview::postBuild; cpp llfloaterdirector.cpp:2569 LLFloaterDirector::bindAnimatePage"
+   "evidence": "cpp alpanelanimpreview.cpp:57 ALPanelAnimPreview::postBuild; cpp llfloaterdirector.cpp:2570 LLFloaterDirector::bindAnimatePage"
   },
   {
    "page": "animate_tab",
@@ -20557,7 +20557,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1612 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2712 LLFloaterDirector::bindCameraPage",
+   "evidence": "cpp llfloaterdirector.cpp:1613 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2713 LLFloaterDirector::bindCameraPage",
    "enable_when": "actor selected"
   },
   {
@@ -25191,7 +25191,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1617 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2729 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1618 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2730 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "polish_tab",
@@ -26979,7 +26979,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelCineCamParams::postBuild",
-   "evidence": "cpp alpanelcinecamparams.cpp:463 ALPanelCineCamParams::postBuild; cpp llfloaterdirector.cpp:2763 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp alpanelcinecamparams.cpp:463 ALPanelCineCamParams::postBuild; cpp llfloaterdirector.cpp:2764 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "shot_tab",
@@ -27024,7 +27024,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelCineCamParams::postBuild",
-   "evidence": "cpp alpanelcinecamparams.cpp:468 ALPanelCineCamParams::postBuild; cpp llfloaterdirector.cpp:2767 LLFloaterDirector::bindCameraPage",
+   "evidence": "cpp alpanelcinecamparams.cpp:468 ALPanelCineCamParams::postBuild; cpp llfloaterdirector.cpp:2768 LLFloaterDirector::bindCameraPage",
    "declared_non_interactive": true
   },
   {
@@ -27175,7 +27175,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1596 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1597 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27220,7 +27220,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1600 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1601 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27270,7 +27270,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1597 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1598 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27315,7 +27315,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1601 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1602 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27365,7 +27365,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1598 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1599 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27410,7 +27410,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1602 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1603 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27460,7 +27460,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1599 LLFloaterDirector::postBuild"
+   "evidence": "cpp llfloaterdirector.cpp:1600 LLFloaterDirector::postBuild"
   },
   {
    "page": "shot_tab",
@@ -27505,7 +27505,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1603 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2706 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1604 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2707 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "shot_tab",
@@ -30223,7 +30223,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1630 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2746 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1631 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2747 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "moves_tab",
@@ -30473,7 +30473,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1631 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2751 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1632 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2752 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "moves_tab",
@@ -30638,7 +30638,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1632 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2756 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1633 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2757 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "moves_tab",
@@ -31304,7 +31304,7 @@
    "increment": null,
    "callbacks": null,
    "owner": null,
-   "evidence": "setting FlycamOperatorEnabled (settings.xml); literal-only alkitpresets.cpp:116 (file scope)"
+   "evidence": "setting FlycamOperatorEnabled (settings.xml); literal-only alkitpresets.cpp:117 (file scope)"
   },
   {
    "page": "operator_tab",
@@ -31458,7 +31458,7 @@
    "increment": 10.0,
    "callbacks": null,
    "owner": null,
-   "evidence": "setting FlycamOperatorSimulationHz (settings.xml); literal-only alkitpresets.cpp:116 (file scope)"
+   "evidence": "setting FlycamOperatorSimulationHz (settings.xml); literal-only alkitpresets.cpp:117 (file scope)"
   },
   {
    "page": "operator_tab",
@@ -33016,7 +33016,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": null,
-   "evidence": "setting FlycamOperatorSeed (settings.xml); literal-only alkitpresets.cpp:116 (file scope)"
+   "evidence": "setting FlycamOperatorSeed (settings.xml); literal-only alkitpresets.cpp:117 (file scope)"
   },
   {
    "page": "operator_tab",
@@ -34703,7 +34703,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::bindFrameOrbitPage",
-   "evidence": "setting CinematicFrameAspectRatio (settings.xml); cpp other-class llfloaterdirector.cpp:2826 LLFloaterDirector::bindFrameOrbitPage",
+   "evidence": "setting CinematicFrameAspectRatio (settings.xml); cpp other-class llfloaterdirector.cpp:2827 LLFloaterDirector::bindFrameOrbitPage",
    "options": [
     {
      "label": "Off / Native",
@@ -35403,7 +35403,7 @@
    "increment": null,
    "callbacks": "Machinima.AutoFrameResolve",
    "owner": "LLFloaterDirector::bindFrameOrbitPage",
-   "evidence": "cb Machinima.AutoFrameResolve -> alpanelcinecamparams.cpp:148 (file scope); cpp other-class llfloaterdirector.cpp:2819 LLFloaterDirector::bindFrameOrbitPage"
+   "evidence": "cb Machinima.AutoFrameResolve -> alpanelcinecamparams.cpp:148 (file scope); cpp other-class llfloaterdirector.cpp:2820 LLFloaterDirector::bindFrameOrbitPage"
   },
   {
    "page": "frame_orbit_tab",
@@ -35524,7 +35524,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::bindFrameOrbitPage",
-   "evidence": "setting CinematicAutoFrameSettleSeconds (settings.xml); cpp other-class llcinematiccamera.cpp:92 (file scope); literal-only llfloaterdirector.cpp:2882 LLFloaterDirector::bindFrameOrbitPage"
+   "evidence": "setting CinematicAutoFrameSettleSeconds (settings.xml); cpp other-class llcinematiccamera.cpp:92 (file scope); literal-only llfloaterdirector.cpp:2883 LLFloaterDirector::bindFrameOrbitPage"
   },
   {
    "page": "frame_orbit_tab",
@@ -36236,7 +36236,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitLevel (settings.xml); literal-only llfloaterdirector.cpp:3737 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitLevel (settings.xml); literal-only llfloaterdirector.cpp:3746 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36288,7 +36288,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitZoom (settings.xml); literal-only llfloaterdirector.cpp:3742 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitZoom (settings.xml); literal-only llfloaterdirector.cpp:3751 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36340,7 +36340,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitMaxRadius (settings.xml); literal-only llfloaterdirector.cpp:3739 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitMaxRadius (settings.xml); literal-only llfloaterdirector.cpp:3748 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36392,7 +36392,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitSmoothing (settings.xml); literal-only llfloaterdirector.cpp:3743 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitSmoothing (settings.xml); literal-only llfloaterdirector.cpp:3752 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36444,7 +36444,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitOffsetUp (settings.xml); literal-only llfloaterdirector.cpp:3740 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitOffsetUp (settings.xml); literal-only llfloaterdirector.cpp:3749 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36496,7 +36496,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitMinRadius (settings.xml); literal-only llfloaterdirector.cpp:3738 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitMinRadius (settings.xml); literal-only llfloaterdirector.cpp:3747 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "frame_orbit_tab",
@@ -36548,7 +36548,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::sceneSettingsList",
-   "evidence": "setting FlycamOrbitOffsetLeft (settings.xml); literal-only llfloaterdirector.cpp:3741 LLFloaterDirector::sceneSettingsList"
+   "evidence": "setting FlycamOrbitOffsetLeft (settings.xml); literal-only llfloaterdirector.cpp:3750 LLFloaterDirector::sceneSettingsList"
   },
   {
    "page": "takes_tab",
@@ -37286,7 +37286,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLFloaterDirector::refreshTransport",
-   "evidence": "setting FlycamRecSampleRate (settings.xml); literal-only llfloaterdirector.cpp:3580 LLFloaterDirector::refreshTransport"
+   "evidence": "setting FlycamRecSampleRate (settings.xml); literal-only llfloaterdirector.cpp:3581 LLFloaterDirector::refreshTransport"
   },
   {
    "page": "takes_tab",
@@ -37741,7 +37741,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1629 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2741 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1630 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2742 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "focus_tab",
@@ -37947,7 +37947,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::bindLensFocusPage",
-   "evidence": "setting CameraDoFResScale (settings.xml); cpp other-class llfloaterdirector.cpp:2318 LLFloaterDirector::bindLensFocusPage",
+   "evidence": "setting CameraDoFResScale (settings.xml); cpp other-class llfloaterdirector.cpp:2319 LLFloaterDirector::bindLensFocusPage",
    "options": [
     {
      "label": "Quarter",
@@ -50202,7 +50202,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "setting AlchemyToneMapAMDExposure (settings_alchemy.xml); cpp alpanelexposurehub.cpp:72 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:181 ALPanelExposurePage::postBuild"
+   "evidence": "setting AlchemyToneMapAMDExposure (settings_alchemy.xml); cpp alpanelexposurehub.cpp:72 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:192 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50254,7 +50254,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "setting AlchemyToneMapSLogEV (settings_alchemy.xml); cpp alpanelexposurehub.cpp:74 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:183 ALPanelExposurePage::postBuild"
+   "evidence": "setting AlchemyToneMapSLogEV (settings_alchemy.xml); cpp alpanelexposurehub.cpp:74 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:194 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50352,7 +50352,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "cpp alpanelexposurehub.cpp:70 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:179 ALPanelExposurePage::postBuild"
+   "evidence": "cpp alpanelexposurehub.cpp:70 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:190 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50400,7 +50400,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "cpp alpanelexposurehub.cpp:71 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:180 ALPanelExposurePage::postBuild"
+   "evidence": "cpp alpanelexposurehub.cpp:71 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:191 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -50451,7 +50451,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1619 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2733 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp llfloaterdirector.cpp:1620 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2734 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "exposure_tab",
@@ -50599,7 +50599,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelExposureHub::postBuild",
-   "evidence": "cpp alpanelexposurehub.cpp:131 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:186 ALPanelExposurePage::postBuild"
+   "evidence": "cpp alpanelexposurehub.cpp:131 ALPanelExposureHub::postBuild; cpp alpanelexposurepage.cpp:197 ALPanelExposurePage::postBuild"
   },
   {
    "page": "exposure_tab",
@@ -55488,7 +55488,7 @@
    "increment": null,
    "callbacks": "LightBox.ResetControlDefault",
    "owner": "LLFloaterDirector::bindLightActorsPage",
-   "evidence": "cpp llfloaterdirector.cpp:2192 LLFloaterDirector::bindLightActorsPage"
+   "evidence": "cpp llfloaterdirector.cpp:2193 LLFloaterDirector::bindLightActorsPage"
   },
   {
    "page": "actors_tab",
@@ -55813,7 +55813,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1621 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2186 LLFloaterDirector::bindLightActorsPage"
+   "evidence": "cpp llfloaterdirector.cpp:1622 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2187 LLFloaterDirector::bindLightActorsPage"
   },
   {
    "page": "actors_tab",
@@ -56706,7 +56706,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelAvatarLightResponse::postBuild",
-   "evidence": "cpp alpanelavatarlightresponse.cpp:169 ALPanelAvatarLightResponse::postBuild; cpp llfloaterdirector.cpp:2767 LLFloaterDirector::bindCameraPage"
+   "evidence": "cpp alpanelavatarlightresponse.cpp:169 ALPanelAvatarLightResponse::postBuild; cpp llfloaterdirector.cpp:2768 LLFloaterDirector::bindCameraPage"
   },
   {
    "page": "actors_tab",
@@ -57570,7 +57570,7 @@
    "increment": null,
    "callbacks": "LightBox.ResetGroupDefault",
    "owner": "LLFloaterDirector::bindImagePage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2240 LLFloaterDirector::bindImagePage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2241 LLFloaterDirector::bindImagePage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -62011,7 +62011,7 @@
    "increment": null,
    "callbacks": "LightBox.RotoInkPreset",
    "owner": "LLFloaterDirector::bindRotoInkPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2117 LLFloaterDirector::bindRotoInkPage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2118 LLFloaterDirector::bindRotoInkPage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -67702,7 +67702,7 @@
    "increment": null,
    "callbacks": "LightBox.TronApplyRotoPreset",
    "owner": "LLFloaterDirector::bindTronPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2155 LLFloaterDirector::bindTronPage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2156 LLFloaterDirector::bindTronPage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -67758,7 +67758,7 @@
    "increment": null,
    "callbacks": "LightBox.TronApplyRigRimPreset",
    "owner": "LLFloaterDirector::bindTronPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2167 LLFloaterDirector::bindTronPage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2168 LLFloaterDirector::bindTronPage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -67814,7 +67814,7 @@
    "increment": null,
    "callbacks": "LightBox.TronPreset",
    "owner": "LLFloaterDirector::bindTronPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2127 LLFloaterDirector::bindTronPage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2128 LLFloaterDirector::bindTronPage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -70036,7 +70036,7 @@
    "increment": null,
    "callbacks": "LightBox.TronGridOriginSnap",
    "owner": "LLFloaterDirector::bindTronPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2134 LLFloaterDirector::bindTronPage; literal-only alfloaterlightbox.cpp:1136 ALFloaterLightBox::updateTronVisibility",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2135 LLFloaterDirector::bindTronPage; literal-only alfloaterlightbox.cpp:1136 ALFloaterLightBox::updateTronVisibility",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -70092,7 +70092,7 @@
    "increment": null,
    "callbacks": "LightBox.TronGridOriginClear",
    "owner": "LLFloaterDirector::bindTronPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2145 LLFloaterDirector::bindTronPage; literal-only alfloaterlightbox.cpp:1136 ALFloaterLightBox::updateTronVisibility",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2146 LLFloaterDirector::bindTronPage; literal-only alfloaterlightbox.cpp:1136 ALFloaterLightBox::updateTronVisibility",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ],
@@ -73875,7 +73875,7 @@
    "increment": null,
    "callbacks": "LightBox.TronClearTrails",
    "owner": "LLFloaterDirector::bindTronPage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2150 LLFloaterDirector::bindTronPage; literal-only alfloaterlightbox.cpp:1275 ALFloaterLightBox::updateTronVisibility",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2151 LLFloaterDirector::bindTronPage; literal-only alfloaterlightbox.cpp:1275 ALFloaterLightBox::updateTronVisibility",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ],
@@ -78033,7 +78033,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1495 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2478 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1496 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2479 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected",
    "declared_non_interactive": true
   },
@@ -78086,7 +78086,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1511 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2494 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1512 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2495 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78141,7 +78141,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1498 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2481 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1499 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2482 LLFloaterDirector::bindActorStylePage",
    "options": [
     {
      "label": "Ghost",
@@ -78351,7 +78351,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1497 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2480 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1498 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2481 LLFloaterDirector::bindActorStylePage",
    "options": [
     {
      "label": "Layer",
@@ -78413,7 +78413,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1501 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2484 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1502 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2485 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78464,7 +78464,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1502 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2485 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1503 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2486 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78560,7 +78560,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1499 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2482 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1500 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2483 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78611,7 +78611,7 @@
    "increment": 5.0,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1500 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2483 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1501 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2484 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78662,7 +78662,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1509 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2492 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1510 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2493 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78713,7 +78713,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1505 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2488 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1506 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2489 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78764,7 +78764,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1504 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2487 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1505 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2488 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78815,7 +78815,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1506 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2489 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1507 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2490 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78866,7 +78866,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1510 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2493 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1511 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2494 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -78921,7 +78921,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1507 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2490 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1508 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2491 LLFloaterDirector::bindActorStylePage",
    "options": [
     {
      "label": "None",
@@ -79011,7 +79011,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1508 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2491 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1509 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2492 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -79062,7 +79062,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLFloaterDirector::postBuild",
-   "evidence": "cpp llfloaterdirector.cpp:1503 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2486 LLFloaterDirector::bindActorStylePage",
+   "evidence": "cpp llfloaterdirector.cpp:1504 LLFloaterDirector::postBuild; cpp llfloaterdirector.cpp:2487 LLFloaterDirector::bindActorStylePage",
    "enable_when": "actor selected"
   },
   {
@@ -82409,7 +82409,7 @@
    "increment": null,
    "callbacks": "LightBox.CineHazeRefFromCamera",
    "owner": "LLFloaterDirector::bindAtmospherePage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2385 LLFloaterDirector::bindAtmospherePage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2386 LLFloaterDirector::bindAtmospherePage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
@@ -82610,7 +82610,7 @@
    "increment": null,
    "callbacks": "LightBox.CineHazePreset",
    "owner": "LLFloaterDirector::bindAtmospherePage",
-   "evidence": "cpp other-class llfloaterdirector.cpp:2389 LLFloaterDirector::bindAtmospherePage",
+   "evidence": "cpp other-class llfloaterdirector.cpp:2390 LLFloaterDirector::bindAtmospherePage",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]

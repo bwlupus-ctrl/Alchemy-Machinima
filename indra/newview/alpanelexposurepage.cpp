@@ -26,6 +26,7 @@
 #include "llfloaterenvironmentadjust.h"
 #include "llfloaterreg.h"
 #include "llviewercontrol.h"
+#include "lllineeditor.h"
 #include "lltextbox.h"
 #include "pipeline.h"
 
@@ -45,6 +46,15 @@ bool sensorSeedTextValid(const std::string& text)
         text.find_first_not_of("0123456789") == std::string::npos &&
         std::stod(text) <= 4294967295.;
 }
+
+class SensorSeedDigits final : public LLTextValidate::ValidatorImpl
+{
+public:
+    bool validate(const std::string& text) override
+        { return text.find_first_not_of("0123456789") == std::string::npos; }
+    bool validate(const LLWString& text) override
+        { return text.find_first_not_of(U"0123456789") == LLWString::npos; }
+};
 
 std::string sensorSeedText(const LLSD& value)
 {
@@ -210,7 +220,7 @@ bool ALPanelExposurePage::postBuild()
         []() { return std::make_unique<ALKitSettingBinding>("CineSensorISO"); });
     mSensorISO->setCommitCallback([](LLUICtrl* control, const LLSD&)
         { alKitSetTypedControl(gSavedSettings, "CineSensorISO", control->getValue()); });
-    LLUICtrl* seed_editor = getChild<LLUICtrl>("sensor_seed");
+    LLLineEditor* seed_editor = getChild<LLLineEditor>("sensor_seed");
     mSensorSeed = seed_editor;
     mSensorSeedRow = seed_editor->getParent();
     // LLSpinCtrl stores F32; a decimal text editor plus the kit's typed writer
@@ -218,12 +228,16 @@ bool ALPanelExposurePage::postBuild()
     // ALKitSettingBinding still provides reset, history and unsigned read-back.
     ALKitBindingRegistry::instance().add(this, "sensor_seed",
         []() { return std::make_unique<SensorSeedBinding>(); });
-    seed_editor->setValidateCallback([](LLUICtrl* control, const LLSD&)
-    {
-        return sensorSeedTextValid(control->getValue().asString());
-    });
+    // Allow an empty intermediate edit, but only decimal digits on input.
+    static SensorSeedDigits seed_digits;
+    seed_editor->setPrevalidate(LLTextValidate::Validator(seed_digits));
     seed_editor->setCommitCallback([](LLUICtrl* control, const LLSD&)
-        { alKitSetTypedControl(gSavedSettings, "CineSensorSeed", control->getValue()); });
+    {
+        if (sensorSeedTextValid(control->getValue().asString()))
+            alKitSetTypedControl(gSavedSettings, "CineSensorSeed", control->getValue());
+        else
+            control->setValue(LLSD(sensorSeedText(LLSD(static_cast<F64>(gSavedSettings.getU32("CineSensorSeed"))))));
+    });
     mCustomSensorCard = getChildView("kc_custom_sensor");
     // Native setting bindings own values. Signals invalidate the physical readout,
     // including while hidden; revealing the page always refreshes it immediately.
@@ -245,9 +259,6 @@ bool ALPanelExposurePage::postBuild()
                 updateSensor();
             }));
     }
-    mSensorConnections.emplace_back(gSavedSettings.getControl("CineSensorPreset")->getSignal()->connect(
-        [this](LLControlVariable*, const LLSD&, const LLSD&)
-        { onSensorPresetChanged(); }));
     syncSensorISO();
     updateSensor();
     showSensorReadout();
@@ -321,14 +332,6 @@ void ALPanelExposurePage::updateSensorGating()
 {
     setEnabledIfChanged(mSensorSeedRow, gSavedSettings.getBOOL("CineSensorSeedFixed"));
     setEnabledIfChanged(mCustomSensorCard, gSavedSettings.getU32("CineSensorPreset") == 3);
-}
-
-void ALPanelExposurePage::onSensorPresetChanged()
-{
-    // Replay restores the recorded ISO as well; do not overwrite it during Undo/Redo.
-    if (!ALKitHistory::replaying())
-        gSavedSettings.setF32("CineSensorISO", static_cast<F32>(ALSensorSettings::preset().baseISO));
-    mSensorDirty = true;
 }
 
 void ALPanelExposurePage::updateSensorStatus()

@@ -49,7 +49,6 @@ private:
     void updateSensorStatus();
     void updateSensorGating();
     void syncSensorISO();
-    void onSensorPresetChanged();
 
     LLButton* mUndo = nullptr;
     LLButton* mRedo = nullptr;

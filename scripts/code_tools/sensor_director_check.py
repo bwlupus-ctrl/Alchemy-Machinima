@@ -141,7 +141,10 @@ def native():
     view = ROOT / 'indra/newview'
     page = (view / 'alpanelexposurepage.cpp').read_text(encoding='utf-8')
     methods = '\n'.join(function(page, 'void ALPanelExposurePage::' + name + '(')
-                        for name in ('updateSensor', 'showSensorReadout', 'updateSensorStatus', 'updateSensorGating', 'syncSensorISO', 'onSensorPresetChanged'))
+                        for name in ('updateSensor', 'showSensorReadout', 'updateSensorStatus', 'updateSensorGating', 'syncSensorISO'))
+    control = (view / 'llviewercontrol.cpp').read_text(encoding='utf-8')
+    listener = re.search(r'    setting_setup_signal_listener\(gSavedSettings, "CineSensorPreset",.*?\n    \}\);',
+                         function(control, 'void settings_setup_listeners()'), re.S).group()
     seed_validation = function(page, 'bool sensorSeedTextValid(') + '\n' + function(page, 'std::string sensorSeedText(')
     binding = (view / 'alkitbinding.cpp').read_text(encoding='utf-8')
     seed_conversion = '\n'.join(function(binding, signature) for signature in
@@ -171,6 +174,7 @@ def native():
 #include <cctype>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -197,10 +201,11 @@ enum {TYPE_U32};
 struct LLControlVariable {LLSD value; LLSD get() const {return value;}int type(){return TYPE_U32;}};
 struct Settings {
     std::map<std::string,LLControlVariable> values;
+    std::map<std::string,std::function<void()>> listeners;
     F32 getF32(const std::string& key){return static_cast<F32>(values[key].value.value);}
     U32 getU32(const std::string& key){return static_cast<U32>(values[key].value.value);}
     bool getBOOL(const std::string& key){return getU32(key)!=0;}
-    void setF32(const std::string& key,F32 value){values[key].value=LLSD(value);}
+    void setF32(const std::string& key,F32 value){bool changed=values[key].value.value!=value;values[key].value=LLSD(value);if(changed&&listeners.count(key))listeners[key]();}
     void setU32(const std::string& key,U32 value){values[key].value=LLSD(static_cast<double>(value));}
     LLControlVariable* getControl(const std::string& key){return &values[key];}
 } gSavedSettings;
@@ -224,6 +229,8 @@ struct LLPipeline {
 } gPipeline;
 struct ALKitHistory {static bool replay;static bool replaying(){return replay;}};
 bool ALKitHistory::replay=false;
+bool alDiopterIsPresetMaterializing(){return false;}
+template<class F> void setting_setup_signal_listener(Settings& s,const std::string& key,F cb){s.listeners[key]=cb;}
 struct ALPanelExposurePage {
     LLTextBox readout,status; LLComboBox iso; LLView seed,custom;
     LLTextBox* mSensorReadout=&readout; LLTextBox* mSensorStatus=&status;
@@ -232,7 +239,7 @@ struct ALPanelExposurePage {
     bool mSensorDirty=true;
     bool mSensorEnabled=false;std::string mSensorReadoutText;
     bool isInVisibleChain() const{return true;}
-    void updateSensor();void showSensorReadout();void updateSensorStatus();void updateSensorGating();void syncSensorISO();void onSensorPresetChanged();
+    void updateSensor();void showSensorReadout();void updateSensorStatus();void updateSensorGating();void syncSensorISO();
 };
 struct LLTimer {void reset(){} double getElapsedTimeF64(){return 0;}};
 struct LLStringUtil {static void toLower(std::string& s){for(auto& c:s)c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));}};
@@ -276,12 +283,15 @@ int main(int argc,char** argv){
         assert(ui.mSensorStoredSeed.asString()==std::to_string(seed));
     }
     for(U32 index=0;index<4;++index){
+        gSavedSettings.setF32("CineSensorPreset",static_cast<F32>((index+1)%4));
+        gSavedSettings.setF32("CineSensorISO",12345.f);
         gSavedSettings.setF32("CineSensorPreset",static_cast<F32>(index));
         const auto preset=ALSensorSettings::preset();
-        gSavedSettings.setF32("CineSensorISO",12345.f);ui.onSensorPresetChanged();
         assert(gSavedSettings.getF32("CineSensorISO")==preset.baseISO);
         ALKitHistory::replay=true;
-        gSavedSettings.setF32("CineSensorISO",12345.f);ui.onSensorPresetChanged();
+        gSavedSettings.setF32("CineSensorISO",12345.f);
+        gSavedSettings.setF32("CineSensorPreset",static_cast<F32>((index+1)%4));
+        gSavedSettings.setF32("CineSensorPreset",static_cast<F32>(index));
         assert(gSavedSettings.getF32("CineSensorISO")==12345.f);
         ui.syncSensorISO();ui.updateSensor();ui.showSensorReadout();assert(ui.iso.selected=="12345");
         const auto count=ui.iso.values.size();ui.syncSensorISO();assert(ui.iso.values.size()==count);
@@ -342,7 +352,8 @@ void ensure(const char*,bool value){REQUIRE(value);}
 template<class A,class B> void ensure_equals(const char*,const A& a,const B& b){REQUIRE(a==b);}
 }
 '''
-    native_source = '\n'.join((prefix, seed_validation, seed_conversion, pipeline_status, methods, declarations,
+    main = main.replace('    tut::sensor_model_object unit;', '    settings_setup_listeners();\n    tut::sensor_model_object unit;')
+    native_source = '\n'.join((prefix, 'void settings_setup_listeners(){' + listener + '}', seed_validation, seed_conversion, pipeline_status, methods, declarations,
                                helpers, search_header, search, tut, unit_source, main))
     source.write_text(native_source, encoding='utf-8')
     candidates = sorted((Path(os.environ['ProgramFiles']) / 'Microsoft Visual Studio').glob(
@@ -405,6 +416,8 @@ if __name__ == '__main__':
         check()
         static_mutations()
         native()
+        import sensor_director_restore_check
+        sensor_director_restore_check.check()
     except (AssertionError, StopIteration) as exc:
         print('FAIL:', exc)
         sys.exit(1)

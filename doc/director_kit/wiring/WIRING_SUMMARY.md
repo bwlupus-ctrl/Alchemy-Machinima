@@ -71,8 +71,8 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2826 LLFloaterDirector::bindFrameOrbitPage |
-| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:2819 LLFloaterDirector::bindFrameOrbitPage |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2827 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:2820 LLFloaterDirector::bindFrameOrbitPage |
 
 ### vcam_tab (1)
 
@@ -84,7 +84,7 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2318 LLFloaterDirector::bindLensFocusPage |
+| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2319 LLFloaterDirector::bindLensFocusPage |
 
 ### atmosphere_tab (22)
 

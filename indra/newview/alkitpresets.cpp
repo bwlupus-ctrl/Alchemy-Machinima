@@ -1,4 +1,5 @@
 #include "llviewerprecompiledheaders.h"
+#include "aldiopterpresetbank.h"
 #include "alkitpresets.h"
 #include "alpresetlook.h"
 #include "alrotoink.h"
@@ -194,6 +195,7 @@ LLSD snapshot(const std::vector<std::string>& settings)
 }
 void apply(const std::vector<std::string>& settings, const LLSD& values)
 {
+    ALScopedPresetMaterializing preset_guard;
     for (const std::string& name : settings)
         if (values.has(name))
             if (LLControlVariable* control = gSavedSettings.getControl(name)) control->set(values[name]);
