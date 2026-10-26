@@ -234,10 +234,10 @@ def main():
     baseline = llsd(ET.fromstring(oldtext))['presets']
     library = llsd(ET.parse(ROOT / XML).getroot())
     presets = library['presets']
-    assert len(baseline)==113 and len(presets)==125
+    assert len(baseline)==113 and len(presets)>=125
     assert presets[:113] == baseline, 'existing preset changed'
     assert len({p['name'].casefold() for p in presets}) == len(presets)
-    for p in presets[113:]:
+    for p in presets[113:125]:
         assert p['name'].removeprefix(PREFIX) in FAMILIES
         assert p['category']=='Shadow Sculpt' and len(p['lights'])==4
         for l in p['lights']:
@@ -254,7 +254,7 @@ def main():
     assert 'ALWorldShadow::worldEligibleWithNative(native_sampled,picked)' in pipeline
     frames = compile_model(out, presets, baseline, defaults)
     from rig_shadow_gl import evaluate
-    result = evaluate(presets[113:],frames,defaults,out)
+    result = evaluate(presets[113:125],frames,defaults,out)
     from rig_shadow_flags_check import check as check_flags
     from rig_shadow_detail_check import evaluate as evaluate_detail
     result['world_flag_checks'] = check_flags(out)

@@ -2031,6 +2031,46 @@
           <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>0.04</real></map>
       </array>
     </map>
+    <!-- Even Wrap: four equal 5600K softbox fixtures at 90-degree spacing, 25 degrees up;
+         even from any camera angle. Actor Only variant lights actors only (Actor Mask friendly). -->
+    <map>
+      <key>name</key><string>Even Wrap</string>
+      <key>category</key><string>Utility</string>
+      <key>intent</key><string>Four equal soft 5600K lights around the subject; even from any camera angle, no key side.</string>
+      <key>radius</key><real>2.0</real>
+      <key>master_ev</key><real>0.0</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>45.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>135.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>-135.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>-45.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>false</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+      </array>
+    </map>
+    <map>
+      <key>name</key><string>Even Wrap - Actor Only</string>
+      <key>category</key><string>Utility</string>
+      <key>intent</key><string>Even Wrap lighting actors only; the set keeps its own light. Clean for the Actor Mask.</string>
+      <key>radius</key><real>2.0</real>
+      <key>master_ev</key><real>0.0</real>
+      <key>ratio_lock</key><boolean>false</boolean>
+      <key>ratio_stops</key><real>0</real>
+      <key>lights</key><array>
+        <map><key>yaw</key><real>45.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>135.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>-135.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+        <map><key>yaw</key><real>-45.0</real><key>pitch</key><real>25.0</real><key>profile_idx</key><integer>3</integer><key>profile_name</key><string>5600K Day</string><key>ev</key><real>-1.0</real><key>beam_idx</key><integer>1</integer><key>beam_name</key><string>Softbox</string><key>on</key><boolean>true</boolean><key>gobo_idx</key><integer>0</integer><key>gel_idx</key><integer>0</integer><key>flicker_idx</key><integer>0</integer><key>flicker_amount</key><real>0.0</real><key>detail_shadows</key><boolean>false</boolean><key>actor_only</key><boolean>true</boolean>
+          <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
+      </array>
+    </map>
   </array>
 </map>
 </llsd>
