@@ -21,11 +21,15 @@
 #define AL_ALPANELEXPOSUREPAGE_H
 
 #include "llpanel.h"
+#include "aluirefresh.h"
 
 #include <boost/signals2.hpp>
+#include <vector>
 
 class LLButton;
 class LLUICtrl;
+class LLTextBox;
+class LLComboBox;
 
 class ALPanelExposurePage final : public LLPanel
 {
@@ -35,10 +39,17 @@ public:
 
     bool postBuild() override;
     void onVisibilityChange(bool new_visibility) override;
+    void draw() override;
 
 private:
     void updateTonemapGating();
     void updateHistoryButtons();
+    void updateSensor();
+    void showSensorReadout();
+    void updateSensorStatus();
+    void updateSensorGating();
+    void syncSensorISO();
+    void onSensorPresetChanged();
 
     LLButton* mUndo = nullptr;
     LLButton* mRedo = nullptr;
@@ -46,6 +57,20 @@ private:
     LLUICtrl* mAMDExposureReset = nullptr;
     LLUICtrl* mSLogEV = nullptr;
     LLUICtrl* mSLogEVReset = nullptr;
+    LLTextBox* mSensorReadout = nullptr;
+    LLTextBox* mSensorStatus = nullptr;
+    LLComboBox* mSensorISO = nullptr;
+    LLUICtrl* mSensorSeed = nullptr;
+    LLSD mSensorStoredISO;
+    LLSD mSensorStoredSeed;
+    LLView* mSensorSeedRow = nullptr;
+    LLView* mCustomSensorCard = nullptr;
+    bool mSensorDirty = true;
+    bool mSensorEnabled = false;
+    std::string mSensorReadoutText;
+    ALLiveReadoutClock mSensorClock{10.f};
+    ALLiveReadoutClock mSensorStatusClock{2.f};
+    std::vector<boost::signals2::scoped_connection> mSensorConnections;
 
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mHistoryConnection;

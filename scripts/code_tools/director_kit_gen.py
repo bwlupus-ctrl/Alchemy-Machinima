@@ -323,8 +323,9 @@ def validate_data(data: dict) -> None:
     # Shaft Performance (10/24): five global caps/selectors + cost readout; two existing rows move. 2201 -> 2207.
     # Shaft engine selector (10/24): one row, 2207 -> 2208.
     # Merged into main after rim normals (10/24): 2214 + 7 shaft rows -> 2221.
-    if len(pages) != 38 or row_count != 2221:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2221")
+    # ISO sensor WP-C: +23 rows (10 Sensor + 13 Custom sensor); 2221 -> 2244.
+    if len(pages) != 38 or row_count != 2244:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2244")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -874,7 +875,8 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["undo_context"] = str(cfg["undo_context"])
     own = set(cfg.get("own_history", []))
     settings = [] if cfg.get("no_history") else sorted(
-        ({str(row["s"]) for row in all_rows(page) if row.get("s")} - own) | set(cfg.get("watch_extra", [])))
+        ({str(row.get("s") or row["code_setting"]) for row in all_rows(page)
+          if row.get("s") or row.get("code_setting")} - own) | set(cfg.get("watch_extra", [])))
     if settings:
         attrs["watch_settings"] = ",".join(settings)
     return attrs
@@ -1658,7 +1660,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                 fields = [group["name"], page["name"], page.get("label", ""), group.get("label", ""),
                           section_for.get(ci, ""), card.get("id", ""), card.get("t", ""),
                           "" if oi is None else oi, row.get("w", ""), row.get("l", ""), row.get("k", ""),
-                          row.get("s", ""), str(row.get("dc") if row.get("dc") is not None
+                          row.get("s") or row.get("code_setting", ""), str(row.get("dc") if row.get("dc") is not None
                                                    else (0 if row.get("k") in ("dial", "arc") else 3)),
                           flags, row.get("kw", ""), row.get("h", "")]
                 # [Connectedness B8] Only index widgets that exist on their page: a row naming a widget the

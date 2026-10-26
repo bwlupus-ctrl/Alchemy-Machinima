@@ -375,6 +375,8 @@ public:
     // Shared by the main color-correct pass and VC3 atlas shaders. Indices map
     // directly to gPrismPreviewProgram[8].
     bool worldHDREnabled() const;
+    // Empty when the main-camera sensor can run; safe for a throttled UI readout.
+    const char* sensorUnavailableReason() const;
     U32 worldPresentationPermutation() const;
     U32 colorCorrectPermutation(bool apply_tonemap, bool apply_color_grade) const;
     // Uploads the same live exposure/tonemap/grade controls used by

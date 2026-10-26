@@ -4393,7 +4393,7 @@
     <key>CineSensorEnabled</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: Enabled. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: Enabled. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4426,7 +4426,7 @@
     <key>CineSensorISO</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: ISO. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: ISO. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4437,7 +4437,7 @@
     <key>CineSensorPreset</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: Preset. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: Preset. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4448,7 +4448,7 @@
     <key>CineSensorBrightnessMode</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: BrightnessMode. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: BrightnessMode. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4459,7 +4459,7 @@
     <key>CineSensorNoiseAmount</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: NoiseAmount. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: NoiseAmount. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4470,7 +4470,7 @@
     <key>CineSensorChroma</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: Chroma. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: Chroma. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4481,7 +4481,7 @@
     <key>CineSensorSeedFixed</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: SeedFixed. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: SeedFixed. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4492,7 +4492,7 @@
     <key>CineSensorSeed</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: Seed. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: Seed. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4503,7 +4503,7 @@
     <key>CineSensorCustomBaseISO</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomBaseISO. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomBaseISO. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4514,7 +4514,7 @@
     <key>CineSensorCustomSwitchISO</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomSwitchISO. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomSwitchISO. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4525,7 +4525,7 @@
     <key>CineSensorCustomHeadroom</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomHeadroom. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomHeadroom. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4536,7 +4536,7 @@
     <key>CineSensorCustomLCGFullWell</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomLCGFullWell. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomLCGFullWell. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4547,7 +4547,7 @@
     <key>CineSensorCustomLCGReadNoise</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomLCGReadNoise. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomLCGReadNoise. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4558,7 +4558,7 @@
     <key>CineSensorCustomLCGAnalogBase</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomLCGAnalogBase. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomLCGAnalogBase. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4569,7 +4569,7 @@
     <key>CineSensorCustomLCGPedestal</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomLCGPedestal. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomLCGPedestal. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4580,7 +4580,7 @@
     <key>CineSensorCustomLCGWhite</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomLCGWhite. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomLCGWhite. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4591,7 +4591,7 @@
     <key>CineSensorCustomHCGFullWell</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomHCGFullWell. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomHCGFullWell. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4602,7 +4602,7 @@
     <key>CineSensorCustomHCGReadNoise</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomHCGReadNoise. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomHCGReadNoise. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4613,7 +4613,7 @@
     <key>CineSensorCustomHCGAnalogBase</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomHCGAnalogBase. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomHCGAnalogBase. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4624,7 +4624,7 @@
     <key>CineSensorCustomHCGPedestal</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomHCGPedestal. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomHCGPedestal. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>
@@ -4635,7 +4635,7 @@
     <key>CineSensorCustomHCGWhite</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: CustomHCGWhite. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: CustomHCGWhite. Illustrative calibration; exposed in Director > Light > Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>

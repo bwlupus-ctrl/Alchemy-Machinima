@@ -357,6 +357,12 @@ class Ctx(object):
                 stem = stem[:-4]
             if stem in self.cpp.panel_reg:
                 inst.add(self.cpp.panel_reg[stem])
+            # Kit pages use an explicit LLPanelInjector class on the generated
+            # root; their filename need not equal the injector registry key.
+            for _tag, _line, attrs in self.elems(rel):
+                injector = attrs.get('class')
+                if injector in self.cpp.panel_reg:
+                    inst.add(self.cpp.panel_reg[injector])
         return inst
 
 
@@ -503,7 +509,7 @@ def build_catalog(mock, ps_pages):
                         'page': p['name'], 'group': g['name'], 'card': c['id'],
                         'card_title': c.get('t', ''), 'row': ri, 'card_idx': ci,
                         'label': r.get('l', ''), 'kind': kind, 'widget': r.get('w', ''),
-                        'setting': r.get('s', ''), 'catalog': 'mockup',
+                        'setting': r.get('s') or r.get('code_setting', ''), 'catalog': 'mockup',
                         'interactive': (kind not in NONINTERACTIVE_KINDS) and bool(r.get('w')),
                     })
     seen = set((r['page'], r['widget']) for r in rows)
@@ -587,7 +593,10 @@ def main():
     def roots_v1(page):
         rs = []
         for r in ps_pages.get(page, {}).get('owner_roots', []):
-            if v1.text(r['file']) is not None:
+            # Page-source evidence includes native v2 roots too; those are not
+            # reachable from the legacy Director and must not inflate v1 wiring.
+            if (not r['file'].rsplit('/', 1)[-1].startswith('panel_dpage_') and
+                    v1.text(r['file']) is not None):
                 rs.append(r['file'])
         rs.append(V1_FLOATER)
         return list(OrderedDict.fromkeys(rs))

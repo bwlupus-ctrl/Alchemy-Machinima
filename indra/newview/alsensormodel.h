@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 
 namespace ALSensorModel
 {
@@ -71,6 +72,8 @@ namespace ALSensorModel
     const std::array<Preset, 3>& illustrativePresets();
     Parameters derive(const Preset&, double iso,
                       BrightnessMode = BrightnessMode::Neutral);
+    // Display the physical calibration, before the artistic noise amount/chroma controls.
+    std::string readout(const Preset&, double iso, BrightnessMode);
     Matrix covariance(const Matrix& cameraToWorking,
                       const std::array<double, 3>& cameraVariance);
     // Positive semidefinite matrices are accepted (including zero noise).

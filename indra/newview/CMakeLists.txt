@@ -1298,6 +1298,7 @@ set(viewer_HEADER_FILES
     alviewfinder.h
     alweathermodel.h
     alsensormodel.h
+    alsensorsettings.h
     alghostgroupmodel.h
     alghostrotation.h
     alghostinteractionstate.h

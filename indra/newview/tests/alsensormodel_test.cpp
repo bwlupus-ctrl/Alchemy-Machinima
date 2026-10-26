@@ -194,6 +194,32 @@ namespace tut
     }
 
     template<> template<>
+    void sensor_model_object::test<9>()
+    {
+        std::array<Preset, 4> presets = {{illustrativePresets()[0], illustrativePresets()[1],
+            illustrativePresets()[2], illustrativePresets()[0]}};
+        presets[3].baseISO = 250.;
+        presets[3].switchISO = 1600.;
+        presets[3].headroom = 4.25;
+        presets[3].hcg = {12000., 1.7, .4, 256., 16383.};
+        for (const auto& preset : presets)
+            for (double iso : {100., 800., 3200., 25600.})
+                for (auto mode : {BrightnessMode::Neutral, BrightnessMode::Brightens})
+                {
+                    const auto p = derive(preset, iso, mode);
+                    const std::string shown = readout(preset, iso, mode);
+                    ensure("gain readout equals model", shown.substr(0, 3) ==
+                        (p.mode == GainMode::HCG ? "HCG" : "LCG"));
+                    const auto head = shown.find("Headroom: ") + 10;
+                    const auto floor = shown.find("Noise floor: ") + 13;
+                    ensure("headroom readout equals model",
+                        std::abs(std::stod(shown.substr(head)) - p.headroomStops) <= .00501);
+                    ensure("noise floor readout equals model",
+                        std::abs(std::stod(shown.substr(floor)) - p.noiseFloorStops) <= .00501);
+                }
+    }
+
+    template<> template<>
     void sensor_model_object::test<8>()
     {
         const auto& preset = illustrativePresets()[0];

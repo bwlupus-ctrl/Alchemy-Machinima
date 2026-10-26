@@ -43,6 +43,7 @@
 
 #include "pipeline.h"
 #include "alsensormodel.h"
+#include "alsensorsettings.h"
 #include "alvcamautovol.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -25934,40 +25935,35 @@ void LLPipeline::sensorAAEncode(LLRenderTarget* src, LLRenderTarget* dst)
     dst->flush();
 }
 
+const char* LLPipeline::sensorUnavailableReason() const
+{
+    if (!worldHDREnabled()) return "Sensor unavailable: the current rendering path is not HDR.";
+    if (!colorCorrectWillApplyExposure(true))
+        return "Sensor unavailable: this sky, snapshot or post-processing context bypasses exposure.";
+    if (!gSavedSettings.getBOOL("CineSensorPhysicalOrderEnabled"))
+        return "Sensor unavailable: physical sensor order is disabled in Debug Settings.";
+    // Sensor shaders load lazily on enable; only a latched load/allocation failure
+    // proves they are unsupported while the sensor is off.
+    if (mSensorFailed)
+        return "Sensor unavailable: sensor shader or HDR targets are unsupported. Toggle Simulate sensor to retry.";
+    if (mRT != &mMainRT || gCubeSnapshot || sPrismLensRender || sPrismPreviewRender || sImpostorRender || sRenderingHUDs)
+        return "Sensor unavailable in this capture context; only the main HDR camera is supported.";
+    if (!gSavedSettings.getBOOL("CineSensorNoiseEnabled"))
+        return "Sensor noise is disabled in Debug Settings; only the physical processing order runs.";
+    return "";
+}
+
 void LLPipeline::renderSensor(LLRenderTarget* src, LLRenderTarget* dst)
 {
     LL_PROFILE_GPU_ZONE("sensor collection and ADC");
     using namespace ALSensorModel;
-    static LLCachedControl<U32> preset_id(gSavedSettings, "CineSensorPreset", 0);
     static LLCachedControl<F32> iso(gSavedSettings, "CineSensorISO", 100.f);
     static LLCachedControl<U32> brightness(gSavedSettings, "CineSensorBrightnessMode", 0);
     static LLCachedControl<F32> amount(gSavedSettings, "CineSensorNoiseAmount", 1.f);
     static LLCachedControl<F32> chroma(gSavedSettings, "CineSensorChroma", 1.f);
     static LLCachedControl<bool> seed_fixed(gSavedSettings, "CineSensorSeedFixed", false);
     static LLCachedControl<U32> seed(gSavedSettings, "CineSensorSeed", 0);
-    Preset preset = illustrativePresets()[llmin(preset_id(), 2u)];
-    if (preset_id() == 3)
-    {
-        preset.name = "Custom illustrative sensor";
-        const auto value = [](const std::string& name, F32 fallback, F32 low, F32 high)
-        {
-            const F32 setting = gSavedSettings.getF32(name);
-            return llclamp(std::isfinite(setting) ? setting : fallback, low, high);
-        };
-        preset.baseISO = value("CineSensorCustomBaseISO", 100.f, 1.f, 102400.f);
-        preset.switchISO = value("CineSensorCustomSwitchISO", 0.f, 0.f, 102400.f);
-        preset.headroom = value("CineSensorCustomHeadroom", 3.5f, 0.f, 12.f);
-        const auto calibration = [&](const std::string& mode)
-        {
-            const std::string prefix = "CineSensorCustom" + mode;
-            const F32 pedestal = value(prefix + "Pedestal", 512.f, 0.f, 65534.f);
-            return Calibration{ value(prefix + "FullWell", 50000.f, 1.f, 1e7f),
-                value(prefix + "ReadNoise", 3.f, .001f, 1e4f), value(prefix + "AnalogBase", .25f, .0001f, 100.f),
-                pedestal, value(prefix + "White", 16383.f, pedestal + 1.f, 65535.f) };
-        };
-        preset.lcg = calibration("LCG");
-        preset.hcg = calibration("HCG");
-    }
+    const Preset preset = ALSensorSettings::preset();
     const U32 viewer_frame = LLFrameTimer::getFrameCount();
     if (!mSensorClockStarted || mSensorLastViewerFrame != viewer_frame)
     {

@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2027,
-    "owner_roots": 33,
+    "rows": 2050,
+    "owner_roots": 34,
     "unresolved_rows": 22,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2027
+    "independent_json_rows": 2050
   },
   "setting_conflicts": [
     {
@@ -873,7 +873,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 40,
+          "line": 41,
           "widget": "exp_amb_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -934,7 +934,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 45,
+          "line": 46,
           "widget": "exp_probe_diff_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -995,7 +995,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 50,
+          "line": 51,
           "widget": "exp_probe_spec_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1056,7 +1056,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 22,
+          "line": 23,
           "widget": "exp_local_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1117,7 +1117,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 55,
+          "line": 56,
           "widget": "exp_local_include_rig",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1178,7 +1178,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 35,
+          "line": 36,
           "widget": "exp_moon_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1239,7 +1239,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 32,
+          "line": 33,
           "widget": "exp_moon_linked",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1300,7 +1300,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 27,
+          "line": 28,
           "widget": "exp_shadow_lift",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1361,7 +1361,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 17,
+          "line": 18,
           "widget": "exp_gi_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1422,7 +1422,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 12,
+          "line": 13,
           "widget": "exp_sun_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1495,7 +1495,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 79,
+          "line": 80,
           "widget": "exp_tonemap_type",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1629,7 +1629,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 99,
+          "line": 100,
           "widget": "exp_amd_exposure",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -2102,7 +2102,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 104,
+          "line": 105,
           "widget": "exp_slog_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -2314,7 +2314,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 109,
+          "line": 110,
           "widget": "exp_legacy_gamma_skies",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -16933,6 +16933,538 @@
           "line": 3073,
           "group": "Global",
           "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorBrightnessMode",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 190,
+          "widget": "sensor_brightness",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4448,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorChroma",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 203,
+          "widget": "sensor_chroma",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4470,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomBaseISO",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 222,
+          "widget": "sensor_custom_base",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4503,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomHCGAnalogBase",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 252,
+          "widget": "sensor_custom_hcg_analogbase",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4613,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomHCGFullWell",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 246,
+          "widget": "sensor_custom_hcg_fullwell",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4591,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomHCGPedestal",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 255,
+          "widget": "sensor_custom_hcg_pedestal",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4624,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomHCGReadNoise",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 249,
+          "widget": "sensor_custom_hcg_readnoise",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4602,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomHCGWhite",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 258,
+          "widget": "sensor_custom_hcg_white",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4635,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomHeadroom",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 228,
+          "widget": "sensor_custom_headroom",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4525,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomLCGAnalogBase",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 237,
+          "widget": "sensor_custom_lcg_analogbase",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4558,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomLCGFullWell",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 231,
+          "widget": "sensor_custom_lcg_fullwell",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4536,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomLCGPedestal",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 240,
+          "widget": "sensor_custom_lcg_pedestal",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4569,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomLCGReadNoise",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 234,
+          "widget": "sensor_custom_lcg_readnoise",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4547,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomLCGWhite",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 243,
+          "widget": "sensor_custom_lcg_white",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4580,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorCustomSwitchISO",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 225,
+          "widget": "sensor_custom_switch",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4514,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorEnabled",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 143,
+          "widget": "sensor_enabled",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4393,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorNoiseAmount",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 198,
+          "widget": "sensor_amount",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4459,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorPreset",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 180,
+          "widget": "sensor_preset",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4437,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorSeedFixed",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 208,
+          "widget": "sensor_seed_fixed",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4481,
+          "group": "Global",
+          "type": "Boolean"
         }
       ],
       "writable_home": null
@@ -34663,7 +35195,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 127,
+          "line": 128,
           "widget": "exp_bloom_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -34725,7 +35257,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 132,
+          "line": 133,
           "widget": "exp_bloom_threshold",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -35908,7 +36440,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 71,
+          "line": 72,
           "widget": "exp_auto_exposure",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -35992,7 +36524,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 74,
+          "line": 75,
           "widget": "exp_exposure",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -40079,7 +40611,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 94,
+          "line": 95,
           "widget": "exp_tonemap_mix",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -49114,7 +49646,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6866,
+              "line": 6868,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49274,7 +49806,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8190,
+              "line": 8192,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49366,7 +49898,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6859,
+              "line": 6861,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49379,7 +49911,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8190,
+              "line": 8192,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49642,7 +50174,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8192,
+              "line": 8194,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49760,7 +50292,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8196,
+              "line": 8198,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49852,7 +50384,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8200,
+              "line": 8202,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -49944,7 +50476,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8208,
+              "line": 8210,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50036,7 +50568,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8241,
+              "line": 8243,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50128,7 +50660,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8247,
+              "line": 8249,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50233,7 +50765,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8249,
+              "line": 8251,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50325,7 +50857,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8251,
+              "line": 8253,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50501,7 +51033,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7253,
+              "line": 7255,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50514,7 +51046,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8180,
+              "line": 8182,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50527,7 +51059,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8254,
+              "line": 8256,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51040,7 +51572,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8310,
+              "line": 8312,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51154,7 +51686,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8311,
+              "line": 8313,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51268,7 +51800,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8312,
+              "line": 8314,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51395,7 +51927,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8313,
+              "line": 8315,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51588,7 +52120,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6861,
+              "line": 6863,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51601,7 +52133,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8287,
+              "line": 8289,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51823,7 +52355,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8301,
+              "line": 8303,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51941,7 +52473,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6861,
+              "line": 6863,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51954,7 +52486,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8305,
+              "line": 8307,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52681,7 +53213,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8257,
+              "line": 8259,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -52795,7 +53327,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8261,
+              "line": 8263,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53216,7 +53748,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8265,
+              "line": 8267,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53308,7 +53840,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8278,
+              "line": 8280,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -53400,7 +53932,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8281,
+              "line": 8283,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55184,7 +55716,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8284,
+              "line": 8286,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55798,7 +56330,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7573,
+              "line": 7575,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55946,7 +56478,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6531,
+              "line": 6533,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55959,7 +56491,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8117,
+              "line": 8119,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55972,7 +56504,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8124,
+              "line": 8126,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55985,7 +56517,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8139,
+              "line": 8141,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -55998,7 +56530,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8466,
+              "line": 8468,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56799,7 +57331,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8117,
+              "line": 8119,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56812,7 +57344,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8126,
+              "line": 8128,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56825,7 +57357,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8466,
+              "line": 8468,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -57134,7 +57666,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8130,
+              "line": 8132,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -57722,7 +58254,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8128,
+              "line": 8130,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59350,7 +59882,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8429,
+              "line": 8431,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59442,7 +59974,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7576,
+              "line": 7578,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -61167,7 +61699,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8403,
+              "line": 8405,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -61283,7 +61815,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8403,
+              "line": 8405,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -70971,7 +71503,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8343,
+              "line": 8345,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71199,7 +71731,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8344,
+              "line": 8346,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -71480,7 +72012,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7573,
+              "line": 7575,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72128,7 +72660,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8348,
+              "line": 8350,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72220,7 +72752,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8350,
+              "line": 8352,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72312,7 +72844,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8351,
+              "line": 8353,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72417,7 +72949,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8352,
+              "line": 8354,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72675,7 +73207,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6542,
+              "line": 6544,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72688,7 +73220,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8106,
+              "line": 8108,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72701,7 +73233,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8328,
+              "line": 8330,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -72806,7 +73338,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7573,
+              "line": 7575,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -73319,7 +73851,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8109,
+              "line": 8111,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -73503,7 +74035,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8338,
+              "line": 8340,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -73516,7 +74048,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8370,
+              "line": 8372,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -73621,7 +74153,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8339,
+              "line": 8341,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -73634,7 +74166,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8370,
+              "line": 8372,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -73967,7 +74499,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8368,
+              "line": 8370,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74151,7 +74683,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8369,
+              "line": 8371,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74322,7 +74854,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8353,
+              "line": 8355,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74427,7 +74959,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8346,
+              "line": 8348,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74598,7 +75130,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8338,
+              "line": 8340,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74611,7 +75143,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8373,
+              "line": 8375,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74782,7 +75314,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8355,
+              "line": 8357,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74879,7 +75411,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8357,
+              "line": 8359,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -74971,7 +75503,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8358,
+              "line": 8360,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77362,7 +77894,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8360,
+              "line": 8362,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77454,7 +77986,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8362,
+              "line": 8364,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77549,7 +78081,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8364,
+              "line": 8366,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77645,7 +78177,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8366,
+              "line": 8368,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77934,7 +78466,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8335,
+              "line": 8337,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77947,7 +78479,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8339,
+              "line": 8341,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -77960,7 +78492,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8375,
+              "line": 8377,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -80078,7 +80610,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7576,
+              "line": 7578,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -80420,7 +80952,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7570,
+              "line": 7572,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -80523,7 +81055,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7570,
+              "line": 7572,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -80626,7 +81158,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7570,
+              "line": 7572,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -83479,7 +84011,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7796,
+              "line": 7798,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -84362,7 +84894,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8457,
+              "line": 8459,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -145767,7 +146299,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6965,
+              "line": 6967,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -145780,7 +146312,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8762,
+              "line": 8764,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -153122,7 +153654,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6717,
+              "line": 6719,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -153214,7 +153746,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6721,
+              "line": 6723,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -153320,7 +153852,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6722,
+              "line": 6724,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -153412,7 +153944,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6723,
+              "line": 6725,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -153504,7 +154036,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6724,
+              "line": 6726,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -156208,7 +156740,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6969,
+              "line": 6971,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -156221,7 +156753,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8771,
+              "line": 8773,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -161994,7 +162526,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 29244,
+              "line": 29331,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -162061,7 +162593,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 24686,
+              "line": 24699,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -162128,7 +162660,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 24698,
+              "line": 24711,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -163649,8 +164181,16 @@
       "label": "Exposure",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 25,
+      "row_count": 48,
       "owner_roots": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "tag": "panel",
+          "name": "exposure_tab_logic",
+          "line": 3,
+          "matched_rows": 48,
+          "evidence": "row-widget match"
+        },
         {
           "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
           "tag": "panel",
@@ -163670,11 +164210,23 @@
       ],
       "owner_classes": [
         {
+          "class": "ALPanelExposurePage",
+          "reference_count": 12
+        },
+        {
           "class": "ALPanelExposureHub",
           "reference_count": 4
         },
         {
           "class": "ALExposureSettingsHistory",
+          "reference_count": 2
+        },
+        {
+          "class": "ALFloaterLightBox",
+          "reference_count": 2
+        },
+        {
+          "class": "ALKitBindingRegistry",
           "reference_count": 2
         },
         {
@@ -163688,17 +164240,13 @@
         {
           "class": "LLFloaterDirector",
           "reference_count": 1
-        },
-        {
-          "class": "ALFloaterLightBox",
-          "reference_count": 1
         }
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 19,
-        "setting_coverage": 0.76,
-        "cpp_referenced_rows": 7,
+        "setting_bound_rows": 40,
+        "setting_coverage": 0.833333,
+        "cpp_referenced_rows": 11,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -163729,6 +164277,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 13,
+              "tag": "slider",
+              "control_name": "AlchemyEnvSunEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 34,
               "tag": "slider",
@@ -163749,21 +164310,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 12,
-              "tag": "slider",
-              "control_name": "AlchemyEnvSunEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -163791,18 +164337,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 12,
-              "widget": "exp_sun_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -163846,6 +164380,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 18,
+              "tag": "slider",
+              "control_name": "AlchemyEnvSkyGIEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 39,
               "tag": "slider",
@@ -163866,21 +164413,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 17,
-              "tag": "slider",
-              "control_name": "AlchemyEnvSkyGIEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -163908,18 +164440,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 17,
-              "widget": "exp_gi_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -163963,6 +164483,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 23,
+              "tag": "slider",
+              "control_name": "AlchemyEnvLocalLightEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 47,
               "tag": "slider",
@@ -163983,21 +164516,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 22,
-              "tag": "slider",
-              "control_name": "AlchemyEnvLocalLightEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164025,18 +164543,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 22,
-              "widget": "exp_local_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164080,6 +164586,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 28,
+              "tag": "slider",
+              "control_name": "AlchemyEnvShadowLiftEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 49,
               "tag": "slider",
@@ -164100,21 +164619,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 27,
-              "tag": "slider",
-              "control_name": "AlchemyEnvShadowLiftEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164142,18 +164646,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 27,
-              "widget": "exp_shadow_lift",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164197,6 +164689,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 33,
+              "tag": "kit_switch",
+              "control_name": "AlchemyEnvMoonLinked",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 36,
               "tag": "check_box",
@@ -164217,21 +164722,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 32,
-              "tag": "kit_switch",
-              "control_name": "AlchemyEnvMoonLinked",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164259,18 +164749,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 32,
-              "widget": "exp_moon_linked",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164314,6 +164792,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 36,
+              "tag": "slider",
+              "control_name": "AlchemyEnvMoonEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 37,
               "tag": "slider",
@@ -164334,21 +164825,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 35,
-              "tag": "slider",
-              "control_name": "AlchemyEnvMoonEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164376,18 +164852,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 35,
-              "widget": "exp_moon_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164431,6 +164895,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 41,
+              "tag": "slider",
+              "control_name": "AlchemyEnvGIAmbientEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 41,
               "tag": "slider",
@@ -164451,21 +164928,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 40,
-              "tag": "slider",
-              "control_name": "AlchemyEnvGIAmbientEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164493,18 +164955,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 40,
-              "widget": "exp_amb_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164548,6 +164998,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 46,
+              "tag": "slider",
+              "control_name": "AlchemyEnvGIProbeDiffuseEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 43,
               "tag": "slider",
@@ -164568,21 +165031,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 45,
-              "tag": "slider",
-              "control_name": "AlchemyEnvGIProbeDiffuseEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164610,18 +165058,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 45,
-              "widget": "exp_probe_diff_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164665,6 +165101,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 51,
+              "tag": "slider",
+              "control_name": "AlchemyEnvGIProbeSpecEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 45,
               "tag": "slider",
@@ -164685,21 +165134,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 50,
-              "tag": "slider",
-              "control_name": "AlchemyEnvGIProbeSpecEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164727,18 +165161,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 50,
-              "widget": "exp_probe_spec_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164782,6 +165204,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 56,
+              "tag": "kit_switch",
+              "control_name": "AlchemyEnvLocalLightIncludeRig",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 51,
               "tag": "check_box",
@@ -164802,21 +165237,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 55,
-              "tag": "kit_switch",
-              "control_name": "AlchemyEnvLocalLightIncludeRig",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164844,18 +165264,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 55,
-              "widget": "exp_local_include_rig",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -164890,6 +165298,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 61,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 64,
               "tag": "text",
@@ -164910,21 +165331,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 60,
-              "tag": "text",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -164961,6 +165367,21 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 64,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [
+                "Floater.ShowOrBringToFront"
+              ],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 65,
               "tag": "button",
@@ -164996,23 +165417,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 63,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [
-                "Floater.ShowOrBringToFront"
-              ],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165060,6 +165464,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 72,
+              "tag": "kit_switch",
+              "control_name": "RenderDynamicExposureEnabled",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 8,
               "tag": "check_box",
@@ -165080,21 +165497,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 71,
-              "tag": "kit_switch",
-              "control_name": "RenderDynamicExposureEnabled",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165122,18 +165524,6 @@
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
                 "tag": "floater",
                 "name": "env_adjust_snapshot",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 71,
-              "widget": "exp_auto_exposure",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
                 "line": 3
               }
             },
@@ -165177,6 +165567,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 75,
+              "tag": "slider",
+              "control_name": "RenderExposure",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 9,
               "tag": "slider",
@@ -165197,21 +165600,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 74,
-              "tag": "slider",
-              "control_name": "RenderExposure",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165268,18 +165656,6 @@
                 "tag": "floater",
                 "name": "prefs_graphics_advanced",
                 "line": 5
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 74,
-              "widget": "exp_exposure",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
               }
             },
             {
@@ -165356,6 +165732,19 @@
           ],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 80,
+              "tag": "combo_box",
+              "control_name": "AlchemyRenderTonemapType",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 13,
               "tag": "combo_box",
@@ -165376,21 +165765,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 79,
-              "tag": "combo_box",
-              "control_name": "AlchemyRenderTonemapType",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165435,18 +165809,6 @@
                 "tag": "floater",
                 "name": "prefs_graphics_advanced",
                 "line": 5
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 79,
-              "widget": "exp_tonemap_type",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
               }
             },
             {
@@ -165501,6 +165863,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 95,
+              "tag": "slider",
+              "control_name": "RenderTonemapMix",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 24,
               "tag": "slider",
@@ -165521,21 +165896,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 94,
-              "tag": "slider",
-              "control_name": "RenderTonemapMix",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165564,18 +165924,6 @@
                 "tag": "floater",
                 "name": "prefs_graphics_advanced",
                 "line": 5
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 94,
-              "widget": "exp_tonemap_mix",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
               }
             },
             {
@@ -165618,6 +165966,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 100,
+              "tag": "slider",
+              "control_name": "AlchemyToneMapAMDExposure",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 26,
               "tag": "slider",
@@ -165642,6 +166003,17 @@
               "pattern": null,
               "wiring_only": true,
               "text": "mAMDExposure = findChild<LLUICtrl>(\"exp_amd_exposure\");"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 181,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mAMDExposure = findChild<LLUICtrl>(\"exp_amd_exposure\");"
             }
           ],
           "callback_handlers": [],
@@ -165650,21 +166022,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 99,
-              "tag": "slider",
-              "control_name": "AlchemyToneMapAMDExposure",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165679,19 +166036,6 @@
                 "name": "panel_exposure_src",
                 "line": 10
               }
-            },
-            {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
-              "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 149,
-              "class": "ALPanelExposurePage",
-              "function": "postBuild",
-              "wired_class": "ALPanelExposurePage",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mAMDExposure = findChild<LLUICtrl>(\"exp_amd_exposure\");"
             }
           ],
           "unresolved": [],
@@ -165722,18 +166066,6 @@
                 "tag": "floater",
                 "name": "floater_lightbox_settings",
                 "line": 8
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 99,
-              "widget": "exp_amd_exposure",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
               }
             },
             {
@@ -165788,6 +166120,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 105,
+              "tag": "slider",
+              "control_name": "AlchemyToneMapSLogEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 28,
               "tag": "slider",
@@ -165812,6 +166157,17 @@
               "pattern": null,
               "wiring_only": true,
               "text": "mSLogEV = findChild<LLUICtrl>(\"exp_slog_ev\");"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 183,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mSLogEV = findChild<LLUICtrl>(\"exp_slog_ev\");"
             }
           ],
           "callback_handlers": [],
@@ -165820,21 +166176,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 104,
-              "tag": "slider",
-              "control_name": "AlchemyToneMapSLogEV",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -165849,19 +166190,6 @@
                 "name": "panel_exposure_src",
                 "line": 10
               }
-            },
-            {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
-              "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 151,
-              "class": "ALPanelExposurePage",
-              "function": "postBuild",
-              "wired_class": "ALPanelExposurePage",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mSLogEV = findChild<LLUICtrl>(\"exp_slog_ev\");"
             }
           ],
           "unresolved": [],
@@ -165892,18 +166220,6 @@
                 "tag": "floater",
                 "name": "floater_lightbox_settings",
                 "line": 8
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 104,
-              "widget": "exp_slog_ev",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
               }
             },
             {
@@ -165958,6 +166274,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 110,
+              "tag": "kit_switch",
+              "control_name": "AlchemyTonemapLegacyGammaSkies",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 30,
               "tag": "check_box",
@@ -165978,21 +166307,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 109,
-              "tag": "kit_switch",
-              "control_name": "AlchemyTonemapLegacyGammaSkies",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -166025,18 +166339,6 @@
                 "tag": "floater",
                 "name": "floater_lightbox_settings",
                 "line": 8
-              }
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 109,
-              "widget": "exp_legacy_gamma_skies",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
               }
             },
             {
@@ -166082,6 +166384,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 116,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 3,
               "tag": "button",
@@ -166117,6 +166432,28 @@
               "pattern": null,
               "wiring_only": false,
               "text": "mUndo->setCommitCallback([](LLUICtrl*, const LLSD&) { ALExposureSettingsHistory::undo(); });"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 179,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mUndo = getChild<LLButton>(\"exp_undo\");"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 188,
+              "class": "ALPanelExposurePage",
+              "function": "<inline callback>",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mUndo->setCommitCallback([this](LLUICtrl*, const LLSD&)"
             }
           ],
           "callback_handlers": [],
@@ -166125,21 +166462,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 115,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -166167,32 +166489,6 @@
               "pattern": null,
               "wiring_only": true,
               "text": "mPageUndo = findChild<LLButton>(\"exp_undo\");"
-            },
-            {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
-              "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 147,
-              "class": "ALPanelExposurePage",
-              "function": "postBuild",
-              "wired_class": "ALPanelExposurePage",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mUndo = getChild<LLButton>(\"exp_undo\");"
-            },
-            {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
-              "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 156,
-              "class": "ALPanelExposurePage",
-              "function": "<inline callback>",
-              "wired_class": "ALPanelExposurePage",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mUndo->setCommitCallback([this](LLUICtrl*, const LLSD&)"
             }
           ],
           "unresolved": [],
@@ -166214,6 +166510,19 @@
           "setting_declarations": [],
           "items": [],
           "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 119,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
             {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 4,
@@ -166250,6 +166559,28 @@
               "pattern": null,
               "wiring_only": false,
               "text": "mRedo->setCommitCallback([](LLUICtrl*, const LLSD&) { ALExposureSettingsHistory::redo(); });"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 180,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mRedo = getChild<LLButton>(\"exp_redo\");"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 190,
+              "class": "ALPanelExposurePage",
+              "function": "<inline callback>",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mRedo->setCommitCallback([this](LLUICtrl*, const LLSD&)"
             }
           ],
           "callback_handlers": [],
@@ -166258,21 +166589,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 118,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -166304,34 +166620,8 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
-              "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 148,
-              "class": "ALPanelExposurePage",
-              "function": "postBuild",
-              "wired_class": "ALPanelExposurePage",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mRedo = getChild<LLButton>(\"exp_redo\");"
-            },
-            {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
-              "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 158,
-              "class": "ALPanelExposurePage",
-              "function": "<inline callback>",
-              "wired_class": "ALPanelExposurePage",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mRedo->setCommitCallback([this](LLUICtrl*, const LLSD&)"
-            },
-            {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6852,
+              "line": 6854,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -166372,6 +166662,19 @@
                 "name": "floater_director",
                 "line": 15
               }
+            },
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 122,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
             }
           ],
           "cpp": [
@@ -166403,23 +166706,7 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 121,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            }
-          ],
+          "rejected_candidates": [],
           "unresolved": [],
           "other_writers": []
         },
@@ -166450,6 +166737,19 @@
           "shortcut_of": "bloom_glow_tab/set_RenderBloomStrength",
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 128,
+              "tag": "slider",
+              "control_name": "RenderBloomStrength",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 71,
               "tag": "slider",
@@ -166473,21 +166773,6 @@
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 127,
-              "tag": "slider",
-              "control_name": "RenderBloomStrength",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
               "line": 42,
               "tag": "slider",
@@ -166506,18 +166791,6 @@
             {
               "kind": "page",
               "page": "bloom_glow_tab"
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 127,
-              "widget": "exp_bloom_strength",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
             },
             {
               "kind": "xui",
@@ -166572,6 +166845,19 @@
           "shortcut_of": "bloom_glow_tab/set_RenderBloomThreshold",
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 133,
+              "tag": "slider",
+              "control_name": "RenderBloomThreshold",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 73,
               "tag": "slider",
@@ -166595,21 +166881,6 @@
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 132,
-              "tag": "slider",
-              "control_name": "RenderBloomThreshold",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
               "line": 43,
               "tag": "slider",
@@ -166628,18 +166899,6 @@
             {
               "kind": "page",
               "page": "bloom_glow_tab"
-            },
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 132,
-              "widget": "exp_bloom_threshold",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
             },
             {
               "kind": "xui",
@@ -166684,6 +166943,19 @@
           "items": [],
           "xui": [
             {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 138,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            },
+            {
               "file": "indra/newview/skins/default/xui/en/panel_exposure_hub.xml",
               "line": 134,
               "tag": "button",
@@ -166708,6 +166980,17 @@
               "pattern": null,
               "wiring_only": false,
               "text": "getChild<LLButton>(\"exp_filters_btn\")->setCommitCallback([](LLUICtrl*, const LLSD&)"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 186,
+              "class": "ALFloaterLightBox",
+              "function": "showTab",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "getChild<LLButton>(\"exp_filters_btn\")->setCommitCallback("
             }
           ],
           "callback_handlers": [],
@@ -166716,21 +166999,6 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 137,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-                "tag": "panel",
-                "name": "exposure_tab_logic",
-                "line": 3
-              }
-            },
             {
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
@@ -166745,21 +167013,1246 @@
                 "name": "panel_exposure_src",
                 "line": 10
               }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Simulate sensor",
+          "kind": "toggle",
+          "widget": "sensor_enabled",
+          "matched_widget": "sensor_enabled",
+          "declared_setting": "CineSensorEnabled",
+          "resolved_setting": "CineSensorEnabled",
+          "setting_candidates": [
+            "CineSensorEnabled"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4393,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 143,
+              "tag": "kit_switch",
+              "control_name": "CineSensorEnabled",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "ISO",
+          "kind": "combo",
+          "widget": "sensor_iso",
+          "matched_widget": "sensor_iso",
+          "declared_setting": "CineSensorISO",
+          "resolved_setting": "CineSensorISO",
+          "setting_candidates": [
+            "CineSensorISO"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4426,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [
+            "50",
+            "64",
+            "80",
+            "100",
+            "125",
+            "160",
+            "200",
+            "250",
+            "320",
+            "400",
+            "500",
+            "640",
+            "800",
+            "1000",
+            "1250",
+            "1600",
+            "2000",
+            "2500",
+            "3200",
+            "4000",
+            "5000",
+            "6400",
+            "8000",
+            "10000",
+            "12800",
+            "16000",
+            "20000",
+            "25600"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 146,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 207,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mSensorISO = getChild<LLComboBox>(\"sensor_iso\");"
             },
             {
-              "kind": "cpp",
-              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 154,
-              "class": "ALFloaterLightBox",
-              "function": "showTab",
+              "line": 208,
+              "class": "ALKitBindingRegistry",
+              "function": "add",
               "wired_class": "ALPanelExposurePage",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "getChild<LLButton>(\"exp_filters_btn\")->setCommitCallback("
+              "text": "ALKitBindingRegistry::instance().add(this, \"sensor_iso\","
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 210,
+              "class": "ALPanelExposurePage",
+              "function": "alKitSetTypedControl",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mSensorISO->setCommitCallback([](LLUICtrl* control, const LLSD&)"
             }
           ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Camera preset",
+          "kind": "combo",
+          "widget": "sensor_preset",
+          "matched_widget": "sensor_preset",
+          "declared_setting": "CineSensorPreset",
+          "resolved_setting": "CineSensorPreset",
+          "setting_candidates": [
+            "CineSensorPreset"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4437,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Clean full-frame (base 100)",
+            "Dual-native cinema (800/3200)",
+            "Small/older sensor",
+            "Custom"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 180,
+              "tag": "combo_box",
+              "control_name": "CineSensorPreset",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Brightness mode",
+          "kind": "combo",
+          "widget": "sensor_brightness",
+          "matched_widget": "sensor_brightness",
+          "declared_setting": "CineSensorBrightnessMode",
+          "resolved_setting": "CineSensorBrightnessMode",
+          "setting_candidates": [
+            "CineSensorBrightnessMode"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4448,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Neutral",
+            "Brightens"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 190,
+              "tag": "combo_box",
+              "control_name": "CineSensorBrightnessMode",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Noise amount",
+          "kind": "slider",
+          "widget": "sensor_amount",
+          "matched_widget": "sensor_amount",
+          "declared_setting": "CineSensorNoiseAmount",
+          "resolved_setting": "CineSensorNoiseAmount",
+          "setting_candidates": [
+            "CineSensorNoiseAmount"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4459,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 198,
+              "tag": "slider",
+              "control_name": "CineSensorNoiseAmount",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 5,
+          "label": "Chroma noise",
+          "kind": "slider",
+          "widget": "sensor_chroma",
+          "matched_widget": "sensor_chroma",
+          "declared_setting": "CineSensorChroma",
+          "resolved_setting": "CineSensorChroma",
+          "setting_candidates": [
+            "CineSensorChroma"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4470,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 203,
+              "tag": "slider",
+              "control_name": "CineSensorChroma",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
+          "label": "Fixed seed",
+          "kind": "toggle",
+          "widget": "sensor_seed_fixed",
+          "matched_widget": "sensor_seed_fixed",
+          "declared_setting": "CineSensorSeedFixed",
+          "resolved_setting": "CineSensorSeedFixed",
+          "setting_candidates": [
+            "CineSensorSeedFixed"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4481,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 208,
+              "tag": "kit_switch",
+              "control_name": "CineSensorSeedFixed",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 7,
+          "label": "Seed",
+          "kind": "text",
+          "widget": "sensor_seed",
+          "matched_widget": "sensor_seed",
+          "declared_setting": "CineSensorSeed",
+          "resolved_setting": "CineSensorSeed",
+          "setting_candidates": [
+            "CineSensorSeed"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4492,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 211,
+              "tag": "line_editor",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 212,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "LLUICtrl* seed_editor = getChild<LLUICtrl>(\"sensor_seed\");"
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 218,
+              "class": "ALKitBindingRegistry",
+              "function": "add",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "ALKitBindingRegistry::instance().add(this, \"sensor_seed\","
+            },
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 224,
+              "class": "ALPanelExposurePage",
+              "function": "alKitSetTypedControl",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "seed_editor->setCommitCallback([](LLUICtrl* control, const LLSD&)"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "Sensor readout",
+          "kind": "readout",
+          "widget": "sensor_readout",
+          "matched_widget": "sensor_readout",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 214,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 205,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mSensorReadout = getChild<LLTextBox>(\"sensor_readout\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
+          "label": "Status",
+          "kind": "readout",
+          "widget": "sensor_status",
+          "matched_widget": "sensor_status",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 217,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 206,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mSensorStatus = getChild<LLTextBox>(\"sensor_status\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Base ISO",
+          "kind": "number",
+          "widget": "sensor_custom_base",
+          "matched_widget": "sensor_custom_base",
+          "declared_setting": "CineSensorCustomBaseISO",
+          "resolved_setting": "CineSensorCustomBaseISO",
+          "setting_candidates": [
+            "CineSensorCustomBaseISO"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4503,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 222,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomBaseISO",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "HCG switch ISO",
+          "kind": "number",
+          "widget": "sensor_custom_switch",
+          "matched_widget": "sensor_custom_switch",
+          "declared_setting": "CineSensorCustomSwitchISO",
+          "resolved_setting": "CineSensorCustomSwitchISO",
+          "setting_candidates": [
+            "CineSensorCustomSwitchISO"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4514,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 225,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomSwitchISO",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Base headroom",
+          "kind": "number",
+          "widget": "sensor_custom_headroom",
+          "matched_widget": "sensor_custom_headroom",
+          "declared_setting": "CineSensorCustomHeadroom",
+          "resolved_setting": "CineSensorCustomHeadroom",
+          "setting_candidates": [
+            "CineSensorCustomHeadroom"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4525,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 228,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomHeadroom",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "LCG capacity",
+          "kind": "number",
+          "widget": "sensor_custom_lcg_fullwell",
+          "matched_widget": "sensor_custom_lcg_fullwell",
+          "declared_setting": "CineSensorCustomLCGFullWell",
+          "resolved_setting": "CineSensorCustomLCGFullWell",
+          "setting_candidates": [
+            "CineSensorCustomLCGFullWell"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4536,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 231,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomLCGFullWell",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "LCG read noise",
+          "kind": "number",
+          "widget": "sensor_custom_lcg_readnoise",
+          "matched_widget": "sensor_custom_lcg_readnoise",
+          "declared_setting": "CineSensorCustomLCGReadNoise",
+          "resolved_setting": "CineSensorCustomLCGReadNoise",
+          "setting_candidates": [
+            "CineSensorCustomLCGReadNoise"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4547,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 234,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomLCGReadNoise",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 5,
+          "label": "LCG base gain",
+          "kind": "number",
+          "widget": "sensor_custom_lcg_analogbase",
+          "matched_widget": "sensor_custom_lcg_analogbase",
+          "declared_setting": "CineSensorCustomLCGAnalogBase",
+          "resolved_setting": "CineSensorCustomLCGAnalogBase",
+          "setting_candidates": [
+            "CineSensorCustomLCGAnalogBase"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4558,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 237,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomLCGAnalogBase",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
+          "label": "LCG black level",
+          "kind": "number",
+          "widget": "sensor_custom_lcg_pedestal",
+          "matched_widget": "sensor_custom_lcg_pedestal",
+          "declared_setting": "CineSensorCustomLCGPedestal",
+          "resolved_setting": "CineSensorCustomLCGPedestal",
+          "setting_candidates": [
+            "CineSensorCustomLCGPedestal"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4569,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 240,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomLCGPedestal",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 7,
+          "label": "LCG white level",
+          "kind": "number",
+          "widget": "sensor_custom_lcg_white",
+          "matched_widget": "sensor_custom_lcg_white",
+          "declared_setting": "CineSensorCustomLCGWhite",
+          "resolved_setting": "CineSensorCustomLCGWhite",
+          "setting_candidates": [
+            "CineSensorCustomLCGWhite"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4580,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 243,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomLCGWhite",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "HCG capacity",
+          "kind": "number",
+          "widget": "sensor_custom_hcg_fullwell",
+          "matched_widget": "sensor_custom_hcg_fullwell",
+          "declared_setting": "CineSensorCustomHCGFullWell",
+          "resolved_setting": "CineSensorCustomHCGFullWell",
+          "setting_candidates": [
+            "CineSensorCustomHCGFullWell"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4591,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 246,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomHCGFullWell",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
+          "label": "HCG read noise",
+          "kind": "number",
+          "widget": "sensor_custom_hcg_readnoise",
+          "matched_widget": "sensor_custom_hcg_readnoise",
+          "declared_setting": "CineSensorCustomHCGReadNoise",
+          "resolved_setting": "CineSensorCustomHCGReadNoise",
+          "setting_candidates": [
+            "CineSensorCustomHCGReadNoise"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4602,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 249,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomHCGReadNoise",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 10,
+          "label": "HCG base gain",
+          "kind": "number",
+          "widget": "sensor_custom_hcg_analogbase",
+          "matched_widget": "sensor_custom_hcg_analogbase",
+          "declared_setting": "CineSensorCustomHCGAnalogBase",
+          "resolved_setting": "CineSensorCustomHCGAnalogBase",
+          "setting_candidates": [
+            "CineSensorCustomHCGAnalogBase"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4613,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 252,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomHCGAnalogBase",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 11,
+          "label": "HCG black level",
+          "kind": "number",
+          "widget": "sensor_custom_hcg_pedestal",
+          "matched_widget": "sensor_custom_hcg_pedestal",
+          "declared_setting": "CineSensorCustomHCGPedestal",
+          "resolved_setting": "CineSensorCustomHCGPedestal",
+          "setting_candidates": [
+            "CineSensorCustomHCGPedestal"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4624,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 255,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomHCGPedestal",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "custom_sensor",
+          "card_title": "Custom sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 12,
+          "label": "HCG white level",
+          "kind": "number",
+          "widget": "sensor_custom_hcg_white",
+          "matched_widget": "sensor_custom_hcg_white",
+          "declared_setting": "CineSensorCustomHCGWhite",
+          "resolved_setting": "CineSensorCustomHCGWhite",
+          "setting_candidates": [
+            "CineSensorCustomHCGWhite"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4635,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 258,
+              "tag": "spinner",
+              "control_name": "CineSensorCustomHCGWhite",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
           "unresolved": [],
           "other_writers": []
         }
@@ -173696,7 +175189,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 6357,
+              "line": 6359,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -173801,7 +175294,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4854,
+              "line": 4856,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -176525,7 +178018,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 79,
+              "line": 80,
               "widget": "exp_tonemap_type",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -176668,7 +178161,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 74,
+              "line": 75,
               "widget": "exp_exposure",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -176799,7 +178292,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 109,
+              "line": 110,
               "widget": "exp_legacy_gamma_skies",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -176942,7 +178435,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 99,
+              "line": 100,
               "widget": "exp_amd_exposure",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -177085,7 +178578,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 104,
+              "line": 105,
               "widget": "exp_slog_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -182056,7 +183549,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 127,
+              "line": 128,
               "tag": "slider",
               "control_name": "RenderBloomStrength",
               "callbacks": [],
@@ -182122,7 +183615,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 127,
+              "line": 128,
               "widget": "exp_bloom_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -182207,7 +183700,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 132,
+              "line": 133,
               "tag": "slider",
               "control_name": "RenderBloomThreshold",
               "callbacks": [],
@@ -182273,7 +183766,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 132,
+              "line": 133,
               "widget": "exp_bloom_threshold",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -205683,7 +207176,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 7011,
+              "line": 7013,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -205696,7 +207189,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8885,
+              "line": 8887,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -208388,7 +209881,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20638,
+              "line": 20651,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -208635,7 +210128,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20640,
+              "line": 20653,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -208804,7 +210297,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20643,
+              "line": 20656,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -208895,7 +210388,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20644,
+              "line": 20657,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -208986,7 +210479,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20645,
+              "line": 20658,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209077,7 +210570,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20646,
+              "line": 20659,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209168,7 +210661,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20647,
+              "line": 20660,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209259,7 +210752,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20648,
+              "line": 20661,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209350,7 +210843,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20649,
+              "line": 20662,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209519,7 +211012,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20656,
+              "line": 20669,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -209610,7 +211103,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20658,
+              "line": 20671,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210013,7 +211506,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21107,
+              "line": 21120,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210352,7 +211845,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21108,
+              "line": 21121,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -210443,7 +211936,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21106,
+              "line": 21119,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -211080,7 +212573,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21118,
+              "line": 21131,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -211405,7 +212898,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21125,
+              "line": 21138,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -212925,7 +214418,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 8103,
+              "line": 8105,
               "class": null,
               "function": null,
               "wired_class": null,

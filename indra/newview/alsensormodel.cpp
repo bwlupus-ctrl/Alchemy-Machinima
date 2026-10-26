@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace ALSensorModel
 {
@@ -101,6 +104,17 @@ namespace ALSensorModel
         p.noiseFloorStops = std::log2(0.18 / p.noiseFloorLinear);
         p.dynamicRangeStops = std::log2(p.saturation / c.readNoise);
         return p;
+    }
+
+    std::string readout(const Preset& preset, double iso, BrightnessMode brightness)
+    {
+        const auto p = derive(preset, iso, brightness);
+        std::ostringstream text;
+        text.imbue(std::locale::classic());
+        text << (p.mode == GainMode::HCG ? "HCG" : "LCG") << std::fixed << std::setprecision(2)
+             << " | Headroom: " << p.headroomStops << " stops above mid-grey\n"
+             << "Noise floor: " << p.noiseFloorStops << " stops below mid-grey";
+        return text.str();
     }
 
     Matrix covariance(const Matrix& m, const std::array<double, 3>& variance)

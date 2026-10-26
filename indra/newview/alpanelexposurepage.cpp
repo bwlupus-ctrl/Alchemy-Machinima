@@ -13,15 +13,21 @@
 
 #include "alenvintensitypresets.h"
 #include "alfloaterlightbox.h"
+#include "alkitbinding.h"
 #include "alkitpresets.h"
 #include "alsettingsundohistory.h"
 #include "alkitpage.h"
+#include "alkithistory.h"
+#include "alsensorsettings.h"
 #include "aluirefresh.h"
 #include "llbutton.h"
+#include "llcombobox.h"
 #include "llcontrol.h"
 #include "llfloaterenvironmentadjust.h"
 #include "llfloaterreg.h"
 #include "llviewercontrol.h"
+#include "lltextbox.h"
+#include "pipeline.h"
 
 #include <memory>
 
@@ -32,6 +38,33 @@ namespace
 {
 constexpr S32 TONEMAP_AMD_LPM = 7;
 constexpr S32 TONEMAP_SLOG3 = 8;
+
+bool sensorSeedTextValid(const std::string& text)
+{
+    return !text.empty() && text.size() <= 10 &&
+        text.find_first_not_of("0123456789") == std::string::npos &&
+        std::stod(text) <= 4294967295.;
+}
+
+std::string sensorSeedText(const LLSD& value)
+{
+    // LLSD::Real::asString() uses :g formatting, which rounds large U32 seeds.
+    return std::to_string(static_cast<U32>(value.asReal()));
+}
+
+class SensorSeedBinding final : public ALKitBinding
+{
+public:
+    LLSD get() const override { return LLSD(sensorSeedText(mSetting.get())); }
+    LLSD getDefault() const override { return LLSD(sensorSeedText(mSetting.getDefault())); }
+    void set(const LLSD& value) override { mSetting.set(value); }
+    void reset() override { mSetting.reset(); }
+    boost::signals2::connection connectChanged(std::function<void()> callback) override
+        { return mSetting.connectChanged(std::move(callback)); }
+    std::string describe() const override { return "CineSensorSeed"; }
+private:
+    ALKitSettingBinding mSetting{"CineSensorSeed"};
+};
 
 struct BuiltinPreset
 {
@@ -170,6 +203,55 @@ bool ALPanelExposurePage::postBuild()
 
     updateTonemapGating();
     updateHistoryButtons();
+    mSensorReadout = getChild<LLTextBox>("sensor_readout");
+    mSensorStatus = getChild<LLTextBox>("sensor_status");
+    mSensorISO = getChild<LLComboBox>("sensor_iso");
+    ALKitBindingRegistry::instance().add(this, "sensor_iso",
+        []() { return std::make_unique<ALKitSettingBinding>("CineSensorISO"); });
+    mSensorISO->setCommitCallback([](LLUICtrl* control, const LLSD&)
+        { alKitSetTypedControl(gSavedSettings, "CineSensorISO", control->getValue()); });
+    LLUICtrl* seed_editor = getChild<LLUICtrl>("sensor_seed");
+    mSensorSeed = seed_editor;
+    mSensorSeedRow = seed_editor->getParent();
+    // LLSpinCtrl stores F32; a decimal text editor plus the kit's typed writer
+    // preserves all U32 seeds, including values above the signed integer range.
+    // ALKitSettingBinding still provides reset, history and unsigned read-back.
+    ALKitBindingRegistry::instance().add(this, "sensor_seed",
+        []() { return std::make_unique<SensorSeedBinding>(); });
+    seed_editor->setValidateCallback([](LLUICtrl* control, const LLSD&)
+    {
+        return sensorSeedTextValid(control->getValue().asString());
+    });
+    seed_editor->setCommitCallback([](LLUICtrl* control, const LLSD&)
+        { alKitSetTypedControl(gSavedSettings, "CineSensorSeed", control->getValue()); });
+    mCustomSensorCard = getChildView("kc_custom_sensor");
+    // Native setting bindings own values. Signals invalidate the physical readout,
+    // including while hidden; revealing the page always refreshes it immediately.
+    for (const char* name : {
+        "CineSensorEnabled", "CineSensorISO", "CineSensorPreset", "CineSensorBrightnessMode",
+        "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
+        "CineSensorCustomBaseISO", "CineSensorCustomSwitchISO", "CineSensorCustomHeadroom",
+        "CineSensorCustomLCGFullWell", "CineSensorCustomLCGReadNoise", "CineSensorCustomLCGAnalogBase",
+        "CineSensorCustomLCGPedestal", "CineSensorCustomLCGWhite", "CineSensorCustomHCGFullWell",
+        "CineSensorCustomHCGReadNoise", "CineSensorCustomHCGAnalogBase", "CineSensorCustomHCGPedestal",
+        "CineSensorCustomHCGWhite" })
+    {
+        const std::string setting(name);
+        const bool iso_changed = setting == "CineSensorISO";
+        mSensorConnections.emplace_back(gSavedSettings.getControl(name)->getSignal()->connect(
+            [this, iso_changed](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                if (iso_changed) syncSensorISO();
+                updateSensor();
+            }));
+    }
+    mSensorConnections.emplace_back(gSavedSettings.getControl("CineSensorPreset")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&)
+        { onSensorPresetChanged(); }));
+    syncSensorISO();
+    updateSensor();
+    showSensorReadout();
+    updateSensorStatus();
     return LLPanel::postBuild();
 }
 
@@ -179,8 +261,83 @@ void ALPanelExposurePage::onVisibilityChange(bool new_visibility)
     {
         updateTonemapGating();
         updateHistoryButtons();
+        syncSensorISO();
+        updateSensor();
+        showSensorReadout();
+        updateSensorStatus();
     }
     LLPanel::onVisibilityChange(new_visibility);
+}
+
+void ALPanelExposurePage::draw()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (isWidgetOnScreen(this))
+    {
+        if (mSensorClock.due())
+        {
+            if (mSensorDirty) showSensorReadout();
+            setValueIfChanged(mSensorISO, mSensorStoredISO);
+            setValueIfChanged(mSensorSeed, mSensorStoredSeed);
+        }
+        if (mSensorStatusClock.due()) updateSensorStatus();
+    }
+    LLPanel::draw();
+}
+
+void ALPanelExposurePage::updateSensor()
+{
+    if (!mSensorReadout) return;
+    updateSensorGating();
+    mSensorEnabled = gSavedSettings.getBOOL("CineSensorEnabled");
+    mSensorStoredSeed = LLSD(sensorSeedText(LLSD(static_cast<LLSD::Real>(gSavedSettings.getU32("CineSensorSeed")))));
+    mSensorDirty = true;
+    if (!isInVisibleChain()) return;
+    const auto preset = ALSensorSettings::preset();
+    const F32 iso = gSavedSettings.getF32("CineSensorISO");
+    const auto mode = gSavedSettings.getU32("CineSensorBrightnessMode") == 1 ?
+        ALSensorModel::BrightnessMode::Brightens : ALSensorModel::BrightnessMode::Neutral;
+    mSensorReadoutText = ALSensorModel::readout(preset, iso, mode);
+}
+
+void ALPanelExposurePage::showSensorReadout()
+{
+    setTextIfChanged(mSensorReadout, mSensorReadoutText);
+    mSensorDirty = false;
+}
+
+void ALPanelExposurePage::syncSensorISO()
+{
+    if (!mSensorISO) return;
+    // Custom base ISO and externally supplied ISO need not be standard third stops.
+    // Preserve them verbatim as a stored-value item so page open never appears blank.
+    mSensorStoredISO = gSavedSettings.getControl("CineSensorISO")->get();
+    if (!mSensorISO->findItemByValue(mSensorStoredISO.asString()))
+        mSensorISO->add(mSensorStoredISO.asString() + " (stored)", mSensorStoredISO);
+    setValueIfChanged(mSensorISO, mSensorStoredISO);
+}
+
+void ALPanelExposurePage::updateSensorGating()
+{
+    setEnabledIfChanged(mSensorSeedRow, gSavedSettings.getBOOL("CineSensorSeedFixed"));
+    setEnabledIfChanged(mCustomSensorCard, gSavedSettings.getU32("CineSensorPreset") == 3);
+}
+
+void ALPanelExposurePage::onSensorPresetChanged()
+{
+    // Replay restores the recorded ISO as well; do not overwrite it during Undo/Redo.
+    if (!ALKitHistory::replaying())
+        gSavedSettings.setF32("CineSensorISO", static_cast<F32>(ALSensorSettings::preset().baseISO));
+    mSensorDirty = true;
+}
+
+void ALPanelExposurePage::updateSensorStatus()
+{
+    if (!mSensorStatus) return;
+    const std::string reason = gPipeline.sensorUnavailableReason();
+    setTextIfChanged(mSensorStatus, !reason.empty() ? reason :
+        mSensorEnabled ? "Sensor ready for the main HDR camera." :
+        "Sensor off. Enable Simulate sensor to use the main HDR camera.");
 }
 
 // AMD exposure belongs to the AMD LPM tone mapper and S-Log EV to S-Log3 Capture; they are dimmed,
