@@ -199,7 +199,25 @@ vec3 relightProjectorImage(vec3 pos, vec3 n, float gloss, float environment,
         visibility*environment/area;
 }
 
-void main()
+void localLightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone,
+    out float nl, out vec3 diff, out vec3 spec);
+uniform float local_light_size;
+void localLightSpecular(inout vec3 spec, float roughness,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone);
+float localLightLegacy(sampler2D lut, float nh, float gloss, float radius, float distance, float cone);
+
+
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float local_size, float cone);
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance, float local_size, float cone);
+vec3 relightLegacySized(sampler2D lut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float local_size, float cone);
+vec3 relightLegacySized(sampler2D lut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance, float local_size, float cone);
+// Keep the zero call constant so the driver eliminates all size math before optimizing stock lighting.
+void localLightMain(float source_radius)
 {
     vec3 final_color = vec3(0,0,0);
     vec3 rim_color   = vec3(0,0,0); // [RigRim]
@@ -309,21 +327,21 @@ void main()
             {
                 roughness = spec.g;
                 diffuseColor = diffuse * .96 * (1.0-spec.b);
-                final_color = lamp * shadow * 3.25 * relightPbr(diffuseColor,
+                final_color = lamp * shadow * 3.25 * relightPbrSized(diffuseColor,
                     mix(vec3(.04),diffuse,spec.b),roughness,spec.b,n,view,delta,size,falloff,
-                    light_shape,1.0-gb.envIntensity,dist*size);
+                    light_shape,1.0-gb.envIntensity,dist*size,source_radius,1.0);
                 float centre_nl = max(dot(n,centre),.001);
                 vec3 ambient = getProjectedLightAmbiance((centre_nl*.5+.5)*proj_ambiance,
                     attenuation,0.0,centre_nl,1.0,proj_tc.xy) * 3.25;
                 if (attenuation > 0.0)
-                    final_color += ambient * relightPbr(diffuseColor,mix(vec3(.04),diffuse,spec.b),
-                        roughness,spec.b,n,view,delta,size,falloff,light_shape,1.0-gb.envIntensity,dist*size) / attenuation;
+                    final_color += ambient * relightPbrSized(diffuseColor,mix(vec3(.04),diffuse,spec.b),
+                        roughness,spec.b,n,view,delta,size,falloff,light_shape,1.0-gb.envIntensity,dist*size,source_radius,1.0) / attenuation;
             }
             else
             {
                 vec3 highlight;
-                relightLegacy(lightFunc,diffuse,
-                    vec4(srgb_to_linear(spec.rgb),spec.a),n,view,delta,size,falloff,light_shape,highlight,dist*size);
+                relightLegacySized(lightFunc,diffuse,
+                    vec4(srgb_to_linear(spec.rgb),spec.a),n,view,delta,size,falloff,light_shape,highlight,dist*size,source_radius,1.0);
                 float wrap = relightRatio(n,delta,light_shape.x);
                 // Match the projector's original per-light specular clamp.
                 final_color = lamp*shadow*diffuse*wrap*attenuation +
@@ -374,13 +392,19 @@ void main()
 
                 vec3 intensity = dist_atten * dlit * 3.25 * shadow; // Legacy attenuation, magic number to balance with legacy materials
 
-                pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
+                if (source_radius > 0.0)
+            localLightPbr(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), source_radius,length(proj_origin-pos),1.0, nl, diffPunc, specPunc);
+        else
+            pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
                 specPunc *= 1.0 - gb.envIntensity; // [AvatarLightResponse] Tame carrier (0 for every non-avatar PBR pixel)
 
                 final_color += intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
             }
 
             amb_rgb = getProjectedLightAmbiance( amb_da, dist_atten, lit, nl, 1.0, proj_tc.xy ) * 3.25; //magic number to balance with legacy ambiance
+            if (source_radius > 0.0)
+            localLightPbr(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), source_radius,length(proj_origin-pos),1.0, nl, diffPunc, specPunc);
+        else
             pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
             specPunc *= 1.0 - gb.envIntensity; // [AvatarLightResponse] Tame carrier (0 for every non-avatar PBR pixel)
 
@@ -449,7 +473,7 @@ void main()
 
             if (nh > 0.0)
             {
-                float scol = fres*texture(lightFunc, vec2(nh, spec.a)).r*gt/(nh*nl);
+                float scol = fres*(source_radius > 0.0 ? localLightLegacy(lightFunc, nh, spec.a, source_radius, length(proj_origin-pos), 1.0) : texture(lightFunc, vec2(nh, spec.a)).r)*gt/(nh*nl);
                 vec3 speccol = dlit*scol*spec.rgb*shadow;
                 speccol = clamp(speccol, vec3(0), vec3(1));
                 if ((relight_enabled & 1) != 0) speccol *= directKeep;
@@ -520,4 +544,17 @@ void main()
     //output linear
     frag_color.rgb = final_color * final_scale;
     frag_color.a = 0.0;
+}
+
+void main()
+{
+    // With no visible specular, use the literal-zero kernel as well. This
+    // avoids both extra work and compiler rounding changes to diffuse-only pixels.
+    vec2 tc = getScreenCoord(vary_fragcoord);
+    GBufferInfo size_gb = getGBuffer(tc);
+    bool no_specular = GET_GBUFFER_FLAG(size_gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR)
+        ? size_gb.envIntensity >= 1.0
+        : all(equal(size_gb.specular.rgb, vec3(0.0)));
+    if (local_light_size <= 0.0 || no_specular) { localLightMain(0.0); return; }
+    localLightMain(local_light_size);
 }

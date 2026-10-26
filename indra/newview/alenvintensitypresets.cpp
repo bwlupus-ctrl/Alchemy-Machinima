@@ -51,7 +51,7 @@ namespace
 
     const char* const KEY_MOON_LINKED = "AlchemyEnvMoonLinked";
 
-    // ---- the 16 owned settings -------------------------------------------------
+    // ---- the 17 owned settings -------------------------------------------------
     // Ranges are the Light Intensity slider ranges (floater_adjust_environment.xml),
     // i.e. what the UI can produce and the renderer's own clamps accept.
     struct FloatField
@@ -70,6 +70,7 @@ namespace
         { "AlchemyEnvGIProbeDiffuseEV",   &Values::mGIProbeDiffuseEV,    -3.0,     3.0 },
         { "AlchemyEnvGIProbeSpecEV",      &Values::mGIProbeSpecEV,       -3.0,     3.0 },
         { "AlchemyEnvLocalLightEV",       &Values::mLocalLightEV,        -4.0,     4.0 },
+        { "AlchemyEnvLocalLightSize",     &Values::mLocalLightSize,       0.0,     0.5 },
         { "AlchemyEnvSunKelvin",          &Values::mSunKelvin,         2000.0, 12000.0 },
         { "AlchemyEnvSunTintStrength",    &Values::mSunTintStrength,      0.0,     1.0 },
         { "AlchemyEnvMoonTintStrength",   &Values::mMoonTintStrength,     0.0,     1.0 },
@@ -1015,6 +1016,7 @@ Values currentValues()
     v.mGIProbeDiffuseEV    = gSavedSettings.getF32("AlchemyEnvGIProbeDiffuseEV");
     v.mGIProbeSpecEV       = gSavedSettings.getF32("AlchemyEnvGIProbeSpecEV");
     v.mLocalLightEV        = gSavedSettings.getF32("AlchemyEnvLocalLightEV");
+    v.mLocalLightSize      = gSavedSettings.getF32("AlchemyEnvLocalLightSize");
     v.mSunKelvin           = gSavedSettings.getF32("AlchemyEnvSunKelvin");
     v.mSunTintColor        = gSavedSettings.getColor4("AlchemyEnvSunTintColor");
     v.mSunTintStrength     = gSavedSettings.getF32("AlchemyEnvSunTintStrength");
@@ -1061,6 +1063,7 @@ bool nearlyEqual(const Values& a, const Values& b)
         && nearlyEqualF(a.mGIProbeDiffuseEV, b.mGIProbeDiffuseEV)
         && nearlyEqualF(a.mGIProbeSpecEV, b.mGIProbeSpecEV)
         && nearlyEqualF(a.mLocalLightEV, b.mLocalLightEV)
+        && nearlyEqualF(a.mLocalLightSize, b.mLocalLightSize)
         && nearlyEqualF(a.mSunKelvin, b.mSunKelvin)
         && nearlyEqualColor(a.mSunTintColor, b.mSunTintColor)
         && nearlyEqualF(a.mSunTintStrength, b.mSunTintStrength)
@@ -1075,7 +1078,7 @@ void apply(const Values& values)
 {
     ALExposureSettingsHistory::ScopedBatch history_batch("Preset");
     {
-        ApplyGuard guard;   // suppresses the Quick Presets combo refresh while the 16 signals fire
+        ApplyGuard guard;   // suppresses the Quick Presets combo refresh while the preset signals fire
         gSavedSettings.setF32("AlchemyEnvSunEV", values.mSunEV);
         gSavedSettings.setF32("AlchemyEnvSkyGIEV", values.mSkyGIEV);
         gSavedSettings.setBOOL("AlchemyEnvMoonLinked", values.mMoonLinked);
@@ -1084,6 +1087,7 @@ void apply(const Values& values)
         gSavedSettings.setF32("AlchemyEnvGIProbeDiffuseEV", values.mGIProbeDiffuseEV);
         gSavedSettings.setF32("AlchemyEnvGIProbeSpecEV", values.mGIProbeSpecEV);
         gSavedSettings.setF32("AlchemyEnvLocalLightEV", values.mLocalLightEV);
+        gSavedSettings.setF32("AlchemyEnvLocalLightSize", values.mLocalLightSize);
         gSavedSettings.setF32("AlchemyEnvSunKelvin", values.mSunKelvin);
         gSavedSettings.setColor4("AlchemyEnvSunTintColor", values.mSunTintColor);
         gSavedSettings.setF32("AlchemyEnvSunTintStrength", values.mSunTintStrength);

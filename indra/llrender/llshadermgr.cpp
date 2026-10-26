@@ -1497,6 +1497,9 @@ void LLShaderMgr::initAttribsAndUniforms()
 
     mReservedUniforms.push_back("viewport");
 
+    mReservedUniforms.push_back("local_light_size");
+    mReservedUniforms.push_back("local_light_sizes");
+    mReservedUniforms.push_back("local_light_spec_exponent");
     mReservedUniforms.push_back("light_position");
     mReservedUniforms.push_back("light_direction");
     mReservedUniforms.push_back("light_attenuation");

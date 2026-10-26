@@ -115,7 +115,25 @@ vec3 relightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float me
     vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep);
 vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
     vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight);
-void main()
+void localLightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone,
+    out float nl, out vec3 diff, out vec3 spec);
+uniform float local_light_size;
+void localLightSpecular(inout vec3 spec, float roughness,
+    vec3 n, vec3 v, vec3 l, float radius, float distance, float cone);
+float localLightLegacy(sampler2D lut, float nh, float gloss, float radius, float distance, float cone);
+
+
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float local_size, float cone);
+vec3 relightPbrSized(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
+    vec3 n, vec3 v, vec3 lv, float range, float falloff, vec4 shape, float specKeep, float attenDistance, float local_size, float cone);
+vec3 relightLegacySized(sampler2D lut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float local_size, float cone);
+vec3 relightLegacySized(sampler2D lut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
+    vec3 lv, float range, float falloff, vec4 shape, out vec3 highlight, float attenDistance, float local_size, float cone);
+// Keep the zero call constant so the driver eliminates all size math before optimizing stock lighting.
+void localLightMain(float source_radius)
 {
     vec3 final_color = vec3(0);
     vec3 rim_color   = vec3(0); // [RigRim]
@@ -158,12 +176,12 @@ void main()
         {
             roughness = spec.g;
             diffuseColor = diffuse * .96 * (1.0-spec.b);
-            final_color = color * 3.25 * relightPbr(diffuseColor,mix(vec3(.04),diffuse,spec.b),
-                roughness,spec.b,n,v,lv,size,falloff,light_shape,1.0-gb.envIntensity);
+            final_color = color * 3.25 * relightPbrSized(diffuseColor,mix(vec3(.04),diffuse,spec.b),
+                roughness,spec.b,n,v,lv,size,falloff,light_shape,1.0-gb.envIntensity,source_radius,0.0);
         }
         else
-            final_color = color * relightLegacy(lightFunc,diffuse,vec4(srgb_to_linear(spec.rgb),spec.a),
-                n,v,lv,size,falloff,light_shape,highlight);
+            final_color = color * relightLegacySized(lightFunc,diffuse,vec4(srgb_to_linear(spec.rgb),spec.a),
+                n,v,lv,size,falloff,light_shape,highlight,source_radius,0.0);
         if (rigRimMode() != 0)
         {
             rim_color = rigRimTermEx(n,v,l,attenuation*color,diffuseColor,roughness,rig_rim_light,rim_px);
@@ -207,7 +225,10 @@ void main()
         vec3 diffPunc = vec3(0);
         vec3 specPunc = vec3(0);
 
-        pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
+        if (source_radius > 0.0)
+            localLightPbr(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), source_radius,lightDist,0.0, nl, diffPunc, specPunc);
+        else
+            pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, normalize(lv), nl, diffPunc, specPunc);
         specPunc *= 1.0 - gb.envIntensity; // [AvatarLightResponse] Tame carrier (0 for every non-avatar PBR pixel)
 
         final_color += intensity* clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
@@ -262,7 +283,7 @@ void main()
 
             if (nh > 0.0)
             {
-                float scol = fres*texture(lightFunc, vec2(nh, spec.a)).r*gt/(nh*nl);
+                float scol = fres*(source_radius > 0.0 ? localLightLegacy(lightFunc, nh, spec.a, source_radius, lightDist, 0.0) : texture(lightFunc, vec2(nh, spec.a)).r)*gt/(nh*nl);
                 final_color += lit*scol*color.rgb*spec.rgb;
             }
         }
@@ -302,4 +323,17 @@ void main()
         final_scale = 0.9;
     frag_color.rgb = max(final_color * final_scale, vec3(0));
     frag_color.a = 0.0;
+}
+
+void main()
+{
+    // With no visible specular, use the literal-zero kernel as well. This
+    // avoids both extra work and compiler rounding changes to diffuse-only pixels.
+    vec2 tc = getScreenCoord(vary_fragcoord);
+    GBufferInfo size_gb = getGBuffer(tc);
+    bool no_specular = GET_GBUFFER_FLAG(size_gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR)
+        ? size_gb.envIntensity >= 1.0
+        : all(equal(size_gb.specular.rgb, vec3(0.0)));
+    if (local_light_size <= 0.0 || no_specular) { localLightMain(0.0); return; }
+    localLightMain(local_light_size);
 }

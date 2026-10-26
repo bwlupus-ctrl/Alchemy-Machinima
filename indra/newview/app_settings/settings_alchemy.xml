@@ -4217,6 +4217,14 @@
             <key>Value</key>
             <real>0.0</real>
         </map>
+        <key>AlchemyEnvLocalLightSize</key>
+        <map>
+            <key>Comment</key>
+            <string>Radius in metres for specular reflections of ordinary SL lights. 0 = original point lights. Cine Light Rig fixtures always keep their own source size; IncludeRig affects EV only.</string>
+            <key>Persist</key><integer>1</integer>
+            <key>Type</key><string>F32</string>
+            <key>Value</key><real>0</real>
+        </map>
         <key>AlchemyEnvLocalLightIncludeRig</key>
         <map>
             <key>Comment</key>

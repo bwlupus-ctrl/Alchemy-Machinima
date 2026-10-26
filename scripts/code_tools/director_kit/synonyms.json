@@ -1,5 +1,6 @@
 {
   "groups": [
+    ["local light size", "light size", "specular", "hotspot", "highlight", "neon", "bulb", "glare", "reflection"],
     ["exposure", "ev", "brightness"],
     ["brightness", "lamp", "power", "intensity", "picture ev"],
     ["shadow", "shadows", "probe", "shadow map"],

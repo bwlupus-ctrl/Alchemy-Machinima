@@ -2038,7 +2038,7 @@ struct WaterSample
 
 struct EnvSettings
 {
-    F32 mSunEV = 0.f, mMoonEV = 0.f, mLocalLightEV = 0.f, mShadowLiftEV = 0.f,
+    F32 mSunEV = 0.f, mMoonEV = 0.f, mLocalLightEV = 0.f, mLocalLightSize = 0.f, mShadowLiftEV = 0.f,
         mSunKelvin = 6500.f;
     F32 mSunTint[3] = { 1.f, 1.f, 1.f };
     F32 mMoonTint[3] = { 1.f, 1.f, 1.f };
@@ -2164,6 +2164,7 @@ inline void appendEnvironmentFields(ALCineLiveProbeRefresh::Signature& sig,
     sig.addAbs(st.mSunEV, 0.01f);
     sig.addAbs(st.mMoonEV, 0.01f);
     sig.addAbs(st.mLocalLightEV, 0.01f);
+    sig.addAbs(st.mLocalLightSize, 0.001f);
     sig.addAbs(st.mShadowLiftEV, 0.01f);
     sig.addAbs(st.mSunKelvin, 10.f);
     sig.addAbs3(st.mSunTint, 1.f / 512.f);

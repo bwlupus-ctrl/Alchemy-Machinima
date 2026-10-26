@@ -321,6 +321,14 @@ namespace ALEnvIntensity
         return exp2f(clampEV((F32)local_ev));
     }
 
+    F32 localLightSize(const LLViewerObject* obj)
+    {
+        static LLCachedControl<F32> size(gSavedSettings, "AlchemyEnvLocalLightSize", 0.f);
+        if (isNeutral() || !obj || obj->isCineRigEmitter()) return 0.f;
+        const F32 radius = size;
+        return std::isfinite(radius) ? llclamp(radius, 0.f, 0.5f) : 0.f;
+    }
+
     F32 ssaoCeilingScale()
     {
         static LLCachedControl<F32> gi_ev(gSavedSettings, "AlchemyEnvSkyGIEV", 0.f);

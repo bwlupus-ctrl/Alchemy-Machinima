@@ -347,6 +347,7 @@ set(viewer_SOURCE_FILES
     alcinehaze.cpp
     alcinerigrim.cpp
     allenslooks.cpp
+    allocallightsize.cpp
     alenvintensity.cpp
     alenvintensitypresets.cpp
     alsettingsundohistory.cpp
@@ -1371,6 +1372,7 @@ set(viewer_HEADER_FILES
     alcinehaze.h
     alcinerigrim.h
     allenslooks.h
+    allocallightsize.h
     alenvintensity.h
     alenvintensitypresets.h
     alsettingsundohistory.h
@@ -2801,6 +2803,7 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    allocallightsize.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]
     alformationsolver.cpp
     alcinelightrigmodel.cpp

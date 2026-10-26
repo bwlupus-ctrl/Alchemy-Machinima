@@ -99,13 +99,14 @@ const BuiltinPreset BUILTIN_PRESETS[] = {
     { "reflections_pop",    "Reflections Pop" },
 };
 
-// The 16 settings a Light Intensity preset owns (alenvintensitypresets.h).
+// The 17 settings a Light Intensity preset owns (alenvintensitypresets.h).
 const std::vector<std::string>& intensitySettings()
 {
     static const std::vector<std::string> settings = {
         "AlchemyEnvSunEV",            "AlchemyEnvSkyGIEV",           "AlchemyEnvMoonLinked",
         "AlchemyEnvMoonEV",           "AlchemyEnvGIAmbientEV",       "AlchemyEnvGIProbeDiffuseEV",
         "AlchemyEnvGIProbeSpecEV",    "AlchemyEnvLocalLightEV",      "AlchemyEnvSunKelvin",
+        "AlchemyEnvLocalLightSize",
         "AlchemyEnvSunTintColor",     "AlchemyEnvSunTintStrength",   "AlchemyEnvMoonTintColor",
         "AlchemyEnvMoonTintStrength", "AlchemyEnvAmbientTintColor",  "AlchemyEnvAmbientTintStrength",
         "AlchemyEnvShadowLiftEV",

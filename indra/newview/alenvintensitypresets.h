@@ -7,9 +7,9 @@
  * Alchemy-Machinima fork
  * $/LicenseInfo$
  *
- * A user preset is a named snapshot of exactly the 16 AlchemyEnv* viewer
+ * A user preset is a named snapshot of exactly the 17 AlchemyEnv* viewer
  * settings the built-in Quick Presets write (Sun / Sky GI EV, Moon link + EV,
- * GI ambient / probe diffuse / probe spec EV, Local lights EV, Sun Kelvin,
+ * GI ambient / probe diffuse / probe spec EV, Local lights EV + size, Sun Kelvin,
  * the three tint swatch + strength pairs, Shadow lift EV). It never touches
  * AlchemyEnvIntensityAdvanced, AlchemyEnvLocalLightIncludeRig or auto
  * exposure.
@@ -44,7 +44,7 @@
 
 namespace ALEnvIntensityPresets
 {
-    // The 16 values a preset owns. The member initialisers are the stock
+    // The 17 values a preset owns. The member initialisers are the stock
     // (settings_alchemy.xml default) values; defaultValues() re-reads the live
     // defaults from the settings so they cannot drift from the XML.
     struct Values
@@ -57,6 +57,7 @@ namespace ALEnvIntensityPresets
         F32      mGIProbeDiffuseEV   = 0.f;
         F32      mGIProbeSpecEV      = 0.f;
         F32      mLocalLightEV       = 0.f;
+        F32      mLocalLightSize     = 0.f;
         F32      mSunKelvin          = 6500.f;
         LLColor4 mSunTintColor       = LLColor4(1.f, 1.f, 1.f, 1.f);
         F32      mSunTintStrength    = 1.f;
@@ -68,11 +69,11 @@ namespace ALEnvIntensityPresets
     };
 
     // ---- live settings ----------------------------------------------------
-    Values currentValues();                                  // read the 16 live settings
+    Values currentValues();                                  // read the 17 live settings
     Values defaultValues();                                  // each setting's default
     bool   nearlyEqual(const Values& a, const Values& b);   // epsilon compare (F32 LLSD round-trip)
 
-    // Writes the 16 settings (in the order the built-in presets always used).
+    // Writes the 17 settings (in the order the built-in presets always used).
     // While it runs isApplying() is true, so the Quick Presets combo does not
     // flash "Custom" from the per-setting change signals; when it finishes the
     // "applied" signal fires once so listeners re-derive their state.
@@ -128,7 +129,7 @@ namespace ALEnvIntensityPresets
     typedef boost::signals2::signal<void()> signal_t;
     // the list of user presets changed (save / overwrite / delete)
     boost::signals2::connection connectListChanged(const signal_t::slot_type& slot);
-    // apply() finished writing the 16 settings
+    // apply() finished writing the 17 settings
     boost::signals2::connection connectApplied(const signal_t::slot_type& slot);
 }
 
