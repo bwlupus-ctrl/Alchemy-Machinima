@@ -114,6 +114,7 @@ def run(dependency_build):
         ('negative_mode', 'AlchemyEnvEnvironmentOnly', 'handleSetShaderChanged(value);', 'settings_shader_change_count() == handlers'),
         ('negative_tag', 'RenderGBufferAvatarTag', 'handleSetShaderChanged(value);', 'settings_shader_change_count() == handlers'),
         ('negative_direct', 'AlchemyEnvEnvironmentOnly', 'LLViewerShaderMgr::instance()->setShaders();', 'LLViewerShaderMgr::calls == shaders'),
+        ('negative_environment_ev', 'AlchemyEnvEnvironmentEV', 'handleSetShaderChanged(value);', 'settings_shader_change_count() == handlers'),
     ):
         addition = f'''\n    gSavedSettings.getControl("{key}")->getSignal()->connect(
         [](LLControlVariable*, const LLSD& value, const LLSD&) {{ {callback} }});\n'''
@@ -153,7 +154,7 @@ def run(dependency_build):
             return False
     # Leave generated adapter clean too: negative registration never edits production.
     (out / 'env_only_signal_adapter.h').write_text(adapter, encoding='utf-8')
-    print('PASS 3 negative controls: both reload listeners and a direct setShaders listener fail runtime assertions', flush=True)
+    print('PASS 4 negative controls: recipient/tag/Environment EV reload listeners and a direct setShaders listener fail runtime assertions', flush=True)
     return True
 
 

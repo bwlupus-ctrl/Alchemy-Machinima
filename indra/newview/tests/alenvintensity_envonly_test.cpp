@@ -66,6 +66,23 @@ int main()
         assert(commits >= 4);
         connection.disconnect();
     }
-    std::cout << "PASS real settings signals: both preferences emit commits without shader reloads\n";
+    {
+        const char* key = "AlchemyEnvEnvironmentEV";
+        LLControlVariable* control = gSavedSettings.getControl(key);
+        int commits = 0;
+        auto connection = control->getSignal()->connect(
+            [&commits](LLControlVariable*, const LLSD&, const LLSD&) { ++commits; });
+        const auto handlers = settings_shader_change_count();
+        const auto shaders = LLViewerShaderMgr::calls;
+        for (F32 value : {-4.f, 0.f, .05f, 4.f, 0.f})
+        {
+            gSavedSettings.setF32(key, value);
+            assert(settings_shader_change_count() == handlers);
+            assert(LLViewerShaderMgr::calls == shaders);
+        }
+        assert(commits == 5);
+        connection.disconnect();
+    }
+    std::cout << "PASS real settings signals: recipient preferences and Environment EV emit commits without shader reloads\n";
 }
 #endif

@@ -1480,9 +1480,14 @@ ALProbeSched::EnvSample LLReflectionMapManager::gatherEnvSample()
     static LLCachedControl<S32> shadow_detail(gSavedSettings, "RenderShadowDetail", 2);
     static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
     ALProbeSched::EnvSettings& st = e.mSet;
-    st.mSunEV = (F32)sun_ev;
-    st.mMoonEV = (F32)moon_ev;
-    st.mLocalLightEV = (F32)local_light_ev;
+    // The master changes captured source lighting even in a sun-only scene.
+    // Fold the effective (mode/HDR-gated) offset into the existing signature
+    // fields: zero/OFF retain their bytes; toggles and slider edits dirty both
+    // ordinary and cinematic probes without baking sampling-time GI gains.
+    const F32 environment_ev = ALEnvIntensity::environmentEV();
+    st.mSunEV = (F32)sun_ev + environment_ev;
+    st.mMoonEV = (F32)moon_ev + environment_ev;
+    st.mLocalLightEV = (F32)local_light_ev + environment_ev;
     st.mLocalLightSize = (F32)local_light_size;
     st.mShadowLiftEV = (F32)shadow_lift_ev;
     st.mSunKelvin = (F32)sun_kelvin;

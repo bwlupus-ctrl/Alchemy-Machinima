@@ -786,6 +786,9 @@
                     width="90"/>
             <check_box control_name="AlchemyEnvEnvironmentOnly" name="env_environment_only" label="Environment only" tool_tip="When on, Personal Lighting changes only the set around people. Everyone on screen keeps normal lighting; the lit set still glows onto their edges (Light wrap). Light bounced from the set inside reflection probes still reaches them. Needs HDR." follows="left|top" layout="topleft" left="125" top="58" width="180" height="18" />
             <text name="env_environment_only_hdr" follows="left|top" layout="topleft" left="310" top="60" width="140" height="16" visible="false">Needs HDR</text>
+            <text name="env_environment_ev_label" follows="left|top" layout="topleft" left="460" top="60" width="120" height="16">Environment (EV)</text>
+            <slider name="env_environment_ev" control_name="AlchemyEnvEnvironmentEV" min_val="-4" max_val="4" increment="0.05" initial_value="0" decimal_digits="2" can_edit_text="true" text_width="46" wheel_adjust="true" follows="left|top" layout="topleft" left="585" top="58" width="225" height="16" tool_tip="Brightens or darkens the set around people in stops; avatars keep their lighting. Works with Environment only." />
+            <button name="env_environment_ev_reset" follows="left|top" layout="topleft" left="818" top="56" width="18" height="20" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset Environment to 0.00 EV" />
         </layout_panel>
         <!-- [EnvIntensity v2] Advanced exposure panel. Hidden by default
              (AlchemyEnvIntensityAdvanced); applyEnvIntensityAdvanced() shows it

@@ -45,6 +45,7 @@ private:
     void updateTonemapGating();
     void updateEnvOnlyAvailability();
     boost::signals2::scoped_connection mEnvOnlyHDRConnection;
+    boost::signals2::scoped_connection mEnvOnlyConnection;
     void updateHistoryButtons();
     void updateSensor();
     void showSensorReadout();

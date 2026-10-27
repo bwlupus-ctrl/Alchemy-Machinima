@@ -200,6 +200,8 @@ bool ALPanelExposurePage::postBuild()
     updateEnvOnlyAvailability();
     mEnvOnlyHDRConnection = gSavedSettings.getControl("RenderHDREnabled")->getSignal()->connect(
         [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvOnlyAvailability(); });
+    mEnvOnlyConnection = gSavedSettings.getControl("AlchemyEnvEnvironmentOnly")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvOnlyAvailability(); });
     mUndo = getChild<LLButton>("exp_undo");
     mRedo = getChild<LLButton>("exp_redo");
     mAMDExposure = findChild<LLUICtrl>("exp_amd_exposure");
@@ -386,8 +388,18 @@ void ALPanelExposurePage::updateHistoryButtons()
 void ALPanelExposurePage::updateEnvOnlyAvailability()
 {
     const bool hdr = gPipeline.worldHDREnabled();
+    const bool enabled = hdr && gSavedSettings.getBOOL("AlchemyEnvEnvironmentOnly");
     if (LLUICtrl* control = findChild<LLUICtrl>("exp_environment_only"))
     {
         setEnabledIfChanged(control, hdr);
     }
+    if (LLUICtrl* control = findChild<LLUICtrl>("exp_environment_ev"))
+    {
+        // Gate row actions too, and disable the native slider so its focused
+        // value editor becomes read-only and uses the disabled text colour.
+        setEnabledIfChanged(control->getParent(), enabled);
+        setEnabledIfChanged(control, enabled);
+    }
+    for (const char* name : {"exp_environment_ev_label", "exp_environment_ev_reset"})
+        if (LLView* control = findChild<LLView>(name)) setEnabledIfChanged(control, enabled);
 }
