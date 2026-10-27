@@ -400,6 +400,6 @@ void ALPanelExposurePage::updateEnvOnlyAvailability()
         setEnabledIfChanged(control->getParent(), enabled);
         setEnabledIfChanged(control, enabled);
     }
-    for (const char* name : {"exp_environment_ev_label", "exp_environment_ev_reset"})
-        if (LLView* control = findChild<LLView>(name)) setEnabledIfChanged(control, enabled);
+    if (LLView* control = findChild<LLView>("exp_environment_ev_label")) setEnabledIfChanged(control, enabled);
+    if (LLView* control = findChild<LLView>("exp_environment_ev_reset")) setEnabledIfChanged(control, enabled);
 }
