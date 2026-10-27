@@ -156,6 +156,8 @@ private:
     LLComboBox* mEasyFlarePreset = nullptr;
     LLComboBox* mNightMaskPreset = nullptr;
     LLComboBox* mEasyNightMaskPreset = nullptr;
+    LLUICtrl* mSwayAmounts[4] = {};
+    std::array<boost::signals2::scoped_connection, 4> mSwayConnections;
     LLUICtrl* mNightMaskDarkness = nullptr; // [NightMaskPercent]
     LLUICtrl* mEasyNightMaskDarkness = nullptr; // [NightMaskPercent]
     boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]

@@ -240,9 +240,9 @@ F32 clampPitch(F32 value)
                       -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG);
 }
 
-LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
+LightValues cleanLightValues(const LightValues& input, F32 min_ev = MIN_EV)
 {
-    LightBase output;
+    LightValues output;
     std::memset(&output, 0, sizeof(output));
     output.mYawDeg = wrap180(finiteOr(input.mYawDeg, 0.f));
     output.mPitchDeg = clampPitch(input.mPitchDeg);
@@ -257,6 +257,8 @@ LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
         input.mFlickerProgram, (S32)FLICKER_NONE, (S32)FLICKER_COUNT - 1);
     output.mFlickerAmount = std::clamp(
         finiteOr(input.mFlickerAmount, 0.f), 0.f, 1.f);
+    output.mSwayAmount = std::clamp(finiteOr(input.mSwayAmount, 0.f), 0.f, 1.f);
+    output.mSwayPeriod = std::clamp(finiteOr(input.mSwayPeriod, 2.4f), 1.f, 6.f);
     output.mFixtureMode = input.mFixtureMode;
     output.mKelvin = std::clamp(
         finiteOr(input.mKelvin, 5600.f),
@@ -275,6 +277,137 @@ LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
     output.mDetailShadows = input.mDetailShadows;
     output.mWorldShadowPick = input.mWorldShadowPick;
     return output;
+}
+
+LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
+{
+    LightBase output;
+    static_cast<LightValues&>(output) = cleanLightValues(input, min_ev);
+    copySwayMix(input, output);
+    normalizeSwayWeights(output);
+    return output;
+}
+
+
+// Merge both endpoints before making any capacity decision. All scratch storage
+// is inline and bounded by eight terms, including duplicate endpoint rows.
+void blendSwayMix(const LightBase& start, const LightBase& target, F32 eased,
+                  LightBase& output)
+{
+    output.mSwayTermCount = 0;
+    std::fill_n(output.mSwayTerms, MAX_SWAY_TERMS, SwayTerm{});
+    output.mSwayAmount = target.mSwayAmount;
+    output.mSwayPeriod = target.mSwayPeriod;
+    if (!start.mSwayTermCount && !target.mSwayTermCount &&
+        start.mSwayAmount == target.mSwayAmount &&
+        start.mSwayPeriod == target.mSwayPeriod)
+    {
+        return; // Preserve the empty authored representation, including off.
+    }
+
+    struct Term
+    {
+        F32 mAmount;
+        F32 mPeriod;
+        F64 mStart;
+        F64 mTarget;
+    };
+    Term terms[2 * MAX_SWAY_TERMS];
+    S32 count = 0;
+    const auto append = [&](const LightBase& source, bool is_target)
+    {
+        const auto add = [&](F32 amount, F32 period, F32 weight)
+        {
+            if (amount <= 0.f || weight <= 0.f) return;
+            terms[count++] = {amount, period, is_target ? 0.0 : weight,
+                                            is_target ? weight : 0.0};
+        };
+        if (!source.mSwayTermCount)
+            add(source.mSwayAmount, source.mSwayPeriod, 1.f);
+        else
+            for (S32 i = 0; i < std::min<S32>(source.mSwayTermCount, MAX_SWAY_TERMS); ++i)
+            {
+                const SwayTerm& term = source.mSwayTerms[i];
+                add(term.mAmount, term.mPeriod, term.mWeight);
+            }
+    };
+    append(start, false);
+    append(target, true);
+    std::sort(terms, terms + count, [](const Term& a, const Term& b)
+    {
+        if (a.mPeriod != b.mPeriod) return a.mPeriod < b.mPeriod;
+        if (a.mAmount != b.mAmount) return a.mAmount < b.mAmount;
+        // Fix the accumulation order even for duplicate rows in an endpoint.
+        if (a.mStart != b.mStart) return a.mStart < b.mStart;
+        return a.mTarget < b.mTarget;
+    });
+    S32 unique = 0;
+    for (S32 i = 0; i < count; ++i)
+    {
+        const Term term = terms[i];
+        if (unique && terms[unique - 1].mAmount == term.mAmount &&
+                      terms[unique - 1].mPeriod == term.mPeriod)
+        {
+            terms[unique - 1].mStart += term.mStart;
+            terms[unique - 1].mTarget += term.mTarget;
+        }
+        else terms[unique++] = term;
+    }
+    S32 start_count = 0, target_count = 0;
+    for (S32 i = 0; i < unique; ++i)
+    {
+        start_count += terms[i].mStart > 0.0;
+        target_count += terms[i].mTarget > 0.0;
+    }
+
+    const F64 e = eased;
+    const F64 window = SWAY_OVERFLOW_FADE_END;
+    for (S32 i = 0; i < unique; ++i)
+    {
+        const Term& term = terms[i];
+        F64 weight = (1.0 - e) * term.mStart + e * term.mTarget;
+        if (unique > MAX_SWAY_TERMS)
+        {
+            S32 rank = 0;
+            if (term.mTarget == 0.0)
+            {
+                for (S32 j = 0; j < unique; ++j)
+                    if (terms[j].mTarget == 0.0 &&
+                        (terms[j].mStart > term.mStart ||
+                         (terms[j].mStart == term.mStart && j < i))) ++rank;
+                if (rank >= MAX_SWAY_TERMS - target_count)
+                    weight = e < window ? weight * (1.0 - e / window) : 0.0;
+            }
+            else if (term.mStart == 0.0)
+            {
+                for (S32 j = 0; j < unique; ++j)
+                    if (terms[j].mStart == 0.0 &&
+                        (terms[j].mTarget > term.mTarget ||
+                         (terms[j].mTarget == term.mTarget && j < i))) ++rank;
+                if (rank >= MAX_SWAY_TERMS - start_count)
+                    weight = e > window ? weight * ((e - window) / (1.0 - window)) : 0.0;
+            }
+        }
+        const F32 stored_weight = static_cast<F32>(weight);
+        if (stored_weight <= 0.f) continue;
+        output.mSwayTerms[output.mSwayTermCount++] = {
+            term.mAmount, term.mPeriod, stored_weight};
+        output.mSwayAmount = std::max(output.mSwayAmount, term.mAmount);
+    }
+    // For e < window, active <= |S| + |EARLY| <= 4. For e >= window,
+    // active <= |T| + |KEPT| <= 4. At the boundary DROPPED and LATE both
+    // have zero weight (explicit branches also guarantee this under /fp:fast),
+    // and zero-weight terms are never emitted. Rankings use
+    // descending endpoint weight, then ascending period/amount (sorted above).
+    // All weight curves are continuous, including e=0, window and 1.
+    // Relative to the natural crossfade the missing mass is
+    // (1-e)*sum(DROPPED s)*min(e/window,1) +
+    // e*sum(LATE t)*(1-clamp((e-window)/(1-window),0,1)), always in [0,1].
+    // Its position-error bounds are missing_mass*max_disp_m horizontally and
+    // in rise, or sqrt(2) times that in 3D. A disjoint 4-to-4 fade can dip all
+    // the way to zero at the boundary; no missing weight is scaled back up.
+    // Count zero otherwise means scalar sway: explicitly mark this dip off.
+    if (!output.mSwayTermCount) output.mSwayAmount = 0.f;
 }
 
 // These are model-local copies of the standard sRGB transfer functions used
@@ -410,7 +543,7 @@ void setLight(LightBase lights[LIGHT_COUNT], S32 index,
 void copyCleanLights(const LightBase input[LIGHT_COUNT],
                      LightBase output[LIGHT_COUNT])
 {
-    std::memset(output, 0, sizeof(LightBase) * LIGHT_COUNT);
+    clearLights(output);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         const LightBase safe = cleanLight(input[i]);
@@ -425,6 +558,9 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
         output[i].mGel = safe.mGel;
         output[i].mFlickerProgram = safe.mFlickerProgram;
         output[i].mFlickerAmount = safe.mFlickerAmount;
+        output[i].mSwayAmount = safe.mSwayAmount;
+        output[i].mSwayPeriod = safe.mSwayPeriod;
+        copySwayMix(safe, output[i]);
         output[i].mFixtureMode = safe.mFixtureMode;
         output[i].mKelvin = safe.mKelvin;
         for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -441,7 +577,7 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
 
 void initializeFX(S32 fx, LightBase lights[LIGHT_COUNT])
 {
-    std::memset(lights, 0, sizeof(LightBase) * LIGHT_COUNT);
+    clearLights(lights);
     switch (fx)
     {
     case 0:
@@ -862,7 +998,6 @@ F32 easyDramaClamp(F32 stops)
 Setup sanitizeSetup(const Setup& setup)
 {
     Setup output;
-    std::memset(&output, 0, sizeof(output));
     output.mRadius = std::clamp(finiteOr(setup.mRadius, DEFAULT_RADIUS),
                                 MIN_RADIUS, MAX_RADIUS);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
@@ -1054,7 +1189,7 @@ void computeLive(const Setup& setup, const Transforms& transforms,
 {
     const Setup safe_setup = sanitizeSetup(setup);
     const Transforms safe_transforms = sanitizeTransforms(transforms);
-    std::memset(out, 0, sizeof(LightBase) * LIGHT_COUNT);
+    clearLights(out);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         const LightBase& base = safe_setup.mLights[i];
@@ -1076,6 +1211,9 @@ void computeLive(const Setup& setup, const Transforms& transforms,
         out[i].mGel = base.mGel;
         out[i].mFlickerProgram = base.mFlickerProgram;
         out[i].mFlickerAmount = base.mFlickerAmount;
+        out[i].mSwayAmount = base.mSwayAmount;
+        out[i].mSwayPeriod = base.mSwayPeriod;
+        copySwayMix(base, out[i]);
         out[i].mFixtureMode = base.mFixtureMode;
         out[i].mKelvin = base.mKelvin;
         for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -1102,18 +1240,24 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
 {
     if (std::isnan(eased) || eased <= 0.f)
     {
-        return start;
+        LightBase output = start;
+        blendSwayMix(start, start, 0.f, output);
+        normalizeSwayWeights(output);
+        return output;
     }
     if (eased >= 1.f)
     {
-        return target;
+        LightBase output = target;
+        blendSwayMix(target, target, 1.f, output);
+        normalizeSwayWeights(output);
+        return output;
     }
 
     const LightBase safe_start = cleanLight(start, MIN_DERIVED_EV);
     const LightBase safe_target = cleanLight(target, MIN_DERIVED_EV);
 
     LightBase output;
-    std::memset(&output, 0, sizeof(output));
+    clearLight(output);
     const F32 delta_yaw = wrap180(
         safe_target.mYawDeg - safe_start.mYawDeg);
     output.mYawDeg = wrap180(
@@ -1137,6 +1281,10 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
         ? safe_target.mFlickerProgram : safe_start.mFlickerProgram;
     output.mFlickerAmount = safe_start.mFlickerAmount +
         (safe_target.mFlickerAmount - safe_start.mFlickerAmount) * eased;
+    // Crossfade independently timed trajectories through a continuous,
+    // bounded mixture; never interpolate the periods themselves.
+    blendSwayMix(safe_start, safe_target, eased, output);
+    normalizeSwayWeights(output);
     output.mFixtureMode = eased > 0.5f
         ? safe_target.mFixtureMode : safe_start.mFixtureMode;
     const F32 start_mired = 1.0e6f / safe_start.mKelvin;
@@ -1618,7 +1766,7 @@ void render(F32 radius, const LightBase live[LIGHT_COUNT],
 
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        const LightBase light = cleanLight(live[i], MIN_DERIVED_EV);
+        const LightValues light = cleanLightValues(live[i], MIN_DERIVED_EV);
         const F32 yaw = light.mYawDeg * DEGREES_TO_RADIANS;
         const F32 pitch = light.mPitchDeg * DEGREES_TO_RADIANS;
         const F32 cos_pitch = std::cos(pitch);
@@ -1767,7 +1915,7 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
     LightBase lights[LIGHT_COUNT];
     if (fx < 0 || fx >= FX_COUNT)
     {
-        std::memset(out, 0, sizeof(LightBase) * LIGHT_COUNT);
+        clearLights(out);
         return;
     }
 
@@ -2163,7 +2311,7 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
     }
     case 29: // Stage Debut -- all LSL latches expressed from beat alone
     {
-        std::memset(lights, 0, sizeof(lights));
+        clearLights(lights);
         const S64 beat = positiveMod(step, 80);
         if (beat >= 5 && beat < 70)
         {
@@ -3014,12 +3162,117 @@ void evalFX(S32 fx, U64 seed, F64 t_seconds,
     copyCleanLights(lights, out);
 }
 
+bool sameSwayMix(const LightBase& first, const LightBase& second)
+{
+    if (first.mSwayTermCount != second.mSwayTermCount) return false;
+    for (S32 i = 0; i < std::min<S32>(first.mSwayTermCount, MAX_SWAY_TERMS); ++i)
+        if (!(first.mSwayTerms[i] == second.mSwayTerms[i])) return false;
+    return true;
+}
+
+void copySwayMix(const LightBase& source, LightBase& destination)
+{
+    destination.mSwayTermCount = static_cast<U8>(std::min<S32>(source.mSwayTermCount, MAX_SWAY_TERMS));
+    std::copy_n(source.mSwayTerms, MAX_SWAY_TERMS, destination.mSwayTerms);
+}
+
+void normalizeSwayWeights(LightBase& light)
+{
+    light.mSwayTermCount = static_cast<U8>(std::min<S32>(light.mSwayTermCount, MAX_SWAY_TERMS));
+    F64 total = 0.0;
+    S32 largest = 0;
+    for (S32 i = 0; i < light.mSwayTermCount; ++i)
+    {
+        total += light.mSwayTerms[i].mWeight;
+        if (light.mSwayTerms[i].mWeight > light.mSwayTerms[largest].mWeight) largest = i;
+    }
+    if (total <= 1.0) return;
+    F64 rounded_total = 0.0;
+    for (S32 i = 0; i < light.mSwayTermCount; ++i)
+    {
+        light.mSwayTerms[i].mWeight = static_cast<F32>(light.mSwayTerms[i].mWeight / total);
+        rounded_total += light.mSwayTerms[i].mWeight;
+    }
+    if (rounded_total > 1.0)
+    {
+        F32& weight = light.mSwayTerms[largest].mWeight;
+        const F32 reduced = static_cast<F32>(std::max(0.0, weight - (rounded_total - 1.0)));
+        weight = std::nextafter(reduced, 0.f);
+    }
+}
+
+void clearLight(LightBase& light)
+{
+    std::memset(&light, 0, sizeof(light));
+    light.mSwayPeriod = 2.4f;
+}
+
+void clearLights(LightBase lights[LIGHT_COUNT])
+{
+    for (S32 i = 0; i < LIGHT_COUNT; ++i) clearLight(lights[i]);
+}
+
 U64 flickerLightSeed(U64 rig_seed, S32 light_index)
 {
     const U64 seed = rig_seed ? rig_seed : DEFAULT_SEED;
     const S32 safe_index = std::clamp(light_index, 0, LIGHT_COUNT - 1);
     return splitMix64(seed ^
         (0xd1b54a32d192ed03ULL * static_cast<U64>(safe_index + 1)));
+}
+
+void evalSway(U64 light_seed, F64 t_seconds, F32 amount, F32 period_s,
+              F32 max_disp_m, F32 out_offset[3], bool breathing)
+{
+    out_offset[0] = out_offset[1] = out_offset[2] = 0.f;
+    amount = std::clamp(finiteOr(amount, 0.f), 0.f, 1.f);
+    if (amount <= 0.f) return;
+    // Domain separation from practical flicker, whose per-light seed is the
+    // input. Never share flicker's program hashes or alter FX #30.
+    constexpr U64 SWAY_SALT = 0x5357415950454e44ULL; // "SWAYPEND"
+    const U64 seed = light_seed ^ SWAY_SALT;
+    const F64 seconds = std::clamp(finiteOr(t_seconds, 0.0), 0.0, MAX_FX_SECONDS);
+    const F64 period = std::clamp(finiteOr(period_s, 2.4f), 1.f, 6.f);
+    const F64 length = 9.80665 * period * period / (TWO_PI * TWO_PI);
+    const F64 noise = breathing ? 2.0 * valueNoise(seed, 0, seconds * .07, 0, 2) - 1.0 : 0.0;
+    const F64 amplitude = amount * (TWO_PI / 20.0) * (1.0 + .12 * noise);
+    const F64 yaw = TWO_PI * unitHash(seed, 0, 0, 0, 0);
+    const F64 phase = TWO_PI * (positiveFmod(seconds, period) / period +
+                               unitHash(seed, 0, 0, 0, 1));
+    const F64 major = length * std::sin(amplitude * std::sin(phase));
+    const F64 minor = length * std::sin(amplitude * .22 * std::cos(phase));
+    F64 x = major * std::cos(yaw) - minor * std::sin(yaw);
+    F64 y = major * std::sin(yaw) + minor * std::cos(yaw);
+    const F64 horizontal = std::hypot(x, y);
+    const F64 limit = std::max(0.f, finiteOr(max_disp_m, 0.f));
+    if (horizontal > limit)
+    {
+        x *= limit / horizontal;
+        y *= limit / horizontal;
+    }
+    out_offset[0] = static_cast<F32>(x);
+    out_offset[1] = static_cast<F32>(y);
+    out_offset[2] = static_cast<F32>(length -
+        std::sqrt(std::max(length * length - x * x - y * y, 0.0)));
+}
+
+void evalLightSway(const LightBase& light, U64 light_seed, F64 t_seconds,
+                   F32 max_disp_m, F32 out_offset[3])
+{
+    if (!light.mSwayTermCount)
+    {
+        evalSway(light_seed, t_seconds, light.mSwayAmount, light.mSwayPeriod,
+                 max_disp_m, out_offset);
+        return;
+    }
+    out_offset[0] = out_offset[1] = out_offset[2] = 0.f;
+    for (S32 i = 0; i < std::min<S32>(light.mSwayTermCount, MAX_SWAY_TERMS); ++i)
+    {
+        const SwayTerm& term = light.mSwayTerms[i];
+        F32 offset[3];
+        evalSway(light_seed, t_seconds, term.mAmount, term.mPeriod, max_disp_m, offset);
+        for (S32 axis = 0; axis < 3; ++axis)
+            out_offset[axis] += term.mWeight * offset[axis];
+    }
 }
 
 void evalFlicker(S32 program, U64 light_seed, F64 t_seconds, F32 amount,
@@ -3340,7 +3593,7 @@ bool goboIsAnimated(S32 index)
 Setup classicSetup()
 {
     Setup setup;
-    std::memset(&setup, 0, sizeof(setup));
+    clearLights(setup.mLights);
     setup.mRadius = 1.5f;
     // Easy-native: Key anchored at EV 0, ratio-locked at 2 stops (Fill derives
     // to -2, unchanged), Rim on the Subtle bucket (-1.0) so the compiled

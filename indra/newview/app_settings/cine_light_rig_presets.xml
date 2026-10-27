@@ -2071,6 +2071,125 @@
           <key>fixture_mode</key><boolean>true</boolean><key>kelvin</key><real>5600.0</real><key>source_size_m</key><real>1.0</real></map>
       </array>
     </map>
+    <map>
+      <key>name</key>
+      <string>Swinging Bulb</string>
+      <key>intent</key>
+      <string>Bare practical bulb hanging overhead on a cord, swinging gently and forever; shadows sway across the set. Interrogation rooms, basements, workshops.</string>
+      <key>radius</key>
+      <real>1.6</real>
+      <key>master_ev</key>
+      <real>0.5</real>
+      <key>ratio_lock</key>
+      <boolean>false</boolean>
+      <key>ratio_stops</key>
+      <real>4.0</real>
+      <key>lights</key>
+      <array>
+        <map>
+          <key>yaw</key>
+          <real>0</real>
+          <key>pitch</key>
+          <real>70</real>
+          <key>profile_idx</key>
+          <integer>0</integer>
+          <key>profile_name</key>
+          <string>2700K Incan</string>
+          <key>ev</key>
+          <real>0</real>
+          <key>beam_idx</key>
+          <integer>0</integer>
+          <key>beam_name</key>
+          <string>Standard</string>
+          <key>on</key>
+          <boolean>true</boolean>
+          <key>sway_amount</key>
+          <real>0.45</real>
+          <key>sway_period</key>
+          <real>2.4</real>
+          <key>fixture_mode</key>
+          <boolean>true</boolean>
+          <key>fixture_preset_idx</key>
+          <integer>10</integer>
+          <key>fixture_preset_name</key>
+          <string>Practical bulb</string>
+          <key>kelvin</key>
+          <real>2700</real>
+          <key>source_size_m</key>
+          <real>0.05</real>
+          <key>detail_shadows</key>
+          <boolean>true</boolean>
+        </map>
+        <map>
+          <key>yaw</key>
+          <real>-40</real>
+          <key>pitch</key>
+          <real>10</real>
+          <key>profile_idx</key>
+          <integer>0</integer>
+          <key>profile_name</key>
+          <string>2700K Incan</string>
+          <key>ev</key>
+          <real>-4</real>
+          <key>beam_idx</key>
+          <integer>1</integer>
+          <key>beam_name</key>
+          <string>Softbox</string>
+          <key>on</key>
+          <boolean>true</boolean>
+          <key>sway_amount</key>
+          <real>0</real>
+          <key>sway_period</key>
+          <real>2.4</real>
+        </map>
+        <map>
+          <key>yaw</key>
+          <real>-150</real>
+          <key>pitch</key>
+          <real>25</real>
+          <key>profile_idx</key>
+          <integer>4</integer>
+          <key>profile_name</key>
+          <string>6500K Cool</string>
+          <key>ev</key>
+          <real>-3.0</real>
+          <key>beam_idx</key>
+          <integer>2</integer>
+          <key>beam_name</key>
+          <string>Snoot</string>
+          <key>on</key>
+          <boolean>false</boolean>
+          <key>sway_amount</key>
+          <real>0</real>
+          <key>sway_period</key>
+          <real>2.4</real>
+        </map>
+        <map>
+          <key>yaw</key>
+          <real>180</real>
+          <key>pitch</key>
+          <real>-15</real>
+          <key>profile_idx</key>
+          <integer>5</integer>
+          <key>profile_name</key>
+          <string>8000K Moon</string>
+          <key>ev</key>
+          <real>-3.0</real>
+          <key>beam_idx</key>
+          <integer>0</integer>
+          <key>beam_name</key>
+          <string>Standard</string>
+          <key>on</key>
+          <boolean>false</boolean>
+          <key>sway_amount</key>
+          <real>0</real>
+          <key>sway_period</key>
+          <real>2.4</real>
+        </map>
+      </array>
+      <key>category</key>
+      <string>Practical</string>
+    </map>
   </array>
 </map>
 </llsd>

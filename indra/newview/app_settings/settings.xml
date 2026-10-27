@@ -2586,6 +2586,20 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.0</real>
     </map>
+    <key>CineLightRigKeySwayAmount</key>
+    <map>
+      <key>Comment</key><string>KEY steady pendulum sway amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigKeySwayPeriod</key>
+    <map>
+      <key>Comment</key><string>KEY seconds per full pendulum swing, from 1 to 6</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.4</real>
+    </map>
     <key>CineLightRigKeyShadowSoft</key>
     <map>
       <key>Comment</key><string>KEY projector shadow penumbra override; zero uses the current global behavior</string>
@@ -2725,6 +2739,20 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigFillSwayAmount</key>
+    <map>
+      <key>Comment</key><string>FILL steady pendulum sway amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigFillSwayPeriod</key>
+    <map>
+      <key>Comment</key><string>FILL seconds per full pendulum swing, from 1 to 6</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.4</real>
     </map>
     <key>CineLightRigFillShadowSoft</key>
     <map>
@@ -2866,6 +2894,20 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.0</real>
     </map>
+    <key>CineLightRigRimSwayAmount</key>
+    <map>
+      <key>Comment</key><string>RIM steady pendulum sway amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigRimSwayPeriod</key>
+    <map>
+      <key>Comment</key><string>RIM seconds per full pendulum swing, from 1 to 6</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.4</real>
+    </map>
     <key>CineLightRigRimShadowSoft</key>
     <map>
       <key>Comment</key><string>RIM projector shadow penumbra override; zero uses the current global behavior</string>
@@ -3005,6 +3047,20 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigBgSwayAmount</key>
+    <map>
+      <key>Comment</key><string>BG steady pendulum sway amount from zero to one</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineLightRigBgSwayPeriod</key>
+    <map>
+      <key>Comment</key><string>BG seconds per full pendulum swing, from 1 to 6</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.4</real>
     </map>
     <key>CineLightRigBgShadowSoft</key>
     <map>

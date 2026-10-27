@@ -277,6 +277,9 @@ bool sameLight(const LightBase& first, const LightBase& second)
            first.mGel == second.mGel &&
            first.mFlickerProgram == second.mFlickerProgram &&
            first.mFlickerAmount == second.mFlickerAmount &&
+           first.mSwayAmount == second.mSwayAmount &&
+           first.mSwayPeriod == second.mSwayPeriod &&
+           sameSwayMix(first, second) &&
            first.mFixtureMode == second.mFixtureMode &&
            first.mKelvin == second.mKelvin &&
            first.mGelSlot[0] == second.mGelSlot[0] &&
@@ -316,7 +319,7 @@ bool sameGlobals(const Globals& first, const Globals& second)
 void copyLights(const LightBase source[LIGHT_COUNT],
                 LightBase destination[LIGHT_COUNT])
 {
-    std::memcpy(destination, source, sizeof(LightBase) * LIGHT_COUNT);
+    std::copy(source, source + LIGHT_COUNT, destination);
 }
 
 void applyFlickerModulation(EmitterState& state, F32 intensity_mul,
@@ -502,6 +505,24 @@ LLSD lightToLLSD(const LightBase& light)
     data["flicker_idx"] = light.mFlickerProgram;
     data["flicker_name"] = flickerProgramName(light.mFlickerProgram);
     data["flicker_amount"] = light.mFlickerAmount;
+    data["sway_amount"] = light.mSwayAmount;
+    data["sway_period"] = light.mSwayPeriod;
+    // Scene cue snapshots can contain an interrupted output crossfade. Keep
+    // its trajectories so restoring that snapshot does not change the motion.
+    // Ordinary authored lights need only the two scalar keys above.
+    if (light.mSwayTermCount)
+    {
+        data["sway_mix"] = LLSD::emptyArray();
+        for (S32 i = 0; i < light.mSwayTermCount; ++i)
+        {
+            const SwayTerm& term = light.mSwayTerms[i];
+            LLSD row = LLSD::emptyArray();
+            row.append(term.mAmount);
+            row.append(term.mPeriod);
+            row.append(term.mWeight);
+            data["sway_mix"].append(row);
+        }
+    }
     data["fixture_mode"] = light.mFixtureMode;
     data["kelvin"] = light.mKelvin;
     data["source_size_m"] = light.mSourceSizeM;
@@ -519,6 +540,38 @@ LLSD lightToLLSD(const LightBase& light)
             fixtureGelName(light.mGelSlot[slot]));
     }
     return data;
+}
+
+bool swayMixFromLLSD(const LLSD& mix, LightBase& light)
+{
+    if (!mix.isArray() || mix.size() > MAX_SWAY_TERMS) return false;
+    LightBase parsed;
+    F64 total = 0.0;
+    for (S32 i = 0; i < mix.size(); ++i)
+    {
+        const LLSD& row = mix[i];
+        if (!row.isArray() || row.size() != 3) return false;
+        for (S32 column = 0; column < 3; ++column)
+            if (!row[column].isReal() && !row[column].isInteger()) return false;
+        const F64 amount = row[0].asReal();
+        const F64 period = row[1].asReal();
+        const F64 weight = row[2].asReal();
+        if (!std::isfinite(amount) || amount <= 0.0 || amount > 1.0 ||
+            !std::isfinite(period) || period < 1.0 || period > 6.0 ||
+            !std::isfinite(weight) || weight < 0.0 || weight > 1.0001)
+            return false;
+        total += weight;
+        parsed.mSwayTerms[parsed.mSwayTermCount++] = {
+            static_cast<F32>(amount), static_cast<F32>(period), static_cast<F32>(weight)};
+    }
+    if (total > 1.0001) return false;
+    normalizeSwayWeights(parsed);
+    copySwayMix(parsed, light);
+    // A snapshot fading to off still needs the caller's active marker.
+    if (!std::isfinite(light.mSwayAmount)) light.mSwayAmount = 0.f;
+    for (S32 i = 0; i < light.mSwayTermCount; ++i)
+        light.mSwayAmount = std::max(light.mSwayAmount, light.mSwayTerms[i].mAmount);
+    return true;
 }
 
 bool setupFromLLSD(const LLSD& data, Setup& output)
@@ -613,6 +666,18 @@ bool setupFromLLSD(const LLSD& data, Setup& output)
         }
         light.mFlickerAmount = item.has("flicker_amount")
             ? static_cast<F32>(item["flicker_amount"].asReal()) : 0.f;
+        light.mSwayAmount = item.has("sway_amount")
+            ? static_cast<F32>(item["sway_amount"].asReal()) : 0.f;
+        light.mSwayPeriod = item.has("sway_period")
+            ? static_cast<F32>(item["sway_period"].asReal()) : 2.4f;
+        if (item.has("sway_mix") && !swayMixFromLLSD(item["sway_mix"], light))
+        {
+            // Optional runtime metadata must not invalidate an authored look,
+            // cue list or multi-instance scene. Rate-limit across those callers.
+            LL_WARNS_ONCE("CineLightRig")
+                << "Discarding malformed sway_mix; preserving authored light values"
+                << LL_ENDL;
+        }
         light.mFixtureMode = item.has("fixture_mode")
             ? item["fixture_mode"].asBoolean() : false;
         light.mKelvin = item.has("kelvin")
@@ -1035,9 +1100,9 @@ bool ALCineLightRig::isSetupDecorationName(const std::string& name)
 ALCineLightRig::ALCineLightRig(ALCineLightRigSlot slot)
   : mSlot(slot)
 {
-    std::memset(mTransitionStart, 0, sizeof(mTransitionStart));
-    std::memset(mTransitionTarget, 0, sizeof(mTransitionTarget));
-    std::memset(mCurrentLive, 0, sizeof(mCurrentLive));
+    clearLights(mTransitionStart);
+    clearLights(mTransitionTarget);
+    clearLights(mCurrentLive);
     std::memset(&mLastFrame, 0, sizeof(mLastFrame));
     // [RigRim] LLVector4's default constructor sets w = 1, so zero explicitly.
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
@@ -1369,11 +1434,12 @@ bool ALCineLightRig::liveProbeAnimating(bool exclude_ignored) const
         {
             return true;
         }
-        // Flicker modulates both the projector and the omni of light i; on the
-        // target rig only the projector reaches the capture.
+        // Flicker and sway animate both emitters of light i; on the target
+        // rig only the projector reaches the capture.
         if (captured_on &&
-            mCurrentLive[i].mFlickerProgram != FLICKER_NONE &&
-            mCurrentLive[i].mFlickerAmount > 0.f)
+            ((mCurrentLive[i].mFlickerProgram != FLICKER_NONE &&
+              mCurrentLive[i].mFlickerAmount > 0.f) ||
+             mCurrentLive[i].mSwayAmount > 0.f))
         {
             return true;
         }
@@ -1505,6 +1571,23 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
         gSavedSettings, "CineLightRigRimFlickerAmount");
     static LLCachedControl<F32> bg_flicker_amount(
         gSavedSettings, "CineLightRigBgFlickerAmount");
+    static LLCachedControl<F32> key_sway_amount(
+        gSavedSettings, "CineLightRigKeySwayAmount");
+    static LLCachedControl<F32> fill_sway_amount(
+        gSavedSettings, "CineLightRigFillSwayAmount");
+    static LLCachedControl<F32> rim_sway_amount(
+        gSavedSettings, "CineLightRigRimSwayAmount");
+    static LLCachedControl<F32> bg_sway_amount(
+        gSavedSettings, "CineLightRigBgSwayAmount");
+    static LLCachedControl<F32> key_sway_period(
+        gSavedSettings, "CineLightRigKeySwayPeriod");
+    static LLCachedControl<F32> fill_sway_period(
+        gSavedSettings, "CineLightRigFillSwayPeriod");
+    static LLCachedControl<F32> rim_sway_period(
+        gSavedSettings, "CineLightRigRimSwayPeriod");
+    static LLCachedControl<F32> bg_sway_period(
+        gSavedSettings, "CineLightRigBgSwayPeriod");
+
     static LLCachedControl<bool> key_on(gSavedSettings, "CineLightRigKeyOn");
     static LLCachedControl<bool> fill_on(gSavedSettings, "CineLightRigFillOn");
     static LLCachedControl<bool> rim_on(gSavedSettings, "CineLightRigRimOn");
@@ -1550,6 +1633,8 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
         key_flicker_amount, fill_flicker_amount,
         rim_flicker_amount, bg_flicker_amount
     };
+    const F32 sway_amounts[LIGHT_COUNT] = {key_sway_amount, fill_sway_amount, rim_sway_amount, bg_sway_amount};
+    const F32 sway_periods[LIGHT_COUNT] = {key_sway_period, fill_sway_period, rim_sway_period, bg_sway_period};
     const bool on[LIGHT_COUNT] = { key_on, fill_on, rim_on, bg_on };
 
     setup.mRadius = radius;
@@ -1568,6 +1653,8 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
         setup.mLights[i].mGel = gels[i];
         setup.mLights[i].mFlickerProgram = flicker_programs[i];
         setup.mLights[i].mFlickerAmount = flicker_amounts[i];
+        setup.mLights[i].mSwayAmount = sway_amounts[i];
+        setup.mLights[i].mSwayPeriod = sway_periods[i];
         setup.mLights[i].mFixtureMode =
             gSavedSettings.getBOOL(FIXTURE_MODE_SETTINGS[i]);
         setup.mLights[i].mKelvin =
@@ -1626,6 +1713,8 @@ void ALCineLightRig::readSettings(const ALCineLightRigParamBlob& blob,
         setup.mLights[i].mFlickerProgram =
             blob.mLights[i].mFlickerProgram;
         setup.mLights[i].mFlickerAmount = blob.mLights[i].mFlickerAmount;
+        setup.mLights[i].mSwayAmount = blob.mLights[i].mSwayAmount;
+        setup.mLights[i].mSwayPeriod = blob.mLights[i].mSwayPeriod;
         setup.mLights[i].mFixtureMode = blob.mLights[i].mFixtureMode;
         setup.mLights[i].mKelvin = blob.mLights[i].mKelvin;
         for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -1679,6 +1768,8 @@ void ALCineLightRig::writeSetupToSettings(const Setup& input) const
         gSavedSettings.setS32(prefix + "Gel", light.mGel);
         gSavedSettings.setS32(prefix + "Flicker", light.mFlickerProgram);
         gSavedSettings.setF32(prefix + "FlickerAmount", light.mFlickerAmount);
+        gSavedSettings.setF32(prefix + "SwayAmount", light.mSwayAmount);
+        gSavedSettings.setF32(prefix + "SwayPeriod", light.mSwayPeriod);
         gSavedSettings.setBOOL(prefix + "FixtureMode", light.mFixtureMode);
         gSavedSettings.setF32(prefix + "Kelvin", light.mKelvin);
         for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -2786,8 +2877,8 @@ void ALCineLightRig::tickShared(
             ? avatar->getUniformScale() : 1.f;
     }
     globals = sanitizeGlobals(globals);
-    // These lazy-map snapshots are fixed-size arithmetic structs (no strings or
-    // heap ownership); retaining them avoids computing an off-screen map frame.
+    // Light/setup snapshots, including the four sway slots, are trivially
+    // copyable with no heap ownership. Retain them for the lazy map frame.
     mMapTargetSetup = setup;
     mMapTargetTransforms = transforms;
     mMapTargetGlobals = globals;
@@ -3036,6 +3127,9 @@ void ALCineLightRig::tickShared(
                 setup.mLights[i].mFlickerProgram;
             fx_setup.mLights[i].mFlickerAmount =
                 setup.mLights[i].mFlickerAmount;
+            fx_setup.mLights[i].mSwayAmount = setup.mLights[i].mSwayAmount;
+            fx_setup.mLights[i].mSwayPeriod = setup.mLights[i].mSwayPeriod;
+            copySwayMix(setup.mLights[i], fx_setup.mLights[i]);
             fx_setup.mLights[i].mFixtureMode =
                 setup.mLights[i].mFixtureMode;
             fx_setup.mLights[i].mKelvin = setup.mLights[i].mKelvin;
@@ -3161,6 +3255,22 @@ void ALCineLightRig::tickShared(
             mLastFrame.mProj[i], intensity_mul, color_mul);
         applyFlickerModulation(
             mLastFrame.mOmni[i], intensity_mul, color_mul);
+    }
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        // Exact off path: leave every emitter byte untouched.
+        if (mCurrentLive[i].mSwayAmount <= 0.f) continue;
+        const F32 effective_radius = std::clamp(mCurrentRadius * render_globals.mSubjectScale,
+            std::min(mCurrentRadius, SCALED_RADIUS_FLOOR), std::max(mCurrentRadius, SCALED_RADIUS_CEIL));
+        F32 offset[3];
+        evalLightSway(mCurrentLive[i], flickerLightSeed(render_globals.mSeed, i),
+                      presentation_time, .35f * effective_radius, offset);
+        for (EmitterState* emitter : {&mLastFrame.mProj[i], &mLastFrame.mOmni[i]})
+        {
+            emitter->mOffX += offset[0];
+            emitter->mOffY += offset[1];
+            emitter->mOffZ += offset[2];
+        }
     }
     applyFrame(mLastFrame, mSmoothedCentre, true_centre,
                mCurrentRadius, render_globals.mSubjectScale, cookie_setting);

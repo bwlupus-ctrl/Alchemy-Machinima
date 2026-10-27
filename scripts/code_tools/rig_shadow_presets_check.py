@@ -80,6 +80,9 @@ SHIM = r'''
 #include <map>
 #include <string>
 #include <vector>
+#include <utility>
+#define LL_WARNS_ONCE(...) if (static bool warned = false; std::exchange(warned, true)) {} else std::cerr
+#define LL_ENDL std::endl
 #include "alcinelightrigmodel.h"
 #include "alareashadowmath.h"
 #include "alworldshadowmath.h"
@@ -147,6 +150,8 @@ def baseline_model_outputs(out, presets, baseline):
         src=tree.read('indra/newview/alcinelightrig.cpp')
         signatures=[f'S32 {n}Index(const std::string& name)' for n in ('profile','beam','gobo','gel','fixtureGel','fixturePreset','flickerProgram')]
         loader='\n'.join(function(src,s) for s in signatures)
+        if 'bool swayMixFromLLSD(' in src:
+            loader+='\n'+function(src,'bool swayMixFromLLSD(const LLSD& mix, LightBase& light)')
         loader+='\n'+function(src,'bool setupFromLLSD(const LLSD& data, Setup& output)')
         lines=[SHIM,loader,'void dump(const RigFrame& f){std::cout<<std::hexfloat;']
         members=('mOffX','mOffY','mOffZ','mAimX','mAimY','mAimZ','mSR','mSG','mSB','mIntensity','mLightRadius','mFalloff','mFovRad','mOn','mClipped','mGobo')
@@ -184,6 +189,7 @@ def compile_model(out, presets, baseline, defaults):
     signatures = [f'S32 {n}Index(const std::string& name)' for n in
                   ('profile', 'beam', 'gobo', 'gel', 'fixtureGel', 'fixturePreset', 'flickerProgram')]
     loader = '\n'.join(function(src, s) for s in signatures)
+    loader += '\n'+function(src, 'bool swayMixFromLLSD(const LLSD& mix, LightBase& light)')
     loader += '\n'+function(src, 'bool setupFromLLSD(const LLSD& data, Setup& output)')
     loader += '\n'+function(src, 'LLSD lightToLLSD(const LightBase& light)')
     lines = [SHIM, loader]
@@ -197,7 +203,7 @@ def compile_model(out, presets, baseline, defaults):
         lines.append('{LLSD a;')
         cpp_data(p, 'a', lines)
         lines.append('Setup s;assert(setupFromLLSD(a,s));LightBase live[4];computeLive(s,{},live);Globals g;')
-        lines.append('LLSD saved=a;for(int i=0;i<4;++i)saved["lights"].values[i]=lightToLLSD(s.mLights[i]);Setup loaded;assert(setupFromLLSD(saved,loaded));for(int i=0;i<4;++i){assert(loaded.mLights[i].mDetailShadows==s.mLights[i].mDetailShadows);assert(loaded.mLights[i].mWorldShadowPick==s.mLights[i].mWorldShadowPick);auto mixed=blendLight(LightBase{},s.mLights[i],1.f);assert(mixed.mDetailShadows==s.mLights[i].mDetailShadows&&mixed.mWorldShadowPick==s.mLights[i].mWorldShadowPick);}')
+        lines.append('LLSD saved=a;for(int i=0;i<4;++i)saved["lights"].values[i]=lightToLLSD(s.mLights[i]);Setup loaded;assert(setupFromLLSD(saved,loaded));for(int i=0;i<4;++i){assert(loaded.mLights[i].mSwayAmount==s.mLights[i].mSwayAmount);assert(loaded.mLights[i].mSwayPeriod==s.mLights[i].mSwayPeriod);assert(loaded.mLights[i].mDetailShadows==s.mLights[i].mDetailShadows);assert(loaded.mLights[i].mWorldShadowPick==s.mLights[i].mWorldShadowPick);auto mixed=blendLight(LightBase{},s.mLights[i],1.f);assert(mixed.mDetailShadows==s.mLights[i].mDetailShadows&&mixed.mWorldShadowPick==s.mLights[i].mWorldShadowPick);}')
         for member, value in dict(mHeadroomStops=defaults['CineLightRigHeadroomStops'],mBounceRatio=defaults['CineLightRigBounceRatio'],mMasterEV=p['master_ev']).items():
             lines.append(f'g.{member}={float(value):.9f}f;')
         lines.append('RigFrame f;render(s.mRadius,live,g,f);')
@@ -219,7 +225,7 @@ def compile_model(out, presets, baseline, defaults):
     assert result.returncode == 0, result.stdout+result.stderr
     result = subprocess.run([str(d/'model.exe')],capture_output=True,text=True)
     assert result.returncode == 0, 'production loader/model failed (exit %s): %s' % (result.returncode,result.stderr)
-    print('[shadow-presets] production loader/model PASS: 113 unchanged, 12 applied', flush=True)
+    print('[shadow-presets] production loader/model PASS: 113 unchanged, 15 applied (including Swinging Bulb)', flush=True)
     return json.loads(result.stdout)
 
 
@@ -234,7 +240,25 @@ def main():
     baseline = llsd(ET.fromstring(oldtext))['presets']
     library = llsd(ET.parse(ROOT / XML).getroot())
     presets = library['presets']
-    assert len(baseline)==113 and len(presets)>=125
+    assert len(baseline)==113 and len(presets)>=128
+    # Steady sway appends exactly one row to the 127-row approved library.
+    prior = llsd(ET.fromstring(subprocess.check_output(
+        ['git','show','398f7592e05:'+XML], text=True, encoding='utf-8', timeout=30)))['presets']
+    assert len(prior) == 127 and presets[:127] == prior, 'existing preset changed'
+    bulb = presets[127]
+    assert bulb['name'] == 'Swinging Bulb' and bulb['category'] == 'Practical'
+    assert bulb['radius'] == 1.6 and bulb['master_ev'] == .5
+    assert len(bulb['lights']) == 4
+    for i, light in enumerate(bulb['lights']):
+        assert light['sway_amount'] == (.45 if i == 0 else 0)
+        assert light['sway_period'] == 2.4 and light['on'] == (i < 2)
+    key = bulb['lights'][0]
+    assert key['detail_shadows'] and key['fixture_mode']
+    assert key['fixture_preset_idx'] == 10 and key['fixture_preset_name'] == 'Practical bulb'
+    assert key['kelvin'] == 2700 and key['source_size_m'] == .05
+    assert key['yaw'] == 0 and key['pitch'] == 70 and key['ev'] == 0 and key['beam_idx'] == 0
+    fill = bulb['lights'][1]
+    assert fill['yaw'] == -40 and fill['pitch'] == 10 and fill['ev'] == -4 and fill['beam_idx'] == 1
     assert presets[:113] == baseline, 'existing preset changed'
     assert len({p['name'].casefold() for p in presets}) == len(presets)
     for p in presets[113:125]:
@@ -242,6 +266,7 @@ def main():
         assert p['category']=='Shadow Sculpt' and len(p['lights'])==4
         for l in p['lights']:
             assert l['fixture_mode'] and l['flicker_idx']==0 and l['flicker_amount']==0
+            assert l.get('sway_amount', 0) == 0 and l.get('sway_period', 2.4) == 2.4
             assert l['gobo_idx']==0 and l['gel_idx']==0
             assert .01<=l['source_size_m']<=4
     defaults = settings_defaults()

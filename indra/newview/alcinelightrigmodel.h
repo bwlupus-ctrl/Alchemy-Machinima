@@ -13,11 +13,15 @@
 #include "stdtypes.h"
 
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace ALCineLightRigModel
 {
 constexpr S32 LIGHT_COUNT = 4;
+constexpr S32 MAX_SWAY_TERMS = 4;
+// Overflow crossfades retire start-only terms before admitting late targets.
+constexpr F32 SWAY_OVERFLOW_FADE_END = .2f;
 constexpr S32 PROFILE_COUNT = 24;
 constexpr S32 BEAM_COUNT = 3;
 constexpr S32 GOBO_COUNT = 24;
@@ -77,7 +81,9 @@ constexpr F32 FIXTURE_KELVIN_MAX = 20000.f;
 constexpr F32 FIXTURE_SOURCE_SIZE_MIN = 0.01f;
 constexpr F32 FIXTURE_SOURCE_SIZE_MAX = 4.f;
 
-struct LightBase
+// Scalar storage stays trivially copyable: render keeps its historical
+// arithmetic without constructing or copying the runtime trajectory mixture.
+struct LightValues
 {
     F32  mYawDeg = 0.f;
     F32  mPitchDeg = 0.f;
@@ -93,6 +99,8 @@ struct LightBase
     S32  mGel = 0;
     S32  mFlickerProgram = FLICKER_NONE;
     F32  mFlickerAmount = 0.f;
+    F32  mSwayAmount = 0.f;
+    F32  mSwayPeriod = 2.4f;
     // Fixture mode is additive. False preserves the complete 1.x
     // profile/single-gel/shadow-softness path.
     bool mFixtureMode = false;
@@ -104,6 +112,40 @@ struct LightBase
     bool mDetailShadows = false;
     bool mWorldShadowPick = false; // Rig-owned preference, independent of manual picks.
 };
+
+// Evaluated-state mixture of independently timed trajectories. Authored lights
+// leave it empty; scene snapshots preserve it. Keeping the terms
+// (rather than interpolating a period) also preserves interrupted cue fades.
+struct SwayTerm
+{
+    F32 mAmount = 0.f;
+    F32 mPeriod = 2.4f;
+    F32 mWeight = 1.f;
+    bool operator==(const SwayTerm& other) const
+    {
+        return mAmount == other.mAmount && mPeriod == other.mPeriod &&
+               mWeight == other.mWeight;
+    }
+};
+
+struct LightBase : LightValues
+{
+    SwayTerm mSwayTerms[MAX_SWAY_TERMS] = {};
+    U8 mSwayTermCount = 0;
+};
+static_assert(std::is_trivially_copyable_v<LightValues>);
+static_assert(std::is_trivially_copyable_v<SwayTerm>);
+static_assert(std::is_trivially_copyable_v<LightBase>);
+
+bool sameSwayMix(const LightBase& first, const LightBase& second);
+void copySwayMix(const LightBase& source, LightBase& destination);
+// Only scales down. Missing active weight remains the implicit zero trajectory.
+void normalizeSwayWeights(LightBase& light);
+
+// Historical zero-initialization, including padding, for byte-replay checks.
+// Light/setup/frame copies own no heap storage.
+void clearLight(LightBase& light);
+void clearLights(LightBase lights[LIGHT_COUNT]);
 
 // [ActorMask] The ONE definition of an effective Actor-only state: the rig-level
 // master ("Actor only (all lights)") overrides every per-light flag and the
@@ -146,6 +188,7 @@ struct Setup
     bool      mRatioLock = false;
     F32       mRatioStops = 0.f;
 };
+static_assert(std::is_trivially_copyable_v<Setup>);
 
 struct Transforms
 {
@@ -154,6 +197,7 @@ struct Transforms
     F32  mYawDeg = 0.f;
     F32  mPitchDeg = 0.f;
 };
+static_assert(std::is_trivially_copyable_v<Transforms>);
 
 struct Globals
 {
@@ -169,6 +213,7 @@ struct Globals
     F32  mSubjectScale = 1.f;
     F32  mMasterTempMired = 0.f;
 };
+static_assert(std::is_trivially_copyable_v<Globals>);
 
 enum CueFadeProfile : S32
 {
@@ -211,6 +256,7 @@ struct CueState
     F32 mShadowSoftOverride[LIGHT_COUNT] = { -1.f, -1.f, -1.f, -1.f };
     S32 mFX = -1;
 };
+static_assert(std::is_trivially_copyable_v<CueState>);
 
 struct EmitterState
 {
@@ -231,6 +277,7 @@ struct EmitterState
     bool mClipped = false;
     S32  mGobo = 0;
 };
+static_assert(std::is_trivially_copyable_v<EmitterState>);
 
 struct RigFrame
 {
@@ -242,6 +289,7 @@ struct RigFrame
     // non-key fixtures leave the existing authored size unchanged.
     F32 mCatchlightSizeScale = 1.f;
 };
+static_assert(std::is_trivially_copyable_v<RigFrame>);
 
 Setup sanitizeSetup(const Setup& setup);
 Transforms sanitizeTransforms(const Transforms& transforms);
@@ -328,6 +376,12 @@ U64 flickerLightSeed(U64 rig_seed, S32 light_index);
 void evalFlicker(S32 program, U64 light_seed, F64 t_seconds, F32 amount,
                  F32& out_intensity_mul, F32 out_color_mul[3]);
 const char* flickerProgramName(S32 program);
+// The input seed is flickerLightSeed(rig_seed, index); evalSway salts it into
+// a separate hash domain. The optional breathing switch supports analytic QA.
+void evalSway(U64 light_seed, F64 t_seconds, F32 amount, F32 period_s,
+              F32 max_disp_m, F32 out_offset[3], bool breathing = true);
+void evalLightSway(const LightBase& light, U64 light_seed, F64 t_seconds,
+                   F32 max_disp_m, F32 out_offset[3]);
 
 const char* fxName(S32 fx);
 F32 fxInterval(S32 fx);

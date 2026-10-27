@@ -265,6 +265,12 @@ bool blobMapWellFormed(const LLSD& data)
             (light.has("flicker_amount") &&
              !light["flicker_amount"].isReal() &&
              !light["flicker_amount"].isInteger()) ||
+            (light.has("sway_amount") &&
+             !light["sway_amount"].isReal() &&
+             !light["sway_amount"].isInteger()) ||
+            (light.has("sway_period") &&
+             !light["sway_period"].isReal() &&
+             !light["sway_period"].isInteger()) ||
             (light.has("fixture_mode") &&
              !light["fixture_mode"].isBoolean()) ||
             (light.has("kelvin") &&

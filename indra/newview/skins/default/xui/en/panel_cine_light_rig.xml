@@ -284,7 +284,7 @@
          background_visible="false"
          border="true"
          follows="left|top"
-         height="263"
+         height="315"
          layout="topleft"
          left="0"
          name="cine_key_card"
@@ -341,17 +341,23 @@
         <text follows="left|top" height="15" layout="topleft" left="226" top="189" value="Amt" width="26" />
         <slider control_name="CineLightRigKeyFlickerAmount" decimal_digits="2" follows="left|right|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_key_flicker_amount" top="185" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" wheel_adjust="true" />
         <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_flicker_amount_reset" top="186" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyFlickerAmount" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Shadow soft" width="83" />
-        <spinner control_name="CineLightRigKeyShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_key_shadow_soft" top="211" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
-        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_shadow_soft_reset" top="212" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyShadowSoft" />
-        <check_box control_name="CineLightRigKeyActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_key_actor_only" top="237" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
-        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_actor_only_reset" top="238" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyActorOnly" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Sway" width="75" />
+        <slider can_edit_text="true" decimal_digits="0" follows="left|right|top" height="20" increment="1" layout="topleft" left="92" max_val="100" min_val="0" name="cine_key_sway_amount" show_text="true" top="211" tool_tip="Steady hanging-bulb pendulum sway, 0-100 percent. Zero turns sway off." width="226" wheel_adjust="true" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_sway_amount_reset" top="212" tool_tip="Reset sway" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeySwayAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="241" value="Swing time" width="83" />
+        <spinner control_name="CineLightRigKeySwayPeriod" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="92" max_val="6" min_val="1" name="cine_key_sway_period" top="237" tool_tip="Seconds per full swing. 2.4 s is a bulb on a ~1.4 m cord." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_sway_period_reset" top="238" tool_tip="Reset swing time" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeySwayPeriod" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="267" value="Shadow soft" width="83" />
+        <spinner control_name="CineLightRigKeyShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_key_shadow_soft" top="263" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_shadow_soft_reset" top="264" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyShadowSoft" />
+        <check_box control_name="CineLightRigKeyActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_key_actor_only" top="289" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
+        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_key_actor_only_reset" top="290" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigKeyActorOnly" />
         </panel>
         <panel
          background_visible="false"
          border="true"
          follows="left|top"
-         height="263"
+         height="315"
          layout="topleft"
          left="0"
          name="cine_fill_card"
@@ -412,17 +418,23 @@
         <text follows="left|top" height="15" layout="topleft" left="226" top="189" value="Amt" width="26" />
         <slider control_name="CineLightRigFillFlickerAmount" decimal_digits="2" follows="left|right|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_fill_flicker_amount" top="185" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" wheel_adjust="true" />
         <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_flicker_amount_reset" top="186" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillFlickerAmount" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Shadow soft" width="83" />
-        <spinner control_name="CineLightRigFillShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_fill_shadow_soft" top="211" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
-        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_shadow_soft_reset" top="212" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillShadowSoft" />
-        <check_box control_name="CineLightRigFillActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_fill_actor_only" top="237" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
-        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_actor_only_reset" top="238" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillActorOnly" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Sway" width="75" />
+        <slider can_edit_text="true" decimal_digits="0" follows="left|right|top" height="20" increment="1" layout="topleft" left="92" max_val="100" min_val="0" name="cine_fill_sway_amount" show_text="true" top="211" tool_tip="Steady hanging-bulb pendulum sway, 0-100 percent. Zero turns sway off." width="226" wheel_adjust="true" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_sway_amount_reset" top="212" tool_tip="Reset sway" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillSwayAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="241" value="Swing time" width="83" />
+        <spinner control_name="CineLightRigFillSwayPeriod" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="92" max_val="6" min_val="1" name="cine_fill_sway_period" top="237" tool_tip="Seconds per full swing. 2.4 s is a bulb on a ~1.4 m cord." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_sway_period_reset" top="238" tool_tip="Reset swing time" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillSwayPeriod" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="267" value="Shadow soft" width="83" />
+        <spinner control_name="CineLightRigFillShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_fill_shadow_soft" top="263" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_shadow_soft_reset" top="264" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillShadowSoft" />
+        <check_box control_name="CineLightRigFillActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_fill_actor_only" top="289" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
+        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_fill_actor_only_reset" top="290" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigFillActorOnly" />
         </panel>
         <panel
          background_visible="false"
          border="true"
          follows="left|top"
-         height="263"
+         height="315"
          layout="topleft"
          left="0"
          name="cine_rim_card"
@@ -479,17 +491,23 @@
         <text follows="left|top" height="15" layout="topleft" left="226" top="189" value="Amt" width="26" />
         <slider control_name="CineLightRigRimFlickerAmount" decimal_digits="2" follows="left|right|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_rim_flicker_amount" top="185" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" wheel_adjust="true" />
         <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_flicker_amount_reset" top="186" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimFlickerAmount" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Shadow soft" width="83" />
-        <spinner control_name="CineLightRigRimShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_rim_shadow_soft" top="211" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
-        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_shadow_soft_reset" top="212" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimShadowSoft" />
-        <check_box control_name="CineLightRigRimActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_rim_actor_only" top="237" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
-        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_actor_only_reset" top="238" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimActorOnly" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Sway" width="75" />
+        <slider can_edit_text="true" decimal_digits="0" follows="left|right|top" height="20" increment="1" layout="topleft" left="92" max_val="100" min_val="0" name="cine_rim_sway_amount" show_text="true" top="211" tool_tip="Steady hanging-bulb pendulum sway, 0-100 percent. Zero turns sway off." width="226" wheel_adjust="true" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_sway_amount_reset" top="212" tool_tip="Reset sway" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimSwayAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="241" value="Swing time" width="83" />
+        <spinner control_name="CineLightRigRimSwayPeriod" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="92" max_val="6" min_val="1" name="cine_rim_sway_period" top="237" tool_tip="Seconds per full swing. 2.4 s is a bulb on a ~1.4 m cord." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_sway_period_reset" top="238" tool_tip="Reset swing time" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimSwayPeriod" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="267" value="Shadow soft" width="83" />
+        <spinner control_name="CineLightRigRimShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_rim_shadow_soft" top="263" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_shadow_soft_reset" top="264" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimShadowSoft" />
+        <check_box control_name="CineLightRigRimActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_rim_actor_only" top="289" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
+        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rim_actor_only_reset" top="290" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigRimActorOnly" />
         </panel>
         <panel
          background_visible="false"
          border="true"
          follows="left|top"
-         height="263"
+         height="315"
          layout="topleft"
          left="0"
          name="cine_bg_card"
@@ -546,11 +564,17 @@
         <text follows="left|top" height="15" layout="topleft" left="226" top="189" value="Amt" width="26" />
         <slider control_name="CineLightRigBgFlickerAmount" decimal_digits="2" follows="left|right|top" height="20" increment="0.05" layout="topleft" left="252" max_val="1" min_val="0" name="cine_bg_flicker_amount" top="185" tool_tip="Practical flicker strength. Zero is an exact no-modulation path." width="66" wheel_adjust="true" />
         <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_flicker_amount_reset" top="186" tool_tip="Reset flicker amount" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgFlickerAmount" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Shadow soft" width="83" />
-        <spinner control_name="CineLightRigBgShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_bg_shadow_soft" top="211" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
-        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_shadow_soft_reset" top="212" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgShadowSoft" />
-        <check_box control_name="CineLightRigBgActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_bg_actor_only" top="237" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
-        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_actor_only_reset" top="238" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgActorOnly" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="215" value="Sway" width="75" />
+        <slider can_edit_text="true" decimal_digits="0" follows="left|right|top" height="20" increment="1" layout="topleft" left="92" max_val="100" min_val="0" name="cine_bg_sway_amount" show_text="true" top="211" tool_tip="Steady hanging-bulb pendulum sway, 0-100 percent. Zero turns sway off." width="226" wheel_adjust="true" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_sway_amount_reset" top="212" tool_tip="Reset sway" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgSwayAmount" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="241" value="Swing time" width="83" />
+        <spinner control_name="CineLightRigBgSwayPeriod" decimal_digits="1" follows="left|top" height="20" increment="0.1" layout="topleft" left="92" max_val="6" min_val="1" name="cine_bg_sway_period" top="237" tool_tip="Seconds per full swing. 2.4 s is a bulb on a ~1.4 m cord." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_sway_period_reset" top="238" tool_tip="Reset swing time" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgSwayPeriod" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="267" value="Shadow soft" width="83" />
+        <spinner control_name="CineLightRigBgShadowSoft" decimal_digits="2" follows="left|top" height="20" increment="0.25" layout="topleft" left="92" max_val="8" min_val="0" name="cine_bg_shadow_soft" top="263" tool_tip="Per-projector penumbra scale. 0 uses the current global shadow behavior." width="210" />
+        <button follows="right|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_shadow_soft_reset" top="264" tool_tip="Reset to global shadow behavior" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgShadowSoft" />
+        <check_box control_name="CineLightRigBgActorOnly" follows="left|top" height="18" label="Actor only" layout="topleft" left="8" name="cine_bg_actor_only" top="289" tool_tip="Lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set. Shafts still show the beam (untick Shaft to hide it), and reflections of the set never show it." width="98" />
+        <button follows="left|top" height="18" layout="topleft" left="108" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bg_actor_only_reset" top="290" tool_tip="Reset Actor only" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBgActorOnly" />
         </panel>
         <panel
          background_visible="false"

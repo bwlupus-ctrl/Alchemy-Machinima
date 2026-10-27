@@ -114,6 +114,8 @@ ALCineLightRigParamBlob distinctiveBlob()
         blob.mLights[i].mOn = i == 3;
         blob.mLights[i].mFlickerProgram = i + 1;
         blob.mLights[i].mFlickerAmount = 0.2f * (i + 1);
+        blob.mLights[i].mSwayAmount = 0.1f * (i + 1);
+        blob.mLights[i].mSwayPeriod = 2.4f + i * .5f;
         blob.mLights[i].mFixtureMode = (i & 1) == 0;
         blob.mLights[i].mKelvin = 2700.f + i * 1100.f;
         blob.mLights[i].mGelSlot[0] = 1 + i;
@@ -188,6 +190,8 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
         ensure_equals("blob light On", actual.mLights[i].mOn, expected.mLights[i].mOn);
         ensure_equals("blob light FlickerProgram", actual.mLights[i].mFlickerProgram, expected.mLights[i].mFlickerProgram);
         ensure_equals("blob light FlickerAmount", actual.mLights[i].mFlickerAmount, expected.mLights[i].mFlickerAmount);
+        ensure_equals("blob light SwayAmount", actual.mLights[i].mSwayAmount, expected.mLights[i].mSwayAmount);
+        ensure_equals("blob light SwayPeriod", actual.mLights[i].mSwayPeriod, expected.mLights[i].mSwayPeriod);
         ensure_equals("blob light FixtureMode", actual.mLights[i].mFixtureMode, expected.mLights[i].mFixtureMode);
         ensure_equals("blob light Kelvin", actual.mLights[i].mKelvin, expected.mLights[i].mKelvin);
         for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -275,6 +279,8 @@ void seedSettingsIndependently(FakeRigSettings& settings,
         settings.setBOOL(prefix + "On", value.mLights[i].mOn);
         settings.setS32(prefix + "Flicker", value.mLights[i].mFlickerProgram);
         settings.setF32(prefix + "FlickerAmount", value.mLights[i].mFlickerAmount);
+        settings.setF32(prefix + "SwayAmount", value.mLights[i].mSwayAmount);
+        settings.setF32(prefix + "SwayPeriod", value.mLights[i].mSwayPeriod);
         settings.setBOOL(prefix + "FixtureMode", value.mLights[i].mFixtureMode);
         settings.setF32(prefix + "Kelvin", value.mLights[i].mKelvin);
         for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -357,6 +363,8 @@ void ensureSettingsMatchIndependently(
         actual.mLights[i].mFlickerProgram = settings.getS32(prefix + "Flicker");
         actual.mLights[i].mFlickerAmount =
             settings.getF32(prefix + "FlickerAmount");
+        actual.mLights[i].mSwayAmount = settings.getF32(prefix + "SwayAmount");
+        actual.mLights[i].mSwayPeriod = settings.getF32(prefix + "SwayPeriod");
         actual.mLights[i].mFixtureMode =
             settings.getBOOL(prefix + "FixtureMode");
         actual.mLights[i].mKelvin = settings.getF32(prefix + "Kelvin");
@@ -394,15 +402,23 @@ void ensureSameLights(const char* message,
                       const LightBase expected[LIGHT_COUNT],
                       const LightBase actual[LIGHT_COUNT])
 {
-    ensure(message, std::memcmp(expected, actual,
-                                sizeof(LightBase) * LIGHT_COUNT) == 0);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure(message, std::memcmp(static_cast<const LightValues*>(&expected[i]),
+                                    static_cast<const LightValues*>(&actual[i]),
+                                    sizeof(LightValues)) == 0);
+        ensure(message, sameSwayMix(expected[i], actual[i]));
+    }
 }
 
 bool lightsDiffer(const LightBase first[LIGHT_COUNT],
                   const LightBase second[LIGHT_COUNT])
 {
-    return std::memcmp(first, second,
-                       sizeof(LightBase) * LIGHT_COUNT) != 0;
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        if (std::memcmp(static_cast<const LightValues*>(&first[i]),
+                        static_cast<const LightValues*>(&second[i]), sizeof(LightValues)) != 0 ||
+            !sameSwayMix(first[i], second[i])) return true;
+    return false;
 }
 
 bool allOff(const LightBase lights[LIGHT_COUNT])
@@ -529,8 +545,11 @@ struct cine_light_rig_model_data {};
 // so the ceiling is now 96 (test<91> adds the cache-provenance S19).
 // [ActorMask] Tests 97..113 must be registered, not merely compiled
 // (108..113 are the WP5 persistence tests). 114..119 are the rig-level master
-// "Actor only (all lights)" tests, so the ceiling is now 119.
-typedef test_group<cine_light_rig_model_data, 119> cine_light_rig_model_group;
+// "Actor only (all lights)" tests. 120..123 cover steady sway, including
+// geometry, transition continuity and persistence. 124..125 cover the bounded
+// mixture and repeated-interruption weight invariant. 126..127 cover
+// overflow continuity, endpoint ordering and 2000 random interruption chains.
+typedef test_group<cine_light_rig_model_data, 127> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -623,7 +642,7 @@ void cine_light_rig_model_object::test<2>()
     }
 
     LightBase start;
-    std::memset(&start, 0, sizeof(start));
+    clearLight(start);
     start.mYawDeg = 170.f;
     start.mPitchDeg = -10.f;
     start.mProfile = 1;
@@ -631,7 +650,7 @@ void cine_light_rig_model_object::test<2>()
     start.mBeam = 0;
     start.mOn = true;
     LightBase target;
-    std::memset(&target, 0, sizeof(target));
+    clearLight(target);
     target.mYawDeg = -170.f;
     target.mPitchDeg = 30.f;
     target.mProfile = 12;
@@ -662,7 +681,9 @@ void cine_light_rig_model_object::test<2>()
 
     const LightBase endpoint = blendLight(start, target, 1.f);
     ensure("endpoint is exact target",
-           std::memcmp(&endpoint, &target, sizeof(target)) == 0);
+           std::memcmp(static_cast<const LightValues*>(&endpoint),
+                       static_cast<const LightValues*>(&target), sizeof(LightValues)) == 0 &&
+           sameSwayMix(endpoint, target));
 }
 
 // Exposure is stop-linear, radius-compensated, clipped explicitly, and keeps
@@ -765,6 +786,8 @@ void cine_light_rig_model_object::test<4>()
         setup.mLights[i].mFlickerProgram = 1000;
         setup.mLights[i].mFlickerAmount =
             std::numeric_limits<F32>::quiet_NaN();
+        setup.mLights[i].mSwayAmount = std::numeric_limits<F32>::quiet_NaN();
+        setup.mLights[i].mSwayPeriod = std::numeric_limits<F32>::infinity();
     }
     const Setup safe = sanitizeSetup(setup);
     ensure("radius finite and clamped",
@@ -788,6 +811,8 @@ void cine_light_rig_model_object::test<4>()
                std::isfinite(safe.mLights[i].mFlickerAmount) &&
                safe.mLights[i].mFlickerAmount >= 0.f &&
                safe.mLights[i].mFlickerAmount <= 1.f);
+        ensure_equals("nonfinite sway amount is off", safe.mLights[i].mSwayAmount, 0.f);
+        ensure_equals("nonfinite sway period defaults", safe.mLights[i].mSwayPeriod, 2.4f);
     }
 
     Transforms transforms;
@@ -854,9 +879,9 @@ void cine_light_rig_model_object::test<5>()
             evalFX(fx, seed, times[reverse],
                    &scrubbed[reverse * LIGHT_COUNT]);
         }
-        ensure("scrub order independent",
-               std::memcmp(ordered.data(), scrubbed.data(),
-                           ordered.size() * sizeof(LightBase)) == 0);
+        for (size_t i = 0; i < times.size(); ++i)
+            ensureSameLights("scrub order independent", &ordered[i * LIGHT_COUNT],
+                             &scrubbed[i * LIGHT_COUNT]);
     }
 }
 
@@ -3005,6 +3030,499 @@ void cine_light_rig_model_object::test<39>()
            color[0] == 1.f && color[1] == 1.f && color[2] == 1.f);
 }
 
+// Steady sway: production math, independently locating the major-axis peak
+// with breathing disabled. No production phase or hash internals are copied.
+template<> template<>
+void cine_light_rig_model_object::test<120>()
+{
+    set_test_name("steady sway: pendulum reference geometry and periodicity");
+    const U64 seed = flickerLightSeed(12345, 0);
+    constexpr F64 period = 2.4f;
+    F64 peak_time = 0.0;
+    F32 peak_radius = -1.f;
+    for (S32 step = 0; step < 2400; ++step)
+    {
+        F32 offset[3];
+        const F64 time = period * step / 2400.0;
+        evalSway(seed, time, 1.f, period, 10.f, offset, false);
+        const F32 radius = std::hypot(offset[0], offset[1]);
+        if (radius > peak_radius) { peak_radius = radius; peak_time = time; }
+    }
+    F64 lower = std::max(0.0, peak_time - .002), upper = peak_time + .002;
+    for (S32 step = 0; step < 50; ++step)
+    {
+        const F64 a = (2.0 * lower + upper) / 3.0;
+        const F64 b = (lower + 2.0 * upper) / 3.0;
+        F32 x[3], y[3];
+        evalSway(seed, a, 1.f, period, 10.f, x, false);
+        evalSway(seed, b, 1.f, period, 10.f, y, false);
+        if (std::hypot(x[0], x[1]) < std::hypot(y[0], y[1])) lower = a;
+        else upper = b;
+    }
+    peak_time = (lower + upper) * .5;
+    for (S32 half = 0; half < 2; ++half)
+    {
+        F32 offset[3], repeat[3];
+        const F32 amount = half ? .5f : 1.f;
+        evalSway(seed, peak_time, amount, period, 10.f, offset, false);
+        ensure("peak horizontal", std::fabs(std::hypot(offset[0], offset[1]) -
+            (half ? .22383f : .44215f)) < 1.e-4f);
+        ensure("peak rise", std::fabs(offset[2] - (half ? .01762f : .07003f)) < 1.e-4f);
+        // Breathing is explicitly disabled: this isolates exact T periodicity.
+        evalSway(seed, peak_time + period, amount, period, 10.f, repeat, false);
+        for (S32 axis = 0; axis < 3; ++axis)
+            ensure("periodic", std::fabs(offset[axis] - repeat[axis]) < 1.e-6f);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<121>()
+{
+    set_test_name("steady sway: exact off, seeds, safety clamp and finite domains");
+    F32 a[3] = {1.f, 2.f, 3.f}, b[3], c[3];
+    const U64 key = flickerLightSeed(12345, 0), fill = flickerLightSeed(12345, 1);
+    evalSway(key, 123.0, 0.f, 2.4f, 1.f, a);
+    for (F32 value : a) ensure_equals("exact zero", value, 0.f);
+    evalSway(key, 123.0, 1.f, 2.4f, 1.f, a);
+    evalSway(key, 123.0, 1.f, 2.4f, 1.f, b);
+    evalSway(fill, 123.0, 1.f, 2.4f, 1.f, c);
+    ensure("bitwise deterministic", std::memcmp(a, b, sizeof(a)) == 0);
+    ensure("light indices separate phase/axis", std::hypot(a[0]-c[0], a[1]-c[1]) > .01f);
+    evalSway(key, 123.0, 1.f, 2.4f, .01f, a);
+    ensure("clamps horizontal length", std::fabs(std::hypot(a[0], a[1]) - .01f) < 1.e-6f);
+    const F64 length = 9.80665 * 2.4f * 2.4f / std::pow(6.283185307179586, 2);
+    ensure("recomputes rise after clamp", std::fabs(a[2] -
+        (length - std::sqrt(length*length - .0001))) < 1.e-6);
+    for (F64 time : {0.0, 1.e7, std::numeric_limits<F64>::infinity()})
+        for (F32 period : {1.f, 6.f, -1.f, 100.f, std::numeric_limits<F32>::quiet_NaN()})
+        {
+            evalSway(key, time, 1.f, period, .2f, a);
+            for (F32 value : a) ensure("finite", std::isfinite(value));
+            ensure("nonnegative rise", a[2] >= 0.f);
+            ensure("bounded horizontal", std::hypot(a[0],a[1]) <= .200001f);
+        }
+    evalSway(key, 10.0, 1.f, -1.f, 2.f, a);
+    evalSway(key, 10.0, 1.f, 1.f, 2.f, b);
+    ensure("lower period clamp", std::memcmp(a,b,sizeof(a)) == 0);
+    evalSway(key, 10.0, 1.f, 100.f, 2.f, a);
+    evalSway(key, 10.0, 1.f, 6.f, 2.f, b);
+    ensure("upper period clamp", std::memcmp(a,b,sizeof(a)) == 0);
+    Setup dirty;
+    dirty.mLights[0].mSwayAmount = std::numeric_limits<F32>::quiet_NaN();
+    dirty.mLights[0].mSwayPeriod = std::numeric_limits<F32>::infinity();
+    const Setup safe = sanitizeSetup(dirty);
+    ensure_equals("nonfinite amount off", safe.mLights[0].mSwayAmount, 0.f);
+    ensure_equals("nonfinite period default", safe.mLights[0].mSwayPeriod, 2.4f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<122>()
+{
+    set_test_name("steady sway: output crossfades are continuous, period lerp fails");
+    LightBase start, target;
+    start.mSwayAmount = target.mSwayAmount = 1.f;
+    start.mSwayPeriod = 2.4f; target.mSwayPeriod = 4.f;
+    const U64 seed = flickerLightSeed(12345, 0);
+    const auto distance = [](const F32 a[3], const F32 b[3])
+    { return std::sqrt(std::pow(a[0]-b[0],2) + std::pow(a[1]-b[1],2) + std::pow(a[2]-b[2],2)); };
+    // For T=2.4..4, limit=.56: trajectory speed <2.6 m/s including
+    // breathing and rise. Cubic easing over 2s has |e'|<=1.5/s;
+    // endpoint separation <1.13m. Thus speed <4.30m/s, or .072m/frame.
+    // .075m allows float rounding. At large absolute time a period lerp
+    // changes w*t rapidly and must fail the same bound (negative control).
+    F32 previous[3], bad_previous[3];
+    F64 maximum = 0.0, bad_maximum = 0.0;
+    CueState cue_start; cue_start.mSetup.mLights[0] = start;
+    Cue cue; cue.mSetup.mLights[0] = target; cue.mFadeSec = 2.f;
+    const auto lerped_period_negative_control = [&](F64 time, F32 eased, F32 out[3])
+    { evalSway(seed, time, 1.f, 2.4f + (4.f-2.4f)*eased, .56f, out); };
+    for (S32 step = 0; step <= 121; ++step)
+    {
+        const F64 time = 1000.0 + step / 60.0;
+        const F32 e = ease(std::min(step / 120.f, 1.f));
+        const LightBase mixed = blendLight(start, target, e);
+        F32 offset[3], bad[3], a[3], b[3];
+        evalLightSway(mixed, seed, time, .56f, offset);
+        evalLightSway(start, seed, time, .56f, a);
+        evalLightSway(target, seed, time, .56f, b);
+        for (S32 axis = 0; axis < 3; ++axis)
+            ensure("exact output crossfade", std::fabs(offset[axis] -
+                ((1.f-e)*a[axis]+e*b[axis])) < 1.e-6f);
+        // Exercise the cue evaluator as well as the manual transition primitive.
+        const CueState cue_state = evaluateCueTransition(cue_start, cue, time, 1000.0);
+        F32 cue_offset[3];
+        evalLightSway(cue_state.mSetup.mLights[0], seed, time, .56f, cue_offset);
+        const F32 ce = cueFadeWeight(cue.mProfile, time, 1000.0, 0.f, 2.f);
+        for (S32 axis = 0; axis < 3; ++axis)
+            ensure("cue output crossfade", std::fabs(cue_offset[axis] -
+                ((1.f-ce)*a[axis]+ce*b[axis])) < 1.e-6f);
+        lerped_period_negative_control(time,e,bad);
+        if (step) { maximum = std::max(maximum,distance(offset,previous));
+                    bad_maximum = std::max(bad_maximum,distance(bad,bad_previous)); }
+        std::copy(offset,offset+3,previous); std::copy(bad,bad+3,bad_previous);
+    }
+    ensure("60fps continuity including completion", maximum < .075f);
+    ensure("negative control proves period interpolation fails", bad_maximum > .075f);
+    const LightBase interrupted = blendLight(start, target, .4f);
+    LightBase third = target; third.mSwayPeriod = 6.f; third.mSwayAmount = .25f;
+    const LightBase restarted = blendLight(interrupted, third, .3f);
+    F32 a[3], b[3], output[3];
+    evalLightSway(interrupted,seed,1001.0,.56f,a);
+    evalLightSway(third,seed,1001.0,.56f,b);
+    evalLightSway(restarted,seed,1001.0,.56f,output);
+    for (S32 axis=0;axis<3;++axis)
+        ensure("interrupted blend retains moving sources", std::fabs(output[axis] - (.7f*a[axis]+.3f*b[axis])) < 1.e-6f);
+    LightBase off;
+    const LightBase fading_off = blendLight(start,off,.5f);
+    ensure("fade to off keeps caller active", fading_off.mSwayAmount > 0.f);
+    evalLightSway(fading_off,seed,1001.0,.56f,output);
+    evalLightSway(start,seed,1001.0,.56f,a);
+    for (S32 axis=0;axis<3;++axis) ensure("fade to off", std::fabs(output[axis]-.5f*a[axis]) < 1.e-6f);
+    ensure("completed transition drops mixture", blendLight(start,target,1.f).mSwayTermCount == 0);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<123>()
+{
+    set_test_name("steady sway: blob round trip, settings mirror and old defaults");
+    const ALCineLightRigParamBlob expected = distinctiveBlob();
+    LLSD saved = expected.toLLSD();
+    ensureSameBlob(expected, ALCineLightRigParamBlob::fromLLSD(saved), true);
+    FakeRigSettings settings; expected.toSettingsStore(settings);
+    ensureSameBlob(expected, ALCineLightRigParamBlob::fromSettingsStore(settings), false);
+    for (S32 i=0;i<LIGHT_COUNT;++i)
+    { saved["lights"][i].erase("sway_amount"); saved["lights"][i].erase("sway_period"); }
+    const ALCineLightRigParamBlob legacy = ALCineLightRigParamBlob::fromLLSD(saved);
+    for (S32 i=0;i<LIGHT_COUNT;++i)
+    {
+        ensure_equals("old amount off",legacy.mLights[i].mSwayAmount,0.f);
+        ensure_equals("old period default",legacy.mLights[i].mSwayPeriod,2.4f);
+    }
+}
+
+// Hundreds of interruptions used to drift above the LLSD acceptance limit.
+template<> template<>
+void cine_light_rig_model_object::test<124>()
+{
+    set_test_name("steady sway: repeated interruption weights stay convex");
+    static_assert(std::is_trivially_copyable_v<LightBase>);
+    static_assert(std::is_trivially_copyable_v<Setup>);
+    static_assert(std::is_trivially_copyable_v<RigFrame>);
+    static_assert(std::is_trivially_copyable_v<CueState>);
+    LightBase a, b;
+    a.mSwayAmount = b.mSwayAmount = .5f;
+    a.mSwayPeriod = 2.4f;
+    b.mSwayPeriod = 4.f;
+    LightBase current = a;
+    for (S32 step = 0; step < 600; ++step)
+    {
+        current = blendLight(current, (step & 1) ? a : b, .001f);
+        F64 total = 0.0;
+        for (S32 i = 0; i < current.mSwayTermCount; ++i)
+        {
+            ensure("nonnegative weight", current.mSwayTerms[i].mWeight >= 0.f);
+            total += current.mSwayTerms[i].mWeight;
+        }
+        ensure("active weight never exceeds one", total <= 1.0);
+        ensure("only two distinct trajectories", current.mSwayTermCount <= 2);
+    }
+    LightBase off;
+    const LightBase fading = blendLight(current, off, .5f);
+    F32 before[3], after[3];
+    evalLightSway(current, flickerLightSeed(12345, 0), 1001.0, .56f, before);
+    evalLightSway(fading, flickerLightSeed(12345, 0), 1001.0, .56f, after);
+    for (S32 axis = 0; axis < 3; ++axis)
+        ensure("normalization never scales a fade up", std::fabs(after[axis] - .5f * before[axis]) < 1.e-6f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<125>()
+{
+    set_test_name("steady sway: 1000 interruptions bound storage and transient dip error");
+    const U64 seed = flickerLightSeed(12345, 0);
+    constexpr F32 limit = .56f;
+    constexpr F32 weight = .001f;
+    LightBase current;
+    current.mSwayAmount = .5f;
+    current.mSwayPeriod = 2.4f;
+    for (S32 step = 0; step < 1000; ++step)
+    {
+        LightBase target;
+        target.mSwayAmount = .6f;
+        target.mSwayPeriod = 1.f + .004f * step;
+        const LightBase mixed = blendLight(current, target, weight);
+        ensure("fixed four-term bound", mixed.mSwayTermCount <= MAX_SWAY_TERMS);
+        F64 start_total = current.mSwayTermCount ? 0.0 : 1.0;
+        for (S32 i = 0; i < current.mSwayTermCount; ++i)
+            start_total += current.mSwayTerms[i].mWeight;
+        F64 total = 0.0;
+        for (S32 i = 0; i < mixed.mSwayTermCount; ++i) total += mixed.mSwayTerms[i].mWeight;
+        ensure("overflow never scales missing mass up", total <= 1.0);
+        const F64 natural_total = (1.0 - weight) * start_total + weight;
+        ensure("window only removes natural weight", total <= natural_total + 2.e-7);
+        const F64 missing = std::max(0.0, natural_total - total);
+        F32 a[3], b[3], actual[3], error[3];
+        const F64 time = 1000.0 + step / 60.0;
+        evalLightSway(current, seed, time, limit, a);
+        evalLightSway(target, seed, time, limit, b);
+        evalLightSway(mixed, seed, time, limit, actual);
+        for (S32 axis = 0; axis < 3; ++axis)
+            error[axis] = (1.f - weight) * a[axis] + weight * b[axis] - actual[axis];
+        // Retain the original 2e-6 m rounding allowance. The continuous
+        // window replaces abrupt eviction; error is now bounded by all the
+        // missing natural weight, rather than one deleted trajectory.
+        ensure("horizontal dip error bound", std::hypot(error[0], error[1]) <= missing * limit + 2.e-6);
+        ensure("rise dip error bound", std::fabs(error[2]) <= missing * limit + 2.e-6);
+        current = mixed;
+    }
+    ensure_equals("bound actually exercised", S32(current.mSwayTermCount), MAX_SWAY_TERMS);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<126>()
+{
+    set_test_name("steady sway: balanced overflow, shared merge and zero window boundary");
+    const U64 seed = flickerLightSeed(12345, 0);
+    constexpr F32 limit = .56f;
+    LightBase balanced, target;
+    balanced.mSwayAmount = target.mSwayAmount = 1.f;
+    balanced.mSwayTermCount = MAX_SWAY_TERMS;
+    const F32 periods[] = {2.4f, 3.f, 4.f, 5.f};
+    for (S32 i = 0; i < MAX_SWAY_TERMS; ++i)
+        balanced.mSwayTerms[i] = {1.f, periods[i], .25f};
+    target.mSwayPeriod = 6.f;
+    LightBase reachable;
+    reachable.mSwayAmount = 1.f;
+    LightBase next = reachable;
+    next.mSwayPeriod = 3.f; reachable = blendLight(reachable, next, .5f);
+    next.mSwayPeriod = 4.f; reachable = blendLight(reachable, next, 1.f / 3.f);
+    next.mSwayPeriod = 5.f; reachable = blendLight(reachable, next, .25f);
+    for (const LightBase& start : {balanced, reachable})
+    {
+        F32 a[3], b[3];
+        evalLightSway(blendLight(start, target, 0.f), seed, 1001.0, limit, a);
+        evalLightSway(blendLight(start, target, 1.e-8f), seed, 1001.0, limit, b);
+        F64 squared = 0.0;
+        for (S32 axis = 0; axis < 3; ++axis) squared += std::pow(F64(a[axis]) - b[axis], 2);
+        ensure("balanced overflow has no epsilon jump", std::sqrt(squared) < 1.e-5);
+    }
+
+    LightBase start = balanced;
+    for (S32 i = 0; i < MAX_SWAY_TERMS; ++i) start.mSwayTerms[i].mPeriod = 2.f + i;
+    LightBase overlap;
+    overlap.mSwayAmount = 1.f;
+    overlap.mSwayTermCount = 2;
+    overlap.mSwayTerms[0] = {1.f, 6.f, .25f};
+    overlap.mSwayTerms[1] = {1.f, 2.f, .25f};
+    const LightBase first = blendLight(start, overlap, .5f);
+    std::swap(overlap.mSwayTerms[0], overlap.mSwayTerms[1]);
+    const LightBase reordered = blendLight(start, overlap, .5f);
+    ensure("reordered target gives identical mixture", sameSwayMix(first, reordered));
+    ensure_equals("shared A keeps both endpoint contributions", first.mSwayTerms[0].mWeight, .25f);
+    ensure_equals("shared A is period 2", first.mSwayTerms[0].mPeriod, 2.f);
+    ensure_equals("tie keeps lowest period B", first.mSwayTerms[1].mPeriod, 3.f);
+    ensure_equals("tie keeps next period C", first.mSwayTerms[2].mPeriod, 4.f);
+    const F64 window = SWAY_OVERFLOW_FADE_END;
+    ensure("late E follows its window curve", std::fabs(first.mSwayTerms[3].mWeight -
+        .5 * .25 * ((.5 - window) / (1.0 - window))) < 1.e-8);
+
+    // Exhaust all row orders independently, not just reversing both inputs.
+    // Canonical output must also hold at both endpoints and the window edges.
+    for (F32 e : {0.f, 1.e-8f, SWAY_OVERFLOW_FADE_END, .5f, 1.f})
+    {
+        const LightBase expected = blendLight(start, overlap, e);
+        LightBase permuted_start = start;
+        do
+        {
+            LightBase permuted_target = overlap;
+            do
+            {
+                ensure("all endpoint permutations agree", sameSwayMix(expected,
+                    blendLight(permuted_start, permuted_target, e)));
+            } while (std::next_permutation(permuted_target.mSwayTerms,
+                permuted_target.mSwayTerms + permuted_target.mSwayTermCount,
+                [](const SwayTerm& a, const SwayTerm& b) { return a.mPeriod < b.mPeriod; }));
+        } while (std::next_permutation(permuted_start.mSwayTerms,
+            permuted_start.mSwayTerms + permuted_start.mSwayTermCount,
+            [](const SwayTerm& a, const SwayTerm& b) { return a.mPeriod < b.mPeriod; }));
+    }
+
+    // Duplicate rows are legal ingress: aggregate their exact key before the
+    // cross-endpoint merge as well, with deterministic accumulation order.
+    LightBase duplicates = overlap;
+    duplicates.mSwayTermCount = 3;
+    duplicates.mSwayTerms[0] = {1.f, 2.f, .125f};
+    duplicates.mSwayTerms[1] = {1.f, 6.f, .125f};
+    duplicates.mSwayTerms[2] = {1.f, 2.f, .25f};
+    const LightBase merged = blendLight(start, duplicates, .5f);
+    ensure_equals("duplicate shared A is fully merged", merged.mSwayTerms[0].mWeight, .3125f);
+    std::reverse(duplicates.mSwayTerms, duplicates.mSwayTerms + duplicates.mSwayTermCount);
+    ensure("duplicate row order is immaterial", sameSwayMix(merged, blendLight(start, duplicates, .5f)));
+
+    // At a disjoint full-to-full boundary both retired and late groups are
+    // exactly zero. Count zero MUST be off, not a scalar fallback trajectory.
+    LightBase disjoint = balanced;
+    for (S32 i = 0; i < MAX_SWAY_TERMS; ++i)
+    {
+        start.mSwayTerms[i] = {1.f, 1.f + .5f * i, .25f};
+        disjoint.mSwayTerms[i] = {1.f, 3.f + .5f * i, .25f};
+    }
+    const LightBase zero = blendLight(start, disjoint, SWAY_OVERFLOW_FADE_END);
+    ensure_equals("no zero-weight slots emitted", S32(zero.mSwayTermCount), 0);
+    ensure_equals("zero boundary disables scalar fallback", zero.mSwayAmount, 0.f);
+    F32 offset[3]; evalLightSway(zero, seed, 1001.0, limit, offset);
+    for (F32 value : offset) ensure_equals("boundary offset exactly zero", value, 0.f);
+    ensure("endpoint exactly retains target weights", sameSwayMix(blendLight(start, disjoint, 1.f), disjoint));
+
+    // Equal source weights and periods use amount as the final tie-break.
+    for (S32 i = 0; i < MAX_SWAY_TERMS; ++i)
+        start.mSwayTerms[i] = {.2f * (MAX_SWAY_TERMS - i), 2.f, .25f};
+    const LightBase tied = blendLight(start, target, SWAY_OVERFLOW_FADE_END);
+    ensure_equals("three kept terms at boundary", S32(tied.mSwayTermCount), 3);
+    for (S32 i = 0; i < 3; ++i)
+        ensure_equals("amount tie-break is ascending", tied.mSwayTerms[i].mAmount, .2f * (i + 1));
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<127>()
+{
+    set_test_name("steady sway: 2000 random interruption chains are bounded and Lipschitz");
+    U32 random_state = 0x3b9aca07u;
+    const auto random = [&]()
+    {
+        random_state = random_state * 1664525u + 1013904223u;
+        return random_state;
+    };
+    const auto unit = [&]() { return F32(random() >> 8) / 16777216.f; };
+    const auto key_less = [](const SwayTerm& a, const SwayTerm& b)
+    { return a.mPeriod != b.mPeriod ? a.mPeriod < b.mPeriod : a.mAmount < b.mAmount; };
+    const auto make_light = [&](const LightBase& shared)
+    {
+        LightBase light;
+        light.mSwayPeriod = 1.f + 5.f * unit();
+        light.mSwayAmount = .05f + .95f * unit();
+        light.mSwayTermCount = static_cast<U8>(random() % 5);
+        if (!light.mSwayTermCount)
+        {
+            if (random() & 1) light.mSwayAmount = 0.f;
+            return light;
+        }
+        light.mSwayAmount = 1.f;
+        S32 remaining = (random() & 3) ? 4 + random() % 1021 : 1024;
+        for (S32 i = 0; i < light.mSwayTermCount; ++i)
+        {
+            SwayTerm term = {.05f + .95f * unit(), 1.f + 5.f * unit(), 0.f};
+            if (shared.mSwayTermCount && (random() & 1))
+            {
+                const SwayTerm candidate = shared.mSwayTerms[random() % shared.mSwayTermCount];
+                bool duplicate = false;
+                for (S32 j = 0; j < i; ++j)
+                    duplicate |= light.mSwayTerms[j].mPeriod == candidate.mPeriod &&
+                                 light.mSwayTerms[j].mAmount == candidate.mAmount;
+                if (!duplicate) term = candidate;
+            }
+            const S32 available = remaining - (light.mSwayTermCount - i - 1);
+            const S32 portion = i + 1 == light.mSwayTermCount
+                ? remaining : 1 + random() % available;
+            remaining -= portion;
+            term.mWeight = portion / 1024.f; // exact dyadics, sum <= 1
+            light.mSwayTerms[i] = term;
+        }
+        std::sort(light.mSwayTerms, light.mSwayTerms + light.mSwayTermCount, key_less);
+        return light;
+    };
+    const F64 window = SWAY_OVERFLOW_FADE_END;
+    // At fixed presentation time every trajectory's 3D norm <= sqrt(2)*R.
+    // For retired sources |w'| <= (1+1/window)*s <= 6*s; for late targets
+    // |w'| <= (2-window)/(1-window)*t <= 2.25*t. Shared/kept/early terms
+    // obey the same respective bounds. Endpoint sums <=1 therefore give
+    // ||offset(e+de)-offset(e)|| <= sqrt(2)*R*8.25*|de|, including across
+    // the window edges. The old 2e-6 m allowance covers F32 quantization,
+    // summation, and downward normalization, not a finite eviction jump.
+    S32 overflow_cases = 0, shared_cases = 0;
+    for (S32 chain = 0; chain < 2000; ++chain)
+    {
+        LightBase current = make_light(LightBase{});
+        const U64 seed = flickerLightSeed(12345 + chain, 0);
+        for (S32 interruption = 0; interruption < 4; ++interruption)
+        {
+            const LightBase target = make_light(current);
+            LightBase reversed_start = current, reversed_target = target;
+            std::reverse(reversed_start.mSwayTerms,
+                         reversed_start.mSwayTerms + reversed_start.mSwayTermCount);
+            std::reverse(reversed_target.mSwayTerms,
+                         reversed_target.mSwayTerms + reversed_target.mSwayTermCount);
+            S32 shared_count = 0;
+            for (S32 i = 0; i < current.mSwayTermCount; ++i)
+                for (S32 j = 0; j < target.mSwayTermCount; ++j)
+                    shared_count += current.mSwayTerms[i].mPeriod == target.mSwayTerms[j].mPeriod &&
+                                    current.mSwayTerms[i].mAmount == target.mSwayTerms[j].mAmount;
+            shared_cases += shared_count > 0;
+            overflow_cases += current.mSwayTermCount + target.mSwayTermCount - shared_count > MAX_SWAY_TERMS;
+            const F32 limit = .05f + .95f * unit();
+            const F64 time = 1000.0 + chain * .013 + interruption * .17;
+            const F64 lipschitz = std::sqrt(2.0) * limit *
+                ((1.0 + 1.0 / window) + (2.0 - window) / (1.0 - window));
+            const auto sample = [&](F32 e, F32 offset[3])
+            {
+                const LightBase mixed = blendLight(current, target, e);
+                ensure("fuzz count <= four", mixed.mSwayTermCount <= MAX_SWAY_TERMS);
+                F64 total = 0.0;
+                for (S32 i = 0; i < mixed.mSwayTermCount; ++i)
+                {
+                    ensure("only positive slots emitted", mixed.mSwayTerms[i].mWeight > 0.f);
+                    total += mixed.mSwayTerms[i].mWeight;
+                    if (i) ensure("canonical term order", key_less(mixed.mSwayTerms[i-1], mixed.mSwayTerms[i]));
+                }
+                ensure("fuzz active weights convex", total <= 1.0);
+                for (const LightBase& reordered : {
+                    blendLight(reversed_start, target, e),
+                    blendLight(current, reversed_target, e),
+                    blendLight(reversed_start, reversed_target, e)})
+                {
+                    ensure("each endpoint order gives identical output", sameSwayMix(mixed, reordered));
+                    ensure_equals("ordering preserves scalar marker", mixed.mSwayAmount, reordered.mSwayAmount);
+                }
+                if (e == 1.f)
+                {
+                    ensure("endpoint exactly equals canonical target mixture", sameSwayMix(mixed, target));
+                    ensure_equals("endpoint scalar amount exact", mixed.mSwayAmount, target.mSwayAmount);
+                    ensure_equals("endpoint scalar period exact", mixed.mSwayPeriod, target.mSwayPeriod);
+                }
+                evalLightSway(mixed, seed, time, limit, offset);
+            };
+            const auto check_delta = [&](F32 a, F32 b)
+            {
+                F32 x[3], y[3]; sample(a, x); sample(b, y);
+                F64 squared = 0.0;
+                for (S32 axis = 0; axis < 3; ++axis) squared += std::pow(F64(x[axis]) - y[axis], 2);
+                ensure("Lipschitz bound shrinks with actual de", std::sqrt(squared) <=
+                    lipschitz * std::fabs(F64(b) - a) + 2.e-6);
+            };
+            F32 previous = 0.f;
+            for (S32 step = 1; step <= 64; ++step)
+            {
+                const F32 e = step / 64.f;
+                check_delta(previous, e);
+                previous = e;
+            }
+            for (F32 delta : {1.e-3f, 1.e-5f, 1.e-8f})
+            {
+                check_delta(0.f, delta);
+                check_delta(SWAY_OVERFLOW_FADE_END - delta, SWAY_OVERFLOW_FADE_END);
+                check_delta(SWAY_OVERFLOW_FADE_END, SWAY_OVERFLOW_FADE_END + delta);
+                check_delta(1.f - delta, 1.f);
+                const F32 e = unit();
+                check_delta(e, std::min(1.f, e + delta));
+            }
+            // Every next start is a random intermediate output of this fade.
+            current = blendLight(current, target, unit());
+        }
+    }
+    ensure("fuzz exercises overflow", overflow_cases > 100);
+    ensure("fuzz exercises shared trajectories", shared_cases > 100);
+}
+
 template<> template<>
 void cine_light_rig_model_object::test<40>()
 {
@@ -3087,7 +3605,7 @@ void cine_light_rig_model_object::test<42>()
     render(setup.mRadius, baseline_live, globals, baseline);
 
     LightBase legacy_live[LIGHT_COUNT];
-    std::memcpy(legacy_live, baseline_live, sizeof(legacy_live));
+    std::copy(baseline_live, baseline_live + LIGHT_COUNT, legacy_live);
     legacy_live[0].mKelvin = 2000.f;
     legacy_live[0].mGelSlot[0] = 15;
     legacy_live[0].mSourceSizeM = 4.f;
@@ -7208,10 +7726,10 @@ void cine_light_rig_model_object::test<110>()
     // (CineLightRigActorOnlyAll); 1 bounce-set flag.
     ensure_equals("ActorOnly keys written", actor_only_keys, 6);
     ensure_equals("BounceLightsSet keys written", bounce_keys, 1);
-    // 28 pre-existing rig keys + 3 new; 19 pre-existing keys per light + 1 new
-    // (x4 lights); 4 rim keys per light (x4). Total 127.
+    // 31 rig keys; 22 pre-existing per-light keys (including Detail/World
+    // shadow flags) + 2 sway keys; 4 rim keys per light. Total 143.
     ensure_equals("total key count", S32(recorder.mKeys.size()),
-        (28 + 3) + 4 * (19 + 1) + 4 * 4);
+        31 + 4 * (22 + 2) + 4 * 4);
     for (const char* name : {"CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
                              "CineLightRigRimActorOnly", "CineLightRigBgActorOnly",
                              "CineLightRigCatchlightActorOnly", "CineLightRigBounceLightsSet",
@@ -7221,8 +7739,8 @@ void cine_light_rig_model_object::test<110>()
     ensure_equals("lights array", S32(data["lights"].size()), S32(LIGHT_COUNT));
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        // 21 pre-existing per-light keys + actor_only.
-        ensure_equals("per-light LLSD key count", S32(data["lights"][i].size()), 21 + 1);
+        // 24 pre-existing per-light keys, including actor/detail/world, + 2 sway.
+        ensure_equals("per-light LLSD key count", S32(data["lights"][i].size()), 24 + 2);
     }
 }
 
@@ -7282,6 +7800,8 @@ void cine_light_rig_model_object::test<112>()
         ensure_equals("gel", light.mGel, rows[i].gel);
         ensure_equals("flicker", light.mFlickerProgram, rows[i].flicker);
         ensure_equals("flicker amount", light.mFlickerAmount, rows[i].amount);
+        ensure_equals("default sway off", light.mSwayAmount, 0.f);
+        ensure_equals("default swing time", light.mSwayPeriod, 2.4f);
         ensure_equals("shadow soft", light.mShadowSoft, rows[i].soft);
         ensure_equals("on", light.mOn, rows[i].on);
         // Members after the 11 positional ones keep their defaults.
@@ -7502,4 +8022,5 @@ void cine_light_rig_model_object::test<119>()
     ensure("no stored flag set by the master",
         !evaluateCueTransition(start, target, 1.0, 0.0).mSetup.mLights[2].mActorOnly);
 }
+
 } // namespace tut

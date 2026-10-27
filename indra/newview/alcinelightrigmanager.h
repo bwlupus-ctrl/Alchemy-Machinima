@@ -76,6 +76,8 @@ struct ALCineLightRigParamBlob
         bool mActorOnly = false;
         bool mDetailShadows = false;
         bool mWorldShadowPick = false;
+        F32 mSwayAmount = 0.f;
+        F32 mSwayPeriod = 2.4f;
     };
 
     // [RigRim] P1-B fix: per-light default rim gain, indexed. The Light
@@ -134,26 +136,30 @@ struct ALCineLightRigParamBlob
     bool mCatchlightActorOnly = false;        // CineLightRigCatchlightActorOnly
     // Per-light fields enumerate Yaw/Pitch/Profile/EV/Beam/Gobo/Gel,
     // fixture mode/preset/Kelvin/three gel slots/source size,
-    // Flicker/FlickerAmount/ShadowSoft/On for Key, Fill, Rim and Bg.
+    // Flicker/FlickerAmount/SwayAmount/SwayPeriod/ShadowSoft/On for Key, Fill, Rim and Bg.
     // CineLightRigKeyYaw, CineLightRigKeyPitch, CineLightRigKeyProfile,
     // CineLightRigKeyEV, CineLightRigKeyBeam, CineLightRigKeyGobo,
     // CineLightRigKeyGel, CineLightRigKeyFlicker,
-    // CineLightRigKeyFlickerAmount, CineLightRigKeyShadowSoft,
+    // CineLightRigKeyFlickerAmount, CineLightRigKeySwayAmount,
+    // CineLightRigKeySwayPeriod, CineLightRigKeyShadowSoft,
     // CineLightRigKeyOn;
     // CineLightRigFillYaw, CineLightRigFillPitch, CineLightRigFillProfile,
     // CineLightRigFillEV, CineLightRigFillBeam, CineLightRigFillGobo,
     // CineLightRigFillGel, CineLightRigFillFlicker,
-    // CineLightRigFillFlickerAmount, CineLightRigFillShadowSoft,
+    // CineLightRigFillFlickerAmount, CineLightRigFillSwayAmount,
+    // CineLightRigFillSwayPeriod, CineLightRigFillShadowSoft,
     // CineLightRigFillOn;
     // CineLightRigRimYaw, CineLightRigRimPitch, CineLightRigRimProfile,
     // CineLightRigRimEV, CineLightRigRimBeam, CineLightRigRimGobo,
     // CineLightRigRimGel, CineLightRigRimFlicker,
-    // CineLightRigRimFlickerAmount, CineLightRigRimShadowSoft,
+    // CineLightRigRimFlickerAmount, CineLightRigRimSwayAmount,
+    // CineLightRigRimSwayPeriod, CineLightRigRimShadowSoft,
     // CineLightRigRimOn;
     // CineLightRigBgYaw, CineLightRigBgPitch, CineLightRigBgProfile,
     // CineLightRigBgEV, CineLightRigBgBeam, CineLightRigBgGobo,
     // CineLightRigBgGel, CineLightRigBgFlicker,
-    // CineLightRigBgFlickerAmount, CineLightRigBgShadowSoft,
+    // CineLightRigBgFlickerAmount, CineLightRigBgSwayAmount,
+    // CineLightRigBgSwayPeriod, CineLightRigBgShadowSoft,
     // CineLightRigBgOn.
     Light mLights[ALCineLightRigModel::LIGHT_COUNT] = {
         { 45.f,  35.f, 3,  0.f, 1, 0, 0,
@@ -273,6 +279,8 @@ struct ALCineLightRigParamBlob
                 settings.getS32(prefix + "Flicker");
             blob.mLights[i].mFlickerAmount =
                 settings.getF32(prefix + "FlickerAmount");
+            blob.mLights[i].mSwayAmount = settings.getF32(prefix + "SwayAmount");
+            blob.mLights[i].mSwayPeriod = settings.getF32(prefix + "SwayPeriod");
             blob.mLights[i].mFixtureMode =
                 settings.getBOOL(prefix + "FixtureMode");
             blob.mLights[i].mKelvin = settings.getF32(prefix + "Kelvin");
@@ -372,6 +380,8 @@ struct ALCineLightRigParamBlob
             settings.setS32(prefix + "Flicker", mLights[i].mFlickerProgram);
             settings.setF32(
                 prefix + "FlickerAmount", mLights[i].mFlickerAmount);
+            settings.setF32(prefix + "SwayAmount", mLights[i].mSwayAmount);
+            settings.setF32(prefix + "SwayPeriod", mLights[i].mSwayPeriod);
             settings.setBOOL(prefix + "FixtureMode", mLights[i].mFixtureMode);
             settings.setF32(prefix + "Kelvin", mLights[i].mKelvin);
             for (S32 slot = 0;
@@ -459,6 +469,8 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         light["on"] = mLights[i].mOn;
         light["flicker_program"] = mLights[i].mFlickerProgram;
         light["flicker_amount"] = mLights[i].mFlickerAmount;
+        light["sway_amount"] = mLights[i].mSwayAmount;
+        light["sway_period"] = mLights[i].mSwayPeriod;
         light["fixture_mode"] = mLights[i].mFixtureMode;
         light["kelvin"] = mLights[i].mKelvin;
         light["source_size_m"] = mLights[i].mSourceSizeM;
@@ -592,6 +604,10 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
             if (light.has("flicker_amount"))
                 blob.mLights[i].mFlickerAmount =
                     static_cast<F32>(light["flicker_amount"].asReal());
+            if (light.has("sway_amount"))
+                blob.mLights[i].mSwayAmount = static_cast<F32>(light["sway_amount"].asReal());
+            if (light.has("sway_period"))
+                blob.mLights[i].mSwayPeriod = static_cast<F32>(light["sway_period"].asReal());
             if (light.has("fixture_mode"))
                 blob.mLights[i].mFixtureMode =
                     light["fixture_mode"].asBoolean();

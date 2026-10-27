@@ -334,8 +334,8 @@ def validate_data(data: dict) -> None:
     # Environment master EV adds one Scene light row beside its recipient preference: 2307 -> 2308.
     # + Log gamut beside the Image log curve/range: 2309 (2026-10-27).
     # + Sensor purity beside Log gamut: 2310 (2026-10-27).
-    if len(pages) != 38 or row_count != 2310:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2310")
+    if len(pages) != 38 or row_count != 2318:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2318")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

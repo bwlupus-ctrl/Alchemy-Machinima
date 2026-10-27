@@ -535,6 +535,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigKeySourceSizeM",
         "CineLightRigKeyFlicker",
         "CineLightRigKeyFlickerAmount",
+        "CineLightRigKeySwayAmount",
+        "CineLightRigKeySwayPeriod",
         "CineLightRigKeyShadowSoft",
         "CineLightRigKeyOn",
         "CineLightRigFillYaw",
@@ -557,6 +559,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigFillSourceSizeM",
         "CineLightRigFillFlicker",
         "CineLightRigFillFlickerAmount",
+        "CineLightRigFillSwayAmount",
+        "CineLightRigFillSwayPeriod",
         "CineLightRigFillShadowSoft",
         "CineLightRigFillOn",
         "CineLightRigRimYaw",
@@ -579,6 +583,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigRimSourceSizeM",
         "CineLightRigRimFlicker",
         "CineLightRigRimFlickerAmount",
+        "CineLightRigRimSwayAmount",
+        "CineLightRigRimSwayPeriod",
         "CineLightRigRimShadowSoft",
         "CineLightRigRimOn",
         "CineLightRigBgYaw",
@@ -601,6 +607,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigBgSourceSizeM",
         "CineLightRigBgFlicker",
         "CineLightRigBgFlickerAmount",
+        "CineLightRigBgSwayAmount",
+        "CineLightRigBgSwayPeriod",
         "CineLightRigBgShadowSoft",
         "CineLightRigBgOn",
         "CineLightRigLiveProbeEnabled",
@@ -970,6 +978,36 @@ bool ALPanelCineLightRig::postBuild()
             });
     }
     syncNightMaskDarknessSliders();
+
+    // Percent UI over the persisted 0..1 sway amount. Resolve widgets once;
+    // settings signals cover preset loads, slot switches and undo as well.
+    mSwayAmounts[0] = getChild<LLUICtrl>("cine_key_sway_amount");
+    mSwayAmounts[1] = getChild<LLUICtrl>("cine_fill_sway_amount");
+    mSwayAmounts[2] = getChild<LLUICtrl>("cine_rim_sway_amount");
+    mSwayAmounts[3] = getChild<LLUICtrl>("cine_bg_sway_amount");
+    static const char* const sway_settings[4] = {
+        "CineLightRigKeySwayAmount", "CineLightRigFillSwayAmount",
+        "CineLightRigRimSwayAmount", "CineLightRigBgSwayAmount"
+    };
+    for (S32 light = 0; light < 4; ++light)
+    {
+        const std::string setting = sway_settings[light];
+        mSwayAmounts[light]->setCommitCallback(
+            [setting](LLUICtrl* control, const LLSD&)
+            {
+                gSavedSettings.setF32(setting, llclamp(
+                    static_cast<F32>(control->getValue().asReal()) / 100.f, 0.f, 1.f));
+            });
+        if (LLControlVariable* variable = gSavedSettings.getControl(setting))
+        {
+            mSwayConnections[light] = variable->getSignal()->connect(
+                [this, light](LLControlVariable*, const LLSD& value, const LLSD&)
+                {
+                    mSwayAmounts[light]->setValue(100.f * static_cast<F32>(value.asReal()));
+                });
+        }
+        mSwayAmounts[light]->setValue(100.f * gSavedSettings.getF32(setting));
+    }
 
     syncSeedEditor();
     syncObjectTargetControls(true);
