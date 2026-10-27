@@ -495,7 +495,7 @@ void RlvAttachmentLockWatchdog::RlvWearInfo::dumpInstance() const
 // Checked: 2010-07-28 (RLVa-1.2.0i) | Modified: RLVa-1.2.0i
 void RlvAttachmentLockWatchdog::detach(const LLViewerObject* pAttachObj)
 {
-    if (pAttachObj)
+    if (pAttachObj && !pAttachObj->isLocalOnly())
     {
         gMessageSystem->newMessageFast(_PREHASH_ObjectDetach);
         gMessageSystem->nextBlockFast(_PREHASH_AgentData);
@@ -523,7 +523,8 @@ void RlvAttachmentLockWatchdog::detach(S32 idxAttachPt, const uuid_vec_t& idsAtt
             itAttachObj != pAttachPt->mAttachedObjects.end(); ++itAttachObj)
     {
         const LLViewerObject* pAttachObj = *itAttachObj;
-        if (idsAttachObjExcept.end() == std::find(idsAttachObjExcept.begin(), idsAttachObjExcept.end(), pAttachObj->getID()))
+        if (!pAttachObj->isLocalOnly() &&
+            idsAttachObjExcept.end() == std::find(idsAttachObjExcept.begin(), idsAttachObjExcept.end(), pAttachObj->getID()))
             attachObjs.push_back(pAttachObj);
     }
 

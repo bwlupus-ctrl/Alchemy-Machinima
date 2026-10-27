@@ -507,7 +507,7 @@ void AnimationExplorer::onAvatarNameCallback(const LLUUID& id, const LLAvatarNam
 
 void AnimationExplorer::requestObjectName(LLViewerObject* vo)
 {
-    if (!vo || vo->isDead())
+    if (!vo || vo->isDead() || vo->isLocalOnly())
     {
         return;
     }

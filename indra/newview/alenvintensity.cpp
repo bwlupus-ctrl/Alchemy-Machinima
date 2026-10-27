@@ -333,7 +333,7 @@ namespace ALEnvIntensity
         {
             return 1.f;
         }
-        if (obj && obj->isCineRigEmitter() && !(bool)include_rig)
+        if (obj && (obj->isCineRigEmitter() || obj->isColorChart()) && !(bool)include_rig)
         {
             return 1.f;
         }
@@ -343,7 +343,7 @@ namespace ALEnvIntensity
     F32 localLightSize(const LLViewerObject* obj)
     {
         static LLCachedControl<F32> size(gSavedSettings, "AlchemyEnvLocalLightSize", 0.f);
-        if (isNeutral() || !obj || obj->isCineRigEmitter()) return 0.f;
+        if (isNeutral() || !obj || obj->isCineRigEmitter() || obj->isColorChart()) return 0.f;
         const F32 radius = size;
         return std::isfinite(radius) ? llclamp(radius, 0.f, 0.5f) : 0.f;
     }

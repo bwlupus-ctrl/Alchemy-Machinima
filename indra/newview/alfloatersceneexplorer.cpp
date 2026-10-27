@@ -552,6 +552,7 @@ void ALFloaterSceneExplorer::onClose(bool app_quitting)
 
 void ALFloaterSceneExplorer::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // All discovery / fetch / filter / layout now happens in idleUpdate() (driven
     // by gIdleCallbacks); draw() just renders the current tree state.
     LLFloater::draw();
@@ -1499,7 +1500,7 @@ void ALFloaterSceneExplorer::drainPropsQueue()
         LLViewerObject* obj = gObjectList.findObject(id);
         // Local ids are a per-region namespace, so never address an object
         // that died or crossed into a neighbour region.
-        if (!obj || obj->isDead() || obj->getRegion() != region)
+        if (!obj || obj->isDead() || obj->isLocalOnly() || obj->getRegion() != region)
             return;
         // Never disturb the user's live selection: a raw ObjectDeselect for an
         // actively edited object desyncs the simulator's selection state (the

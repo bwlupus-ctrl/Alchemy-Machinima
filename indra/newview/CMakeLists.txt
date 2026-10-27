@@ -383,6 +383,7 @@ set(viewer_SOURCE_FILES
     alghostplacementresolver.cpp
     alghostplacementadapter.cpp
     alghostmanipproxy.cpp
+    alcolorchart.cpp
     alghostnameplates.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]
     alreflectanim.cpp
@@ -1323,6 +1324,8 @@ set(viewer_HEADER_FILES
     alghostplacementresolver.h
     alghostplacementadapter.h
     alghostmanipproxy.h
+    alcolorchart.h
+    alcolorchartdata.h
     alghostnameplates.h
     alghostautoanimmodel.h # [AutoAnimate]
     alareashadowmath.h

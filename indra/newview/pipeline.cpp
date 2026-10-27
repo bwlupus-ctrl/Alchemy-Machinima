@@ -28,6 +28,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcolorchart.h"
 #include "alpanelweathersettings.h"
 #include "alflareenergy.h"
 #include "llactormaskeligibility.h" // [ActorMask]
@@ -11007,7 +11008,7 @@ void LLPipeline::appendCinematicProbeLightSignature(
                 continue;
             }
         }
-        else if (!light->isCineRigEmitter() &&
+        else if (!(light->isCineRigEmitter() || light->isColorChart()) &&
                  !bdmerge_should_render_light(false, false))
         {
             continue;
@@ -11185,7 +11186,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                     continue;
                 }
             }
-            else if (!light->isCineRigEmitter() &&
+            else if (!(light->isCineRigEmitter() || light->isColorChart()) &&
                      !bdmerge_should_render_light(false, false))
             {
                 continue;
@@ -11272,7 +11273,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                 }
             }
             // Rig emitters obey the rig controls, not the world-light toggle.
-            else if (!light->isCineRigEmitter() &&
+            else if (!(light->isCineRigEmitter() || light->isColorChart()) &&
                      !bdmerge_should_render_light(false, false))
             {
                 continue;
@@ -11371,7 +11372,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             }
             // [BDMerge A5.6] independent world-light toggle (non-attachment lights had no toggle at all in stock)
             // Rig emitters obey the rig controls, not the world-light toggle.
-            else if (vobj && !vobj->isCineRigEmitter() &&
+            else if (vobj && !(vobj->isCineRigEmitter() || vobj->isColorChart()) &&
                      !bdmerge_should_render_light(false, false))
             {
                 drawable->clearState(LLDrawable::NEARBY_LIGHT);
@@ -11466,7 +11467,7 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             }
             // [BDMerge A5.6] independent world-light toggle
             // Rig emitters obey the rig controls, not the world-light toggle.
-            else if (!light->isCineRigEmitter() &&
+            else if (!(light->isCineRigEmitter() || light->isColorChart()) &&
                      !bdmerge_should_render_light(false, false))
             {
                 continue;
@@ -12091,7 +12092,7 @@ void LLPipeline::setupHWLights()
             }
             // [BDMerge A5.6] independent world-light toggle
             // Rig emitters obey the rig controls, not the world-light toggle.
-            else if (!light->isCineRigEmitter() &&
+            else if (!(light->isCineRigEmitter() || light->isColorChart()) &&
                      !bdmerge_should_render_light(false, false))
             {
                 continue;
@@ -12213,7 +12214,7 @@ void LLPipeline::setupHWLights()
                 if (!sRenderAttachedLights ||
                     !bdmerge_should_render_light(true, light->getAvatar() == gAgentAvatarp)) continue;
             }
-            else if (!light->isCineRigEmitter() && !bdmerge_should_render_light(false, false)) continue;
+            else if (!(light->isCineRigEmitter() || light->isColorChart()) && !bdmerge_should_render_light(false, false)) continue;
             const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(light);
             LLColor3 selection_color = local_light_selection_color(light, light_scale);
             LLColor4 color = light->getLightLinearColor() * ls;
@@ -14042,7 +14043,7 @@ LLGLSLShader* LLPipeline::colorCorrectProgram(SensorStage stage, U32 permutation
 }
 
 void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
-                              bool apply_tonemap, bool apply_color_grade, SensorStage stage)
+                              bool apply_tonemap, bool apply_color_grade, SensorStage stage, LLGLSLShader* program)
 {
     LL_PROFILE_GPU_ZONE("colorcorrect");
 
@@ -14069,7 +14070,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
         static LLCachedControl<S32> tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
         const bool legacy_curve = legacy_gamma && !(apply_tonemap && !no_post && tonemap_type() == 8);
         const U32 permutation = colorCorrectPermutation(apply_tonemap, apply_color_grade);
-        LLGLSLShader* shader = colorCorrectProgram(stage, permutation);
+        LLGLSLShader* shader = program ? program : colorCorrectProgram(stage, permutation);
 
         shader->bind();
 
@@ -26372,6 +26373,10 @@ void LLPipeline::renderFinalize()
             generateSMAABuffers(sourceBuffer, targetBuffer);
             applySMAA(sourceBuffer, targetBuffer); std::swap(sourceBuffer, targetBuffer);
         }
+        static LLCachedControl<bool> chart_show(gSavedSettings, "AlchemyColorChartShow", false);
+        if (chart_show && !gDisconnected && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
+            !sPrismPreviewRender && !sImpostorRender && !sRenderingHUDs && colorCorrectWillApplyExposure(hdr))
+            ALColorChart::instance().renderUnlit(sourceBuffer, true, actor_path_projection, actor_path_modelview);
         // Stage B: only this final main-view presentation collects sensor noise.
         renderSensor(sourceBuffer, targetBuffer);
         std::swap(sourceBuffer, targetBuffer);
@@ -26431,6 +26436,17 @@ void LLPipeline::renderFinalize()
     }
 
     renderFinalizePresent(sourceBuffer, diopter_warped, fisheye_warped);
+    static LLCachedControl<bool> chart_show(gSavedSettings, "AlchemyColorChartShow", false);
+    if (chart_show && !gDisconnected && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
+        !sPrismPreviewRender && !sImpostorRender && !sRenderingHUDs && colorCorrectWillApplyExposure(hdr))
+    {
+        ALColorChart::instance().presentUnlit(sourceBuffer, mSensorPhysicalOrder, actor_path_projection, actor_path_modelview);
+        static LLCachedControl<bool> chart_debug(gSavedSettings, "AlchemyColorChartDebugReadback", false);
+        if (chart_debug)
+        {
+            ALColorChart::instance().debugReadback();
+        }
+    }
 }
 
 void LLPipeline::FinalizeGuides::operator()(LLRenderTarget* target, U32 attachment) const
@@ -26868,7 +26884,6 @@ void LLPipeline::renderFinalizeLegacy(bool hdr, LLRenderTarget*& sourceBuffer, L
             renderCineFisheye(sourceBuffer, targetBuffer);
             std::swap(sourceBuffer, targetBuffer);
         }
-
 
 }
 
@@ -31152,7 +31167,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     }
                     // [BDMerge A5.6] independent world-light toggle
                     // Rig emitters obey the rig controls, not the world-light toggle.
-                    else if (!volume->isCineRigEmitter() &&
+                    else if (!(volume->isCineRigEmitter() || volume->isColorChart()) &&
                              !bdmerge_should_render_light(false, false))
                     {
                         continue;
@@ -31472,7 +31487,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         if (!bits) continue; // orphan-only entries never draw or auction
                         if (volume->isAttachment() && (!sRenderAttachedLights ||
                             !bdmerge_should_render_light(true, volume->getAvatar() == gAgentAvatarp))) continue;
-                        if (!volume->isAttachment() && !volume->isCineRigEmitter() &&
+                        if (!volume->isAttachment() && !(volume->isCineRigEmitter() || volume->isColorChart()) &&
                             !bdmerge_should_render_light(false, false)) continue;
                         const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
                         const LLColor3 color = volume->getLightLinearColor() * ls;
@@ -36142,7 +36157,7 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
                 }
             }
             // Rig emitters obey the rig controls, not the world-light toggle.
-            else if (!light->isCineRigEmitter() &&
+            else if (!(light->isCineRigEmitter() || light->isColorChart()) &&
                      !bdmerge_should_render_light(false, false))
             {
                 continue;

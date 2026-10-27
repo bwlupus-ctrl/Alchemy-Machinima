@@ -362,7 +362,7 @@ void LLFloaterPay::payViaObject(money_callback callback, LLSafeHandle<LLObjectSe
 {
     // Object that lead to the selection, may be child
     LLViewerObject* object = selection->getPrimaryObject();
-    if (!object)
+    if (!object || object->isLocalOnly())
         return;
 
     LLFloaterPay *floater = LLFloaterReg::showTypedInstance<LLFloaterPay>("pay_object", LLSD(object->getID()));
@@ -404,6 +404,11 @@ void LLFloaterPay::payDirectly(money_callback callback,
                                const LLUUID& target_id,
                                bool is_group)
 {
+    const LLViewerObject* target = gObjectList.findObject(target_id);
+    if (target && target->isLocalOnly())
+    {
+        return;
+    }
     // A client-only ghost clone has a synthetic id -- never open a pay dialog for it.
     if (!is_group && LLGhostAvatar::isGhostId(target_id))
         return;
@@ -553,6 +558,11 @@ void LLFloaterPay::onGive(give_money_ptr info)
 
 void LLFloaterPay::give(S32 amount)
 {
+    const LLViewerObject* target = gObjectList.findObject(mTargetUUID);
+    if (target && target->isLocalOnly())
+    {
+        return;
+    }
     if(mCallback)
     {
         // if the amount is 0, that menas that we should use the

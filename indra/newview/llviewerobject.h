@@ -863,13 +863,15 @@ public:
         LOCAL_OBJECT_MESH_PREVIEW,      // an LLLocalMeshMgr preview
         LOCAL_OBJECT_GHOST_MANIP_PROXY, // a Ghost Studio in-world manipulation proxy
         LOCAL_OBJECT_CINE_RIG_EMITTER,  // a cinematic light-rig emitter
-        LOCAL_OBJECT_CINE_RIG_PROBE     // the cinematic rig's live reflection probe
+        LOCAL_OBJECT_CINE_RIG_PROBE,    // the cinematic rig's live reflection probe
+        LOCAL_OBJECT_COLOR_CHART       // session-only reference prop
     };
     ELocalObjectKind mLocalObjectKind = LOCAL_OBJECT_NONE;
     bool            isLocalMeshPreview() const { return mLocalObjectKind == LOCAL_OBJECT_MESH_PREVIEW; }
     bool            isGhostManipProxy() const { return mLocalObjectKind == LOCAL_OBJECT_GHOST_MANIP_PROXY; }
     bool            isCineRigEmitter() const { return mLocalObjectKind == LOCAL_OBJECT_CINE_RIG_EMITTER; }
     bool            isCineRigProbe() const { return mLocalObjectKind == LOCAL_OBJECT_CINE_RIG_PROBE; }
+    bool            isColorChart() const { return mLocalObjectKind == LOCAL_OBJECT_COLOR_CHART; }
 
 private:
     // Grabbed from UPDATE_FLAGS

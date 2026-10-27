@@ -30,6 +30,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alpresetlook.h"
+#include "alcolorchart.h"
 #include "aldirectorcastui.h"
 #include "lldirectorcast.h"
 #include "alfloaterlightbox.h"
@@ -77,6 +78,7 @@
 ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 :   LLFloater(key)
 {
+    mCommitCallbackRegistrar.add("LightBox.ColorChartPin", [](LLUICtrl*, const LLSD&) { ALColorChart::instance().pinHere(); });
     mCommitCallbackRegistrar.add("LightBox.ResetControlDefault", std::bind(&ALFloaterLightBox::onClickResetControlDefault, this, std::placeholders::_2));
     mCommitCallbackRegistrar.add("LightBox.ResetGroupDefault", std::bind(&ALFloaterLightBox::onClickResetGroupDefault, this, std::placeholders::_2));
     // [ProbeOnDemand] "Refresh all probes now": re-capture every relevant probe

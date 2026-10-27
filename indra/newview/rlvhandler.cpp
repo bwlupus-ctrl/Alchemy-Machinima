@@ -3297,6 +3297,8 @@ ERlvCmdRet RlvForceHandler<RLV_BHVR_SIT>::onCommand(const RlvCommand& rlvCmd)
     }
     else if ( ((pObj = gObjectList.findObject(idTarget)) != NULL) && (LL_PCODE_VOLUME == pObj->getPCode()))
     {
+        if (pObj->isLocalOnly())
+            return RLV_RET_FAILED_OPTION;
         if (!RlvActions::canSit(pObj))
             return RLV_RET_FAILED_LOCK;
 

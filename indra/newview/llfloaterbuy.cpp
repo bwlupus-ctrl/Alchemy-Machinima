@@ -92,6 +92,11 @@ void LLFloaterBuy::show(const LLSaleInfo& sale_info)
 {
     LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
 
+    const LLViewerObject* object = selection->getFirstRootObject();
+    if (object && object->isLocalOnly())
+    {
+        return;
+    }
     if (selection->getRootObjectCount() != 1)
     {
         LLNotificationsUtil::add("BuyOneObjectOnly");

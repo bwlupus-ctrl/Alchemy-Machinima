@@ -4763,6 +4763,11 @@ bool is_object_sittable()
 // only works on pie menu
 void handle_object_sit(LLViewerObject* object, const LLVector3& offset)
 {
+    if (!object || object->isLocalOnly())
+    {
+        return;
+    }
+
     // get object selection offset
 
 //  if (object && object->getPCode() == LL_PCODE_VOLUME)
@@ -5116,6 +5121,10 @@ static bool get_derezzable_objects(
     {
         LLSelectNode* node = *iter;
         LLViewerObject* object = node->getObject();
+        if (!object || object->isLocalOnly())
+        {
+            continue;
+        }
         LLViewerRegion* region = object->getRegion();
         if (!first_region)
         {
@@ -5226,6 +5235,18 @@ static void derez_objects(
         objectsp = &derez_objects;
     }
 
+
+    // Explicit vectors can bypass selection policy. Synthetic local IDs
+    // must never be marshalled into a simulator DeRezObject request.
+    std::vector<LLViewerObjectPtr> sim_objects;
+    for (const auto& object : *objectsp)
+    {
+        if (object.notNull() && !object->isLocalOnly())
+        {
+            sim_objects.push_back(object);
+        }
+    }
+    objectsp = &sim_objects;
 
     if(gAgentCamera.cameraMouselook())
     {

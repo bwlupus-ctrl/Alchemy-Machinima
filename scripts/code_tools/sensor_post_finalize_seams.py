@@ -54,6 +54,12 @@ def extend(prefix, pipe):
 #define GL_VIEWPORT 0
 template<class T>T llmin(T a,T b){return std::min(a,b);}
 static bool gSnapshotNoPost=false,BDMergeFroxelVolumetrics=false,BDMergeProjectorVolumetrics=false;
+static bool gDisconnected=false;
+extern "C" __declspec(dllexport) void chart_settings(int show,int debug,int disconnected){
+ settings["AlchemyColorChartShow"]=show;
+ settings["AlchemyColorChartDebugReadback"]=debug;
+ gDisconnected=disconnected!=0;
+}
 static bool BDMergeVelocityBuffer=false,BDMergeVelocityDebug=false;
 static int RenderBufferVisualization=-1;
 static float gGLLastProjection[16],gGLLastModelView[16],gGLProjection[16],gGLModelView[16];
@@ -69,5 +75,13 @@ namespace ALLensLooks{void resolveFrame(){}}
 LLGLSLShader gRigRimDebugProgram{800},gFroxelMediaProgram{801},gDeferredProjectorVolumetricProgram{802},
  gUltimateKaleidoProgram{803},gUltimateDiopterProgram{804},gAreaShadowFilterProgram{805},
  gSensorBlitProgram{900},gBlitWithEffectsProgram{901};
+// Local chart calls are leaf seams. Hidden-chart tests compare the complete
+// production finalize event stream against the immutable pre-chart baseline.
+struct ALColorChart{
+ static ALColorChart& instance(){static ALColorChart c;return c;}
+ template<class... T>void renderUnlit(T...){events.push_back(990);}
+ template<class... T>void presentUnlit(T...){events.push_back(991);}
+ void debugReadback(){events.push_back(992);}
+};
 '''
     return prefix.replace('struct LLPipeline {',extra+'\nstruct LLPipeline {')

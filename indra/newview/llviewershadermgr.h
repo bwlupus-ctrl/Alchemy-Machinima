@@ -76,6 +76,11 @@ public:
     bool loadShadersDeferred();
     bool loadSensorShaders();
     void unloadSensorShaders();
+    // Optional, lazy chart programs. Failed attempts retry only after unload
+    // (chart re-enable or a global shader reload), never on each frame.
+    bool loadColorChartShaders(bool legacy);
+    void unloadColorChartShaders();
+    U64 colorChartShaderGeneration() const { return mColorChartShaderGeneration; }
     bool loadShadersObject();
     bool loadShadersAvatar();
     bool loadShadersWater();
@@ -163,6 +168,9 @@ public:
 private:
     // the list of shaders we need to propagate parameters to.
     std::vector<LLGLSLShader *> mShaderList;
+    bool mColorChartAttempted = false;
+    bool mColorChartLegacyAttempted = false;
+    U64 mColorChartShaderGeneration = 0;
 
 }; //LLViewerShaderMgr
 
@@ -390,6 +398,9 @@ extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;
 extern LLGLSLShader         gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
 extern LLGLSLShader         gLensSoftEdgeProgram;
+extern LLGLSLShader         gColorChartProgram;
+extern LLGLSLShader         gColorChartExposureProgram;
+extern LLGLSLShader         gColorChartCameraProgram[4];
 extern bool                 gOnLensNoIR;
 extern LLGLSLShader         gLuminanceProgram;
 extern LLGLSLShader         gDeferredAvatarShadowProgram;
