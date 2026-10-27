@@ -51,6 +51,8 @@
 static LLPanelInjector<ALPanelDirectorVCam>
     t_panel_director_vcam("panel_director_vcam");
 
+LLHandle<ALPanelDirectorVCam> ALPanelDirectorVCam::sObjectLockPage;
+
 namespace
 {
 // A transient face picker; cancellation has no registry side effects. Capture
@@ -209,6 +211,22 @@ bool ALPanelDirectorVCam::postBuild()
     if (!LLPanel::postBuild()) return false;
     mKitPage = findChild<ALKitPage>("vcam_kit");
     collectControls(this);
+    mControls["vc_object_enabled"] = findChild<LLUICtrl>("vc_object_enabled");
+    mControls["vc_object_lock"] = findChild<LLUICtrl>("vc_object_lock");
+    mControls["vc_object_release"] = findChild<LLUICtrl>("vc_object_release");
+    mControls["vc_object_target"] = findChild<LLUICtrl>("vc_object_target");
+    mControls["vc_object_follow_yaw"] = findChild<LLUICtrl>("vc_object_follow_yaw");
+    mControls["vc_object_follow_pitch"] = findChild<LLUICtrl>("vc_object_follow_pitch");
+    mControls["vc_object_follow_roll"] = findChild<LLUICtrl>("vc_object_follow_roll");
+    mControls["vc_object_smooth"] = findChild<LLUICtrl>("vc_object_smooth");
+    mControls["vc_object_status"] = findChild<LLUICtrl>("vc_object_status");
+    mControls["vc_object_x"] = findChild<LLUICtrl>("vc_object_x");
+    mControls["vc_object_y"] = findChild<LLUICtrl>("vc_object_y");
+    mControls["vc_object_z"] = findChild<LLUICtrl>("vc_object_z");
+    mControls["vc_object_pitch"] = findChild<LLUICtrl>("vc_object_pitch");
+    mControls["vc_object_yaw"] = findChild<LLUICtrl>("vc_object_yaw");
+    mControls["vc_object_reset"] = findChild<LLUICtrl>("vc_object_reset");
+
     auto refresh_bone_anchor_choices = [this]()
     {
         const U64 revision = LLDirectorCast::instance().getActorChoiceRevision();
@@ -421,8 +439,68 @@ void ALPanelDirectorVCam::draw()
     LLPanel::draw();
 }
 
+bool ALPanelDirectorVCam::objectLockActive()
+{
+    const ALPanelDirectorVCam* page = sObjectLockPage.get();
+    if (!page) return false;
+    const auto registry = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < registry.mSlotCount; ++index)
+    {
+        const auto& capture = registry.mCaptures[index];
+        if (sameCapture(capture.mHandle, page->mModel.selectedCapture()) &&
+            capture.isCameraFeed())
+        {
+            return capture.cameraData()->mSettings.mObjectPov.mEnabled;
+        }
+    }
+    return false;
+}
+
+void ALPanelDirectorVCam::lockToObject(LLViewerObject* object, bool release)
+{
+    ALPanelDirectorVCam* page = sObjectLockPage.get();
+    std::string reason = "Select a VCam camera in the VCam page before locking an object.";
+    const auto registry = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; page && index < registry.mSlotCount; ++index)
+    {
+        const auto& capture = registry.mCaptures[index];
+        if (!sameCapture(capture.mHandle, page->mModel.selectedCapture()) ||
+            !capture.isCameraFeed())
+        {
+            continue;
+        }
+        if (!release && (!object || object->isDead() || object->isAvatar() ||
+                         object->isHUDAttachment()))
+        {
+            reason = "Select an in-world prim to lock the VCam camera.";
+            break;
+        }
+        LLPrismLens::CameraSettings settings = capture.cameraData()->mSettings;
+        settings.mObjectPov.mEnabled = !release;
+        if (!release)
+        {
+            // Use the exact picked prim, including a child. No root promotion.
+            settings.mObjectPov.mObjectId = object->getID();
+            settings.mVirtual = true;
+            settings.mTestPattern = false;
+            settings.mBonePov.mEnabled = false;
+        }
+        if (page->mModel.setCamera(capture.mHandle, settings, &reason))
+        {
+            page->mModel.refreshNow();
+            return;
+        }
+        break;
+    }
+    LLSD arguments;
+    arguments["MESSAGE"] = reason;
+    LLNotificationsUtil::add("SystemMessage", arguments);
+}
+
 void ALPanelDirectorVCam::onVisibilityChange(bool visible)
 {
+    if (visible)
+        sObjectLockPage = getDerivedHandle<ALPanelDirectorVCam>();
     mModel.setPageVisible(visible);
     LLPrismPreviewService::instance().setConsumerVisible(
         VCAM_PAGE_PREVIEW_OWNER,
@@ -812,11 +890,15 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const bool surface = capture->isSurfaceLens();
         const bool test_pattern = !surface && camera.mTestPattern;
         const bool skeleton = !surface && !test_pattern && bone.mEnabled;
-        const bool virtual_camera = !surface && !test_pattern && camera.mVirtual && !skeleton;
+        const bool object_pov = !surface && !test_pattern && camera.mObjectPov.mEnabled;
+        const bool attached = skeleton || object_pov;
+        const bool virtual_camera = !surface && !test_pattern && camera.mVirtual && !attached;
         const bool object_camera = !surface && !test_pattern && !camera.mVirtual;
         const bool fixed_fov = camera.mFovMode == LLPrismLens::EFovMode::FIXED;
         if (ALKitCard* skeleton_card = mKitPage->findCard("skeleton"))
             skeleton_card->setCodeVisible(!surface && !test_pattern && camera.mVirtual);
+        if (ALKitCard* object_card = mKitPage->findCard("object_pov"))
+            object_card->setCodeVisible(!surface && !test_pattern && camera.mVirtual);
         static const char* const CAMERA_CONTROL_CARDS[] = {
             "placement", "optics", "guide", "camera_look", "output_frame"
         };
@@ -825,12 +907,13 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                 card->setCodeVisible(!test_pattern);
         setValueIfChanged(control("vc_source_bound"), surface ? "Surface aperture" :
             test_pattern ? "Local SMPTE orientation pattern" :
+            object_pov ? camera.mObjectPov.mObjectId.asString() :
             skeleton ? ("Driven by " + bone.mCustomJoint) :
             virtual_camera ? llformat("Stored at %.1f, %.1f, %.1f", camera.mVirtualPos.mV[0],
                                       camera.mVirtualPos.mV[1], camera.mVirtualPos.mV[2]) :
             capture->cameraData()->mObjectId.asString());
         setValueIfChanged(control("vc_source_type"), test_pattern ? 3 :
-            skeleton ? 2 : virtual_camera ? 1 : 0);
+            object_pov ? 4 : skeleton ? 2 : virtual_camera ? 1 : 0);
         setEnabledIfChanged(control("vc_source_type"), !surface);
         if (surface)
         {
@@ -862,10 +945,10 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setRowControlVisible(row("vc_lens_aperture"), surface);
         setRowControlVisible(row("vc_lens_locate"), surface);
         setRowControlVisible(row("vc_lens_note"), surface);
-        setRowControlVisible(row("vc_fov_mode"), !skeleton);
-        setRowControlVisible(row("vc_fov_deg"), !skeleton && fixed_fov);
-        setRowControlVisible(row("vc_fov_projector"), !skeleton && !fixed_fov);
-        setRowControlVisible(row("vc_fov_attached"), skeleton);
+        setRowControlVisible(row("vc_fov_mode"), !attached);
+        setRowControlVisible(row("vc_fov_deg"), !attached && fixed_fov);
+        setRowControlVisible(row("vc_fov_projector"), !attached && !fixed_fov);
+        setRowControlVisible(row("vc_fov_attached"), attached);
         setRowControlVisible(row("vc_guide_thirds"), camera.mShowGuide);
         setRowControlVisible(row("vc_guide_up"), camera.mShowGuide);
         setRowControlVisible(row("vc_guide_cross"), camera.mShowGuide);
@@ -894,7 +977,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(control("vc_camera_crt"), camera.mOptics.mCRTScanlines);
         setAspectValue("vc_output_aspect", camera.mOutputAspect);
         setValueIfChanged(control("vc_output_custom"), camera.mOutputAspect);
-        const F32 fov = skeleton ? bone.mFovDeg : camera.mFixedVerticalFovRad * RAD_TO_DEG;
+        const F32 fov = attached ? bone.mFovDeg : camera.mFixedVerticalFovRad * RAD_TO_DEG;
         setValueIfChanged(control("vc_lens_equiv"), llformat("%.0f mm full frame - %.1f deg V",
             12.f / std::tan(llmax(1.f, fov) * DEG_TO_RAD * .5f), fov));
         const auto picture = LLPrismLens::cameraPictureSize(camera.mOutputAspect,
@@ -921,6 +1004,23 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(control("vc_bone_yaw"), bone.mTrimYawDeg);
         setValueIfChanged(control("vc_bone_scale"), bone.mScaleAware);
         setValueIfChanged(control("vc_bone_status"), ALVCamBonePov::instance().status(capture->mHandle));
+
+        const LLPrismLens::ObjectPovSettings& object = camera.mObjectPov;
+        setValueIfChanged(control("vc_object_enabled"), object.mEnabled);
+        setValueIfChanged(control("vc_object_target"), object.mObjectId.isNull()
+            ? "Select a prim, then Lock selected object" : object.mObjectId.asString());
+        setValueIfChanged(control("vc_object_follow_yaw"), object.mFollowYaw);
+        setValueIfChanged(control("vc_object_follow_pitch"), object.mFollowPitch);
+        setValueIfChanged(control("vc_object_follow_roll"), object.mFollowRoll);
+        setValueIfChanged(control("vc_object_smooth"), object.mSmoothingSec);
+        setValueIfChanged(control("vc_object_x"), object.mOffset.mV[VX]);
+        setValueIfChanged(control("vc_object_y"), object.mOffset.mV[VY]);
+        setValueIfChanged(control("vc_object_z"), object.mOffset.mV[VZ]);
+        setValueIfChanged(control("vc_object_pitch"), object.mTrimPitchDeg);
+        setValueIfChanged(control("vc_object_yaw"), object.mTrimYawDeg);
+        setValueIfChanged(control("vc_object_status"), object_pov
+            ? ALVCamBonePov::instance().status(capture->mHandle) : "Object POV released.");
+        setEnabledIfChanged(control("vc_object_release"), object_pov);
 
     }
 
@@ -983,7 +1083,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
 
     const bool gate_selected = capture && capture->isGate();
     if (gate_selected)
-        for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame", "picture_rate", "surface_lens"})
+        for (const char* id : {"source", "placement", "skeleton", "object_pov", "optics", "guide", "camera_look", "look_goes", "output_frame", "picture_rate", "surface_lens"})
             if (auto* card = mKitPage->findCard(id)) card->setCodeVisible(false);
     const bool media_selected = capture && capture->isMedia();
     if (ALKitCard* lens_card = mKitPage->findCard("surface_lens"))
@@ -1004,7 +1104,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     }
     if (media_selected)
     {
-        for (const char* id : {"source", "placement", "skeleton", "optics", "guide", "camera_look", "look_goes", "output_frame"})
+        for (const char* id : {"source", "placement", "skeleton", "object_pov", "optics", "guide", "camera_look", "look_goes", "output_frame"})
             if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(false);
         const auto* video = capture->mediaUrlData();
         const bool enabled = LLPrismLens::mediaSlotsEnabled();
@@ -1268,7 +1368,8 @@ void ALPanelDirectorVCam::refreshGate()
         if (const auto* camera = source.cameraData())
         {
             auto* object = gObjectList.findObject(camera->mObjectId);
-            if (camera->mSettings.mBonePov.mEnabled || (object && (object->isAvatar() || object->isAttachment()))) continue;
+            if (camera->mSettings.mBonePov.mEnabled || camera->mSettings.mObjectPov.mEnabled ||
+                (object && (object->isAvatar() || object->isAttachment()))) continue;
         }
         eligible.push_back(&source);
         key += source.mHandle.mId.asString();
@@ -1344,6 +1445,10 @@ void ALPanelDirectorVCam::updateCardState(bool have_capture, bool have_display,
     {
         if (!have_capture) skeleton->setCodeVisible(false);
     }
+    if (ALKitCard* object_card = mKitPage->findCard("object_pov"))
+    {
+        if (!have_capture) object_card->setCodeVisible(false);
+    }
     for (const char* id : { "face_mapping", "tv_effects" })
         if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(have_display);
     if (ALKitCard* raw = mKitPage->findCard("raw_output"))
@@ -1353,6 +1458,7 @@ void ALPanelDirectorVCam::updateCardState(bool have_capture, bool have_display,
 void ALPanelDirectorVCam::onControl(LLUICtrl* source)
 {
     if (!source || mRefreshing) return;
+    sObjectLockPage = getDerivedHandle<ALPanelDirectorVCam>();
     clearStatus();
     const std::string name = source->getName();
     if (name == "vc_camera_selector") ++mMediaEditEpoch;
@@ -1667,11 +1773,30 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         if (!LLPrismLens::removeDisplay(display->mHandle, &reason)) setStatus(reason);
     }
 
+    else if (name == "vc_object_lock")
+    {
+        lockToObject(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+    }
+    else if (name == "vc_object_release")
+    {
+        lockToObject(nullptr, true);
+    }
+    else if (name == "vc_object_reset" && capture && capture->cameraData())
+    {
+        LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
+        const LLUUID object_id = settings.mObjectPov.mObjectId;
+        const bool enabled = settings.mObjectPov.mEnabled;
+        settings.mObjectPov = LLPrismLens::ObjectPovSettings();
+        settings.mObjectPov.mObjectId = object_id;
+        settings.mObjectPov.mEnabled = enabled;
+        mModel.setCamera(capture->mHandle, settings);
+    }
     else if (name == "vc_bone_reset" && capture && capture->cameraData())
     {
         LLPrismLens::CameraSettings settings = capture->cameraData()->mSettings;
         settings.mBonePov = LLPrismLens::BonePovSettings();
         settings.mBonePov.mEnabled = settings.mVirtual;
+        settings.mObjectPov.mEnabled = false;
         mModel.setCamera(capture->mHandle, settings);
     }
     else if (name == "vc_source_type" && capture && capture->isCameraFeed())
@@ -1693,6 +1818,7 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
                 ALVCamPageModel::currentViewTransform(settings.mVirtualPos, settings.mVirtualRot);
             settings.mVirtual = !settings.mTestPattern;
             settings.mBonePov.mEnabled = !settings.mTestPattern && source_type == 2;
+            settings.mObjectPov.mEnabled = !settings.mTestPattern && source_type == 4;
             std::string reason;
             if (!mModel.setCamera(capture->mHandle, settings, &reason)) setStatus(reason);
         }
@@ -1794,7 +1920,25 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
     else if (name == "vc_bone_pitch") settings.mBonePov.mTrimPitchDeg = static_cast<F32>(value.asReal());
     else if (name == "vc_bone_yaw") settings.mBonePov.mTrimYawDeg = static_cast<F32>(value.asReal());
     else if (name == "vc_bone_scale") settings.mBonePov.mScaleAware = value.asBoolean();
-    else if (name == "vc_bone_enabled") settings.mBonePov.mEnabled = value.asBoolean() && settings.mVirtual;
+    else if (name == "vc_bone_enabled")
+    {
+        settings.mBonePov.mEnabled = value.asBoolean() && settings.mVirtual;
+        if (settings.mBonePov.mEnabled) settings.mObjectPov.mEnabled = false;
+    }
+    else if (name == "vc_object_enabled")
+    {
+        settings.mObjectPov.mEnabled = value.asBoolean() && settings.mVirtual;
+        if (settings.mObjectPov.mEnabled) settings.mBonePov.mEnabled = false;
+    }
+    else if (name == "vc_object_follow_yaw") settings.mObjectPov.mFollowYaw = value.asBoolean();
+    else if (name == "vc_object_follow_pitch") settings.mObjectPov.mFollowPitch = value.asBoolean();
+    else if (name == "vc_object_follow_roll") settings.mObjectPov.mFollowRoll = value.asBoolean();
+    else if (name == "vc_object_smooth") settings.mObjectPov.mSmoothingSec = static_cast<F32>(value.asReal());
+    else if (name == "vc_object_x") settings.mObjectPov.mOffset.mV[VX] = static_cast<F32>(value.asReal());
+    else if (name == "vc_object_y") settings.mObjectPov.mOffset.mV[VY] = static_cast<F32>(value.asReal());
+    else if (name == "vc_object_z") settings.mObjectPov.mOffset.mV[VZ] = static_cast<F32>(value.asReal());
+    else if (name == "vc_object_pitch") settings.mObjectPov.mTrimPitchDeg = static_cast<F32>(value.asReal());
+    else if (name == "vc_object_yaw") settings.mObjectPov.mTrimYawDeg = static_cast<F32>(value.asReal());
     else if (name == "vc_rate_mode")
     {
         rate.mMode = static_cast<LLPrismLens::EOutputRateMode>(llclamp(value.asInteger(), 0, 1));

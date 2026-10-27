@@ -263,6 +263,19 @@ struct BonePovSettings
     std::string mCustomJoint;
 };
 
+struct ObjectPovSettings
+{
+    bool mEnabled = false;
+    LLUUID mObjectId;
+    LLVector3 mOffset;
+    F32 mTrimPitchDeg = 0.f;
+    F32 mTrimYawDeg = 0.f;
+    bool mFollowYaw = true;
+    bool mFollowPitch = false;
+    bool mFollowRoll = false;
+    F32 mSmoothingSec = 0.f;
+};
+
 struct CameraSettings
 {
     EFovMode mFovMode = EFovMode::FIXED;
@@ -307,6 +320,8 @@ struct CameraSettings
     // Optional avatar/clone bone driver. Default-disabled and pointer-free;
     // transient smoothing/history lives in ALVCamBonePov, not in scene data.
     BonePovSettings mBonePov;
+    // Mutually exclusive with Skeleton POV; shares its attached FOV.
+    ObjectPovSettings mObjectPov;
 };
 
 enum class EGateTransition : U8 { CUT, CROSSFADE };

@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpaneldirectorvcam.h"
 
 #include "llviewermenu.h"
 
@@ -10933,6 +10934,22 @@ void initialize_menus()
     // Object pie menu
     view_listener_t::addMenu(new LLObjectBuild(), "Object.Build");
     commit.add("Object.Touch", boost::bind(&handle_object_touch));
+    commit.add("Object.LockVCam", [](LLUICtrl*, const LLSD&)
+    {
+        ALPanelDirectorVCam::lockToObject(LLToolPie::getInstance()->getPick().getObject());
+    });
+    commit.add("Object.ReleaseVCam", [](LLUICtrl*, const LLSD&)
+    {
+        ALPanelDirectorVCam::lockToObject(nullptr, true);
+    });
+    enable.add("Object.VCamLocked", [](LLUICtrl*, const LLSD&)
+    {
+        return ALPanelDirectorVCam::objectLockActive();
+    });
+    enable.add("Object.VCamUnlocked", [](LLUICtrl*, const LLSD&)
+    {
+        return !ALPanelDirectorVCam::objectLockActive();
+    });
     commit.add("Object.ShowOriginal", boost::bind(&handle_object_show_original));
     commit.add("Object.SetFavorite", boost::bind(&handle_object_set_favorite, _2));
     commit.add("Object.SitOrStand", boost::bind(&handle_object_sit_or_stand));

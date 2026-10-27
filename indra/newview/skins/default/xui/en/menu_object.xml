@@ -34,6 +34,14 @@
   <context_menu
       label="Director"
       name="Director">
+    <menu_item_call label="Lock VCam to this object" name="Lock VCam to object">
+      <menu_item_call.on_click function="Object.LockVCam" />
+      <menu_item_call.on_visible function="Object.VCamUnlocked" />
+    </menu_item_call>
+    <menu_item_call label="Release VCam lock" name="Release VCam lock">
+      <menu_item_call.on_click function="Object.ReleaseVCam" />
+      <menu_item_call.on_visible function="Object.VCamLocked" />
+    </menu_item_call>
     <menu_item_call
         label="Play Local Animation..."
         name="PlayLocalAnim">

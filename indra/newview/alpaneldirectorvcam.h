@@ -38,6 +38,10 @@ public:
     bool postBuild() override;
     void draw() override;
     void onVisibilityChange(bool visible) override;
+    // The most recently revealed/used page owns context-menu targeting. A weak
+    // handle survives hiding, but cannot address a destroyed panel/capture.
+    static bool objectLockActive();
+    static void lockToObject(LLViewerObject* object, bool release = false);
 
 private:
     enum EProjectorControl : U32
@@ -97,6 +101,7 @@ private:
                                          LLPrismLens::ProjectorSettings&);
 
     ALVCamPageModel mModel;
+    static LLHandle<ALPanelDirectorVCam> sObjectLockPage;
     ALKitPage* mKitPage = nullptr;
     ALVCamMonitorStrip* mMonitorStrip = nullptr;
     ALVCamMonitorHeader* mMonitorHeader = nullptr;

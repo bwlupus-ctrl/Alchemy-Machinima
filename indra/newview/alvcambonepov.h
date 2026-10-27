@@ -1,6 +1,6 @@
 /**
  * @file alvcambonepov.h
- * @brief Per-frame skeleton driver for prim-free virtual cameras.
+ * @brief Per-frame skeleton and object driver for prim-free virtual cameras.
  *
  * $LicenseInfo:firstyear=2026&license=viewerlgpl$
  * Alchemy-Machinima fork
@@ -11,6 +11,7 @@
 #define AL_VCAM_BONE_POV_H
 
 #include "llprismlens.h"
+#include "alvcambonepovmath.h"
 
 #include <array>
 #include <string>
@@ -47,7 +48,15 @@ private:
         U8 mRollMode = 0;
         std::string mSelectedJointName;
         std::string mStatus;
+        bool mObjectMode = false;
+        LLUUID mObjectId;
+        U8 mFollowAxes = 0;
+        ALVCamBonePovMath::ObjectFollowHistory mObjectFollow;
+        ALVCamBonePovMath::ObjectPositionHistory mObjectPosition;
     };
+
+    void tickObject(const LLPrismLens::CaptureDefinition& capture,
+                    Smoother& smoother, F64 presentation_time);
 
     std::array<Smoother, LLPrismLens::MAX_CAPTURES> mSmoothers;
 };

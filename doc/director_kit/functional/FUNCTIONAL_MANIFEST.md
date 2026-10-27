@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `a336fddf8a250ba8` (2021 interactive rows); 38
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1329 | 36 | 305 | 53 | 302 | 1 | 2026 |
-| v2 | 1886 | 0 | 460 | 75 | 0 | 11 | 2432 |
+| v2 | 1886 | 0 | 475 | 75 | 0 | 11 | 2447 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 
@@ -41,7 +41,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 0.
 | operator_tab (Operator) | camera_group | 69 | 0 | 0 | 0 | 0 | 0 | 70 | 0 | 0 | 0 | 0 | 0 |
 | frame_orbit_tab (Frame & Orbit) | camera_group | 30 | 0 | 0 | 0 | 2 | 0 | 35 | 0 | 0 | 0 | 0 | 0 |
 | takes_tab (Takes) | camera_group | 13 | 0 | 2 | 4 | 0 | 0 | 15 | 0 | 2 | 4 | 0 | 0 |
-| vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 70 | 0 | 141 | 3 | 0 | 4 |
+| vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 70 | 0 | 156 | 3 | 0 | 4 |
 | focus_tab (Focus) | lens_group | 14 | 0 | 0 | 0 | 0 | 0 | 16 | 0 | 0 | 0 | 0 | 0 |
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 32 | 0 | 1 | 0 | 0 | 0 |
 | diopter_tab (Diopter) | lens_group | 3 | 0 | 0 | 0 | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |

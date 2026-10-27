@@ -45,7 +45,7 @@
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "Name", "k": "text", "w": "vc_camera_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code"},
-      {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
+      {"l": "Source", "k": "combo", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, Object POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Object POV", "Test pattern"], "iv": [0,1,2,4,3], "bind": "code"},
       {"l": "Bound to", "k": "readout", "w": "vc_source_bound", "h": "The object, stored transform, or skeleton driver used by this camera.", "bind": "code"},
       {"l": "Object note", "k": "readout", "w": "vc_source_note_object", "h": "Object source note: Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
       {"l": "Virtual note", "k": "readout", "w": "vc_source_note_virtual", "h": "Virtual source note: Virtual cameras store a position and rotation and need no prim.", "bind": "code", "show_if": "virtual"},
@@ -81,12 +81,182 @@
       {"l": "Clone-scale aware", "k": "toggle", "w": "vc_bone_scale", "h": "Scale the joint point about the avatar foot and the local offset by the clone's uniform scale.", "bind": "code", "a": 1},
       {"l": "Reset attach", "k": "button", "w": "vc_bone_reset", "h": "Restore every skeleton attachment option to its default.", "btn": "Reset attach", "bind": "code", "a": 1}
     ]},
+    {
+      "id": "object_pov",
+      "t": "Object POV",
+      "k": "rows",
+      "badge": "CAM n",
+      "show_if": "virtual",
+      "rows": [
+        {
+          "l": "Object POV",
+          "k": "toggle",
+          "w": "vc_object_enabled",
+          "h": "Attach this virtual camera to the chosen prim. Skeleton POV is released.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along"
+        },
+        {
+          "l": "Lock object",
+          "k": "button",
+          "w": "vc_object_lock",
+          "h": "Lock to the selected prim, including a selected child.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "btn": "Lock selected object"
+        },
+        {
+          "l": "Release lock",
+          "k": "button",
+          "w": "vc_object_release",
+          "h": "Keep the last camera pose and release Object POV.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "btn": "Release VCam lock"
+        },
+        {
+          "l": "Object",
+          "k": "readout",
+          "w": "vc_object_target",
+          "h": "UUID of the followed prim. A picked child follows its own render transform.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "wrap": true
+        },
+        {
+          "l": "Follow yaw",
+          "k": "toggle",
+          "w": "vc_object_follow_yaw",
+          "h": "Follow rotation about world up. Yaw alone keeps a level horizon.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along"
+        },
+        {
+          "l": "Follow pitch",
+          "k": "toggle",
+          "w": "vc_object_follow_pitch",
+          "h": "Tilt the nose up/down about the yawed left axis. Together with yaw and roll: full ride-along.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along"
+        },
+        {
+          "l": "Follow roll",
+          "k": "toggle",
+          "w": "vc_object_follow_roll",
+          "h": "Tilt side to side about the pitched forward axis. Together with yaw and pitch: full ride-along.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along"
+        },
+        {
+          "l": "Smooth",
+          "k": "slider",
+          "w": "vc_object_smooth",
+          "h": "Exponential position and rotation damping. Zero is a rigid lock.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "mn": 0,
+          "mx": 10,
+          "st": 0.05,
+          "dc": 2,
+          "unit": "s"
+        },
+        {
+          "l": "Status",
+          "k": "readout",
+          "w": "vc_object_status",
+          "h": "Missing objects hold the last pose and reattach automatically.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "wrap": true
+        },
+        {
+          "l": "Offset X",
+          "k": "slider",
+          "w": "vc_object_x",
+          "h": "Offset in metres along X in the followed frame.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "mn": -64,
+          "mx": 64,
+          "st": 0.01,
+          "dc": 3,
+          "unit": "m",
+          "a": 1
+        },
+        {
+          "l": "Offset Y",
+          "k": "slider",
+          "w": "vc_object_y",
+          "h": "Offset in metres along Y in the followed frame.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "mn": -64,
+          "mx": 64,
+          "st": 0.01,
+          "dc": 3,
+          "unit": "m",
+          "a": 1
+        },
+        {
+          "l": "Offset Z",
+          "k": "slider",
+          "w": "vc_object_z",
+          "h": "Offset in metres along Z in the followed frame.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "mn": -64,
+          "mx": 64,
+          "st": 0.01,
+          "dc": 3,
+          "unit": "m",
+          "a": 1
+        },
+        {
+          "l": "Trim pitch",
+          "k": "slider",
+          "w": "vc_object_pitch",
+          "h": "Aim trim in degrees. With no followed axes your aim is unchanged.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "mn": -180,
+          "mx": 180,
+          "st": 0.5,
+          "dc": 1,
+          "unit": "deg",
+          "a": 1
+        },
+        {
+          "l": "Trim yaw",
+          "k": "slider",
+          "w": "vc_object_yaw",
+          "h": "Aim trim in degrees. With no followed axes your aim is unchanged.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "mn": -180,
+          "mx": 180,
+          "st": 0.5,
+          "dc": 1,
+          "unit": "deg",
+          "a": 1
+        },
+        {
+          "l": "Reset attach",
+          "k": "button",
+          "w": "vc_object_reset",
+          "h": "Reset Object POV axes, offsets, trim and smoothing while retaining the target and lock state.",
+          "bind": "code",
+          "kw": "object pov lock on follow object camera attach spin ride along",
+          "btn": "Reset attach",
+          "a": 1
+        }
+      ]
+    },
     {"id": "optics", "t": "Optics", "k": "rows", "badge": "CAM n", "copy_type": "vcam_optics", "rows": [
       {"l": "Lens equiv.", "k": "readout", "w": "vc_lens_equiv", "h": "Full-frame equivalent focal length from the vertical field of view (24 mm sensor height).", "bind": "code"},
       {"l": "Field of view", "k": "combo", "w": "vc_fov_mode", "h": "Fixed uses Degrees below; Follow projector takes it from the projector.", "it": ["Fixed vertical FOV", "Follow projector"], "iv": [0,1], "bind": "code", "show_if": "not_skeleton"},
       {"l": "Degrees", "k": "slider", "w": "vc_fov_deg", "h": "Vertical field of view in degrees.", "mn": 5, "mx": 175, "st": 0.5, "dc": 1, "unit": "deg", "bind": "code", "show_if": "fixed_fov"},
       {"l": "Degrees", "k": "readout", "w": "vc_fov_projector", "h": "The projector currently supplies the field of view.", "bind": "code", "show_if": "projector_fov"},
-      {"l": "FOV (attached)", "k": "slider", "w": "vc_fov_attached", "h": "Vertical field of view while attached to the skeleton. Replaces Field of view.", "mn": 10, "mx": 150, "st": 1, "dc": 0, "unit": "deg", "bind": "code", "show_if": "skeleton"},
+      {"l": "FOV (attached)", "k": "slider", "w": "vc_fov_attached", "h": "Vertical field of view while attached to a skeleton or object. Replaces Field of view.", "mn": 10, "mx": 150, "st": 1, "dc": 0, "unit": "deg", "bind": "code", "show_if": "skeleton"},
       {"l": "Near clip", "k": "slider", "w": "vc_near_clip", "h": "Near clipping plane distance.", "mn": 0.01, "mx": 10, "st": 0.01, "dc": 3, "unit": "m", "bind": "code"},
       {"l": "Far clip", "k": "slider", "w": "vc_far_clip", "h": "Far clipping plane distance.", "mn": 0.2, "mx": 512, "st": 0.1, "dc": 1, "unit": "m", "bind": "code"}
     ]},
@@ -248,10 +418,10 @@
     {"seam":"migrate", "widget":"vc_gate_status"}
   ],
   "sections": [
-    {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5,6,7]},
-    {"id": "lens", "label": "2 Lens", "cards": [0,1,2,8,9,10]},
-    {"id": "look", "label": "3 Look", "cards": [0,1,2,11,12]},
-    {"id": "output", "label": "4 Output", "cards": [0,1,2,13,14,15,16,17,18,19,20]},
-    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,21,22]}
+    {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5,6,7,8]},
+    {"id": "lens", "label": "2 Lens", "cards": [0,1,2,9,10,11]},
+    {"id": "look", "label": "3 Look", "cards": [0,1,2,12,13]},
+    {"id": "output", "label": "4 Output", "cards": [0,1,2,14,15,16,17,18,19,20,21]},
+    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,22,23]}
   ]
 }

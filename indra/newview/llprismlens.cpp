@@ -8,6 +8,7 @@
 #include "llprismlens.h"
 #include "llprismpreview.h"
 #include "llprismgate.h"
+#include "alvcamobjectpovsettings.h"
 
 #include "alcinelightrigmanager.h"
 #include "alobjectproperties.h"
@@ -5338,6 +5339,7 @@ public:
         capture.cameraData()->mSettings.mVirtual = false;
         capture.cameraData()->mSettings.mTestPattern = false;
         capture.cameraData()->mSettings.mBonePov.mEnabled = false;
+        capture.cameraData()->mSettings.mObjectPov.mEnabled = false;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
         if (reason) reason->clear();
@@ -5345,7 +5347,8 @@ public:
     }
 
     static bool validCameraSettings(const LLPrismLens::CameraSettings& settings,
-                                    std::string* reason)
+                                    std::string* reason,
+                                    bool validate_object_pov = true)
     {
         if (settings.mFovMode != LLPrismLens::EFovMode::FIXED &&
             settings.mFovMode != LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
@@ -5390,6 +5393,17 @@ public:
             std::isfinite(bone.mSmoothingSec) &&
             bone.mSmoothingSec >= 0.f && bone.mSmoothingSec <= 10.f &&
             bone.mCustomJoint.size() <= 128;
+        // Runtime pose writes cannot change attachment configuration. Validate
+        // it at configuration/scene boundaries, without adding work to bone POV.
+        if (validate_object_pov &&
+            (!ALVCamObjectPovSettings::valid(settings.mObjectPov) ||
+             (settings.mObjectPov.mEnabled &&
+              (!settings.mVirtual || settings.mBonePov.mEnabled || settings.mTestPattern))))
+        {
+            if (reason)
+                *reason = "Object POV requires a virtual camera, exclusive attachment, finite offset, trim +/-180 and smoothing 0-10.";
+            return false;
+        }
         if (!finite_offset || !valid_fov || !valid_near || !valid_far ||
             !valid_aspect || !valid_optics || !valid_bone_pov)
         {
@@ -5461,6 +5475,7 @@ public:
         {
             corrected.mVirtual = false;
             corrected.mBonePov.mEnabled = false;
+            corrected.mObjectPov.mEnabled = false;
             corrected.mOutputAspect = 1.f;
         }
         if (!validCameraSettings(corrected, reason)) return false;
@@ -5510,7 +5525,7 @@ public:
         candidate.mVirtualPos = pos;
         candidate.mVirtualRot = rot;
         candidate.mFixedVerticalFovRad = vertical_fov_rad;
-        if (!validCameraSettings(candidate, reason))
+        if (!validCameraSettings(candidate, reason, false))
         {
             return false;
         }
@@ -5552,7 +5567,7 @@ public:
         LLPrismLens::CameraSettings candidate = capture.cameraData()->mSettings;
         candidate.mVirtualPos = pos;
         candidate.mFixedVerticalFovRad = vertical_fov_rad;
-        if (!validCameraSettings(candidate, reason))
+        if (!validCameraSettings(candidate, reason, false))
         {
             return false;
         }
@@ -5780,6 +5795,7 @@ public:
         if (!source.isCameraFeed()) return false;
         auto* object = gObjectList.findObject(source.cameraData()->mObjectId);
         return !source.cameraData()->mSettings.mBonePov.mEnabled &&
+            !source.cameraData()->mSettings.mObjectPov.mEnabled &&
             (!object || (!object->isAvatar() && !object->isAttachment()));
     }
     LLPrismLens::ERegistryResult addGateSlot(LLPrismLens::CaptureHandle* handle, std::string* reason)
@@ -7167,6 +7183,8 @@ public:
                 bone["smoothing_seconds"] = bone_settings.mSmoothingSec;
                 bone["scale_aware"] = bone_settings.mScaleAware;
                 item["bone_pov"] = bone;
+                item["object_pov"] = ALVCamObjectPovSettings::serialize(
+                    capture.cameraData()->mSettings.mObjectPov);
             }
             result["prism_captures"].append(item);
         }
@@ -7779,6 +7797,11 @@ public:
                         settings.mScaleAware = bone["scale_aware"].asBoolean();
                     }
                 }
+                if (!ALVCamObjectPovSettings::deserialize(
+                        item["object_pov"], parsed.mCamera.mObjectPov))
+                {
+                    return fail("Prism object_pov requires a map with valid UUID, boolean axes, finite offset, trim +/-180 and smoothing 0-10.");
+                }
                 // Objectless and procedural cameras cannot follow a projector;
                 // soft-correct a stale mode so the scene remains loadable.
                 if (parsed.mCamera.mVirtual || parsed.mCamera.mTestPattern)
@@ -7787,6 +7810,7 @@ public:
                 {
                     parsed.mCamera.mVirtual = false;
                     parsed.mCamera.mBonePov.mEnabled = false;
+                    parsed.mCamera.mObjectPov.mEnabled = false;
                     parsed.mCamera.mOutputAspect = 1.f;
                 }
 
@@ -8253,7 +8277,8 @@ public:
 
         std::vector<LLUUID> gate_eligible;
         for (const auto& c : parsed_captures)
-            if (!c.mIsGate && (c.mIsMedia || (c.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED && !c.mCamera.mBonePov.mEnabled)))
+            if (!c.mIsGate && (c.mIsMedia || (c.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
+                !c.mCamera.mBonePov.mEnabled && !c.mCamera.mObjectPov.mEnabled)))
             {
                 auto* object = gObjectList.findObject(c.mCameraId);
                 if (c.mIsMedia || !object || (!object->isAvatar() && !object->isAttachment())) gate_eligible.push_back(c.mId);
