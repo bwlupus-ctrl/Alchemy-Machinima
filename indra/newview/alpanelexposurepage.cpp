@@ -197,6 +197,9 @@ ALPanelExposurePage::ALPanelExposurePage()
 
 bool ALPanelExposurePage::postBuild()
 {
+    updateEnvOnlyAvailability();
+    mEnvOnlyHDRConnection = gSavedSettings.getControl("RenderHDREnabled")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvOnlyAvailability(); });
     mUndo = getChild<LLButton>("exp_undo");
     mRedo = getChild<LLButton>("exp_redo");
     mAMDExposure = findChild<LLUICtrl>("exp_amd_exposure");
@@ -280,6 +283,7 @@ void ALPanelExposurePage::onVisibilityChange(bool new_visibility)
 {
     if (new_visibility)
     {
+        updateEnvOnlyAvailability();
         updateTonemapGating();
         updateHistoryButtons();
         syncSensorISO();
@@ -377,4 +381,13 @@ void ALPanelExposurePage::updateHistoryButtons()
     setEnabledIfChanged(mRedo, can_redo);
     setToolTipIfChanged(mRedo, can_redo ? std::string("Redo the last undone change on this page")
                                        : std::string("Nothing to redo"));
+}
+
+void ALPanelExposurePage::updateEnvOnlyAvailability()
+{
+    const bool hdr = gPipeline.worldHDREnabled();
+    if (LLUICtrl* control = findChild<LLUICtrl>("exp_environment_only"))
+    {
+        setEnabledIfChanged(control, hdr);
+    }
 }

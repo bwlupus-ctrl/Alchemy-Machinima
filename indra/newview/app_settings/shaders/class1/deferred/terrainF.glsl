@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file class1\deferred\terrainF.glsl
  *
@@ -67,8 +68,11 @@ void main()
 
     vec3 nvn = normalize(vary_normal);
     vec4 weather_spec = vec4(0.0,0.0,0.0,-1.0);
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     weatherMaterialLegacy(pos, nvn, outColor.rgb, weather_spec.rgb, weather_spec.a);
+    }
 #endif
     frag_data[0] = max(outColor, vec4(0));
     frag_data[1] = weather_spec;

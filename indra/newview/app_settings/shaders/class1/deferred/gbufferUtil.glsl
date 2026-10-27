@@ -32,6 +32,7 @@ uniform sampler2D emissiveRect;
 
 vec4 getNormRaw(vec2 screenpos);
 vec4 decodeNormal(vec4 norm);
+void envOnlySetFlag(float flag);
 
 GBufferInfo getGBuffer(vec2 screenpos)
 {
@@ -43,6 +44,7 @@ GBufferInfo getGBuffer(vec2 screenpos)
     diffInfo = texture(diffuseRect, screenpos.xy);
     specInfo = texture(specularRect, screenpos.xy);
     vec4 normInfo = getNormRaw(screenpos);
+    envOnlySetFlag(normInfo.w);
 
 #if defined(HAS_EMISSIVE)
     emissInfo = texture(emissiveRect, screenpos.xy);

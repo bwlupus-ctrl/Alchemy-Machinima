@@ -428,6 +428,10 @@ bool LLFloaterEnvironmentAdjust::postBuild()
 
     getChild<LLUICtrl>(FIELD_REFLECTION_PROBE_AMBIANCE)->setCommitCallback([this](LLUICtrl*, const LLSD&) { onReflectionProbeAmbianceChanged(); });
 
+    updateEnvOnlyAvailability();
+    mEnvOnlyHDRConnection = gSavedSettings.getControl("RenderHDREnabled")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvOnlyAvailability(); });
+
     // [EnvIntensity] Light Intensity strip (lp_env_intensity). The sliders and
     // the Auto exposure checkbox bind to viewer settings via control_name in the
     // XML; only the reset-to-0-EV buttons need code. Viewer-side multipliers,
@@ -626,6 +630,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
 
 void LLFloaterEnvironmentAdjust::onOpen(const LLSD& key)
 {
+    updateEnvOnlyAvailability();
     if (ALUIPerfSelfTest::isActive() && !mSelfTestRestoreEnvironment)
     {
         LLEnvironment& environment = LLEnvironment::instance();
@@ -1573,4 +1578,11 @@ void LLFloaterEnvironmentAdjust::onSelectPreset()
     if (!mLiveSky || !mNameCombo) return;
     gBDMergeEnvLibrary.onSelectPreset(mNameCombo, mLiveSky);
     refresh();
+}
+
+void LLFloaterEnvironmentAdjust::updateEnvOnlyAvailability()
+{
+    const bool hdr = gPipeline.worldHDREnabled();
+    if (LLUICtrl* control = findChild<LLUICtrl>("env_environment_only")) control->setEnabled(hdr);
+    if (LLView* note = findChild<LLView>("env_environment_only_hdr")) note->setVisible(!hdr);
 }

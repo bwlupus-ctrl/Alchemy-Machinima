@@ -108,6 +108,8 @@ private:
     void                        applyEnvIntensityAdvanced();
     void                        updateEnvIntensityMoonLink();
     void                        updateExposureHistoryButtons();
+    void                        updateEnvOnlyAvailability();
+    boost::signals2::scoped_connection mEnvOnlyHDRConnection;
 
     // [EnvIntensity presets] Quick Preset combo (env_intensity_preset) on the
     // Light Intensity strip. Applying a preset writes the full deterministic

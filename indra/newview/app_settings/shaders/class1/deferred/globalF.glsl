@@ -32,6 +32,26 @@ uniform float mirror_flag;
 uniform vec4 clipPlane;
 uniform float clipSign;
 
+// Shared by every fragment link, including probe-only programs. Deferred
+// G-buffer reads set the recipient; forward draws use mode 2. Mode 0 executes
+// the existing Personal Lighting arithmetic without identity interpolation.
+uniform int env_only_mode;
+uniform int avatar_tag_draw;
+uniform int gbuffer_tag_preferred;
+bool env_only_avatar = false;
+void envOnlySetFlag(float flag)
+{
+#ifdef GBUFFER_AVATAR_TAG
+    if (env_only_mode == 1) env_only_avatar = GBUFFER_AVATAR_TAG_OF(flag);
+#endif
+}
+bool envOnlyIdentity()
+{
+    return env_only_mode == 2 || (env_only_mode == 1 && env_only_avatar);
+}
+bool envOnlyEnabled() { return env_only_mode != 0; }
+bool gbufferTagPreferred() { return gbuffer_tag_preferred != 0; }
+
 void mirrorClip(vec3 pos)
 {
     if (mirror_flag > 0)

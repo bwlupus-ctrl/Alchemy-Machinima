@@ -61,6 +61,9 @@ namespace ALEnvIntensity
     // gCubeSnapshot && !gPipeline.mHeroProbeManager.isMirrorPass()
     bool isSamplingCapture();
 
+    // Recipient preference; display passes only, with an HDR normal tag.
+    bool envOnlyActive();
+
     // Per-emitter factor for the local-light colour sites in LLPipeline:
     // 2^AlchemyEnvLocalLightEV, or exactly 1 for a Cine Light Rig emitter
     // unless AlchemyEnvLocalLightIncludeRig is on. 1 while ScopedNeutral is

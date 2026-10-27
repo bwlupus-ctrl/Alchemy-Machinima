@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file materialIndexedF.glsl
  *
@@ -216,6 +217,8 @@ vec4 sample_spec(vec2 uv)
 #endif
 
 void mirrorClip(vec3 pos);
+uniform int avatar_tag_draw;
+float gbufferAvatarFlag(float flag);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 vec3 srgb_to_linear(vec3 cs);
@@ -366,7 +369,9 @@ void main()
 #endif
 
     float emissive = getEmissive(mi, diffcol);
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY)
+    if (!gbufferTagPreferred())
+    {
 
     vec3 weather_normal = norm, weather_color = diffcol.rgb, weather_spec = spec.rgb;
     float weather_gloss = glossiness;
@@ -375,9 +380,13 @@ void main()
     {
         norm = weather_normal; diffcol.rgb = weather_color; spec.rgb = weather_spec; glossiness = weather_gloss;
     }
+    }
 #endif
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
+#ifndef HAS_SKIN
+    if (avatar_tag_draw != 0) flag = gbufferAvatarFlag(flag);
+#endif
 #ifdef HAS_SKIN
     flag = gbufferAvatarFlag(flag);   // [TronA0] rigged mesh: avatar geometry -> tagged flag
 #endif

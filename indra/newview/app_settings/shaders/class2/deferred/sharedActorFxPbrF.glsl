@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * Shared Actor FX forward-PBR replay fragment shader.
  *
@@ -603,13 +604,16 @@ void main()
     col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
 #endif
 
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY)
+    if (!gbufferTagPreferred())
+    {
     vec3 weather_normal = norm, weather_color = col;
     float weather_roughness = perceptualRoughness;
     weatherMaterialLinear(vary_position, weather_normal, weather_color, weather_roughness, metallic);
     if (dot(colorEmissive, colorEmissive) == 0.0)
     {
         norm = weather_normal; col = weather_color; perceptualRoughness = weather_roughness;
+    }
     }
 #endif
 

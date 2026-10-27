@@ -183,7 +183,7 @@ void ALLensLooks::resolveFrame()
     const InfraredParams ir = infrared(); const SoftEdgeParams se = softEdge();
     sFrame.mInfraredActive = ir.enabled && ir.strength > 0.f;
     sFrame.mSoftEdgeActive = se.enabled;
-    sFrame.mTagUsable = LLViewerShaderMgr::gbufferAvatarTagActive();
+    sFrame.mTagUsable = LLViewerShaderMgr::gbufferAvatarTagPreferred();
     LLVector2 target = se.center;
     const auto project = [&target](const LLVector3& position)
     {

@@ -419,7 +419,8 @@ public:
                                        bool force_native = false);
     static void uploadAvatarLightResponse(const LLUUID& k1,
                                           const LLUUID& k2 = LLUUID::null,
-                                          const LLUUID& k3 = LLUUID::null);
+                                          const LLUUID& k3 = LLUUID::null,
+                                          bool avatar_draw = false);
     static void uploadAvatarLightResponseTo(LLGLSLShader& shader,
                                             const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
                                             EAlrSlot slot = ALR_SLOT_BEAUTY);

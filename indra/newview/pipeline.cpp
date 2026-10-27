@@ -39,6 +39,7 @@
 #include "alcinerigrim.h" // [RigRim]
 #include "alavatarlightresponse.h" // [AvatarSilhouette]
 #include "alenvintensity.h" // [EnvIntensity v2] local lights EV, SSAO ceiling factor
+#include "alenvonlydiagnostics.h" // Environment-only frame diagnostic
 #include "altron.h" // [TronT1]
 #include "allenslooks.h"
 
@@ -11877,6 +11878,7 @@ void LLPipeline::setupHWLights()
     mForwardLightSets.clear();
     mForwardLightByte = 0;
     mForwardLightsImplicit = true;
+    std::array<F32, 8> forward_ev{1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
     const bool actor_test_view = actor_only && mActorMaskView == ActorMaskView::MASK &&
         mActorMaskValid && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
         !sImpostorRender;
@@ -11986,6 +11988,7 @@ void LLPipeline::setupHWLights()
         F32 x = (3.f * (1.f + (light->getLightFalloff() * 2.0f)));  // why this magic?  probably trying to match a historic behavior.
         F32 linatten = x / adjusted_radius;                         // % of brightness at radius
 
+        forward_ev[unit] = ALEnvIntensity::localLightEVScale(light);
         mHWLightColors[unit] = light_color;
         LLLightState* light_state = gGL.getLight(unit);
 
@@ -12164,6 +12167,16 @@ void LLPipeline::setupHWLights()
         }
     }
 
+    if (ALEnvIntensity::envOnlyActive())
+    {
+        ForwardLightSet world;
+        LLColor4 unused_ambient;
+        gGL.getLightStateSnapshot(world.units, unused_ambient);
+        for (U32 i = 2; i < 8; ++i) world.colors[i - 2] = mHWLightColors[i];
+        world.evScales = forward_ev;
+        mForwardLightSets.emplace(0, std::move(world));
+    }
+
     // [ActorMask] Independent uncapped scan, after world units and padding.
     if (actor_only && !actor_as_world && effective_local_light_count >= 1)
     {
@@ -12178,10 +12191,11 @@ void LLPipeline::setupHWLights()
         {
             gGL.getLightStateSnapshot(world.units, ambient_snapshot);
             for (U32 i = 2; i < 8; ++i) world.colors[i - 2] = mHWLightColors[i];
+            world.evScales = forward_ev;
             mForwardLightSets.emplace(0, world);
         }
 
-        struct Candidate { U8 bits; LLLightState unit; LLColor4 color; };
+        struct Candidate { U8 bits; LLLightState unit; LLColor4 color; F32 evScale; };
         std::vector<Candidate> candidates;
         // Nearest-first. Shared sets read the same per-frame fade.
         for (const auto& entry : mNearbyLights)
@@ -12225,7 +12239,7 @@ void LLPipeline::setupHWLights()
             LLRender::light_state_snapshot_t captured;
             LLColor4 unused_ambient;
             gGL.getLightStateSnapshot(captured, unused_ambient);
-            candidates.push_back({bits, captured[2], color});
+            candidates.push_back({bits, captured[2], color, forward_ev[2]});
         }
         if (build_sets)
         {
@@ -12247,6 +12261,7 @@ void LLPipeline::setupHWLights()
                     if (slot == 8) continue;
                     set.units[slot] = candidate.unit;
                     set.colors[slot - 2] = candidate.color;
+                    set.evScales[slot] = candidate.evScale;
                     ++slot;
                 }
                 if (!matching) continue; // alias to world without switching
@@ -12255,6 +12270,7 @@ void LLPipeline::setupHWLights()
                 {
                     set.units[slot] = world.units[world_slot];
                     set.colors[slot - 2] = world.colors[world_slot - 2];
+                    set.evScales[slot] = world.evScales[world_slot];
                 }
                 mForwardLightSets.emplace(byte, std::move(set));
             }
@@ -12264,6 +12280,25 @@ void LLPipeline::setupHWLights()
             for (U32 i = 2; i < 8; ++i) mHWLightColors[i] = world.colors[i - 2];
         }
     }
+    if (ALEnvIntensity::envOnlyActive())
+    {
+        // Identity variants use the same unit writer/selection/fade as the
+        // adjusted sets. EV is a finite power of two; undo it before shading.
+        // The high key bit travels through the existing Prism snapshot cache.
+        const auto adjusted_sets = mForwardLightSets;
+        for (const auto& entry : adjusted_sets)
+        {
+            ForwardLightSet identity = entry.second;
+            for (U32 i = 2; i < 8; ++i)
+            {
+                identity.colors[i - 2] *= 1.f / identity.evScales[i];
+                identity.units[i].setDiffuse(identity.colors[i - 2]);
+                identity.units[i].setLocalLightSize(0.f);
+            }
+            mForwardLightSets.emplace(static_cast<U16>(entry.first | 0x100), std::move(identity));
+        }
+    }
+
 
     // Bookmark comment to allow searching for mSpecialRenderMode == 3 (avatar edit mode),
     // prev site of forward (non-deferred) character light injection, removed by SL-13522 09/20
@@ -12277,21 +12312,26 @@ void LLPipeline::setupHWLights()
 }
 
 // [ActorMask] Draw-time model matrices must never transform captured lights.
-void LLPipeline::selectForwardLightSet(U8 byte)
+void LLPipeline::selectForwardLightSet(U8 byte, bool identity)
 {
-    if (!ALCineLightRigManager::anyActorOnly()) return;
+    identity = ALEnvIntensity::envOnlyActive() && !sRenderingHUDs && (identity || sImpostorRender);
+    if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr)
+        shader->uniform1i(LLShaderMgr::ENV_ONLY_MODE, identity ? 2 : 0);
+    if (!ALCineLightRigManager::anyActorOnly() && !ALEnvIntensity::envOnlyActive() && mForwardLightByte == 0) return;
     if (mActorMaskView != ActorMaskView::MASK || !mActorMaskValid ||
         sRenderingHUDs || sImpostorRender) byte = 0;
     const bool test_view = mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender;
     if (test_view && (mActorMaskTestMode == ActorMaskTestMode::F0 ||
                       mActorMaskTestMode == ActorMaskTestMode::F1)) byte = 0;
-    auto found = mForwardLightSets.find(byte);
+    U16 key = static_cast<U16>(byte) | (identity ? 0x100 : 0);
+    auto found = mForwardLightSets.find(key);
     if (found == mForwardLightSets.end())
     {
         byte = 0;
-        found = mForwardLightSets.find(0);
+        key = identity ? 0x100 : 0;
+        found = mForwardLightSets.find(key);
     }
-    if (byte == mForwardLightByte || found == mForwardLightSets.end()) return;
+    if (key == mForwardLightByte || found == mForwardLightSets.end()) return;
     gGL.flush();
     const auto& set = found->second;
     // setupHWLights leaves live diffuse with disabled units and mask 0.
@@ -12303,8 +12343,31 @@ void LLPipeline::selectForwardLightSet(U8 byte)
     if (mForwardLightsImplicit)
         for (U32 i = 2; i < 8; ++i) gGL.getLight(i)->disable();
     for (U32 i = 2; i < 8; ++i) mHWLightColors[i] = set.colors[i - 2];
-    mForwardLightByte = byte;
+    mForwardLightByte = key;
     ++mActorMaskAlphaSwitches; // WP7 counter; unchanged selection is inert
+}
+
+void LLPipeline::uploadEnvOnlyView(LLGLSLShader& shader)
+{
+    const bool active = ALEnvIntensity::envOnlyActive() && !sRenderingHUDs;
+    shader.uniform1i(LLShaderMgr::ENV_ONLY_MODE, active ? (sImpostorRender ? 2 : 1) : 0);
+    shader.uniform1i(LLShaderMgr::GBUFFER_TAG_PREFERRED,
+        LLViewerShaderMgr::gbufferAvatarTagPreferred());
+}
+
+void LLPipeline::applyEnvOnlyDraw(bool avatar)
+{
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    if (!shader) return;
+    const bool active = ALEnvIntensity::envOnlyActive() && !sRenderingHUDs;
+    const bool identity = active && (avatar || sImpostorRender);
+    // LLGLSLShader caches each uniform per program. Always write zero on OFF
+    // so toggling back cannot retain mode 2 in a previously bound program.
+    shader->uniform1i(LLShaderMgr::ENV_ONLY_MODE, identity ? 2 : 0);
+    shader->uniform1i(LLShaderMgr::AVATAR_TAG_DRAW, identity ? 1 : 0);
+    if (shader->mFeatures.hasLighting || shader->mFeatures.calculatesLighting ||
+        shader->mFeatures.isAlphaLighting)
+        selectForwardLightSet(static_cast<U8>(mForwardLightByte & 0xff), identity);
 }
 
 void LLPipeline::enableLights(U32 mask)
@@ -19070,10 +19133,10 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     const S32  subject_shape           = std::clamp((S32)subject_shape_setting(), 0, 2);
     // [TronA0] Subject mask source for modes 1/2/3: 0 boxes (today), 1 avatar
     // tag, 2 tag AND boxes, 3 tag OR boxes. Graceful fallback to 0 whenever
-    // the loaded shaders were not built with the G-buffer avatar tag (setting
-    // off, HDR off, or GL < 4.05) -- keyed on the compiled define, not the raw
-    // setting, so uploader and shader can never disagree.
-    const S32  subject_source          = LLViewerShaderMgr::gbufferAvatarTagActive()
+    // the user's tag source preference is off or unavailable (non-HDR or
+    // GL < 4.05). HDR startup compilation alone must not change the previous
+    // source behavior.
+    const S32  subject_source          = LLViewerShaderMgr::gbufferAvatarTagPreferred()
                                        ? std::clamp((S32)subject_source_setting(), 0, 3) : 0;
     const bool subject_invert          = subject_invert_setting();
     const bool subject_target_color    = subject_target_color_setting();
@@ -19801,11 +19864,11 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     // range, same as the shader's own tron_subject.w consumer expects.
     const F32  subject_depth_feather = llmax(0.5f * subject_depth_range, 0.05f);
     const F32  subject_ellipse_scale = llclamp(finite_or((F32)subject_ellipse_scale_setting(), 1.15f), 0.5f, 3.f);
-    // [TronT1] Forced to 0 whenever the compiled shaders do not carry the
-    // G-buffer avatar tag (tag off / non-HDR / GL < 4.05) -- same rule the
-    // Roto Ink CineOutlineSubjectSource uploader applies, so the uploader
-    // and the shader's `#ifdef GBUFFER_AVATAR_TAG` path can never disagree.
-    const bool tag_active = LLViewerShaderMgr::gbufferAvatarTagActive();
+    // [TronT1] Forced to 0 whenever the user's G-buffer tag source preference
+    // is off or unavailable (non-HDR / GL < 4.05). This mirrors Roto Ink and
+    // preserves the previous source behavior after unconditional HDR startup
+    // compilation.
+    const bool tag_active = LLViewerShaderMgr::gbufferAvatarTagPreferred();
     const S32  subject_source_grid = tag_active ? std::clamp((S32)subject_source_grid_setting(), 0, 3) : 0;
     const S32  subject_source_rim  = tag_active ? std::clamp((S32)subject_source_rim_setting(), 0, 3) : 0;
     const bool subject_invert      = subject_invert_setting();
@@ -27395,6 +27458,7 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
     if (shader.mCanBindFast)
     { // was previously fully bound, use fast path
         shader.bind();
+        uploadEnvOnlyView(shader);
         uploadDebugLightingTerm(shader);
         // [TronT1] Cheap (one or two uniform4f) per-frame refresh of the Rig
         // Rim Tron tint's CPU pulse multiplier for a program that stays
@@ -27463,6 +27527,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     static LLCachedControl<F32> local_spec_exponent(gSavedSettings, "RenderSpecularExponent", 368.f);
     shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_SPEC_EXPONENT, local_spec_exponent);
 
+    uploadEnvOnlyView(shader);
     uploadDebugLightingTerm(shader);
     uploadSilhouetteFrame(shader);
     S32 channel = 0;
@@ -30633,7 +30698,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             subject_source = 0;
             if (rim_actors())
             {
-                if (LLViewerShaderMgr::gbufferAvatarTagActive()) subject_source = 1;
+                if (LLViewerShaderMgr::gbufferAvatarTagPreferred() || ALEnvIntensity::envOnlyActive()) subject_source = 1;
                 else if (mActorMaskValid && ALCineLightRigManager::anyActorOnly()) subject_source = 2;
             }
             mRigRimSubjectSource = subject_source;
@@ -30946,6 +31011,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
             soften_shader.uniform1f(ssao_scale_str, ssao_scale);
             soften_shader.uniform1f(ssao_max_str, ssao_max * env_gi_mul);
+            soften_shader.uniform1f(LLShaderMgr::SSAO_IRRADIANCE_MAX_STOCK, ssao_max);
 
             LLEnvironment &environment = LLEnvironment::instance();
 
@@ -30988,6 +31054,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             static LLDrawable::drawable_vector_t fullscreen_spot_lights;
             static std::vector<LLVector4>        light_colors;
             static std::vector<F32>              local_light_sizes;
+            static std::vector<F32> local_light_ev_scales;
             static std::vector<LLVector4>        light_shapes; // [RelightQ]
             static std::vector<LLVector4>        light_rims; // [RigRim]
             // [RigRim] Round-2 P2 fix: read once per call so the point-light
@@ -31143,6 +31210,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, s);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
+                        gDeferredLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_EV_SCALE, ALEnvIntensity::localLightEVScale(volume));
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                         gDeferredLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
@@ -31182,6 +31250,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         fullscreen_lights.push_back(LLVector4(tc.x, tc.y, tc.z, s));
                         light_colors.push_back(LLVector4(col.mV[0], col.mV[1], col.mV[2], volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)));
                         local_light_sizes.push_back(ALEnvIntensity::localLightSize(volume));
+                        local_light_ev_scales.push_back(ALEnvIntensity::localLightEVScale(volume));
                         // [RigRim] Only staged when active; every consumer below checks the
                         // same function-constant rig_rim_active, so indices stay parallel.
                         if (rig_rim_active)
@@ -31230,6 +31299,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     gDeferredSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
                     gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, s);
                     gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
+                    gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_EV_SCALE, ALEnvIntensity::localLightEVScale(volume));
                     gDeferredSpotLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                     gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                     gDeferredSpotLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
@@ -31255,6 +31325,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 LLVector4 col[max_count];
                 LLVector4 shapes[max_count];
                 F32 source_size[max_count];
+                F32 ev_scales[max_count];
                 LLVector4 rim[max_count]; // [RigRim]
 
                 F32 far_z = 0.f;
@@ -31263,6 +31334,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 {
                     if (shape_active) shapes[count] = light_shapes[i];
                     source_size[count] = local_light_sizes[i];
+                    ev_scales[count] = local_light_ev_scales[i];
                     light[count] = fullscreen_lights[i];
                     col[count] = light_colors[i];
                     // [RigRim] Round-2 P2 fix: skip packing the rim slot when off;
@@ -31282,6 +31354,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         bindDeferredShader(gDeferredMultiLightProgram[idx]);
                         gDeferredMultiLightProgram[idx].uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, *std::max_element(source_size, source_size + count));
                         gDeferredMultiLightProgram[idx].uniform1fv(LLShaderMgr::LOCAL_LIGHT_SIZES, count, source_size);
+                        gDeferredMultiLightProgram[idx].uniform1fv(LLShaderMgr::LOCAL_LIGHT_EV_SCALES, count, ev_scales);
                         gDeferredMultiLightProgram[idx].uniform1i(LLShaderMgr::MULTI_LIGHT_COUNT, count);
                         gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::MULTI_LIGHT, count, light[0].mV);
                         gDeferredMultiLightProgram[idx].uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, count, col[0].mV);
@@ -31342,6 +31415,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     gDeferredMultiSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
                     gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, light_size_final);
                     gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
+                    gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LOCAL_LIGHT_EV_SCALE, ALEnvIntensity::localLightEVScale(volume));
                     gDeferredMultiSpotLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
                     gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_FALLOFF, light_falloff_final);
                     gDeferredMultiSpotLightProgram.uniform1i(LLShaderMgr::CLASSIC_MODE, (psky->canAutoAdjust()) ? 1 : 0);
@@ -31372,7 +31446,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 }
                 else
                 {
-                    struct ActorPoint { LLVector4 light, color, rim, shape; F32 source_size; };
+                    struct ActorPoint { LLVector4 light, color, rim, shape; F32 source_size; F32 ev_scale; };
                     std::map<U8, std::vector<ActorPoint>> actor_points;
                     std::map<U8, LLDrawable::drawable_vector_t> actor_spots;
                     const auto& registry = ALCineLightRigManager::instance();
@@ -31412,7 +31486,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                                     volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)),
                                 rig_rim_active ? ALCineRigRim::paramsForVolume(volume) : LLVector4(0.f, 0.f, 0.f, 0.f),
                                 shape_active ? deferredLightShape(volume) : LLVector4(0.f, 0.f, 1.f, -1.f),
-                                ALEnvIntensity::localLightSize(volume) });
+                                ALEnvIntensity::localLightSize(volume), ALEnvIntensity::localLightEVScale(volume) });
                         }
                     }
 
@@ -31429,6 +31503,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         {
                             LLVector4 lights[batch_size], colors[batch_size], rims[batch_size], shapes[batch_size];
                             F32 source_sizes[batch_size] = {};
+                            F32 ev_scales[batch_size];
+                            std::fill_n(ev_scales, batch_size, 1.f);
                             for (U32 i = 0; i < batch_size; ++i)
                             {
                                 lights[i].set(0.f, 0.f, 1.e9f, 1.f);
@@ -31442,6 +31518,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             {
                                 const auto& point = group.second[first + i];
                                 source_sizes[i] = point.source_size;
+                                ev_scales[i] = point.ev_scale;
                                 lights[i] = point.light;
                                 colors[i] = point.color;
                                 rims[i] = point.rim;
@@ -31455,6 +31532,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                                 shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, group.first);
                                 shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, *std::max_element(source_sizes, source_sizes + batch_size));
                                 shader.uniform1fv(LLShaderMgr::LOCAL_LIGHT_SIZES, batch_size, source_sizes);
+                                shader.uniform1fv(LLShaderMgr::LOCAL_LIGHT_EV_SCALES, batch_size, ev_scales);
                                 shader.uniform1i(LLShaderMgr::MULTI_LIGHT_COUNT, count);
                                 shader.uniform4fv(LLShaderMgr::MULTI_LIGHT, batch_size, lights[0].mV);
                                 shader.uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, batch_size, colors[0].mV);
@@ -31488,6 +31566,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             shader.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
                             shader.uniform1f(LLShaderMgr::LIGHT_SIZE, volume->getLightRadius() * 1.5f);
                             shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_SIZE, ALEnvIntensity::localLightSize(volume));
+                    shader.uniform1f(LLShaderMgr::LOCAL_LIGHT_EV_SCALE, ALEnvIntensity::localLightEVScale(volume));
                             shader.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, color.mV);
                             shader.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
                             shader.uniform1i(LLShaderMgr::CLASSIC_MODE, psky->canAutoAdjust() ? 1 : 0);
@@ -31505,12 +31584,16 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             // Clear does not free internal vector storage, so this is more efficient than creating new vectors each frame
             fullscreen_lights.clear();
             local_light_sizes.clear();
+            local_light_ev_scales.clear();
             spot_lights.clear();
             fullscreen_spot_lights.clear();
             light_colors.clear();
             light_shapes.clear();
             light_rims.clear(); // [RigRim]
         }
+
+        if (source == ActorMaskViewSource::MAIN && !gCubeSnapshot && !sPrismLensRender && !sImpostorRender)
+            ALEnvOnlyDiagnostics::captureDeferred(*screen_target, mRT->deferredScreen);
 
         // [ActorMask] WP7 C_deferred capture (test frames only), screen still bound.
         if (actor_only && source == ActorMaskViewSource::MAIN)
@@ -31616,6 +31699,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
         popRenderTypeMask();
     }
+
+    if (source == ActorMaskViewSource::MAIN && !gCubeSnapshot && !sPrismLensRender && !sImpostorRender)
+        ALEnvOnlyDiagnostics::endView(*screen_target);
 
     renderPrismDisplays(screen_target);
 

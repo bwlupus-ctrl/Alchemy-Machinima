@@ -349,6 +349,7 @@ set(viewer_SOURCE_FILES
     allenslooks.cpp
     allocallightsize.cpp
     alenvintensity.cpp
+    alenvonlydiagnostics.cpp
     alenvintensitypresets.cpp
     alsettingsundohistory.cpp
     alsettingsundohistorymodel.cpp
@@ -1376,6 +1377,7 @@ set(viewer_HEADER_FILES
     allenslooks.h
     allocallightsize.h
     alenvintensity.h
+    alenvonlydiagnostics.h
     alenvintensitypresets.h
     alsettingsundohistory.h
     alsettingsundohistorymodel.h

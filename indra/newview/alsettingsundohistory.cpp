@@ -41,6 +41,7 @@ const ALExposureSettingsHistory::TrackedSetting TRACKED_SETTINGS[] =
     { "AlchemyEnvLocalLightEV",        "Local lights EV" },
     { "AlchemyEnvLocalLightSize",      "Local light size" },
     { "AlchemyEnvLocalLightIncludeRig", "Include rig lights" },
+    { "AlchemyEnvEnvironmentOnly", "Environment only" },
     { "AlchemyEnvSunKelvin",           "Sun temperature" },
     { "AlchemyEnvSunTintColor",        "Sun tint" },
     { "AlchemyEnvSunTintStrength",     "Sun tint strength" },

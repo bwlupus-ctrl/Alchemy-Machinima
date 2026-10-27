@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alenvonlydiagnostics.h"
 #include "alvcammediafileio.h"
 #include <openssl/crypto.h>
 
@@ -2179,6 +2180,7 @@ bool LLAppViewer::cleanup()
     // save their rects on delete.
     if (!ALUIPerfSelfTest::suppressSettingsSave())
     {
+        ALEnvOnlyDiagnostics::cancel(); // Restore temporary diagnostic lighting before persistence.
         gSavedSettings.saveToFile(gSavedSettings.getString("ClientSettingsFile"), true);
     }
     else
@@ -3600,6 +3602,7 @@ bool LLAppViewer::initWindow()
 
     // Set this flag in case we crash while initializing GL
     gSavedSettings.setBOOL("RenderInitError", true);
+    ALEnvOnlyDiagnostics::cancel(); // Restore temporary diagnostic lighting before persistence.
     gSavedSettings.saveToFile( gSavedSettings.getString("ClientSettingsFile"), true );
 
     gPipeline.init();
@@ -3609,6 +3612,7 @@ bool LLAppViewer::initWindow()
     gViewerWindow->initGLDefaults();
 
     gSavedSettings.setBOOL("RenderInitError", false);
+    ALEnvOnlyDiagnostics::cancel(); // Restore temporary diagnostic lighting before persistence.
     gSavedSettings.saveToFile( gSavedSettings.getString("ClientSettingsFile"), true );
 
     // If we have a startup crash, it's usually near GL initialization, so simulate that.

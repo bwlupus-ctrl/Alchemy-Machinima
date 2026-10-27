@@ -1,5 +1,6 @@
 {
   "groups": [
+    ["environment only", "set only", "keep avatars", "avatar neutral", "relight set", "env only", "inverse actor mask", "isolate environment", "expose environment"],
     ["anim speed", "animation speed", "playback speed", "slow motion", "slow mo", "speed up", "dance speed", "desync", "vary", "black dragon"],
     ["local light size", "light size", "specular", "hotspot", "highlight", "neon", "bulb", "glare", "reflection"],
     ["exposure", "ev", "brightness"],

@@ -219,8 +219,19 @@ static bool handleNumpadControlChanged(const LLSD& newvalue)
 }
 
 
+namespace
+{
+U64 sShaderChangeCount = 0;
+}
+
+U64 settings_shader_change_count()
+{
+    return sShaderChangeCount;
+}
+
 static bool handleSetShaderChanged(const LLSD& newvalue)
 {
+    ++sShaderChangeCount;
     // changing shader level may invalidate existing cached bump maps, as the shader type determines the format of the bump map it expects - clear and repopulate the bump cache
     gBumpImageList.destroyGL();
     gBumpImageList.restoreGL();
@@ -1239,7 +1250,7 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderDisableVintageMode", handleDisableVintageMode);
     setting_setup_signal_listener(gSavedSettings, "RenderHDREnabled", handleEnableHDR);
     // [TronA0] G-buffer avatar tag is a hashed global define -> shader reload.
-    setting_setup_signal_listener(gSavedSettings, "RenderGBufferAvatarTag", handleSetShaderChanged);
+    // Avatar tags compile with HDR. This setting is now a runtime source preference.
     setting_setup_signal_listener(gSavedSettings, "RenderGlowNoise", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGammaFull", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderVolumeLODFactor", handleVolumeLODChanged);

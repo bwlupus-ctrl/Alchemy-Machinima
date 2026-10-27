@@ -608,8 +608,9 @@ void LLRenderPass::uploadActorFxDisabled()
 }
 
 // static
-void LLRenderPass::uploadAvatarLightResponse(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3)
+void LLRenderPass::uploadAvatarLightResponse(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, bool avatar_draw)
 {
+    gPipeline.applyEnvOnlyDraw(avatar_draw || k1.notNull() || k2.notNull() || k3.notNull());
     if (!ALAvatarLightResponse::sEverActive)
     {
         return;   // fresh session: zero added GL calls
@@ -625,6 +626,8 @@ void LLRenderPass::uploadAvatarLightResponse(const LLUUID& k1, const LLUUID& k2,
 void LLRenderPass::uploadAvatarLightResponseTo(LLGLSLShader& shader, const LLUUID& k1, const LLUUID& k2,
                                                const LLUUID& k3, EAlrSlot slot)
 {
+    if (&shader == LLGLSLShader::sCurBoundShaderPtr)
+        gPipeline.applyEnvOnlyDraw(k1.notNull() || k2.notNull() || k3.notNull());
     if (ALAvatarLightResponse::sEverActive)
     {
         upload_alr(shader, k1, k2, k3, slot);
@@ -981,7 +984,11 @@ bool LLRenderPass::uploadActorFx(const LLDrawInfo& params, bool force_native)
             params.mAttachedToAvatar || params.mAvatar.notNull() || params.mFullbright || params.mHasGlow);
     }
     // [AvatarLightResponse] uploaded LAST (null owners => identity reset).
-    uploadAvatarLightResponse(params.mActorFxOwner, params.mActorFxFallbackOwner);
+    if (ALAvatarLightResponse::sEverActive)
+        if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr; shader && shader->mFeatures.hasActorFx)
+            upload_alr(*shader, params.mActorFxOwner, params.mActorFxFallbackOwner, LLUUID::null, ALR_SLOT_BEAUTY);
+    gPipeline.applyEnvOnlyDraw(params.mAvatar.notNull() || params.mAttachedToAvatar ||
+        params.mActorFxOwner.notNull() || params.mActorFxFallbackOwner.notNull());
     return result;
 }
 

@@ -918,25 +918,26 @@ S32 LLViewerShaderMgr::getShaderLevel(S32 type)
     return mShaderLevel[type];
 }
 
-// [TronA0] Settings predicate for the per-pixel avatar tag. MUST stay equal to
-// the GL_RGBA16 vs GL_RGB10_A2 normal-format predicate in
-// addDeferredAttachments (pipeline.cpp: RenderHDREnabled && mGLVersion > 4.05)
-// AND the tag setting: odd 1/6 codes need 16-bit alpha. RenderHDREnabled and
-// RenderGBufferAvatarTag both reload shaders (llviewercontrol.cpp), so the
-// define always follows the attachment format.
+// Avatar identity is compiled at startup whenever the normal target is RGBA16.
+// RenderGBufferAvatarTag is a runtime source preference, never a compile key.
 //static
 bool LLViewerShaderMgr::gbufferAvatarTagWanted()
 {
-    static LLCachedControl<bool> tag_setting(gSavedSettings, "RenderGBufferAvatarTag", false);
     static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
     const bool hdr = has_hdr() && gGLManager.mGLVersion > 4.05f;
-    return tag_setting() && hdr;
+    return hdr;
 }
 
 //static
 bool LLViewerShaderMgr::gbufferAvatarTagActive()
 {
     return LLGLSLShader::sGlobalDefines.count("GBUFFER_AVATAR_TAG_ENABLED") > 0;
+}
+
+bool LLViewerShaderMgr::gbufferAvatarTagPreferred()
+{
+    static LLCachedControl<bool> preferred(gSavedSettings, "RenderGBufferAvatarTag", false);
+    return preferred() && gbufferAvatarTagActive();
 }
 
 //============================================================================
@@ -1421,11 +1422,13 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     // defines loop emits only this token -- so no compile unit ever sees a
     // duplicate GBUFFER_AVATAR_TAG. Predicate == the GL_RGBA16 vs GL_RGB10_A2
     // normal-format choice in addDeferredAttachments (pipeline.cpp), so odd
-    // codes are never written into a 2-bit alpha. Off (default): no token,
-    // nothing emitted, preprocessed sources byte-identical to today.
+    // codes are never written into a 2-bit alpha. No extra shader programs.
     if (gbufferAvatarTagWanted())
     {
-        attribs["GBUFFER_AVATAR_TAG_ENABLED"] = "1";
+        // Hash-token version 2 invalidates binaries compiled before the runtime
+        // recipient helpers and the seven-code fast flag decoder. The stored
+        // G-buffer encoding remains 2; no shader reads this token's value.
+        attribs["GBUFFER_AVATAR_TAG_ENABLED"] = "2";
         attribs["GBUFFER_FLAG_ENCODING"] = "2";   // hash-only: no shader reads it
     }
 
@@ -6854,6 +6857,7 @@ bool LLViewerShaderMgr::weatherMaterialsSupported() const
 
 void LLViewerShaderMgr::updateWeatherUniforms(LLGLSLShader* shader)
 {
+    shader->uniform1i(LLShaderMgr::GBUFFER_TAG_PREFERRED, gbufferAvatarTagPreferred());
     if (weatherMaterialsEnabled()) gPipeline.bindWeatherMaterial(shader);
     else shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_ENABLED, 0);
 }

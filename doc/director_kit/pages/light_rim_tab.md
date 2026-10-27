@@ -75,9 +75,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `area_soft_shadows` / `area_shadow_world_lights` (World lights) | none | kit `number` ↔ `RenderAreaShadowCubeLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` `area_shadow_world_lights` |
 | `area_soft_shadows` / `area_shadow_world_status` (World shadows) | none | kit readout ← approved static copy; no runtime writer | none |
 | `area_soft_shadows` / `area_shadow_world_picks` (World picks) | none | kit readout ← approved static copy; no runtime writer | none |
-| `area_soft_shadows` / `area_shadow_world_list_picks` (List picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::worldShadowPickChatLines()` (`indra/newview/pipeline.cpp:29420`) | none |
-| `area_soft_shadows` / `area_shadow_world_clear_picks` (Clear picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::clearWorldShadowPicks()` (`indra/newview/pipeline.cpp:24785`) | none |
-| `area_soft_shadows` / `area_shadow_world_clear_away_picks` (Clear away picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::clearAwayWorldShadowPicks()` (`indra/newview/pipeline.cpp:24797`) | none |
+| `area_soft_shadows` / `area_shadow_world_list_picks` (List picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::worldShadowPickChatLines()` (`indra/newview/pipeline.cpp:29485`) | none |
+| `area_soft_shadows` / `area_shadow_world_clear_picks` (Clear picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::clearWorldShadowPicks()` (`indra/newview/pipeline.cpp:24848`) | none |
+| `area_soft_shadows` / `area_shadow_world_clear_away_picks` (Clear away picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::clearAwayWorldShadowPicks()` (`indra/newview/pipeline.cpp:24860`) | none |
 | `area_soft_shadows` / `area_shadow_vcam` (Also in VCam feeds) | none | kit `toggle` ↔ `RenderAreaShadowsVCam` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:286` `area_shadow_vcam` |
 | `area_soft_shadows` / `area_shadow_sl_status` (SL status) | none | kit readout ← approved static copy; no runtime writer | none |
 | `area_soft_shadows` / `area_shadow_coverage` (Coverage) | none | kit readout ← approved static copy; no runtime writer | none |
@@ -107,9 +107,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Existing function | Extraction contract |
 |---|---|
 | `ALRigRimController::attach()` — `indra/newview/alrigrimcontroller.cpp:124, 1402, 1403, 1404` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLPipeline::clearAwayWorldShadowPicks()` — `indra/newview/pipeline.cpp:24797` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLPipeline::clearWorldShadowPicks()` — `indra/newview/pipeline.cpp:24785` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLPipeline::worldShadowPickChatLines()` — `indra/newview/pipeline.cpp:29420` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLPipeline::clearAwayWorldShadowPicks()` — `indra/newview/pipeline.cpp:24860` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLPipeline::clearWorldShadowPicks()` — `indra/newview/pipeline.cpp:24848` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLPipeline::worldShadowPickChatLines()` — `indra/newview/pipeline.cpp:29485` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

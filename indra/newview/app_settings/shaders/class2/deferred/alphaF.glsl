@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file alphaF.glsl
  *
@@ -432,11 +433,14 @@ void main()
     diffuse_linear.rgb = alrAlbedoLinear(diffuse_linear.rgb); // [AvatarLightResponse] presented surface
 #endif
 
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     vec3 weather_spec = vec3(0.0);
     float weather_gloss = 0.0;
     if (particle_normal == 0)
         weatherMaterialLegacyLinear(vary_position, norm, diffuse_linear.rgb, weather_spec, weather_gloss);
+    }
 #endif
     vec3 sunlit;
     vec3 amblit;

@@ -43,6 +43,8 @@ bool toggle_show_favorites_panel(const LLSD& newvalue);
 // These functions found in llcontroldef.cpp *TODO: clean this up!
 //setting variables are declared in this function
 void settings_setup_listeners();
+// Monotonic entry counter, including attempts rejected by the shader manager.
+U64 settings_shader_change_count();
 
 // for the graphics settings
 void create_graphics_group(LLControlGroup& group);

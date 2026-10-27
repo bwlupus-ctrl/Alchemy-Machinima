@@ -72,6 +72,15 @@ in vec3 trans_center;
 #endif
 uniform float size;
 uniform vec3 color;
+bool envOnlyIdentity();
+uniform float local_light_ev_scale;
+vec3 envOnlyLightColor()
+{
+    vec3 result = color;
+    if (envOnlyIdentity()) result.rgb /= max(local_light_ev_scale, 1.e-8);
+    return result;
+}
+
 uniform float falloff;
 
 in vec4 vary_fragcoord;
@@ -176,7 +185,7 @@ vec3 relightProjectorImage(vec3 pos, vec3 n, float gloss, float environment,
     if (radius == 0.0)
     {
         if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return vec3(0);
-        return color.rgb * texture2DLodSpecular(uv, (1-gloss)*(proj_lod*0.6)).rgb * visibility * environment;
+        return envOnlyLightColor().rgb * texture2DLodSpecular(uv, (1-gloss)*(proj_lod*0.6)).rgb * visibility * environment;
     }
     vec3 row_w = vec3(proj_mat[0].w, proj_mat[1].w, proj_mat[2].w);
     vec3 row_u = vec3(proj_mat[0].x, proj_mat[1].x, proj_mat[2].x)-0.5*row_w;
@@ -195,7 +204,7 @@ vec3 relightProjectorImage(vec3 pos, vec3 n, float gloss, float environment,
     // Dilate the already gloss-filtered cookie, including its legacy edge
     // window. The inverse Jacobian preserves its integrated linear energy;
     // keeping that LOD avoids changing the window or desaturating its colours.
-    return color * texture2DLodSpecular(uv, (1.0-gloss)*(proj_lod*0.6)).rgb *
+    return envOnlyLightColor() * texture2DLodSpecular(uv, (1.0-gloss)*(proj_lod*0.6)).rgb *
         visibility*environment/area;
 }
 
@@ -505,7 +514,7 @@ void localLightMain(float source_radius)
                         stc.x > 0.0 &&
                         stc.y > 0.0)
                     {
-                        final_color += color.rgb * texture2DLodSpecular(stc.xy, (1 - spec.a) * (proj_lod * 0.6)).rgb * shadow * envIntensity;
+                        final_color += envOnlyLightColor().rgb * texture2DLodSpecular(stc.xy, (1 - spec.a) * (proj_lod * 0.6)).rgb * shadow * envIntensity;
                     }
                 }
             }
@@ -555,6 +564,7 @@ void main()
     bool no_specular = GET_GBUFFER_FLAG(size_gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR)
         ? size_gb.envIntensity >= 1.0
         : all(equal(size_gb.specular.rgb, vec3(0.0)));
+    if (envOnlyIdentity()) { localLightMain(0.0); return; }
     if (local_light_size <= 0.0 || no_specular) { localLightMain(0.0); return; }
     localLightMain(local_light_size);
 }

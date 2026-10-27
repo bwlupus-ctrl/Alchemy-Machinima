@@ -17727,7 +17727,10 @@ static void upload_shared_replay_light_response(const LLDrawInfo* owner_info, co
 
     if (owner_info)
     {
-        LLRenderPass::uploadAvatarLightResponse(owner_info->mActorFxOwner, owner_info->mActorFxFallbackOwner);
+        // Proxy ownership is established by the replay queue, independently of
+        // optional trim keys. Preserve those keys while neutralizing lighting.
+        LLRenderPass::uploadAvatarLightResponse(owner_info->mActorFxOwner,
+            owner_info->mActorFxFallbackOwner, LLUUID::null, true);
     }
     else
     {

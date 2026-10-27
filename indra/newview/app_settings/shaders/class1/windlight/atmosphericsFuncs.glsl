@@ -56,6 +56,14 @@ uniform float sky_amb_scale;
 uniform vec3  sky_sun_tint;
 uniform vec3  sky_amb_tint;
 
+// Vertex links have no G-buffer; forward recipient mode is uniform per draw.
+#ifdef VERTEX_SHADER
+uniform int env_only_mode;
+bool envOnlyIdentity() { return env_only_mode == 2; }
+#else
+bool envOnlyIdentity();
+#endif
+
 float getAmbientClamp() { return 1.0f; }
 
 vec3 srgb_to_linear(vec3 col);
@@ -223,7 +231,7 @@ void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, ou
     // before decoding, so no linear factor can be applied correctly here or
     // there: the factors are INACTIVE in classic mode (the C++ side uploads
     // 1.0 then as well). exp2(0) == 1.0, so 0 EV stays bit-identical.
-    if (classic_mode < 1)
+    if (classic_mode < 1 && !envOnlyIdentity())
     {
         sunlit *= sky_sun_ev_scale;
         // [EnvIntensity v2] sunlit is the sun OR the moon (sun_up_factor); the

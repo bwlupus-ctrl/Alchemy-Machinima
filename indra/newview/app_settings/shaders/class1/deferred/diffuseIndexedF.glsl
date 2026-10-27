@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file diffuseIndexedF.glsl
  *
@@ -33,6 +34,8 @@ in vec2 vary_texcoord0;
 in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
+uniform int avatar_tag_draw;
+float gbufferAvatarFlag(float flag);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 #ifdef HAS_ACTOR_FX
@@ -109,8 +112,11 @@ void main()
     col = alrAlbedoSrgb(col);
     alrLegacySpec(alr_spec.rgb, alr_spec.a, alr_env);
 #endif
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     weatherMaterialLegacy(vary_position, nvn, col, alr_spec.rgb, alr_spec.a);
+    }
 #endif
     frag_data[0] = vec4(col, 0.0);
     frag_data[1] = alr_spec; // spec/gloss
@@ -122,7 +128,7 @@ void main()
 #else
     frag_data[2] = encodeNormal(nvn.xyz,
                                 alr_env,
-                                GBUFFER_FLAG_HAS_ATMOS);
+                                (avatar_tag_draw != 0 ? gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS) : GBUFFER_FLAG_HAS_ATMOS));
 #endif
 
 #if defined(HAS_EMISSIVE)
