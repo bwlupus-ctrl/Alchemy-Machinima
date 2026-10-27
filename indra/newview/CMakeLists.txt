@@ -1304,6 +1304,7 @@ set(viewer_HEADER_FILES
     alfloaterultimatediopter.h
     alvcambonepov.h
     alvcambonepovmath.h
+    alvcamobjectpovsettings.h
     alvcamautovol.h
     alviewfinder.h
     alweathermodel.h

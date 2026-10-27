@@ -1,6 +1,6 @@
 /**
  * @file alvcambonepov.cpp
- * @brief Per-frame skeleton driver for prim-free virtual cameras.
+ * @brief Per-frame skeleton and object driver for prim-free virtual cameras.
  *
  * $LicenseInfo:firstyear=2026&license=viewerlgpl$
  * Alchemy-Machinima fork
@@ -17,6 +17,9 @@
 #include "lldirectorcast.h"
 #include "lljoint.h"
 #include "llvoavatar.h"
+#include "lldrawable.h"
+#include "llviewerobjectlist.h"
+#include "llagent.h"
 
 #include <array>
 #include <cmath>
@@ -258,6 +261,16 @@ bool finiteUnitQuaternion(const LLQuaternion& rotation)
     return std::isfinite(magnitude) && std::fabs(magnitude - 1.f) <= 1e-3f;
 }
 
+bool sampleObjectRenderPose(const LLViewerObject& object, ObjectRenderPose& pose)
+{
+    const LLDrawable* drawable = object.mDrawable;
+    if (!drawable || !objectDrawablePose(*drawable, pose))
+    {
+        return false;
+    }
+    return pose.mPosition.isFinite() && finiteUnitQuaternion(pose.mRotation);
+}
+
 LLVector3 safeDegenerateUp(const LLVector3& forward,
                            const LLVector3& preferred)
 {
@@ -343,6 +356,16 @@ void ALVCamBonePov::tick(F64 presentation_time)
             smoother.mHandle = capture.mHandle;
         }
 
+        if (capture.cameraData()->mSettings.mObjectPov.mEnabled)
+        {
+            tickObject(capture, smoother, presentation_time);
+            continue;
+        }
+        if (smoother.mObjectMode)
+        {
+            smoother = Smoother();
+            smoother.mHandle = capture.mHandle;
+        }
         if (!capture.isCameraFeed()) continue;
         const LLPrismLens::BonePovSettings& settings = capture.cameraData()->mSettings.mBonePov;
         const bool fingerprint_changed = smoother.mHaveFingerprint &&
@@ -571,6 +594,142 @@ void ALVCamBonePov::tick(F64 presentation_time)
         {
             mSmoothers[slot] = Smoother();
         }
+    }
+}
+
+void ALVCamBonePov::tickObject(
+    const LLPrismLens::CaptureDefinition& capture, Smoother& smoother,
+    F64 presentation_time)
+{
+    const LLPrismLens::CameraSettings& camera = capture.cameraData()->mSettings;
+    const LLPrismLens::ObjectPovSettings& settings = camera.mObjectPov;
+    const U8 axes = (settings.mFollowYaw ? 1 : 0) |
+                    (settings.mFollowPitch ? 2 : 0) |
+                    (settings.mFollowRoll ? 4 : 0);
+    if (!smoother.mObjectMode || smoother.mObjectId != settings.mObjectId ||
+        smoother.mFollowAxes != axes)
+    {
+        const ObjectPositionHistory held_position = smoother.mObjectPosition;
+        smoother = Smoother();
+        smoother.mHandle = capture.mHandle;
+        smoother.mObjectMode = true;
+        smoother.mObjectId = settings.mObjectId;
+        smoother.mFollowAxes = axes;
+        smoother.mObjectPosition = held_position;
+        smoother.mObjectPosition.lose();
+    }
+
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    if (!smoother.mObjectPosition.mHaveGood && camera.mVirtual)
+    {
+        smoother.mObjectPosition.mGlobalPosition = gAgent.getPosGlobalFromAgent(camera.mVirtualPos);
+        smoother.mObjectPosition.mHaveGood = smoother.mObjectPosition.mGlobalPosition.isFinite();
+    }
+    auto hold_position = [&]()
+    {
+        smoother.mObjectPosition.lose();
+        smoother.mObjectFollow.reset();
+        smoother.mHaveRotation = false;
+        smoother.mResolved = false;
+        smoother.mLastTime = -1.0;
+        if (camera.mVirtual && smoother.mObjectPosition.mHaveGood)
+        {
+            const LLVector3 held = smoother.mObjectPosition.agentPosition(origin);
+            if (held != camera.mVirtualPos)
+            {
+                // A lost target may span an origin shift. Re-publish its last
+                // good global position without changing the held/operator aim.
+                LLPrismLens::setVirtualCameraPosition(
+                    capture.mHandle, held, camera.mFixedVerticalFovRad);
+            }
+        }
+    };
+
+    // Re-lookup and retain only for this call. Sample drawable transforms:
+    // the shared render accessors use raw local values for active children.
+    LLPointer<LLViewerObject> object = gObjectList.findObject(settings.mObjectId);
+    if (!camera.mVirtual || !std::isfinite(presentation_time) ||
+        !object || object->isDead() || object->isAvatar() ||
+        object->isOrphaned() || !object->getRegion())
+    {
+        hold_position();
+        smoother.mStatus = "Object not found \xe2\x80\x94 holding last position";
+        return;
+    }
+
+    ObjectRenderPose pose;
+    if (!sampleObjectRenderPose(*object, pose))
+    {
+        hold_position();
+        smoother.mStatus = "Object POV is holding: invalid render transform.";
+        return;
+    }
+    // Reset orientation history before decomposing a rewound pose. Loss and
+    // invalid poses clear it in hold_position(), independently of held position.
+    const bool time_reversed = smoother.mObjectFollow.resetForTimeReversal(
+        presentation_time, smoother.mLastTime);
+    const LLQuaternion followed = objectFollowRotation(
+        pose.mRotation, settings.mFollowYaw, settings.mFollowPitch,
+        settings.mFollowRoll, smoother.mObjectFollow);
+    const LLVector3 target_position = pose.mPosition + settings.mOffset * followed;
+    const LLVector3d target_global = gAgent.getPosGlobalFromAgent(target_position);
+    if (!target_position.isFinite() || !target_global.isFinite())
+    {
+        hold_position();
+        smoother.mStatus = "Object POV is holding: invalid offset transform.";
+        return;
+    }
+    const F32 dt = smoother.mLastTime >= 0.0 && !time_reversed
+        ? static_cast<F32>(presentation_time - smoother.mLastTime) : 0.f;
+    const F32 tau = settings.mSmoothingSec;
+    ObjectPositionHistory next_position = smoother.mObjectPosition;
+    next_position.sample(target_global, dt, tau, time_reversed);
+    const LLVector3 position = next_position.agentPosition(origin);
+
+    const F32 vertical_fov = camera.mBonePov.mFovDeg * DEG_TO_RAD;
+    std::string reason;
+    bool wrote = false;
+    if (axes == 0)
+    {
+        // As with stabilized bone aim, never write the operator's rotation.
+        wrote = LLPrismLens::setVirtualCameraPosition(
+            capture.mHandle, position, vertical_fov, &reason);
+        smoother.mHaveRotation = false;
+    }
+    else
+    {
+        const LLQuaternion trim =
+            LLQuaternion(settings.mTrimPitchDeg * DEG_TO_RAD, LLVector3::y_axis) *
+            LLQuaternion(settings.mTrimYawDeg * DEG_TO_RAD, LLVector3::z_axis);
+        const LLQuaternion target_rotation = followRotation(
+            LLVector3::x_axis * trim * followed,
+            LLVector3::z_axis * trim * followed);
+        if (!smoother.mHaveRotation || tau <= 0.f || time_reversed)
+        {
+            smoother.mSmoothedRot = target_rotation;
+        }
+        else
+        {
+            smoother.mSmoothedRot = smoothRotation(
+                smoother.mSmoothedRot, target_rotation, dt, tau);
+            smoother.mSmoothedRot.normalize();
+        }
+        smoother.mHaveRotation = true;
+        wrote = LLPrismLens::setVirtualCameraTransform(
+            capture.mHandle, position, smoother.mSmoothedRot,
+            vertical_fov, &reason);
+    }
+    smoother.mResolved = wrote;
+    smoother.mLastTime = wrote ? presentation_time : -1.0;
+    smoother.mStatus = wrote ? "Object POV attached."
+        : "Object POV is holding: " + reason;
+    if (wrote)
+    {
+        smoother.mObjectPosition = next_position;
+    }
+    else
+    {
+        hold_position();
     }
 }
 
