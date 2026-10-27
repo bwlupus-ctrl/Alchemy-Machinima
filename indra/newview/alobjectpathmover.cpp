@@ -30,7 +30,7 @@ namespace
 LLViewerObject* resolve_object(const LLUUID& id)
 {
     LLViewerObject* obj = gObjectList.findObject(id);
-    if (!obj || obj->isDead() || obj->mDrawable.isNull() || !obj->isRootEdit())
+    if (!obj || obj->isDead() || obj->isColorChart() || obj->mDrawable.isNull() || !obj->isRootEdit())
     {
         return nullptr;
     }
@@ -71,6 +71,8 @@ ALObjectPathMover& ALObjectPathMover::instance()
 //static
 void ALObjectPathMover::toggleTarget(const LLUUID& root_id)
 {
+    LLViewerObject* candidate = gObjectList.findObject(root_id);
+    if (candidate && candidate->isColorChart()) return;
     if (root_id.isNull())
     {
         return;

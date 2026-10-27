@@ -1478,6 +1478,8 @@ void LLAgentWearables::userRemoveMultipleAttachments(llvo_vec_t& objects_to_remo
     }
 // [/RLVa:KB]
 
+    objects_to_remove.erase(std::remove_if(objects_to_remove.begin(), objects_to_remove.end(),
+        [](const LLViewerObject* object) { return !object || object->isLocalOnly(); }), objects_to_remove.end());
     if (objects_to_remove.empty())
         return;
 

@@ -1797,6 +1797,11 @@ void LLToolDragAndDrop::dropObject(LLViewerObject* raycast_target,
                    bool from_task_inventory,
                    bool remove_from_inventory)
 {
+    const LLViewerObject* source = from_task_inventory ? gObjectList.findObject(mSourceID) : nullptr;
+    if ((raycast_target && raycast_target->isLocalOnly()) || (source && source->isLocalOnly()))
+    {
+        return;
+    }
     LLViewerRegion* regionp = LLWorld::getInstance()->getRegionFromPosGlobal(mLastHitPos);
     if (!regionp)
     {

@@ -216,6 +216,11 @@ void LLInspectObject::onOpen(const LLSD& data)
     // Promote hovered object to a complete selection, which will also force
     // a request for selected object data off the network
     LLViewerObject* obj = gObjectList.findObject( mObjectID );
+    if (obj && obj->isLocalOnly())
+    {
+        closeFloater();
+        return;
+    }
     if (obj)
     {
         // Media focus and this code fight over the select manager.

@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alavataranimspeed.h"
 #include "alpresetlook.h"
+#include "alcolorchart.h"
 
 #include "aldirectortabmigration.h"
 #include "aldirectorqol.h"
@@ -2258,6 +2259,7 @@ void LLFloaterDirector::bindSteppedPage(LLView* root)
 // in the kit; only the reset and Lightbox links are code.
 void LLFloaterDirector::bindImagePage(LLView* root)
 {
+    ALColorChart::bind(root);
     ALColorGrade::populateLUTCombo(root->findChild<LLComboBox>("colorlut_combo"));
     ALKitPage* image_page = mShell ? mShell->findBuiltPage("look_group/image_tab") : nullptr;
     if (ALKitRow* saturation = image_page ? image_page->findRowBySetting("AlchemyToneMapSaturation") : nullptr)

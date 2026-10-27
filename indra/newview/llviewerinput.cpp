@@ -521,6 +521,13 @@ bool director_look_at_camera(EKeystate s)
 // Shipped unbound; operators can assign it in Preferences > Controls. The
 // registered action ID retains its historical "power" name so existing user
 // keybindings continue to work, but it never touches the deprecated Power gate.
+bool toggle_colour_chart(EKeystate s)
+{
+    if (KEYSTATE_DOWN == s)
+        gSavedSettings.setBOOL("AlchemyColorChartShow", !gSavedSettings.getBOOL("AlchemyColorChartShow"));
+    return true;
+}
+
 bool cine_light_rig_enable(EKeystate s)
 {
     if (KEYSTATE_DOWN != s) return true;
@@ -1158,6 +1165,7 @@ REGISTER_KEYBOARD_ACTION("toggle_viewfinder", toggle_viewfinder);
 // in the Controls panel for the operator to assign.
 REGISTER_KEYBOARD_ACTION("director_look_at_camera", director_look_at_camera);
 REGISTER_KEYBOARD_ACTION("cine_light_rig_power", cine_light_rig_enable);
+REGISTER_KEYBOARD_ACTION("toggle_colour_chart", toggle_colour_chart);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_1", actor_look_at_camera_1);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_2", actor_look_at_camera_2);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_3", actor_look_at_camera_3);

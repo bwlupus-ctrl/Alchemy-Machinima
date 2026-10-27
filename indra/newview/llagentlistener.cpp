@@ -254,6 +254,12 @@ void LLAgentListener::requestSit(LLSD const & event_data) const
         return;
     }
 
+    if (object && object->isLocalOnly())
+    {
+        response.error("Client-only objects cannot be sit targets");
+        return;
+    }
+
 // [RLVa:KB] - Checked: 2010-03-06 (RLVa-1.2.0c) | Modified: RLVa-1.1.0j
     // TODO-RLVa: [RLVa-1.2.1] Figure out how to call this?
     if ( (rlv_handler_t::isEnabled()) && (!RlvActions::canSit(object)) )
@@ -317,7 +323,7 @@ LLViewerObject * LLAgentListener::findObjectClosestTo(const LLVector3 & position
     while (cur_index < num_objects)
     {
         LLViewerObject * cur_object = gObjectList.getObject(cur_index++);
-        if (cur_object && !cur_object->isAttachment())
+        if (cur_object && !cur_object->isDead() && !cur_object->isLocalOnly() && !cur_object->isAttachment())
         {
             if(sit_target && (cur_object->getPCode() != LL_PCODE_VOLUME))
             {
@@ -811,7 +817,7 @@ void LLAgentListener::getNearbyObjectsList(LLSD const& event_data)
     for (S32 i = 0; i < num_objects; ++i)
     {
         LLViewerObject* object = gObjectList.getObject(i);
-        if (object && object->getVolume() && !object->isAttachment())
+        if (object && !object->isDead() && !object->isLocalOnly() && object->getVolume() && !object->isAttachment())
         {
             if ((dist_vec_squared(object->getPositionGlobal(), agent_pos) <= radius))
             {

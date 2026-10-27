@@ -321,6 +321,11 @@ void LLFloaterReporter::getObjectInfo(const LLUUID& object_id)
         // get object info for the user's benefit
         LLViewerObject* objectp = NULL;
         objectp = gObjectList.findObject( mObjectID );
+        if (objectp && objectp->isLocalOnly())
+        {
+            mObjectID.setNull();
+            return;
+        }
         if (objectp)
         {
             if ( objectp->isAttachment() )

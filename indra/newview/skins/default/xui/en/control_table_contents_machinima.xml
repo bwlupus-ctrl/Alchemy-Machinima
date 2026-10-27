@@ -103,4 +103,8 @@
          tool_tip="Toggle Enable for the selected Cinematic Light Rig"
          value="Light Rig: Enable / Disable" />
     </rows>
+    <rows name="toggle_colour_chart" value="toggle_colour_chart">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         value="Toggle colour chart" tool_tip="Show or hide the session colour reference chart" />
+    </rows>
 </contents>

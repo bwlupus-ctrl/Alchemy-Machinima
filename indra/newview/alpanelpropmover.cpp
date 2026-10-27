@@ -353,7 +353,7 @@ void ALPanelPropMover::refreshNodePane()
 void ALPanelPropMover::onEnrollSelected()
 {
     LLViewerObject* obj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
-    if (!obj || obj->isAvatar())
+    if (!obj || obj->isAvatar() || obj->isColorChart())
     {
         setStatus("Select an object in world first (right-click or edit it)");
         return;

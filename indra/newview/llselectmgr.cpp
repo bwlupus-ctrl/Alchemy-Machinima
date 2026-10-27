@@ -188,7 +188,7 @@ static bool selectionHasGhostManipProxy(LLObjectSelectionHandle selection)
 static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* objectp)
 {
     if (!nodep || !isLocalPreviewObject(objectp) ||
-        objectp->isCineRigEmitter() || objectp->isCineRigProbe())
+        objectp->isCineRigEmitter() || objectp->isCineRigProbe() || objectp->isColorChart())
     {
         return;
     }
@@ -6172,7 +6172,7 @@ void LLSelectMgr::sendListToRegions(LLObjectSelectionHandle selected_handle,
         push_all(std::queue<LLSelectNode*>& n) : nodes_to_send(n) {}
         virtual bool apply(LLSelectNode* node)
         {
-            if (node->getObject())
+            if (node->getObject() && !node->getObject()->isLocalOnly())
             {
                 nodes_to_send.push(node);
             }
@@ -6186,7 +6186,7 @@ void LLSelectMgr::sendListToRegions(LLObjectSelectionHandle selected_handle,
         push_some(std::queue<LLSelectNode*>& n, bool roots) : nodes_to_send(n), mRoots(roots) {}
         virtual bool apply(LLSelectNode* node)
         {
-            if (node->getObject())
+            if (node->getObject() && !node->getObject()->isLocalOnly())
             {
                 bool is_root = node->getObject()->isRootEdit();
                 if ((mRoots && is_root) || (!mRoots && !is_root))
@@ -8227,7 +8227,7 @@ void LLSelectMgr::validateSelection()
 bool LLSelectMgr::canSelectObject(LLViewerObject* object, bool ignore_select_owned)
 {
     // Never select dead objects
-    if (!object || object->isDead())
+    if (!object || object->isDead() || object->isColorChart())
     {
         return false;
     }

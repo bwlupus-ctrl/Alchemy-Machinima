@@ -255,7 +255,8 @@ public:
     void copyScreenSpaceReflections(LLRenderTarget* src, LLRenderTarget* dst, LLRenderTarget* color_src = nullptr);
     void generateLuminance(LLRenderTarget* src, LLRenderTarget* dst);
     void generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history = true);
-    void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade, SensorStage stage = SensorStage::Legacy);
+    void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade,
+                      SensorStage stage = SensorStage::Legacy, LLGLSLShader* program = nullptr);
     // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
     // before bloom/flare generation, so those optics respect the filtered scene.
     void applyOnLensFilters(LLRenderTarget* screen);

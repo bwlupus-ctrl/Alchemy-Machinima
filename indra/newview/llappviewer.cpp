@@ -87,6 +87,7 @@
 #include "aldirectoranimswitcher.h" // presentation-time animation switchboard
 #include "allocalfogmanager.h"      // client-only atmospheric volumes
 #include "alcinelightrigmanager.h"  // client-only cinematic lights
+#include "alcolorchart.h"
 #include "alvcambonepov.h"          // skeleton-attached prim-free cameras
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
 #include "altron.h"             // [TronT0] shared clock latch (idle tick)
@@ -1937,6 +1938,7 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
+    ALColorChart::shutdownSession(); // release chart GL resources before context shutdown
     ALMediaFile::beginShutdown(gSavedSettings.getBOOL("VCamMediaCacheKeepBetweenSessions"));
     LLPrismLens::shutdownMediaFiles();
     ALMediaFile::drainShutdown(); // one monotonic two-second budget; never join
@@ -5907,6 +5909,10 @@ void LLAppViewer::idle()
         gAgentCamera.updateCamera();
     }
 
+    // Follow the final VCam/flycam camera; hidden costs one cached bool test.
+    static LLCachedControl<bool> color_chart_show(gSavedSettings, "AlchemyColorChartShow", false);
+    if (color_chart_show) ALColorChart::instance().idle();
+
     // The ownership sampler and recorder must observe the same final,
     // post-operator camera.  Keep this immediately before onIdleFrame().
     alCameraDispatchSampleFinal();
@@ -6401,6 +6407,7 @@ void LLAppViewer::idleNetwork()
 
 void LLAppViewer::disconnectViewer()
 {
+    ALColorChart::shutdownSession();
     // Write/clean the Director recovery BEFORE Prism/rig/world teardown below
     // (a forced disconnect would otherwise save a stripped scene). Latched.
     if (!isError())

@@ -1351,7 +1351,7 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
                 }
             }
         }
-        else if (!light->isCineRigEmitter() && !LLPipeline::probeShouldRenderLight(false, false))
+        else if (!(light->isCineRigEmitter() || light->isColorChart()) && !LLPipeline::probeShouldRenderLight(false, false))
         {
             eligible = false;
         }

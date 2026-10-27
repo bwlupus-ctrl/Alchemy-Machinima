@@ -13910,4 +13910,7 @@ If light_intensity_presets.bad.xml to light_intensity_presets.bad.5.xml already 
     Saving and deleting Light Intensity presets is turned off for this session. Your presets file was damaged and could not be moved aside, so it is being left untouched to protect it. Move or rename any light_intensity_presets.bad*.xml files in your settings folder, close any other program that may have the presets file open, and restart the viewer.
     <tag>fail</tag>
   </notification>
+  <notification name="ColorChartReattached" type="notifytip">
+The pinned colour chart is outside this region or more than 512 m away. Placement returned to Camera.
+  </notification>
 </notifications>

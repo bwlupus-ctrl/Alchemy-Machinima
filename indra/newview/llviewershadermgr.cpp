@@ -376,6 +376,9 @@ LLGLSLShader            gCGTonemapColorgradeLegacyGammaProgram;
 LLGLSLShader            gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
 LLGLSLShader            gCineFlareEnergyProgram;
 LLGLSLShader            gLensSoftEdgeProgram;
+LLGLSLShader            gColorChartProgram;
+LLGLSLShader            gColorChartExposureProgram;
+LLGLSLShader            gColorChartCameraProgram[4];
 bool                    gOnLensNoIR = false;
 // [RLVa:KB] - @setsphere
 LLGLSLShader            gRlvSphereProgram;
@@ -745,6 +748,12 @@ void LLViewerShaderMgr::finalizeShaderList()
     if (gRigRimWrapProgram.isComplete()) mShaderList.push_back(&gRigRimWrapProgram);
     if (gRigRimDebugProgram.isComplete()) mShaderList.push_back(&gRigRimDebugProgram);
     if (gLensSoftEdgeProgram.isComplete()) mShaderList.push_back(&gLensSoftEdgeProgram);
+    if (gColorChartProgram.isComplete()) mShaderList.push_back(&gColorChartProgram);
+    if (gColorChartExposureProgram.isComplete()) mShaderList.push_back(&gColorChartExposureProgram);
+    for (auto& shader : gColorChartCameraProgram)
+    {
+        if (shader.isComplete()) mShaderList.push_back(&shader);
+    }
     mShaderList.push_back(&gTronWorldProgram); // [TronT1]
     mShaderList.push_back(&gTronTrailProgram); // [TronT3]
     mShaderList.push_back(&gCineFisheyeProgram);
@@ -1293,6 +1302,8 @@ void LLViewerShaderMgr::setShaders()
 
 void LLViewerShaderMgr::unloadShaders()
 {
+    ++mColorChartShaderGeneration;
+    unloadColorChartShaders();
     unloadSensorShaders();
     // A completed auxiliary Prism pass can retain shader addresses solely to
     // restore main-view screen uniforms on their next bind. Program unload
@@ -1766,6 +1777,111 @@ void LLViewerShaderMgr::unloadSensorShaders()
         &gSensorBlitProgram, &gSensorRotoProgram, &gSensorOverlayProgram, &gSensorGodrayProgram }) remove(shader);
 }
 
+void LLViewerShaderMgr::unloadColorChartShaders()
+{
+    const auto remove = [&](LLGLSLShader& shader)
+    {
+        mShaderList.erase(std::remove(mShaderList.begin(), mShaderList.end(), &shader), mShaderList.end());
+        if (shader.isComplete())
+        {
+            shader.unload();
+        }
+    };
+    remove(gColorChartProgram);
+    remove(gColorChartExposureProgram);
+    for (auto& shader : gColorChartCameraProgram)
+    {
+        remove(shader);
+    }
+    mColorChartAttempted = false;
+    mColorChartLegacyAttempted = false;
+}
+
+bool LLViewerShaderMgr::loadColorChartShaders(bool legacy)
+{
+    static LLCachedControl<S32> force_failure(gSavedSettings, "AlchemyColorChartForceShaderFailure", 0);
+    const auto register_shader = [&](LLGLSLShader& shader)
+    {
+        mShaderList.push_back(&shader);
+        shader.mUniformsDirty = true;
+    };
+    if (!mColorChartAttempted)
+    {
+        mColorChartAttempted = true;
+        gColorChartProgram.mName = "Colour chart float patches";
+        gColorChartProgram.mFeatures = LLShaderFeatures();
+        gColorChartProgram.mShaderFiles = {
+            make_pair("deferred/colorChartV.glsl", GL_VERTEX_SHADER),
+            make_pair("deferred/colorChartF.glsl", GL_FRAGMENT_SHADER) };
+        gColorChartProgram.clearPermutations();
+        gColorChartProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        if (force_failure() == 1 || !gColorChartProgram.createShader())
+        {
+            gColorChartProgram.unload();
+            LL_WARNS("ColorChart") << "Chart shader unavailable; scene shaders remain active. "
+                << "Re-enable the chart or reload shaders to retry." << LL_ENDL;
+        }
+        else
+        {
+            register_shader(gColorChartProgram);
+        }
+    }
+    if (!gColorChartProgram.isComplete() || !legacy)
+    {
+        return gColorChartProgram.isComplete();
+    }
+    if (!mColorChartLegacyAttempted)
+    {
+        mColorChartLegacyAttempted = true;
+        // Only the two camera stages needed by the atlas. These private
+        // programs cannot invalidate the physical sensor's program suite.
+        const auto clone = [&](LLGLSLShader& shader, const LLGLSLShader& source, const char* stage)
+        {
+            shader.mName = "Colour chart " + source.mName;
+            shader.mFeatures = source.mFeatures;
+            shader.mShaderFiles = source.mShaderFiles;
+            shader.mShaderLevel = source.mShaderLevel;
+            shader.clearPermutations();
+            shader.addPermutations(source.mDefines);
+            shader.addPermutation("AL_SENSOR_HDR", "1");
+            shader.addPermutation(stage, "1");
+            if (force_failure() == 2 || !shader.createShader())
+            {
+                shader.unload();
+                return false;
+            }
+            register_shader(shader);
+            return true;
+        };
+        bool ready = clone(gColorChartExposureProgram, gCGTonemapProgram, "AL_SENSOR_EXPOSURE");
+        const LLGLSLShader* sources[] = {
+            &gCGTonemapProgram, &gCGTonemapLegacyGammaProgram,
+            &gCGTonemapColorgradeProgram, &gCGTonemapColorgradeLegacyGammaProgram };
+        for (U32 i = 0; ready && i < LL_ARRAY_SIZE(gColorChartCameraProgram); ++i)
+        {
+            ready = clone(gColorChartCameraProgram[i], *sources[i], "AL_SENSOR_CAMERA");
+        }
+        if (!ready)
+        {
+            const auto remove = [&](LLGLSLShader& shader)
+            {
+                mShaderList.erase(std::remove(mShaderList.begin(), mShaderList.end(), &shader), mShaderList.end());
+                shader.unload();
+            };
+            remove(gColorChartExposureProgram);
+            for (auto& shader : gColorChartCameraProgram)
+            {
+                remove(shader);
+            }
+            LL_WARNS("ColorChart") << "Legacy chart encoder unavailable; scene presentation remains active. "
+                << "Re-enable the chart or reload shaders to retry." << LL_ENDL;
+        }
+    }
+    return gColorChartExposureProgram.isComplete() &&
+        std::all_of(std::begin(gColorChartCameraProgram), std::end(gColorChartCameraProgram),
+            [](const LLGLSLShader& shader) { return shader.isComplete(); });
+}
+
 bool LLViewerShaderMgr::loadSensorShaders()
 {
     if (gSensorPassProgram.isComplete()) return true;
@@ -1997,6 +2113,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gRigRimWrapProgram.unload();
         gRigRimDebugProgram.unload();
         gLensSoftEdgeProgram.unload();
+        unloadColorChartShaders();
         gTronWorldProgram.unload(); // [TronT1]
         gTronTrailProgram.unload(); // [TronT3]
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
