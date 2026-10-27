@@ -8911,7 +8911,7 @@ const LLViewerJointAttachment *LLVOAvatar::attachObject(LLViewerObject *viewer_o
 
     updateMeshVisibility();
 
-    ALAvatarAnimSpeed::instance().apply(*this);
+    ALAvatarAnimSpeed::instance().applyAttachment(*this, *viewer_object);
     return attachment;
 }
 

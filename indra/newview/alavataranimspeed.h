@@ -27,6 +27,7 @@ public:
     S32 resetAll();
     std::set<LLUUID> targets() const;
     void apply(LLVOAvatar& avatar) const;
+    void applyAttachment(LLVOAvatar& avatar, LLViewerObject& object) const;
     void applyControl(LLControlAvatar& control) const;
     LLSD sceneData() const;
     void applySceneData(const LLSD& scene);

@@ -101,10 +101,24 @@ void ALAvatarAnimSpeed::apply(LLVOAvatar& avatar) const
         dynamic_cast<LLGhostAvatar*>(&avatar)) return;
     const F32 factor = compose(getSpeed(avatar.getID()),
         avatar.getID() == gAgentID && mSlowMotion ? 0.2f : 1.f);
+    // Rez and every attachment call land here: with no override and a clock
+    // already at 1x there is nothing to write, so skip the attachment walk.
+    if (factor == 1.f && avatar.getMotionController().getTimeFactor() == 1.f) return;
     avatar.setAnimTimeFactor(factor);
     for (const auto& point : avatar.mAttachmentPoints)
         for (const auto& object : point.second->mAttachedObjects)
             if (object && !object->isDead()) applyObject(*object.get(), factor);
+}
+
+void ALAvatarAnimSpeed::applyAttachment(LLVOAvatar& avatar, LLViewerObject& object) const
+{
+    // One new attachment only: the rest of the outfit already has the clock.
+    if (avatar.isDead() || avatar.mIsDummy || avatar.isControlAvatar() || avatar.isUIAvatar() ||
+        dynamic_cast<LLGhostAvatar*>(&avatar) || object.isDead()) return;
+    const F32 factor = compose(getSpeed(avatar.getID()),
+        avatar.getID() == gAgentID && mSlowMotion ? 0.2f : 1.f);
+    if (factor == 1.f) return;
+    applyObject(object, factor);
 }
 
 void ALAvatarAnimSpeed::applyControl(LLControlAvatar& control) const

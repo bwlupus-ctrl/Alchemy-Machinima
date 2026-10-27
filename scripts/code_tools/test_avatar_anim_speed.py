@@ -68,8 +68,14 @@ class AvatarAnimSpeedTest(unittest.TestCase):
     def test_rez_and_late_animesh(self):
         self.assertIn('ALAvatarAnimSpeed::instance().apply(*this)',
                       body(read('llvoavatar.cpp'), 'void LLVOAvatar::initInstance()'))
-        self.assertIn('ALAvatarAnimSpeed::instance().apply(*this)',
+        # Attaching applies to the new object only (no whole-outfit walk per attach).
+        self.assertIn('ALAvatarAnimSpeed::instance().applyAttachment(*this, *viewer_object)',
                       body(read('llvoavatar.cpp'), 'const LLViewerJointAttachment *LLVOAvatar::attachObject'))
+        attach = body(self.src, 'void ALAvatarAnimSpeed::applyAttachment')
+        self.assertIn('if (factor == 1.f) return;', attach)
+        self.assertNotIn('mAttachmentPoints', attach)
+        self.assertIn('getMotionController().getTimeFactor() == 1.f) return;',
+                      body(self.src, 'void ALAvatarAnimSpeed::apply(LLVOAvatar& avatar)'))
         self.assertIn('ALAvatarAnimSpeed::instance().applyControl(*cav)',
                       body(read('llcontrolavatar.cpp'), 'LLControlAvatar *LLControlAvatar::createControlAvatar'))
         control = body(self.src, 'void ALAvatarAnimSpeed::applyControl')
@@ -85,7 +91,7 @@ class AvatarAnimSpeedTest(unittest.TestCase):
                 if event == 'control': control_factor = stored if wearer else 1
                 if event == 'attach' and control_factor is not None: control_factor = stored
             self.assertEqual((wearer, control_factor), (.5, .5))
-        self.assertIn('applyObject(*object, factor)', body(self.src, 'void ALAvatarAnimSpeed::apply('))
+        self.assertIn('applyObject(*object.get(), factor)', body(self.src, 'void ALAvatarAnimSpeed::apply('))
         self.assertIn('control->setAnimTimeFactor(factor)', body(self.src, 'void ALAvatarAnimSpeed::applyObject'))
 
     def test_ghost_single_writer_and_scene(self):
