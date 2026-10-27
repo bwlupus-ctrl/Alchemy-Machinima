@@ -507,4 +507,45 @@
     <menu_item_call.on_click
     function="Object.CopyID" />
   </menu_item_call>
+  <context_menu label="Anim speed" name="Avatar Anim Speed">
+    <menu_item_check label="0.25x" name="Anim Speed 0.25">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="0.25" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="0.25" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check label="0.5x" name="Anim Speed 0.5">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="0.5" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="0.5" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check label="0.75x" name="Anim Speed 0.75">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="0.75" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="0.75" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check label="1x (reset)" name="Anim Speed 1">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="1" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="1" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check label="1.25x" name="Anim Speed 1.25">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="1.25" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="1.25" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check label="1.5x" name="Anim Speed 1.5">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="1.5" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="1.5" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check label="2x" name="Anim Speed 2">
+      <menu_item_check.on_click function="Avatar.AnimSpeed" parameter="2" />
+      <menu_item_check.on_check function="Avatar.CheckAnimSpeed" parameter="2" />
+      <menu_item_check.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_call label="More in Director..." name="Anim Speed Director">
+      <menu_item_call.on_click function="Avatar.AnimSpeedDirector" />
+      <menu_item_call.on_enable function="Avatar.EnableAlphaMode" />
+    </menu_item_call>
+  </context_menu>
 </context_menu>

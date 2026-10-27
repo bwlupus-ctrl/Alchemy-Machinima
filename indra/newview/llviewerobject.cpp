@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alavataranimspeed.h"
 #include "alsteppedanimruntime.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
@@ -984,6 +985,9 @@ bool LLViewerObject::setParent(LLViewerObject* parent)
         {
             old_parent->removeChild(this) ;
         }
+        if (ret)
+            if (LLControlAvatar* control = getControlAvatar())
+                ALAvatarAnimSpeed::instance().applyControl(*control);
         return ret ;
     }
 

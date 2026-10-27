@@ -329,8 +329,9 @@ def validate_data(data: dict) -> None:
     # WP3: nine settings plus status; WP7: ten settings plus status (2257 -> 2268).
     # Weather merged onto main (10/26): 2244 + 54 weather rows -> 2298.
     # Local light size adds one Scene light row -> 2299.
-    if len(pages) != 38 or row_count != 2299:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2299")
+    # Avatar Anim speed adds seven Cast > Move rows -> 2306.
+    if len(pages) != 38 or row_count != 2306:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2306")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

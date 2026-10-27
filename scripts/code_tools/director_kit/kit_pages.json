@@ -428,10 +428,11 @@
    "label_names": {}
   },
   "cast_group/move_tab": {
-   "v1_sources": ["panel_actor_mover.xml", "panel_director_move_src.xml"],
+   "v1_sources": ["panel_actor_mover.xml", "panel_director_move_src.xml", "panel_avatar_anim_speed.xml"],
    "root_class": "panel_actor_mover", "root_name": "move_tab_logic",
    "actor_target": true, "actor_target_synthetic": true,
    "row_overrides": {
+    "anim_speed_slider": {"k": "slider"},
     "btn_stop": {"w": "move_btn_stop", "source_widget": "btn_stop"},
     "speed_slider": {"value_editor_name": "speed_spinner"},
     "dist_slider": {"value_editor_name": "dist_spinner"},

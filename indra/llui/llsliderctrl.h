@@ -52,6 +52,7 @@ public:
         Optional<bool>          show_text;
         Optional<bool>          can_edit_text;
         Optional<bool>          volume_text; // Read-only 0..1 display: Muted / N%.
+        Optional<std::string>   value_suffix; // Read-only numeric display, e.g. "x".
         Optional<bool>          is_volume_slider;
         Optional<S32>           decimal_digits;
         // [AL] passthrough to LLSlider::Params::wheel_adjust (hover wheel steps
@@ -81,6 +82,7 @@ public:
             show_text("show_text"),
             can_edit_text("can_edit_text"),
             volume_text("volume_text", false),
+            value_suffix("value_suffix", ""),
             is_volume_slider("volume"),
             decimal_digits("decimal_digits", 3),
             wheel_adjust("wheel_adjust", false),
@@ -192,6 +194,7 @@ private:
     bool            mShowText;
     bool            mCanEditText;
     bool            mVolumeText;
+    std::string     mValueSuffix;
 
     S32             mPrecision;
     LLTextBox*      mLabelBox;
