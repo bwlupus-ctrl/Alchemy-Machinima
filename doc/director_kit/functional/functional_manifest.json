@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "c8aad624651c8ba94658594a4d306dee6607bf6f5b1c429e56d523d63edfd2ee",
+  "csv_sha256": "f57464cc83e9e8b636a62fe1f7edb406bdc07abcaf9d890d0e37341cc70c9921",
   "interactive_rows": 2006,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -44,11 +44,11 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2376,
-  "entries": 4428,
+  "generated_kit_rows": 2377,
+  "entries": 4429,
   "pages": 38,
-  "settings_declared": 3791,
-  "xui_files": 843,
+  "settings_declared": 3792,
+  "xui_files": 844,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -188480,7 +188480,65 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_sky_note:kit:12",
+   "id": "v2:exposure_tab:exp_environment_ev:kit:12",
+   "csv_index": null,
+   "card": "scene_light",
+   "card_title": "Scene light",
+   "row_label": "Environment (EV)",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+   "xui_line": null,
+   "widget_name": "exp_environment_ev",
+   "widget_type": "slider",
+   "csv_kind": "slider",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "DEFER_INWORLD",
+   "reason": "requires HDR and Environment only enabled",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "set_value",
+   "test_value": 0.05,
+   "expect": {
+    "setting": "AlchemyEnvEnvironmentEV",
+    "type": "F32",
+    "value": 0.05
+   },
+   "restore": {
+    "setting": "AlchemyEnvEnvironmentEV",
+    "value": 0.0
+   },
+   "setting": "AlchemyEnvEnvironmentEV",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.0,
+   "min": -4.0,
+   "max": 4.0,
+   "increment": 0.05,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+   "enable_when": "HDR and Environment only enabled"
+  },
+  {
+   "page": "exposure_tab",
+   "page_label": "Exposure",
+   "group": "light_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "exposure_tab",
+    "via": "tab"
+   },
+   "id": "v2:exposure_tab:exp_sky_note:kit:13",
    "csv_index": null,
    "card": "sky_settings",
    "card_title": "Per-sky settings",
@@ -188530,7 +188588,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_sky_lighting_btn:kit:13",
+   "id": "v2:exposure_tab:exp_sky_lighting_btn:kit:14",
    "csv_index": null,
    "card": "sky_settings",
    "card_title": "Per-sky settings",
@@ -188583,7 +188641,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_auto_exposure:kit:14",
+   "id": "v2:exposure_tab:exp_auto_exposure:kit:15",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -188638,7 +188696,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_exposure:kit:15",
+   "id": "v2:exposure_tab:exp_exposure:kit:16",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -188693,7 +188751,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_tonemap_type:kit:16",
+   "id": "v2:exposure_tab:exp_tonemap_type:kit:17",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -188789,7 +188847,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_tonemap_mix:kit:17",
+   "id": "v2:exposure_tab:exp_tonemap_mix:kit:18",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -188844,7 +188902,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_amd_exposure:kit:18",
+   "id": "v2:exposure_tab:exp_amd_exposure:kit:19",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -188899,7 +188957,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_slog_ev:kit:19",
+   "id": "v2:exposure_tab:exp_slog_ev:kit:20",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -188954,7 +189012,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_legacy_gamma_skies:kit:20",
+   "id": "v2:exposure_tab:exp_legacy_gamma_skies:kit:21",
    "csv_index": null,
    "card": "exposure_main",
    "card_title": "Camera exposure",
@@ -189009,7 +189067,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_undo:kit:21",
+   "id": "v2:exposure_tab:exp_undo:kit:22",
    "csv_index": null,
    "card": "exposure_hub",
    "card_title": "Exposure hub",
@@ -189062,7 +189120,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_redo:kit:22",
+   "id": "v2:exposure_tab:exp_redo:kit:23",
    "csv_index": null,
    "card": "exposure_hub",
    "card_title": "Exposure hub",
@@ -189115,7 +189173,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exposure_popout:kit:23",
+   "id": "v2:exposure_tab:exposure_popout:kit:24",
    "csv_index": null,
    "card": "exposure_hub",
    "card_title": "Exposure hub",
@@ -189171,7 +189229,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_bloom_strength:kit:24",
+   "id": "v2:exposure_tab:exp_bloom_strength:kit:25",
    "csv_index": null,
    "card": "glow_filters",
    "card_title": "Bloom & filters",
@@ -189226,7 +189284,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_bloom_threshold:kit:25",
+   "id": "v2:exposure_tab:exp_bloom_threshold:kit:26",
    "csv_index": null,
    "card": "glow_filters",
    "card_title": "Bloom & filters",
@@ -189281,7 +189339,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:exp_filters_btn:kit:26",
+   "id": "v2:exposure_tab:exp_filters_btn:kit:27",
    "csv_index": null,
    "card": "glow_filters",
    "card_title": "Bloom & filters",
@@ -189334,7 +189392,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_enabled:kit:27",
+   "id": "v2:exposure_tab:sensor_enabled:kit:28",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189393,7 +189451,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_iso:kit:28",
+   "id": "v2:exposure_tab:sensor_iso:kit:29",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189570,7 +189628,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_preset:kit:29",
+   "id": "v2:exposure_tab:sensor_preset:kit:30",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189649,7 +189707,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_brightness:kit:30",
+   "id": "v2:exposure_tab:sensor_brightness:kit:31",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189721,7 +189779,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_amount:kit:31",
+   "id": "v2:exposure_tab:sensor_amount:kit:32",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189780,7 +189838,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_chroma:kit:32",
+   "id": "v2:exposure_tab:sensor_chroma:kit:33",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189839,7 +189897,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_seed_fixed:kit:33",
+   "id": "v2:exposure_tab:sensor_seed_fixed:kit:34",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189897,7 +189955,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_seed:kit:34",
+   "id": "v2:exposure_tab:sensor_seed:kit:35",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -189964,7 +190022,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_readout:kit:35",
+   "id": "v2:exposure_tab:sensor_readout:kit:36",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -190020,7 +190078,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_status:kit:36",
+   "id": "v2:exposure_tab:sensor_status:kit:37",
    "csv_index": null,
    "card": "sensor",
    "card_title": "Sensor",
@@ -190076,7 +190134,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_base:kit:37",
+   "id": "v2:exposure_tab:sensor_custom_base:kit:38",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190141,7 +190199,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_switch:kit:38",
+   "id": "v2:exposure_tab:sensor_custom_switch:kit:39",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190206,7 +190264,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_headroom:kit:39",
+   "id": "v2:exposure_tab:sensor_custom_headroom:kit:40",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190271,7 +190329,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_lcg_fullwell:kit:40",
+   "id": "v2:exposure_tab:sensor_custom_lcg_fullwell:kit:41",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190336,7 +190394,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_lcg_readnoise:kit:41",
+   "id": "v2:exposure_tab:sensor_custom_lcg_readnoise:kit:42",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190401,7 +190459,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_lcg_analogbase:kit:42",
+   "id": "v2:exposure_tab:sensor_custom_lcg_analogbase:kit:43",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190466,7 +190524,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_lcg_pedestal:kit:43",
+   "id": "v2:exposure_tab:sensor_custom_lcg_pedestal:kit:44",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190531,7 +190589,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_lcg_white:kit:44",
+   "id": "v2:exposure_tab:sensor_custom_lcg_white:kit:45",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190596,7 +190654,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_hcg_fullwell:kit:45",
+   "id": "v2:exposure_tab:sensor_custom_hcg_fullwell:kit:46",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190661,7 +190719,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_hcg_readnoise:kit:46",
+   "id": "v2:exposure_tab:sensor_custom_hcg_readnoise:kit:47",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190726,7 +190784,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_hcg_analogbase:kit:47",
+   "id": "v2:exposure_tab:sensor_custom_hcg_analogbase:kit:48",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190791,7 +190849,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_hcg_pedestal:kit:48",
+   "id": "v2:exposure_tab:sensor_custom_hcg_pedestal:kit:49",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -190856,7 +190914,7 @@
     "page_view": "exposure_tab",
     "via": "tab"
    },
-   "id": "v2:exposure_tab:sensor_custom_hcg_white:kit:49",
+   "id": "v2:exposure_tab:sensor_custom_hcg_white:kit:50",
    "csv_index": null,
    "card": "custom_sensor",
    "card_title": "Custom sensor",
@@ -250132,6 +250190,7 @@
    "exp_auto_exposure",
    "exp_bloom_strength",
    "exp_bloom_threshold",
+   "exp_environment_ev",
    "exp_environment_only",
    "exp_exposure",
    "exp_filters_btn",
