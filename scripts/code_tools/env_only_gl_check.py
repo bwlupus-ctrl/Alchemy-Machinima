@@ -19,6 +19,12 @@ import re
 import numpy as np
 import relight_3d_gl as G
 from env_ev_math_check import fixture_factors
+# Baseline = the commit this feature was built on (pre Environment only); not HEAD, which
+# includes the feature once committed/merged. Override with env var.
+import os as _os_base
+BASE_REF = _os_base.environ.get('ENV_ONLY_GL_CHECK_BASE', '3901137b430')
+# Environment EV rows compare against the tree that already had Environment only.
+EV_BASE_REF = _os_base.environ.get('ENV_ONLY_GL_CHECK_EV_BASE', 'b8a911596c5')
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -81,7 +87,7 @@ def run(args):
             assert np.isclose(row[key], expected, rtol=1.e-7), ('Environment EV summed factor', row, key, expected)
     print('PASS Environment EV CPU fixtures: six summed factors, OFF and zero controls', flush=True)
     inventory = {ref: {name: hashlib.sha256(source(ref, G.SHADERS+'/'+path).encode()).hexdigest()
-                      for name, path in FILES.items()} for ref in ('HEAD', 'WORKTREE')}
+                      for name, path in FILES.items()} for ref in dict.fromkeys((BASE_REF, EV_BASE_REF, 'WORKTREE'))}
     inventory['class3_probes'] = hashlib.sha256(source('WORKTREE', G.SHADERS+'/class3/deferred/reflectionProbeF.glsl').encode()).hexdigest()
     (OUT/'inventory.json').write_text(json.dumps(inventory, indent=2), encoding='utf-8')
     if args.assemble_only:
@@ -186,7 +192,7 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
             return pr
 
     runners={name:Runner(ref,tag,probe) for name,ref,tag,probe in (
-        ('head','HEAD',False,2),('head_tag','HEAD',True,2),('off','WORKTREE',True,2),('probes','WORKTREE',True,3))}
+        ('head',BASE_REF,False,2),('head_tag',BASE_REF,True,2),('ev_base',EV_BASE_REF,True,2),('off','WORKTREE',True,2),('probes','WORKTREE',True,3))}
     programs={}
     for label,r in runners.items():
         kinds=FILES if label!='probes' else ('soften','pbr','shiny')
@@ -229,7 +235,7 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
         ambient_tint=('sky_amb_tint',(.4,1.2,.8)),diffuse=('sky_gi_scale',(4.,)),
         reflection=('sky_probe_rad_scale',(4.,)),lift=('shadow_lift_gain',(3.,)),ssao=('ssao_irradiance_max',(.04,)),
         local_pos=('local_ev',(64.,)),local_neg=('local_ev',(.015625,)),size=('local_size',(.3,)))
-    def setup(label,kind,mode,factor=None,pbr=True,preference=0,weather=False,environment=None):
+    def setup(label,kind,mode,factor=None,pbr=True,preference=0,weather=False,env_row=None):
         r=runners[label];p=r.program(kind,weather=True) if weather else programs[label,kind];gl.use(p)
         r.defaults(p,local=.8,env=.5,spec=(.3,.3,.3,.6),coverage=.6,light_dir=(.995,0.,.1))
         r.set(p,'screen_res',float(width),float(height));r.set(p,'env_only_mode',mode);r.set(p,'gbuffer_tag_preferred',preference)
@@ -261,14 +267,14 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
                 for i in range(8):r.set(p,f'local_light_sizes[{i}]',radius)
             else:
                 r.set(p,key,*values)
-        if environment is not None:
+        if env_row is not None:
             for name,key in (('sky_sun_ev_scale','sun'),('sky_amb_scale','ambient'),
                              ('sky_gi_scale','diffuse'),('sky_probe_rad_scale','reflection')):
-                r.set(p,name,environment[key])
-            r.set(p,'ssao_irradiance_max',.01*environment['ssao'])
+                r.set(p,name,env_row[key])
+            r.set(p,'ssao_irradiance_max',.01*env_row['ssao'])
             # Match the production forward identity light sets. Deferred
             # shaders receive the exposed radiance plus its combined inverse.
-            local = environment['local']
+            local = env_row['local']
             scale = 1. if mode == 2 else local
             r.set(p,'color',.8*scale,.8*scale,.8*scale)
             r.set(p,'local_light_ev_scale',local)
@@ -291,7 +297,7 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
         gl.matrix(gl.loc(p,b'weather_surface_cover_matrix'),1,0,cover.ctypes.data_as(C.POINTER(C.c_float)))
         r.bind(p,'weather_surface_cover_map',17,orm)
         # class2 fallback cube map must also be nonzero.
-        normal_texture(label in ('head_tag','off','probes'),pbr)
+        normal_texture(label in ('head_tag','ev_base','off','probes'),pbr)
         gl.active(0x84C0);gl.bind_fbo(0x8D40,fbo);gl.viewport(0,0,width,height)
         clearcolor(0,0,0,0);clear(0x4000)
         assert err()==0,('setup',label,kind,factor)
@@ -313,22 +319,22 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
             for row in environment_fixtures:
                 summed=float(np.exp2(np.float32(.5+(row['ev'] if row['enabled'] else 0))))
                 reference={key:summed for key in ('sun','ambient','diffuse','reflection','local','ssao')}
-                adjusted=render(label,kind,0,environment=reference)
-                actual=render(label,kind,(2 if kind in FORWARD else 1) if row['enabled'] else 0,environment=row)
+                adjusted=render(label,kind,0,env_row=reference)
+                actual=render(label,kind,(2 if kind in FORWARD else 1) if row['enabled'] else 0,env_row=row)
                 name=f'Environment EV/{label}/{kind}/{row["enabled"]}/{row["ev"]}'
                 if row['enabled']:
                     area=actual if kind in FORWARD else actual[:,:width//2]
                     expected=identity if kind in FORWARD else identity[:,:width//2]
                     require(np.all(np.abs(area-expected)<=.001+.01*np.maximum(np.abs(area),np.abs(expected))),name+' avatar identity')
-                    world=render(label,kind,0,environment=row) if kind in FORWARD else actual[:,width//2:]
-                    target=adjusted if kind in FORWARD else adjusted[:,width//2:]
-                    require(np.array_equal(world,target),name+' set equals summed EV render')
+                    world=render(label,kind,0,env_row=row) if kind in FORWARD else actual[:,width//2:]
+                    expected_set=adjusted if kind in FORWARD else adjusted[:,width//2:]
+                    require(np.array_equal(world,expected_set),name+' set equals summed EV render')
                 else:
                     require(np.array_equal(actual,adjusted),name+' OFF ignores master bytes')
                 if row['ev']==0 or not row['enabled']:
                     baseline={key:float(np.exp2(np.float32(.5))) for key in reference}
-                    old=render('head_tag' if label=='off' else label,kind,
-                               (2 if kind in FORWARD else 1) if row['enabled'] else 0,environment=baseline)
+                    old=render('ev_base' if label=='off' else label,kind,
+                               (2 if kind in FORWARD else 1) if row['enabled'] else 0,env_row=baseline)
                     require(np.array_equal(actual,old),name+' HEAD/zero bytes')
     flag_outputs=[]
     for label in ('head_tag','off'):

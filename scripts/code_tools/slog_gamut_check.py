@@ -13,6 +13,10 @@ import re
 import subprocess
 import sys
 import numpy as np
+# Baseline = the commit this feature was built on (pre Log gamut); not HEAD, which
+# includes the feature once committed/merged. Override with env var.
+import os as _os_base
+BASE_REF = _os_base.environ.get('SLOG_GAMUT_CHECK_BASE', 'b8a911596c5')
 
 # Lead-approved bound for the NEW delivered-output test only (PURITY_BRIEF item 6a).
 # Absolute decoded-linear error uses the requested half-10-bit-code number;
@@ -76,7 +80,7 @@ def Round1Runner():
                 if path in (TONE, 'class1/alchemy/colorCorrectF.glsl'):
                     assert saved.is_file(), 'round-1 shader oracle missing: '+str(saved)
                     return saved.read_text(encoding='utf-8')
-                return super().source(path, ref='HEAD')
+                return super().source(path, ref=BASE_REF)
             return super().source(path, ref=ref)
     return Runner()
 
@@ -121,7 +125,7 @@ def purity_contracts():
     assert 'if (purity < 1.0' in tone, 'purity 1 must skip new arithmetic'
     decode = tone.split('vec3 decode_slog_family(vec3 code)', 1)[1].split('vec3 applyExposure', 1)[0]
     assert decode.index('inverse(slf_gamut_matrix()) * c') < decode.index('slf_inverse_purity(c)') < decode.index('return c * exp2')
-    old = subprocess.check_output(['git', 'show', 'HEAD:indra/newview/app_settings/shaders/'+TONE],
+    old = subprocess.check_output(['git', 'show', BASE_REF+':indra/newview/app_settings/shaders/'+TONE],
                                   cwd=ROOT, text=True, encoding='utf-8', timeout=15)
     assert tone.split('vec3 applyToneMap(vec3 color)', 1)[1] == old.split('vec3 applyToneMap(vec3 color)', 1)[1], 'operators 0..7 must not change'
     luma = np.array([.2126, .7152, .0722])
@@ -145,7 +149,7 @@ def contracts():
     encode = tone.split('vec3 encode_slog_family(vec3 c)', 1)[1].split('vec3 applyExposure', 1)[0]
     assert encode.index('c *= exp2(ev)') < encode.index('slf_gamut_matrix() * c') < encode.index('c += vec3(0.18 * toe)')
     assert 'if (tonemap_slog_gamut != 0)' in encode, 'legacy must skip matrix arithmetic'
-    old = subprocess.check_output(['git', 'show', 'HEAD:indra/newview/app_settings/shaders/'+TONE],
+    old = subprocess.check_output(['git', 'show', BASE_REF+':indra/newview/app_settings/shaders/'+TONE],
                                   cwd=ROOT, text=True, encoding='utf-8', timeout=15)
     old_encode = old.split('vec3 encode_slog_family(vec3 c)', 1)[1].split('vec3 applyExposure', 1)[0]
     current_body = encode.split('// Invert delivered log CODES', 1)[0]
@@ -275,7 +279,7 @@ void main() { frag_color=vec4(slf_apply_purity(texture(diffuseRect,vary_fragcoor
     for stage in (None, 'CAMERA'):
         for grade in (False, True):
             programs.append(P.camera(r, stage, grade))
-    head = P.camera(r, None, ref='HEAD')
+    head = P.camera(r, None, ref=BASE_REF)
     round1 = [P.camera(r, stage, grade, ref='ROUND1') for stage in (None, 'CAMERA') for grade in (False, True)]
     head_error = 0.
     round1_cases = 0

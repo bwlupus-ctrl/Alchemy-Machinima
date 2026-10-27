@@ -10,6 +10,10 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+# Baseline = the commit this feature was built on (pre Environment EV); not HEAD, which
+# includes the feature once committed/merged. Override with env var.
+import os as _os_base
+BASE_REF = _os_base.environ.get('ENV_ONLY_CHECK_BASE', 'b8a911596c5')
 
 ROOT=Path(__file__).resolve().parents[2]
 KEY='AlchemyEnvEnvironmentOnly'
@@ -43,7 +47,7 @@ def main():
     # The master is the sole intentional math change: retain the previous
     # byte-for-byte contract for every other operation, order and branch.
     original_compute=compute.replace('        const F32 environment_ev = environmentEV();\n','').replace(' + environment_ev','')
-    check('existing compute unchanged except additive Environment EV',original_compute==function(read('indra/newview/alenvintensity.cpp','HEAD'),'Factors compute('))
+    check('existing compute unchanged except additive Environment EV',original_compute==function(read('indra/newview/alenvintensity.cpp',BASE_REF),'Factors compute('))
     settings=ET.fromstring(read('indra/newview/app_settings/settings_alchemy.xml'));nodes=list(settings.find('map'));entries={nodes[i].text:nodes[i+1] for i in range(0,len(nodes),2)}
     fields=list(entries.get(KEY,[]));props={fields[i].text:fields[i+1].text for i in range(0,len(fields),2)}
     check('persistent boolean, default false',props.get('Type')=='Boolean' and props.get('Persist')=='1' and props.get('Value')=='0')

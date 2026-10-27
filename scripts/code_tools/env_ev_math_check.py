@@ -9,6 +9,10 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+# Baseline = the commit this feature was built on (pre Environment EV); not HEAD, which
+# includes the feature once committed/merged. Override with env var.
+import os as _os_base
+BASE_REF = _os_base.environ.get('ENV_EV_MATH_CHECK_BASE', 'b8a911596c5')
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -124,7 +128,7 @@ def main():
     exe = compile_test(args.source_ref)
     if args.baseline:
         current = subprocess.check_output([str(exe), '--baseline'], cwd=ROOT, timeout=20)
-        previous = subprocess.check_output([str(compile_test('HEAD')), '--baseline'], cwd=ROOT, timeout=20)
+        previous = subprocess.check_output([str(compile_test(BASE_REF)), '--baseline'], cwd=ROOT, timeout=20)
         assert current == previous, 'inactive/zero factors differ from HEAD'
         print('PASS 2400 inactive/zero factor combinations identical to HEAD (hex floats)')
         return 0

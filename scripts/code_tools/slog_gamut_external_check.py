@@ -19,6 +19,10 @@ import sys
 
 import numpy as np
 import slog_gamut_check as S
+# Baseline = the commit this feature was built on (pre Log gamut); not HEAD, which
+# includes the feature once committed/merged. Override with env var.
+import os as _os_base
+BASE_REF = _os_base.environ.get('SLOG_GAMUT_EXTERNAL_CHECK_BASE', 'b8a911596c5')
 
 OUT = S.ROOT/'.tmp/slog_gamut/tests3'
 RESULT = {}
@@ -343,7 +347,7 @@ void main(){frag_color=vec4(decode_slog_family(linear_to_srgb(encode_slog_family
     src=r.upload('shadow_ramp',np.repeat(data[None,:,None],3,axis=2),fmt=0x8814)
     output=[]
     quantisation=[]
-    for ref in (None,'HEAD'):
+    for ref in (None,BASE_REF):
         program=P.camera(r,'CAMERA',ref=ref)
         blit=r.program('class1/alchemy/blitWithEffectsF.glsl',modules=P.common_modules()+('class1/alchemy/postEffectUtilsF.glsl',),ref=ref)
         floatcodes=r.draw(program,r.target('float_ramp_'+str(ref),64,1,fmt=0x8814),64,1,[('diffuseRect',src)],
