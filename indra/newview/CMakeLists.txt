@@ -385,6 +385,7 @@ set(viewer_SOURCE_FILES
     alghostnameplates.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]
     alreflectanim.cpp
+    alavataranimspeed.cpp
     alghoststudio.cpp
     alghostanimassetindex.cpp
     alworldoverlayviz.cpp
@@ -1329,6 +1330,7 @@ set(viewer_HEADER_FILES
     alrelighttakewriter.h
     alreflectmath.h
     alreflectanim.h
+    alavataranimspeed.h
     alghoststudio.h
     alghostanimassetindex.h
     alworldoverlayviz.h

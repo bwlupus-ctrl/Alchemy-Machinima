@@ -1,5 +1,6 @@
 {
   "groups": [
+    ["anim speed", "animation speed", "playback speed", "slow motion", "slow mo", "speed up", "dance speed", "desync", "vary", "black dragon"],
     ["local light size", "light size", "specular", "hotspot", "highlight", "neon", "bulb", "glare", "reflection"],
     ["exposure", "ev", "brightness"],
     ["rain", "rainy"],

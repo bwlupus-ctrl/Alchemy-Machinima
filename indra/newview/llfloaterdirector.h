@@ -72,6 +72,7 @@ public:
     bool handleRightMouseDown(S32 x,S32 y,MASK mask) override;
     bool handleScrollWheel(S32 x,S32 y,LLScrollDelta delta) override;
     ALKitHistory* kitHistory();
+    void showAnimSpeed(const LLUUID& avatar);
     static void startRecoveryService();
     static void prepareRecoveryForShutdown();
     static void cancelRecoveryShutdown();
@@ -87,6 +88,16 @@ public:
     // the shared ALPanelAnimPreview embedded in the tab, not on this floater.
 
 private:
+    void bindAnimSpeedPage(LLView* root);
+    void rebuildAnimSpeedAvatars();
+    void refreshAnimSpeed();
+    LLComboBox* mAnimSpeedAvatar = nullptr;
+    LLSliderCtrl* mAnimSpeedSlider = nullptr;
+    LLSliderCtrl* mAnimSpeedSpread = nullptr;
+    LLTextBox* mAnimSpeedStatus = nullptr;
+    LLUUID mAnimSpeedSelection;
+    S32 mAnimSpeedChanged = 0;
+    ALLiveReadoutClock mAnimSpeedClock{10.f};
     bool postBuildV2();
     void bindChrome(LLView* root);
     void bindPage(const std::string& page, LLView* root);

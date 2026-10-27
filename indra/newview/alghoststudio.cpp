@@ -1401,6 +1401,7 @@ bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
                   0.15f * inst->mChaosAmount;
     ghost->setEntityAnimTimeFactor(
         llclamp(inst->mAnimSpeed * chaos_factor, 0.05f, 4.f));
+    ++mInstanceRevision; // External Anim speed controls must refresh Studio too.
     return true;
 }
 

@@ -29,6 +29,7 @@
 // (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
+#include "alavataranimspeed.h"
 
 #include <functional>
 #include "alsteppedanimruntime.h"
@@ -1344,6 +1345,7 @@ void LLVOAvatar::initInstance()
     mVoiceVisualizer->setVoiceEnabled( LLVoiceClient::getInstance()->getVoiceEnabled( mID ) );
 
     mInitFlags |= 1<<1;
+    ALAvatarAnimSpeed::instance().apply(*this);
 }
 
 // virtual
@@ -8909,6 +8911,7 @@ const LLViewerJointAttachment *LLVOAvatar::attachObject(LLViewerObject *viewer_o
 
     updateMeshVisibility();
 
+    ALAvatarAnimSpeed::instance().apply(*this);
     return attachment;
 }
 

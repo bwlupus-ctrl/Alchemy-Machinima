@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alavataranimspeed.h"
 #include "alpresetlook.h"
 
 #include "aldirectortabmigration.h"
@@ -1487,6 +1488,22 @@ bool LLFloaterDirector::postBuild()
     // ALPanelActorMover the standalone Actor Mover floater also embeds; the
     // console feeds it the cast selection each draw (refreshMoveTab)
     mMoverPanel = findChild<ALPanelActorMover>("actor_mover_panel");
+    // Append the shared card after the legacy Move controls using their measured
+    // extent. The existing scroll controller fits the resulting document below.
+    if (auto* document = findChild<LLPanel>("move_scroll_content"))
+    {
+        S32 offset = 0;
+        for (LLView* child : *document->getChildList())
+            offset = llmax(offset, document->getRect().getHeight() - child->getRect().mBottom);
+        if (auto* card = LLUICtrlFactory::createFromFile<LLPanel>(
+                "panel_avatar_anim_speed.xml", document, LLPanel::child_registry_t::instance()))
+        {
+            card->setName("anim_speed_panel");
+            card->setFollows(FOLLOWS_LEFT | FOLLOWS_TOP | FOLLOWS_RIGHT);
+            card->setOrigin(0, document->getRect().getHeight() - offset - 8 - card->getRect().getHeight());
+        }
+    }
+    bindAnimSpeedPage(this);
 
     // ---- Path tab ----
     // the waypoint editor lives in its own tab now; always visible, its target
@@ -2623,8 +2640,53 @@ void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
     }
 }
 
+void LLFloaterDirector::bindAnimSpeedPage(LLView* root)
+{
+    // Shared by v1 postBuild and DirectorUIV2's lazy bindMovePage route.
+    mAnimSpeedAvatar = root->findChild<LLComboBox>("anim_speed_avatar");
+    mAnimSpeedSlider = root->findChild<LLSliderCtrl>("anim_speed_slider");
+    mAnimSpeedSpread = root->findChild<LLSliderCtrl>("anim_speed_spread");
+    mAnimSpeedStatus = root->findChild<LLTextBox>("anim_speed_status");
+    if (mAnimSpeedAvatar && mAnimSpeedSlider && mAnimSpeedSpread && mAnimSpeedStatus)
+    {
+        if (mAnimSpeedSelection.isNull()) mAnimSpeedSelection = gAgentID;
+        mAnimSpeedSpread->setValue(LLSD(15.f));
+        mAnimSpeedAvatar->setPrearrangeCallback([this](LLUICtrl*, const LLSD&)
+            { rebuildAnimSpeedAvatars(); });
+        mAnimSpeedAvatar->setCommitCallback([this](LLUICtrl*, const LLSD&)
+            {
+                mAnimSpeedSelection = mAnimSpeedAvatar->getValue().asUUID();
+                setValueIfChanged(mAnimSpeedSlider,
+                    LLSD(ALAvatarAnimSpeed::instance().getSpeed(mAnimSpeedSelection)), true);
+            });
+        mAnimSpeedSlider->setCommitCallback([this](LLUICtrl*, const LLSD&)
+            {
+                auto& owner = ALAvatarAnimSpeed::instance();
+                const F32 previous = owner.getSpeed(mAnimSpeedSelection);
+                owner.setSpeed(mAnimSpeedSelection, mAnimSpeedSlider->getValueF32());
+                mAnimSpeedChanged = previous != owner.getSpeed(mAnimSpeedSelection) ? 1 : 0;
+            });
+        if (auto* reset = root->findChild<LLButton>("anim_speed_reset"))
+            reset->setCommitCallback([this](LLUICtrl*, const LLSD&)
+                {
+                    auto& owner = ALAvatarAnimSpeed::instance();
+                    mAnimSpeedChanged = owner.getSpeed(mAnimSpeedSelection) != 1.f ? 1 : 0;
+                    owner.setSpeed(mAnimSpeedSelection, 1.f);
+                    setValueIfChanged(mAnimSpeedSlider, LLSD(1.f), true);
+                });
+        if (auto* vary = root->findChild<LLButton>("anim_speed_vary_all"))
+            vary->setCommitCallback([this](LLUICtrl*, const LLSD&)
+                { mAnimSpeedChanged = ALAvatarAnimSpeed::instance().varyAll(mAnimSpeedSpread->getValueF32()); });
+        if (auto* reset = root->findChild<LLButton>("anim_speed_reset_all"))
+            reset->setCommitCallback([this](LLUICtrl*, const LLSD&)
+                { mAnimSpeedChanged = ALAvatarAnimSpeed::instance().resetAll(); });
+        rebuildAnimSpeedAvatars();
+    }
+}
+
 void LLFloaterDirector::bindMovePage(LLView* root)
 {
+    bindAnimSpeedPage(root);
     mGroupRunCombo = root->findChild<LLComboBox>("group_run_combo");
     mGroupStartBtn = root->findChild<LLButton>("btn_group_start");
     mGroupStopBtn = root->findChild<LLButton>("btn_group_stop");
@@ -2659,6 +2721,58 @@ void LLFloaterDirector::bindMovePage(LLView* root)
     mGroupDelayShownFor.clear();
     mGroupsTabDirty = true;
     refreshGroupControls();
+}
+
+void LLFloaterDirector::rebuildAnimSpeedAvatars()
+{
+    // Rebuild only on bind / explicit navigation / opening the dropdown. Never
+    // walk nearby avatars in draw(), or shuffle a dropdown the user is editing.
+    if (!mAnimSpeedAvatar) return;
+    mAnimSpeedAvatar->removeall();
+    std::set<LLUUID> emitted;
+    auto add = [this, &emitted](const LLUUID& id, const std::string& name)
+    {
+        if (id.notNull() && emitted.insert(id).second) mAnimSpeedAvatar->add(name, id);
+    };
+    add(gAgentID, "You");
+    for (const auto& member : LLDirectorCast::instance().getCast())
+        add(member.mId, member.mLastName);
+    for (const auto& inst : ALGhostStudio::instance().getInstances())
+        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+            add(inst.mEntityId, inst.mName);
+    for (LLCharacter* character : LLCharacter::sInstances)
+        if (auto* avatar = dynamic_cast<LLVOAvatar*>(character);
+            avatar && !avatar->isDead() && !avatar->isControlAvatar() && !avatar->mIsDummy)
+            add(avatar->getID(), avatar->getFullname());
+    // An explicit right-click target can be a clone or leave while Director opens.
+    add(mAnimSpeedSelection, mAnimSpeedSelection.asString());
+    mAnimSpeedAvatar->setSelectedByValue(mAnimSpeedSelection, true);
+}
+
+void LLFloaterDirector::refreshAnimSpeed()
+{
+    if (!mAnimSpeedSlider || !isWidgetOnScreen(mAnimSpeedSlider) || !mAnimSpeedClock.due()) return;
+    const F32 speed = ALAvatarAnimSpeed::instance().getSpeed(mAnimSpeedSelection);
+    setValueIfChanged(mAnimSpeedSlider, LLSD(speed));
+    setTextIfChanged(mAnimSpeedStatus, llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
+}
+
+void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
+{
+    mAnimSpeedSelection = avatar;
+    if (mShell) mShell->navigateTo("cast_group/move_tab/anim_speed");
+    else
+    {
+        selectLeafTab("move_tab");
+        mScrollFit.fitPage(currentLeafPanel());
+        if (auto* scroll = findChild<LLScrollContainer>("move_scroll"))
+            if (auto* card = findChild<LLPanel>("anim_speed_panel"))
+                scroll->scrollToShowRect(card->getRect());
+    }
+    rebuildAnimSpeedAvatars();
+    if (mAnimSpeedSlider)
+        setValueIfChanged(mAnimSpeedSlider, LLSD(ALAvatarAnimSpeed::instance().getSpeed(avatar)), true);
+    mAnimSpeedClock.forceDue();
 }
 
 void LLFloaterDirector::bindPathPage(LLView* root)
@@ -3462,6 +3576,7 @@ void LLFloaterDirector::draw()
     refreshCastList();
     refreshGroupControls();
     refreshTransport();
+    refreshAnimSpeed();
     // One roster-order selection snapshot feeds every actor-targeted page.
     const uuid_vec_t selected = selectedCastIds();
     refreshMoveTab(selected);
@@ -4553,6 +4668,7 @@ LLSD LLFloaterDirector::captureSceneData()
     }
     scene["settings"] = settings;
     scene["projector_shafts"] = ALProjectorShaftPresets::sceneData();
+    scene["avatar_anim_speeds"] = ALAvatarAnimSpeed::instance().sceneData();
 
     // CineCam: active mode, and the ACTIVE named preset when one is selected
     // in the shared params panel (stored by name; applied via the panel on load)
@@ -4804,6 +4920,7 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     // cast, marks, loco anims, subjects -- data only, nothing moves; members
     // not in world stay in the cast grayed "(away)"
     cast.applySceneData(scene);
+    ALAvatarAnimSpeed::instance().applySceneData(scene);
 
     ALProjectorShaftPresets::applySceneData(scene["projector_shafts"]);
 

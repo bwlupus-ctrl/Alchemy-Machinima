@@ -38,7 +38,7 @@ METHOD_RE = re.compile(
 # C++ references are accepted only from the classes which own/build those
 # roots.  Same-name hits outside this scope are retained as ambiguity evidence.
 PAGE_OWNER_FILES = {
-    "move_tab": {"panel_actor_mover.xml", "floater_director.xml"},
+    "move_tab": {"panel_actor_mover.xml", "floater_director.xml", "panel_avatar_anim_speed.xml"},
     "path_tab": {"panel_path_editor.xml"},
     "props_tab": {"panel_prop_mover.xml"},
     "ghosts_tab": {"panel_ghost_studio.xml"},
@@ -174,6 +174,23 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         return hit
     if page == "path_tab" and widget == "copy_to_combo":
         return binding("indra/newview/alpanelpatheditor.cpp", 1536, "ALPanelPathEditor", "refreshCopyCombo")
+    if page == "move_tab" and widget in {
+        "anim_speed_avatar", "anim_speed_slider", "anim_speed_spread",
+        "anim_speed_reset", "anim_speed_vary_all", "anim_speed_reset_all"
+    }:
+        # The shared v1/v2 binder contains inline lambdas. Require both host
+        # call sites and the real arbiter commands before claiming evidence.
+        source = (ROOT / "indra/newview/llfloaterdirector.cpp").read_text(encoding="utf-8")
+        for call in ("bindAnimSpeedPage(this)", "bindAnimSpeedPage(root)",
+                     "owner.setSpeed(", "ALAvatarAnimSpeed::instance().varyAll(",
+                     "ALAvatarAnimSpeed::instance().resetAll("):
+            if call not in source:
+                raise RuntimeError(f"missing avatar speed consumer: {call}")
+        signature = "void LLFloaterDirector::bindAnimSpeedPage("
+        line = source.count("\n", 0, source.index(signature)) + 1
+        hit = binding("indra/newview/llfloaterdirector.cpp", line, "LLFloaterDirector", "bindAnimSpeedPage")
+        hit.update(wired_function="bindAnimSpeedPage", text="shared v1/v2 inline callbacks; spread is consumed by Vary all")
+        return hit
     if page == "move_tab" and widget == "group_run_combo":
         return binding("indra/newview/llfloaterdirector.cpp", 2107, "LLFloaterDirector", "onClickGroup")
     if page == "props_tab" and widget in {

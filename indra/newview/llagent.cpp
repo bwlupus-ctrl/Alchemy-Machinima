@@ -26,6 +26,7 @@
 
 
 #include "llviewerprecompiledheaders.h"
+#include "alavataranimspeed.h"
 #include "alpanelweathersettings.h"
 
 #include "llagent.h"
@@ -291,14 +292,7 @@ void LLAgentFriendObserver::changed(U32 mask)
 
 bool handleSlowMotionAnimation(const LLSD& newvalue)
 {
-    if (newvalue.asBoolean())
-    {
-        gAgentAvatarp->setAnimTimeFactor(0.2f);
-    }
-    else
-    {
-        gAgentAvatarp->setAnimTimeFactor(1.0f);
-    }
+    ALAvatarAnimSpeed::instance().setSlowMotion(newvalue.asBoolean());
     return true;
 }
 

@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alavataranimspeed.h"
 #include "llcontrolavatar.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion for animesh
 #include "lldirectorcast.h"
@@ -358,6 +359,7 @@ LLControlAvatar *LLControlAvatar::createControlAvatar(LLVOVolume *obj)
 
         // Sync up position/rotation with object
         cav->matchVolumeTransform();
+        ALAvatarAnimSpeed::instance().applyControl(*cav);
     }
 
     return cav;

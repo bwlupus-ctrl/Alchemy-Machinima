@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shared v1 panel and source nodes for the generated Cast > Move kit card. -->
+<panel name="avatar_anim_speed" layout="topleft" width="354" height="220" background_visible="false">
+    <text name="anim_speed_title" left="10" top="0" width="334" height="20" font="SansSerifSmallBold">Anim speed</text>
+    <combo_box name="anim_speed_avatar" label="Avatar" left="10" top="24" width="334" height="22"
+        tool_tip="Choose you, a cast member, or a nearby avatar. The list updates when opened." />
+    <slider name="anim_speed_slider" label="Speed" left="10" top="52" width="334" height="22"
+        min_val="0.05" max_val="4" increment="0.01" decimal_digits="2" initial_value="1"
+        show_text="true" can_edit_text="false" value_suffix="x" text_width="52"
+        tool_tip="Change this whole avatar's animations in your viewer. Dance Ball keeps its own dance timing." />
+    <button name="anim_speed_reset" label="Reset" left="10" top="80" width="334" height="22"
+        tool_tip="Return this avatar to normal animation speed." />
+    <slider name="anim_speed_spread" label="Vary spread (%)" left="10" top="108" width="334" height="22"
+        min_val="0" max_val="50" increment="1" decimal_digits="0" initial_value="15"
+        show_text="true" can_edit_text="false" text_width="52"
+        tool_tip="How much Vary all can change each avatar from normal. 15 means 0.85x to 1.15x." />
+    <button name="anim_speed_vary_all" label="Vary all" left="10" top="136" width="334" height="22"
+        tool_tip="Give you, all cast members, and nearby avatars random speeds within the spread. Only changes your viewer." />
+    <button name="anim_speed_reset_all" label="Reset all" left="10" top="164" width="334" height="22"
+        tool_tip="Clear all avatar speed changes, including avatars that are away." />
+    <text name="anim_speed_status" left="10" top="192" width="334" height="20">0 avatars changed  |  1.00x</text>
+</panel>

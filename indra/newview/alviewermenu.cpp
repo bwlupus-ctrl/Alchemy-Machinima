@@ -18,11 +18,13 @@
 **/
 
 #include "llviewerprecompiledheaders.h"
+#include "alavataranimspeed.h"
 #include "alviewermenu.h"
 
 // library
 #include "llclipboard.h"
 #include "llfloaterreg.h"
+#include "llfloaterdirector.h"
 #include "llsdserialize.h"
 #include "lltrans.h"
 #include "llview.h"
@@ -1025,6 +1027,30 @@ namespace
     // when no per-object override is set). Keyed off the right-clicked avatar, resolved
     // the same way every other Avatar.* handler does (find_avatar_from_object on the
     // primary selected object). Object-specific overrides still beat this avatar-wide one.
+    void handle_avatar_anim_speed(const LLSD& value)
+    {
+        if (LLVOAvatar* avatar = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()))
+            ALAvatarAnimSpeed::instance().setSpeed(avatar->getID(), static_cast<F32>(value.asReal()));
+    }
+
+    bool check_avatar_anim_speed(const LLSD& value)
+    {
+        LLVOAvatar* avatar = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatar && fabsf(ALAvatarAnimSpeed::instance().getSpeed(avatar->getID()) -
+                              static_cast<F32>(value.asReal())) < 0.0001f;
+    }
+
+    void handle_avatar_anim_speed_director(const LLSD&)
+    {
+        if (LLVOAvatar* avatar = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()))
+        {
+            // Capture the identity before opening a floater changes selection.
+            const LLUUID id = avatar->getID();
+            if (auto* director = dynamic_cast<LLFloaterDirector*>(LLFloaterReg::showInstance("director")))
+                director->showAnimSpeed(id);
+        }
+    }
+
     void handle_avatar_alpha_mode(const LLSD& sdParam)
     {
         const S32 mode = sdParam.asInteger();
@@ -1473,6 +1499,9 @@ void ALViewerMenu::initialize_menus()
     enable.add("Object.CheckAlphaMode", boost::bind(&check_object_alpha_mode, _2));
     enable.add("Object.EnableAlphaMode", boost::bind(&enable_object_alpha_mode));
     commit.add("Avatar.AlphaMode", boost::bind(&handle_avatar_alpha_mode, _2));
+    commit.add("Avatar.AnimSpeed", boost::bind(&handle_avatar_anim_speed, _2));
+    enable.add("Avatar.CheckAnimSpeed", boost::bind(&check_avatar_anim_speed, _2));
+    commit.add("Avatar.AnimSpeedDirector", boost::bind(&handle_avatar_anim_speed_director, _2));
     enable.add("Avatar.CheckAlphaMode", boost::bind(&check_avatar_alpha_mode, _2));
     enable.add("Avatar.EnableAlphaMode", boost::bind(&enable_avatar_alpha_mode));
     // [BDMerge G2.3 per-target] per-object / per-avatar Force-Mask cutoff value
