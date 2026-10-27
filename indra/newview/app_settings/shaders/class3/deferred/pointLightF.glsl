@@ -49,6 +49,15 @@ uniform float sun_wash;
 
 // light params
 uniform vec3 color;
+bool envOnlyIdentity();
+uniform float local_light_ev_scale;
+vec3 envOnlyLightColor()
+{
+    vec3 result = color;
+    if (envOnlyIdentity()) result.rgb /= max(local_light_ev_scale, 1.e-8);
+    return result;
+}
+
 uniform float falloff;
 uniform float size;
 
@@ -176,15 +185,15 @@ void localLightMain(float source_radius)
         {
             roughness = spec.g;
             diffuseColor = diffuse * .96 * (1.0-spec.b);
-            final_color = color * 3.25 * relightPbrSized(diffuseColor,mix(vec3(.04),diffuse,spec.b),
+            final_color = envOnlyLightColor() * 3.25 * relightPbrSized(diffuseColor,mix(vec3(.04),diffuse,spec.b),
                 roughness,spec.b,n,v,lv,size,falloff,light_shape,1.0-gb.envIntensity,source_radius,0.0);
         }
         else
-            final_color = color * relightLegacySized(lightFunc,diffuse,vec4(srgb_to_linear(spec.rgb),spec.a),
+            final_color = envOnlyLightColor() * relightLegacySized(lightFunc,diffuse,vec4(srgb_to_linear(spec.rgb),spec.a),
                 n,v,lv,size,falloff,light_shape,highlight,source_radius,0.0);
         if (rigRimMode() != 0)
         {
-            rim_color = rigRimTermEx(n,v,l,attenuation*color,diffuseColor,roughness,rig_rim_light,rim_px);
+            rim_color = rigRimTermEx(n,v,l,attenuation*envOnlyLightColor(),diffuseColor,roughness,rig_rim_light,rim_px);
             if (rigRimMode() == 2) final_color = vec3(0);
             if (alr_sil) final_color = final_color*alr_k + rim_color*alr_r;
             else final_color += rim_color;
@@ -219,7 +228,7 @@ void localLightMain(float source_radius)
 
         vec3 specularColor = mix(f0, baseColor.rgb, metallic);
 
-        vec3 intensity = dist_atten * color * 3.25; // Legacy attenuation, magic number to balance with legacy materials
+        vec3 intensity = dist_atten * envOnlyLightColor() * 3.25; // Legacy attenuation, magic number to balance with legacy materials
 
         float nl = 0;
         vec3 diffPunc = vec3(0);
@@ -237,7 +246,7 @@ void localLightMain(float source_radius)
         // top of the light's own contribution (mode 0 never enters).
         if (rigRimMode() != 0)
         {
-            rim_color = rigRimTermEx(n.xyz, v, l, dist_atten * color, diffuseColor, perceptualRoughness, rig_rim_light, rim_px);
+            rim_color = rigRimTermEx(n.xyz, v, l, dist_atten * envOnlyLightColor(), diffuseColor, perceptualRoughness, rig_rim_light, rim_px);
             if (rigRimMode() == 2)
             {
                 final_color = vec3(0.0); // debug: rim only
@@ -265,12 +274,12 @@ void localLightMain(float source_radius)
         // fires; the helper recomputes n.l itself for the wrap term.)
         if (rigRimMode() != 0)
         {
-            rim_color = rigRimTermEx(n, v, l, dist_atten * color.rgb, diffuse, 1.0 - spec.a, rig_rim_light, rim_px);
+            rim_color = rigRimTermEx(n, v, l, dist_atten * envOnlyLightColor().rgb, diffuse, 1.0 - spec.a, rig_rim_light, rim_px);
         }
 
         float lit = nl * dist_atten;
 
-        final_color = color.rgb*lit*diffuse;
+        final_color = envOnlyLightColor().rgb*lit*diffuse;
 
         if (spec.a > 0.0)
         {
@@ -284,7 +293,7 @@ void localLightMain(float source_radius)
             if (nh > 0.0)
             {
                 float scol = fres*(source_radius > 0.0 ? localLightLegacy(lightFunc, nh, spec.a, source_radius, lightDist, 0.0) : texture(lightFunc, vec2(nh, spec.a)).r)*gt/(nh*nl);
-                final_color += lit*scol*color.rgb*spec.rgb;
+                final_color += lit*scol*envOnlyLightColor().rgb*spec.rgb;
             }
         }
 
@@ -334,6 +343,7 @@ void main()
     bool no_specular = GET_GBUFFER_FLAG(size_gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR)
         ? size_gb.envIntensity >= 1.0
         : all(equal(size_gb.specular.rgb, vec3(0.0)));
+    if (envOnlyIdentity()) { localLightMain(0.0); return; }
     if (local_light_size <= 0.0 || no_specular) { localLightMain(0.0); return; }
     localLightMain(local_light_size);
 }

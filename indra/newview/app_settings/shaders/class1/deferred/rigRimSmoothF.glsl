@@ -54,11 +54,13 @@ bool rimTap(vec2 uv, ivec2 offset) {
     }
     return true;
 }
+bool gbufferTagPreferred();
+bool envOnlyEnabled();
 bool rimJoin(vec2 a, vec2 b, vec3 p, vec3 q, vec3 n, vec3 m) {
     if (getDepth(a)>=.999999 || getDepth(b)>=.999999) return false;
     if (abs(textureLod(rigRimAuxMap,a,0).w-textureLod(rigRimAuxMap,b,0).w)>.5) return false;
 #ifdef GBUFFER_AVATAR_TAG
-    if (GBUFFER_AVATAR_TAG_OF(getNormRaw(a).w)!=GBUFFER_AVATAR_TAG_OF(getNormRaw(b).w)) return false;
+    if ((gbufferTagPreferred() || envOnlyEnabled()) && GBUFFER_AVATAR_TAG_OF(getNormRaw(a).w)!=GBUFFER_AVATAR_TAG_OF(getNormRaw(b).w)) return false;
 #endif
     if (rig_rim_smooth_stage.w>.5 && textureLod(actorMaskMap,a,0).r!=textureLod(actorMaskMap,b,0).r) return false;
     vec3 delta=q-p;

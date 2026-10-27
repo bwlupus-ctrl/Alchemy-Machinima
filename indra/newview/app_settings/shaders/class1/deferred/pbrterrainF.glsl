@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file class1\deferred\terrainF.glsl
  *
@@ -436,7 +437,9 @@ void main()
 #define mix_orm vec3(1.0, 1.0, 0.0)
 #endif
     vec3 weather_orm = mix_orm;
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     // Evaluate derivatives for the entire quad, then exclude emitting pixels.
     vec3 weather_normal = tnorm, weather_color = pbr_mix.col.rgb;
     float weather_roughness = weather_orm.g;
@@ -444,6 +447,7 @@ void main()
     if (dot(mix_emissive, mix_emissive) == 0.0)
     {
         tnorm = weather_normal; pbr_mix.col.rgb = weather_color; weather_orm.g = weather_roughness;
+    }
     }
 #endif
     frag_data[0] = max(vec4(pbr_mix.col.xyz, 0.0), vec4(0));                                                   // Diffuse

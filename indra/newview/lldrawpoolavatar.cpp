@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alenvintensity.h"
 
 #include "lldrawpoolavatar.h"
 #include "llghostavatar.h"
@@ -1210,14 +1211,14 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     // [ActorMask] Fable A3: classic hair/skirt/lashes bypass the alpha pool.
     // Select only after native suppression, under the actual forward shader.
     const bool actor_forward = is_post_deferred_render &&
-        ALCineLightRigManager::anyActorOnly();
+        (ALCineLightRigManager::anyActorOnly() || ALEnvIntensity::envOnlyActive());
     struct RestoreForwardWorld
     {
         bool active;
         ~RestoreForwardWorld() { if (active) gPipeline.selectForwardLightSet(0); }
     } restore_forward_world{actor_forward};
     if (actor_forward)
-        gPipeline.selectForwardLightSet(ALCineLightRigManager::instance().recipientBit(avatarp));
+        gPipeline.selectForwardLightSet(ALCineLightRigManager::instance().recipientBit(avatarp), true);
 
     const bool shared_replay = use_system_actor_ghost_replay(
         avatarp, actor_fx_id);

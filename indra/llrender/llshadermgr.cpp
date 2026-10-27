@@ -843,7 +843,11 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
         extra_code_text[extra_code_count++] = strdup("#define GBUFFER_AVATAR_TAG 1\n");
         extra_code_text[extra_code_count++] = strdup("#define GBUFFER_UNTAG(d) ((floor((d)*6.0+0.5) + mod(floor((d)*6.0+0.5), 2.0)) / 6.0)\n");
         extra_code_text[extra_code_count++] = strdup("#define GBUFFER_AVATAR_TAG_OF(d) (mod(floor((d)*6.0+0.5), 2.0) > 0.5)\n");
-        extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(GBUFFER_UNTAG(data)-(flag)) < 0.1)\n");
+        // Categorical readers are point sampled (getNormRaw uses texelFetch).
+        // The seven legal RGBA16 codes are either the original flag or that
+        // flag minus 1/6. Two windows preserve every legal flag test without
+        // floor/mod in each lighting branch. Never apply to interpolated IDs.
+        extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs((data)-(flag)) < 0.1 || abs((data)+(1.0/6.0)-(flag)) < 0.1)\n");
     }
 
     if (defines)
@@ -2343,6 +2347,13 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("weather_shelter_close_min_map");
     mReservedUniforms.push_back("weather_shelter_distant_min_map");
     mReservedUniforms.push_back("weather_veil_map");
+
+    mReservedUniforms.push_back("env_only_mode");
+    mReservedUniforms.push_back("avatar_tag_draw");
+    mReservedUniforms.push_back("gbuffer_tag_preferred");
+    mReservedUniforms.push_back("local_light_ev_scale");
+    mReservedUniforms.push_back("local_light_ev_scales");
+    mReservedUniforms.push_back("ssao_irradiance_max_stock");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

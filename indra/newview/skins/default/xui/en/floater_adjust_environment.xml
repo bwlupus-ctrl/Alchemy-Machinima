@@ -567,8 +567,8 @@
                       bevel_style="in"
                       auto_resize="false"
                       user_resize="false"
-                      height="58"
-                      min_height="58"
+                      height="82"
+                      min_height="82"
                       visible="true">
             <text follows="left|top"
                   font="SansSerifBold"
@@ -784,6 +784,8 @@
                     name="env_adv_toggle"
                     tool_tip="Show or hide the Advanced exposure panel: Moon link, GI split (sky ambient / probe diffuse / probe reflections), Local lights EV and size, Sun temperature, Sun / Moon / Ambient tints and Shadow lift. Persists across sessions."
                     width="90"/>
+            <check_box control_name="AlchemyEnvEnvironmentOnly" name="env_environment_only" label="Environment only" tool_tip="When on, Personal Lighting changes only the set around people. Everyone on screen keeps normal lighting; the lit set still glows onto their edges (Light wrap). Light bounced from the set inside reflection probes still reaches them. Needs HDR." follows="left|top" layout="topleft" left="125" top="58" width="180" height="18" />
+            <text name="env_environment_only_hdr" follows="left|top" layout="topleft" left="310" top="60" width="140" height="16" visible="false">Needs HDR</text>
         </layout_panel>
         <!-- [EnvIntensity v2] Advanced exposure panel. Hidden by default
              (AlchemyEnvIntensityAdvanced); applyEnvIntensityAdvanced() shows it

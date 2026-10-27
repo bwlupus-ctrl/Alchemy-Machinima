@@ -31,6 +31,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alenvonlydiagnostics.h"
 
 #include "llfloaterpreference.h"
 
@@ -1651,6 +1652,7 @@ void LLFloaterPreference::onBtnOK(const LLSD& userdata)
         }
 
         LLUIColorTable::instance().saveUserSettings();
+        ALEnvOnlyDiagnostics::cancel(); // Persist the user look, never diagnostic overrides.
         gSavedSettings.saveToFile(gSavedSettings.getString("ClientSettingsFile"), true);
 
         //Only save once logged in and loaded per account settings

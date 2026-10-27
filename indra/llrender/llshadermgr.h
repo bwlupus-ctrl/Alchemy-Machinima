@@ -970,6 +970,12 @@ public:
         WEATHER_SHELTER_CLOSE_MIN_MAP,
         WEATHER_SHELTER_DISTANT_MIN_MAP,
         WEATHER_VEIL_MAP,
+        ENV_ONLY_MODE,
+        AVATAR_TAG_DRAW,
+        GBUFFER_TAG_PREFERRED,
+        LOCAL_LIGHT_EV_SCALE,
+        LOCAL_LIGHT_EV_SCALES,
+        SSAO_IRRADIANCE_MAX_STOCK,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

@@ -133,6 +133,8 @@ vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol);
 // SSAO ceiling is an absolute clamp, so it is tinted too or a scalar clamp
 // would strip the tint in saturated corners.
 uniform vec3 sky_amb_tint;
+uniform float ssao_irradiance_max_stock;
+bool envOnlyIdentity();
 
 void adjustIrradiance(inout vec3 irradiance, float ambocc)
 {
@@ -145,6 +147,7 @@ void adjustIrradiance(inout vec3 irradiance, float ambocc)
     {
         ssao_ceiling *= sky_amb_tint;
     }
+    if (envOnlyIdentity()) ssao_ceiling = vec3(ssao_irradiance_max_stock);
     irradiance = mix(ssao_effect_mat * min(irradiance.rgb*ssao_irradiance_scale, ssao_ceiling), irradiance.rgb, ambocc);
 #endif
 }

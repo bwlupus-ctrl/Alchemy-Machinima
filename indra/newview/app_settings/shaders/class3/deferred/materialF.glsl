@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
 * @file materialF.glsl
 *
@@ -78,6 +79,8 @@ bool alrSilOn();
 vec4 alrSilGBufferLegacy();
 #endif
 #endif
+uniform int avatar_tag_draw;
+float gbufferAvatarFlag(float flag);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 
@@ -632,7 +635,9 @@ void main()
 #endif
 
     float emissive = getEmissive(diffcol);
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     vec3 weather_normal = norm, weather_color = diffcol.rgb, weather_spec = spec.rgb;
     float weather_gloss = glossiness;
     // Emission can vary within a quad: keep derivative evaluation unconditional.
@@ -644,6 +649,7 @@ void main()
 #endif
     {
         norm = weather_normal; diffcol.rgb = weather_color; spec.rgb = weather_spec; glossiness = weather_gloss;
+    }
     }
 #endif
 
@@ -862,6 +868,9 @@ void main()
     // deferred path               // See: C++: addDeferredAttachment(), shader: softenLightF.glsl
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
+#ifndef HAS_SKIN
+    if (avatar_tag_draw != 0) flag = gbufferAvatarFlag(flag);
+#endif
 #ifdef HAS_SKIN
     flag = gbufferAvatarFlag(flag);   // [TronA0] rigged mesh: avatar geometry -> tagged flag
 #endif

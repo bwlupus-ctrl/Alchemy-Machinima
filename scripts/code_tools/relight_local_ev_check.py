@@ -252,7 +252,8 @@ def compose_program(r, path):
         body = text[text.index('    float shadow = 1.0;'):text.index('    GBufferInfo gb =')]
         body += '\n    frag_color=vec4(vec3(radiance*shadow),shadow);'
     else:
-        start = text.index('    if ((relight_enabled & 2) != 0 && light_shape.w >= 0.0)', text.index('void main()'))
+        entry = text.index('void localLightMain(') if 'void localLightMain(' in text else text.index('void main()')
+        start = text.index('    if ((relight_enabled & 2) != 0 && light_shape.w >= 0.0)', entry)
         body = '    vec3 final_color=vec3(radiance);\n' + text[start:text.index('    float final_scale', start)]
         body += '\n    frag_color=vec4(final_color,areaShadowVisibility(tc,light_shape.w));'
     fragment = visibility + '''

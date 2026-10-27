@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file pbropaqueF.glsl
  *
@@ -61,6 +62,8 @@ uniform vec4 clipPlane;
 uniform float clipSign;
 
 void mirrorClip(vec3 pos);
+uniform int avatar_tag_draw;
+float gbufferAvatarFlag(float flag);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 #ifdef HAS_ACTOR_FX
@@ -217,7 +220,9 @@ void main()
     alr_env_carrier = alrPbrCarrier();
 #endif
     // See: C++: addDeferredAttachments(), GLSL: softenLightF
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     // Evaluate derivatives for the entire quad, then exclude emitting pixels.
     vec3 weather_normal = tnorm, weather_color = col;
     float weather_roughness = spec.g;
@@ -226,6 +231,7 @@ void main()
     {
         tnorm = weather_normal; col = weather_color; spec.g = weather_roughness;
     }
+    }
 #endif
     frag_data[0] = max(vec4(col, 0.0), vec4(0));                                                   // Diffuse
     frag_data[1] = max(vec4(spec.rgb,0.0), vec4(0));                                    // PBR linear packed Occlusion, Roughness, Metal.
@@ -233,7 +239,7 @@ void main()
     // [TronA0] rigged mesh: avatar geometry -> tagged flag
     frag_data[2] = encodeNormal(tnorm, alr_env_carrier, gbufferAvatarFlag(GBUFFER_FLAG_HAS_PBR)); // normal, environment intensity, flags
 #else
-    frag_data[2] = encodeNormal(tnorm, alr_env_carrier, GBUFFER_FLAG_HAS_PBR); // normal, environment intensity, flags
+    frag_data[2] = encodeNormal(tnorm, alr_env_carrier, (avatar_tag_draw != 0 ? gbufferAvatarFlag(GBUFFER_FLAG_HAS_PBR) : GBUFFER_FLAG_HAS_PBR)); // normal, environment intensity, flags
 #endif
 
 #if defined(HAS_EMISSIVE)

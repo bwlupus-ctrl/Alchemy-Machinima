@@ -1,3 +1,4 @@
+bool gbufferTagPreferred();
 /**
  * @file class1\deferred\pbralphaF.glsl
  *
@@ -376,7 +377,9 @@ void main()
     col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
 #endif
 
-#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN) && !defined(GBUFFER_AVATAR_TAG)
+#if defined(HAS_WEATHER_MATERIAL) && !defined(HAS_SKIN) && !defined(AVATAR_GEOMETRY) && !defined(IS_AVATAR_SKIN)
+    if (!gbufferTagPreferred())
+    {
     // Evaluate derivatives for the entire quad, then exclude emitting pixels.
     vec3 weather_normal = norm, weather_color = col;
     float weather_roughness = perceptualRoughness;
@@ -384,6 +387,7 @@ void main()
     if (dot(colorEmissive, colorEmissive) == 0.0)
     {
         norm = weather_normal; col = weather_color; perceptualRoughness = weather_roughness;
+    }
     }
 #endif
 #ifdef HAS_WEATHER_MATERIAL

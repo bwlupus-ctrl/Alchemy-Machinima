@@ -219,6 +219,13 @@ namespace ALEnvIntensity
         return gCubeSnapshot && !gPipeline.mHeroProbeManager.isMirrorPass();
     }
 
+    bool envOnlyActive()
+    {
+        static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyEnvEnvironmentOnly", false);
+        static LLCachedControl<bool> hdr(gSavedSettings, "RenderHDREnabled", true);
+        return enabled() && hdr() && gGLManager.mGLVersion > 4.05f && !isNeutral() && !isSamplingCapture();
+    }
+
     ScopedNeutral::ScopedNeutral()  { ++sNeutralDepth; }
     ScopedNeutral::~ScopedNeutral() { --sNeutralDepth; }
 

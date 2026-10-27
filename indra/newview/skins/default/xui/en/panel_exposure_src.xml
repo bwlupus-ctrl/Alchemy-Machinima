@@ -7,7 +7,7 @@
      placeholder. ALPanelExposurePage (alpanelexposurepage.cpp) binds Undo and Redo and gates AMD
      exposure and S-Log EV by tone mapper. This file is a generator input and is not loaded by the
      viewer by name. -->
-<panel background_visible="false" border="false" layout="topleft" name="panel_exposure_src" width="354" height="630">
+<panel background_visible="false" border="false" layout="topleft" name="panel_exposure_src" width="354" height="650">
     <check_box control_name="RenderDynamicExposureEnabled" label="Auto exposure" name="exp_auto_exposure" tool_tip="Dynamic (auto) exposure. It partially compensates intensity changes (about 2 stops of range), so the light sliders feel softer in dim scenes. Turn it off for a fixed exposure and exact slider control. S-Log3 capture already ignores it. Viewer setting, not saved into the sky." follows="left|top" layout="topleft" left="4" top="4" width="330" height="18" />
     <slider can_edit_text="true" control_name="RenderExposure" decimal_digits="1" increment="0.1" initial_value="1" label="Exposure" max_val="4" min_val="0.5" name="exp_exposure" show_text="true" tool_tip="Adjusts the overall brightness of the image via the Tonemapper (linear gain, 0.5 to 4). Same setting as the Lightbox Image tab and Preferences Advanced." wheel_adjust="true" follows="left|top" layout="topleft" left="4" top="28" width="330" height="18" />
     <combo_box allow_text_entry="false" control_name="AlchemyRenderTonemapType" max_chars="128" name="exp_tonemap_type" tool_tip="Which algorithm should translate HDR values to SDR Colorspace" follows="left|top" layout="topleft" left="4" top="52" width="330" height="20">
@@ -45,4 +45,5 @@
     <button label="Filters..." name="exp_filters_btn" tool_tip="Open all Lens Looks controls in the Lightbox Image tab." follows="left|top" layout="topleft" left="4" top="548" width="330" height="20" />
     <button name="exp_undo" label="Undo" tool_tip="Nothing to undo" follows="left|top" layout="topleft" left="4" top="574" width="330" height="20" />
     <button name="exp_redo" label="Redo" tool_tip="Nothing to redo" follows="left|top" layout="topleft" left="4" top="600" width="330" height="20" />
+    <check_box control_name="AlchemyEnvEnvironmentOnly" label="Environment only" name="exp_environment_only" tool_tip="When on, Personal Lighting changes only the set around people. Everyone on screen keeps normal lighting; the lit set still glows onto their edges (Light wrap). Light bounced from the set inside reflection probes still reaches them. Needs HDR." follows="left|top" layout="topleft" left="4" top="624" width="330" height="18" />
 </panel>

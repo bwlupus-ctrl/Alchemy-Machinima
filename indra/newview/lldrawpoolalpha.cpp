@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alenvintensity.h"
 
 #include "alcinehaze.h"
 #include "alcinerigrim.h" // [RigRim]
@@ -629,7 +630,8 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
                 shader->bindTexture(LLShaderMgr::SPECULAR_MAP, params.mSpecularMap.notNull()
                     ? params.mSpecularMap.get() : LLViewerFetchedTexture::sWhiteImagep.get());
                 gPipeline.selectForwardLightSet(
-                    ALCineLightRigManager::instance().drawByte(params));
+                    ALCineLightRigManager::instance().drawByte(params),
+                        params.mAvatar.notNull() || params.mAttachedToAvatar || params.mActorFxOwner.notNull() || params.mActorFxFallbackOwner.notNull());
             }
             else if (indexed_pbr)
             {
@@ -1264,7 +1266,7 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     // [ActorMask] Every exit restores world, including depth-only/empty streams.
-    const bool actor_only = ALCineLightRigManager::anyActorOnly();
+    const bool actor_only = ALCineLightRigManager::anyActorOnly() || ALEnvIntensity::envOnlyActive();
     struct RestoreForwardWorld
     {
         bool active;
@@ -1434,7 +1436,7 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                     if (wearer && !wearer->isDead())
                         byte = static_cast<U8>(byte | registry.byteForOwner(wearer->getActorFxOwnerId()));
                 }
-                gPipeline.selectForwardLightSet(byte);
+                gPipeline.selectForwardLightSet(byte, true);
             }
             actor_mover.renderSharedActorStyleProxy(shared_proxy_index++);
             if (actor_only) gPipeline.selectForwardLightSet(0);
@@ -1679,7 +1681,8 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                 // above. WP0 unions exact owner and wearer (including animesh).
                 if (actor_only)
                     gPipeline.selectForwardLightSet(depth_only ? 0 :
-                        ALCineLightRigManager::instance().drawByte(params));
+                        ALCineLightRigManager::instance().drawByte(params),
+                        params.mAvatar.notNull() || params.mAttachedToAvatar || params.mActorFxOwner.notNull() || params.mActorFxFallbackOwner.notNull());
 
                 if (params.mAvatar && !uploadMatrixPalette(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, lastAvatarShader, skipLastSkin))
                 {

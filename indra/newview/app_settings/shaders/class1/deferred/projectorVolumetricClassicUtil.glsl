@@ -89,7 +89,15 @@ uniform vec3 gobo_tint;
 uniform vec4 gobo_pattern_params;
 
 // light params
-uniform vec3 color; // light_color
+uniform vec3 color;
+uniform float local_light_ev_scale;
+bool envOnlyIdentity();
+vec3 envOnlyProjectorColor()
+{
+    vec3 result = color;
+    if (envOnlyIdentity()) result /= max(local_light_ev_scale, 1.e-8);
+    return result;
+} // light_color
 uniform float size; // light_size
 
 // [BDMerge Batch 2] Screen-space minification LOD from the cookie UV derivatives.
@@ -453,7 +461,7 @@ vec4 getNorm(vec2 screenpos)
 
 vec4 getNormRaw(vec2 screenpos)
 {
-    vec4 norm = texture(normalMap, screenpos.xy);
+    vec4 norm = texelFetch(normalMap, clamp(ivec2(screenpos * vec2(textureSize(normalMap, 0))), ivec2(0), textureSize(normalMap, 0) - 1), 0);
     return norm;
 }
 
@@ -568,7 +576,7 @@ vec3 getProjectedLightAmbiance(float amb_da, float attenuation, float lit, float
     amb_da *= attenuation * noise;
     amb_da = min(amb_da, 1.0-lit);
 
-    return (amb_da * color.rgb * amb_rgb);
+    return (amb_da * envOnlyProjectorColor() * amb_rgb);
 }
 
 // Returns projected light in Linear
@@ -591,7 +599,7 @@ vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv)
         plcol.rgb = vec3(red_sample.r, plcol.g, blue_sample.b);
     }
 
-    return color.rgb * plcol.rgb * plcol.a;
+    return envOnlyProjectorColor() * plcol.rgb * plcol.a;
 }
 
 vec4 texture2DLodSpecular(vec2 tc, float lod)
@@ -638,7 +646,7 @@ vec3 getProjectedLightSpecularColor(float light_distance, vec2 projected_uv)
     float lod = diff * proj_lod;
     vec4 plcol = getTexture2DLodDiffuse(projected_uv.xy, lod); // NOTE: Using diffuse due to texture2DLodSpecular() has extra: d *= min(1, d * (proj_lod - lod));
 
-    return color.rgb * plcol.rgb * plcol.a;
+    return envOnlyProjectorColor() * plcol.rgb * plcol.a;
 }
 
 vec4 getPosition(vec2 pos_screen)
@@ -1722,12 +1730,13 @@ void calcDiffuseSpecular(vec3 baseColor, float metallic, inout vec3 diffuseColor
 // Callers apply it AFTER adjustIrradiance (SSAO ceiling) and BEFORE the sun
 // term / pbrBaseLight, so material AO still multiplies the lifted value and
 // occluded corners lift by the same relative factor as open shadow.
+bool envOnlyIdentity();
 uniform float shadow_lift_gain;
 const float SHADOW_LIFT_KNEE = 0.25;
 
 vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol)
 {
-    if (shadow_lift_gain <= 0.0)
+    if (shadow_lift_gain <= 0.0 || envOnlyIdentity())
     {
         return irradiance; // off path untouched
     }

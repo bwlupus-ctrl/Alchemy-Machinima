@@ -115,8 +115,11 @@ vec3 relightLegacy(sampler2D glossLut, vec3 diffuse, vec4 spec, vec3 n, vec3 v,
 void localLightPbr(vec3 diffuseColor, vec3 specularColor, float roughness, float metallic,
     vec3 n, vec3 v, vec3 l, float radius, float distance, float cone,
     out float nl, out vec3 diff, out vec3 spec);
+bool envOnlyIdentity();
+uniform float local_light_ev_scale;
 uniform float local_light_size; // maximum per-emitter radius in this draw
 uniform float local_light_sizes[LIGHT_COUNT];
+uniform float local_light_ev_scales[LIGHT_COUNT];
 void localLightSpecular(inout vec3 spec, float roughness,
     vec3 n, vec3 v, vec3 l, float radius, float distance, float cone);
 float localLightLegacy(sampler2D lut, float nh, float gloss, float radius, float distance, float cone);
@@ -184,6 +187,7 @@ void localLightMain(bool size_active)
         for (int light_idx = 0; light_idx < LIGHT_COUNT; ++light_idx)
         {
             vec4 area_col = light_col[light_idx];
+            if (envOnlyIdentity()) area_col.rgb /= max(local_light_ev_scales[light_idx], 1.e-8);
             if ((relight_enabled & 2) != 0 && light_shapes[light_idx].w >= 0.0)
                 area_col.rgb *= areaShadowVisibility(tc, light_shapes[light_idx].w);
             if ((relight_enabled & 1) != 0 && (light_shapes[light_idx].x > 0.0 || light_shapes[light_idx].y > 0.0))
@@ -246,6 +250,7 @@ void localLightMain(bool size_active)
         for (int i = 0; i < LIGHT_COUNT; ++i)
         {
             vec4 area_col = light_col[i];
+            if (envOnlyIdentity()) area_col.rgb /= max(local_light_ev_scales[i], 1.e-8);
             if ((relight_enabled & 2) != 0 && light_shapes[i].w >= 0.0)
                 area_col.rgb *= areaShadowVisibility(tc, light_shapes[i].w);
             if ((relight_enabled & 1) != 0 && (light_shapes[i].x > 0.0 || light_shapes[i].y > 0.0))
@@ -363,6 +368,7 @@ void main()
     bool no_specular = GET_GBUFFER_FLAG(size_gb.gbufferFlag, GBUFFER_FLAG_HAS_PBR)
         ? size_gb.envIntensity >= 1.0
         : all(equal(size_gb.specular.rgb, vec3(0.0)));
+    if (envOnlyIdentity()) { localLightMain(false); return; }
     if (local_light_size <= 0.0 || no_specular) { localLightMain(false); return; }
     localLightMain(true);
 }

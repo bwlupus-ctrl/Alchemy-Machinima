@@ -29410,7 +29410,7 @@
   <key>RenderGBufferAvatarTag</key>
   <map>
     <key>Comment</key>
-    <string>[TronA0] Tag avatar pixels (system mesh, rigged mesh, eyes, impostors) in the G-buffer normal .w so Roto Ink / Tron masks can be pixel-exact. HDR only (RGBA16 normals); toggling reloads shaders. Requires a ReShade add-on .fx that decodes flag encoding 2.</string>
+    <string>Prefer the HDR avatar tag as the Rig Rim auxiliary subject source. Also preserves the existing Roto Ink, Tron and infrared tag-source preference. Avatar identity is always compiled with HDR; changing this preference never reloads shaders.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>

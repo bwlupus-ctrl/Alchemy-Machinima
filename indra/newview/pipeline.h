@@ -949,7 +949,9 @@ public:
     void calcNearbyLights(LLCamera& camera);
     void setupHWLights();
     // [ActorMask] Raw content selected only around eligible forward draws.
-    void selectForwardLightSet(U8 byte);
+    void selectForwardLightSet(U8 byte, bool identity = false);
+    void applyEnvOnlyDraw(bool avatar);
+    void uploadEnvOnlyView(LLGLSLShader& shader);
     U64 mActorMaskAlphaSwitches = 0; // WP7 summary counters
     U64 mActorMaskAlphaSlotOverflow = 0;
     // Snapshot the main-view lighting/probe state before an auxiliary Prism
@@ -2278,13 +2280,14 @@ protected:
     {
         LLRender::light_state_snapshot_t units;
         std::array<LLColor4, 6> colors;
+        std::array<F32, 8> evScales{1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
     };
-    std::map<U8, ForwardLightSet> mForwardLightSets;
-    U8 mForwardLightByte = 0;
+    std::map<U16, ForwardLightSet> mForwardLightSets;
+    U16 mForwardLightByte = 0;
     bool mForwardLightsImplicit = false; // setup content before first enableLights
     bool mPrismSavedForwardLightsImplicit = false;
-    std::map<U8, ForwardLightSet> mPrismSavedForwardLightSets;
-    U8 mPrismSavedForwardLightByte = 0;
+    std::map<U16, ForwardLightSet> mPrismSavedForwardLightSets;
+    U16 mPrismSavedForwardLightByte = 0;
 
     bool                            mCinematicProbeCaptureActive = false;
     light_set_t                     mCinematicSavedNearbyLights;
