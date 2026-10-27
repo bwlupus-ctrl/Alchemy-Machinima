@@ -142,6 +142,8 @@ vec3 PBRNeutralToneMapping( vec3 color )
 //--------------------------------------------------------------------------------------
 
 uniform vec4 tonemap_params;
+uniform int tonemap_slog_gamut; // 0 Rec.709, 1 S-Gamut3, 2 S-Gamut3.Cine, 3 AWG3
+uniform float tonemap_slog_purity;
 const float output_max_value = 1.0;
 
 // Based on Reinhard's extended formula, see equation 4 in https://doi.org/cjbgrt
@@ -355,14 +357,69 @@ vec3 srgb_to_linear(vec3 cs);
 // Returns srgb_to_linear(code) so the UNCONDITIONAL downstream linear_to_srgb()
 // in colorCorrectF cancels it, leaving TRUE log code values in the backbuffer.
 // !! Disable any ReShade log / VCC encode -- it would double-encode. !!
-// Grade in Resolve (CST): Input Color Space = Rec.709 (OETF only, NO gamut
-// transform -- do NOT pick S-Gamut3 / ARRI Wide Gamut), Input Gamma = the
-// matching curve, Data Levels = Full/Video to match .y. Toe inverse = subtract
-// 0.18*toe per channel in linear, AFTER the log CST.
+// tonemap_slog_gamut selects a linear Rec.709 -> camera gamut matrix, after EV
+// and before toe/OETF. 0 preserves legacy Rec.709; default 1 is Sony S-Gamut3.
+// Choose the matching camera input in Resolve CST (e.g. Sony S-Log3 / S-Gamut3),
+// Magic Bullet Looks OCIO-ACES or Vegas ACES media colour space. Apply only ONE
+// input transform. S-Log3 pairs with S-Gamut3 / S-Gamut3.Cine; LogC3 with AWG3.
+// For Cineon/S-Log2 use Rec.709 unless your tool expects another gamut.
+// Data Levels = Full/Video to match .y. Undo 0.18*toe in CAMERA linear before
+// the inverse gamut, then inverse purity in Rec.709: Y = dot(c', Rec.709 luma),
+// c = Y + (c'-Y)/purity; finally undo EV. Y is invariant. A camera IDT alone
+// does not undo custom toe/purity. Purity 1 skips all new purity arithmetic.
+// The optional sensor well/noise simulation is an EARLIER pass (pipeline Stage
+// B); this encoder runs in Stage C. Purity is therefore post-sensor, right after
+// log EV, before camera gamut/toe. No well/clip simulation is inside this function.
 // Math derived + round-trip verified (Fable). tonemap_params + srgb_to_linear
 // already declared above -- do not redeclare.
 const float SLF_LOG10_2 = 0.30102999566398120;   // log10(x) = log2(x)*log10(2)
 vec3 slf_log10(vec3 x) { return log2(x) * SLF_LOG10_2; }
+
+// Row-major Rec.709 -> D65 camera primaries (transpose for GLSL columns).
+// Sony Technical Summary v1.0 p.8; ARRI LogC VFX 2017 p.10. Rows sum to 1.
+const mat3 SLF_SG3 = transpose(mat3(
+    0.5660490800, 0.3427630874, 0.0911878326,
+    0.0769613789, 0.7990545001, 0.1239841211,
+    0.0223509133, 0.1086120512, 0.8690370356));
+const mat3 SLF_CINE = transpose(mat3(
+    0.6456794776, 0.2591145470, 0.0952059754,
+    0.0875299915, 0.7596995626, 0.1527704459,
+    0.0369574199, 0.1292809048, 0.8337616753));
+const mat3 SLF_AWG3 = transpose(mat3(
+    0.6313210225, 0.2708007273, 0.0978782502,
+    0.0368199337, 0.7930369660, 0.1701431002,
+    0.0173697319, 0.1487891849, 0.8338410832));
+
+mat3 slf_gamut_matrix()
+{
+    if (tonemap_slog_gamut == 1) return SLF_SG3;
+    if (tonemap_slog_gamut == 2) return SLF_CINE;
+    if (tonemap_slog_gamut == 3) return SLF_AWG3;
+    return mat3(1.0);
+}
+
+vec3 slf_apply_purity(vec3 c)
+{
+    float purity = clamp(tonemap_slog_purity, 0.6, 1.0);
+    // Preserve the original instructions at 1, and neutral bits at every value.
+    if (purity < 1.0 && !(c.r == c.g && c.g == c.b))
+    {
+        float Y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+        c = vec3(Y) + purity * (c - vec3(Y));
+    }
+    return c;
+}
+
+vec3 slf_inverse_purity(vec3 c)
+{
+    float purity = clamp(tonemap_slog_purity, 0.6, 1.0);
+    if (purity < 1.0 && !(c.r == c.g && c.g == c.b))
+    {
+        float Y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+        c = vec3(Y) + (c - vec3(Y)) / purity;
+    }
+    return c;
+}
 
 // 0: Sony S-Log3
 vec3 slf_oetf_slog3(vec3 x)
@@ -403,6 +460,9 @@ vec3 encode_slog_family(vec3 c)
 
     c = max(c, vec3(0.0));                   // 1. clamp
     c *= exp2(ev);                           // 2. EV
+    c = slf_apply_purity(c);                 // Rec.709 purity, before camera gamut
+    if (tonemap_slog_gamut != 0)             // legacy skips all matrix arithmetic
+        c = max(slf_gamut_matrix() * c, vec3(0.0));
     c += vec3(0.18 * toe);                   // 3. toe: linear flare, in units of mid-grey
 
     vec3 code;                               // 4. per-channel OETF -> full-range code [0,1]
@@ -416,6 +476,46 @@ vec3 encode_slog_family(vec3 c)
         code = (code * 876.0 + 64.0) / 1023.0;
 
     return srgb_to_linear(code);             // 6. cancels the pipeline's linear_to_srgb()
+}
+
+// Invert delivered log CODES, not the sRGB-compensated encoder return. Used by
+// sensor godrays to reconstruct exposed linear Rec.709 before the sensor/camera.
+// Saturated codes and targets outside the nonnegative Rec.709 cone cannot be
+// recovered uniquely; the caller bounds those to representable scene light.
+vec3 decode_slog_family(vec3 code)
+{
+    int curve = int(floor(tonemap_params.x + 0.5));
+    if (int(floor(tonemap_params.y + 0.5)) == 1)
+        code = (code * 1023.0 - 64.0) / 876.0;
+    code = clamp(code, vec3(0.0), vec3(1.0));
+    vec3 c;
+    if (curve == 1)
+    {
+        vec3 y = (code * 1023.0 - 64.0) / 876.0;
+        c = (pow(vec3(10.0), (y - (0.616596 + 0.03)) / 0.432699)
+             - 0.037584) * (219.0 / 155.0) * 0.9;
+    }
+    else if (curve == 2)
+    {
+        vec3 lo = (code - 0.092809) / 5.367655;
+        vec3 hi = (pow(vec3(10.0), (code - 0.385537) / 0.247190) - 0.052272) / 5.555556;
+        c = mix(lo, hi, step(vec3(5.367655 * 0.010591 + 0.092809), code));
+    }
+    else if (curve == 3)
+    {
+        const float OFF = 0.0107977516232771;
+        c = (pow(vec3(10.0), (code * 1023.0 - 685.0) / 300.0) - OFF) / (1.0 - OFF);
+    }
+    else
+    {
+        vec3 lo = (code * 1023.0 - 95.0) * 0.01125 / (171.2102946929 - 95.0);
+        vec3 hi = pow(vec3(10.0), (code * 1023.0 - 420.0) / 261.5) * 0.19 - 0.01;
+        c = mix(lo, hi, step(vec3(171.2102946929 / 1023.0), code));
+    }
+    c -= vec3(0.18 * clamp(tonemap_params.z, 0.0, 0.3));
+    c = inverse(slf_gamut_matrix()) * c;
+    c = slf_inverse_purity(c);
+    return c * exp2(-clamp(tonemap_params.w, -8.0, 8.0));
 }
 
 vec3 applyExposure(vec3 color)

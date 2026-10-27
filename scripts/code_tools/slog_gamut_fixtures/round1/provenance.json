@@ -1,0 +1,8 @@
+{
+  "description": "Frozen uncommitted round-1 shaders before Sensor purity, captured at start of PURITY_BRIEF follow-up; retained for exact s=1 GL byte comparisons.",
+  "base_HEAD": "b8a911596c520d9139e86e69b0344d4b11454db9",
+  "sha256": {
+    "class1/deferred/tonemapUtilF.glsl": "99a3f5aa7b49c6cc235af1f91e940d8be564ea4ed227342e99663429e6653548",
+    "class1/alchemy/colorCorrectF.glsl": "a74fb9b8e27e4b492887817ad05bf5d76e37353cc5a02d127428c8c2c693b3b7"
+  }
+}

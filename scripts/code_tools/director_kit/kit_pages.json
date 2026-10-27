@@ -258,6 +258,7 @@
    "label_names": {}
   },
   "look_group/image_tab": {
+   "row_overrides": {"slog_gamut_combo": {"a": 0}, "slog_purity_slider": {"a": 0}},
    "v1_sources": [],
    "mode_on": "Easy view",
    "own_history": ["RenderExposure"],

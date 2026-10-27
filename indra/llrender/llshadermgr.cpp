@@ -1832,6 +1832,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("tonemap_type");
     mReservedUniforms.push_back("tonemap_mix");
     mReservedUniforms.push_back("tonemap_params");
+    mReservedUniforms.push_back("tonemap_slog_gamut");
+    mReservedUniforms.push_back("tonemap_slog_purity");
     mReservedUniforms.push_back("tonemap_amd");
     mReservedUniforms.push_back("tonemap_amd_shoulder");
     mReservedUniforms.push_back("tonemap_khronos_params");
