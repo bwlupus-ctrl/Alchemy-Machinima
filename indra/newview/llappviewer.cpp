@@ -5335,7 +5335,10 @@ void LLAppViewer::idle()
     // path/ghost updates, gObjectList.update, particles, camera) runs later in
     // idle() or in the following display(). Wall/network time is untouched.
     // See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.
-    LLPresentationTime::instance().tick();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle presentation tick");
+        LLPresentationTime::instance().tick();
+    }
     // [TronT0] Latch the shared Tron clock immediately after the
     // presentation clock ticks, before any consumer runs later this
     // iteration -- see altron.h. Cheap no-op work while TronEnabled is off
@@ -5660,10 +5663,22 @@ void LLAppViewer::idle()
     // above 200 FPS. The mover can no longer read gFrameIntervalSeconds because
     // that is set inside gObjectList.update() below. The mover self-gates on
     // FreezeTime. Zero cost with no drives.
-    ALObjectPathMover::instance().update(dt_raw);
-    ALGhostStudio::instance().updatePerFrame();
-    ALAvatarStaging::instance().update();
-    ALDanceBall::instance().tick();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle path mover");
+        ALObjectPathMover::instance().update(dt_raw);
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle ghost studio");
+        ALGhostStudio::instance().updatePerFrame();
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle avatar staging");
+        ALAvatarStaging::instance().update();
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle dance ball");
+        ALDanceBall::instance().tick();
+    }
 
     {
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
@@ -5790,13 +5805,19 @@ void LLAppViewer::idle()
     // once per frame, BEFORE the character update (applyOverride) and the camera
     // dispatch below, so a teleport/derez suspends the walk (and releases the
     // path camera) the same frame instead of leaving a stale override pose.
-    LLActorMover::instance().updateSuspendState();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle actor mover suspend");
+        LLActorMover::instance().updateSuspendState();
+    }
 
     // [GhostStudio] drive the in-world manipulation proxy once per frame HERE in
     // idle -- before render -- so any proxy creation / selection / toolset switch
     // happens off the render path, and the sync observes this frame's manip drag.
     // Near-zero cost when edit mode is off (an idempotent early-out).
-    ALToolGhostEdit::getInstance()->getManipProxy().tick();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle ghost manip proxy");
+        ALToolGhostEdit::getInstance()->getManipProxy().tick();
+    }
 
     // NOTE: ALObjectPathMover::update() was MOVED from here to just before
     // gObjectList.update() above, to fix moving-mount camera jitter (the driven
@@ -5804,25 +5825,43 @@ void LLAppViewer::idle()
     // queued after it). See the comment at that call site.
 
     // Weather library freezes once here, before all main/Prism/VCam draws.
-    ALPanelWeatherSettings::updateLibraryWeather();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle weather library");
+        ALPanelWeatherSettings::updateLibraryWeather();
+    }
 
     // [Director Switcher] Resolve program for this frozen presentation frame
     // before camera-owner arbitration. Inert while disarmed. Higher-priority
     // pilot/recorder/path cameras still win below.
-    ALDirectorSwitcher::instance().tick(
-        LLPresentationTime::currentFrame().presentation_time);
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle director switcher");
+        ALDirectorSwitcher::instance().tick(
+            LLPresentationTime::currentFrame().presentation_time);
+    }
 
     // [Anim Switchboard] Resolve the directed-animation program for this same
     // frozen presentation frame. Inert while disarmed.
-    ALDirectorAnimSwitcher::instance().tick(
-        LLPresentationTime::currentFrame().presentation_time);
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle anim switcher");
+        ALDirectorAnimSwitcher::instance().tick(
+            LLPresentationTime::currentFrame().presentation_time);
+    }
 
-    ALLocalFogManager::instance().tick(
-        LLPresentationTime::currentFrame().presentation_time);
-    ALCineLightRigManager::instance().tick(
-        LLPresentationTime::currentFrame().presentation_time);
-    ALVCamBonePov::instance().tick(
-        LLPresentationTime::currentFrame().presentation_time);
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle local fog");
+        ALLocalFogManager::instance().tick(
+            LLPresentationTime::currentFrame().presentation_time);
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle cine light rig");
+        ALCineLightRigManager::instance().tick(
+            LLPresentationTime::currentFrame().presentation_time);
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle vcam bone pov");
+        ALVCamBonePov::instance().tick(
+            LLPresentationTime::currentFrame().presentation_time);
+    }
 
     ++gCameraDispatchSerial;
     gCameraDispatchFlycamWrote = false;
@@ -5871,22 +5910,37 @@ void LLAppViewer::idle()
     // The ownership sampler and recorder must observe the same final,
     // post-operator camera.  Keep this immediately before onIdleFrame().
     alCameraDispatchSampleFinal();
-    LLFlycamRecorder::instance().onIdleFrame();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle flycam recorder");
+        LLFlycamRecorder::instance().onIdleFrame();
+    }
 
     // update media focus
-    LLViewerMediaFocus::getInstance()->update();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle media focus");
+        LLViewerMediaFocus::getInstance()->update();
+    }
 
     // Update marketplace
-    LLMarketplaceInventoryImporter::update();
-    LLMarketplaceInventoryNotifications::update();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle marketplace");
+        LLMarketplaceInventoryImporter::update();
+        LLMarketplaceInventoryNotifications::update();
+    }
 
     // objects and camera should be in sync, do LOD calculations now
     {
-        gObjectList.updateApparentAngles(gAgent);
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle apparent angles");
+            gObjectList.updateApparentAngles(gAgent);
+        }
     }
 
     // Update AV render info
-    LLAvatarRenderInfoAccountant::getInstance()->idle();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle av render info");
+        LLAvatarRenderInfoAccountant::getInstance()->idle();
+    }
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_APP("audio update"); //LL_RECORD_BLOCK_TIME(FTM_AUDIO_UPDATE);
