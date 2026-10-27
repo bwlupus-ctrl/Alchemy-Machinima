@@ -1257,7 +1257,7 @@
 				<panel
 					background_visible="false"
 					follows="left|top|right"
-					height="872"
+					height="890"
 					layout="topleft"
 					left="0"
 					name="render_settings_scroll_content"
@@ -1916,7 +1916,7 @@
 				left="0"
 				name="cost_text_border"
 				top_pad="14"
-				width="500" />
+				width="400" />
 			<!--Anti-Aliasing-->
 			<text
 				follows="left|top"
@@ -2020,7 +2020,7 @@
 				left="0"
 				name="cost_text_border"
 				top_pad="7"
-				width="500" />
+				width="400" />
 			<!--Resolution Scale-->
 			<!--TODO: Disable if AA is also disabled. This option causes broken rendering otherwise! Bug maybe?-->
 			<text
@@ -2943,7 +2943,7 @@
 				left="0"
 				name="cost_text_border"
 				top_pad="7"
-				width="500" />
+				width="400" />
 			<!--SSAO Toggle-->
 			<!--TODO: Disable Sliders if not enabled?-->
 			<check_box
