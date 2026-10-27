@@ -274,7 +274,19 @@ inline LLQuaternion objectFollowRotation(const LLQuaternion& object_rotation,
                                          bool follow_roll,
                                          ObjectFollowHistory& history)
 {
+    // Decompose first so the yaw history is maintained (and reset on invalid
+    // input) for every mask. Then return exact identity for invalid input and
+    // for no followed axes: composing three zero-angle factors is only
+    // approximately identity under the viewer's /fp:fast Release flags.
     const ObjectEulerAngles angles = objectEulerAngles(object_rotation, history);
+    if (!object_rotation.isFinite())
+    {
+        return LLQuaternion();
+    }
+    if (!follow_yaw && !follow_pitch && !follow_roll)
+    {
+        return LLQuaternion();
+    }
     if (follow_yaw && follow_pitch && follow_roll)
     {
         LLQuaternion rotation = object_rotation;
