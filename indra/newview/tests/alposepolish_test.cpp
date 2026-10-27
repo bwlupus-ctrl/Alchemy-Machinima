@@ -1274,4 +1274,46 @@ void alposepolish_test_object::test<23>()
     }
 }
 
+// Loop-stutter lockout (10/18): after a seed (login / teleport / hitch reset)
+// the tracked input velocity is zero, so a fast swing used to count as a jump
+// every frame and hold the joint at its last displayed pose until it snapped.
+// A cold-start swing must pass straight through at 20 and 30 fps, and a
+// position step must not capture rotation while position is unfiltered.
+template<> template<>
+void alposepolish_test_object::test<24>()
+{
+    const F32 rates[] = { 20.f, 30.f };
+    for (F32 fps : rates)
+    {
+        const F32 dt = 1.f / fps;
+        const F32 omega = 0.15f * fps; // 0.15 rad per frame > JUMP_ROT_BASE
+        InertiaJoint s;
+        for (S32 i = 0; i < 12; ++i)
+        {
+            const LLQuaternion in_rot = rotZ(omega * dt * (F32)i);
+            LLQuaternion io_rot = in_rot;
+            LLVector3 io_pos(0.f, 0.f, 0.f);
+            inertialize(s, io_rot, io_pos, dt, 0.09f, 0.f, false);
+            const std::string where = " at " + std::to_string((S32)fps) + " fps frame " + std::to_string(i);
+            ensure("cold-start swing passes through" + where, angleBetween(io_rot, in_rot) < 1e-4f);
+            ensure("cold-start swing stays settled" + where, s.mSettled);
+        }
+    }
+
+    // Unfiltered position: a large pos step with a still rotation is no jump.
+    const F32 dt = 1.f / 30.f;
+    InertiaJoint s;
+    for (S32 i = 0; i < 4; ++i)
+    {
+        LLQuaternion r = rotZ(0.4f);
+        LLVector3 p(0.f, 0.f, 0.f);
+        inertialize(s, r, p, dt, 0.09f, 0.f, false);
+    }
+    LLQuaternion r = rotZ(0.4f);
+    LLVector3 p(0.5f, 0.f, 0.f);
+    inertialize(s, r, p, dt, 0.09f, 0.f, false);
+    ensure("pos step with pos half-life 0 does not capture rotation", s.mSettled);
+    ensure("rotation untouched by a pos-only step", angleBetween(r, rotZ(0.4f)) < 1e-6f);
+}
+
 } // namespace tut

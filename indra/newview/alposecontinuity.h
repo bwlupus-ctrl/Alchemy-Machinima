@@ -89,6 +89,7 @@ struct InertiaJoint
     bool         mRotSettled = true;
     bool         mPosSettled = true;
     bool         mRefineInputVelocity = false; // first measured step of a new stream
+    bool         mInputVelocityKnown = false;  // a real input step has been measured since the seed
 };
 
 // ---------------------------------------------------------------------------
@@ -203,9 +204,12 @@ inline void inertialize(InertiaJoint& s, LLQuaternion& io_rot, LLVector3& io_pos
     const LLVector3 pos_step = in_pos - s.mLastInputPos;
 
     // Discontinuity: caller-flagged, or a value jump beyond what the input
-    // stream's tracked velocity makes plausible this frame.
+    // stream's tracked velocity makes plausible this frame. Self-detection
+    // needs a measured velocity: right after a seed (login, teleport, hitch
+    // reset) or a capture the velocity is unknown, and a fast swing would
+    // otherwise count as a jump every frame and hold the joint until it snaps.
     bool jump = transition;
-    if (!jump)
+    if (!jump && s.mInputVelocityKnown && !s.mRefineInputVelocity)
     {
         F32 rot_allow = JUMP_ROT_BASE;
         F32 pos_allow = JUMP_POS_BASE;
@@ -214,7 +218,11 @@ inline void inertialize(InertiaJoint& s, LLQuaternion& io_rot, LLVector3& io_pos
             rot_allow += JUMP_VEL_SLACK * s.mInputRotVel.length() * dt;
             pos_allow += JUMP_VEL_SLACK * s.mInputPosVel.length() * dt;
         }
-        jump = rot_step.length() > rot_allow || pos_step.length() > pos_allow;
+        // Position is not filtered when its half-life is 0; its steps must not
+        // trigger rotation captures.
+        const bool pos_filtered = pos_half_life_sec > 0.f;
+        jump = rot_step.length() > rot_allow ||
+               (pos_filtered && pos_step.length() > pos_allow);
     }
 
     if (jump)
@@ -286,6 +294,7 @@ inline void inertialize(InertiaJoint& s, LLQuaternion& io_rot, LLVector3& io_pos
             }
             s.mInputRotVel = new_rot_vel;
             s.mInputPosVel = new_pos_vel;
+            s.mInputVelocityKnown = true;
         }
 
         if (!s.mRotSettled)
