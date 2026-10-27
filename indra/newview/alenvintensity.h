@@ -46,6 +46,9 @@ namespace ALEnvIntensity
     };
 
     // Effective factors for the current pass.
+    // Environment EV adds to each exposure term before clampEV while the
+    // Environment only preference is available and enabled. Existing avatar
+    // identity routing removes the combined factors, including local EV.
     //  classic      : classic sky (legacy sky, RenderSkyAutoAdjustLegacy off) ->
     //                 every sky-side term is identity (local lights still apply)
     //  legacy_gamma : probe ambiance == 0 (no tonemapper) -> sun boost capped at
@@ -63,6 +66,11 @@ namespace ALEnvIntensity
 
     // Recipient preference; display passes only, with an HDR normal tag.
     bool envOnlyActive();
+
+    // Effective master offset, including during source-light probe captures.
+    // Zero when the preference is off/unavailable or preview lighting is neutral.
+    // Also used by probe signatures so changed source light invalidates caches.
+    F32 environmentEV();
 
     // Per-emitter factor for the local-light colour sites in LLPipeline:
     // 2^AlchemyEnvLocalLightEV, or exactly 1 for a Cine Light Rig emitter

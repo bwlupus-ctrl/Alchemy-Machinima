@@ -4232,6 +4232,13 @@
             <key>Type</key><string>Boolean</string>
             <key>Value</key><integer>0</integer>
         </map>
+        <key>AlchemyEnvEnvironmentEV</key>
+        <map>
+            <key>Comment</key><string>Brightens or darkens the set around people in stops; avatars keep their lighting. Works with Environment only.</string>
+            <key>Persist</key><integer>1</integer>
+            <key>Type</key><string>F32</string>
+            <key>Value</key><real>0</real>
+        </map>
         <key>AlchemyEnvEnvironmentOnlyTest</key>
         <map>
             <key>Comment</key><string>Environment-only diagnostic: 1 arms F0/F1/F2/F1-prime; 2 cancels and restores settings. See EnvOnly log verdicts. Requires a frozen HDR scene.</string>

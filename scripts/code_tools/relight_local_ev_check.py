@@ -71,6 +71,7 @@ struct LLDrawable {
 };
 float ev=0; bool includeRig=false;
 struct Controls {} gSavedSettings;
+struct { float mGLVersion=4.6f; } gGLManager;
 template<class T> struct LLCachedControl {
     std::string name; T fallback;
     LLCachedControl(Controls&,const char* n,T v):name(n),fallback(v){}
@@ -79,6 +80,7 @@ template<class T> struct LLCachedControl {
 };
 namespace ALEnvIntensity { bool isNeutral(){return false;} constexpr float EV_CLAMP=6.f;
 EV_CLAMP_FUNCTION
+ENVIRONMENT_EV_FUNCTION
 EV_FUNCTION
 }
 SELECTION_HELPER
@@ -200,6 +202,7 @@ def compile_selection(ref, out):
     admission = render[render.index('    std::array<double,8> admission;'):render.index('    if (!sPrismLensRender)', render.index('    std::array<double,8> admission;'))]
     helper = function(pipe, 'static LLColor3 local_light_selection_color(') if 'static LLColor3 local_light_selection_color(' in pipe else ''
     source = SHIM.replace('EV_CLAMP_FUNCTION', function(env, 'inline F32 clampEV('))
+    source = source.replace('ENVIRONMENT_EV_FUNCTION', function(env, 'F32 environmentEV()') if 'F32 environmentEV()' in env else '')
     source = source.replace('EV_SWEEP', ','.join('%sf' % float(ev) for ev in EVS))
     source = source.replace('EV_FUNCTION', function(env, 'F32 localLightEVScale('))
     source = source.replace('SELECTION_HELPER', helper).replace('SELECTION_LOOP', loop).replace('ADMISSION', admission)
@@ -219,9 +222,9 @@ def compile_selection(ref, out):
     cmd = out / 'compile.cmd'
     vcvars = r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'
     cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /EHsc "%s" /Fe:"%s" /Fo:"%s"\n' % (vcvars, cpp, exe, out / 'selection.obj'))
-    build = subprocess.run(['cmd', '/d', '/c', str(cmd)], cwd=out, capture_output=True, text=True)
+    build = subprocess.run(['cmd', '/d', '/c', str(cmd)], cwd=out, capture_output=True, text=True, timeout=90)
     assert build.returncode == 0, build.stdout + build.stderr
-    return json.loads(subprocess.check_output([str(exe)], text=True))
+    return json.loads(subprocess.check_output([str(exe)], text=True, timeout=30))
 
 
 def key(row):

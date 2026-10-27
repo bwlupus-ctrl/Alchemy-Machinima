@@ -431,6 +431,13 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     updateEnvOnlyAvailability();
     mEnvOnlyHDRConnection = gSavedSettings.getControl("RenderHDREnabled")->getSignal()->connect(
         [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvOnlyAvailability(); });
+    mEnvOnlyConnection = gSavedSettings.getControl("AlchemyEnvEnvironmentOnly")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvOnlyAvailability(); });
+    getChild<LLUICtrl>("env_environment_ev_reset")->setCommitCallback([](LLUICtrl*, const LLSD&)
+    {
+        ALExposureSettingsHistory::ScopedBatch history_batch("Reset Environment EV");
+        gSavedSettings.getControl("AlchemyEnvEnvironmentEV")->resetToDefault(true);
+    });
 
     // [EnvIntensity] Light Intensity strip (lp_env_intensity). The sliders and
     // the Auto exposure checkbox bind to viewer settings via control_name in the
@@ -1585,4 +1592,7 @@ void LLFloaterEnvironmentAdjust::updateEnvOnlyAvailability()
     const bool hdr = gPipeline.worldHDREnabled();
     if (LLUICtrl* control = findChild<LLUICtrl>("env_environment_only")) control->setEnabled(hdr);
     if (LLView* note = findChild<LLView>("env_environment_only_hdr")) note->setVisible(!hdr);
+    const bool enabled = hdr && gSavedSettings.getBOOL("AlchemyEnvEnvironmentOnly");
+    for (const char* name : {"env_environment_ev_label", "env_environment_ev", "env_environment_ev_reset"})
+        if (LLView* control = findChild<LLView>(name)) control->setEnabled(enabled);
 }

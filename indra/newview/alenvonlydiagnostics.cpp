@@ -121,7 +121,7 @@ public:
             "AlchemyEnvLocalLightSize", "AlchemyEnvSunKelvin", "AlchemyEnvSunTintColor",
             "AlchemyEnvSunTintStrength", "AlchemyEnvMoonTintColor", "AlchemyEnvMoonTintStrength",
             "AlchemyEnvAmbientTintColor", "AlchemyEnvAmbientTintStrength", "AlchemyEnvShadowLiftEV",
-            "AlchemyEnvMoonLinked", MODE };
+            "AlchemyEnvMoonLinked", "AlchemyEnvEnvironmentEV", MODE };
         for (const char* key : keys)
         {
             LLControlVariable* control = gSavedSettings.getControl(key);

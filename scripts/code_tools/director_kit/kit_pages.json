@@ -420,7 +420,8 @@
   "light_group/exposure_tab": {
    "v1_sources": ["panel_exposure_src.xml"],
    "root_class": "panel_exposure_page", "root_name": "exposure_tab_logic",
-   "own_history": ["AlchemyEnvSunEV", "AlchemyEnvSkyGIEV", "AlchemyEnvMoonLinked", "AlchemyEnvMoonEV", "AlchemyEnvGIAmbientEV", "AlchemyEnvGIProbeDiffuseEV", "AlchemyEnvGIProbeSpecEV", "AlchemyEnvLocalLightEV", "AlchemyEnvLocalLightSize", "AlchemyEnvLocalLightIncludeRig", "AlchemyEnvEnvironmentOnly", "AlchemyEnvSunKelvin", "AlchemyEnvSunTintColor", "AlchemyEnvSunTintStrength", "AlchemyEnvMoonTintColor", "AlchemyEnvMoonTintStrength", "AlchemyEnvAmbientTintColor", "AlchemyEnvAmbientTintStrength", "AlchemyEnvShadowLiftEV", "RenderDynamicExposureEnabled", "RenderExposure"],
+   "own_history": ["AlchemyEnvSunEV", "AlchemyEnvSkyGIEV", "AlchemyEnvMoonLinked", "AlchemyEnvMoonEV", "AlchemyEnvGIAmbientEV", "AlchemyEnvGIProbeDiffuseEV", "AlchemyEnvGIProbeSpecEV", "AlchemyEnvLocalLightEV", "AlchemyEnvLocalLightSize", "AlchemyEnvLocalLightIncludeRig", "AlchemyEnvEnvironmentOnly",
+    "AlchemyEnvEnvironmentEV", "AlchemyEnvSunKelvin", "AlchemyEnvSunTintColor", "AlchemyEnvSunTintStrength", "AlchemyEnvMoonTintColor", "AlchemyEnvMoonTintStrength", "AlchemyEnvAmbientTintColor", "AlchemyEnvAmbientTintStrength", "AlchemyEnvShadowLiftEV", "RenderDynamicExposureEnabled", "RenderExposure"],
    "preset": {"mode": "provider", "provider": "env_intensity"},
    "mode_on": "Basics",
    "omit_rows": [],

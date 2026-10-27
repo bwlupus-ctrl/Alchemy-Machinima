@@ -226,6 +226,17 @@ namespace ALEnvIntensity
         return enabled() && hdr() && gGLManager.mGLVersion > 4.05f && !isNeutral() && !isSamplingCapture();
     }
 
+    // Same availability as envOnlyActive, but source lights must also carry
+    // the offset into probe captures. compute() clears sampling-time terms
+    // below, exactly as for their individual EV controls.
+    F32 environmentEV()
+    {
+        static LLCachedControl<bool> enabled(gSavedSettings, "AlchemyEnvEnvironmentOnly", false);
+        static LLCachedControl<bool> hdr(gSavedSettings, "RenderHDREnabled", true);
+        static LLCachedControl<F32> ev(gSavedSettings, "AlchemyEnvEnvironmentEV", 0.f);
+        return enabled() && hdr() && gGLManager.mGLVersion > 4.05f && !isNeutral() ? ev() : 0.f;
+    }
+
     ScopedNeutral::ScopedNeutral()  { ++sNeutralDepth; }
     ScopedNeutral::~ScopedNeutral() { --sNeutralDepth; }
 
@@ -261,11 +272,12 @@ namespace ALEnvIntensity
 
         const F32 body_ev = sun_up ? (F32)sun_ev
                                    : ((bool)moon_linked ? (F32)sun_ev : (F32)moon_ev);
-        f.mSunMul   = exp2f(clampEV(body_ev));
-        f.mAmbMul   = exp2f(clampEV((F32)gi_ev + (F32)gi_ambient_ev));
-        f.mDiffMul  = exp2f(clampEV((F32)gi_ev + (F32)gi_diffuse_ev));
-        f.mSpecMul  = exp2f(clampEV((F32)gi_spec_ev));
-        f.mLocalMul = exp2f(clampEV((F32)local_ev));
+        const F32 environment_ev = environmentEV();
+        f.mSunMul   = exp2f(clampEV(body_ev + environment_ev));
+        f.mAmbMul   = exp2f(clampEV((F32)gi_ev + (F32)gi_ambient_ev + environment_ev));
+        f.mDiffMul  = exp2f(clampEV((F32)gi_ev + (F32)gi_diffuse_ev + environment_ev));
+        f.mSpecMul  = exp2f(clampEV((F32)gi_spec_ev + environment_ev));
+        f.mLocalMul = exp2f(clampEV((F32)local_ev + environment_ev));
         f.mSunTint  = sun_up ? cachedTint(TINT_SUN, (F32)sun_kelvin, (LLColor4)sun_tint_color, (F32)sun_tint_strength)
                              : cachedTint(TINT_MOON, KELVIN_NEUTRAL, (LLColor4)moon_tint_color, (F32)moon_tint_strength);
         f.mAmbTint  = cachedTint(TINT_AMBIENT, KELVIN_NEUTRAL, (LLColor4)amb_tint_color, (F32)amb_tint_strength);
@@ -325,7 +337,7 @@ namespace ALEnvIntensity
         {
             return 1.f;
         }
-        return exp2f(clampEV((F32)local_ev));
+        return exp2f(clampEV((F32)local_ev + environmentEV()));
     }
 
     F32 localLightSize(const LLViewerObject* obj)
@@ -345,6 +357,6 @@ namespace ALEnvIntensity
         {
             return 1.f;
         }
-        return exp2f(clampEV((F32)gi_ev + (F32)gi_diffuse_ev));
+        return exp2f(clampEV((F32)gi_ev + (F32)gi_diffuse_ev + environmentEV()));
     }
 }

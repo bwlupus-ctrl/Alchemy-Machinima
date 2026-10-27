@@ -331,8 +331,9 @@ def validate_data(data: dict) -> None:
     # Local light size adds one Scene light row -> 2299.
     # Avatar Anim speed adds seven Cast > Move rows -> 2306.
     # Environment only adds one recipient preference row on Light > Exposure: 2306 -> 2307.
-    if len(pages) != 38 or row_count != 2307:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2307")
+    # Environment master EV adds one Scene light row beside its recipient preference: 2307 -> 2308.
+    if len(pages) != 38 or row_count != 2308:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2308")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

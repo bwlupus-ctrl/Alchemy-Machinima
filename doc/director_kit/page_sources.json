@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2113,
+    "rows": 2114,
     "owner_roots": 35,
     "unresolved_rows": 22,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2113
+    "independent_json_rows": 2114
   },
   "setting_conflicts": [
     {
@@ -855,6 +855,56 @@
       "writable_home": null
     },
     {
+      "setting": "AlchemyEnvEnvironmentEV",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
+          "line": 790,
+          "widget": "env_environment_ev",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
+            "tag": "floater",
+            "name": "env_adjust_snapshot",
+            "line": 3
+          }
+        },
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 67,
+          "widget": "exp_environment_ev",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        },
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
+          "line": 49,
+          "widget": "exp_environment_ev",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
+            "tag": "panel",
+            "name": "panel_exposure_src",
+            "line": 10
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4235,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "AlchemyEnvEnvironmentOnly",
       "pages": [
         "exposure_tab"
@@ -912,7 +962,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 1031,
+          "line": 1034,
           "widget": "env_amb_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -973,7 +1023,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 941,
+          "line": 944,
           "widget": "env_probe_diff_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1034,7 +1084,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 986,
+          "line": 989,
           "widget": "env_probe_spec_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1095,7 +1145,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 896,
+          "line": 899,
           "widget": "env_local_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1156,7 +1206,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 882,
+          "line": 885,
           "widget": "env_local_include_rig",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1202,7 +1252,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4249,
+          "line": 4256,
           "group": "Global",
           "type": "Boolean"
         }
@@ -1217,7 +1267,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 1319,
+          "line": 1322,
           "widget": "env_local_size",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1278,7 +1328,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 841,
+          "line": 844,
           "widget": "env_moon_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1339,7 +1389,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 827,
+          "line": 830,
           "widget": "env_moon_linked",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1400,7 +1450,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-          "line": 1076,
+          "line": 1079,
           "widget": "env_shadow_lift",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -1446,7 +1496,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4352,
+          "line": 4359,
           "group": "Global",
           "type": "F32"
         }
@@ -1606,7 +1656,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 88,
+          "line": 93,
           "widget": "exp_tonemap_type",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -1740,7 +1790,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 108,
+          "line": 113,
           "widget": "exp_amd_exposure",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -2213,7 +2263,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 113,
+          "line": 118,
           "widget": "exp_slog_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -2425,7 +2475,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 118,
+          "line": 123,
           "widget": "exp_legacy_gamma_skies",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18288,7 +18338,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 198,
+          "line": 203,
           "widget": "sensor_brightness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18301,7 +18351,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4477,
+          "line": 4484,
           "group": "Global",
           "type": "U32"
         }
@@ -18316,7 +18366,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 211,
+          "line": 216,
           "widget": "sensor_chroma",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18329,7 +18379,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4499,
+          "line": 4506,
           "group": "Global",
           "type": "F32"
         }
@@ -18344,7 +18394,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 230,
+          "line": 235,
           "widget": "sensor_custom_base",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18357,7 +18407,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4532,
+          "line": 4539,
           "group": "Global",
           "type": "F32"
         }
@@ -18372,7 +18422,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 260,
+          "line": 265,
           "widget": "sensor_custom_hcg_analogbase",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18385,7 +18435,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4642,
+          "line": 4649,
           "group": "Global",
           "type": "F32"
         }
@@ -18400,7 +18450,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 254,
+          "line": 259,
           "widget": "sensor_custom_hcg_fullwell",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18413,7 +18463,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4620,
+          "line": 4627,
           "group": "Global",
           "type": "F32"
         }
@@ -18428,7 +18478,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 263,
+          "line": 268,
           "widget": "sensor_custom_hcg_pedestal",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18441,7 +18491,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4653,
+          "line": 4660,
           "group": "Global",
           "type": "F32"
         }
@@ -18456,7 +18506,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 257,
+          "line": 262,
           "widget": "sensor_custom_hcg_readnoise",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18469,7 +18519,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4631,
+          "line": 4638,
           "group": "Global",
           "type": "F32"
         }
@@ -18484,7 +18534,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 266,
+          "line": 271,
           "widget": "sensor_custom_hcg_white",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18497,7 +18547,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4664,
+          "line": 4671,
           "group": "Global",
           "type": "F32"
         }
@@ -18512,7 +18562,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 236,
+          "line": 241,
           "widget": "sensor_custom_headroom",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18525,7 +18575,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4554,
+          "line": 4561,
           "group": "Global",
           "type": "F32"
         }
@@ -18540,7 +18590,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 245,
+          "line": 250,
           "widget": "sensor_custom_lcg_analogbase",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18553,7 +18603,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4587,
+          "line": 4594,
           "group": "Global",
           "type": "F32"
         }
@@ -18568,7 +18618,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 239,
+          "line": 244,
           "widget": "sensor_custom_lcg_fullwell",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18581,7 +18631,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4565,
+          "line": 4572,
           "group": "Global",
           "type": "F32"
         }
@@ -18596,7 +18646,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 248,
+          "line": 253,
           "widget": "sensor_custom_lcg_pedestal",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18609,7 +18659,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4598,
+          "line": 4605,
           "group": "Global",
           "type": "F32"
         }
@@ -18624,7 +18674,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 242,
+          "line": 247,
           "widget": "sensor_custom_lcg_readnoise",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18637,7 +18687,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4576,
+          "line": 4583,
           "group": "Global",
           "type": "F32"
         }
@@ -18652,7 +18702,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 251,
+          "line": 256,
           "widget": "sensor_custom_lcg_white",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18665,7 +18715,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4609,
+          "line": 4616,
           "group": "Global",
           "type": "F32"
         }
@@ -18680,7 +18730,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 233,
+          "line": 238,
           "widget": "sensor_custom_switch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18693,7 +18743,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4543,
+          "line": 4550,
           "group": "Global",
           "type": "F32"
         }
@@ -18708,7 +18758,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 151,
+          "line": 156,
           "widget": "sensor_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18721,7 +18771,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4422,
+          "line": 4429,
           "group": "Global",
           "type": "Boolean"
         }
@@ -18736,7 +18786,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 206,
+          "line": 211,
           "widget": "sensor_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18749,7 +18799,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4488,
+          "line": 4495,
           "group": "Global",
           "type": "F32"
         }
@@ -18764,7 +18814,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 188,
+          "line": 193,
           "widget": "sensor_preset",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18777,7 +18827,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4466,
+          "line": 4473,
           "group": "Global",
           "type": "U32"
         }
@@ -18792,7 +18842,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 216,
+          "line": 221,
           "widget": "sensor_seed_fixed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18805,7 +18855,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4510,
+          "line": 4517,
           "group": "Global",
           "type": "Boolean"
         }
@@ -36538,7 +36588,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 136,
+          "line": 141,
           "widget": "exp_bloom_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -36600,7 +36650,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 141,
+          "line": 146,
           "widget": "exp_bloom_threshold",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -37783,7 +37833,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 80,
+          "line": 85,
           "widget": "exp_auto_exposure",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -37818,7 +37868,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4376,
+          "line": 4383,
           "group": "Global",
           "type": "Boolean"
         }
@@ -37867,7 +37917,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 83,
+          "line": 88,
           "widget": "exp_exposure",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -41954,7 +42004,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 103,
+          "line": 108,
           "widget": "exp_tonemap_mix",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -166074,14 +166124,14 @@
       "label": "Exposure",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 50,
+      "row_count": 51,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
           "tag": "panel",
           "name": "exposure_tab_logic",
           "line": 3,
-          "matched_rows": 50,
+          "matched_rows": 51,
           "evidence": "row-widget match"
         },
         {
@@ -166104,7 +166154,7 @@
       "owner_classes": [
         {
           "class": "ALPanelExposurePage",
-          "reference_count": 13
+          "reference_count": 14
         },
         {
           "class": "ALPanelExposureHub",
@@ -166137,9 +166187,9 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 42,
-        "setting_coverage": 0.84,
-        "cpp_referenced_rows": 12,
+        "setting_bound_rows": 43,
+        "setting_coverage": 0.843137,
+        "cpp_referenced_rows": 13,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -166430,7 +166480,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 896,
+              "line": 899,
               "widget": "env_local_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166533,7 +166583,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 1319,
+              "line": 1322,
               "widget": "env_local_size",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166574,7 +166624,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4352,
+              "line": 4359,
               "group": "Global",
               "type": "F32"
             }
@@ -166636,7 +166686,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 1076,
+              "line": 1079,
               "widget": "env_shadow_lift",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166739,7 +166789,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 827,
+              "line": 830,
               "widget": "env_moon_linked",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166842,7 +166892,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 841,
+              "line": 844,
               "widget": "env_moon_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -166945,7 +166995,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 1031,
+              "line": 1034,
               "widget": "env_amb_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -167048,7 +167098,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 941,
+              "line": 944,
               "widget": "env_probe_diff_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -167151,7 +167201,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 986,
+              "line": 989,
               "widget": "env_probe_spec_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -167192,7 +167242,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4249,
+              "line": 4256,
               "group": "Global",
               "type": "Boolean"
             }
@@ -167254,7 +167304,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
-              "line": 882,
+              "line": 885,
               "widget": "env_local_include_rig",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
@@ -167319,7 +167369,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 389,
+              "line": 392,
               "class": "ALPanelExposurePage",
               "function": "updateEnvOnlyAvailability",
               "wired_class": "ALPanelExposurePage",
@@ -167380,6 +167430,108 @@
           ]
         },
         {
+          "card": "scene_light",
+          "card_title": "Scene light",
+          "option_index": null,
+          "option_label": null,
+          "index": 12,
+          "label": "Environment (EV)",
+          "kind": "slider",
+          "widget": "exp_environment_ev",
+          "matched_widget": "exp_environment_ev",
+          "declared_setting": "AlchemyEnvEnvironmentEV",
+          "resolved_setting": "AlchemyEnvEnvironmentEV",
+          "setting_candidates": [
+            "AlchemyEnvEnvironmentEV"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4235,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 67,
+              "tag": "slider",
+              "control_name": "AlchemyEnvEnvironmentEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 396,
+              "class": "ALPanelExposurePage",
+              "function": "updateEnvOnlyAvailability",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "updateEnvOnlyAvailability",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "if (LLUICtrl* control = findChild<LLUICtrl>(\"exp_environment_ev\"))"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
+              "line": 49,
+              "tag": "slider",
+              "control_name": "AlchemyEnvEnvironmentEV",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
+                "tag": "panel",
+                "name": "panel_exposure_src",
+                "line": 10
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
+              "line": 790,
+              "widget": "env_environment_ev",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml",
+                "tag": "floater",
+                "name": "env_adjust_snapshot",
+                "line": 3
+              }
+            },
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
+              "line": 49,
+              "widget": "exp_environment_ev",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_exposure_src.xml",
+                "tag": "panel",
+                "name": "panel_exposure_src",
+                "line": 10
+              }
+            }
+          ]
+        },
+        {
           "card": "sky_settings",
           "card_title": "Per-sky settings",
           "option_index": null,
@@ -167397,7 +167549,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 69,
+              "line": 74,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -167466,7 +167618,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 72,
+              "line": 77,
               "tag": "button",
               "control_name": null,
               "callbacks": [
@@ -167554,7 +167706,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4376,
+              "line": 4383,
               "group": "Global",
               "type": "Boolean"
             }
@@ -167563,7 +167715,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 80,
+              "line": 85,
               "tag": "kit_switch",
               "control_name": "RenderDynamicExposureEnabled",
               "callbacks": [],
@@ -167666,7 +167818,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 83,
+              "line": 88,
               "tag": "slider",
               "control_name": "RenderExposure",
               "callbacks": [],
@@ -167831,7 +167983,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 88,
+              "line": 93,
               "tag": "combo_box",
               "control_name": "AlchemyRenderTonemapType",
               "callbacks": [],
@@ -167962,7 +168114,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 103,
+              "line": 108,
               "tag": "slider",
               "control_name": "RenderTonemapMix",
               "callbacks": [],
@@ -168065,7 +168217,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 108,
+              "line": 113,
               "tag": "slider",
               "control_name": "AlchemyToneMapAMDExposure",
               "callbacks": [],
@@ -168104,7 +168256,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 205,
+              "line": 207,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168219,7 +168371,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 113,
+              "line": 118,
               "tag": "slider",
               "control_name": "AlchemyToneMapSLogEV",
               "callbacks": [],
@@ -168258,7 +168410,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 207,
+              "line": 209,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168373,7 +168525,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 118,
+              "line": 123,
               "tag": "kit_switch",
               "control_name": "AlchemyTonemapLegacyGammaSkies",
               "callbacks": [],
@@ -168483,7 +168635,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 124,
+              "line": 129,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -168533,7 +168685,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 203,
+              "line": 205,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168544,7 +168696,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 212,
+              "line": 214,
               "class": "ALPanelExposurePage",
               "function": "<inline callback>",
               "wired_class": "ALPanelExposurePage",
@@ -168610,7 +168762,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 127,
+              "line": 132,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -168660,7 +168812,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 204,
+              "line": 206,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -168671,7 +168823,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 214,
+              "line": 216,
               "class": "ALPanelExposurePage",
               "function": "<inline callback>",
               "wired_class": "ALPanelExposurePage",
@@ -168763,7 +168915,7 @@
             },
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 130,
+              "line": 135,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -168836,7 +168988,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 136,
+              "line": 141,
               "tag": "slider",
               "control_name": "RenderBloomStrength",
               "callbacks": [],
@@ -168944,7 +169096,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 141,
+              "line": 146,
               "tag": "slider",
               "control_name": "RenderBloomThreshold",
               "callbacks": [],
@@ -169042,7 +169194,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 146,
+              "line": 151,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -169081,7 +169233,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 210,
+              "line": 212,
               "class": "ALFloaterLightBox",
               "function": "showTab",
               "wired_class": "ALPanelExposurePage",
@@ -169134,7 +169286,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4422,
+              "line": 4429,
               "group": "Global",
               "type": "Boolean"
             }
@@ -169143,7 +169295,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 151,
+              "line": 156,
               "tag": "kit_switch",
               "control_name": "CineSensorEnabled",
               "callbacks": [],
@@ -169183,7 +169335,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4455,
+              "line": 4462,
               "group": "Global",
               "type": "F32"
             }
@@ -169221,7 +169373,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 154,
+              "line": 159,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -169236,7 +169388,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 231,
+              "line": 233,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -169247,7 +169399,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 232,
+              "line": 234,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelExposurePage",
@@ -169258,7 +169410,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 234,
+              "line": 236,
               "class": "ALPanelExposurePage",
               "function": "alKitSetTypedControl",
               "wired_class": "ALPanelExposurePage",
@@ -169295,7 +169447,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4466,
+              "line": 4473,
               "group": "Global",
               "type": "U32"
             }
@@ -169309,7 +169461,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 188,
+              "line": 193,
               "tag": "combo_box",
               "control_name": "CineSensorPreset",
               "callbacks": [],
@@ -169349,7 +169501,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4477,
+              "line": 4484,
               "group": "Global",
               "type": "U32"
             }
@@ -169361,7 +169513,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 198,
+              "line": 203,
               "tag": "combo_box",
               "control_name": "CineSensorBrightnessMode",
               "callbacks": [],
@@ -169401,7 +169553,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4488,
+              "line": 4495,
               "group": "Global",
               "type": "F32"
             }
@@ -169410,7 +169562,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 206,
+              "line": 211,
               "tag": "slider",
               "control_name": "CineSensorNoiseAmount",
               "callbacks": [],
@@ -169450,7 +169602,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4499,
+              "line": 4506,
               "group": "Global",
               "type": "F32"
             }
@@ -169459,7 +169611,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 211,
+              "line": 216,
               "tag": "slider",
               "control_name": "CineSensorChroma",
               "callbacks": [],
@@ -169499,7 +169651,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4510,
+              "line": 4517,
               "group": "Global",
               "type": "Boolean"
             }
@@ -169508,7 +169660,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 216,
+              "line": 221,
               "tag": "kit_switch",
               "control_name": "CineSensorSeedFixed",
               "callbacks": [],
@@ -169548,7 +169700,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4521,
+              "line": 4528,
               "group": "Global",
               "type": "U32"
             }
@@ -169557,7 +169709,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 219,
+              "line": 224,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -169572,7 +169724,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 236,
+              "line": 238,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -169583,7 +169735,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 242,
+              "line": 244,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelExposurePage",
@@ -169594,7 +169746,7 @@
             },
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 247,
+              "line": 249,
               "class": "ALPanelExposurePage",
               "function": "getU32",
               "wired_class": "ALPanelExposurePage",
@@ -169631,7 +169783,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 222,
+              "line": 227,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -169646,7 +169798,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 229,
+              "line": 231,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -169683,7 +169835,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 225,
+              "line": 230,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -169698,7 +169850,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 230,
+              "line": 232,
               "class": "ALPanelExposurePage",
               "function": "postBuild",
               "wired_class": "ALPanelExposurePage",
@@ -169735,7 +169887,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4532,
+              "line": 4539,
               "group": "Global",
               "type": "F32"
             }
@@ -169744,7 +169896,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 230,
+              "line": 235,
               "tag": "spinner",
               "control_name": "CineSensorCustomBaseISO",
               "callbacks": [],
@@ -169784,7 +169936,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4543,
+              "line": 4550,
               "group": "Global",
               "type": "F32"
             }
@@ -169793,7 +169945,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 233,
+              "line": 238,
               "tag": "spinner",
               "control_name": "CineSensorCustomSwitchISO",
               "callbacks": [],
@@ -169833,7 +169985,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4554,
+              "line": 4561,
               "group": "Global",
               "type": "F32"
             }
@@ -169842,7 +169994,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 236,
+              "line": 241,
               "tag": "spinner",
               "control_name": "CineSensorCustomHeadroom",
               "callbacks": [],
@@ -169882,7 +170034,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4565,
+              "line": 4572,
               "group": "Global",
               "type": "F32"
             }
@@ -169891,7 +170043,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 239,
+              "line": 244,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGFullWell",
               "callbacks": [],
@@ -169931,7 +170083,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4576,
+              "line": 4583,
               "group": "Global",
               "type": "F32"
             }
@@ -169940,7 +170092,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 242,
+              "line": 247,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGReadNoise",
               "callbacks": [],
@@ -169980,7 +170132,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4587,
+              "line": 4594,
               "group": "Global",
               "type": "F32"
             }
@@ -169989,7 +170141,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 245,
+              "line": 250,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGAnalogBase",
               "callbacks": [],
@@ -170029,7 +170181,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4598,
+              "line": 4605,
               "group": "Global",
               "type": "F32"
             }
@@ -170038,7 +170190,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 248,
+              "line": 253,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGPedestal",
               "callbacks": [],
@@ -170078,7 +170230,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4609,
+              "line": 4616,
               "group": "Global",
               "type": "F32"
             }
@@ -170087,7 +170239,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 251,
+              "line": 256,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGWhite",
               "callbacks": [],
@@ -170127,7 +170279,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4620,
+              "line": 4627,
               "group": "Global",
               "type": "F32"
             }
@@ -170136,7 +170288,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 254,
+              "line": 259,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGFullWell",
               "callbacks": [],
@@ -170176,7 +170328,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4631,
+              "line": 4638,
               "group": "Global",
               "type": "F32"
             }
@@ -170185,7 +170337,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 257,
+              "line": 262,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGReadNoise",
               "callbacks": [],
@@ -170225,7 +170377,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4642,
+              "line": 4649,
               "group": "Global",
               "type": "F32"
             }
@@ -170234,7 +170386,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 260,
+              "line": 265,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGAnalogBase",
               "callbacks": [],
@@ -170274,7 +170426,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4653,
+              "line": 4660,
               "group": "Global",
               "type": "F32"
             }
@@ -170283,7 +170435,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 263,
+              "line": 268,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGPedestal",
               "callbacks": [],
@@ -170323,7 +170475,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4664,
+              "line": 4671,
               "group": "Global",
               "type": "F32"
             }
@@ -170332,7 +170484,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 266,
+              "line": 271,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGWhite",
               "callbacks": [],
@@ -180116,7 +180268,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 88,
+              "line": 93,
               "widget": "exp_tonemap_type",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -180259,7 +180411,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 83,
+              "line": 88,
               "widget": "exp_exposure",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -180390,7 +180542,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 118,
+              "line": 123,
               "widget": "exp_legacy_gamma_skies",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -180533,7 +180685,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 108,
+              "line": 113,
               "widget": "exp_amd_exposure",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -180676,7 +180828,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 113,
+              "line": 118,
               "widget": "exp_slog_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -185647,7 +185799,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 136,
+              "line": 141,
               "tag": "slider",
               "control_name": "RenderBloomStrength",
               "callbacks": [],
@@ -185713,7 +185865,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 136,
+              "line": 141,
               "widget": "exp_bloom_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -185798,7 +185950,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 141,
+              "line": 146,
               "tag": "slider",
               "control_name": "RenderBloomThreshold",
               "callbacks": [],
@@ -185864,7 +186016,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 141,
+              "line": 146,
               "widget": "exp_bloom_threshold",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",

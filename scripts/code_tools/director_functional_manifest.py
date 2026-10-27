@@ -1906,6 +1906,8 @@ def add_runtime_prerequisites(entries):
                     entry.update(probe="vcam_media_runtime")
             if show == "custom_aspect":
                 entry.setdefault("reveal", []).append({"selector": "vc_output_aspect", "value": -1})
+        elif page == "exposure_tab" and widget == "exp_environment_ev":
+            condition = "HDR and Environment only enabled"
         elif page == "gaze_tab" and not entry.get("setting"):
             condition = "actor selected"
         elif page == "ghosts_tab" and widget in {"pitch_spinner", "roll_spinner"}:
@@ -2334,7 +2336,7 @@ def generation_self_test():
         ("vcam_tab", "vc_proj_resolution"), ("vcam_tab", "vc_face_fit"),
         ("vcam_tab", "vc_screen_height"), ("vcam_tab", "vc_bone_anchor"),
         ("vcam_tab", "vc_eye_x"),
-        ("gaze_tab", "gaze_cast_combo"))]
+        ("gaze_tab", "gaze_cast_combo"), ("exposure_tab", "exp_environment_ev"))]
     add_runtime_prerequisites(prerequisites)
     assert all(row["action"] == "DEFER_INWORLD" and row["enable_when"] for row in prerequisites)
     login_camera = [{"page": "vcam_tab", "widget_name": widget, "action": "RUN"}

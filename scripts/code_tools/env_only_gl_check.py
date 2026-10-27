@@ -18,6 +18,7 @@ import re
 
 import numpy as np
 import relight_3d_gl as G
+from env_ev_math_check import fixture_factors
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -71,6 +72,14 @@ def parity_class(namespace):
 def run(args):
     global OUT
     OUT = args.out.resolve(); OUT.mkdir(parents=True, exist_ok=True)
+    # Actual C++ factors are the GPU inputs; the independent summed-EV render
+    # below is the reference. This CPU control also fails before implementation.
+    environment_fixtures = fixture_factors(args.factor_source_ref)
+    for row in environment_fixtures:
+        expected = np.exp2(np.float32(.5 + (row['ev'] if row['enabled'] else 0)))
+        for key in ('sun', 'ambient', 'diffuse', 'reflection', 'local', 'ssao'):
+            assert np.isclose(row[key], expected, rtol=1.e-7), ('Environment EV summed factor', row, key, expected)
+    print('PASS Environment EV CPU fixtures: six summed factors, OFF and zero controls', flush=True)
     inventory = {ref: {name: hashlib.sha256(source(ref, G.SHADERS+'/'+path).encode()).hexdigest()
                       for name, path in FILES.items()} for ref in ('HEAD', 'WORKTREE')}
     inventory['class3_probes'] = hashlib.sha256(source('WORKTREE', G.SHADERS+'/class3/deferred/reflectionProbeF.glsl').encode()).hexdigest()
@@ -220,7 +229,7 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
         ambient_tint=('sky_amb_tint',(.4,1.2,.8)),diffuse=('sky_gi_scale',(4.,)),
         reflection=('sky_probe_rad_scale',(4.,)),lift=('shadow_lift_gain',(3.,)),ssao=('ssao_irradiance_max',(.04,)),
         local_pos=('local_ev',(64.,)),local_neg=('local_ev',(.015625,)),size=('local_size',(.3,)))
-    def setup(label,kind,mode,factor=None,pbr=True,preference=0,weather=False):
+    def setup(label,kind,mode,factor=None,pbr=True,preference=0,weather=False,environment=None):
         r=runners[label];p=r.program(kind,weather=True) if weather else programs[label,kind];gl.use(p)
         r.defaults(p,local=.8,env=.5,spec=(.3,.3,.3,.6),coverage=.6,light_dir=(.995,0.,.1))
         r.set(p,'screen_res',float(width),float(height));r.set(p,'env_only_mode',mode);r.set(p,'gbuffer_tag_preferred',preference)
@@ -252,6 +261,21 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
                 for i in range(8):r.set(p,f'local_light_sizes[{i}]',radius)
             else:
                 r.set(p,key,*values)
+        if environment is not None:
+            for name,key in (('sky_sun_ev_scale','sun'),('sky_amb_scale','ambient'),
+                             ('sky_gi_scale','diffuse'),('sky_probe_rad_scale','reflection')):
+                r.set(p,name,environment[key])
+            r.set(p,'ssao_irradiance_max',.01*environment['ssao'])
+            # Match the production forward identity light sets. Deferred
+            # shaders receive the exposed radiance plus its combined inverse.
+            local = environment['local']
+            scale = 1. if mode == 2 else local
+            r.set(p,'color',.8*scale,.8*scale,.8*scale)
+            r.set(p,'local_light_ev_scale',local)
+            for i in range(16 if kind=='multi' else 4):
+                r.set(p,f'light_col[{i}]',.8*scale,.8*scale,.8*scale,.5)
+                r.set(p,f'local_light_ev_scales[{i}]',local)
+            for i in range(8):r.set(p,f'light_diffuse[{i}]',*((.8*scale,)*3 if i==1 else (0.,)*3))
         if label=='probes':
             for name,unit in (('reflectionProbes',13),('irradianceProbes',14)):
                 gl.active(0x84C0+unit);gl.bind_tex(0x9009,cube_textures[unit-13]);r.set(p,name,unit)
@@ -283,6 +307,29 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
     def require(ok,name):
         if not ok:fail.append(name)
         print(('PASS ' if ok else 'FAIL ')+name,flush=True)
+    for label,kinds in (('off',FILES),('probes',('soften','pbr','shiny'))):
+        for kind in kinds:
+            identity=render(label,kind,0)
+            for row in environment_fixtures:
+                summed=float(np.exp2(np.float32(.5+(row['ev'] if row['enabled'] else 0))))
+                reference={key:summed for key in ('sun','ambient','diffuse','reflection','local','ssao')}
+                adjusted=render(label,kind,0,environment=reference)
+                actual=render(label,kind,(2 if kind in FORWARD else 1) if row['enabled'] else 0,environment=row)
+                name=f'Environment EV/{label}/{kind}/{row["enabled"]}/{row["ev"]}'
+                if row['enabled']:
+                    area=actual if kind in FORWARD else actual[:,:width//2]
+                    expected=identity if kind in FORWARD else identity[:,:width//2]
+                    require(np.all(np.abs(area-expected)<=.001+.01*np.maximum(np.abs(area),np.abs(expected))),name+' avatar identity')
+                    world=render(label,kind,0,environment=row) if kind in FORWARD else actual[:,width//2:]
+                    target=adjusted if kind in FORWARD else adjusted[:,width//2:]
+                    require(np.array_equal(world,target),name+' set equals summed EV render')
+                else:
+                    require(np.array_equal(actual,adjusted),name+' OFF ignores master bytes')
+                if row['ev']==0 or not row['enabled']:
+                    baseline={key:float(np.exp2(np.float32(.5))) for key in reference}
+                    old=render('head_tag' if label=='off' else label,kind,
+                               (2 if kind in FORWARD else 1) if row['enabled'] else 0,environment=baseline)
+                    require(np.array_equal(actual,old),name+' HEAD/zero bytes')
     flag_outputs=[]
     for label in ('head_tag','off'):
         r=runners[label];p=gl.program()
@@ -431,6 +478,7 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     group=ap.add_mutually_exclusive_group(required=True);group.add_argument('--assemble-only',action='store_true');group.add_argument('--gpu',action='store_true')
     ap.add_argument('--cost',action='store_true');ap.add_argument('--out',type=Path,default=OUT)
+    ap.add_argument('--factor-source-ref',help='fail-before control for production CPU factors, e.g. HEAD')
     return run(ap.parse_args())
 
 
