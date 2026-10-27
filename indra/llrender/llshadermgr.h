@@ -391,6 +391,8 @@ public:
         TONEMAP_TYPE,
         TONEMAP_MIX,
         TONEMAP_PARAMS,
+        TONEMAP_SLOG_GAMUT,                 // "tonemap_slog_gamut"
+        TONEMAP_SLOG_PURITY,                // "tonemap_slog_purity"
         TONEMAP_AMD,                        //  "tonemap_amd" (AMD FidelityFX LPM control block)
         TONEMAP_AMD_SHOULDER,               //  "tonemap_amd_shoulder"
         TONEMAP_KHRONOS_PARAMS,             //  "tonemap_khronos_params" (Khronos Neutral: .x=desaturation, .y=startCompression)

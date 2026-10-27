@@ -1306,6 +1306,28 @@
             <key>Value</key>
             <integer>0</integer>
         </map>
+        <key>AlchemyToneMapSLogGamut</key>
+        <map>
+            <key>Comment</key>
+            <string>Log capture linear gamut: 0 = Rec.709 (legacy), 1 = Sony S-Gamut3, 2 = Sony S-Gamut3.Cine, 3 = ARRI Wide Gamut 3. Match the camera input transform in post; apply only one input transform.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>S32</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>AlchemyToneMapSLogPurity</key>
+        <map>
+            <key>Comment</key>
+            <string>Sensor purity in log capture only (type 8), applied in linear Rec.709 after log EV and before gamut/toe. 0.60..1.00, default 0.90; 1.00 preserves the original colour purity. Greys and luminance are unchanged.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.9</real>
+        </map>
         <key>AlchemyToneMapSLogRange</key>
         <map>
             <key>Comment</key>

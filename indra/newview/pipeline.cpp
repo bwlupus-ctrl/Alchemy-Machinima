@@ -13843,6 +13843,16 @@ U32 LLPipeline::colorCorrectPermutation(bool apply_tonemap,
            (legacy_curve ? 1u : 0u);
 }
 
+// Uniform-only: every persistent Legacy/Camera/Godrays/Prism program receives
+// the current selection on bind, including after curve or sensor-mode switches.
+static void uploadSLogCaptureUniforms(LLGLSLShader& shader)
+{
+    static LLCachedControl<S32> gamut(gSavedSettings, "AlchemyToneMapSLogGamut", 1);
+    shader.uniform1i(LLShaderMgr::TONEMAP_SLOG_GAMUT, llclamp(gamut(), 0, 3));
+    static LLCachedControl<F32> purity(gSavedSettings, "AlchemyToneMapSLogPurity", 0.9f);
+    shader.uniform1f(LLShaderMgr::TONEMAP_SLOG_PURITY, llclamp(purity(), 0.6f, 1.f));
+}
+
 void LLPipeline::uploadPrismPreviewColorCorrectUniforms(LLGLSLShader& shader) const
 {
     static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
@@ -13853,6 +13863,7 @@ void LLPipeline::uploadPrismPreviewColorCorrectUniforms(LLGLSLShader& shader) co
     static LLCachedControl<F32> contrast(gSavedSettings, "AlchemyToneMapContrast", 1.f);
     shader.uniform1f(LLShaderMgr::EXPOSURE, llclamp(exposure(), 0.5f, 4.f));
     shader.uniform1i(LLShaderMgr::TONEMAP_TYPE, tonemap_type());
+    uploadSLogCaptureUniforms(shader);
     bool legacy_gamma = false;
     bool no_post = false;
     colorCorrectWillApplyExposure(true, &legacy_gamma, &no_post);
@@ -14653,6 +14664,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             // Tonemap type and parameters
             static LLCachedControl<S32> tonemap_type_setting(gSavedSettings, "AlchemyRenderTonemapType", 0U);
             shader->uniform1i(LLShaderMgr::TONEMAP_TYPE, tonemap_type_setting);
+            uploadSLogCaptureUniforms(*shader);
             // [TonemapLegacySky] Classic skies otherwise force the mix to zero,
             // silently bypassing types 0-7 even with a TONEMAP shader selected.
             static LLCachedControl<F32> tonemap_mix_setting(gSavedSettings, "RenderTonemapMix", 1.f);
@@ -14679,7 +14691,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                 case 8: // S-Log3 / cine log capture
                 {
                     // Pack the log-capture controls into the existing tonemap_params
-                    // vec4 (no new uniform plumbing). Shader layout in tonemapUtilF:
+                    // vec4; gamut/purity have separate uniforms. Layout in tonemapUtilF:
                     //   .x = curve family, .y = range, .z = shadow toe, .w = EV.
                     static LLCachedControl<S32> slog_curve(gSavedSettings, "AlchemyToneMapSLogCurve", 0);
                     static LLCachedControl<S32> slog_range(gSavedSettings, "AlchemyToneMapSLogRange", 0);

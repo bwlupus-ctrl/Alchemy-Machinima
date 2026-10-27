@@ -1584,9 +1584,9 @@ void ALFloaterLightBox::updateTonemapper()
         }
     }
 
-    // [Grade] The post-tonemap Saturation/Contrast and Khronos highlight
-    // Desat/Knee sliders only apply to (and are only shown for) tonemap
-    // type 0 (Khronos Neutral); hide them for every other tonemapper.
+    // [Grade] Contrast and Khronos Desat/Knee retain their type-0 visibility.
+    // Shared saturation also appears disabled in log mode, pointing to Sensor
+    // purity. Other tonemappers retain their existing visibility and behavior.
     static const std::string khronos_widgets[] = {
         "tm_saturation_label",    "tm_saturation_slider",    "tm_saturation_spinner",
         "tm_contrast_label",      "tm_contrast_slider",      "tm_contrast_spinner",
@@ -1594,11 +1594,14 @@ void ALFloaterLightBox::updateTonemapper()
         "tm_khronos_knee_label",  "tm_khronos_knee_slider",  "tm_khronos_knee_spinner",
     };
     const bool khronos = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 0);
+    const bool slog = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 8);
     for (const std::string& widget_name : khronos_widgets)
     {
         if (LLView* v = findChild<LLView>(widget_name))
         {
-            v->setVisible(khronos);
+            const bool saturation = widget_name.find("tm_saturation_") == 0;
+            v->setVisible(khronos || (slog && saturation));
+            if (saturation) v->setEnabled(!slog);
         }
     }
 
@@ -1607,11 +1610,12 @@ void ALFloaterLightBox::updateTonemapper()
     // S-Log3 Capture is selected and hide them for every other tonemapper.
     static const std::string slog_widgets[] = {
         "slog_curve_label", "slog_curve_combo",
+        "slog_gamut_label", "slog_gamut_combo",
+        "slog_purity_label", "slog_purity_slider", "slog_purity_spinner",
         "slog_range_label", "slog_range_combo",
         "slog_toe_label",   "slog_toe_slider",   "slog_toe_spinner",
         "slog_ev_label",    "slog_ev_slider",    "slog_ev_spinner",
     };
-    const bool slog = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 8);
     for (const std::string& widget_name : slog_widgets)
     {
         if (LLView* v = findChild<LLView>(widget_name))

@@ -2259,6 +2259,19 @@ void LLFloaterDirector::bindSteppedPage(LLView* root)
 void LLFloaterDirector::bindImagePage(LLView* root)
 {
     ALColorGrade::populateLUTCombo(root->findChild<LLComboBox>("colorlut_combo"));
+    ALKitPage* image_page = mShell ? mShell->findBuiltPage("look_group/image_tab") : nullptr;
+    if (ALKitRow* saturation = image_page ? image_page->findRowBySetting("AlchemyToneMapSaturation") : nullptr)
+    {
+        LLHandle<LLView> handle = saturation->getHandle();
+        const auto refresh_saturation = [handle]
+        {
+            if (LLView* view = handle.get())
+                view->setEnabled(gSavedSettings.getS32("AlchemyRenderTonemapType") != 8);
+        };
+        refresh_saturation();
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "AlchemyRenderTonemapType", [refresh_saturation](const LLSD&, const LLSD&) { refresh_saturation(); }));
+    }
     if (LLButton* reset = root->findChild<LLButton>("exposure_default_btn"))
     {
         // "Reset tone" resets the tone-operator sliders this page owns. The exposure, tonemapper type,
@@ -2270,7 +2283,7 @@ void LLFloaterDirector::bindImagePage(LLView* root)
                 "AlchemyToneMapKhronosDesaturation", "AlchemyToneMapKhronosStartCompression",
                 "AlchemyToneMapAMDHDRMax", "AlchemyToneMapAMDContrast",
                 "AlchemyToneMapAMDSaturationR", "AlchemyToneMapAMDSaturationG", "AlchemyToneMapAMDSaturationB",
-                "AlchemyToneMapSLogCurve", "AlchemyToneMapSLogRange", "AlchemyToneMapSLogToe" };
+                "AlchemyToneMapSLogCurve", "AlchemyToneMapSLogGamut", "AlchemyToneMapSLogPurity", "AlchemyToneMapSLogRange", "AlchemyToneMapSLogToe" };
             for (const char* name : tone_settings)
             {
                 if (LLControlVariable* control = gSavedSettings.getControl(name).get())

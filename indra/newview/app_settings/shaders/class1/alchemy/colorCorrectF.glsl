@@ -73,6 +73,9 @@ vec3 applyToneMap(vec3 color);
 uniform int tonemap_type;
 #ifdef AL_SENSOR_GODRAYS
 uniform vec2 tonemap_grade;
+uniform int tonemap_slog_gamut;
+uniform float tonemap_slog_purity;
+vec3 decode_slog_family(vec3 code);
 #endif
 
 #ifdef COLOR_GRADE
@@ -182,6 +185,19 @@ void main()
     vec3 desired = clamp(cameraTransfer(scene.rgb)+display_ray, 0.0, 1.0);
     if (all(greaterThanEqual(desired,vec3(1.0-1e-6))))
     { frag_color = vec4(vec3(65000.0),scene.a); return; }
+    if (tonemap_type == 8 && (tonemap_slog_gamut != 0 || tonemap_slog_purity < 1.0))
+    {
+        // Log codes are camera-primary values. Undo OETF/toe, then the gamut
+        // matrix, purity and EV together; independent channel searches are wrong.
+        // Retain known scene energy beyond a clipped code: the inverse alone
+        // can only recover the curve ceiling. Decode the change around that
+        // ceiling instead. In the unclipped domain this inverts log/gamut;
+        // the existing downstream sRGB cancellation has finite precision.
+        vec3 converted = max(scene.rgb, vec3(0.0)) +
+            (decode_slog_family(desired) - decode_slog_family(cameraTransfer(scene.rgb)));
+        frag_color = vec4(clamp(converted, vec3(0.0), vec3(65000.0)), scene.a);
+        return;
+    }
     bool coupled = tonemap_grade.x != 1.0;
 #ifdef COLOR_GRADE
     coupled = true; // split tone, saturation, hue, LUT and curves can couple RGB
