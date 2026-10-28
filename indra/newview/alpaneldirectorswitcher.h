@@ -18,6 +18,7 @@
 
 #include "aldirectorswitcher.h"
 #include "llpanel.h"
+#include "alcinecamobjectlockui.h"
 
 #include <array>
 #include <vector>
@@ -81,6 +82,7 @@ private:
     LLTextBox*      mSelectedSlotText = nullptr;
     LLTextBox*      mProgramText = nullptr;
 
+    ALCineCamObjectLockUI mObjectLockUI;
     Bank mBank;
     S32  mSelectedSlot = 0;
 

@@ -174,6 +174,11 @@ const std::vector<ALPanelCineCamParams::ModeEntry>& ALPanelCineCamParams::modeTa
                                        "CinematicCamBoneOffsetForward", "CinematicCamBoneOffsetLeft", "CinematicCamBoneOffsetUp",
                                        "CinematicCamBoneAimYaw", "CinematicCamBoneAimPitch", "CinematicCamBoneAimRoll",
                                        "CinematicCamBoneHorizonLock" } },
+        { 52, "panel_mode_object",   { "CinematicCamObjectLockTarget",
+                                       "CinematicCamObjectOffsetForward", "CinematicCamObjectOffsetLeft", "CinematicCamObjectOffsetUp",
+                                       "CinematicCamObjectAimYaw", "CinematicCamObjectAimPitch",
+                                       "CinematicCamObjectFollowYaw", "CinematicCamObjectFollowPitch", "CinematicCamObjectFollowRoll",
+                                       "CinematicCamObjectSmoothing" } },
         {  2, "panel_mode_orbit",    { "CinematicCamOrbitRadius", "CinematicCamOrbitSpeed",
                                        "CinematicCamOrbitHeight", "CinematicCamOrbitBob" } },
         {  3, "panel_mode_hover",    { "CinematicCamHoverDistance", "CinematicCamHoverWander",
@@ -509,6 +514,7 @@ bool ALPanelCineCamParams::postBuild()
     // moves one off the preset's value clears the active preset name.
     ensurePresetWatchers();
 
+    mObjectLockUI.bind(this);
     updateModePanel();
     refreshPresetList();
     return true;
@@ -820,6 +826,8 @@ void ALPanelCineCamParams::writePreset(const std::string& name)
     LLSD settings = LLSD::emptyMap();
     auto capture = [&settings](const std::string& setting)
     {
+        // Object mounts are shot placement/targeting, saved explicitly by scenes.
+        if (setting.rfind("CinematicCamObject", 0) == 0) return;
         if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
         {
             settings[setting] = ctrl->getValue();
@@ -920,6 +928,7 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
     // only apply keys this panel owns: a preset file is data, not commands
     auto apply = [&preset](const std::string& setting)
     {
+        if (setting.rfind("CinematicCamObject", 0) == 0) return;
         if (preset["settings"].has(setting))
         {
             if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
@@ -932,7 +941,8 @@ void ALPanelCineCamParams::applyPreset(const std::string& name)
     sApplyingPreset = true; // our own writes are not edits: the name must survive them
     std::vector<std::string> owned = sharedSettings();
     for (const ModeEntry& entry : modeTable())
-        owned.insert(owned.end(), entry.mSettings.begin(), entry.mSettings.end());
+        for (const std::string& setting : entry.mSettings)
+            if (setting.rfind("CinematicCamObject", 0) != 0) owned.push_back(setting);
     ALPresetLook::reset(owned);
     for (const ModeEntry& entry : modeTable())
     {
@@ -998,4 +1008,11 @@ bool ALPanelCineCamParams::deletePresetCallback(const LLSD& notification, const 
     }
     refreshPresetList();
     return false;
+}
+
+void ALPanelCineCamParams::draw()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    mObjectLockUI.refresh();
+    LLPanel::draw();
 }

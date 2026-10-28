@@ -311,7 +311,7 @@ void ALSteppedAnimRuntime::collectActors()
             f.ghostOwnAnimation = drive == ALGhostStudio::DRIVE_DIRECTED;
         }
         f.cameraMounted = (f.isSelf && gAgentCamera.cameraMouselook()) ||
-            LLCinematicCamera::instance().isActiveBoneLockTarget(avatar->getID()) ||
+            LLCinematicCamera::instance().isActiveMountedTarget(avatar->getID()) ||
             bone_pov_anchors.find(avatar->getID()) != bone_pov_anchors.end();
         f.posing = FSFloaterPoser::isEditingAvatar(avatar);
         f.cameraDistance = static_cast<F32>((avatar->getPositionGlobal() - camera).length());

@@ -163,7 +163,8 @@ S32 ALDirectorSwitcher::sanitizeMode(S32 mode)
 {
     mode = LLCinematicCamera::migrateLegacyMode(mode);
     return (mode > LLCinematicCamera::MODE_OFF &&
-            mode <= LLCinematicCamera::MODE_STATIC_FULL)
+            (mode <= LLCinematicCamera::MODE_STATIC_FULL ||
+             mode == LLCinematicCamera::MODE_OBJECT_LOCK))
         ? mode : LLCinematicCamera::MODE_ORBIT;
 }
 
@@ -390,6 +391,12 @@ void ALDirectorSwitcher::enterArmed(
         }
     }
     applySlot(first, now, now, bank, true);
+}
+
+void ALDirectorSwitcher::releaseForManualCamera()
+{
+    gSavedSettings.setBOOL("DirectorSwitcherArmed", false);
+    if (mWasArmed || mHaveEnableSnapshot) leaveArmed();
 }
 
 void ALDirectorSwitcher::leaveArmed()
@@ -898,7 +905,8 @@ bool ALDirectorSwitcher::isDrivingCamera() const
     return !shouldYieldToFlycam() && mWasArmed &&
            armed && camera_enabled &&
            mActiveMode > LLCinematicCamera::MODE_OFF &&
-           mActiveMode <= LLCinematicCamera::MODE_STATIC_FULL;
+           (mActiveMode <= LLCinematicCamera::MODE_STATIC_FULL ||
+            mActiveMode == LLCinematicCamera::MODE_OBJECT_LOCK);
 }
 
 bool ALDirectorSwitcher::activeCustomAngle(Slot& slot) const

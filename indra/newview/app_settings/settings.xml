@@ -3347,6 +3347,116 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>CinematicCamObjectLockTarget</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Target prim UUID; empty releases the target.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>String</string>
+      <key>Value</key>
+      <string></string>
+    </map>
+    <key>CinematicCamObjectOffsetForward</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Mount offset forward in the followed frame, metres.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamObjectOffsetLeft</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Mount offset left in the followed frame, metres.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamObjectOffsetUp</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Mount offset up in the followed frame, metres.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.3</real>
+    </map>
+    <key>CinematicCamObjectAimYaw</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Local aim yaw trim, degrees.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamObjectAimPitch</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Local aim pitch trim, degrees.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
+    <key>CinematicCamObjectFollowYaw</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Spin with the object; yaw alone keeps the horizon level.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>CinematicCamObjectFollowPitch</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Follow object pitch: tilt nose up/down.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamObjectFollowRoll</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Follow object roll: tilt side to side. All axes give full ride-along.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>CinematicCamObjectSmoothing</key>
+    <map>
+      <key>Comment</key>
+      <string>Shot key: Object Lock. Mount damping in seconds; zero is rigid. Bypasses general CineCam smoothing.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0</real>
+    </map>
     <key>CinematicCamBoneOffsetForward</key>
     <map>
       <key>Comment</key>

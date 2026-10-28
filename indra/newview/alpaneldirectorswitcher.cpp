@@ -20,6 +20,7 @@
 #include "llcombobox.h"
 #include "llcontrol.h"
 #include "lllineeditor.h"
+#include "llselectmgr.h"
 #include "llstring.h"
 #include "lltextbox.h"
 #include "lluictrl.h"
@@ -141,6 +142,8 @@ bool ALPanelDirectorSwitcher::postBuild()
         }
         mSlotMode->add(LLCinematicCamera::modeName(mode), LLSD(mode));
     }
+    mSlotMode->add(LLCinematicCamera::modeName(LLCinematicCamera::MODE_OBJECT_LOCK),
+                   LLSD(LLCinematicCamera::MODE_OBJECT_LOCK));
     mPrimarySubject->add(
         "Default", LLSD(ALDirectorSwitcher::SUBJECT_DEFAULT));
     for (S32 subject = ALDirectorSwitcher::SUBJECT_A;
@@ -200,6 +203,7 @@ bool ALPanelDirectorSwitcher::postBuild()
             });
     }
 
+    mObjectLockUI.bind(this);
     refreshBank(true);
     refreshProgramState();
     updateCurveControlsEnabled();
@@ -242,6 +246,7 @@ void ALPanelDirectorSwitcher::draw()
         refreshBank(false);
     }
     refreshProgramState();
+    mObjectLockUI.refresh();
     LLPanel::draw();
 }
 
@@ -348,7 +353,8 @@ void ALPanelDirectorSwitcher::onSlotMode()
 
     const S32 mode = mSlotMode->getValue().asInteger();
     if (mode < LLCinematicCamera::MODE_BONE_LOCK ||
-        mode > LLCinematicCamera::MODE_STATIC_FULL)
+        (mode > LLCinematicCamera::MODE_STATIC_FULL &&
+         mode != LLCinematicCamera::MODE_OBJECT_LOCK))
     {
         return;
     }
@@ -639,4 +645,47 @@ void ALPanelDirectorSwitcher::refreshProgramState()
     mLastDriving = driving;
     mLastActiveSlot = active;
     mHaveProgramSnapshot = true;
+}
+
+// Main-camera mount bindings shared by this Shot controller and legacy CineCam.
+void ALCineCamObjectLockUI::bind(LLView* root)
+{
+    mStatus = root->findChild<LLTextBox>("cc_object_status");
+    mRelease = root->findChild<LLButton>("cc_object_release");
+    if (!mStatus) return;
+    mMotion = root->findChild<LLPanel>("kc_motion_start");
+    if (LLControlVariable* mode = gSavedSettings.getControl("CinematicCamMode"))
+    {
+        mModeConnection = mode->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&) { updateMode(); });
+    }
+    updateMode();
+    if (LLButton* lock = root->findChild<LLButton>("cc_object_lock"))
+    {
+        lock->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            LLCinematicCamera::instance().lockToObject(
+                LLSelectMgr::getInstance()->getSelection()->getFirstObject());
+        });
+    }
+    if (mRelease)
+    {
+        mRelease->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            LLCinematicCamera::instance().releaseObjectLock();
+        });
+    }
+}
+
+void ALCineCamObjectLockUI::refresh()
+{
+    if (!mStatus || !isWidgetOnScreen(mStatus) || !mClock.due()) return;
+    setTextIfChanged(mStatus, LLCinematicCamera::instance().objectLockStatus());
+    setEnabledIfChanged(mRelease, LLCinematicCamera::instance().objectLockConfigured());
+}
+
+void ALCineCamObjectLockUI::updateMode()
+{
+    setVisibleIfChanged(mMotion,
+        gSavedSettings.getS32("CinematicCamMode") != LLCinematicCamera::MODE_OBJECT_LOCK);
 }

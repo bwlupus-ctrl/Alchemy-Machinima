@@ -4176,6 +4176,17 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "DirectorSwitcherJitterSec",
         "DirectorSwitcherSeed",
         "DirectorSwitcherSequence",
+        // Main recording camera object mount (old scenes omit these keys).
+        "CinematicCamObjectLockTarget",
+        "CinematicCamObjectOffsetForward",
+        "CinematicCamObjectOffsetLeft",
+        "CinematicCamObjectOffsetUp",
+        "CinematicCamObjectAimYaw",
+        "CinematicCamObjectAimPitch",
+        "CinematicCamObjectFollowYaw",
+        "CinematicCamObjectFollowPitch",
+        "CinematicCamObjectFollowRoll",
+        "CinematicCamObjectSmoothing",
         // Flycam Orbit rig
         "FlycamOrbitEnabled",
         "FlycamOrbitLevel",

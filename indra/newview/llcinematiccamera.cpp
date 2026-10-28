@@ -15,6 +15,8 @@
 
 #include "alcameradispatch.h"     // [ReShadeReset] presented camera owner
 #include "alcameracurve.h"
+#include "llagent.h"
+#include "lldrawable.h"
 #include "aldirectorswitcher.h"
 #include "llagentpilot.h"
 #include "llcameraoperator.h"
@@ -492,6 +494,248 @@ void LLCinematicCamera::requestAutoReframe()
     ++mAutoFrameRequestSerial;
 }
 
+LLCinematicCamera::LLCinematicCamera()
+{
+    mObservedMode = gSavedSettings.getS32("CinematicCamMode");
+    if (LLControlVariable* mode = gSavedSettings.getControl("CinematicCamMode"))
+    {
+        mObjectModeConnection = mode->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                const S32 selected_mode = gSavedSettings.getS32("CinematicCamMode");
+                if (selected_mode == MODE_OBJECT_LOCK && mObservedMode != MODE_OBJECT_LOCK)
+                {
+                    mObjectPreviousMode = migrateLegacyMode(mObservedMode);
+                    mObjectPreviousEnabled = gSavedSettings.getBOOL("CinematicCamEnabled");
+                    ALDirectorSwitcher::instance().cameraEnableBaseline(mObjectPreviousEnabled);
+                    mObjectHavePrevious = true;
+                }
+                else if (selected_mode != MODE_OBJECT_LOCK)
+                {
+                    mObjectHavePrevious = false;
+                }
+                mObservedMode = selected_mode;
+            });
+    }
+}
+
+bool LLCinematicCamera::objectLockActive() const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    static LLCachedControl<S32> mode(gSavedSettings, "CinematicCamMode", 1);
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    return enabled && (switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode)
+        == MODE_OBJECT_LOCK;
+}
+
+bool LLCinematicCamera::objectLockConfigured() const
+{
+    static LLCachedControl<S32> mode(gSavedSettings, "CinematicCamMode", 1);
+    static LLCachedControl<bool> armed(gSavedSettings, "DirectorSwitcherArmed", false);
+    const S32 switcher_mode = armed ? ALDirectorSwitcher::instance().activeMode() : MODE_OFF;
+    return ALCineCamObjectLock::isConfigured(mode, switcher_mode, MODE_OBJECT_LOCK);
+}
+
+void LLCinematicCamera::lockToObject(LLViewerObject* object)
+{
+    // Ordinary worn props are valid mounts, including linked children.
+    // Avatars and HUD attachments are not recording-camera targets.
+    if (!object || object->isDead() || object->isAvatar() || object->isHUDAttachment())
+    {
+        return;
+    }
+    if (gSavedSettings.getS32("CinematicCamMode") != MODE_OBJECT_LOCK)
+    {
+        mObjectPreviousMode = migrateLegacyMode(gSavedSettings.getS32("CinematicCamMode"));
+        mObjectPreviousEnabled = gSavedSettings.getBOOL("CinematicCamEnabled");
+        ALDirectorSwitcher::instance().cameraEnableBaseline(mObjectPreviousEnabled);
+        mObjectHavePrevious = true;
+    }
+    // Lock the picked prim itself, including a child. Manual mode selection
+    // must own the camera rather than an armed switcher's slot.
+    ALDirectorSwitcher::instance().releaseForManualCamera();
+    gSavedSettings.setString("CinematicCamObjectLockTarget", object->getID().asString());
+    mObjectTargetName.clear();
+    mObjectNameTarget = object->getID();
+    if (LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->findNode(object))
+    {
+        mObjectTargetName = node->mName;
+    }
+    triggerMode(MODE_OBJECT_LOCK);
+}
+
+void LLCinematicCamera::releaseObjectLock()
+{
+    gSavedSettings.setString("CinematicCamObjectLockTarget", "");
+    if (objectLockConfigured())
+    {
+        // A switcher slot can be released before its first camera tick, too.
+        if (!mObjectHavePrevious && gSavedSettings.getS32("CinematicCamMode") != MODE_OBJECT_LOCK)
+        {
+            mObjectPreviousMode = migrateLegacyMode(gSavedSettings.getS32("CinematicCamMode"));
+            mObjectPreviousEnabled = gSavedSettings.getBOOL("CinematicCamEnabled");
+            ALDirectorSwitcher::instance().cameraEnableBaseline(mObjectPreviousEnabled);
+            mObjectHavePrevious = true;
+        }
+        const ALCineCamObjectLock::RestoreState restore = ALCineCamObjectLock::restoreState(
+            mObjectHavePrevious, mObjectPreviousMode, mObjectPreviousEnabled, MODE_OBJECT_LOCK);
+        ALDirectorSwitcher::instance().releaseForManualCamera();
+        gSavedSettings.setS32("CinematicCamMode", restore.mMode);
+        gSavedSettings.setBOOL("CinematicCamEnabled", restore.mEnabled);
+    }
+    mObjectHavePrevious = false;
+    mObjectResolved = false;
+    mObjectPose.lose();
+}
+
+std::string LLCinematicCamera::objectLockStatus() const
+{
+    static LLCachedControl<std::string> saved_target(gSavedSettings, "CinematicCamObjectLockTarget", "");
+    const std::string target = saved_target;
+    if (target.empty() || LLUUID(target).isNull()) return "No object locked";
+    if (!mObjectResolved || LLUUID(target) != mObjectTarget)
+        return "Object not found \xe2\x80\x94 holding last position";
+    // Selection names arrive asynchronously with object properties. This is a
+    // throttled UI query, never a per-frame name lookup in the camera tick.
+    if (LLViewerObject* object = gObjectList.findObject(mObjectTarget))
+    {
+        if (LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->findNode(object))
+        {
+            if (!node->mName.empty()) mObjectTargetName = node->mName;
+        }
+        if (!object->getAttachmentItemName().empty()) mObjectTargetName = object->getAttachmentItemName();
+    }
+    return mObjectTargetName.empty() ? "Object locked (" + target + ")" : mObjectTargetName;
+}
+
+void LLCinematicCamera::onObjectLockName(const LLUUID& id, const std::string& name)
+{
+    if (mLastMode == MODE_OBJECT_LOCK && id == mObjectTarget && !name.empty())
+    {
+        mObjectTargetName = name;
+        mObjectNameTarget = id;
+    }
+}
+
+void LLCinematicCamera::updateObjectLock(bool entering, bool new_take)
+{
+    static LLCachedControl<std::string> target(gSavedSettings, "CinematicCamObjectLockTarget", "");
+    static LLCachedControl<F32> offset_forward(gSavedSettings, "CinematicCamObjectOffsetForward", 0.f);
+    static LLCachedControl<F32> offset_left(gSavedSettings, "CinematicCamObjectOffsetLeft", 0.f);
+    static LLCachedControl<F32> offset_up(gSavedSettings, "CinematicCamObjectOffsetUp", 0.3f);
+    static LLCachedControl<F32> aim_yaw(gSavedSettings, "CinematicCamObjectAimYaw", 0.f);
+    static LLCachedControl<F32> aim_pitch(gSavedSettings, "CinematicCamObjectAimPitch", 0.f);
+    static LLCachedControl<bool> follow_yaw(gSavedSettings, "CinematicCamObjectFollowYaw", true);
+    static LLCachedControl<bool> follow_pitch(gSavedSettings, "CinematicCamObjectFollowPitch", false);
+    static LLCachedControl<bool> follow_roll(gSavedSettings, "CinematicCamObjectFollowRoll", false);
+    static LLCachedControl<F32> smoothing(gSavedSettings, "CinematicCamObjectSmoothing", 0.f);
+    static LLCachedControl<F32> dutch(gSavedSettings, "CinematicCamDutchAngle", 0.f);
+    static LLCachedControl<bool> use_operator(gSavedSettings, "CinematicCamUseOperator", false);
+    static LLCachedControl<bool> apply_active(gSavedSettings, "CameraShakeApplyActive", false);
+
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+    const LLUUID object_id((std::string)target);
+    ALCineCamObjectLock::Settings settings;
+    settings.mOffset.setVec(offset_forward, offset_left, offset_up);
+    settings.mAimYaw = aim_yaw;
+    settings.mAimPitch = aim_pitch;
+    settings.mFollowYaw = follow_yaw;
+    settings.mFollowPitch = follow_pitch;
+    settings.mFollowRoll = follow_roll;
+    settings.mSmoothing = smoothing;
+    const bool changed = object_id != mObjectTarget || settings.axes() != mObjectAxes;
+    if (entering)
+    {
+        // A switcher slot can select Object Lock without changing the saved
+        // mode. Preserve that configured mode and its enable lease baseline.
+        // Direct combo changes are observed synchronously, including while off.
+        if (mObservedMode != MODE_OBJECT_LOCK && !mObjectHavePrevious)
+        {
+            mObjectPreviousMode = migrateLegacyMode(mObservedMode);
+            mObjectPreviousEnabled = gSavedSettings.getBOOL("CinematicCamEnabled");
+            ALDirectorSwitcher::instance().cameraEnableBaseline(mObjectPreviousEnabled);
+            mObjectHavePrevious = true;
+        }
+        mObjectOutputGlobal = gAgent.getPosGlobalFromAgent(cam->getOrigin());
+        mObjectOutputRotation = cam->getQuaternion();
+        mObjectOutputFov = cam->getView();
+        mObjectPose.seed(mObjectOutputGlobal, mObjectOutputRotation);
+    }
+    if (changed || entering || new_take)
+    {
+        mObjectPose.lose();
+        LLCameraOperator::instance().reset();
+        mObjectOperatorOrigin = origin;
+        if (object_id != mObjectNameTarget) mObjectTargetName.clear();
+    }
+    mObjectTarget = object_id;
+    mObjectAxes = settings.axes();
+
+    ALVCamBonePovMath::ObjectRenderPose pose;
+    LLPointer<LLViewerObject> object = gObjectList.findObject(object_id);
+    const bool was_resolved = mObjectResolved;
+    const F64 presentation_time = LLPresentationTime::currentFrame().presentation_time;
+    const bool time_reversed = mObjectPose.mLastTime >= 0.0 &&
+        presentation_time < mObjectPose.mLastTime;
+    const bool render_valid = object && !object->isDead() && !object->isAvatar() &&
+        !object->isHUDAttachment() && !object->isOrphaned() && object->getRegion() &&
+        object->mDrawable && ALVCamBonePovMath::objectDrawablePose(*object->mDrawable, pose);
+    if (render_valid)
+    {
+        ALCineCamObjectLock::applyOuterTransform(pose, object->getClientOuterTransform());
+    }
+    mObjectResolved = mObjectPose.update(object_id, render_valid ? &pose : nullptr,
+        origin, settings, presentation_time);
+    if (!mObjectResolved)
+    {
+        mObjectPose.lose();
+        LLCameraOperator::instance().reset();
+        LLVector3 held;
+        held.setVec(mObjectOutputGlobal - origin);
+        ALCineCamPresentation::writeCamera(*cam, held,
+            mObjectOutputRotation, mObjectOutputFov, false);
+        return;
+    }
+
+    if (!was_resolved || time_reversed) LLCameraOperator::instance().reset();
+    if ((!was_resolved || changed || entering) && object && mObjectTargetName.empty())
+    {
+        LLSelectMgr::getInstance()->requestObjectPropertiesFamily(object);
+    }
+    LLVector3 position = mObjectPose.mPosition.agentPosition(origin);
+    LLQuaternion rotation = mObjectPose.mRotation;
+    if (std::fabs((F32)dutch) > 0.0001f)
+        rotation = LLQuaternion(dutch * DEG_TO_RAD, LLVector3::x_axis) * rotation;
+    F32 ease_weight = 1.f;
+    const bool easing_this_frame = mCutEase.apply(
+        ALDirectorSwitcher::instance().cutEaseElapsedSeconds(), position, rotation, ease_weight);
+    F32 fov_mul = 1.f;
+    if (mObjectResolved && (use_operator || apply_active))
+    {
+        const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
+        // Feed operator velocity in a stable coordinate frame as well; agent
+        // origin changes must not look like a 256m mount acceleration.
+        LLVector3 operator_position;
+        operator_position.setVec(gAgent.getPosGlobalFromAgent(position) - mObjectOperatorOrigin);
+        const LLCameraOperatorOutput op = LLCameraOperator::instance().updateFromPose(
+            dt, operator_position, rotation);
+        rotation = LLQuaternion(LLMatrix3(op.mRoll, op.mPitch, op.mYaw)) * rotation;
+        const LLMatrix3 axes(rotation);
+        position += LLVector3(axes.mMatrix[0]) * op.mPosOffset.mV[VX] +
+                    LLVector3(axes.mMatrix[1]) * op.mPosOffset.mV[VY] +
+                    LLVector3(axes.mMatrix[2]) * op.mPosOffset.mV[VZ];
+        fov_mul = op.mFovMul;
+    }
+    // Both ends of the cut use the aspect-aware lens exactly once.
+    const F32 final_fov = mCutEase.blendFov(
+        applyFrameLens(cam->getDefaultFOV() * fov_mul, cam), easing_this_frame, ease_weight);
+    ALCineCamPresentation::writeCamera(*cam, position, rotation, final_fov, easing_this_frame);
+    mObjectOutputGlobal = gAgent.getPosGlobalFromAgent(position);
+    mObjectOutputRotation = rotation;
+    mObjectOutputFov = cam->getView();
+}
+
 void LLCinematicCamera::triggerMode(EMode mode, bool force_look_at_head)
 {
     gSavedSettings.setS32("CinematicCamMode", static_cast<S32>(mode));
@@ -499,40 +743,6 @@ void LLCinematicCamera::triggerMode(EMode mode, bool force_look_at_head)
     mTriggeredLookAtHead = force_look_at_head;
     mTriggeredLookAtHeadMode = mode;
     ++mTriggerSerial;
-}
-
-//static
-S32 LLCinematicCamera::migrateLegacyMode(S32 mode)
-{
-    // Step Orbit was persisted as 40 before being folded back into Orbit.
-    return mode == 40 ? MODE_ORBIT : mode;
-}
-
-//static
-const char* LLCinematicCamera::modeName(S32 mode)
-{
-    static const char* const names[] = {
-        "Off", "Bone Lock", "Orbit", "Fly Hover", "Sweep", "Crane",
-        "Dolly Zoom", "Push-In", "Low Hero", "Overhead",
-        "Over-the-Shoulder", "Crash Zoom", "Slow Zoom", "Whip Arc",
-        "Arc Move", "Reveal Rise", "Pull-Back", "Two-Shot",
-        "Lead Follow", "ECU Eyes", "Long Lens", "Spiral",
-        "Pedestal Rise", "Barrel Roll", "Corkscrew", "Pendulum",
-        "Contra-Orbit", "Fisheye Lunge", "Floor Skimmer",
-        "Boost Rise", "Boom Over", "Top Spin", "Turntable Crane",
-        "Floating Close-Up", "Tilt Whip", "Body Helix Reveal",
-        "Descent Pedestal", "Parallax Slide", "Figure-8",
-        "Detail Sweep", "Unknown", "Cable Cam Fly-by",
-        "Breathing Hold", "Static Wide", "Static Medium",
-        "Static Close", "Static Profile Left", "Static Profile Right",
-        "Static Low Hero", "Static High Angle", "Static Full Body",
-        "Pedro Cam",
-    };
-    constexpr S32 count = (S32)(sizeof(names) / sizeof(names[0]));
-    static_assert(count == MODE_PEDRO_BOB + 1,
-                  "Every persisted CineCam mode needs one stable label");
-    mode = migrateLegacyMode(mode);
-    return mode >= 0 && mode < count ? names[mode] : "Unknown";
 }
 
 // session-only locked follow subject
@@ -577,14 +787,14 @@ bool LLCinematicCamera::isActive() const
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const S32 effective_mode =
         switcher.isDrivingCamera() ? switcher.activeMode() : migrated_mode;
-    if (effective_mode <= MODE_OFF || effective_mode > MODE_PEDRO_BOB)
+    if (effective_mode <= MODE_OFF || effective_mode > MODE_OBJECT_LOCK)
     {
         return false;
     }
-    return resolveTarget() != nullptr;
+    return effective_mode == MODE_OBJECT_LOCK || resolveTarget() != nullptr;
 }
 
-bool LLCinematicCamera::isActiveBoneLockTarget(const LLUUID& avatar_id) const
+bool LLCinematicCamera::isActiveMountedTarget(const LLUUID& avatar_id) const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
@@ -595,6 +805,16 @@ bool LLCinematicCamera::isActiveBoneLockTarget(const LLUUID& avatar_id) const
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const S32 effective_mode =
         switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
+    if (effective_mode == MODE_OBJECT_LOCK)
+    {
+        static LLCachedControl<std::string> object_target(
+            gSavedSettings, "CinematicCamObjectLockTarget", "");
+        LLViewerObject* object = gObjectList.findObject(LLUUID((std::string)object_target));
+        LLVOAvatar* avatar = object && !object->isDead() && !object->isAvatar() &&
+            !object->isHUDAttachment()
+            ? object->getAvatarAncestor() : nullptr;
+        return avatar && avatar->getID() == avatar_id;
+    }
     if (effective_mode != MODE_BONE_LOCK)
     {
         return false;
@@ -622,8 +842,8 @@ bool LLCinematicCamera::isActiveHeadFramingTarget(const LLUUID& avatar_id) const
     {
         return false;
     }
-    if (effective_mode <= MODE_OFF || effective_mode > MODE_PEDRO_BOB ||
-        effective_mode == MODE_BONE_LOCK)
+    if (effective_mode <= MODE_OFF || effective_mode > MODE_OBJECT_LOCK ||
+        effective_mode == MODE_BONE_LOCK || effective_mode == MODE_OBJECT_LOCK)
     {
         return false;
     }
@@ -2501,21 +2721,21 @@ void LLCinematicCamera::applyAutoReframe(
         if (mAutoFrameSettleModeLatched == 1)
         {
             // Finish with the switcher's own freeze-safe wall-clock ease.
-            if (mEaseActive && mEaseDuration > 0.f)
+            if (mCutEase.mActive && mCutEase.mDuration > 0.f)
             {
                 const F32 u = (F32)(
                     ALDirectorSwitcher::instance().cutEaseElapsedSeconds() /
-                    mEaseDuration);
+                    mCutEase.mDuration);
                 w = (!std::isfinite(u) || u >= 1.f || u < 0.f)
                     ? 1.f
                     : ALCameraCurve::evalFeathered(
-                        mEaseCurveId, u,
-                        mEaseBezier[0], mEaseBezier[1],
-                        mEaseBezier[2], mEaseBezier[3], mEaseFeather);
+                        mCutEase.mCurveId, u,
+                        mCutEase.mBezier[0], mCutEase.mBezier[1],
+                        mCutEase.mBezier[2], mCutEase.mBezier[3], mCutEase.mFeather);
                 settle_complete = !std::isfinite(u) || u >= 1.f;
             }
             // A hard cut or legacy path has no ease and therefore snaps.
-            settle_complete = settle_complete || !mEaseActive;
+            settle_complete = settle_complete || !mCutEase.mActive;
         }
         else
         {
@@ -2604,16 +2824,17 @@ void LLCinematicCamera::updateCamera()
     static LLCachedControl<bool> auto_frame_enabled(
         gSavedSettings, "CinematicAutoFrameEnabled", false);
 
-    LLVOAvatar* av = resolveTarget();
-    if (!av)
-    {
-        return;
-    }
-
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const bool switcher_driving = switcher.isDrivingCamera();
     const S32 current_mode =
         switcher_driving ? switcher.activeMode() : (S32)mode;
+    // Object mounts enter the same take/cut bookkeeping without an avatar.
+    const bool object_lock = current_mode == MODE_OBJECT_LOCK;
+    LLVOAvatar* av = object_lock ? nullptr : resolveTarget();
+    if (!object_lock && !av)
+    {
+        return;
+    }
     const bool auto_frame_toggled =
         current_mode != MODE_BONE_LOCK &&
         (bool)auto_frame_enabled != mAutoFrameLastEnabled;
@@ -2628,7 +2849,8 @@ void LLCinematicCamera::updateCamera()
         std::isfinite(presentation_sample) && presentation_sample >= 0.0
             ? presentation_sample
             : mSwitcherPhaseAnchor + (F64)mPhase;
-    const LLUUID current_target = av->getID();
+    static LLCachedControl<std::string> object_target(gSavedSettings, "CinematicCamObjectLockTarget", "");
+    const LLUUID current_target = object_lock ? LLUUID((std::string)object_target) : av->getID();
     const bool fresh_activation =
         gFrameCount > mLastUpdateFrame + 3;
     const bool mode_changed =
@@ -2690,27 +2912,11 @@ void LLCinematicCamera::updateCamera()
         // Never glide back from a stale pose after a higher-priority camera
         // pre-empted CineCam. First activation is allowed to ease from the
         // currently presented agent camera; a later >3-frame gap is not.
-        if (ease_seconds > 0.f && cut_age >= 0.0 &&
-            cut_age < ease_seconds && ease_elapsed >= 0.0 &&
-            ease_elapsed < ease_seconds && !stale_reentry)
+        LLViewerCamera* cam = LLViewerCamera::getInstance();
+        if (!mCutEase.begin(ease_seconds, cut_age, ease_elapsed, stale_reentry,
+                cam->getOrigin(), cam->getQuaternion(), cam->getView(),
+                switcher.cutEaseCurve(), switcher.cutEaseBezier(), switcher.cutEaseFeather()))
         {
-            LLViewerCamera* cam = LLViewerCamera::getInstance();
-            mEaseActive = true;
-            mEaseDuration = ease_seconds;
-            mEaseCurveId = switcher.cutEaseCurve();
-            mEaseFeather = switcher.cutEaseFeather();
-            const F32* cut_bezier = switcher.cutEaseBezier();
-            for (S32 i = 0; i < 4; ++i)
-            {
-                mEaseBezier[i] = cut_bezier[i];
-            }
-            mEaseFromPos = cam->getOrigin();
-            mEaseFromRot = cam->getQuaternion();
-            mEaseFromFov = cam->getView();
-        }
-        else
-        {
-            mEaseActive = false;
             // [ReShadeReset] Arm only a hard switcher cut that CineCam is
             // actually presenting. gatherFrame() applies the final pose-move
             // gate, so a one-slot auto switch with an unchanged pose is inert.
@@ -2750,6 +2956,13 @@ void LLCinematicCamera::updateCamera()
     // independent of the number or grouping of viewer frames.
     const F64 age = llmax(0.0, presentation_time - mSwitcherPhaseAnchor);
     mPhase = (F32)fmod(age, (F64)PHASE_WRAP);
+
+    if (object_lock)
+    {
+        updateObjectLock(fresh_activation || mode_changed,
+            target_changed || serial_changed || trigger_changed);
+        return;
+    }
 
     // the point patterns frame: head when available, else chest height
     LLVector3 focus = av->getPositionAgent() + LLVector3(0.f, 0.f, 1.f);
@@ -2920,31 +3133,9 @@ void LLCinematicCamera::updateCamera()
 
     LLVector3 out_pos = mSmPos;
     LLQuaternion out_rot = mSmRot;
-    bool easing_this_frame = false;
     F32 ease_weight = 1.f;
-    if (mEaseActive)
-    {
-        // Cut blends share the switcher's unscaled per-cut timer. A full
-        // Temporal freeze therefore cannot deadlock the visual camera ease.
-        const F64 elapsed = switcher.cutEaseElapsedSeconds();
-        const F32 u = mEaseDuration > 0.f
-            ? (F32)(elapsed / mEaseDuration) : 1.f;
-        if (u >= 1.f || u < 0.f)
-        {
-            mEaseActive = false;
-        }
-        else
-        {
-            easing_this_frame = true;
-            ease_weight = ALCameraCurve::evalFeathered(
-                mEaseCurveId, u,
-                mEaseBezier[0], mEaseBezier[1],
-                mEaseBezier[2], mEaseBezier[3], mEaseFeather);
-            out_pos = mEaseFromPos +
-                (mSmPos - mEaseFromPos) * ease_weight;
-            out_rot = nlerp(ease_weight, mEaseFromRot, mSmRot);
-        }
-    }
+    const bool easing_this_frame = mCutEase.apply(
+        switcher.cutEaseElapsedSeconds(), out_pos, out_rot, ease_weight);
     const LLVector3 base_pos = out_pos;
     const LLQuaternion base_rot = out_rot;
     F32 fov_mul = 1.f;
@@ -3011,35 +3202,15 @@ void LLCinematicCamera::updateCamera()
 
     // ---- write the render camera -------------------------------------------
     LLViewerCamera* cam = LLViewerCamera::getInstance();
-    LLMatrix3 final_axes(out_rot);
     F32 final_fov = cam->getDefaultFOV() * mode_fov_mul * fov_mul;
     // Aspect-aware lens is applied BEFORE the cut ease so both ends of the
-    // blend live in the same (lensed) space. mEaseFromFov (= cam->getView())
+    // blend live in the same (lensed) space. mCutEase.mFromFov (= cam->getView())
     // is already lens-transformed; applying the lens AFTER the lerp re-lensed
     // the "from" end and popped the FOV by the full lens amount at the start
     // of every eased cut (the "zoom" seen only with aspect-aware lens on).
     // cc_applyFrameLens is identity when the lens is disabled, so with the
     // feature off this is byte-for-byte the previous behavior.
     final_fov = cc_applyFrameLens(final_fov, cam);
-    if (easing_this_frame)
-    {
-        final_fov = cc_lerp(mEaseFromFov, final_fov, ease_weight);
-    }
-    if (easing_this_frame)
-    {
-        // A short eased lens move is local camera presentation; broadcasting
-        // every intermediate FOV to the simulator would create message churn.
-        cam->setViewNoBroadcast(
-            llclamp(final_fov, cam->getMinView(), cam->getMaxView()));
-    }
-    else
-    {
-        // Hard cuts and the final eased value use the normal path so simulator
-        // interest calculations receive the settled lens.
-        cam->setView(final_fov);
-    }
-    cam->setOrigin(out_pos);
-    cam->mXAxis = LLVector3(final_axes.mMatrix[0]);
-    cam->mYAxis = LLVector3(final_axes.mMatrix[1]);
-    cam->mZAxis = LLVector3(final_axes.mMatrix[2]);
+    final_fov = mCutEase.blendFov(final_fov, easing_this_frame, ease_weight);
+    ALCineCamPresentation::writeCamera(*cam, out_pos, out_rot, final_fov, easing_this_frame);
 }

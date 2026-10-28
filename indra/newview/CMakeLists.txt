@@ -368,6 +368,7 @@ set(viewer_SOURCE_FILES
     aldirectorcastui.cpp
     alfloatercinelightcues.cpp
     alfloaterultimatediopter.cpp
+    alcinecammodes.cpp
     alvcambonepov.cpp
     alweathermodel.cpp
     slweather.cpp
@@ -1304,6 +1305,9 @@ set(viewer_HEADER_FILES
     alfloatercinelightcues.h
     alfloaterultimatediopter.h
     alvcambonepov.h
+    alcinecamobjectlock.h
+    alcinecamobjectlockui.h
+    alcinecampresentation.h
     alvcambonepovmath.h
     alvcamobjectpovsettings.h
     alvcamautovol.h
@@ -3008,6 +3012,12 @@ if (BUILD_TESTING)
   # regression tests need no viewer singleton or avatar fixture.
   LL_ADD_INTEGRATION_TEST(alvcambonepov
     ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(alcinecamobjectlock
+    "alcinecammodes.cpp"
     "${test_libs}"
     "${test_project}"
   )

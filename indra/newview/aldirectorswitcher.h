@@ -65,6 +65,9 @@ public:
     // Director Console calls this when its switcher panel closes.
     void cancelEaseWorldTime();
 
+    // Release the enable/time leases before an explicit manual camera action.
+    void releaseForManualCamera();
+
     // Manual program punch. A disabled slot remains manually selectable.
     // Returns true only when a real cut was issued.
     bool punch(S32 slot);

@@ -49,6 +49,7 @@
 #include "llagentaccess.h"
 #include "llagentbenefits.h"
 #include "llagentcamera.h"
+#include "llcinematiccamera.h"
 #include "llagentui.h"
 #include "llagentwearables.h"
 #include "llagentpilot.h"
@@ -10934,6 +10935,24 @@ void initialize_menus()
     // Object pie menu
     view_listener_t::addMenu(new LLObjectBuild(), "Object.Build");
     commit.add("Object.Touch", boost::bind(&handle_object_touch));
+    commit.add("Object.LockCamera", [](LLUICtrl*, const LLSD&)
+    {
+        LLCinematicCamera::instance().lockToObject(LLToolPie::getInstance()->getPick().getObject());
+    });
+    commit.add("Object.ReleaseCamera", [](LLUICtrl*, const LLSD&)
+    {
+        LLCinematicCamera::instance().releaseObjectLock();
+    });
+    enable.add("Object.CameraLocked", [](LLUICtrl*, const LLSD&)
+    {
+        return LLCinematicCamera::instance().objectLockConfigured();
+    });
+    enable.add("Object.CameraUnlocked", [](LLUICtrl*, const LLSD&)
+    {
+        LLViewerObject* object = LLToolPie::getInstance()->getPick().getObject();
+        return !LLCinematicCamera::instance().objectLockConfigured() && object &&
+            !object->isDead() && !object->isAvatar() && !object->isHUDAttachment();
+    });
     commit.add("Object.LockVCam", [](LLUICtrl*, const LLSD&)
     {
         ALPanelDirectorVCam::lockToObject(LLToolPie::getInstance()->getPick().getObject());

@@ -337,8 +337,9 @@ def validate_data(data: dict) -> None:
     # + eight per-light Sway / Swing time rows on the Light rig: 2318 (2026-10-27).
     # + six Colour chart controls on Look > Image: 2324 (2026-10-27).
     # + VCam Object POV: exactly 15 attachment rows: 2339 (2026-10-27).
-    if len(pages) != 38 or row_count != 2339:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2339")
+    # + main-camera Object Lock: exactly 12 mounted-camera rows: 2351 (2026-10-27).
+    if len(pages) != 38 or row_count != 2351:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2351")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

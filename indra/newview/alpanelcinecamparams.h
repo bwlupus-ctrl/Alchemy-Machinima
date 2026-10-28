@@ -20,6 +20,7 @@
 #define AL_ALPANELCINECAMPARAMS_H
 
 #include "llpanel.h"
+#include "alcinecamobjectlockui.h"
 
 #include <string>
 #include <vector>
@@ -38,6 +39,7 @@ public:
     ~ALPanelCineCamParams() override;
 
     bool postBuild() override;
+    void draw() override;
     // each embedding floater's onOpen lands here: re-sync the mode panel
     // and pick up presets saved from another instance
     void onVisibilityChange(bool new_visibility) override;
@@ -110,6 +112,7 @@ private:
     static void ensurePresetWatchers();
     static std::string sActivePresetName;
 
+    ALCineCamObjectLockUI mObjectLockUI;
     LLComboBox* mPresetCombo = nullptr;
     LLComboBox* mShakePresetCombo = nullptr;
     boost::signals2::connection mModeConnection;

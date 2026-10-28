@@ -37,6 +37,7 @@
      tool_tip="Camera motion pattern"
      width="97">
         <combo_box.item label="Bone Lock" name="cc_bone" value="1" />
+        <combo_box.item label="Object Lock" name="cc_object" value="52" />
         <combo_box.item label="Orbit" name="cc_orbit" value="2" />
         <combo_box.item label="Fly Hover" name="cc_hover" value="3" />
         <combo_box.item label="Sweep" name="cc_sweep" value="4" />
@@ -222,6 +223,8 @@
      width="120" />
 
     <!-- ============ shared motion-start controls ============ -->
+    <!-- The shared mount controller reveals this at postBuild for every mode
+         except Object Lock, whose mount controls occupy the lower rows. -->
     <panel
      background_visible="false"
      border="true"
@@ -229,7 +232,8 @@
      height="64"
      layout="topleft"
      left="6"
-     name="motion_start_group"
+     name="kc_motion_start"
+     visible="false"
      top="235"
      width="308">
         <text follows="left|top" font="SansSerifBold" height="14"
@@ -326,6 +330,32 @@
 
     <!-- ============ per-mode parameter panels ============ -->
     <!-- All panels occupy the same rect; the floater class shows exactly one. -->
+
+    <panel name="panel_mode_object" left="0" top="135" width="320" height="156"
+     follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+        <text name="lbl" top="0" left="12" width="296" height="16" layout="topleft" follows="left|top" font="SansSerifBold">Object Lock (ride on a prim)</text>
+        <text name="cc_object_status" top="19" left="12" width="296" height="16" layout="topleft" follows="left|top" use_ellipses="true">No object locked</text>
+        <button name="cc_object_lock" label="Lock selected object" top="39" left="12" width="164" height="20" layout="topleft" follows="left|top" tool_tip="Lock to a prim or worn prop, including a child. Avatars and HUD attachments are rejected." />
+        <button name="cc_object_release" label="Release" top="39" left="184" width="112" height="20" layout="topleft" follows="left|top" tool_tip="Release and restore the previous CineCam mode, or Off." />
+        <spinner name="CinematicCamObjectOffsetForward" control_name="CinematicCamObjectOffsetForward" label="Fwd" label_width="22" top="65" left="12" width="80" height="16" decimal_digits="2" increment="0.05" min_val="-20" max_val="20" follows="left|top" layout="topleft" tool_tip="Offset in metres in the followed frame." />
+        <button name="CinematicCamObjectOffsetForward_reset" top="65" left="93" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectOffsetForward" />
+        <spinner name="CinematicCamObjectOffsetLeft" control_name="CinematicCamObjectOffsetLeft" label="Left" label_width="22" top="65" left="112" width="80" height="16" decimal_digits="2" increment="0.05" min_val="-20" max_val="20" follows="left|top" layout="topleft" tool_tip="Offset in metres in the followed frame." />
+        <button name="CinematicCamObjectOffsetLeft_reset" top="65" left="193" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectOffsetLeft" />
+        <spinner name="CinematicCamObjectOffsetUp" control_name="CinematicCamObjectOffsetUp" label="Up" label_width="22" top="65" left="212" width="80" height="16" decimal_digits="2" increment="0.05" min_val="-20" max_val="20" follows="left|top" layout="topleft" tool_tip="Offset in metres in the followed frame." />
+        <button name="CinematicCamObjectOffsetUp_reset" top="65" left="293" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectOffsetUp" />
+        <spinner name="CinematicCamObjectAimYaw" control_name="CinematicCamObjectAimYaw" label="Yaw" label_width="34" top="87" left="12" width="126" height="16" decimal_digits="0" increment="5" min_val="-180" max_val="180" follows="left|top" layout="topleft" tool_tip="Local aim trim in degrees; position-only holds the existing aim." />
+        <button name="CinematicCamObjectAimYaw_reset" top="87" left="140" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectAimYaw" />
+        <spinner name="CinematicCamObjectAimPitch" control_name="CinematicCamObjectAimPitch" label="Pitch" label_width="34" top="87" left="162" width="126" height="16" decimal_digits="0" increment="5" min_val="-180" max_val="180" follows="left|top" layout="topleft" tool_tip="Local aim trim in degrees; position-only holds the existing aim." />
+        <button name="CinematicCamObjectAimPitch_reset" top="87" left="290" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectAimPitch" />
+        <check_box name="CinematicCamObjectFollowYaw" control_name="CinematicCamObjectFollowYaw" label="Follow yaw" top="109" left="12" width="84" height="16" follows="left|top" layout="topleft" tool_tip="Spin with it; yaw alone keeps the horizon level." />
+        <button name="CinematicCamObjectFollowYaw_reset" top="109" left="97" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectFollowYaw" />
+        <check_box name="CinematicCamObjectFollowPitch" control_name="CinematicCamObjectFollowPitch" label="Follow pitch" top="109" left="112" width="84" height="16" follows="left|top" layout="topleft" tool_tip="Tilt nose up/down. All three axes give full ride-along." />
+        <button name="CinematicCamObjectFollowPitch_reset" top="109" left="197" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectFollowPitch" />
+        <check_box name="CinematicCamObjectFollowRoll" control_name="CinematicCamObjectFollowRoll" label="Follow roll" top="109" left="212" width="84" height="16" follows="left|top" layout="topleft" tool_tip="Tilt side to side. All three axes give full ride-along." />
+        <button name="CinematicCamObjectFollowRoll_reset" top="109" left="297" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectFollowRoll" />
+        <slider name="CinematicCamObjectSmoothing" control_name="CinematicCamObjectSmoothing" label="Smooth" label_width="48" top="133" left="12" width="272" height="16" decimal_digits="2" increment="0.05" min_val="0" max_val="10" follows="left|top" layout="topleft" tool_tip="Damping seconds. Zero is rigid except during explicit switcher cut easing; bypasses general CineCam smoothing." />
+        <button name="CinematicCamObjectSmoothing_reset" top="133" left="290" width="12" height="16" follows="left|top" layout="topleft" image_overlay="Refresh_Off" image_top_pad="0" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamObjectSmoothing" />
+    </panel>
 
     <panel name="panel_mode_bone" left="0" top="135" width="320" height="98"
      follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">

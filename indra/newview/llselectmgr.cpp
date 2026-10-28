@@ -29,6 +29,7 @@
 // file include
 #define LLSELECTMGR_CPP
 #include "llselectmgr.h"
+#include "llcinematiccamera.h"
 #include "llmaterialmgr.h"
 
 // library includes
@@ -6596,6 +6597,7 @@ void LLSelectMgr::processObjectPropertiesFamily(LLMessageSystem* msg, void** use
     // unpack name & desc
     std::string name;
     msg->getStringFast(_PREHASH_ObjectData, _PREHASH_Name, name);
+    LLCinematicCamera::instance().onObjectLockName(id, name);
 
     std::string desc;
     msg->getStringFast(_PREHASH_ObjectData, _PREHASH_Description, desc);

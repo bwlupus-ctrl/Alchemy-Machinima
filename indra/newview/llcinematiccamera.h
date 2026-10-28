@@ -9,6 +9,7 @@
  *   Bone Lock  -- rigidly attach the camera to an avatar skeleton joint,
  *                 like a GoPro strapped to that bone, with local position
  *                 and aim offsets, optional horizon lock and smoothing.
+ *   Object Lock -- ride a picked prim, following selected rotation axes.
  *   Orbit      -- circle the target at a radius/height with optional bob.
  *   Fly Hover  -- drone/fly-like wander around the target on fBm noise,
  *                 always framing the target.
@@ -28,11 +29,18 @@
 #define LL_LLCINEMATICCAMERA_H
 
 #include "stdtypes.h"
+#include "alcinecamobjectlock.h"
+#include "alcinecampresentation.h"
 #include "v3math.h"
 #include "llquaternion.h"
+#include "lluuid.h"
+
+#include <string>
+#include <boost/signals2/connection.hpp>
 
 class LLVOAvatar;
 class LLViewerCamera;
+class LLViewerObject;
 
 class LLCinematicCamera
 {
@@ -94,6 +102,7 @@ public:
         MODE_STATIC_HIGH    = 49,
         MODE_STATIC_FULL    = 50,
         MODE_PEDRO_BOB      = 51,
+        MODE_OBJECT_LOCK    = 52,
     };
     static_assert(MODE_BREATHING_HOLD == 42,
                   "Persisted legacy CineCam mode values must not move");
@@ -102,7 +111,17 @@ public:
     static_assert(MODE_PEDRO_BOB == 51,
                   "Pedro Cam mode must remain append-only");
 
+    static_assert(MODE_OBJECT_LOCK == 52,
+                  "Object Lock mode must remain append-only");
+
     static LLCinematicCamera& instance();
+
+    void lockToObject(LLViewerObject* object);
+    void releaseObjectLock();
+    bool objectLockActive() const;
+    bool objectLockConfigured() const;
+    std::string objectLockStatus() const;
+    void onObjectLockName(const LLUUID& id, const std::string& name);
 
     // Shared aspect-aware Frame lens used by cinematic camera owners. Identity
     // when the lens is disabled or the target frame is Native.
@@ -124,10 +143,10 @@ public:
     // True when the system should own the render camera this frame.
     bool isActive() const;
 
-    // True only while Bone Lock is actively mounted on this exact avatar.
-    bool isActiveBoneLockTarget(const LLUUID& avatar_id) const;
+    // True while Bone Lock or an object attachment is mounted on this avatar.
+    bool isActiveMountedTarget(const LLUUID& avatar_id) const;
 
-    // True while a non-Bone-Lock shot is actively framing this avatar from its
+    // True while a non-mounted shot is actively framing this avatar from its
     // head joint. Render-only joint overrides must not feed that camera input.
     bool isActiveHeadFramingTarget(const LLUUID& avatar_id) const;
 
@@ -162,7 +181,24 @@ public:
     void updateCamera();
 
 private:
-    LLCinematicCamera() = default;
+    LLCinematicCamera();
+    void updateObjectLock(bool entering, bool new_take);
+
+    ALCineCamObjectLock::PoseHistory mObjectPose;
+    LLUUID mObjectTarget;
+    U8 mObjectAxes = 0;
+    bool mObjectResolved = false;
+    S32 mObservedMode = MODE_OFF;
+    boost::signals2::scoped_connection mObjectModeConnection;
+    S32 mObjectPreviousMode = MODE_OFF;
+    bool mObjectPreviousEnabled = false;
+    bool mObjectHavePrevious = false;
+    mutable std::string mObjectTargetName;
+    LLUUID mObjectNameTarget;
+    LLVector3d mObjectOutputGlobal;
+    LLVector3d mObjectOperatorOrigin;
+    LLQuaternion mObjectOutputRotation;
+    F32 mObjectOutputFov = 0.f;
 
     LLVOAvatar* resolveTarget() const;
     LLVOAvatar* resolveDefaultTarget() const;
@@ -264,14 +300,7 @@ private:
     U64          mConsumedTriggerSerial = 0;
     bool         mTriggeredLookAtHead = false;
     EMode        mTriggeredLookAtHeadMode = MODE_OFF;
-    bool         mEaseActive = false;
-    F32          mEaseDuration = 0.f;
-    S32          mEaseCurveId = 0;
-    F32          mEaseBezier[4] = { 0.42f, 0.f, 0.58f, 1.f };
-    F32          mEaseFeather = 0.f;
-    LLVector3    mEaseFromPos = LLVector3::zero;
-    LLQuaternion mEaseFromRot;
-    F32          mEaseFromFov = 0.f;
+    ALCineCamPresentation::CutEase mCutEase;
     // Skeleton Auto-Reframe: a solved subject-relative rig held between
     // discrete changes. Manual trims are read live and never stored here.
     bool         mAutoFrameHaveSolve = false;

@@ -5964,7 +5964,7 @@ LLVector3 gazeRenderedJointPosition(LLVOAvatar* av, LLJoint* joint)
 // are Director-only so a disabled Director remains byte-identical.
 bool gazeCameraSafe(LLVOAvatar* av, bool director_look_at)
 {
-    if (!av || LLCinematicCamera::instance().isActiveBoneLockTarget(av->getID()))
+    if (!av || LLCinematicCamera::instance().isActiveMountedTarget(av->getID()))
     {
         return false;
     }
