@@ -9207,9 +9207,13 @@ private:
             }
         }
         const LLSD persisted = gSavedSettings.getLLSD("CineLightRigInstances");
-        const bool exact = persisted["selected_slot"].asInteger() ==
-                mFunctionalRigSnapshot["selected_slot"].asInteger() &&
-            llsd_equals(persisted["instances"], mFunctionalRigSnapshot["instances"]);
+        // Logout deliberately selects You and clears every runtime enable;
+        // every authored parameter in the five-slot snapshot must still match.
+        LLSD expected_instances = mFunctionalRigSnapshot["instances"];
+        for (auto it = expected_instances.beginArray(); it != expected_instances.endArray(); ++it)
+            (*it)["CineLightRigEnabled"] = false;
+        const bool exact = persisted["selected_slot"].asInteger() == 0 &&
+            llsd_equals(persisted["instances"], expected_instances);
         if (report)
         {
             LLSD assertion;
@@ -9218,8 +9222,8 @@ private:
             assertion["widget_type"] = "state";
             assertion["exercise"] = "shutdown";
             addFunctionalResult(assertion, exact ? "PASS" : "FAIL",
-                exact ? "shutdown persisted the original selected slot and all five rig slots" :
-                        "shutdown did not persist the original full rig-slot snapshot");
+                exact ? "shutdown selected You, disabled all five rigs and preserved their authored settings" :
+                        "shutdown did not persist solo/off with the original authored rig settings");
         }
     }
 

@@ -406,7 +406,12 @@ ALCineLightRigManager::ALCineLightRigManager()
     if (!restore(gSavedSettings.getLLSD(INSTANCE_SETTING)))
     {
         mSelected = SLOT_SELF;
+        mRigSession.restore(mBlobs, mSelected, false);
+        writeSelectedSettings();
     }
+    mEnabledConnection = gSavedSettings.getControl("CineLightRigEnabled")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD& value, const LLSD&)
+        { if (!mWritingSelectedSettings) onEnabledChanged(value.asBoolean()); });
 }
 
 ALCineLightRigManager::~ALCineLightRigManager()
@@ -721,16 +726,72 @@ ALCineLightRigManager::ParamBlob ALCineLightRigManager::captureSelected() const
 
 void ALCineLightRigManager::setSelectedSlot(Slot slot)
 {
-    if (!validSlot(slot) || slot == mSelected)
+    if (!mRigSession.canSelect(slot) || slot == mSelected)
     {
         return;
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
     mSelected = slot;
     ++mConfigurationRevision;
-    mBlobs[slotIndex(mSelected)].toSettings();
+    writeSelectedSettings();
     persist();
     logSelectedTarget();
+}
+
+void ALCineLightRigManager::writeSelectedSettings()
+{
+    // Buffer swaps are not power-switch actions, even when their enables differ.
+    mWritingSelectedSettings = true;
+    mBlobs[slotIndex(mSelected)].toSettings();
+    mWritingSelectedSettings = false;
+}
+
+void ALCineLightRigManager::shutdownSlot(S32 index)
+{
+    mInstances[index].shutdown();
+    if (index == 0)
+    {
+        for (auto& entry : mMirrors) entry.second->shutdown();
+    }
+}
+
+void ALCineLightRigManager::onEnabledChanged(bool enabled)
+{
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    mRigSession.setEnabled(mBlobs, mSelected, enabled,
+        [this](S32 index) { shutdownSlot(index); });
+    ++mConfigurationRevision;
+    persist();
+}
+
+void ALCineLightRigManager::createRigGroup()
+{
+    if (isRigGroup()) return;
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    mRigSession.createGroup();
+    ++mConfigurationRevision;
+    logSelectedTarget();
+}
+
+void ALCineLightRigManager::leaveRigGroup()
+{
+    if (!isRigGroup()) return;
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    mRigSession.leaveGroup(mBlobs, [this](S32 index) { shutdownSlot(index); });
+    mSelected = SLOT_SELF;
+    writeSelectedSettings();
+    ++mConfigurationRevision;
+    persist();
+    logSelectedTarget();
+}
+
+void ALCineLightRigManager::allOff()
+{
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    mRigSession.allOff(mBlobs, [this](S32 index) { shutdownSlot(index); });
+    writeSelectedSettings();
+    ++mConfigurationRevision;
+    persist();
 }
 
 void ALCineLightRigManager::logSelectedTarget()
@@ -746,17 +807,20 @@ void ALCineLightRigManager::logSelectedTarget()
     const U32 group_slots = rig.getGroupSlots();
     const U32 mask = enabledMask();
     if (mSelected == mLoggedSlot && mask == mLoggedEnabledMask &&
+        isRigGroup() == mLoggedRigGroup &&
         subject == mLoggedSubject && resolved == mLoggedAvatar &&
         object == mLoggedObject && group == mLoggedGroup && group_slots == mLoggedGroupSlots)
         return;
     mLoggedSlot = mSelected;
     mLoggedEnabledMask = mask;
+    mLoggedRigGroup = isRigGroup();
     mLoggedSubject = subject;
     mLoggedAvatar = resolved;
     mLoggedObject = object;
     mLoggedGroup = group;
     mLoggedGroupSlots = group_slots;
     LL_INFOS("CineRig") << "#CineRig selected_slot=" << static_cast<S32>(mSelected)
+        << " rig_mode=" << (isRigGroup() ? "group" : "solo")
         << " enabled_mask=" << mask << " subject_uuid=" << subject
         << " resolved_avatar_uuid=" << resolved << " object_uuid=" << object
         << " mode=" << (object.notNull() ? "object" : group ? "group" : "avatar")
@@ -776,7 +840,8 @@ void ALCineLightRigManager::resetAllToSelf()
         mBlobs[i] = defaults;
     }
     mSelected = SLOT_SELF;
-    mBlobs[slotIndex(mSelected)].toSettings();
+    mRigSession.restore(mBlobs, mSelected, false);
+    writeSelectedSettings();
 
     clearShadowSuppression();
     for (S32 i = 0; i < SLOT_COUNT; ++i)
@@ -1311,7 +1376,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
         {
             mBlobs[i].applyRigState(mInstances[i]);
         }
-        mBlobs[slotIndex(mSelected)].toSettings();
+        writeSelectedSettings();
         mNeedsSessionRestore = false;
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
@@ -1319,14 +1384,17 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     updateAutoShadowSlots();
     updateRandomCycle(presentation_time);
     resolveCameraFocus();
-    const U32 enabled_mask = enabledMask();
+    // The dispatcher is the final solo boundary, including stale blob flags.
+    const bool grouped = isRigGroup();
+    const U32 enabled_mask = enabledMask() & (grouped ? ~0u : 1u);
+    const Slot dispatch_selected = grouped ? mSelected : SLOT_SELF;
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         const Slot slot = static_cast<Slot>(i);
         const bool owns_shadows = slot == mFocusState.mFocus;
         mInstances[i].setLiveProbeBounceScale(
             liveProbeBounceScaleFor(slot));
-        switch (pathFor(enabled_mask, mSelected, slot))
+        switch (pathFor(enabled_mask, dispatch_selected, slot))
         {
             case TickPath::TICK_SELECTED_VERBATIM:
                 mInstances[i].tickSelected(presentation_time, owns_shadows);
@@ -1480,7 +1548,6 @@ void ALCineLightRigManager::shutdown()
                 mBlobs[i].captureRigState(mInstances[i]);
             }
         }
-        persist();
     }
     destroyLiveProbe();
     mLiveProbeRetryTicks = 0;
@@ -1489,6 +1556,13 @@ void ALCineLightRigManager::shutdown()
     {
         rig.shutdown();
     }
+    // The singleton survives logout: the next login must not revive this group.
+    mRigSession.restore(mBlobs, mSelected, false);
+    mSelected = SLOT_SELF;
+    writeSelectedSettings();
+    // Persist the same safe session boundary that the next login will use.
+    persist();
+    ++mConfigurationRevision;
     mNeedsSessionRestore = true;
 }
 
@@ -1753,18 +1827,18 @@ void ALCineLightRigManager::persist() const
     gSavedSettings.setLLSD(INSTANCE_SETTING, data);
 }
 
-bool ALCineLightRigManager::restore(const LLSD& data)
+bool ALCineLightRigManager::validateInstanceStore(const LLSD& data)
 {
     if (!data.isMap() || !data["version"].isInteger() ||
         data["version"].asInteger() != INSTANCE_STORE_VERSION ||
         !data["selected_slot"].isInteger() ||
         !validSlotValue(data["selected_slot"].asInteger()) ||
+        (data.has("rig_group") && !data["rig_group"].isBoolean()) ||
         !data["instances"].isArray() ||
         data["instances"].size() != SLOT_COUNT)
     {
         return false;
     }
-    ParamBlob restored[SLOT_COUNT];
     bool seen[SLOT_COUNT] = {};
     for (LLSD::array_const_iterator it = data["instances"].beginArray();
          it != data["instances"].endArray(); ++it)
@@ -1778,7 +1852,6 @@ bool ALCineLightRigManager::restore(const LLSD& data)
         {
             return false;
         }
-        restored[slot] = ParamBlob::fromLLSD(*it);
         seen[slot] = true;
     }
     for (S32 i = 0; i < SLOT_COUNT; ++i)
@@ -1788,18 +1861,30 @@ bool ALCineLightRigManager::restore(const LLSD& data)
             return false;
         }
     }
+    return true;
+}
+
+bool ALCineLightRigManager::restore(const LLSD& data, bool scene_load)
+{
+    if (!validateInstanceStore(data)) return false;
+    for (LLSD::array_const_iterator it = data["instances"].beginArray();
+         it != data["instances"].endArray(); ++it)
+    {
+        mBlobs[(*it)["slot"].asInteger()] = ParamBlob::fromLLSD(*it);
+    }
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
-        mBlobs[i] = restored[i];
         mBlobs[i].applyRigState(mInstances[i]);
     }
     mSelected = static_cast<Slot>(data["selected_slot"].asInteger());
+    mRigSession.restore(mBlobs, mSelected, scene_load, data["rig_group"].asBoolean());
+    if (!scene_load) mSelected = SLOT_SELF;
     mSelected = normalizeSelected(enabledMask(), mSelected);
     if (!validSlot(mSelected))
     {
         mSelected = SLOT_SELF;
     }
-    mBlobs[slotIndex(mSelected)].toSettings();
+    writeSelectedSettings();
     mFocusState.mFocus = (enabledMask() & slotToGroupBit(mSelected))
         ? mSelected : lowestEnabled(enabledMask());
     if (!validSlot(mFocusState.mFocus))
@@ -1829,6 +1914,7 @@ LLSD ALCineLightRigManager::sceneData() const
         data["anchor"] = legacyAnchorForSlot(mSelected);
     }
     data["selected_slot"] = slotIndex(mSelected);
+    data["rig_group"] = isRigGroup();
     data["instances"] = LLSD::emptyArray();
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
@@ -1904,7 +1990,8 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
         store["version"] = INSTANCE_STORE_VERSION;
         store["selected_slot"] = data["selected_slot"];
         store["instances"] = data["instances"];
-        if (!restore(store))
+        if (data.has("rig_group")) store["rig_group"] = data["rig_group"];
+        if (!restore(store, true))
         {
             LL_WARNS("CineLightRig")
                 << "Director scene has a malformed multi-instance light-rig "
@@ -1922,7 +2009,7 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
             {
                 mBlobs[i].applyRigState(mInstances[i]);
             }
-            mBlobs[slotIndex(mSelected)].toSettings();
+            writeSelectedSettings();
             // Instance blobs own each list, while the legacy scene envelope
             // carries the selected console's live transport position.
             selected().applyCueSceneState(data);
@@ -1962,14 +2049,9 @@ void ALCineLightRigManager::migrateLegacyScene(const LLSD& data)
     // legacy scene). Forcing a reset here a second time would incorrectly
     // discard case (a)'s legitimately-saved values, so no rim-specific
     // handling is needed in this function at all.
-    const LLDirectorCast& cast = LLDirectorCast::instance();
-    const LLUUID subjects[4] = {
-        cast.getSubjectA(), cast.getSubjectB(),
-        cast.getSubjectC(), cast.getSubjectD()
-    };
-    const MigrationSlot mapping = migrateAnchorToSlot(
-        data.has("anchor") ? data["anchor"].asUUID() : LLUUID::null,
-        subjects);
+    // A legacy scene authors one rig, even when its avatar is a cast Subject.
+    // Keep its values reachable in solo; SELF can retain that avatar anchor.
+    migrated.mAnchor = data.has("anchor") ? data["anchor"].asUUID() : LLUUID::null;
 
     clearShadowSuppression();
     for (ALCineLightRig& rig : mInstances)
@@ -1981,21 +2063,15 @@ void ALCineLightRigManager::migrateLegacyScene(const LLSD& data)
         mBlobs[i] = ParamBlob();
         mBlobs[i].mEnabled = false;
     }
-    mBlobs[slotIndex(mapping.mSlot)] = migrated;
-    if (!mapping.mKeepLegacyAnchor)
-    {
-        // Known subject slots are implicit; retain the field only as the
-        // legacy block's carrier, never as their tick anchor.
-        mBlobs[slotIndex(mapping.mSlot)].mAnchor =
-            data.has("anchor") ? data["anchor"].asUUID() : LLUUID::null;
-    }
+    mBlobs[0] = migrated;
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         mBlobs[i].applyRigState(mInstances[i]);
     }
-    mSelected = mapping.mSlot;
+    mSelected = SLOT_SELF;
+    mRigSession.restore(mBlobs, mSelected, true);
     mSelected = normalizeSelected(enabledMask(), mSelected);
-    mBlobs[slotIndex(mSelected)].toSettings();
+    writeSelectedSettings();
     mFocusState.mFocus = mSelected;
     mFocusState.mChallenger = mSelected;
     mFocusState.mChallengeTicks = 0;

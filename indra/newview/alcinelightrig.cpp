@@ -1226,8 +1226,8 @@ LLVOAvatar* ALCineLightRig::resolveSlotAvatar() const
         case ALCineLightRigSlot::D: return cast.resolveSubjectD();
         case ALCineLightRigSlot::SELF:
         default:
-            // A non-null SELF anchor exists only for an arbitrary-anchor
-            // pre-multi-instance scene. Normal SELF operation is resolve(null).
+            // Legacy single-rig scenes retain their avatar anchor on SELF.
+            // Normal SELF operation is resolve(null).
             return cast.resolve(mAnchor.notNull() ? mAnchor : LLUUID::null);
     }
 }

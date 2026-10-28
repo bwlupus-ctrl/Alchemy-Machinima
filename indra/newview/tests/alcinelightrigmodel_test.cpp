@@ -549,7 +549,7 @@ struct cine_light_rig_model_data {};
 // geometry, transition continuity and persistence. 124..125 cover the bounded
 // mixture and repeated-interruption weight invariant. 126..127 cover
 // overflow continuity, endpoint ordering and 2000 random interruption chains.
-typedef test_group<cine_light_rig_model_data, 127> cine_light_rig_model_group;
+typedef test_group<cine_light_rig_model_data, 133> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -8021,6 +8021,135 @@ void cine_light_rig_model_object::test<119>()
     // Midpoint switch of the stored flags is unchanged by the master existing.
     ensure("no stored flag set by the master",
         !evaluateCueTransition(start, target, 1.0, 0.0).mSetup.mLights[2].mActorOnly);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<128>()
+{
+    using Slot = ALCineLightRigSlot;
+    ALCineLightRigManagerModel::RigSession session;
+    ALCineLightRigParamBlob blobs[5];
+    S32 shutdowns = 0;
+    for (S32 i = 1; i < 5; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i);
+        ensure("solo cannot select Subject rigs", !session.canSelect(slot));
+        session.setEnabled(blobs, slot, true, [&shutdowns](S32) { ++shutdowns; });
+        ensure("solo cannot enable Subject rigs", !blobs[i].mEnabled);
+    }
+    ensure_equals("ignored enable does no emitter work", shutdowns, 0);
+    session.setEnabled(blobs, Slot::SELF, true, [&shutdowns](S32) { ++shutdowns; });
+    ensure("solo You is usable", blobs[0].mEnabled);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<129>()
+{
+    ALCineLightRigManagerModel::RigSession session;
+    ALCineLightRigParamBlob blobs[5];
+    // Deliberately seed stale hidden enables and every emitter kind. Power off
+    // must shut down every slot, even when the policy is already in solo mode.
+    U32 emitters[5] = { 0xffu, 0xffu, 0xffu, 0xffu, 0xffu };
+    U32 shutdown_mask = 0;
+    for (auto& blob : blobs) blob.mEnabled = true;
+    session.setEnabled(blobs, ALCineLightRigSlot::SELF, false,
+        [&emitters, &shutdown_mask](S32 i) { emitters[i] = 0; shutdown_mask |= 1u << i; });
+    for (S32 i = 0; i < 5; ++i)
+    {
+        ensure("solo power off clears all enables", !blobs[i].mEnabled);
+        ensure_equals("solo power off shuts all emitters down", emitters[i], 0u);
+    }
+    ensure_equals("shutdown visits even hidden slots", shutdown_mask, 31u);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<130>()
+{
+    using Slot = ALCineLightRigSlot;
+    ALCineLightRigManagerModel::RigSession session;
+    ALCineLightRigParamBlob blobs[5];
+    U32 shutdown_mask = 0;
+    const auto shutdown = [&shutdown_mask](S32 i) { shutdown_mask |= 1u << i; };
+    session.createGroup();
+    for (S32 i = 0; i < 5; ++i)
+    {
+        ensure("creating group never enables a rig", !blobs[i].mEnabled);
+        ensure("group unlocks every rig", session.canSelect(static_cast<Slot>(i)));
+        session.setEnabled(blobs, static_cast<Slot>(i), true, shutdown);
+        blobs[i].mRadius = 2.f + static_cast<F32>(i);
+    }
+    session.setEnabled(blobs, Slot::B, false, shutdown);
+    ensure_equals("group slot off shuts only that slot down", shutdown_mask, 4u);
+    ensure("other group rigs stay on", blobs[0].mEnabled && blobs[1].mEnabled &&
+        blobs[3].mEnabled && blobs[4].mEnabled);
+    shutdown_mask = 0;
+    session.leaveGroup(blobs, shutdown);
+    ensure("leave returns solo", !session.mGroup);
+    ensure("leave preserves You power", blobs[0].mEnabled);
+    ensure_equals("leave shuts down all Subjects", shutdown_mask, 30u);
+    for (S32 i = 1; i < 5; ++i)
+    {
+        ensure("leave clears Subject enables", !blobs[i].mEnabled);
+        ensure_equals("leave retains Subject settings", blobs[i].mRadius, 2.f + static_cast<F32>(i));
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<131>()
+{
+    ALCineLightRigManagerModel::RigSession session;
+    ALCineLightRigParamBlob blobs[5];
+    session.createGroup();
+    for (auto& blob : blobs) blob.mEnabled = true;
+    U32 shutdown_mask = 0;
+    session.allOff(blobs, [&shutdown_mask](S32 i) { shutdown_mask |= 1u << i; });
+    ensure("all off keeps group membership", session.mGroup);
+    ensure_equals("all off shuts every slot down", shutdown_mask, 31u);
+    for (const auto& blob : blobs) ensure("all off clears enables", !blob.mEnabled);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<132>()
+{
+    ALCineLightRigManagerModel::RigSession session;
+    ALCineLightRigParamBlob blobs[5];
+    for (auto& blob : blobs)
+    {
+        auto saved = distinctiveBlob().toLLSD();
+        blob = ALCineLightRigParamBlob::fromLLSD(saved);
+    }
+    auto selected = ALCineLightRigSlot::D;
+    session.createGroup();
+    session.restore(blobs, selected, false, true);
+    ensure("login ignores saved group", !session.mGroup);
+    ensure_equals("login selects You", static_cast<S32>(selected), 0);
+    for (const auto& blob : blobs)
+    {
+        ensure("login clears persisted enabled flags", !blob.mEnabled);
+        ensure_equals("login retains saved radius", blob.mRadius, 1.25f);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<133>()
+{
+    ALCineLightRigManagerModel::RigSession session;
+    ALCineLightRigParamBlob blobs[5];
+    auto selected = ALCineLightRigSlot::SELF;
+    // Old scene/setup instance blobs have no session-mode field at all.
+    LLSD old = LLSD::emptyMap();
+    old["CineLightRigEnabled"] = true;
+    old["CineLightRigRadius"] = 3.5;
+    blobs[3] = ALCineLightRigParamBlob::fromLLSD(old);
+    session.restore(blobs, selected, true);
+    ensure("explicit load infers group from enabled Subject", session.mGroup);
+    ensure("explicit load preserves Subject power", blobs[3].mEnabled);
+    ensure_equals("old settings still load", blobs[3].mRadius, 3.5f);
+    blobs[3].mEnabled = false;
+    session.restore(blobs, selected, true);
+    ensure("old solo scene needs no new field", !session.mGroup);
+    session.restore(blobs, selected, true, true);
+    ensure("explicitly saved empty group can be loaded", session.mGroup);
 }
 
 } // namespace tut

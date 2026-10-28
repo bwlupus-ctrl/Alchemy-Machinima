@@ -28,6 +28,7 @@ class LLIconCtrl;
 class LLSpinCtrl;
 class LLTextBox;
 class LLUICtrl;
+class ALKitPage;
 
 class ALPanelCineLightRig final : public LLPanel
 {
@@ -114,6 +115,7 @@ private:
         const std::string& deleted_name = std::string());
 
     void onAnchorSelected();
+    void onRigGroupAction(S32 action);
     void onTargetObject();
     void onClearObjectTarget();
     void onGroupEnabledCommit();
@@ -145,6 +147,13 @@ private:
     void onClickShadowFixIt();
 
     LLComboBox* mAnchorCombo = nullptr;
+    LLButton* mCreateRigGroup = nullptr;
+    LLButton* mLeaveRigGroup = nullptr;
+    LLButton* mAllRigsOff = nullptr;
+    LLTextBox* mRigGroupStatus = nullptr;
+    ALKitPage* mRigKitPage = nullptr;
+    LLCheckBoxCtrl* mRigEnabled = nullptr;
+    LLTextBox* mRigRoster[5] = {};
     LLButton* mObjectTargetButton = nullptr;
     LLButton* mObjectTargetClear = nullptr;
     LLTextBox* mObjectTargetStatus = nullptr;

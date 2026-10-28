@@ -338,8 +338,9 @@ def validate_data(data: dict) -> None:
     # + six Colour chart controls on Look > Image: 2324 (2026-10-27).
     # + VCam Object POV: exactly 15 attachment rows: 2339 (2026-10-27).
     # + main-camera Object Lock: exactly 12 mounted-camera rows: 2351 (2026-10-27).
-    if len(pages) != 38 or row_count != 2351:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2351")
+    # + 9 rig session controls/readouts (create, leave, all off, count, five rigs).
+    if len(pages) != 38 or row_count != 2360:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2360")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -882,6 +883,8 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["preset_mode"] = "none"
     if cfg.get("chip_mode"):
         attrs["chip_mode"] = str(cfg["chip_mode"])
+    for key, value in cfg.get("persistent_chrome", {}).items():
+        attrs["persistent_" + key] = str(value)
     # own_history: the settings whose undo another owner already records (Exposure and its
     # shortcuts on Image: ALExposureSettingsHistory tracks the env EVs, auto exposure and
     # RenderExposure). Only those leave the kit watch list; every other setting keeps kit undo.
@@ -1044,8 +1047,12 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
             # visibility during layout and would otherwise reveal it.
             if row.get("show_if") == "never":
                 continue
-            card_node.append(row_element(row, by_name, by_control, referenced, report, names,
-                                         cfg.get("label_names", {})))
+            element = row_element(row, by_name, by_control, referenced, report, names,
+                                  cfg.get("label_names", {}))
+            chrome = cfg.get("persistent_chrome", {})
+            if row.get("w") in {chrome.get("status_widget"), chrome.get("action_widget")}:
+                element.set("hidden", "true")
+            card_node.append(element)
         for option_index, option in enumerate(card.get("opts", [])):
             if "value" not in option:
                 raise GenError(f"selector {card['id']} option {option.get('label')} lacks explicit value")
@@ -2332,6 +2339,28 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("all compass dials use kit geometry without duplicate readout",
                        bool(dials) and all(node.get("kit_geometry") == "true" and node.get("show_readout") == "false" for node in dials)))
         rig = ET.fromstring(outputs[out_dir / "panel_dpage_light_cine_light_rig.xml"], parser=parser())
+        session_widgets = {"cine_create_rig_group", "cine_leave_rig_group", "cine_all_rigs_off",
+                           "cine_rig_group_status", "cine_rig_roster_self", "cine_rig_roster_a",
+                           "cine_rig_roster_b", "cine_rig_roster_c", "cine_rig_roster_d"}
+        session_rows = [node for node in rig.iter("kit_row") if node.get("widget") in session_widgets]
+        checks.append(("all nine rig session controls are in Rig & target and searchable",
+                       len(session_rows) == 9 and
+                       {node.get("widget") for node in session_rows} == session_widgets and
+                       all(node.get("bind") == "code" and
+                           {"group", "multi", "rig", "subject", "rigs", "all", "off", "solo"} <=
+                           set(node.get("keywords", "").split()) and
+                           node.get("widget").encode() in outputs[out_dir / "director_kit_index.xml"]
+                           for node in session_rows) and
+                       all(node in list(find_named(rig, "kc_rig_status").iter("kit_row"))
+                           for node in session_rows)))
+        rig_page = next(rig.iter("kit_page"))
+        checks.append(("rig session status and All off declare persistent chrome with reachable roster",
+                       rig_page.get("persistent_status_widget") == "cine_rig_group_status" and
+                       rig_page.get("persistent_action_widget") == "cine_all_rigs_off" and
+                       rig_page.get("persistent_card") == "rig_status" and
+                       rig_page.get("persistent_label") == "Rig group..." and
+                       all(row.get("hidden") == "true" for row in session_rows
+                           if row.get("widget") in {"cine_rig_group_status", "cine_all_rigs_off"})))
         shadow_settings = {f"CineLightRig{role}{flag}" for role in ("Key", "Fill", "Rim", "Bg")
                            for flag in ("DetailShadows", "WorldShadowPick")} | {"RenderSpotShadowDetailBias"}
         shadow_rows = [node for node in rig.iter("kit_row") if node.get("setting") in shadow_settings]

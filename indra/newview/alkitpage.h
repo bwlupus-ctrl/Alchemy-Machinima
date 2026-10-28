@@ -98,7 +98,8 @@ public:
         Mandatory<std::string> page;
         Optional<std::string>  summary, master_widget, master_setting, master_label, master_tooltip, master_quick, modes, mode_setting, mode_widget,
             mode_on, mode_tooltip, mode_adapter, who_label, who_picker, who_adapter, preset_mode, preset_provider,
-            watch_settings, chip_mode, undo_context;
+            watch_settings, chip_mode, undo_context, persistent_status_widget, persistent_action_widget,
+            persistent_card, persistent_label;
         Optional<bool>    legacy, actor_target, actor_target_synthetic;
         Multiple<Section> section;
         Multiple<Mode>    mode;
@@ -181,6 +182,7 @@ public:
     void               historyEdited(bool owned);
     void               setAvailabilityRefresh(std::function<void()> refresh) { mAvailabilityRefresh = std::move(refresh); }
     void               refreshAvailability() { if (mAvailabilityRefresh) mAvailabilityRefresh(); }
+    void               setMasterContext(const std::string& label, const std::string& off_text);
     bool               actorTargetAway() const { return mActorTargetAway; }
 
 protected:
@@ -200,6 +202,7 @@ private:
     };
     void        applyModeAndChip(bool request_layout = true);
     void        updateMaster();
+    void        buildPersistentChrome();
     bool        updateGateStatus();
     void        scrollToView(LLView*);
     void        performPageReset();
@@ -213,6 +216,7 @@ private:
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mMasterQuick, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
+    std::string mPersistentStatusWidget, mPersistentActionWidget, mPersistentCard, mPersistentLabel;
     std::function<bool(ALKitRow*)> mRowRevealGuard;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
@@ -247,7 +251,12 @@ private:
     ALKitDoc*                                       mDoc            = nullptr;
     ALFlowGrid*                                     mGrid           = nullptr;
     LLPanel*                                        mBar            = nullptr;
+    LLPanel*                                        mPersistentBand = nullptr;
+    LLTextBox*                                      mPersistentStatus = nullptr;
+    LLButton*                                       mPersistentAction = nullptr;
+    LLButton*                                       mPersistentManage = nullptr;
     LLPanel*                                        mBanner         = nullptr;
+    LLTextBox*                                      mBannerText     = nullptr;
     LLPanel*                                        mGateBanner     = nullptr;
     LLPanel*                                        mChipsContainer = nullptr;
     LLPanel*                                        mWhoContainer   = nullptr;

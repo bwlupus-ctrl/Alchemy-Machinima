@@ -12,6 +12,8 @@
 
 #include "alcinelightrig.h"
 
+#include <boost/signals2/connection.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -694,6 +696,69 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
 
 namespace ALCineLightRigManagerModel
 {
+// Session-only permission to run independent Subject rigs. Control/load
+// boundaries clear their enables; the tick dispatcher also masks solo output.
+struct RigSession
+{
+    bool mGroup = false;
+
+    bool canSelect(ALCineLightRigSlot slot) const
+    {
+        return slot >= ALCineLightRigSlot::SELF && slot < ALCineLightRigSlot::COUNT &&
+            (mGroup || slot == ALCineLightRigSlot::SELF);
+    }
+
+    void createGroup() { mGroup = true; }
+
+    template <typename Shutdown>
+    void allOff(ALCineLightRigParamBlob* blobs, Shutdown shutdown) const
+    {
+        for (S32 i = 0; i < static_cast<S32>(ALCineLightRigSlot::COUNT); ++i)
+        {
+            blobs[i].mEnabled = false;
+            shutdown(i);
+        }
+    }
+
+    template <typename Shutdown>
+    void leaveGroup(ALCineLightRigParamBlob* blobs, Shutdown shutdown)
+    {
+        mGroup = false;
+        for (S32 i = 1; i < static_cast<S32>(ALCineLightRigSlot::COUNT); ++i)
+        {
+            blobs[i].mEnabled = false;
+            shutdown(i);
+        }
+    }
+
+    template <typename Shutdown>
+    void setEnabled(ALCineLightRigParamBlob* blobs, ALCineLightRigSlot slot,
+                    bool enabled, Shutdown shutdown) const
+    {
+        if (!canSelect(slot)) return;
+        if (!mGroup && !enabled)
+        {
+            allOff(blobs, shutdown);
+            return;
+        }
+        const S32 index = static_cast<S32>(slot);
+        blobs[index].mEnabled = enabled;
+        if (!enabled) shutdown(index);
+    }
+
+    void restore(ALCineLightRigParamBlob* blobs, ALCineLightRigSlot& selected,
+                 bool scene_load, bool saved_group = false)
+    {
+        mGroup = scene_load && saved_group;
+        for (S32 i = 0; i < static_cast<S32>(ALCineLightRigSlot::COUNT); ++i)
+        {
+            if (!scene_load) blobs[i].mEnabled = false;
+            else if (i != 0 && blobs[i].mEnabled) mGroup = true;
+        }
+        if (!canSelect(selected)) selected = ALCineLightRigSlot::SELF;
+    }
+};
+
 // [ActorMask] A legacy single-rig scene has no Actor only data. The blob
 // captured from live settings may carry the PREVIOUS scene's flags, so the
 // legacy migration clears them (rig-level and per-light) to false.
@@ -1348,6 +1413,10 @@ public:
     Slot selectedSlot() const { return mSelected; }
     void setSelectedSlot(Slot slot);
     void resetAllToSelf();
+    bool isRigGroup() const { return mRigSession.mGroup; }
+    void createRigGroup();
+    void leaveRigGroup();
+    void allOff();
 
     ALCineLightRig& at(Slot slot);
     const ALCineLightRig& at(Slot slot) const;
@@ -1402,12 +1471,17 @@ private:
     void applyShadowSuppression();
     void clearShadowSuppression();
     void persist() const;
-    bool restore(const LLSD& data);
+    static bool validateInstanceStore(const LLSD& data);
+    bool restore(const LLSD& data, bool scene_load = false);
     void migrateLegacyScene(const LLSD& data);
     ParamBlob captureSelected() const;
+    void writeSelectedSettings();
+    void onEnabledChanged(bool enabled);
+    void shutdownSlot(S32 index);
     void logSelectedTarget();
     Slot mLoggedSlot = Slot::COUNT;
     U32 mLoggedEnabledMask = ~0u;
+    bool mLoggedRigGroup = false;
     LLUUID mLoggedSubject, mLoggedAvatar, mLoggedObject;
     bool mLoggedGroup = false;
     U32 mLoggedGroupSlots = ~0u;
@@ -1415,6 +1489,9 @@ private:
     ALCineLightRig mInstances[SLOT_COUNT];
     mutable ParamBlob mBlobs[SLOT_COUNT];
     Slot mSelected = SLOT_SELF;
+    ALCineLightRigManagerModel::RigSession mRigSession;
+    boost::signals2::scoped_connection mEnabledConnection;
+    bool mWritingSelectedSettings = false;
     U64 mConfigurationRevision = 1;
     ALCineLightRigManagerModel::FocusFilterState mFocusState;
     ALCineLightRigManagerModel::AutoShadowSlotState mAutoShadowSlotState;

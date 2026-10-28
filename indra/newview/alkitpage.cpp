@@ -214,6 +214,10 @@ ALKitPage::Params::Params() :
     watch_settings("watch_settings", ""),
     undo_context("undo_context", ""),
     chip_mode("chip_mode", "auto"),
+    persistent_status_widget("persistent_status_widget", ""),
+    persistent_action_widget("persistent_action_widget", ""),
+    persistent_card("persistent_card", ""),
+    persistent_label("persistent_label", ""),
     legacy("legacy", false),
     actor_target("actor_target", false),
     actor_target_synthetic("actor_target_synthetic", false),
@@ -243,6 +247,10 @@ ALKitPage::ALKitPage(const Params& p) :
     mPresetMode(p.preset_mode),
     mPresetProvider(p.preset_provider),
     mChipMode(p.chip_mode),
+    mPersistentStatusWidget(p.persistent_status_widget),
+    mPersistentActionWidget(p.persistent_action_widget),
+    mPersistentCard(p.persistent_card),
+    mPersistentLabel(p.persistent_label),
     mLegacy(p.legacy),
     mActorTargetPage(p.actor_target),
     mActorTargetSynthetic(p.actor_target_synthetic)
@@ -591,6 +599,7 @@ bool ALKitPage::postBuild()
     bt.rect          = LLRect(10, 24, 360, 0);
     bt.initial_value = mMasterLabel + " is off. Controls stay editable.";
     LLTextBox* btext = LLUICtrlFactory::create<LLTextBox>(bt);
+    mBannerText = btext;
     mBanner->addChild(btext);
     LLButton* turn = makeButton(pre + "_master_on", "Turn on");
     turn->setCommitCallback(
@@ -813,6 +822,8 @@ bool ALKitPage::postBuild()
             }
         }
     }
+
+    buildPersistentChrome();
 
     if (mSections.size() > 1)
     {
@@ -1059,6 +1070,44 @@ void ALKitPage::applyModeAndChip(bool request_layout)
         requestLayout();
 }
 
+void ALKitPage::buildPersistentChrome()
+{
+    // These controls retain their code bindings/search rows, but live outside
+    // the scroller and every mode/section/search filter. The source rows are
+    // generated hidden so card layout cannot move the controls back.
+    if (!mPersistentStatusWidget.empty() && !mPersistentActionWidget.empty())
+    {
+        mPersistentStatus = findChild<LLTextBox>(mPersistentStatusWidget);
+        mPersistentAction = findChild<LLButton>(mPersistentActionWidget);
+        if (mPersistentStatus && mPersistentAction)
+        {
+            mPersistentBand = makePanel(prefix() + "_persistent_band", ALKitStyle::WHO_H, getRect().getWidth());
+            addChild(mPersistentBand);
+            mPersistentBand->addChild(mPersistentStatus);
+            mPersistentBand->addChild(mPersistentAction);
+            mPersistentManage = makeButton(prefix() + "_persistent_manage", mPersistentLabel);
+            mPersistentManage->setCommitCallback([this](LLUICtrl*, const LLSD&)
+            {
+                // The roster rows are not "changed" rows, so the Changed only
+                // filter would keep them hidden; clear it before revealing.
+                ALKitShell* shell = ALKitShell::find(this);
+                if (shell && shell->changedOnly())
+                {
+                    shell->setChangedOnly(false);
+                    if (mChangedOnly)
+                    {
+                        mChangedOnly->setValue(false);
+                    }
+                }
+                setSearchText("");
+                revealCard(findCard(mPersistentCard), true);
+            });
+            mPersistentBand->addChild(mPersistentManage);
+        }
+    }
+
+}
+
 void ALKitPage::updateMaster()
 {
     const bool on = !mMaster || mMaster->isOn();
@@ -1068,6 +1117,15 @@ void ALKitPage::updateMaster()
         mDoc->setDimmed(!on);
     if (mMasterState)
         setTextIfChanged(mMasterState, on ? "On" : "Off");
+}
+
+void ALKitPage::setMasterContext(const std::string& label, const std::string& off_text)
+{
+    const bool changed = mMasterLabel != label;
+    mMasterLabel = label;
+    setTextIfChanged(mBannerText, off_text);
+    if (changed)
+        reshape(getRect().getWidth(), getRect().getHeight(), false);
 }
 
 bool ALKitPage::updateGateStatus()
@@ -1215,6 +1273,22 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
     }
     updateMaster();
     updateGateStatus();
+    if (mPersistentBand)
+    {
+        top -= ALKitStyle::WHO_H;
+        mPersistentBand->reshape(w, ALKitStyle::WHO_H, true);
+        mPersistentBand->setOrigin(0, top);
+        constexpr S32 action_w = 74, manage_w = 114, gap = 8;
+        const S32 right = w - ALKitStyle::PAGE_PAD_LR;
+        const S32 action_x = right - action_w;
+        const S32 manage_x = action_x - gap - manage_w;
+        mPersistentStatus->reshape(llmax(1, manage_x - gap - ALKitStyle::PAGE_PAD_LR), 20, true);
+        mPersistentStatus->setOrigin(ALKitStyle::PAGE_PAD_LR, 7);
+        mPersistentManage->reshape(manage_w, 24, true);
+        mPersistentManage->setOrigin(manage_x, 5);
+        mPersistentAction->reshape(action_w, 24, true);
+        mPersistentAction->setOrigin(action_x, 5);
+    }
     if (mBanner && mBanner->getVisible())
     {
         top -= ALKitStyle::BANNER_H;
@@ -1437,6 +1511,8 @@ bool ALKitPage::revealRow(ALKitRow* r, bool flash_it)
     if (!rowRevealAllowed(r)) return false;
     if (!r)
         return false;
+    if (r->control() && r->control()->getParent() == mPersistentBand)
+        return true;
     r->setFilterVisible(true);
     if (flash_it)
         r->flash();

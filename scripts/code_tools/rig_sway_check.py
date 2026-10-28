@@ -157,7 +157,7 @@ def main():
     vcvars = r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'
     build = out / 'build.cmd'
     build.write_text(f'@echo off\ncall "{vcvars}" >nul\n'
-                     f'cl /nologo /std:c++20 /utf-8 /EHsc /I"{out}" '
+                     f'cl /nologo /std:c++20 /utf-8 /EHsc /O2 /Ob3 /arch:AVX2 /fp:fast /W3 /WX /I"{out}" '
                      f'/I"{ROOT / "indra/newview"}" "{source}" '
                      f'/Fe:"{out / "sway.exe"}" /Fo:"{out / "sway.obj"}"\nexit /b %ERRORLEVEL%\n')
     result = subprocess.run(['cmd', '/d', '/c', str(build)], cwd=out,

@@ -24,7 +24,7 @@
          background_visible="false"
          border="true"
          follows="left|top"
-         height="129"
+         height="341"
          layout="topleft"
          left="0"
          name="cine_status_card"
@@ -34,39 +34,60 @@
          left="8" top="6" value="Cinematic Light Rig" width="200" />
         <check_box control_name="CineLightRigEnabled" follows="left|top" height="18"
          label="Enable" layout="topleft" left="8" name="cine_enabled" top="30" width="82"
-         tool_tip="Master on/off for the selected Cinematic Light Rig." />
+         tool_tip="Solo: controls all rig light output. Group: controls the rig being edited; see Rigs on and All off." />
         <check_box control_name="CineLightRigGizmo" follows="left|top" height="18"
          label="Gizmo" layout="topleft" left="94" name="cine_gizmo" top="30" width="92" />
         <text follows="left|top" height="16" layout="topleft" left="8" top="57"
-         value="Anchor:" width="53" />
+         value="Editing:" width="53" />
         <combo_box follows="left|top" height="22" layout="topleft" left="62"
          name="cine_anchor" top="53" width="108" />
         <button follows="left|top" height="22" label="Target Object" layout="topleft"
          left="174" name="cine_target_object" top="53" width="98" />
         <button follows="right|top" height="22" label="Clear" layout="topleft"
          left="292" name="cine_clear_object" top="53" width="48" />
-        <check_box follows="left|top" height="18" label="Light group (Subjects)"
-         layout="topleft" left="8" name="cine_group_enable" top="79" width="170" />
+        <check_box follows="left|top" height="18" label="Who's lit (Subjects)"
+         layout="topleft" left="8" name="cine_group_enable" top="131" width="170" />
         <text follows="left|right|top" halign="right" height="16" layout="topleft"
-         left="8" name="cine_group_status" top="127" width="316" />
+         left="8" name="cine_group_status" top="179" width="316" />
         <check_box follows="left|top" height="18" label="You" layout="topleft"
-         left="8" name="cine_group_self" top="103" width="52"
+         left="8" name="cine_group_self" top="155" width="52"
          tool_tip="Include you in the lit group." />
         <check_box follows="left|top" height="18" label="A" layout="topleft"
-         left="60" name="cine_group_a" top="103" width="34"
+         left="60" name="cine_group_a" top="155" width="34"
          tool_tip="Include Director Subject A in the lit group." />
         <check_box follows="left|top" height="18" label="B" layout="topleft"
-         left="96" name="cine_group_b" top="103" width="34"
+         left="96" name="cine_group_b" top="155" width="34"
          tool_tip="Include Director Subject B in the lit group." />
         <check_box follows="left|top" height="18" label="C" layout="topleft"
-         left="132" name="cine_group_c" top="103" width="34"
+         left="132" name="cine_group_c" top="155" width="34"
          tool_tip="Include Director Subject C in the lit group." />
         <check_box follows="left|top" height="18" label="D" layout="topleft"
-         left="168" name="cine_group_d" top="103" width="34"
+         left="168" name="cine_group_d" top="155" width="34"
          tool_tip="Include Director Subject D in the lit group." />
         <text follows="left|right|top" halign="right" height="16" layout="topleft"
-         left="8" name="cine_object_target_status" top="151"
+         left="8" name="cine_object_target_status" top="203"
          value="&#x2014; avatar &#x2014;" width="316" />
+        <button follows="left|top" height="22" label="Create rig group" layout="topleft"
+         left="8" name="cine_create_rig_group" top="79" width="128"
+         tool_tip="Unlock independent Subject A-D rigs for this session." />
+        <button follows="left|top" height="22" label="Leave group" layout="topleft"
+         left="140" name="cine_leave_rig_group" top="79" width="96"
+         tool_tip="Turn Subject rigs off, keep their settings, and edit You in solo mode." />
+        <button follows="left|top" height="22" label="All off" layout="topleft"
+         left="240" name="cine_all_rigs_off" top="79" width="74"
+         tool_tip="Turn every rig off and shut down all rig emitters." />
+        <text follows="left|right|top" height="18" layout="topleft" left="8"
+         name="cine_rig_group_status" top="105" value="Solo: 0 rigs on" width="324" />
+        <text follows="left|right|top" height="18" layout="topleft" left="8"
+         name="cine_rig_roster_self" top="227" width="324" />
+        <text follows="left|right|top" height="18" layout="topleft" left="8"
+         name="cine_rig_roster_a" top="249" width="324" />
+        <text follows="left|right|top" height="18" layout="topleft" left="8"
+         name="cine_rig_roster_b" top="271" width="324" />
+        <text follows="left|right|top" height="18" layout="topleft" left="8"
+         name="cine_rig_roster_c" top="293" width="324" />
+        <text follows="left|right|top" height="18" layout="topleft" left="8"
+         name="cine_rig_roster_d" top="315" width="324" />
         </panel>
         <panel
          background_visible="false"
