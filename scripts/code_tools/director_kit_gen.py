@@ -340,8 +340,9 @@ def validate_data(data: dict) -> None:
     # + main-camera Object Lock: exactly 12 mounted-camera rows: 2351 (2026-10-27).
     # + 9 rig session controls/readouts (create, leave, all off, count, five rigs).
     # World wind-down: exactly eight Time rows (toggle, times, curve, four handles): 2368 (10/28).
-    if len(pages) != 38 or row_count != 2368:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2368")
+    # Hidden system body: exactly one Soft shadows toggle, 2368 -> 2369 (10/28).
+    if len(pages) != 38 or row_count != 2369:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2369")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

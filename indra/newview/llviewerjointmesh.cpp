@@ -320,7 +320,7 @@ U32 LLViewerJointMesh::drawShape( F32 pixelArea, bool first_pass, bool is_dummy)
     LLViewerTexLayerSet *layerset = dynamic_cast<LLViewerTexLayerSet*>(mLayerSet);
     if (mTestImageName)
     {
-        // A raw GL test image has no analysed alpha; route it through the cut pass.
+        // A raw GL test image has no analysed alpha; keep its body shadow solid.
         if (!LLDrawPoolAvatar::shadowDrawsBake(nullptr, mShadowBakeFrame, mShadowBakeCut))
         {
             return 0;

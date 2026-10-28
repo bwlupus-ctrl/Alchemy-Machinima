@@ -135,7 +135,7 @@ public:
 protected:
     virtual ~LLImageGL();
 
-    U8 analyzeAlpha(const void* data_in, U32 w, U32 h);
+    U8 analyzeAlpha(const void* data_in, U32 w, U32 h, bool* min_alpha_known = nullptr);
     U8 getDefaultMinAlpha() const;
     void calcAlphaChannelOffsetAndStride();
 
@@ -189,7 +189,7 @@ public:
         S32 category = sMaxCategories-1, bool defer_copy = false, LLGLuint* tex_name = nullptr);
     bool createGLTexture(S32 discard_level, const U8* data, bool data_hasmips = false, S32 usename = 0, bool defer_copy = false, LLGLuint* tex_name = nullptr);
     void setImage(const LLImageRaw* imageraw);
-    bool setImage(const U8* data_in, bool data_hasmips = false, S32 usename = 0, U8* min_alpha_out = nullptr);
+    bool setImage(const U8* data_in, bool data_hasmips = false, S32 usename = 0, U8* min_alpha_out = nullptr, bool* min_alpha_known_out = nullptr);
     // *TODO: This function may not work if the textures is compressed (i.e.
     // RenderCompressTextures is 0). Partial image updates do not work on
     // compressed textures.
@@ -199,8 +199,8 @@ public:
 
     // wait for gl commands to finish on current thread and push
     // a lambda to main thread to swap mNewTexName and mTexName
-    void syncToMainThread(LLGLuint new_tex_name, U8 min_alpha);
-    void syncToMainThread(LLGLuint new_tex_name) { syncToMainThread(new_tex_name, getDefaultMinAlpha()); }
+    void syncToMainThread(LLGLuint new_tex_name, U8 min_alpha, bool min_alpha_known);
+    void syncToMainThread(LLGLuint new_tex_name) { syncToMainThread(new_tex_name, getDefaultMinAlpha(), false); }
 
     // Read back a raw image for this discard level, if it exists
     bool readBackRaw(S32 discard_level, LLImageRaw* imageraw, bool compressed_ok) const;
@@ -236,6 +236,7 @@ public:
     bool getIsAlphaMask() const;
     // Lowest analysed alpha, 255 for formats without alpha, 0 when unknown.
     U8 getMinAlpha() const;
+    bool isMinAlphaKnown() const;
 
     bool getIsResident(bool test_now = false); // not const
 
@@ -309,6 +310,7 @@ private:
 
     bool mIsMask;
     std::atomic<U8> mMinAlpha{0}; // published with the main-thread texture-name swap
+    std::atomic<bool> mMinAlphaKnown{false}; // true only after actual alpha analysis
     bool mNeedsAlphaAndPickMask;
     S8   mAlphaStride ;
     S8   mAlphaOffset ;
@@ -394,11 +396,11 @@ public:
     void setCategory(S32 category) {mCategory = category;}
     S32  getCategory()const {return mCategory;}
 
-    void setTexName(GLuint texName) { mTexName = texName; mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release); }
+    void setTexName(GLuint texName) { mTexName = texName; mMinAlphaKnown.store(false, std::memory_order_release); mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release); }
 
     //similar to setTexName, but will call deleteTextures on mTexName if mTexName is not 0 or texname
-    void syncTexName(LLGLuint texname, U8 min_alpha);
-    void syncTexName(LLGLuint texname) { syncTexName(texname, getDefaultMinAlpha()); }
+    void syncTexName(LLGLuint texname, U8 min_alpha, bool min_alpha_known);
+    void syncTexName(LLGLuint texname) { syncTexName(texname, getDefaultMinAlpha(), false); }
 
     //for debug use: show texture size distribution
     //----------------------------------------

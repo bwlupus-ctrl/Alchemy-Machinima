@@ -76,15 +76,34 @@ def contracts():
     image = read('indra/llrender/llimagegl.cpp')
     upload = function(image, 'bool LLImageGL::setImage(const U8*')
     assert 'U8 min_alpha = getDefaultMinAlpha();' in upload and '*min_alpha_out = min_alpha;' in upload
-    assert 'syncTexName(new_tex_name, min_alpha)' in function(image, 'void LLImageGL::syncToMainThread(')
+    assert 'syncTexName(new_tex_name, min_alpha, min_alpha_known)' in function(image, 'void LLImageGL::syncToMainThread(')
     sync = function(image, 'void LLImageGL::syncTexName(')
     assert sync.index('mTexName = texname;') < sync.index('mMinAlpha.store(min_alpha, std::memory_order_release)')
     assert 'std::atomic<U8> mMinAlpha' in read('indra/llrender/llimagegl.h')
+    assert 'std::atomic<bool> mMinAlphaKnown{false}' in read('indra/llrender/llimagegl.h')
+    assert sync.index('mMinAlpha.store(') < sync.index('mMinAlphaKnown.store(min_alpha_known, std::memory_order_release)')
+    assert 'mMinAlphaKnown.load(std::memory_order_acquire)' in function(image, 'bool LLImageGL::isMinAlphaKnown() const')
+    assert 'bool min_alpha_known = false;' in upload
+    assert upload.count('analyzeAlpha(data_in, w, h, &min_alpha_known)') == 4
+    assert '*min_alpha_known_out = min_alpha_known;' in upload
+    create = function(image, 'bool LLImageGL::createGLTexture(S32 discard_level, const U8*')
+    assert '&min_alpha, &min_alpha_known)' in create
+    assert 'syncToMainThread(new_texname, min_alpha, min_alpha_known)' in create
+    assert 'mMinAlphaKnown.store(min_alpha_known, std::memory_order_release)' in create
+    assert 'getDefaultMinAlpha(), false)' in read('indra/llrender/llimagegl.h')
     for signature in ('bool LLImageGL::setSubImage(const U8*',
                       'bool LLImageGL::setSubImageFromFrameBuffer(', 'void LLImageGL::setNeedsAlphaAndPickMask('):
         assert 'mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release)' in function(image, signature), signature
+        assert 'mMinAlphaKnown.store(false, std::memory_order_release)' in function(image, signature), signature
     assert 'mMinAlpha' not in function(image, 'U8 LLImageGL::analyzeAlpha(')
     assert 'mMinAlpha' not in function(image, 'void LLImageGL::calcAlphaChannelOffsetAndStride(')
+    routing = function(avatar, 'bool LLDrawPoolAvatar::shadowDrawsBake(')
+    assert 'image && image->isMinAlphaKnown() && image->getMinAlpha() <' in routing
+    assert 'SHADOW_BAKES_ALL : SHADOW_BAKES_SOLID' in begin
+    assert 'CAMERA_WORLD_SHADOW0' in begin and 'CAMERA_WORLD_SHADOW1' in begin
+    cube = function(pipeline, 'void LLPipeline::generateWorldShadowCubes(')
+    assert cube.index('LLViewerCamera::sCurCameraID = static_cast<LLViewerCamera::eCameraID>') < cube.index('renderShadow(')
+    assert 'LLViewerCamera::sCurCameraID = saved_camera_id;' in cube
     for path in (ROOT/'indra/newview/app_settings/shaders').rglob('*.glsl'):
         if any(name.lower().startswith(('reeelight', 'reshade', 'immerse', 'martysmods_relight')) for name in path.parts):
             continue
@@ -98,6 +117,23 @@ def contracts():
         return nodes[next(i for i, n in enumerate(nodes) if n.tag == 'key' and n.text == name) + 1]
     assert ET.tostring(value(settings, 'RenderShadowBias')) == ET.tostring(value(settings_old, 'RenderShadowBias'))
     assert value(settings, 'RenderShadowBiasError').find('string').text == 'unused (kept for saved-settings compatibility)'
+    hidden = value(settings, 'RenderWorldShadowHiddenBodyCasts')
+    nodes = list(hidden)
+    metadata = {nodes[i].text: nodes[i+1].text for i in range(0, len(nodes), 2)}
+    assert metadata['Type'] == 'Boolean' and metadata['Persist'] == '1' and metadata['Value'] == '1'
+    panel = ET.fromstring(read('indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml'))
+    rows = [r for r in panel.iter('kit_row') if r.get('setting') == 'RenderWorldShadowHiddenBodyCasts']
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.get('label') == 'Hidden body casts in World shadows'
+    assert row.get('keywords') == 'hidden body world shadow self shadow definition mesh body'
+    assert row.get('reset_settings') == 'RenderWorldShadowHiddenBodyCasts'
+    widget = row.find('kit_switch')
+    assert widget.get('name') == 'area_shadow_hidden_body'
+    assert widget.get('control_name') == 'RenderWorldShadowHiddenBodyCasts'
+    assert widget.get('tool_tip') == metadata['Comment']
+    # The tooltip is single-sourced in the XML (== settings Comment); no C++ duplicate to drift.
+    assert 'area_shadow_hidden_body' not in read('indra/newview/llfloaterdirector.cpp')
     detail_settings = ET.fromstring(read('indra/newview/app_settings/settings_alchemy.xml'))
     detail_nodes = list(value(detail_settings, 'RenderAvatarShadowDetail'))
     assert detail_nodes[next(i for i,n in enumerate(detail_nodes) if n.tag == 'key' and n.text == 'Value') + 1].text == '1'
@@ -110,6 +146,11 @@ def cpp_source(mutation=None):
     header = read('indra/newview/lldrawpoolavatar.h')
     enums = '\n'.join(re.findall(r'(?:typedef )?enum(?: eShadowBakes)?\s*\{[^}]*SHADOW_[^}]*\}(?: eShadowPass)?;', header))
     assert 'NUM_SHADOW_PASSES' in enums and 'SHADOW_BAKES_CUT' in enums
+    begin = function(avatar, 'void LLDrawPoolAvatar::beginShadowPass(')
+    opaque_routing = begin[begin.index('        static LLCachedControl<bool> hidden_body_casts'):begin.index('        if ((sShaderLevel')]
+    preflight = function(avatar, 'void LLDrawPoolAvatar::renderShadow(')
+    preflight = preflight[preflight.index('    if (pass == SHADOW_PASS_AVATAR_OPAQUE)'):preflight.index('    if (mDrawFace.empty())')]
+    camera_enum = re.search(r'typedef enum\s*\{[^}]*\} eCameraID;', read('indra/newview/llviewercamera.h')).group()
     detail = avatar[avatar.index('    static LLCachedControl<S32> avatar_shadow_detail', avatar.index('void LLDrawPoolAvatar::renderShadow')):]
     detail = detail[:detail.index('    const LLUUID actor_fx_id')]
     mesh = function(read('indra/newview/llviewerjointmesh.cpp'), 'U32 LLViewerJointMesh::drawShape(')
@@ -130,7 +171,7 @@ def cpp_source(mutation=None):
 #include <vector>
 using U8 = uint8_t; using U32 = uint32_t; using S8 = int8_t; using S32 = int32_t;
 using F32 = float; using GLubyte = unsigned char;
-using LLGLuint = unsigned int;
+using LLGLuint = unsigned int; using GLuint = unsigned int;
 #define LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE
 template<class T> T llmin(T a, T b) { return std::min(a,b); }
 template<class T> T llmax(T a, T b) { return std::max(a,b); }
@@ -138,19 +179,24 @@ template<class T> T llmax(T a, T b) { return std::max(a,b); }
 ''' + '\n'.join('constexpr U32 GL_' + name + ' = ' + str(i + 1) + ';' for i, name in enumerate(formats)) + r'''
 struct LLImageGL {
     U32 mDeprecatedSourceFormat = 0, mFormatPrimary = GL_RGBA;
-    std::atomic<U8> mMinAlpha{0}; bool mIsMask = false, mNeedsAlphaAndPickMask = true;
+    std::atomic<U8> mMinAlpha{0}; std::atomic<bool> mMinAlphaKnown{false}; bool mIsMask = false, mNeedsAlphaAndPickMask = true;
     LLGLuint mTexName = 0;
     S8 mAlphaOffset = 3, mAlphaStride = 4;
     static inline bool sSkipAnalyzeAlpha = false;
     U8 getMinAlpha() const;
+    bool isMinAlphaKnown() const;
     U8 getDefaultMinAlpha() const;
-    U8 analyzeAlpha(const void*, U32, U32);
-    void syncTexName(LLGLuint, U8);
+    U8 analyzeAlpha(const void*, U32, U32, bool* = nullptr);
+    void syncTexName(LLGLuint, U8, bool);
+    void setNeedsAlphaAndPickMask(bool);
+    void setTexName(LLGLuint texName);
+
     static void deleteTextures(int, LLGLuint*) {}
     // Mirrors setImage's output value; analysis alone cannot alter visible metadata.
     void analysed(const void* data, U32 w, U32 h) {
-        const U8 minimum = llmax(getDefaultMinAlpha(), analyzeAlpha(data,w,h));
-        syncTexName(1,minimum);
+        bool known = false;
+        const U8 minimum = llmax(getDefaultMinAlpha(), analyzeAlpha(data,w,h,&known));
+        syncTexName(1,minimum,known);
     }
 };
 struct LLGLTexture {
@@ -166,16 +212,35 @@ struct LLDrawPoolAvatar {
 };
 U32 gFrameCount = 1;
 int gSavedSettings = 0, fixture_detail = 1;
+bool fixture_hidden_body = true;
 template<class T> struct LLCachedControl {
-    LLCachedControl(int, const char*, int) {}
-    T operator()() const { return static_cast<T>(fixture_detail); }
+    bool hidden;
+    LLCachedControl(int, const char* name, int) : hidden(std::strcmp(name,"RenderWorldShadowHiddenBodyCasts")==0) {}
+    T operator()() const { return static_cast<T>(hidden ? fixture_hidden_body : fixture_detail); }
+};
+''' + 'struct LLViewerCamera { ' + camera_enum + r''' static inline eCameraID sCurCameraID = CAMERA_WORLD; };
+void selectOpaqueBakes() {
+    using enum LLDrawPoolAvatar::eShadowBakes;
+    auto& sShadowBakes = LLDrawPoolAvatar::sShadowBakes;
+''' + opaque_routing + r'''
+}
+struct RoutingPool {
+    bool mShadowCutBakes = false, mShadowBodyCounted = false;
+    void preflight(S32 pass, bool& visited) {
+        using enum LLDrawPoolAvatar::eShadowPass;
+''' + preflight + r'''
+        visited = true;
+    }
 };
 void route(S32 pass, bool actor_fx_enabled, bool& draws) {
     using enum LLDrawPoolAvatar::eShadowPass;
 ''' + detail + r'''
     draws = true;
 }
-''' + '\n'.join((function(image, 'U8 LLImageGL::getMinAlpha() const'),
+''' + '\nconst S8 INVALID_OFFSET = -99;\n' + '\n'.join((function(image, 'U8 LLImageGL::getMinAlpha() const'),
+                 function(image, 'bool LLImageGL::isMinAlphaKnown() const'),
+                 function(image, 'void LLImageGL::setNeedsAlphaAndPickMask('),
+                 function(read('indra/llrender/llimagegl.h'), '    void setTexName(').replace('    void setTexName(', 'void LLImageGL::setTexName('),
                  function(image, 'U8 LLImageGL::getDefaultMinAlpha() const'),
                  function(image, 'U8 LLImageGL::analyzeAlpha('),
                  function(image, 'void LLImageGL::syncTexName('),
@@ -204,7 +269,7 @@ struct CountingPool {
 };
 int main() {
     LLImageGL image;
-    CHECK(image.getMinAlpha() == 0);
+    CHECK(image.getMinAlpha() == 0); CHECK(!image.isMinAlphaKnown());
     const U32 no_alpha[] = {GL_LUMINANCE,GL_RED,GL_RG,GL_RGB,GL_BGR,GL_SRGB,GL_RED_INTEGER,
         GL_RG_INTEGER,GL_RGB_INTEGER,GL_RGBA_INTEGER,GL_BGR_INTEGER,GL_BGRA_INTEGER};
     for (U32 format : no_alpha) {
@@ -218,16 +283,16 @@ int main() {
         for (S8 stride : {S8{1},S8{2},S8{4}}) for (S8 offset : {S8{0},static_cast<S8>(stride-1)}) {
             image.mAlphaStride=stride; image.mAlphaOffset=offset;
             std::vector<U8> pixels(static_cast<size_t>(w)*h*stride,255);
-            image.analysed(pixels.data(),w,h); CHECK(image.getMinAlpha()==255);
+            image.analysed(pixels.data(),w,h); CHECK(image.getMinAlpha()==255); CHECK(image.isMinAlphaKnown());
             for (size_t p=0;p<static_cast<size_t>(w)*h;++p) {
                 pixels[p*stride+offset]=37; image.analysed(pixels.data(),w,h);
-                CHECK(image.getMinAlpha()==37); pixels[p*stride+offset]=255;
+                CHECK(image.getMinAlpha()==37); CHECK(image.isMinAlphaKnown()); pixels[p*stride+offset]=255;
             }
-            image.analysed(nullptr,w,h); CHECK(image.getMinAlpha()==0);
+            image.analysed(nullptr,w,h); CHECK(image.getMinAlpha()==0); CHECK(!image.isMinAlphaKnown());
             image.mNeedsAlphaAndPickMask=false; image.analysed(pixels.data(),w,h);
-            CHECK(image.getMinAlpha()==0); image.mNeedsAlphaAndPickMask=true;
+            CHECK(image.getMinAlpha()==0); CHECK(!image.isMinAlphaKnown()); image.mNeedsAlphaAndPickMask=true;
             image.sSkipAnalyzeAlpha=true; image.analysed(pixels.data(),w,h);
-            CHECK(image.getMinAlpha()==0); image.sSkipAnalyzeAlpha=false;
+            CHECK(image.getMinAlpha()==0); CHECK(!image.isMinAlphaKnown()); image.sSkipAnalyzeAlpha=false;
         }
     }
     image.analysed(nullptr,0,0); CHECK(image.getMinAlpha()==0);
@@ -239,10 +304,11 @@ int main() {
     CHECK(opaque_min==255); CHECK(image.getMinAlpha()==0); CHECK(image.mTexName==11);
     const U8 cut_min=image.analyzeAlpha(cut_pixels.data(),2,2);
     CHECK(cut_min==0); CHECK(image.getMinAlpha()==0);
-    image.syncTexName(12,opaque_min); CHECK(image.mTexName==12); CHECK(image.getMinAlpha()==255);
-    image.syncTexName(13,cut_min); CHECK(image.mTexName==13); CHECK(image.getMinAlpha()==0);
+    image.syncTexName(12,opaque_min,true); CHECK(image.mTexName==12); CHECK(image.getMinAlpha()==255);
+    image.syncTexName(13,cut_min,true); CHECK(image.mTexName==13); CHECK(image.getMinAlpha()==0);
     using A = LLDrawPoolAvatar;
     CHECK(A::NUM_SHADOW_PASSES==4);
+    CHECK(image.isMinAlphaKnown());
     LLGLTexture bake{&image}, unknown{nullptr};
     U32 frame=~0U; bool cut=false;
     for (U32 alpha : {0u,1u,50u,51u,52u,254u,255u}) {
@@ -257,26 +323,76 @@ int main() {
     }
     A::sShadowBakes=A::SHADOW_BAKES_SOLID; A::sShadowCutBakeLeft=false;
     ++gFrameCount;
-    CHECK(!A::shadowDrawsBake(nullptr,frame,cut)); CHECK(!A::shadowDrawsBake(&unknown,frame,cut));
-    CHECK(A::sShadowCutBakeLeft);
+    CHECK(A::shadowDrawsBake(nullptr,frame,cut)); frame=~0U; CHECK(A::shadowDrawsBake(&unknown,frame,cut));
+    CHECK(!A::sShadowCutBakeLeft);
+    // The same numeric zero is cut only when analysis is explicitly known.
+    image.syncTexName(14,0,false); ++gFrameCount;
+    CHECK(A::shadowDrawsBake(&bake,frame,cut)); CHECK(!A::sShadowCutBakeLeft);
+    image.syncTexName(15,0,true); ++gFrameCount;
+    CHECK(!A::shadowDrawsBake(&bake,frame,cut)); CHECK(A::sShadowCutBakeLeft);
     image.mMinAlpha=255; ++gFrameCount;
     CHECK(A::shadowDrawsBake(&bake,frame,cut)); CHECK(A::sShadowCutBakeLeft);
     A::sShadowBakes=A::SHADOW_BAKES_CUT; ++gFrameCount;
-    CHECK(A::shadowDrawsBake(nullptr,frame,cut)); CHECK(A::shadowDrawsBake(&unknown,frame,cut));
+    CHECK(!A::shadowDrawsBake(nullptr,frame,cut)); frame=~0U; CHECK(!A::shadowDrawsBake(&unknown,frame,cut));
+    // Raw names and skipped analysis cannot inherit a preceding known-low bake.
+    image.syncTexName(16,0,true); image.setTexName(17);
+    CHECK(!image.isMinAlphaKnown()); CHECK(image.getMinAlpha()==0);
+    image.syncTexName(18,0,true); image.setNeedsAlphaAndPickMask(false);
+    CHECK(!image.isMinAlphaKnown()); CHECK(image.getMinAlpha()==0);
+    image.setNeedsAlphaAndPickMask(true);
+    CHECK(!image.isMinAlphaKnown());
+    // Unanalysed upload results (including compressed uploads) publish false.
+    image.syncTexName(19,0,false); ++gFrameCount;
+    A::sShadowBakes=A::SHADOW_BAKES_SOLID;
+    CHECK(A::shadowDrawsBake(&bake,frame,cut));
     // Deterministic mid-pass upload completion, in both directions, across two maps.
     for (U8 before : {U8{0},U8{255}}) {
-        ++gFrameCount; image.syncTexName(20,before);
+        ++gFrameCount; image.syncTexName(20,before,true);
         A::sShadowBakes=A::SHADOW_BAKES_SOLID;
         const bool solid=A::shadowDrawsBake(&bake,frame,cut);
-        const U8 after=before==0?U8{255}:U8{0}; image.syncTexName(21,after);
+        const U8 after=before==0?U8{255}:U8{0}; image.syncTexName(21,after,true);
         A::sShadowBakes=A::SHADOW_BAKES_CUT;
         CHECK(A::shadowDrawsBake(&bake,frame,cut)!=solid);
         A::sShadowBakes=A::SHADOW_BAKES_SOLID; CHECK(A::shadowDrawsBake(&bake,frame,cut)==solid);
         ++gFrameCount;
         CHECK(A::shadowDrawsBake(&bake,frame,cut)==(after==255));
     }
+    // Interleave every cube face and every native/sun/spot camera in ONE frame,
+    // in both orders. Cube ALL must neither create nor overwrite the snapshot.
+    for (bool known : {true,false})
+    for (bool enabled : {false,true}) for (U8 alpha : {U8{0},U8{255}})
+    for (bool cube_first : {false,true}) {
+        ++gFrameCount; frame=~0U; cut=false; fixture_hidden_body=enabled;
+        image.syncTexName(22,alpha,known);
+        for (int visit=0;visit<2;++visit) {
+            const bool cubes = (visit==0)==cube_first;
+            for (int camera=0;camera<LLViewerCamera::NUM_CAMERAS;++camera) {
+                const bool cube=camera>=LLViewerCamera::CAMERA_WORLD_SHADOW0 && camera<=LLViewerCamera::CAMERA_WORLD_SHADOW1;
+                if (cube!=cubes) continue;
+                for (int face_index=0;face_index<(cube?6:1);++face_index) {
+                    LLViewerCamera::sCurCameraID=static_cast<LLViewerCamera::eCameraID>(camera);
+                    selectOpaqueBakes();
+                    CHECK(A::sShadowBakes==((cube&&enabled)?A::SHADOW_BAKES_ALL:A::SHADOW_BAKES_SOLID));
+                    const U32 saved_frame=frame; const bool saved_cut=cut;
+                    A::sShadowCutBakeLeft=false;
+                    RoutingPool routing_pool; bool visited=false;
+                    routing_pool.preflight(A::SHADOW_PASS_AVATAR_OPAQUE,visited); CHECK(visited);
+                    const bool solid=A::shadowDrawsBake(&bake,frame,cut);
+                    CHECK(solid==((cube&&enabled)||!known||alpha==255));
+                    if (cube&&enabled) { CHECK(frame==saved_frame); CHECK(cut==saved_cut); }
+                    routing_pool.mShadowCutBakes=A::sShadowCutBakeLeft;
+                    visited=false; routing_pool.preflight(A::SHADOW_PASS_AVATAR_OPAQUE_CUT,visited);
+                    CHECK(visited==!solid);
+                    A::sShadowBakes=A::SHADOW_BAKES_CUT;
+                    if (visited) CHECK(A::shadowDrawsBake(&bake,frame,cut));
+                }
+            }
+        }
+    }
+    fixture_hidden_body=true;
     FixtureMesh weighted; FixturePool pool; FixtureFace face{&pool};
     LLImageGL head_image, body_image; LLGLTexture head{&head_image}, body{&body_image};
+    head_image.mMinAlphaKnown=true; body_image.mMinAlphaKnown=true;
     // A skipped first head still supplies the shared palette to upper/lower.
     for (U32 desired : {57u,93u}) for (bool cut_pass : {false,true}) {
         ++gFrameCount; shared_palette=999; uploads=0;
@@ -307,9 +423,16 @@ int main() {
             CHECK(draws==expected);
         }
     }
-    std::cout << "PASS production C++: alpha minima; atomic name/alpha publication; frozen routing despite mid-pass flips; skipped-first palette ordering; detail/Actor FX routing\n";
+    std::cout << "PASS production C++: cube/native interleaving; known/unknown alpha; alpha minima; atomic name/alpha publication; frozen routing despite mid-pass flips; skipped-first palette ordering; detail/Actor FX routing\n";
 }
 '''
+    if mutation == 'cube_snapshot':
+        original = 'if (sShadowBakes == SHADOW_BAKES_ALL)\n    {\n        return true;'
+        assert source.count(original) == 1
+        source = source.replace(original, 'if (sShadowBakes == SHADOW_BAKES_ALL)\n    {\n        frame = gFrameCount; cut = false; return true;')
+    if mutation == 'unknown_cut':
+        assert source.count('image->isMinAlphaKnown() && ') == 1
+        source = source.replace('image->isMinAlphaKnown() && ', '')
     if mutation == 'snapshot':
         assert source.count('if (frame != gFrameCount)') == 1
         source = source.replace('if (frame != gFrameCount)', 'if (true)')
@@ -348,7 +471,8 @@ def compile_and_run(out, project, mutation=None):
     result = subprocess.run([str(exe)], cwd=out, capture_output=True, text=True, timeout=30)
     (out / 'run_cpu.log').write_text(result.stdout + result.stderr, encoding='utf-8')
     if mutation:
-        expected = 'uploads==1' if mutation == 'palette' else 'A::shadowDrawsBake(&bake,frame,cut)!=solid'
+        expected = {'palette': 'uploads==1', 'snapshot': 'A::shadowDrawsBake(&bake,frame,cut)!=solid',
+                    'cube_snapshot': 'cut==saved_cut', 'unknown_cut': 'A::shadowDrawsBake(&bake,frame,cut)' }[mutation]
         assert result.returncode != 0 and expected in result.stderr, 'CPU negative control failed at the wrong assertion: ' + result.stdout + result.stderr
         print('PASS rejected CPU negative control:', mutation, result.stderr.strip(), flush=True)
     else:
@@ -365,5 +489,5 @@ if __name__ == '__main__':
     args.out.mkdir(parents=True, exist_ok=True)
     contracts()
     compile_and_run(args.out, args.project)
-    for mutation in ('palette', 'snapshot'):
+    for mutation in ('palette', 'snapshot', 'cube_snapshot', 'unknown_cut'):
         compile_and_run(args.out / ('negative_' + mutation), args.project, mutation)

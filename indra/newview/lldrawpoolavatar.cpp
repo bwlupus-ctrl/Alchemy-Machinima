@@ -45,6 +45,13 @@
 #include "llmeshrepository.h"
 #include "llsky.h"
 #include "llviewercamera.h"
+#include "alworldshadowmath.h"
+
+// The World-shadow routing in beginShadowPass checks one camera ID per resident
+// World-shadow light; keep that range in step with the light count.
+static_assert(LLViewerCamera::CAMERA_WORLD_SHADOW1 - LLViewerCamera::CAMERA_WORLD_SHADOW0 + 1 ==
+                  static_cast<int>(ALWorldShadow::kMaxLights),
+              "World-shadow camera range must cover every resident light");
 #include "llviewerregion.h"
 #include "noise.h"
 #include "pipeline.h"
@@ -416,7 +423,12 @@ void LLDrawPoolAvatar::beginShadowPass(S32 pass)
     if (pass == SHADOW_PASS_AVATAR_OPAQUE)
     {
         sVertexProgram = &gDeferredAvatarShadowProgram;
-        sShadowBakes = SHADOW_BAKES_SOLID;
+        // Cube-only routing gate: ALL bypasses (and never writes) the per-mesh
+        // frame snapshot, so sun/spot maps in this frame retain bake-cut routing.
+        static LLCachedControl<bool> hidden_body_casts(gSavedSettings, "RenderWorldShadowHiddenBodyCasts", true);
+        const bool world_cube = LLViewerCamera::sCurCameraID >= LLViewerCamera::CAMERA_WORLD_SHADOW0 &&
+                                LLViewerCamera::sCurCameraID <= LLViewerCamera::CAMERA_WORLD_SHADOW1;
+        sShadowBakes = world_cube && hidden_body_casts() ? SHADOW_BAKES_ALL : SHADOW_BAKES_SOLID;
 
         if ((sShaderLevel > 0))  // for hardware blending
         {
@@ -629,7 +641,7 @@ bool LLDrawPoolAvatar::shadowDrawsBake(const LLGLTexture* bake, U32& frame, bool
     if (frame != gFrameCount)
     {
         const LLImageGL* image = bake ? bake->getGLTexture() : nullptr;
-        cut = !image || image->getMinAlpha() < sMinimumAlpha * 255.f;
+        cut = image && image->isMinAlphaKnown() && image->getMinAlpha() < sMinimumAlpha * 255.f;
         frame = gFrameCount;
     }
     if (sShadowBakes == SHADOW_BAKES_SOLID)

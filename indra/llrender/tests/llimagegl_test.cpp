@@ -362,6 +362,7 @@ namespace tut
             }
             LLPointer<LLImageGL> img = new LLImageGL(false);
             ensure("minimum-alpha upload", img->createGLTexture(0, raw.get()));
+            ensure("analysed alpha known", img->isMinAlphaKnown());
             return img->getMinAlpha();
         };
         ensure_equals("opaque", analysed(16, 16, -1, -1, 0), U8{255});
@@ -379,11 +380,13 @@ namespace tut
         unread->setNeedsAlphaAndPickMask(false);
         ensure("unanalysed upload", unread->createGLTexture(0, makeRaw(16, 16, 4, 0xFF).get()));
         ensure_equals("unknown alpha", unread->getMinAlpha(), U8{0});
+        ensure("skipped alpha not known", !unread->isMinAlphaKnown());
 
         LLPointer<LLImageGL> composite = new LLImageGL(false);
         ensure("composite upload", composite->createGLTexture(0, makeRaw(16, 16, 4, 0xFF).get()));
         ensure_equals("initial opaque", composite->getMinAlpha(), U8{255});
         ensure("framebuffer composite", composite->setSubImageFromFrameBuffer(0, 0, 0, 0, 1, 1));
         ensure_equals("framebuffer alpha unknown", composite->getMinAlpha(), U8{0});
+        ensure("framebuffer alpha not known", !composite->isMinAlphaKnown());
     }
 }

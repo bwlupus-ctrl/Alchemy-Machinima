@@ -705,6 +705,7 @@ LLImageGL::LLImageGL(
     mFormatType = formatType;
     mFormatInternal = formatInternal;
     mFormatPrimary = formatPrimary;
+    mMinAlphaKnown.store(false, std::memory_order_release);
     mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release);
 }
 
@@ -747,6 +748,7 @@ void LLImageGL::init(bool usemipmaps, bool allow_compression)
 
     mIsMask = false;
     mMinAlpha = 0;
+    mMinAlphaKnown = false;
     mNeedsAlphaAndPickMask = true ;
     mAlphaStride = 0 ;
     mAlphaOffset = 0 ;
@@ -944,10 +946,11 @@ void LLImageGL::setImage(const LLImageRaw* imageraw)
     setImage(rawdata, false);
 }
 
-bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32 usename /* = 0 */, U8* min_alpha_out /* = nullptr */)
+bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32 usename /* = 0 */, U8* min_alpha_out /* = nullptr */, bool* min_alpha_known_out /* = nullptr */)
 {
     // Keep this upload's analysis private until its texture name is published.
     U8 min_alpha = getDefaultMinAlpha();
+    bool min_alpha_known = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
 
     const bool is_compressed = isCompressed();
@@ -1020,7 +1023,7 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
                     LLImageGL::setManualImage(mTarget, gl_level, mFormatInternal, w, h, mFormatPrimary, mFormatType, (GLvoid*)data_in, mAllowCompression, mUseMipMaps);
                     if (gl_level == 0)
                     {
-                        min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h));
+                        min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h, &min_alpha_known));
                         // Match the auto-mip and manual-mip paths: pick mask
                         // is built once from the largest level. Calling it
                         // every iteration overwrote the mask with each
@@ -1061,7 +1064,7 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
                                  w, h,
                                  mFormatPrimary, mFormatType,
                                  data_in, mAllowCompression, mUseMipMaps);
-                    min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h));
+                    min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h, &min_alpha_known));
                     stop_glerror();
 
                     updatePickMask(w, h, data_in);
@@ -1164,7 +1167,7 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
                         LLImageGL::setManualImage(mTarget, m, mFormatInternal, w, h, mFormatPrimary, mFormatType, cur_mip_data, mAllowCompression, mUseMipMaps);
                         if (m == 0)
                         {
-                            min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h));
+                            min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h, &min_alpha_known));
                         }
                         stop_glerror();
                         if (m == 0)
@@ -1221,7 +1224,7 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
 
             LLImageGL::setManualImage(mTarget, 0, mFormatInternal, w, h,
                          mFormatPrimary, mFormatType, (GLvoid *)data_in, mAllowCompression, mUseMipMaps);
-            min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h));
+            min_alpha = llmax(min_alpha, analyzeAlpha(data_in, w, h, &min_alpha_known));
 
             updatePickMask(w, h, data_in);
 
@@ -1241,10 +1244,15 @@ bool LLImageGL::setImage(const U8* data_in, bool data_hasmips /* = false */, S32
     {
         *min_alpha_out = min_alpha;
     }
-    else if (usename == 0 || static_cast<LLGLuint>(usename) == mTexName)
+    if (min_alpha_known_out)
+    {
+        *min_alpha_known_out = min_alpha_known;
+    }
+    if (!min_alpha_out && (usename == 0 || static_cast<LLGLuint>(usename) == mTexName))
     {
         // Direct updates already target the visible texture.
         mMinAlpha.store(min_alpha, std::memory_order_release);
+        mMinAlphaKnown.store(min_alpha_known, std::memory_order_release);
     }
     return true;
 }
@@ -1378,6 +1386,7 @@ bool LLImageGL::setSubImage(const U8* datap, S32 data_width, S32 data_height, S3
             dump();
             LL_ERRS() << "setSubImage called with mipmapped image (not supported)" << LL_ENDL;
         }
+        mMinAlphaKnown.store(false, std::memory_order_release);
         mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release); // Partial/fast updates are unanalysed.
         llassert_always(mCurrentDiscardLevel == 0);
         llassert_always(x_pos >= 0 && y_pos >= 0);
@@ -1469,6 +1478,7 @@ bool LLImageGL::setSubImageFromFrameBuffer(S32 fb_x, S32 fb_y, S32 x_pos, S32 y_
 {
     if (gGL.getTexUnit(0)->bind(this, false, true))
     {
+        mMinAlphaKnown.store(false, std::memory_order_release);
         mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release); // Local composites are unanalysed.
         glCopyTexSubImage2D(GL_TEXTURE_2D, 0, x_pos, y_pos, fb_x, fb_y, width, height);
         mGLTextureCreated = true;
@@ -1778,6 +1788,7 @@ bool LLImageGL::createGLTexture()
     }
 
     mGLTextureCreated = false ; //do not save this texture when gl is destroyed.
+    mMinAlphaKnown.store(false, std::memory_order_release);
 
     llassert(gGLManager.mInited);
     stop_glerror();
@@ -1985,9 +1996,10 @@ bool LLImageGL::createGLTexture(S32 discard_level, const U8* data_in, bool data_
     mCurrentDiscardLevel = discard_level;
 
     U8 min_alpha = 0;
+    bool min_alpha_known = false;
     {
         LL_PROFILE_ZONE_NAMED("cglt - late setImage");
-        if (!setImage(data_in, data_hasmips, new_texname, &min_alpha))
+        if (!setImage(data_in, data_hasmips, new_texname, &min_alpha, &min_alpha_known))
         {
             return false;
         }
@@ -2006,7 +2018,7 @@ bool LLImageGL::createGLTexture(S32 discard_level, const U8* data_in, bool data_
     {
         if (!main_thread)
         {
-            syncToMainThread(new_texname, min_alpha);
+            syncToMainThread(new_texname, min_alpha, min_alpha_known);
         }
         else
         {
@@ -2017,6 +2029,7 @@ bool LLImageGL::createGLTexture(S32 discard_level, const U8* data_in, bool data_
             }
             mTexName = new_texname;
             mMinAlpha.store(min_alpha, std::memory_order_release);
+            mMinAlphaKnown.store(min_alpha_known, std::memory_order_release);
         }
     }
 
@@ -2030,7 +2043,7 @@ bool LLImageGL::createGLTexture(S32 discard_level, const U8* data_in, bool data_
     return true;
 }
 
-void LLImageGL::syncToMainThread(LLGLuint new_tex_name, U8 min_alpha)
+void LLImageGL::syncToMainThread(LLGLuint new_tex_name, U8 min_alpha, bool min_alpha_known)
 {
     LL_PROFILE_ZONE_SCOPED;
     llassert(!on_main_thread());
@@ -2077,7 +2090,7 @@ void LLImageGL::syncToMainThread(LLGLuint new_tex_name, U8 min_alpha)
         [=, this]()
         {
             LL_PROFILE_ZONE_NAMED("cglt - delete callback");
-            syncTexName(new_tex_name, min_alpha);
+            syncTexName(new_tex_name, min_alpha, min_alpha_known);
             unref();
         });
 
@@ -2085,7 +2098,7 @@ void LLImageGL::syncToMainThread(LLGLuint new_tex_name, U8 min_alpha)
 }
 
 
-void LLImageGL::syncTexName(LLGLuint texname, U8 min_alpha)
+void LLImageGL::syncTexName(LLGLuint texname, U8 min_alpha, bool min_alpha_known)
 {
     if (texname != 0)
     {
@@ -2095,6 +2108,7 @@ void LLImageGL::syncTexName(LLGLuint texname, U8 min_alpha)
         }
         mTexName = texname;
         mMinAlpha.store(min_alpha, std::memory_order_release);
+        mMinAlphaKnown.store(min_alpha_known, std::memory_order_release);
     }
 }
 
@@ -2239,6 +2253,7 @@ bool LLImageGL::readBackRaw(S32 discard_level, LLImageRaw* imageraw, bool compre
 void LLImageGL::destroyGLTexture()
 {
     checkActiveThread();
+    mMinAlphaKnown.store(false, std::memory_order_release);
 
     if (mTexName != 0)
     {
@@ -2418,6 +2433,11 @@ U8 LLImageGL::getMinAlpha() const
     return mMinAlpha.load(std::memory_order_acquire);
 }
 
+bool LLImageGL::isMinAlphaKnown() const
+{
+    return mMinAlphaKnown.load(std::memory_order_acquire);
+}
+
 U8 LLImageGL::getDefaultMinAlpha() const
 {
     // Deprecated luminance formats become RED/RG after alpha layout is calculated.
@@ -2448,6 +2468,7 @@ void LLImageGL::setNeedsAlphaAndPickMask(bool need_mask)
     if(mNeedsAlphaAndPickMask != need_mask)
     {
         mNeedsAlphaAndPickMask = need_mask;
+        mMinAlphaKnown.store(false, std::memory_order_release);
         mMinAlpha.store(getDefaultMinAlpha(), std::memory_order_release);
 
         if(mNeedsAlphaAndPickMask)
@@ -2616,8 +2637,12 @@ void LLImageGL::resolveDeprecatedFormat()
     }
 }
 
-U8 LLImageGL::analyzeAlpha(const void* data_in, U32 w, U32 h)
+U8 LLImageGL::analyzeAlpha(const void* data_in, U32 w, U32 h, bool* min_alpha_known)
 {
+    if (min_alpha_known)
+    {
+        *min_alpha_known = false;
+    }
     if(!data_in || sSkipAnalyzeAlpha || !mNeedsAlphaAndPickMask || !w || !h)
     {
         return 0;
@@ -2740,6 +2765,10 @@ U8 LLImageGL::analyzeAlpha(const void* data_in, U32 w, U32 h)
     else
     {
         mIsMask = true;
+    }
+    if (min_alpha_known)
+    {
+        *min_alpha_known = true;
     }
     return static_cast<U8>(min_alpha);
 }
