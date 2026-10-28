@@ -21,14 +21,14 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `shake_look` / `shake_preset_combo` (Look) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:34` | `ALCameraOperatorKitAdapter` command/model binding → wired in `ALPanelCineCamParams::postBuild()`; behavior `ALPanelCineCamParams::onShakePresetSelected()` (`indra/newview/alpanelcinecamparams.cpp:495`) | none |
+| `shake_look` / `shake_preset_combo` (Look) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:34` | `ALCameraOperatorKitAdapter` command/model binding → wired in `ALPanelCineCamParams::postBuild()`; behavior `ALPanelCineCamParams::onShakePresetSelected()` (`indra/newview/alpanelcinecamparams.cpp:500`) | none |
 | `shake_look` / `shake_style` (Rig) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:68` | kit `combo` ↔ `FlycamOperatorStyle` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:27` `shake_style` |
-| `shake_look` / `shake_locomotion_mode` (Movement) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:50` | kit `combo` ↔ `FlycamOperatorLocomotionMode` `S32` | `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:155` `FlycamOperatorLocomotionMode`, `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:42` `shake_locomotion_mode` |
+| `shake_look` / `shake_locomotion_mode` (Movement) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:50` | kit `combo` ↔ `FlycamOperatorLocomotionMode` `S32` | `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:156` `FlycamOperatorLocomotionMode`, `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:42` `shake_locomotion_mode` |
 | `shake_look` / `shake_profile` (Feel) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:86` | kit `combo` ↔ `FlycamOperatorProfile` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:56` `shake_profile` |
 | `shake_look` / `FlycamOperatorEnabled` (Live flycam) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:108` | kit `toggle` ↔ `FlycamOperatorEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:70` `FlycamOperatorEnabled` |
 | `shake_look` / `FlycamOperatorForceWalk` (Force gait) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:116` | kit `toggle` ↔ `FlycamOperatorForceWalk` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:73` `FlycamOperatorForceWalk` |
-| `shake_look` / `FlycamOperatorModeBlendTime` (Blend (s)) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:192` | kit `number` ↔ `FlycamOperatorModeBlendTime` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:76` `FlycamOperatorModeBlendTime` |
-| `shake_look` / `FlycamOperatorSimulationHz` (Update Hz) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:199` | kit `number` ↔ `FlycamOperatorSimulationHz` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:79` `FlycamOperatorSimulationHz` |
+| `shake_look` / `FlycamOperatorModeBlendTime` (Blend (s)) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:193` | kit `number` ↔ `FlycamOperatorModeBlendTime` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:76` `FlycamOperatorModeBlendTime` |
+| `shake_look` / `FlycamOperatorSimulationHz` (Update Hz) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:200` | kit `number` ↔ `FlycamOperatorSimulationHz` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:79` `FlycamOperatorSimulationHz` |
 | `motion_amounts` / `FlycamOperatorMaster` (Master) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:224` | kit `number` ↔ `FlycamOperatorMaster` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:85` `FlycamOperatorMaster` |
 | `motion_amounts` / `FlycamOperatorGainSurge` (Forward/back) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:128` | kit `slider` ↔ `FlycamOperatorGainSurge` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:88` `FlycamOperatorGainSurge` |
 | `motion_amounts` / `FlycamOperatorGainSway` (Left/right) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:136` | kit `slider` ↔ `FlycamOperatorGainSway` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml:93` `FlycamOperatorGainSway` |
@@ -95,7 +95,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelCineCamParams::onShakePresetSelected()` — `indra/newview/alpanelcinecamparams.cpp:495` | Move model-facing work into `ALCameraOperatorKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelCineCamParams::onShakePresetSelected()` — `indra/newview/alpanelcinecamparams.cpp:500` | Move model-facing work into `ALCameraOperatorKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
