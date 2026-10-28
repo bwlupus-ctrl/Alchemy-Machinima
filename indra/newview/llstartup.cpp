@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llpresentationtime.h"
 #include "alenvonlydiagnostics.h"
 
 #include "llappviewer.h"
@@ -3380,6 +3381,11 @@ std::string LLStartUp::startupStateToString(EStartupState state)
 // static
 void LLStartUp::setStartupState( EStartupState state )
 {
+    if ((state == STATE_FIRST || state == STATE_LOGIN_SHOW) &&
+        LLPresentationTime::instanceExists())
+    {
+        LLPresentationTime::instance().cancelWorldWindDown();
+    }
     LL_INFOS("AppInit") << getStartupStateString() << " --> " << startupStateToString(state) << LL_ENDL;
 
     getPhases().stopPhase(getStartupStateString());

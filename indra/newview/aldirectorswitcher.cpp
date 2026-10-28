@@ -429,6 +429,11 @@ void ALDirectorSwitcher::leaveArmed()
 
 void ALDirectorSwitcher::startEaseWorldTime(F64 now)
 {
+    if (!ALWorldWindDown::switcherMayEase(
+            LLPresentationTime::instance().worldWindDownState()))
+    {
+        return; // operator-owned ramp/freeze: do not even latch a baseline
+    }
     SwitcherControls& c = controls();
     latch_curve(
         c.freeze_curve, c.freeze_x1, c.freeze_y1, c.freeze_x2, c.freeze_y2,
@@ -550,6 +555,11 @@ void ALDirectorSwitcher::applyEaseWorldScale(F32 scale)
 
 void ALDirectorSwitcher::updateEaseWorldTime(F64 now)
 {
+    if (!ALWorldWindDown::switcherMayEase(
+            LLPresentationTime::instance().worldWindDownState()))
+    {
+        return; // never stomp an operator-owned ramp or freeze
+    }
     if (!mEaseWorldTimeActive)
     {
         return;
@@ -650,6 +660,18 @@ void ALDirectorSwitcher::restoreEaseWorldTime()
 void ALDirectorSwitcher::cancelEaseWorldTime()
 {
     restoreEaseWorldTime();
+}
+
+bool ALDirectorSwitcher::releaseWorldTimeForWindDown(ALWorldWindDown::Clock& baseline, F32& speed)
+{
+    if (!mEaseWorldTimeActive) return false;
+    baseline = {mSavedTemporalMode, mSavedTemporalWorldScale};
+    const LLTemporalFrameContext& frame = LLPresentationTime::currentFrame();
+    speed = frame.generation != 0 ? frame.effective_scale
+        : ALWorldWindDown::Clock{controls().temporal_mode->getValue().asInteger(),
+              static_cast<F32>(controls().temporal_scale->getValue().asReal())}.effective();
+    restoreEaseWorldTime();
+    return true;
 }
 
 bool ALDirectorSwitcher::applySlot(

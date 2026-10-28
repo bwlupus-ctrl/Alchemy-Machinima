@@ -24,6 +24,7 @@ public:
     ~ALFloaterTemporalCapture() override = default;
 
     bool postBuild() override;
+    void fitToContent(LLPanel* panel);
 };
 
 #endif // AL_ALFLOATERTEMPORALCAPTURE_H

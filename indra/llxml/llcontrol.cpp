@@ -222,13 +222,14 @@ void LLControlVariable::setValue(const LLSD& new_value, bool saved_value)
         return;
     }
 
+    notifyWrite();
     LLSD storable_value = getComparableValue(new_value);
     LLSD original_value = getValue();
     bool value_changed = !llsd_compare(original_value, storable_value);
     if(saved_value)
     {
         // If we're going to save this value, return to default but don't fire
-        resetToDefault(false);
+        resetToDefaultImpl(false);
         if (!llsd_compare(mValues.back(), storable_value))
         {
             mValues.push_back(storable_value);
@@ -266,6 +267,7 @@ void LLControlVariable::setValue(const LLSD& new_value, bool saved_value)
 
 void LLControlVariable::setDefaultValue(const LLSD& value)
 {
+    notifyWrite();
     // Set the control variables value and make it
     // the default value. If the active value is changed,
     // send the signal.
@@ -274,7 +276,7 @@ void LLControlVariable::setDefaultValue(const LLSD& value)
     LLSD comparable_value = getComparableValue(value);
     LLSD original_value = getValue();
     bool value_changed = !llsd_compare(original_value, comparable_value);
-    resetToDefault(false);
+    resetToDefaultImpl(false);
     mValues[0] = comparable_value;
     if (value_changed)
     {
@@ -298,6 +300,12 @@ void LLControlVariable::setComment(const std::string& comment)
 }
 
 void LLControlVariable::resetToDefault(bool fire_signal)
+{
+    notifyWrite();
+    resetToDefaultImpl(fire_signal);
+}
+
+void LLControlVariable::resetToDefaultImpl(bool fire_signal)
 {
     //The first setting is always the default
     //Pop to it and fire off the listener

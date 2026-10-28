@@ -339,8 +339,9 @@ def validate_data(data: dict) -> None:
     # + VCam Object POV: exactly 15 attachment rows: 2339 (2026-10-27).
     # + main-camera Object Lock: exactly 12 mounted-camera rows: 2351 (2026-10-27).
     # + 9 rig session controls/readouts (create, leave, all off, count, five rigs).
-    if len(pages) != 38 or row_count != 2360:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2360")
+    # World wind-down: exactly eight Time rows (toggle, times, curve, four handles): 2368 (10/28).
+    if len(pages) != 38 or row_count != 2368:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2368")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2291,6 +2292,19 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("one VCam Source Name search hit", len(name_hits) == 1 and name_hits[0][8] == "vc_camera_name"))
         video_hit = next(line.split("\t") for line in index_lines if "\tvc_media_video\t" in line)
         checks.append(("Video search excludes cue synonyms", not {"cue", "keyframe", "mark"} & set(video_hit[16].lower().split())))
+        temporal = ET.fromstring(outputs[out_dir / "panel_dpage_capture_temporal.xml"], parser=parser())
+        wind_down = find_named(temporal, "kc_wind_down")
+        wind_rows = list(wind_down.iter("kit_row"))
+        wind_widgets = {"btn_world_wind_down", "wind_down_seconds", "spin_up_seconds", "wind_down_curve",
+                        "wind_down_bezier_x1", "wind_down_bezier_y1", "wind_down_bezier_x2", "wind_down_bezier_y2"}
+        checks.append(("world wind-down has exactly eight searchable rows with Custom-only handles",
+                       len(wind_rows) == 8 and {row.get("widget") for row in wind_rows} == wind_widgets and
+                       all(row.get("widget").encode() in outputs[out_dir / "director_kit_index.xml"] and
+                           "turntable tape stop pause world spin up gradual freeze" in row.get("keywords", "")
+                           for row in wind_rows) and
+                       all(row.get("visible") == "false" for row in wind_rows
+                           if row.get("widget").startswith("wind_down_bezier_")) and
+                       find_named(temporal, "btn_world_wind_down").get("label") == "Wind down / Spin up"))
         checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 37, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"

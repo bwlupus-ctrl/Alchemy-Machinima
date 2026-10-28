@@ -9913,6 +9913,83 @@
       <key>Value</key>
       <real>27.0</real>
     </map>
+    <key>WorldWindDownSeconds</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Wind-down duration in real wall seconds (0.2-10).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.5</real>
+    </map>
+    <key>WorldSpinUpSeconds</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Spin-up duration in real wall seconds (0.2-10).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>WorldWindDownCurve</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Wind-down curve: 0 Turntable, 1 Tape stop, 2 Custom Bezier. Spin-up mirrors the curve.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+    <key>WorldWindDownBezierX1</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Custom wind-down first Bezier X handle (0-1).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.42</real>
+    </map>
+    <key>WorldWindDownBezierY1</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Custom wind-down first Bezier Y handle (-2 to 3).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>0.0</real>
+    </map>
+    <key>WorldWindDownBezierX2</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Custom wind-down second Bezier X handle (0-1).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
+    <key>WorldWindDownBezierY2</key>
+    <map>
+      <key>Comment</key>
+      <string>[Temporal Capture] Custom wind-down second Bezier Y handle (-2 to 3).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
     <key>TemporalMode</key>
     <map>
       <key>Comment</key>

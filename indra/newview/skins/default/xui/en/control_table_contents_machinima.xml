@@ -107,4 +107,8 @@
         <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
          value="Toggle colour chart" tool_tip="Show or hide the session colour reference chart" />
     </rows>
+    <rows name="world_wind_down" value="world_wind_down">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         value="World wind-down" tool_tip="Gradually freeze the world clock, or spin back up to its previous speed" />
+    </rows>
 </contents>

@@ -15,6 +15,7 @@
 #define AL_ALDIRECTORSWITCHER_H
 
 #include "aldirectorswitchermodel.h"
+#include "alworldwinddown.h"
 #include "stdtypes.h"
 #include "lltimer.h"
 
@@ -64,6 +65,10 @@ public:
     // Release a live eased-cut world-time override. Safe and idempotent; the
     // Director Console calls this when its switcher panel closes.
     void cancelEaseWorldTime();
+
+    // Handoff preserves the published effective speed, restores our original
+    // settings/drive/freeze baseline, and releases this cut's world-time lease.
+    bool releaseWorldTimeForWindDown(ALWorldWindDown::Clock& baseline, F32& speed);
 
     // Release the enable/time leases before an explicit manual camera action.
     void releaseForManualCamera();

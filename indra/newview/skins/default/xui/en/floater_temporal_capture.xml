@@ -6,7 +6,7 @@
 <floater
  legacy_header_height="18"
  can_resize="true"
- height="358"
+ height="670"
  min_height="358"
  min_width="356"
  layout="topleft"
@@ -19,7 +19,6 @@
      class="panel_temporal_capture"
      filename="panel_temporal_capture.xml"
      follows="all"
-     height="332"
      layout="topleft"
      left="6"
      top="22"

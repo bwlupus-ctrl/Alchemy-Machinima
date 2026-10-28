@@ -39,6 +39,7 @@
 #include "llkeybind.h" // LLKeyData
 #include "llmorphview.h"
 #include "llmoveview.h"
+#include "llpresentationtime.h"
 #include "llsetkeybinddialog.h"
 #include "lltoolfocus.h"
 #include "lltoolpie.h"
@@ -503,12 +504,18 @@ bool camera_roll_reset(EKeystate s)
     return true;
 }
 
-// [Machinima] Actor Gaze "look at camera" hotkeys. These toggle exactly the
-// same state the Actor Gaze panel writes, so a director can trigger a look
-// without reaching for the floater. Registered as regular (non-global) actions
-// (below) so the regular key path debounces OS auto-repeat -- fire once on the
-// key-down edge; the KEYSTATE_UP/level edges are ignored here and repeats are
-// filtered upstream, so a hold does not chatter-toggle.
+// [Machinima] World clock and Actor Gaze toggles share their panels' actions.
+// Regular (non-global) actions debounce OS auto-repeat upstream: fire once
+// on key down, and ignore the KEYSTATE_UP/level edges so a hold cannot toggle.
+bool world_wind_down(EKeystate s)
+{
+    if (KEYSTATE_DOWN == s)
+    {
+        LLPresentationTime::instance().toggleWorldWindDown();
+    }
+    return true;
+}
+
 bool director_look_at_camera(EKeystate s)
 {
     if (KEYSTATE_DOWN != s) return true;
@@ -1164,6 +1171,7 @@ REGISTER_KEYBOARD_ACTION("toggle_viewfinder", toggle_viewfinder);
 // view has keyboard focus (the normal filming state). Shipped unbound -- present
 // in the Controls panel for the operator to assign.
 REGISTER_KEYBOARD_ACTION("director_look_at_camera", director_look_at_camera);
+REGISTER_KEYBOARD_ACTION("world_wind_down", world_wind_down);
 REGISTER_KEYBOARD_ACTION("cine_light_rig_power", cine_light_rig_enable);
 REGISTER_KEYBOARD_ACTION("toggle_colour_chart", toggle_colour_chart);
 REGISTER_KEYBOARD_ACTION("actor_look_at_camera_1", actor_look_at_camera_1);

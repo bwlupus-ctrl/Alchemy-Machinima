@@ -11,6 +11,9 @@
 
 #include "llpresentationtime.h"
 
+#include "aldirectorswitcher.h"
+#include "alworldwinddowncontrol.h"
+
 #include "llcontrol.h"
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llmotioncontroller.h"     // sole writer of sGlobalTimeFactor
@@ -30,6 +33,40 @@ static constexpr F32 TEMPORAL_MAX_SCALE = 8.f;
 LLPresentationTime::LLPresentationTime()
 {
     mMonotonic.reset();
+    // One intent binding covers typed settings, scene/kit/undo, scripts,
+    // defaults and resets, even when the requested value is unchanged.
+    auto cancel = [this]()
+    {
+        cancelWorldWindDown();
+    };
+    mModeConnection = ALWorldWindDown::observeClockWrites(
+        gSavedSettings.getControl("TemporalMode"), cancel);
+    mScaleConnection = ALWorldWindDown::observeClockWrites(
+        gSavedSettings.getControl("TemporalWorldScale"), cancel);
+}
+
+void LLPresentationTime::toggleWorldWindDown()
+{
+    ALWorldWindDown::Config config;
+    config.mDownSeconds = gSavedSettings.getF32("WorldWindDownSeconds");
+    config.mUpSeconds = gSavedSettings.getF32("WorldSpinUpSeconds");
+    config.mCurve = gSavedSettings.getS32("WorldWindDownCurve");
+    config.mX1 = gSavedSettings.getF32("WorldWindDownBezierX1");
+    config.mY1 = gSavedSettings.getF32("WorldWindDownBezierY1");
+    config.mX2 = gSavedSettings.getF32("WorldWindDownBezierX2");
+    config.mY2 = gSavedSettings.getF32("WorldWindDownBezierY2");
+    ALWorldWindDown::Clock clock{
+        gSavedSettings.getS32("TemporalMode"), gSavedSettings.getF32("TemporalWorldScale")};
+    F32 starting_speed = clock.effective();
+    if (!mWindDown.active())
+    {
+        // Release the switcher's settings/Freeze World lease BEFORE acquiring
+        // our overlay, so its restore writes cannot cancel the new ramp.
+        ALDirectorSwitcher::instance().releaseWorldTimeForWindDown(clock, starting_speed);
+        mAlreadyFrozen = ALWorldWindDown::alreadyFrozen(clock);
+        if (mAlreadyFrozen) return;
+    }
+    mWindDown.toggle(mMonotonic.getElapsedTimeF64(), clock, config, starting_speed);
 }
 
 LLPresentationTime::~LLPresentationTime()
@@ -102,9 +139,11 @@ void LLPresentationTime::tick()
     F32  effective = 1.f;
     bool paused = false;
 
-    if (mode_setting() == 1)   // MANUAL_SCALE
+    mWindDown.update(now);
+    if (mWindDown.active() || mode_setting() == 1)   // MANUAL_SCALE
     {
-        effective = llclamp((F32)world_scale, TEMPORAL_MIN_SCALE, TEMPORAL_MAX_SCALE);
+        effective = mWindDown.active() ? mWindDown.speed(now)
+            : llclamp((F32)world_scale, TEMPORAL_MIN_SCALE, TEMPORAL_MAX_SCALE);
         if (effective <= 0.f)
         {
             mode = LLTemporalMode::PAUSED;

@@ -36,6 +36,7 @@
 #include "llstl.h"
 
 #include <functional>
+#include <memory>
 #include <boost/unordered_map.hpp>
 #include <vector>
 
@@ -74,6 +75,7 @@ class LLControlVariable : public LLRefCount
 public:
     typedef boost::signals2::signal<bool(LLControlVariable* control, const LLSD&), boost_boolean_combiner> validate_signal_t;
     typedef boost::signals2::signal<void(LLControlVariable* control, const LLSD&, const LLSD&)> commit_signal_t;
+    typedef boost::signals2::signal<void(LLControlVariable* control)> write_signal_t;
 
     enum ePersist
     {
@@ -92,6 +94,7 @@ private:
 
     commit_signal_t mCommitSignal;
     validate_signal_t mValidateSignal;
+    std::unique_ptr<write_signal_t> mWriteSignal;
 
 public:
     LLControlVariable(const std::string& name, eControlType type,
@@ -111,6 +114,15 @@ public:
     commit_signal_t* getSignal() { return &mCommitSignal; } // shorthand for commit signal
     commit_signal_t* getCommitSignal() { return &mCommitSignal; }
     validate_signal_t* getValidateSignal() { return &mValidateSignal; }
+
+    // Accepted writes, including same-value writes and explicit resets. Unlike
+    // the change signal, this expresses intent to replace a runtime overlay.
+    // Allocate only for the few controls whose observers need this contract.
+    write_signal_t* getWriteSignal()
+    {
+        if (!mWriteSignal) mWriteSignal = std::make_unique<write_signal_t>();
+        return mWriteSignal.get();
+    }
 
 // [RLVa:KB] - Patch: RLVa-2.1.0
     bool hasUnsavedValue() { return mValues.size() > 2; }
@@ -132,6 +144,8 @@ public:
     void setComment(const std::string& comment);
 
 private:
+    void notifyWrite() { if (mWriteSignal) (*mWriteSignal)(this); }
+    void resetToDefaultImpl(bool fire_signal);
     void firePropertyChanged(const LLSD &pPreviousValue)
     {
         mCommitSignal(this, mValues.back(), pPreviousValue);

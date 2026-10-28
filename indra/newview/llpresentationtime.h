@@ -29,6 +29,9 @@
 #include "llsingleton.h"
 #include "lltimer.h"
 #include "lltemporalframecontext.h"
+#include "alworldwinddown.h"
+
+#include <boost/signals2/connection.hpp>
 
 class LLPresentationTime : public LLSingleton<LLPresentationTime>
 {
@@ -41,6 +44,16 @@ public:
     // consumer. Reads the Temporal* settings, advances the presentation clock,
     // freezes the frame context, and applies the animation global for the frame.
     void tick();
+
+    // Session-only overlay. Original Temporal settings stay untouched, so
+    // spin-up releases to the exact original Live/Manual state. Every accepted
+    // Temporal write/reset cancels, including same-value writes. Switcher cuts
+    // yield to this overlay; starting during a cut takes over its baseline.
+    void toggleWorldWindDown();
+    void cancelWorldWindDown() { mWindDown.cancel(); mAlreadyFrozen = false; }
+    ALWorldWindDown::State worldWindDownState() const { return mWindDown.state(); }
+    bool worldAlreadyFrozen() const { return mAlreadyFrozen; }
+    bool hasWorldClockDrives() const { return readDriveMask() != 0; }
 
     // The immutable context for the current iteration (owner accessor).
     const LLTemporalFrameContext& frame() const { return mFrame; }
@@ -67,6 +80,10 @@ private:
     U32 readDriveMask() const;
 
     LLTemporalFrameContext mFrame;
+    ALWorldWindDown::Ramp mWindDown;
+    bool mAlreadyFrozen = false;
+    boost::signals2::scoped_connection mModeConnection;
+    boost::signals2::scoped_connection mScaleConnection;
 
     LLTimer mMonotonic;                 // independent of gFrameIntervalSeconds
     F64  mPrevWall = 0.0;

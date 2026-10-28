@@ -1367,6 +1367,8 @@ set(viewer_HEADER_FILES
     alfloatertemporalcapture.h
     alpaneltemporalcapture.h
     llpresentationtime.h
+    alworldwinddown.h
+    alworldwinddowncontrol.h
     lltemporalframecontext.h
     alpanelactormover.h
     alpanelanimpreview.h
@@ -3013,6 +3015,13 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alvcambonepov
     ""
     "${test_libs}"
+    "${test_project}"
+  )
+
+  # Pure envelope plus real LLControlVariable write-intent cancellation.
+  LL_ADD_INTEGRATION_TEST(alworldwinddown
+    ""
+    "${test_libs};llxml"
     "${test_project}"
   )
 

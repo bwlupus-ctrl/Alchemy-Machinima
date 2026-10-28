@@ -12,7 +12,7 @@
 <panel
  background_visible="false"
  border="false"
- height="360"
+ height="644"
  layout="topleft"
  name="panel_temporal_capture"
  width="340">
@@ -274,4 +274,20 @@
      width="320">
         Only local presentation is scaled. The grid connection, other residents and server-driven motion keep running at real speed.
     </text>
+    <panel name="wind_down_card" layout="topleft" left="10" top="334" width="320" height="300" border="true" follows="left|top">
+        <text name="wind_down_title" layout="topleft" left="10" top="6" width="304" height="16" font="SansSerifBold">Wind-down</text>
+        <button name="btn_world_wind_down" layout="topleft" left="10" top="30" width="220" height="22" label="Wind down / Spin up" tool_tip="Gradually stop the world clock, or restore its previous speed. Press during a ramp to reverse. Speed presets and world-clock changes cancel it." />
+        <spinner name="wind_down_seconds" control_name="WorldWindDownSeconds" layout="topleft" left="10" top="62" width="304" height="20" label="Wind-down time (s)" label_width="210" min_val="0.2" max_val="10" increment="0.1" decimal_digits="1" />
+        <spinner name="spin_up_seconds" control_name="WorldSpinUpSeconds" layout="topleft" left="10" top="92" width="304" height="20" label="Spin-up time (s)" label_width="210" min_val="0.2" max_val="10" increment="0.1" decimal_digits="1" />
+        <text name="wind_down_curve_label" layout="topleft" left="10" top="124" width="136" height="16">Curve</text>
+        <combo_box name="wind_down_curve" control_name="WorldWindDownCurve" tool_tip="Turntable slows gently then drops into the stop. Tape stop drops fast then crawls to zero; its mirrored spin-up starts slowly and snaps to full speed at the end. Custom uses the four Bezier handles." layout="topleft" left="150" top="122" width="164" height="22">
+            <combo_box.item name="wind_down_curve_0" label="Turntable" value="0" />
+            <combo_box.item name="wind_down_curve_1" label="Tape stop" value="1" />
+            <combo_box.item name="wind_down_curve_2" label="Custom" value="2" />
+        </combo_box>
+        <spinner name="wind_down_bezier_x1" control_name="WorldWindDownBezierX1" layout="topleft" left="10" top="152" width="304" height="20" label="Bezier X1" label_width="210" min_val="0" max_val="1" increment="0.01" decimal_digits="2" visible="false" />
+        <spinner name="wind_down_bezier_y1" control_name="WorldWindDownBezierY1" layout="topleft" left="10" top="182" width="304" height="20" label="Bezier Y1" label_width="210" min_val="-2" max_val="3" increment="0.01" decimal_digits="2" visible="false" />
+        <spinner name="wind_down_bezier_x2" control_name="WorldWindDownBezierX2" layout="topleft" left="10" top="212" width="304" height="20" label="Bezier X2" label_width="210" min_val="0" max_val="1" increment="0.01" decimal_digits="2" visible="false" />
+        <spinner name="wind_down_bezier_y2" control_name="WorldWindDownBezierY2" layout="topleft" left="10" top="242" width="304" height="20" label="Bezier Y2" label_width="210" min_val="-2" max_val="3" increment="0.01" decimal_digits="2" visible="false" />
+    </panel>
 </panel>

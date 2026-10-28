@@ -6407,6 +6407,10 @@ void LLAppViewer::idleNetwork()
 
 void LLAppViewer::disconnectViewer()
 {
+    if (LLPresentationTime::instanceExists())
+    {
+        LLPresentationTime::instance().cancelWorldWindDown();
+    }
     ALColorChart::shutdownSession();
     // Write/clean the Director recovery BEFORE Prism/rig/world teardown below
     // (a forced disconnect would otherwise save a stripped scene). Latched.

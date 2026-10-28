@@ -22,6 +22,7 @@
 
 #include "aluirefresh.h"
 #include "llpanel.h"
+#include <boost/signals2/connection.hpp>
 
 class LLButton;
 class LLTextBox;
@@ -44,11 +45,18 @@ private:
     void onScaleCommit();
     // [FrameLimiter] show the "Frame rate limit" slider row only while the cap is on
     void syncFpsLimitRow();
+    void syncWindDownControls();
 
     LLTextBox* mEffectiveText = nullptr;
     LLTextBox* mPostSpeedText = nullptr;
     LLTextBox* mStatusText = nullptr;
     LLView* mFpsLimitSlider = nullptr;  // [FrameLimiter] fps_limit_slider; its kit row is show_if fps_limit_on
+    LLView* mWindDownBezier[4] = {};
+    LLView* mWindDownCard = nullptr;
+    S32 mWindDownCompactHeight = 0;
+    S32 mWindDownCustomHeight = 0;
+    boost::signals2::scoped_connection mWindDownCurveConnection;
+    S32 mLastWindDownCurve = -1;
 
     // draw()-rate diffing so text is re-set only when it changes
     std::string mLastEffective;
