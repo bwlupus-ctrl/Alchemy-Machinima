@@ -28,7 +28,6 @@
 out vec4 frag_color;
 
 in vec4 post_pos;
-in float target_pos_x;
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
 in vec3 vary_actor_fx_position;
@@ -91,7 +90,7 @@ void main()
 
         if (alpha < 0.88) // treat as semi-transparent
         {
-            if (fract(0.5*floor(target_pos_x / post_pos.w )) < 0.25)
+            if (fract(0.5 * (floor(gl_FragCoord.x) + floor(gl_FragCoord.y))) < 0.25)
             {
                 discard;
             }

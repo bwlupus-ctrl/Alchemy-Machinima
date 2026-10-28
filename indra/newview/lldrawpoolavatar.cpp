@@ -64,6 +64,8 @@ LLGLSLShader* LLDrawPoolAvatar::sVertexProgram = NULL;
 bool    LLDrawPoolAvatar::sSkipOpaque = false;
 bool    LLDrawPoolAvatar::sSkipTransparent = false;
 S32     LLDrawPoolAvatar::sShadowPass = -1;
+LLDrawPoolAvatar::eShadowBakes LLDrawPoolAvatar::sShadowBakes = LLDrawPoolAvatar::SHADOW_BAKES_ALL;
+bool    LLDrawPoolAvatar::sShadowCutBakeLeft = false;
 S32 LLDrawPoolAvatar::sDiffuseChannel = 0;
 F32 LLDrawPoolAvatar::sMinimumAlpha = 0.2f;
 
@@ -403,7 +405,7 @@ void LLDrawPoolAvatar::renderPostDeferred(S32 pass)
 
 S32 LLDrawPoolAvatar::getNumShadowPasses()
 {
-    // avatars opaque, avatar alpha, avatar alpha mask, alpha attachments, alpha mask attachments, opaque attachments...
+    // Solid bodies, bake-cut bodies, alpha blend, alpha mask.
     return NUM_SHADOW_PASSES;
 }
 
@@ -414,6 +416,7 @@ void LLDrawPoolAvatar::beginShadowPass(S32 pass)
     if (pass == SHADOW_PASS_AVATAR_OPAQUE)
     {
         sVertexProgram = &gDeferredAvatarShadowProgram;
+        sShadowBakes = SHADOW_BAKES_SOLID;
 
         if ((sShaderLevel > 0))  // for hardware blending
         {
@@ -425,6 +428,7 @@ void LLDrawPoolAvatar::beginShadowPass(S32 pass)
     }
     else if (pass == SHADOW_PASS_AVATAR_ALPHA_BLEND)
     {
+        sShadowBakes = SHADOW_BAKES_ALL;
         sVertexProgram = &gDeferredAvatarAlphaShadowProgram;
 
         // bind diffuse tex so we can reference the alpha channel...
@@ -439,13 +443,15 @@ void LLDrawPoolAvatar::beginShadowPass(S32 pass)
         {
             sRenderingSkinned = true;
             sVertexProgram->bind();
+            sVertexProgram->setMinimumAlpha(sMinimumAlpha);
         }
 
         gGL.diffuseColor4f(1, 1, 1, 1);
     }
-    else if (pass == SHADOW_PASS_AVATAR_ALPHA_MASK)
+    else if (pass == SHADOW_PASS_AVATAR_OPAQUE_CUT || pass == SHADOW_PASS_AVATAR_ALPHA_MASK)
     {
         sVertexProgram = &gDeferredAvatarAlphaMaskShadowProgram;
+        sShadowBakes = pass == SHADOW_PASS_AVATAR_OPAQUE_CUT ? SHADOW_BAKES_CUT : SHADOW_BAKES_ALL;
 
         // bind diffuse tex so we can reference the alpha channel...
         S32 loc = sVertexProgram->getUniformLocation(LLViewerShaderMgr::DIFFUSE_MAP);
@@ -459,6 +465,7 @@ void LLDrawPoolAvatar::beginShadowPass(S32 pass)
         {
             sRenderingSkinned = true;
             sVertexProgram->bind();
+            sVertexProgram->setMinimumAlpha(sMinimumAlpha);
         }
 
         gGL.diffuseColor4f(1, 1, 1, 1);
@@ -475,12 +482,23 @@ void LLDrawPoolAvatar::endShadowPass(S32 pass)
     }
     sVertexProgram = NULL;
     sRenderingSkinned = false;
+    sShadowBakes = SHADOW_BAKES_ALL;
     LLDrawPoolAvatar::sShadowPass = -1;
 }
 
 void LLDrawPoolAvatar::renderShadow(S32 pass)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+
+    if (pass == SHADOW_PASS_AVATAR_OPAQUE)
+    {
+        mShadowCutBakes = false;
+        mShadowBodyCounted = false;
+    }
+    else if (pass == SHADOW_PASS_AVATAR_OPAQUE_CUT && !mShadowCutBakes)
+    {
+        return;
+    }
 
     if (mDrawFace.empty())
     {
@@ -533,16 +551,16 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
         return;
     }
 
-    // Optionally skip the costlier avatar shadow passes (alpha blend is the most
-    // expensive and least visually important; alpha mask next). Default 2 = full.
-    static LLCachedControl<S32> avatar_shadow_detail(gSavedSettings, "RenderAvatarShadowDetail", 2);
-    if (!actor_fx_enabled &&
-        pass == SHADOW_PASS_AVATAR_ALPHA_BLEND && avatar_shadow_detail() < 2)
+    // Both alpha passes draw the same meshes. Select one so the solid mask
+    // does not fill the blend pass's stipple back in. Solid mask is the stable
+    // default; styled actors retain at least that coverage, including dissolve.
+    static LLCachedControl<S32> avatar_shadow_detail(gSavedSettings, "RenderAvatarShadowDetail", 1);
+    const S32 shadow_detail = actor_fx_enabled ? llmax(avatar_shadow_detail(), 1) : avatar_shadow_detail();
+    if (pass == SHADOW_PASS_AVATAR_ALPHA_BLEND && shadow_detail < 2)
     {
         return;
     }
-    if (!actor_fx_enabled &&
-        pass == SHADOW_PASS_AVATAR_ALPHA_MASK && avatar_shadow_detail() < 1)
+    if (pass == SHADOW_PASS_AVATAR_ALPHA_MASK && shadow_detail != 1)
     {
         return;
     }
@@ -567,6 +585,14 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
     if (pass == SHADOW_PASS_AVATAR_OPAQUE)
     {
         LLDrawPoolAvatar::sSkipTransparent = true;
+        sShadowCutBakeLeft = false;
+        indices = avatarp->renderSkinned();
+        mShadowCutBakes = sShadowCutBakeLeft;
+        LLDrawPoolAvatar::sSkipTransparent = false;
+    }
+    else if (pass == SHADOW_PASS_AVATAR_OPAQUE_CUT)
+    {
+        LLDrawPoolAvatar::sSkipTransparent = true;
         indices = avatarp->renderSkinned();
         LLDrawPoolAvatar::sSkipTransparent = false;
     }
@@ -582,11 +608,36 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
         indices = avatarp->renderSkinned();
         LLDrawPoolAvatar::sSkipOpaque = false;
     }
-    if (indices && LLPipeline::sWorldShadowDrawCounts)
+    if (indices && !mShadowBodyCounted && LLPipeline::sWorldShadowDrawCounts)
     {
+        mShadowBodyCounted = true;
         ++LLPipeline::sWorldShadowDrawCounts->avatarBodies;
         if (avatarp->isSelf()) ++LLPipeline::sWorldShadowDrawCounts->selfBodies;
     }
+}
+
+// static
+bool LLDrawPoolAvatar::shadowDrawsBake(const LLGLTexture* bake, U32& frame, bool& cut)
+{
+    if (sShadowBakes == SHADOW_BAKES_ALL)
+    {
+        return true;
+    }
+
+    // Freeze each mesh's decision for the frame. An upload finishing between
+    // solid and cut passes must not make both passes skip that mesh.
+    if (frame != gFrameCount)
+    {
+        const LLImageGL* image = bake ? bake->getGLTexture() : nullptr;
+        cut = !image || image->getMinAlpha() < sMinimumAlpha * 255.f;
+        frame = gFrameCount;
+    }
+    if (sShadowBakes == SHADOW_BAKES_SOLID)
+    {
+        sShadowCutBakeLeft |= cut;
+        return !cut;
+    }
+    return cut;
 }
 
 S32 LLDrawPoolAvatar::getNumPasses()

@@ -13263,7 +13263,7 @@ void LLPipeline::renderAlphaObjects(bool rigged)
     gGL.loadMatrix(gGLModelView);
     gGLLastMatrix = NULL;
     S32 sun_up = LLEnvironment::instance().getIsSunUp() ? 1 : 0;
-    U32 target_width = LLRenderTarget::sCurResX;
+
     // registerFace stores rigged BLEND under PASS_ALPHA_RIGGED. The native
     // route historically reads PASS_ALPHA twice; repair only the cube route.
     const U32 type = rigged && sWorldShadowDrawCounts ? LLRenderPass::PASS_ALPHA_RIGGED : LLRenderPass::PASS_ALPHA;
@@ -13302,7 +13302,6 @@ void LLPipeline::renderAlphaObjects(bool rigged)
             {
                 gDeferredShadowGLTFAlphaBlendProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                 uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 LLRenderPass::pushRiggedGLTFBatch(*pparams, lastAvatarGLTF, lastMeshIdGLTF, skipLastSkinGLTF, lastMatGLTF, lastTexGLTF);
@@ -13311,7 +13310,6 @@ void LLPipeline::renderAlphaObjects(bool rigged)
             {
                 gDeferredShadowAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                 uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 lastMatGLTF = nullptr; // pushBatch clobbers texture units
@@ -13334,7 +13332,6 @@ void LLPipeline::renderAlphaObjects(bool rigged)
             {
                 gDeferredShadowGLTFAlphaBlendProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                 uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 LLRenderPass::pushGLTFBatch(*pparams, lastMatGLTF, lastTexGLTF);
@@ -13343,7 +13340,6 @@ void LLPipeline::renderAlphaObjects(bool rigged)
             {
                 gDeferredShadowAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                 uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 lastMatGLTF = nullptr; // pushBatch clobbers texture units
@@ -27735,8 +27731,8 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniformMatrix3fv(LLShaderMgr::DEFERRED_SSAO_EFFECT_MAT, 1, GL_FALSE, ssao_effect_mat);
 
     //F32 shadow_offset_error = 1.f + RenderShadowOffsetError * fabsf(LLViewerCamera::getInstance()->getOrigin().mV[2]);
-    F32 shadow_bias_error = RenderShadowBiasError * fabsf(LLViewerCamera::getInstance()->getOrigin().mV[2])/3000.f;
-    F32 shadow_bias       = RenderShadowBias + shadow_bias_error;
+    // Sun bias is independent of camera altitude; light views are camera-relative.
+    F32 shadow_bias = RenderShadowBias;
 
     U32 deferred_width = deferred_target->getWidth();
     U32 deferred_height = deferred_target->getHeight();
@@ -34095,7 +34091,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
         LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow alpha");
         LL_PROFILE_GPU_ZONE("shadow alpha");
         const S32 sun_up = LLEnvironment::instance().getIsSunUp() ? 1 : 0;
-        U32 target_width = LLRenderTarget::sCurResX;
 
         for (int i = 0; i < pass_count; ++i)
         {
@@ -34109,7 +34104,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                 LL_PROFILE_GPU_ZONE("shadow alpha masked");
                 gDeferredShadowAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                 uploadShadowAlphaMode(0); // [ShadowDist P3]
                 renderMaskedObjects(LLRenderPass::PASS_ALPHA_MASK, true, true, rigged);
             }
@@ -34126,7 +34120,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                 LL_PROFILE_GPU_ZONE("shadow alpha masked");
                 gDeferredShadowFullbrightAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                 uploadShadowAlphaMode(0); // [ShadowDist P3]
                 renderFullbrightMaskedObjects(LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK, true, true, rigged);
             }
@@ -34162,7 +34155,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                     if (LLGLSLShader::sIndexedLegacyMaterials && gDeferredShadowMaterialIndexedProgram.isComplete())
                     {
                         gDeferredShadowMaterialIndexedProgram.bind(rigged);
-                        LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                         uploadShadowAlphaMode(0); // [ShadowDist P3]
                         U32 off = rigged ? 1 : 0;
                         mAlphaMaskPool->pushMaskBatchesIndexed(LLRenderPass::PASS_NORMSPEC_MASK + off, rigged);
@@ -34182,7 +34174,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
             bool rigged = i == 1;
             gDeferredShadowGLTFAlphaMaskProgram.bind(rigged);
             LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-            LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
             uploadShadowAlphaMode(0); // [ShadowDist P3] (GLTF MASK programs keep their material cutoff; pass 0)
 
             gGL.loadMatrix(gGLModelView);
@@ -34202,7 +34193,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
                     gDeferredShadowGLTFAlphaMaskIndexedProgram.bind(true);
                     LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                    LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                     uploadShadowAlphaMode(0); // [ShadowDist P3]
                     mAlphaMaskPool->pushRiggedGLTFBatchesIndexed(type + 1, LLRenderPass::GLTF_MAPS_BASE_COLOR); // shadow samples base color only
                 }
@@ -34219,7 +34209,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
                     gDeferredShadowGLTFAlphaMaskIndexedProgram.bind();
                     LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
-                    LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
                     uploadShadowAlphaMode(0); // [ShadowDist P3]
                     mAlphaMaskPool->pushGLTFBatchesIndexed(type, LLRenderPass::GLTF_MAPS_BASE_COLOR); // shadow samples base color only
                 }

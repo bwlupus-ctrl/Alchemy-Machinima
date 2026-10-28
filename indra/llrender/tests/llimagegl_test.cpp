@@ -348,4 +348,42 @@ namespace tut
                                   (size_t)W * H * C),
                       0);
     }
+
+    // Minimum coverage is used to split solid system bodies from bake cutouts.
+    template<> template<>
+    void llimagegl_object::test<10>()
+    {
+        auto analysed = [](U16 w, U16 h, S32 x, S32 y, U8 alpha)
+        {
+            LLPointer<LLImageRaw> raw = makeRaw(w, h, 4, 0xFF);
+            if (x >= 0)
+            {
+                raw->getData()[((size_t)y * w + x) * 4 + 3] = alpha;
+            }
+            LLPointer<LLImageGL> img = new LLImageGL(false);
+            ensure("minimum-alpha upload", img->createGLTexture(0, raw.get()));
+            return img->getMinAlpha();
+        };
+        ensure_equals("opaque", analysed(16, 16, -1, -1, 0), U8{255});
+        ensure_equals("interior", analysed(16, 16, 5, 7, 40), U8{40});
+        ensure_equals("odd column", analysed(15, 15, 14, 3, 90), U8{90});
+        ensure_equals("odd row", analysed(15, 15, 6, 14, 60), U8{60});
+        ensure_equals("odd corner", analysed(15, 15, 14, 14, 30), U8{30});
+        ensure_equals("single row", analysed(9, 1, 8, 0, 120), U8{120});
+        ensure_equals("single column", analysed(1, 9, 0, 8, 110), U8{110});
+
+        LLPointer<LLImageGL> rgb = new LLImageGL(false);
+        ensure("RGB upload", rgb->createGLTexture(0, makeRaw(16, 16, 3, 0).get()));
+        ensure_equals("no alpha channel", rgb->getMinAlpha(), U8{255});
+        LLPointer<LLImageGL> unread = new LLImageGL(false);
+        unread->setNeedsAlphaAndPickMask(false);
+        ensure("unanalysed upload", unread->createGLTexture(0, makeRaw(16, 16, 4, 0xFF).get()));
+        ensure_equals("unknown alpha", unread->getMinAlpha(), U8{0});
+
+        LLPointer<LLImageGL> composite = new LLImageGL(false);
+        ensure("composite upload", composite->createGLTexture(0, makeRaw(16, 16, 4, 0xFF).get()));
+        ensure_equals("initial opaque", composite->getMinAlpha(), U8{255});
+        ensure("framebuffer composite", composite->setSubImageFromFrameBuffer(0, 0, 0, 0, 1, 1));
+        ensure_equals("framebuffer alpha unknown", composite->getMinAlpha(), U8{0});
+    }
 }

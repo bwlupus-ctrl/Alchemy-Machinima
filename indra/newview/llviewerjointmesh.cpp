@@ -291,6 +291,13 @@ U32 LLViewerJointMesh::drawShape( F32 pixelArea, bool first_pass, bool is_dummy)
 
     U32 triangle_count = 0;
 
+    // Body meshes share a palette. Even a first mesh routed to the other
+    // shadow pass must upload it for the following meshes in this pass.
+    if (first_pass && mMesh->hasWeights() && mFace->getPool()->getShaderLevel() > 0)
+    {
+        uploadJointMatrices();
+    }
+
     S32 diffuse_channel = LLDrawPoolAvatar::sDiffuseChannel;
 
     stop_glerror();
@@ -313,6 +320,11 @@ U32 LLViewerJointMesh::drawShape( F32 pixelArea, bool first_pass, bool is_dummy)
     LLViewerTexLayerSet *layerset = dynamic_cast<LLViewerTexLayerSet*>(mLayerSet);
     if (mTestImageName)
     {
+        // A raw GL test image has no analysed alpha; route it through the cut pass.
+        if (!LLDrawPoolAvatar::shadowDrawsBake(nullptr, mShadowBakeFrame, mShadowBakeCut))
+        {
+            return 0;
+        }
         gGL.getTexUnit(diffuse_channel)->bindManual(LLTexUnit::TT_TEXTURE, mTestImageName);
 
         if (mIsTransparent)
@@ -324,24 +336,26 @@ U32 LLViewerJointMesh::drawShape( F32 pixelArea, bool first_pass, bool is_dummy)
             gGL.diffuseColor4f(0.7f, 0.6f, 0.3f, 1.f);
         }
     }
-    else if( !is_dummy && layerset )
-    {
-        if( layerset->hasComposite() )
-        {
-            gGL.getTexUnit(diffuse_channel)->bind(layerset->getViewerComposite());
-        }
-        else
-        {
-            gGL.getTexUnit(diffuse_channel)->bind(LLViewerTextureManager::getFetchedTexture(IMG_DEFAULT));
-        }
-    }
-    else if ( !is_dummy && mTexture.notNull() )
-    {
-        gGL.getTexUnit(diffuse_channel)->bind(mTexture);
-    }
     else
     {
-        gGL.getTexUnit(diffuse_channel)->bind(LLViewerTextureManager::getFetchedTexture(IMG_DEFAULT));
+        LLGLTexture* diffuse = nullptr;
+        if (!is_dummy && layerset)
+        {
+            diffuse = layerset->hasComposite() ? layerset->getViewerComposite() : nullptr;
+        }
+        else if (!is_dummy)
+        {
+            diffuse = mTexture.get();
+        }
+        if (!diffuse)
+        {
+            diffuse = LLViewerTextureManager::getFetchedTexture(IMG_DEFAULT);
+        }
+        if (!LLDrawPoolAvatar::shadowDrawsBake(diffuse, mShadowBakeFrame, mShadowBakeCut))
+        {
+            return 0;
+        }
+        gGL.getTexUnit(diffuse_channel)->bind(diffuse);
     }
 
     U32 start = mMesh->mFaceVertexOffset;
@@ -353,14 +367,6 @@ U32 LLViewerJointMesh::drawShape( F32 pixelArea, bool first_pass, bool is_dummy)
 
     if (mMesh->hasWeights())
     {
-        if ((mFace->getPool()->getShaderLevel() > 0))
-        {
-            if (first_pass)
-            {
-                uploadJointMatrices();
-            }
-        }
-
         buff->setBuffer();
         buff->drawRange(LLRender::TRIANGLES, start, end, count, offset);
     }

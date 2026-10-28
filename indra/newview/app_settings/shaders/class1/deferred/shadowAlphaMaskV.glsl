@@ -32,14 +32,12 @@ mat4 getObjectSkinnedTransform();
 uniform mat4 modelview_projection_matrix;
 #endif
 
-uniform float shadow_target_width;
 
 in vec3 position;
 in vec4 diffuse_color;
 in vec2 texcoord0;
 
 out vec4 post_pos;
-out float target_pos_x;
 out vec4 vertex_color;
 out vec2 vary_texcoord0;
 out vec3 vary_actor_fx_position;
@@ -61,7 +59,6 @@ void main()
     vec4 pos = modelview_projection_matrix * pre_pos;
 #endif
 
-    target_pos_x = 0.5 * (shadow_target_width - 1.0) * pos.x;
 
     post_pos = pos;
 

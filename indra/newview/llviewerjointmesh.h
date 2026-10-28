@@ -80,6 +80,9 @@ public:
     bool isAnimatable() const override { return false; }
 
 private:
+    // One routing decision per frame, shared by every map's solid/cut passes.
+    U32 mShadowBakeFrame = ~0U;
+    bool mShadowBakeCut = false;
 
     //copy mesh into given face's vertex buffer, applying current animation pose
     static void updateGeometry(LLFace* face, LLPolyMesh* mesh);

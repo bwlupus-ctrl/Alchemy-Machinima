@@ -1704,8 +1704,8 @@ public:
     U32 mAreaShadowWanted = 0, mAreaShadowAdmitted = 0, mAreaShadowThin = 0;
     bool mAreaShadowThinRequested = false, mAreaShadowLowMemory = false;
     // [P1-lite] World cube shadow maps. The atlas holds 6 tiles per resident light (3 columns x 2 rows of 544^2 D32F, 1632 x 1088 per
-    // light); the scratch target is one tile that renderShadow draws into (so DEFERRED_SHADOW_TARGET_WIDTH and the full-target clear stay
-    // correct), copied into the atlas tile. mWorldShadowResident is the pinned residency (session only, never saved);
+    // light); the scratch target is one tile that renderShadow draws into and clears, copied into the atlas tile.
+    // mWorldShadowResident is the pinned residency (session only, never saved);
     // mWorldShadowFrame[k] is the gFrameCount of the frame whose faces of slot k were last rendered: a channel is world-owned only while
     // that equals gFrameCount.
     LLRenderTarget mWorldShadowAtlas, mWorldShadowScratch;

@@ -35,6 +35,7 @@
 class LLVOAvatar;
 class LLVOVolume;
 class LLGLSLShader;
+class LLGLTexture;
 class LLFace;
 class LLVolume;
 class LLVolumeFace;
@@ -59,6 +60,7 @@ public:
 typedef enum
     {
         SHADOW_PASS_AVATAR_OPAQUE,
+        SHADOW_PASS_AVATAR_OPAQUE_CUT,
         SHADOW_PASS_AVATAR_ALPHA_BLEND,
         SHADOW_PASS_AVATAR_ALPHA_MASK,
         NUM_SHADOW_PASSES
@@ -127,10 +129,25 @@ typedef enum
     static bool sSkipOpaque;
     static bool sSkipTransparent;
     static S32  sShadowPass;
+    // Split body meshes by bake coverage; other rendering keeps ALL.
+    enum eShadowBakes
+    {
+        SHADOW_BAKES_ALL,
+        SHADOW_BAKES_SOLID,
+        SHADOW_BAKES_CUT
+    };
+    static bool shadowDrawsBake(const LLGLTexture* bake, U32& frame, bool& cut);
+    static eShadowBakes sShadowBakes;
+    static bool sShadowCutBakeLeft; // the solid pass passed over a cut bake
     static S32 sDiffuseChannel;
     static F32 sMinimumAlpha;
 
     static LLGLSLShader* sVertexProgram;
+
+private:
+    // The opaque pass left a body mesh for the cut pass in this shadow map.
+    bool mShadowCutBakes = false;
+    bool mShadowBodyCounted = false;
 };
 
 extern S32 AVATAR_OFFSET_POS;

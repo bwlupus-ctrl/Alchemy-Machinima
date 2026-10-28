@@ -30,6 +30,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerjoint.h"
+#include "lldrawpoolavatar.h"
 
 #include "llgl.h"
 #include "llrender.h"
@@ -94,6 +95,8 @@ U32 LLViewerJoint::render( F32 pixelArea, bool first_pass, bool is_dummy )
         }
         else if ( isTransparent() && !LLPipeline::sReflectionRender)
         {
+            // Repeated transparent draws reuse the palette and never split bakes.
+            llassert(LLDrawPoolAvatar::sShadowBakes == LLDrawPoolAvatar::SHADOW_BAKES_ALL);
             // Hair and Skirt
             if ((pixelArea > MIN_PIXEL_AREA_3PASS_HAIR))
             {

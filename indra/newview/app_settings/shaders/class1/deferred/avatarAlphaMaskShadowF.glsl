@@ -28,8 +28,6 @@ out vec4 frag_color;
 uniform float minimum_alpha;
 uniform sampler2D diffuseMap;
 
-in float target_pos_x;
-in float pos_w;
 in vec2 vary_texcoord0;
 in vec3 vary_actor_fx_position;
 
@@ -39,17 +37,9 @@ void main()
 {
     float alpha = texture(diffuseMap, vary_texcoord0.xy).a;
 
-    if (alpha < 0.05) // treat as totally transparent
-    {
-        discard;
-    }
-
     if (alpha < minimum_alpha)
     {
-      if (fract(0.5*floor(target_pos_x / pos_w )) < 0.25)
-      {
         discard;
-      }
     }
 
     if (actorFxDissolveDiscard(vary_actor_fx_position))
