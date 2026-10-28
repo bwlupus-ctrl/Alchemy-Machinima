@@ -355,7 +355,7 @@ namespace tut
     {
         auto analysed = [](U16 w, U16 h, S32 x, S32 y, U8 alpha)
         {
-            LLPointer<LLImageRaw> raw = makeRaw(w, h, 4, 0xFF);
+            LLPointer<LLImageRaw> raw = llimagegl_data::makeRaw(w, h, 4, 0xFF);
             if (x >= 0)
             {
                 raw->getData()[((size_t)y * w + x) * 4 + 3] = alpha;
