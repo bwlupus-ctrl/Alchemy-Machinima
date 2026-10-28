@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "fdc2b2939db2a90c4e1ed89f117d377d1294b8d9a1e0ff0cf048cbd1456efb6f",
+  "csv_sha256": "4c93af1bc6bee8e6756e0ed8e719c580bdcf54bb59e851fd61f2651a3e50d0a0",
   "interactive_rows": 2035,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -44,10 +44,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2427,
-  "entries": 4508,
+  "generated_kit_rows": 2435,
+  "entries": 4516,
   "pages": 38,
-  "settings_declared": 3817,
+  "settings_declared": 3824,
   "xui_files": 844,
   "rim_presets": 40,
   "rim_preset_written_settings": [
@@ -81624,7 +81624,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:20807 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:20803 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81776,7 +81776,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:20809 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:20805 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81878,7 +81878,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:20812 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:20808 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81930,7 +81930,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:20813 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:20809 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -81982,7 +81982,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:20814 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:20810 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82034,7 +82034,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:20815 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:20811 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82086,7 +82086,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:20816 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:20812 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82138,7 +82138,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:20817 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:20813 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82190,7 +82190,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:20818 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:20814 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82292,7 +82292,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:20825 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:20821 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82344,7 +82344,7 @@
    "increment": 0.001,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:20827 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:20823 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82596,7 +82596,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21279 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21275 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82796,7 +82796,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21280 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21276 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -82848,7 +82848,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21278 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21274 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -83299,7 +83299,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21290 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21286 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -83501,7 +83501,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21297 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21293 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -152569,7 +152569,462 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:drives_lbl:kit:12",
+   "id": "v2:temporal_tab:btn_world_wind_down:kit:12",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Toggle",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "btn_world_wind_down",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelTemporalCapture::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "note": "restore any viewer-local action state"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "code",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": "ALPanelTemporalCapture::postBuild",
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:wind_down_seconds:kit:13",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Wind-down time",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "wind_down_seconds",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 1.6,
+   "expect": {
+    "setting": "WorldWindDownSeconds",
+    "type": "F32",
+    "value": 1.6
+   },
+   "restore": {
+    "setting": "WorldWindDownSeconds",
+    "value": 1.5
+   },
+   "setting": "WorldWindDownSeconds",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 1.5,
+   "min": 0.2,
+   "max": 10.0,
+   "increment": 0.1,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:spin_up_seconds:kit:14",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Spin-up time",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "spin_up_seconds",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 1.1,
+   "expect": {
+    "setting": "WorldSpinUpSeconds",
+    "type": "F32",
+    "value": 1.1
+   },
+   "restore": {
+    "setting": "WorldSpinUpSeconds",
+    "value": 1.0
+   },
+   "setting": "WorldSpinUpSeconds",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 1.0,
+   "min": 0.2,
+   "max": 10.0,
+   "increment": 0.1,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:wind_down_curve:kit:15",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Curve",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "wind_down_curve",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Tape stop",
+    "value": 1
+   },
+   "expect": {
+    "setting": "WorldWindDownCurve",
+    "type": "S32",
+    "value": 1
+   },
+   "restore": {
+    "setting": "WorldWindDownCurve",
+    "value": 0
+   },
+   "setting": "WorldWindDownCurve",
+   "setting_source": "kit_row setting",
+   "setting_type": "S32",
+   "default": 0,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [
+    {
+     "label": "Turntable",
+     "value": "0"
+    },
+    {
+     "label": "Tape stop",
+     "value": "1"
+    },
+    {
+     "label": "Custom",
+     "value": "2"
+    }
+   ],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:wind_down_bezier_x1:kit:16",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Bezier X1",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "wind_down_bezier_x1",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.43,
+   "expect": {
+    "setting": "WorldWindDownBezierX1",
+    "type": "F32",
+    "value": 0.43
+   },
+   "restore": {
+    "setting": "WorldWindDownBezierX1",
+    "value": 0.42
+   },
+   "setting": "WorldWindDownBezierX1",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.42,
+   "min": 0.0,
+   "max": 1.0,
+   "increment": 0.01,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:wind_down_bezier_y1:kit:17",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Bezier Y1",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "wind_down_bezier_y1",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.01,
+   "expect": {
+    "setting": "WorldWindDownBezierY1",
+    "type": "F32",
+    "value": 0.01
+   },
+   "restore": {
+    "setting": "WorldWindDownBezierY1",
+    "value": 0.0
+   },
+   "setting": "WorldWindDownBezierY1",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 0.0,
+   "min": -2.0,
+   "max": 3.0,
+   "increment": 0.01,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:wind_down_bezier_x2:kit:18",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Bezier X2",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "wind_down_bezier_x2",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.99,
+   "expect": {
+    "setting": "WorldWindDownBezierX2",
+    "type": "F32",
+    "value": 0.99
+   },
+   "restore": {
+    "setting": "WorldWindDownBezierX2",
+    "value": 1.0
+   },
+   "setting": "WorldWindDownBezierX2",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 1.0,
+   "min": 0.0,
+   "max": 1.0,
+   "increment": 0.01,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:wind_down_bezier_y2:kit:19",
+   "csv_index": null,
+   "card": "wind_down",
+   "card_title": "Wind-down",
+   "row_label": "Bezier Y2",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+   "xui_line": null,
+   "widget_name": "wind_down_bezier_y2",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 1.01,
+   "expect": {
+    "setting": "WorldWindDownBezierY2",
+    "type": "F32",
+    "value": 1.01
+   },
+   "restore": {
+    "setting": "WorldWindDownBezierY2",
+    "value": 1.0
+   },
+   "setting": "WorldWindDownBezierY2",
+   "setting_source": "kit_row setting",
+   "setting_type": "F32",
+   "default": 1.0,
+   "min": -2.0,
+   "max": 3.0,
+   "increment": 0.01,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml"
+  },
+  {
+   "page": "temporal_tab",
+   "page_label": "Time",
+   "group": "capture_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "temporal_tab",
+    "via": "tab"
+   },
+   "id": "v2:temporal_tab:drives_lbl:kit:20",
    "csv_index": null,
    "card": "drive_on_clock",
    "card_title": "What follows clock",
@@ -152619,7 +153074,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:drive_anim_check:kit:13",
+   "id": "v2:temporal_tab:drive_anim_check:kit:21",
    "csv_index": null,
    "card": "drive_on_clock",
    "card_title": "What follows clock",
@@ -152674,7 +153129,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:drive_objects_check:kit:14",
+   "id": "v2:temporal_tab:drive_objects_check:kit:22",
    "csv_index": null,
    "card": "drive_on_clock",
    "card_title": "What follows clock",
@@ -152729,7 +153184,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:drive_texanim_check:kit:15",
+   "id": "v2:temporal_tab:drive_texanim_check:kit:23",
    "csv_index": null,
    "card": "drive_on_clock",
    "card_title": "What follows clock",
@@ -152784,7 +153239,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:drive_particles_check:kit:16",
+   "id": "v2:temporal_tab:drive_particles_check:kit:24",
    "csv_index": null,
    "card": "drive_on_clock",
    "card_title": "What follows clock",
@@ -152839,7 +153294,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:drive_camera_check:kit:17",
+   "id": "v2:temporal_tab:drive_camera_check:kit:25",
    "csv_index": null,
    "card": "drive_on_clock",
    "card_title": "What follows clock",
@@ -152895,7 +153350,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:fps_limit_check:kit:18",
+   "id": "v2:temporal_tab:fps_limit_check:kit:26",
    "csv_index": null,
    "card": "frame_rate",
    "card_title": "Frame rate",
@@ -152950,7 +153405,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:fps_limit_slider:kit:19",
+   "id": "v2:temporal_tab:fps_limit_slider:kit:27",
    "csv_index": null,
    "card": "frame_rate",
    "card_title": "Frame rate",
@@ -153005,7 +153460,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:fps_vsync_lock_check:kit:20",
+   "id": "v2:temporal_tab:fps_vsync_lock_check:kit:28",
    "csv_index": null,
    "card": "frame_rate",
    "card_title": "Frame rate",
@@ -153060,7 +153515,7 @@
     "page_view": "temporal_tab",
     "via": "tab"
    },
-   "id": "v2:temporal_tab:fps_limit_hint:kit:21",
+   "id": "v2:temporal_tab:fps_limit_hint:kit:29",
    "csv_index": null,
    "card": "frame_rate",
    "card_title": "Frame rate",
@@ -253895,6 +254350,7 @@
    "btn_ungroup_unit",
    "btn_walk",
    "btn_walk_here",
+   "btn_world_wind_down",
    "btn_wp_add",
    "btn_wp_clear",
    "btn_wp_delete",
@@ -255286,6 +255742,7 @@
    "kc_weather_main",
    "kc_wet_mist_lens",
    "kc_what_steps",
+   "kc_wind_down",
    "kc_windows",
    "kc_world_clock",
    "keep_facing_check",
@@ -256473,6 +256930,7 @@
    "spin_axis_y",
    "spin_axis_z",
    "spin_speed_spin",
+   "spin_up_seconds",
    "st_blueprint",
    "st_chrome",
    "st_clone",
@@ -257440,6 +257898,15 @@
    "weather_wetness_enabled",
    "weather_wetness_strength",
    "weather_wind_scale",
+   "wind_down_bezier_x1",
+   "wind_down_bezier_x2",
+   "wind_down_bezier_y1",
+   "wind_down_bezier_y2",
+   "wind_down_curve",
+   "wind_down_curve_item_0",
+   "wind_down_curve_item_1",
+   "wind_down_curve_item_2",
+   "wind_down_seconds",
    "world_group",
    "world_tabs",
    "yaw_spinner",
