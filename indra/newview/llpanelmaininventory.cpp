@@ -26,6 +26,8 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llpanelmaininventory.h"
+#include "fsinventorycustomtabs.h"
+#include "aluirefresh.h"
 
 #include "llagent.h"
 #include "llagentbenefits.h"
@@ -143,6 +145,8 @@ LLPanelMainInventory::LLPanelMainInventory(const LLPanel::Params& p)
       mListViewRootUpdatedConnection(),
       mGalleryRootUpdatedConnection()
 {
+    FSInventoryCustomTabs::registerCommitCallbacks(this);
+
     // Menu Callbacks (non contex menus)
     mCommitCallbackRegistrar.add("Inventory.DoToSelected", boost::bind(&LLPanelMainInventory::doToSelected, this, _2));
     mCommitCallbackRegistrar.add("Inventory.CloseAllFolders", boost::bind(&LLPanelMainInventory::closeAllFolders, this));
@@ -323,6 +327,11 @@ bool LLPanelMainInventory::postBuild()
     mFilterTabs->setTabVisibility(mWornItemsPanel, gSavedSettings.getBOOL("InventoryShowWornTab"));
     mFilterTabs->setTabVisibility(mFavoritesPanel, gSavedSettings.getBOOL("InventoryShowFavoritesTab"));
 
+    // The master observer is the only custom-tabs connection retained while off.
+    mCustomTabsEnabledConnection = gSavedSettings.getControl("AlchemyInventoryCustomTabs")->getSignal()->connect(
+        boost::bind(&LLPanelMainInventory::updateCustomTabsEnabled, this));
+    updateCustomTabsEnabled();
+
     // Trigger callback for focus received so we can deselect items in inbox/outbox
     LLFocusableElement::setFocusReceivedCallback(boost::bind(&LLPanelMainInventory::onFocusReceived, this));
 
@@ -332,6 +341,9 @@ bool LLPanelMainInventory::postBuild()
 // Destroys the object
 LLPanelMainInventory::~LLPanelMainInventory( void )
 {
+    mCustomTabsEnabledConnection.disconnect();
+    // Custom tabs call into the parent on selection changes during teardown.
+    mCustomTabs.reset();
     // Save the filters state.
     // Some params types cannot be saved this way
     // for example, LLParamSDParser doesn't know about U64,
@@ -599,6 +611,43 @@ void LLPanelMainInventory::doCreate(const LLSD& userdata)
     }
 }
 
+void LLPanelMainInventory::updateCustomTabsEnabled()
+{
+    if (gSavedSettings.getBOOL("AlchemyInventoryCustomTabs"))
+    {
+        FSInventoryCustomTabs::install(this, mFilterEditor);
+    }
+    else if (mCustomTabs)
+    {
+        mCustomTabs->disable();
+        // Complete the custom-to-stock transition once while the old panel is known.
+        if (mFilterTabs->getCurrentPanelIndex() != 0) mFilterTabs->selectFirstTab();
+        mCustomTabs.reset();
+    }
+}
+
+void LLPanelMainInventory::refreshFinderFromFilter()
+{
+    if (auto* finder = getFinder())
+    {
+        // Label-only refresh: do not disturb an in-progress Finder edit.
+        finder->setTitle(mSingleFolderMode ? getLocalizedRootName()
+            : FSInventoryCustomTabs::activePanelIsCustom(this) ? mActivePanel->getLabel() : getCurrentFilter().getName());
+    }
+}
+
+bool LLPanelMainInventory::handleRightMouseDown(S32 x, S32 y, MASK mask)
+{
+    if (mCustomTabs && mCustomTabs->handleRightMouseDown(x, y)) return true;
+    return LLPanel::handleRightMouseDown(x, y, mask);
+}
+
+bool LLPanelMainInventory::handleMouseDown(S32 x, S32 y, MASK mask)
+{
+    if (mCustomTabs && mCustomTabs->handleMouseDown(x, y)) return true;
+    return LLPanel::handleMouseDown(x, y, mask);
+}
+
 void LLPanelMainInventory::resetFilters()
 {
     LLFloaterInventoryFinder *finder = getFinder();
@@ -609,6 +658,7 @@ void LLPanelMainInventory::resetFilters()
     }
 
     setFilterTextFromFilter();
+    FSInventoryCustomTabs::notifyFilterStateChanged(this);
 }
 
 void LLPanelMainInventory::resetAllItemsFilters()
@@ -625,7 +675,7 @@ void LLPanelMainInventory::resetAllItemsFilters()
 
 void LLPanelMainInventory::findLinks(const LLUUID& item_id, const std::string& item_name)
 {
-    mFilterSubString = item_name;
+    if (!FSInventoryCustomTabs::activePanelIsCustom(this)) mFilterSubString = item_name;
 
     LLInventoryFilter &filter = mActivePanel->getFilter();
     filter.setFindAllLinksMode(item_name, item_id);
@@ -703,6 +753,7 @@ void LLPanelMainInventory::onSelectSearchType()
     {
         setSearchType(LLInventoryFilter::SEARCHTYPE_UUID);
     }
+    FSInventoryCustomTabs::notifyFilterStateChanged(this);
 }
 
 void LLPanelMainInventory::setSearchType(LLInventoryFilter::ESearchType type)
@@ -791,7 +842,7 @@ void LLPanelMainInventory::onClearSearch()
         mActivePanel->getRootFolder()->applyFunctorRecursively(opener);
         mActivePanel->getRootFolder()->scrollToShowSelection();
     }
-    mFilterSubString = "";
+    if (!FSInventoryCustomTabs::activePanelIsCustom(this)) mFilterSubString.clear();
 
     if (mInboxPanel)
     {
@@ -828,8 +879,10 @@ void LLPanelMainInventory::onFilterEdit(const std::string& search_string )
         LLInventoryModelBackgroundFetch::instance().start();
     }
 
-    mFilterSubString = search_string;
-    if (mActivePanel->getFilterSubString().empty() && mFilterSubString.empty())
+    const bool is_custom = FSInventoryCustomTabs::activePanelIsCustom(this);
+    if (!is_custom) mFilterSubString = search_string;
+    const std::string& active_substring = is_custom ? search_string : mFilterSubString;
+    if (mActivePanel->getFilterSubString().empty() && active_substring.empty())
     {
             // current filter and new filter empty, do nothing
             return;
@@ -842,8 +895,8 @@ void LLPanelMainInventory::onFilterEdit(const std::string& search_string )
         mActivePanel->getRootFolder()->applyFunctorRecursively(*mSavedFolderState);
     }
 
-    // set new filter string
-    setFilterSubString(mFilterSubString);
+    // Custom tabs own their substring; fixed tabs retain the shared search.
+    setFilterSubString(active_substring);
 
     if (mInboxPanel)
     {
@@ -894,6 +947,8 @@ void LLPanelMainInventory::onFilterEdit(const std::string& search_string )
 
 void LLPanelMainInventory::onFilterSelected()
 {
+    const bool was_custom = FSInventoryCustomTabs::activePanelIsCustom(this);
+    if (FSInventoryCustomTabs::maybeHandleAddTabSelected(this)) return;
     // Find my index
     setActivePanel();
 
@@ -902,12 +957,14 @@ void LLPanelMainInventory::onFilterSelected()
         return;
     }
 
+    FSInventoryCustomTabs::noteActivePanel(this, mActivePanel);
+
     if (getActivePanel() == mWornItemsPanel)
     {
         mActivePanel->openAllFolders();
     }
     updateSearchTypeCombo();
-    setFilterSubString(mFilterSubString);
+    if (!FSInventoryCustomTabs::activePanelIsCustom(this)) setFilterSubString(mFilterSubString);
     LLInventoryFilter& filter = getCurrentFilter();
     LLFloaterInventoryFinder *finder = getFinder();
     if (finder)
@@ -924,6 +981,20 @@ void LLPanelMainInventory::onFilterSelected()
         LLInventoryModelBackgroundFetch::instance().start();
     }
     setFilterTextFromFilter();
+    if (mCustomTabs && (was_custom || FSInventoryCustomTabs::activePanelIsCustom(this)))
+    {
+        if (mInboxPanel)
+        {
+            mInboxPanel->onFilterEdit(mActivePanel->getFilter().getFilterSubStringOrig());
+        }
+        if (mFilterEditor)
+        {
+            // A user tab switch replaces text; external sync must respect typing.
+            setTextIfChanged(mFilterEditor, FSInventoryCustomTabs::activePanelIsCustom(this)
+                ? mActivePanel->getFilter().getFilterSubStringOrig() : mFilterSubString,
+                !mCustomTabs->isLoading());
+        }
+    }
 }
 
 const std::string LLPanelMainInventory::getFilterSubString()
@@ -942,11 +1013,18 @@ bool LLPanelMainInventory::handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
                                          EAcceptance* accept,
                                          std::string& tooltip_msg)
 {
+    // FIRE-35598 / c0846c53d7: never allow a drag to activate the + pseudo-panel.
+    if (mCustomTabs && mCustomTabs->handleDragAndDrop(x, y))
+    {
+        *accept = ACCEPT_NO;
+        return true;
+    }
     if (mFilterTabs)
     {
         // Check to see if we are auto scrolling from the last frame
         LLInventoryPanel* panel = (LLInventoryPanel*)this->getActivePanel();
-        bool needsToScroll = panel->getScrollableContainer()->canAutoScroll(x, y);
+        bool needsToScroll = panel && panel->getScrollableContainer()
+            && panel->getScrollableContainer()->canAutoScroll(x, y);
         if (needsToScroll)
         {
             mFilterTabs->startDragAndDropDelayTimer();
@@ -975,9 +1053,17 @@ void LLPanelMainInventory::setFocusOnFilterEditor()
 // virtual
 void LLPanelMainInventory::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (mActivePanel && mFilterEditor)
     {
-        mFilterEditor->setText(mFilterSubString);
+        if (FSInventoryCustomTabs::activePanelIsCustom(this))
+        {
+            setTextIfChanged(mFilterEditor, mActivePanel->getFilter().getFilterSubStringOrig());
+        }
+        else
+        {
+            mFilterEditor->setText(mFilterSubString);
+        }
     }
     if (mActivePanel && mResortActivePanel)
     {
@@ -990,6 +1076,7 @@ void LLPanelMainInventory::draw()
         mActivePanel->setSortOrder(order);
         mResortActivePanel = false;
     }
+    if (mCustomTabs) FSInventoryCustomTabs::onParentDraw(this);
     LLPanel::draw();
     updateItemcountText();
     updateCombinationVisibility();
@@ -1272,7 +1359,8 @@ void LLFloaterInventoryFinder::updateElementsFromFilter()
     bool show_created_by_others = ((filter_creator == LLInventoryFilter::FILTERCREATOR_ALL) || (filter_creator == LLInventoryFilter::FILTERCREATOR_OTHERS));
 
     // update the ui elements
-    setTitle(mFilter->getName());
+    setTitle(FSInventoryCustomTabs::activePanelIsCustom(mPanelMainInventory)
+        ? mPanelMainInventory->getActivePanel()->getLabel() : mFilter->getName());
 
     mCheckAnimation->setValue((S32) (filter_types & 0x1 << LLInventoryType::IT_ANIMATION));
     mCheckCallingCard->setValue((S32) (filter_types & 0x1 << LLInventoryType::IT_CALLINGCARD));
@@ -1300,6 +1388,8 @@ void LLFloaterInventoryFinder::updateElementsFromFilter()
 
 void LLFloaterInventoryFinder::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    const S32 generation = FSInventoryCustomTabs::captureFilterGeneration(mPanelMainInventory);
     U64 filter = 0xffffffffffffffffULL;
     bool filtered_by_all_types = true;
 
@@ -1449,8 +1539,10 @@ void LLFloaterInventoryFinder::draw()
         mPanelMainInventory->getPanel()->setDateSearchDirection(getDateSearchDirection());
     }
 
+    FSInventoryCustomTabs::notifyIfFilterChanged(mPanelMainInventory, generation);
     LLPanel::draw();
 }
+
 
 void LLFloaterInventoryFinder::onCreatorSelfFilterCommit()
 {
@@ -1470,6 +1562,7 @@ void LLFloaterInventoryFinder::onCreatorSelfFilterCommit()
         mPanelMainInventory->getCurrentFilter().setFilterCreator(LLInventoryFilter::FILTERCREATOR_OTHERS);
         mCreatorOthers->set(true);
     }
+    FSInventoryCustomTabs::notifyFilterStateChanged(mPanelMainInventory);
 }
 
 void LLFloaterInventoryFinder::onCreatorOtherFilterCommit()
@@ -1490,6 +1583,7 @@ void LLFloaterInventoryFinder::onCreatorOtherFilterCommit()
         mPanelMainInventory->getCurrentFilter().setFilterCreator(LLInventoryFilter::FILTERCREATOR_SELF);
         mCreatorSelf->set(true);
     }
+    FSInventoryCustomTabs::notifyFilterStateChanged(mPanelMainInventory);
 }
 
 bool LLFloaterInventoryFinder::getCheckShowEmpty()

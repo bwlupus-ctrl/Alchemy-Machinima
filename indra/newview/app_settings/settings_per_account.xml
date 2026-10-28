@@ -1,5 +1,13 @@
 <llsd>
     <map>
+    <key>FSInventoryCustomTabs</key>
+    <map>
+        <key>HideFromEditor</key><integer>1</integer>
+        <key>Comment</key><string>Custom inventory tabs: name, filter, states, tabhidden and stable id.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>LLSD</string>
+        <key>Value</key><array />
+    </map>
     <key>Include</key>
     <array>
       <string>settings_per_account_alchemy.xml</string>

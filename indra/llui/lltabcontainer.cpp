@@ -1215,7 +1215,7 @@ void LLTabContainer::addPlaceholder(LLPanel* child, const std::string& label)
     addTabPanel(TabPanelParams().panel(child).label(label).is_placeholder(true));
 }
 
-void LLTabContainer::removeTabPanel(LLPanel* child)
+void LLTabContainer::removeTabPanel(LLPanel* child, bool reselect)
 {
     static LLUICachedControl<S32> tabcntrv_pad ("UITabCntrvPad", 0);
     if (mIsVertical)
@@ -1299,8 +1299,8 @@ void LLTabContainer::removeTabPanel(LLPanel* child)
     {
         mCurrentTabIdx = static_cast<S32>(mTabList.size()) - 1;
     }
-    selectTab(mCurrentTabIdx);
-    if (has_focus)
+    if (reselect) selectTab(mCurrentTabIdx);
+    if (reselect && has_focus)
     {
         LLPanel* panelp = getPanelByIndex(mCurrentTabIdx);
         if (panelp)
@@ -1822,6 +1822,84 @@ void LLTabContainer::onTabBtn( const LLSD& data, LLPanel* panel )
     if (tuple)
     {
         tuple->mTabPanel->setFocus(true);
+    }
+}
+
+// Ported from Firestorm (PanteraPolnocy, FIRE-35598); concept from Catznip.
+void LLTabContainer::setUseTabEllipses(bool enabled)
+{
+    mUseTabEllipses = enabled;
+    for (auto* tuple : mTabList)
+    {
+        if (tuple->mButton) tuple->mButton->setUseEllipses(enabled);
+    }
+}
+
+void LLTabContainer::setTabPadding(S32 index, S32 padding)
+{
+    if (index < 0 || index >= getTabCount())
+    {
+        return;
+    }
+
+    LLTabTuple* tuple = getTab(index);
+    if (!tuple || !tuple->mButton)
+    {
+        return;
+    }
+
+    static LLUICachedControl<S32> tab_padding("UITabPadding", 0);
+    mTotalTabWidth -= tuple->mButton->getRect().getWidth();
+    tuple->mPadding = padding;
+    tuple->mButton->reshape(llclamp(mFont->getWidth(tuple->mButton->getLabelSelected()) + tab_padding + tuple->mPadding, mMinTabWidth, mMaxTabWidth), tuple->mButton->getRect().getHeight());
+    mTotalTabWidth += tuple->mButton->getRect().getWidth();
+    updateMaxScrollPos();
+}
+
+S32 LLTabContainer::getTabContainedAtPoint(S32 x, S32 y) const
+{
+    if (getTabsHidden())
+    {
+        return -1;
+    }
+
+    const LLButton* arrows[] = { mPrevArrowBtn, mNextArrowBtn, mJumpPrevArrowBtn, mJumpNextArrowBtn };
+    for (const auto* arrow : arrows)
+    {
+        if (arrow && arrow->getVisible() && arrow->getRect().pointInRect(x, y))
+        {
+            return -1;
+        }
+    }
+
+    for (size_t i = 0; i < mTabList.size(); ++i)
+    {
+        const auto* tuple = mTabList[i];
+        if (tuple && tuple->mButton && tuple->mButton->getVisible() && tuple->mButton->getRect().pointInRect(x, y))
+        {
+            return static_cast<S32>(i);
+        }
+    }
+    return -1;
+}
+
+void LLTabContainer::setTabButtonVisible(const LLPanel* panel, bool visible)
+{
+    for (LLTabTuple* tuple : mTabList)
+    {
+        if (tuple->mTabPanel == panel)
+        {
+            if (tuple->mVisible != visible)
+            {
+                tuple->mVisible = visible;
+                if (tuple->mButton)
+                {
+                    tuple->mButton->setVisible(visible);
+                }
+                updateMaxScrollPos();
+            }
+            break;
+        }
     }
 }
 

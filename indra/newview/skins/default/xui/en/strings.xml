@@ -4564,4 +4564,6 @@ and report the problem.
     <string name="PS_Arms_straight_sitting">Arms straight, sitting</string>
     <string name="PS_Arms_upward_Legs_apart">Arms upward, Legs apart</string>
     <string name="PS_Arms_upward_Legs_together">Arms upward, Legs together</string>
+    <string name="FSInventoryCustomTabDefaultName">Custom</string>
+    <string name="FSInventoryCustomTabShowHidden">Show hidden tabs</string>
 </strings>

@@ -60,7 +60,7 @@
    mouse_opaque="false"
    name="text_box2"
    top_delta="1"
-   width="200">
+   width="131">
     m
   </text>
   <text
@@ -101,7 +101,7 @@
    mouse_opaque="false"
    name="text_box2"
    top_delta="1"
-   width="200">
+   width="131">
     m
   </text>
   <check_box
@@ -151,6 +151,16 @@
     name="DoubleClickWearableAddCheck"
     top_pad="4"
     width="256"/>
+  <check_box
+    control_name="AlchemyInventoryCustomTabs"
+    height="16"
+    label="Enable custom inventory filter tabs"
+    layout="topleft"
+    left="45"
+    name="AlchemyInventoryCustomTabs"
+    top_pad="4"
+    width="350"
+    tool_tip="Add saved inventory tabs with their own filters. Turning this off removes custom tabs from open windows and preserves them for next time."/>
     <text
     type="string"
     length="1"
@@ -282,7 +292,7 @@
       name="EnvironmentPersistAcrossLogin"
       label="Persist Environment settings throughout sessions"
       left="45"
-      width="500"
+      width="472"
       tool_tip="Restores the current environment settings after next login."/>
      <check_box
       follows="left|top"

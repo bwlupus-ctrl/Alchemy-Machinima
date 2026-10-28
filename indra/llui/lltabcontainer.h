@@ -179,7 +179,7 @@ public:
     void        addTabPanel(LLPanel* panel);
     void        addTabPanel(const TabPanelParams& panel);
     void        addPlaceholder(LLPanel* child, const std::string& label);
-    void        removeTabPanel( LLPanel* child );
+    void        removeTabPanel(LLPanel* child, bool reselect = true);
     void        lockTabs(S32 num_tabs = 0);
     void        unlockTabs();
     S32         getNumLockedTabs() const { return mLockedTabCount; }
@@ -218,6 +218,12 @@ public:
 
     void        setRightTabBtnOffset( S32 offset );
     void        setPanelTitle(S32 index, const std::string& title);
+    S32         getTabContainedAtPoint(S32 x, S32 y) const;
+    void        setTabPadding(S32 index, S32 padding);
+    // Unlike setTabVisibility, this does not change the selected panel.
+    void        setTabButtonVisible(const LLPanel* panel, bool visible);
+    bool        getUseTabEllipses() const { return mUseTabEllipses; }
+    void        setUseTabEllipses(bool enabled);
 
     TabPosition getTabPosition() const { return mTabPosition; }
     void        setMinTabWidth(S32 width) { mMinTabWidth = width; }

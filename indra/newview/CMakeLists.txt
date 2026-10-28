@@ -814,6 +814,8 @@ set(viewer_SOURCE_FILES
     llpanellandmedia.cpp
     llpanellogin.cpp
     llpanelloginlistener.cpp
+    fsinventorycustomtabs.cpp
+    fsinventorycustomtabmodel.cpp
     llpanelmaininventory.cpp
     llpanelmarketplaceinbox.cpp
     llpanelmarketplaceinboxinventory.cpp
@@ -1789,6 +1791,8 @@ set(viewer_HEADER_FILES
     llpanellandmedia.h
     llpanellogin.h
     llpanelloginlistener.h
+    fsinventorycustomtabs.h
+    fsinventorycustomtabmodel.h
     llpanelmaininventory.h
     llpanelmarketplaceinbox.h
     llpanelmarketplaceinboxinventory.h
@@ -2817,6 +2821,7 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    fsinventorycustomtabmodel.cpp
     allocallightsize.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]
     alformationsolver.cpp

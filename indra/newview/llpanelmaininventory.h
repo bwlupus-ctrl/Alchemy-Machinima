@@ -35,6 +35,8 @@
 
 #include "llfolderview.h"
 
+#include <memory>
+
 class LLComboBox;
 class LLFolderViewItem;
 class LLInventoryPanel;
@@ -63,6 +65,7 @@ class LLPanelMainInventory : public LLPanel, LLInventoryObserver
 {
 public:
     friend class LLFloaterInventoryFinder;
+    friend class FSInventoryCustomTabs;
 
     LLPanelMainInventory(const LLPanel::Params& p = getDefaultParams());
     ~LLPanelMainInventory();
@@ -77,6 +80,9 @@ public:
     };
 
     virtual bool handleKeyHere(KEY key, MASK mask);
+    bool handleRightMouseDown(S32 x, S32 y, MASK mask) override;
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+    void refreshFinderFromFilter();
 
     // Inherited functionality
     /*virtual*/ bool handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
@@ -190,6 +196,7 @@ private:
     };
 
     LLFloaterInventoryFinder* getFinder();
+    void updateCustomTabsEnabled();
 
     LLFilterEditor*             mFilterEditor;
     LLTabContainer*             mFilterTabs;
@@ -232,6 +239,8 @@ private:
 
     boost::signals2::connection mListViewRootUpdatedConnection;
     boost::signals2::connection mGalleryRootUpdatedConnection;
+    std::unique_ptr<class FSInventoryCustomTabs> mCustomTabs;
+    boost::signals2::scoped_connection mCustomTabsEnabledConnection;
 
     //////////////////////////////////////////////////////////////////////////////////
     // List Commands                                                                //
