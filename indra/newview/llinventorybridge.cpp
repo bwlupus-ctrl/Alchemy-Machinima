@@ -59,6 +59,7 @@
 #include "llinventorymodel.h"
 #include "llinventorymodelbackgroundfetch.h"
 #include "llinventorypanel.h"
+#include "llkeyboard.h"
 #include "llmarketplacefunctions.h"
 #include "llnotifications.h"
 #include "llnotificationsutil.h"
@@ -7634,8 +7635,12 @@ void LLObjectBridge::performAction(LLInventoryModel* model, std::string action)
 void LLObjectBridge::openItem()
 {
     // object double-click action is to wear/unwear object
+    // [DoubleClickAdd] Restores 366a7f2325d (lost in the 663df365ca6 history
+    // merge): DoubleClickAttachmentAdd adds instead of replacing; Ctrl inverts.
+    const bool ctrl_down = (MASK_CONTROL == gKeyboard->currentMask(true));
+    static LLCachedControl<bool> open_add(gSavedSettings, "DoubleClickAttachmentAdd", true);
     performAction(getInventoryModel(),
-              get_is_item_worn(mUUID) ? "detach" : "attach");
+              get_is_item_worn(mUUID) ? "detach" : ((ctrl_down != open_add()) ? "wear_add" : "wear"));
 }
 
 std::string LLObjectBridge::getLabelSuffix() const
@@ -8014,8 +8019,15 @@ void LLWearableBridge::performAction(LLInventoryModel* model, std::string action
 
 void LLWearableBridge::openItem()
 {
+    // [DoubleClickAdd] DoubleClickWearableAdd adds clothing (alphas, tattoos,
+    // layers) instead of replacing that type; Ctrl inverts. Body parts always
+    // replace.
+    const LLViewerInventoryItem* item = getItem();
+    const bool ctrl_down = (MASK_CONTROL == gKeyboard->currentMask(true));
+    static LLCachedControl<bool> open_add(gSavedSettings, "DoubleClickWearableAdd", true);
+    const bool add = item && item->getType() != LLAssetType::AT_BODYPART && (ctrl_down != open_add());
     performAction(getInventoryModel(),
-                  get_is_item_worn(mUUID) ? "take_off" : "wear");
+                  get_is_item_worn(mUUID) ? "take_off" : (add ? "wear_add" : "wear"));
 }
 
 void LLWearableBridge::buildContextMenu(LLMenuGL& menu, U32 flags)

@@ -24,6 +24,28 @@
             <key>Value</key>
             <integer>0</integer>
         </map>
+        <key>DoubleClickAttachmentAdd</key>
+        <map>
+            <key>Comment</key>
+            <string>Double-clicking an attachment in inventory adds it rather than replacing what is on that attachment point (Ctrl+double-click does the opposite)</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>DoubleClickWearableAdd</key>
+        <map>
+            <key>Comment</key>
+            <string>Double-clicking clothing (alphas, tattoos, layers) in inventory adds it rather than replacing that clothing type (Ctrl+double-click does the opposite). Body parts always replace.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
         <key>JoystickButtonCrouch</key>
         <map>
             <key>Comment</key>
