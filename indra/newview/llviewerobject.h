@@ -316,7 +316,7 @@ public:
     virtual void removeChild(LLViewerObject *childp);
     const_child_list_t& getChildren() const {   return mChildList; }
     // Changes to link membership, drawable bounds or transforms invalidate the
-    // two resident lights' enclosure cache. Stored on the edit root.
+    // resident lights' enclosure cache. Stored on the edit root.
     void invalidateWorldShadowBounds();
     U64 worldShadowBoundsRevision() const { return mWorldShadowBoundsRevision; }
     static U64 nextWorldShadowRevision();

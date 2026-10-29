@@ -45,7 +45,7 @@ template<class Mode, class Apply> struct AttachmentVisibilityScope
 };
 // ---------------------------------------------------------------------------------------------------- geometry
 constexpr unsigned kFaces = 6;          // faces per light
-constexpr unsigned kMaxLights = 2;      // resident lights (setting 1-2)
+constexpr unsigned kMaxLights = 4;      // resident lights (setting 1-4, default 2)
 constexpr unsigned kUsable = 512;       // usable texels per face edge
 constexpr unsigned kGutter = 16;        // guard texels per side: holds REAL depth of the face's own projection
 constexpr unsigned kTile = kUsable + 2 * kGutter; // 544
@@ -90,6 +90,9 @@ struct TileSlot { unsigned x, y; };
 inline TileSlot tileSlot(unsigned light, unsigned face)
 { return {(face % kColumns) * kTile, (kRowsPerLight * light + face / kColumns) * kTile}; }
 inline unsigned atlasHeight(unsigned lights) { return kAtlasHeightPerLight * std::clamp(lights, 1u, kMaxLights); }
+// LLRenderTarget::allocate clamps to the hardware limit: reject instead of accepting a truncated atlas.
+inline bool atlasFits(unsigned lights, unsigned maxTextureSize)
+{ return kAtlasWidth <= maxTextureSize && atlasHeight(lights) <= maxTextureSize; }
 inline std::uint64_t atlasBytes(unsigned lights)
 { return std::uint64_t(kAtlasWidth) * atlasHeight(lights) * 4u; }          // D32F
 inline std::uint64_t scratchBytes() { return std::uint64_t(kTile) * kTile * 4u; }
@@ -155,7 +158,7 @@ template<class T> inline void transformedAabb(const T m[4][4], const double lo[3
         }
     }
 }
-// Two resident-light entries. A linkset revision invalidates the cached near;
+// One entry per resident-light slot. A linkset revision invalidates the cached near;
 // unchanged static linksets need no sibling walk, changed ones are walked in full.
 template<class Key> struct NearCache
 {
@@ -277,7 +280,7 @@ inline double contactDistance(double userContact, double farM)
 
 // ---------------------------------------------------------------------------------------------------- budget
 // World resolve ledger (pure, integer): full-resolution pixels x resident lights x 48 gathers (16 blocker search taps +
-// 32 filter taps). Ceiling 1.0 G; above it the light count falls to 1 and then to 0 (off) at plan time, never per frame.
+// 32 filter taps). Ceiling 1.0 G; above it the light count falls until it fits (or 0 = off) at plan time, never per frame.
 constexpr std::uint64_t kResolveGathers = 48;
 constexpr std::uint64_t kResolveCeiling = 1000000000ull;
 inline std::uint64_t resolveCost(unsigned width, unsigned height, unsigned lights)
@@ -288,11 +291,19 @@ inline unsigned plannedLights(unsigned width, unsigned height, unsigned requeste
     while (n > 0 && resolveCost(width, height, n) > kResolveCeiling) --n;
     return n;
 }
+// Zero means the GL limit has not been queried: callers defer planning without releasing existing targets.
+inline unsigned plannedLightsFitting(unsigned width, unsigned height, unsigned requested, unsigned maxTextureSize)
+{
+    if (!maxTextureSize) return 0;
+    unsigned n = plannedLights(width, height, requested);
+    while (n > 0 && !atlasFits(n, maxTextureSize)) --n;
+    return n;
+}
 // Raster passes per frame: six faces per resident light, never fewer, never demoted per frame.
 inline unsigned facePasses(unsigned lights) { return kFaces * std::min(lights, kMaxLights); }
 
 // ---------------------------------------------------------------------------------------------------- residency
-// Pinned residency (user decision 10/22, U8; projectors included by decision 10/23): two session slots. A slot is FILLED only while empty, from the frame's
+// Pinned residency (user decision 10/22, U8; projectors included by decision 10/23): up to kMaxLights session slots. A slot is FILLED only while empty, from the frame's
 // ranked candidates (best first) with the best one not already resident; it is CLEARED only when its id is no longer an
 // eligible light, or when it lies beyond the planned light count. No timing, cost or rank input once held, so a shot
 // never swaps lights. Returns the number of slots that changed.
@@ -568,6 +579,8 @@ enum class State
     NoLight,       // on, nothing to choose (no eligible light, point or projector, in view)
     LowMemory,     // the atlas could not be allocated
     OverBudget,    // the resolve ledger rejected every light at this resolution
+    TextureLimit,  // even one light's atlas exceeds the known GPU texture limit
+    WaitingForLimits, // GL has not queried the texture limit yet; preserve existing allocation and pins
     On,            // `lights` lights rendered a cube THIS frame (round 5: rendered, not merely pinned)
     Pinned,        // lights are pinned but none rendered a cube this frame (native map, out of view, not found...): see SlotReason
 };
@@ -606,6 +619,8 @@ inline std::string worldShadowText(State state, unsigned lights = 0)
     case State::NoLight: return "no light in view";
     case State::LowMemory: return "not enough video memory";
     case State::OverBudget: return "over the work budget at this size";
+    case State::TextureLimit: return "GPU texture limit cannot fit one world light";
+    case State::WaitingForLimits: return "waiting for GPU texture limit";
     case State::Pinned: return "pinned but not rendering";
     case State::On:
     {
@@ -618,8 +633,19 @@ inline std::string worldShadowText(State state, unsigned lights = 0)
 }
 // Round 5 readout: counts the lights that RENDERED a cube this frame (`rendered`), names the pinned lights (labels[k] for slot k, empty slots have reason None)
 // and says why a pinned light is not rendering. Pure so the wording is testable.
-inline std::string worldShadowReport(State state, unsigned rendered, const std::string* labels, const SlotReason* reasons, unsigned slots)
+inline std::string worldShadowReport(State state, unsigned rendered, const std::string* labels, const SlotReason* reasons, unsigned slots,
+    unsigned requested = 0, unsigned budgeted = 0)
 {
+    if (requested && state != State::Off && state != State::WaitingForLimits)
+    {
+        std::string plan = "World shadows: using " + std::to_string(slots);
+        plan += slots == requested ? " lights" : " of " + std::to_string(requested) + " requested";
+        std::string limit;
+        if (budgeted < requested) limit = "resolution budget";
+        if (slots < budgeted) limit += (limit.empty() ? "" : "; ") + std::string("GPU texture limit");
+        if (!limit.empty()) plan += " (" + limit + ")";
+        return plan + ". " + worldShadowReport(state, rendered, labels, reasons, slots);
+    }
     if (state != State::On && state != State::Pinned) return worldShadowText(state, rendered);
     std::string out;
     if (rendered > 0)

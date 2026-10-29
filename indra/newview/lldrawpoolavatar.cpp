@@ -49,7 +49,7 @@
 
 // The World-shadow routing in beginShadowPass checks one camera ID per resident
 // World-shadow light; keep that range in step with the light count.
-static_assert(LLViewerCamera::CAMERA_WORLD_SHADOW1 - LLViewerCamera::CAMERA_WORLD_SHADOW0 + 1 ==
+static_assert(LLViewerCamera::CAMERA_WORLD_SHADOW3 - LLViewerCamera::CAMERA_WORLD_SHADOW0 + 1 ==
                   static_cast<int>(ALWorldShadow::kMaxLights),
               "World-shadow camera range must cover every resident light");
 #include "llviewerregion.h"
@@ -427,7 +427,7 @@ void LLDrawPoolAvatar::beginShadowPass(S32 pass)
         // frame snapshot, so sun/spot maps in this frame retain bake-cut routing.
         static LLCachedControl<bool> hidden_body_casts(gSavedSettings, "RenderWorldShadowHiddenBodyCasts", true);
         const bool world_cube = LLViewerCamera::sCurCameraID >= LLViewerCamera::CAMERA_WORLD_SHADOW0 &&
-                                LLViewerCamera::sCurCameraID <= LLViewerCamera::CAMERA_WORLD_SHADOW1;
+                                LLViewerCamera::sCurCameraID <= LLViewerCamera::CAMERA_WORLD_SHADOW3;
         sShadowBakes = world_cube && hidden_body_casts() ? SHADOW_BAKES_ALL : SHADOW_BAKES_SOLID;
 
         if ((sShaderLevel > 0))  // for hardware blending

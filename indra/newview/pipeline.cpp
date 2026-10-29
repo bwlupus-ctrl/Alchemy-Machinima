@@ -29456,7 +29456,8 @@ std::string LLPipeline::worldShadowReadout() const
         reasons[k] = mWorldShadowResident.held[k] ? mWorldShadowReason[k] : ALWorldShadow::SlotReason::None;
         if (reasons[k] != ALWorldShadow::SlotReason::None) labels[k] = world_shadow_label(mWorldShadowResident.id[k]);
     }
-    return ALWorldShadow::worldShadowReport(mWorldShadowState, mWorldShadowLights, labels, reasons, ALWorldShadow::kMaxLights);
+    return ALWorldShadow::worldShadowReport(mWorldShadowState, mWorldShadowLights, labels, reasons, mWorldShadowPlanned,
+        mWorldShadowRequested, mWorldShadowBudgeted);
 }
 
 // [World Shadow pick] The Director row: the picked lights by object name (the name remembered at pick time, else the selected object's
@@ -29807,15 +29808,15 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 world_picked.add({volume->getID(), false, ALAreaShadow::pickedImportance(luminance, range, distance), false});
         }
     }
-    if (cube_main && !gSnapshot)
+    if (cube_main && !gSnapshot && gGLManager.mGLMaxTextureSize > 0)
     {
         // [P1-lite] Pinned residency. An empty slot takes the best eligible light of THIS frame's ranking that is not already
         // resident; a held slot clears only when its light is no longer an eligible light in mLights, or when the planned
         // light count drops below its index. No timing, cost or rank input once held: a shot never swaps lights.
         // Snapshot frames skip this block, preserving every pin even when the
         // temporary capture dimensions would plan fewer (or zero) lights.
-        const U32 planned = ALWorldShadow::plannedLights(mRT->deferredScreen.getWidth(),mRT->deferredScreen.getHeight(),
-            static_cast<U32>(llclamp(cube_lights(),1,static_cast<S32>(ALWorldShadow::kMaxLights))));
+        const U32 planned = ALWorldShadow::plannedLightsFitting(mRT->deferredScreen.getWidth(),mRT->deferredScreen.getHeight(),
+            static_cast<U32>(llclamp(cube_lights(),1,static_cast<S32>(ALWorldShadow::kMaxLights))), static_cast<U32>(gGLManager.mGLMaxTextureSize));
         LLUUID ranked[8], picked_ranked[ALWorldShadow::kMaxPicks];
         for (U32 i=0; i<world_candidates.size; ++i) ranked[i] = world_candidates.lights[i].id;
         for (U32 i=0; i<world_picked.size; ++i) picked_ranked[i] = world_picked.lights[i].id;
@@ -36655,7 +36656,7 @@ void countWorldShadowRiggedMaps(LLCullResult& result, LLPipeline::WorldShadowDra
 }
 }
 
-// [P1-lite] World cube shadow maps for the top 1-2 RESIDENT point lights (alworldshadowmath.h). Six face passes per light, every
+// [P1-lite] World cube shadow maps for the top 1-4 RESIDENT lights (alworldshadowmath.h). Six face passes per light, every
 // frame, with the production shadow pass (renderShadow with the native defaults, so avatars, rigged meshes, alpha mask/blend, GLTF
 // and grass cast exactly as for a native projector), into one 544^2 scratch tile that is copied into the 1632 x 1088N depth atlas.
 // Face = widened FOV 2*atan(544/512) so the 16 texel gutter holds REAL depth of the face's own projection.
@@ -36685,6 +36686,13 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     // Main view only: probes, mirrors, snapshots, HUDs, impostors and the VCam passes never render or own a cube.
     if (!sRenderDeferred || gSnapshot || gCubeSnapshot || sReflectionRender || sPrismLensRender || sRenderingHUDs || sImpostorRender ||
         mRT != &mMainRT || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
+    // LLRenderTarget treats a zero/unqueried limit as zero, not unlimited. Preserve the last allocation and pins until it is known.
+    if (gGLManager.mGLMaxTextureSize <= 0)
+    {
+        mWorldShadowState = ALWorldShadow::State::WaitingForLimits;
+        mWorldShadowLights = 0;
+        return;
+    }
     mWorldShadowLiveFrame = gFrameCount;   // a snapshot samples the stamps of this frame (worldShadowOwned)
 
     // Round 6: stale reasons never survive into this frame, whichever early return below is taken (the readout then shows no reason rather than a stale "rendered").
@@ -36699,12 +36707,15 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     if (log_now) s_world_log_at = log_clock;
 
     const U32 width = mRT->deferredScreen.getWidth(), height = mRT->deferredScreen.getHeight();
-    const U32 planned = ALWorldShadow::plannedLights(width, height,
-        static_cast<U32>(llclamp(lights_setting(), 1, static_cast<S32>(ALWorldShadow::kMaxLights))));
+    mWorldShadowRequested = static_cast<U32>(llclamp(lights_setting(), 1, static_cast<S32>(ALWorldShadow::kMaxLights)));
+    mWorldShadowBudgeted = ALWorldShadow::plannedLights(width, height, mWorldShadowRequested);
+    const U32 planned = ALWorldShadow::plannedLightsFitting(width, height, mWorldShadowRequested,
+        static_cast<U32>(gGLManager.mGLMaxTextureSize));
+    mWorldShadowPlanned = planned;
     if (!planned)
     {
         if (mWorldShadowAtlas.isComplete()) releaseWorldShadowTargets();
-        mWorldShadowState = ALWorldShadow::State::OverBudget;
+        mWorldShadowState = mWorldShadowBudgeted ? ALWorldShadow::State::TextureLimit : ALWorldShadow::State::OverBudget;
         mWorldShadowLights = 0;
         return;
     }
@@ -36722,12 +36733,12 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
     LL_PROFILE_GPU_ZONE("WorldShadow::render");
     LLTimer cpu_timer;
 
-    // Atlas: a fixed function of the planned light count (6.77 / 13.55 MiB) plus one 544^2 scratch tile (1.13 MiB). Allocation
+    // Atlas: sized to the planned active count (6.77 MiB per light, default 2), never kMaxLights, plus one 544^2 scratch tile (1.13 MiB). Allocation
     // failure gives no cube this frame (the channel then falls back to the full screen trace) and is retried next frame.
     if (mWorldShadowAtlasLights != planned || !mWorldShadowAtlas.isComplete() || !mWorldShadowScratch.isComplete())
     {
         releaseWorldShadowTargets(false);   // a retry: the failure latch (and so the single warning) survives it
-        const bool ok = glCopyImageSubData &&
+        const bool ok = glCopyImageSubData && ALWorldShadow::atlasFits(planned, static_cast<U32>(gGLManager.mGLMaxTextureSize)) &&
             mWorldShadowAtlas.allocate(ALWorldShadow::kAtlasWidth, ALWorldShadow::atlasHeight(planned), 0, true, false,
                 LLTexUnit::TT_TEXTURE, LLTexUnit::TMG_NONE, LLRenderTarget::DEPTH_FMT_32F) &&
             mWorldShadowScratch.allocate(ALWorldShadow::kTile, ALWorldShadow::kTile, 0, true, false,

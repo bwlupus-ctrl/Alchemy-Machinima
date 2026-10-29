@@ -6,6 +6,7 @@
 #include "../llprismlens.h"
 #include "../alrelighttakerecord.h"
 #include "../alrelighttakewriter.h"
+#include "../llviewercamera.h"
 #include "llsdserialize.h"
 #include <limits>
 #include <cstring>
@@ -669,6 +670,25 @@ template<> template<> void relight_object::test<18>()
     LLSD decoded;
     ensure("notation parses",LLSDSerialize::fromNotation(decoded,stream,stream.str().size())>0);
     ensure_equals("serialized UUID",decoded["area_view"]["selected"][0]["uuid"].asUUID(),c);
+    // Notation readers retain variable-length arrays: old two-entry takes and all four current resident slots.
+    AreaTakeState world = state;
+    world.worldOn = true;
+    world.worldResident = {{a,b,c,LLUUID("00000000-0000-0000-0000-000000000004")}};
+    const LLSD world_record = areaTakeRecord(world);
+    ensure_equals("four resident entries written",world_record["world_resident"].size(),4);
+    for (int count=1; count<=4; ++count)
+    {
+        LLSD saved = world_record;
+        saved["world_resident"] = LLSD::emptyArray();
+        for (int i=0; i<count; ++i) saved["world_resident"].append(world.worldResident[i]);
+        std::stringstream notation;
+        LLSDSerialize::toNotation(saved,notation);
+        LLSD restored;
+        ensure("resident notation round trip parses",LLSDSerialize::fromNotation(restored,notation,notation.str().size())>0);
+        ensure_equals("reader retains 1..4 entries, including legacy two",restored["world_resident"].size(),count);
+        for (int i=0; i<count; ++i)
+            ensure_equals("resident UUID round trip",restored["world_resident"][i].asUUID(),world.worldResident[i]);
+    }
     ensure_equals("serialized exact work",decoded["area_view"]["work"]["iterations"].asString(),std::string("497664000"));
     state.work.pixels = 4294967296ull;
     ensure_equals("64-bit count never truncates",areaTakeRecord(state)["work"]["pixels"].asString(),std::string("4294967296"));
@@ -3134,7 +3154,7 @@ template<> template<> void relight_object::test<38>()
     ensure_equals("planned 5K falls to 1",plannedLights(5120,2880,2),1u); // 1.42 G for 2, 0.71 G for 1
     ensure_equals("planned 8K is over budget",plannedLights(7680,4320,2),0u); // 1.59 G even for 1
     ensure_equals("planned absurd",plannedLights(30000,30000,2),0u);
-    ensure_equals("request clamps to 1..2",plannedLights(1920,1080,9),2u);
+    ensure_equals("request clamps to 1..4",plannedLights(1920,1080,9),4u);
     ensure_equals("request clamps up",plannedLights(1920,1080,0),1u);
     ensure_equals("raster passes",facePasses(2),12u);
     // Contact hand-off band: the user's mapped contact, never below the map's blind band, clamped to [2 cm, 0.5 m].
@@ -3414,7 +3434,7 @@ template<> template<> void relight_object::test<41>()
         unsigned step = 0;
         do
         {
-            for (unsigned lights = 0; lights <= 3; ++lights)
+            for (unsigned lights = 0; lights <= kMaxLights+1; ++lights)
                 for (unsigned mask = 0; mask < 16; ++mask)
                 {
                     ++step;
@@ -3431,7 +3451,7 @@ template<> template<> void relight_object::test<41>()
                     }
                 }
         } while (std::next_permutation(order,order+4));
-        ensure("the sequence ran (24 rankings x 4 light counts x 16 eligibility sets)",step == 24u * 4u * 16u);
+        ensure("the sequence ran (24 rankings x all light counts and overflow x 16 eligibility sets)",step == 24u * (kMaxLights+2u) * 16u);
     }
     // Scene list: normalised (sorted, de-duplicated, nulls dropped, capped) and a fixed point of save -> load.
     {
@@ -3885,6 +3905,130 @@ template<> template<> void relight_object::test<43>()
     for (int steps : {1,8,12,32,64,80,128})
         ensure_equals("reach zero keeps exactly the old per-ray cost",marchWork({8,steps,true}),steps);
 
+}
+
+template<> template<> void relight_object::test<47>()
+{
+    using namespace ALWorldShadow;
+    static_assert(kMaxLights == 4);
+    static_assert(LLViewerCamera::CAMERA_WORLD_SHADOW1 == LLViewerCamera::CAMERA_WORLD_SHADOW0 + 1);
+    static_assert(LLViewerCamera::CAMERA_WORLD_SHADOW2 == LLViewerCamera::CAMERA_WORLD_SHADOW0 + 2);
+    static_assert(LLViewerCamera::CAMERA_WORLD_SHADOW3 == LLViewerCamera::CAMERA_WORLD_SHADOW0 + 3);
+    static_assert(LLViewerCamera::NUM_CAMERAS == LLViewerCamera::CAMERA_WORLD_SHADOW3 + 1);
+    ALRelight::AreaTakeState take;
+    ensure_equals("take record covers every resident slot",take.worldResident.size(),std::size_t(4));
+    ensure_equals("four-light atlas height",atlasHeight(4),4352u);
+    ensure_equals("atlas height clamps at four",atlasHeight(99),4352u);
+    ensure_equals("atlas height clamps up to one",atlasHeight(0),1088u);
+    ensure_equals("default atlas bytes unchanged",atlasBytes(2),14204928ull);
+    ensure_equals("four-light D32F bytes",atlasBytes(4),28409856ull);
+    ensure("reject silently truncated four-light atlas",!atlasFits(4,4096));
+    ensure("three lights fit 4096",atlasFits(3,4096));
+    ensure("four lights fit exact height",atlasFits(4,4352));
+    ensure("check width as well as height",!atlasFits(1,1631));
+    ensure_equals("four lights at 1080p",plannedLights(1920,1080,4),4u);
+    ensure_equals("four lights at 1440p",plannedLights(2560,1440,4),4u);
+    ensure_equals("four-light request at 4K budgets down to two",plannedLights(3840,2160,4),2u);
+
+    // Every candidate visitation order must acquire the same top N; ties use the stable ID.
+    const std::array<ALAreaShadow::Candidate<int>,6> candidates{{
+        {1,false,5.0}, {2,false,5.0}, {3,false,2.0}, {4,false,9.0}, {5,false,9.0}, {6,false,0.5}}};
+    const int expected[6] = {4,5,1,2,3,6};
+    std::array<int,6> order{0,1,2,3,4,5};
+    do
+    {
+        ALAreaShadow::Selection<int> ranked;
+        ALAreaShadow::Ranking<int,kMaxPicks> picked;
+        for (int i : order) { ranked.add(candidates[i],8); picked.add(candidates[i]); }
+        for (unsigned n=1; n<=4; ++n)
+        {
+            int ids[6], picks[6];
+            for (unsigned i=0; i<6; ++i)
+            {
+                ids[i] = ranked.lights[i].id; picks[i] = picked.lights[i].id;
+                ensure_equals("automatic ranking",ids[i],expected[i]);
+                ensure_equals("picked ranking",picks[i],expected[i]);
+            }
+            Residency<int> automatic, chosen;
+            const auto eligible = [](int){ return true; };
+            ensure_equals("fill exactly N slots",updateResidency(automatic,n,eligible,ids,6),n);
+            updateResidencyPicked(chosen,n,eligible,eligible,eligible,picks,6,ids,6,true);
+            ensure_equals("automatic resident count",automatic.count(),n);
+            ensure_equals("picked resident count",chosen.count(),n);
+            for (unsigned i=0; i<4; ++i)
+            {
+                ensure_equals("automatic held slots",automatic.held[i],i<n);
+                ensure_equals("picked held slots",chosen.held[i],i<n);
+                if (i<n)
+                {
+                    ensure_equals("automatic top N",automatic.id[i],expected[i]);
+                    ensure_equals("picked top N",chosen.id[i],expected[i]);
+                }
+            }
+            ensure_equals("shrinking frees every high slot",updateResidency(automatic,1,eligible,ids,6),n-1);
+            ensure_equals("shrunk count",automatic.count(),1u);
+        }
+    } while (std::next_permutation(order.begin(),order.end()));
+
+    for (unsigned n=1; n<=4; ++n)
+    {
+        ensure_equals("height scales with active count",atlasHeight(n),1088u*n);
+        ensure_equals("bytes scale with active count",atlasBytes(n),7102464ull*n);
+        ensure_equals("passes scale with active count",facePasses(n),6u*n);
+        bool seen[24] = {};
+        std::string labels[4];
+        SlotReason reasons[4];
+        std::string report = "on " + std::to_string(n) + (n==1 ? " light (" : " lights (") + std::to_string(6*n) + " faces at 512):";
+        for (unsigned k=0; k<n; ++k)
+        {
+            for (unsigned f=0; f<6; ++f)
+            {
+                const TileSlot tile = tileSlot(k,f);
+                ensure_equals("face column",tile.x,544u*(f%3));
+                ensure_equals("face row",tile.y,544u*(2*k+f/3));
+                ensure("face fits active atlas",tile.x+544<=1632 && tile.y+544<=atlasHeight(n));
+                const unsigned index = tile.y/544*3+tile.x/544;
+                ensure("no overlapping faces",!seen[index]); seen[index] = true;
+            }
+            labels[k] = "lamp " + std::to_string(k+1); reasons[k] = SlotReason::Rendered;
+            report += " " + labels[k] + (k+1==n ? "." : ";");
+        }
+        ensure_equals("report includes all active slots",worldShadowReport(State::On,n,labels,reasons,n),report);
+        reasons[n-1] = SlotReason::OutOfView;
+        ensure("last pinned slot reported",worldShadowReport(State::Pinned,0,labels,reasons,n).find(
+            "light " + std::to_string(n) + "/" + std::to_string(n) + " pinned but not rendering: " + labels[n-1]) != std::string::npos);
+    }
+}
+
+template<> template<> void relight_object::test<48>()
+{
+    using namespace ALWorldShadow;
+    ensure_equals("4096 degrades four to three",plannedLightsFitting(1920,1080,4,4096),3u);
+    ensure_equals("exact four-light height",plannedLightsFitting(1920,1080,4,4352),4u);
+    ensure_equals("one below four-light height",plannedLightsFitting(1920,1080,4,4351),3u);
+    ensure_equals("exact three-light height",plannedLightsFitting(1920,1080,4,3264),3u);
+    ensure_equals("one below three-light height",plannedLightsFitting(1920,1080,4,3263),2u);
+    ensure_equals("width is the one-light limit",plannedLightsFitting(1920,1080,4,1632),1u);
+    ensure_equals("width cannot fit one",plannedLightsFitting(1920,1080,4,1631),0u);
+    ensure_equals("unqueried limit defers",plannedLightsFitting(1920,1080,4,0),0u);
+    ensure_equals("4K retains budget of two",plannedLightsFitting(3840,2160,4,4096),2u);
+    ensure_equals("ledger can reject every light",plannedLightsFitting(7680,4320,4,16384),0u);
+    unsigned allocated = 0, reallocations = 0;
+    for (unsigned frame=0; frame<100; ++frame)
+    {
+        const unsigned plan = plannedLightsFitting(1920,1080,4,4096);
+        if (allocated != plan) { allocated = plan; ++reallocations; }
+    }
+    ensure_equals("deterministic hardware plan allocates once",reallocations,1u);
+    const std::string labels[4] = {"a","b","unused","unused"};
+    const SlotReason reasons[4] = {SlotReason::Rendered,SlotReason::OutOfView,SlotReason::Rendered,SlotReason::Rendered};
+    const std::string budget = worldShadowReport(State::On,1,labels,reasons,2,4,2);
+    ensure("readout explains requested and planned",budget.find("using 2 of 4 requested (resolution budget)") != std::string::npos);
+    ensure("denominator uses usable slots",budget.find("light 2/2 pinned") != std::string::npos && budget.find("/4") == std::string::npos);
+    ensure("unused slots excluded",budget.find("unused") == std::string::npos);
+    ensure("hardware reduction explained",worldShadowReport(State::Choosing,0,labels,reasons,3,4,4).find("GPU texture limit") != std::string::npos);
+    ensure("impossible hardware has distinct text",worldShadowText(State::TextureLimit) != worldShadowText(State::LowMemory));
+    ensure_equals("unknown limit readout",worldShadowReport(State::WaitingForLimits,0,labels,reasons,2,4,2),std::string("waiting for GPU texture limit"));
 }
 
 // Receiver denominator packing is independent of the material normal and D24

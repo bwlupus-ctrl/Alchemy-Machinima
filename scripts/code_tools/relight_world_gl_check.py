@@ -41,7 +41,7 @@ def lifecycle_checks():
     pipe = (REPO / 'indra/newview/pipeline.cpp').read_text()
     def body(start, end): return pipe[pipe.index(start):pipe.index(end,pipe.index(start))]
     cube = body('void LLPipeline::generateWorldShadowCubes(', 'void LLPipeline::renderGroups(')
-    residency = body('if (cube_main && !gSnapshot)', 'take.worldOn = cube_main;')
+    residency = body('if (cube_main && !gSnapshot && gGLManager.mGLMaxTextureSize > 0)', 'take.worldOn = cube_main;')
     release = body('void LLPipeline::releaseWorldShadowTargets(bool clear_failure)', '\nnamespace')
     # Tie the executed host helper and GL copy to the viewer call sites. A
     # correct helper left unused by a reverted pipeline must fail this gate too.
@@ -59,7 +59,7 @@ def lifecycle_checks():
                       'updateAttachmentVisibility(mode)'):
         assert condition in cube, 'native attachment scope lost '+condition
     assert 'gAgentCamera.getCameraMode()' not in cube[cube.index('updateAttachmentVisibility(mode)'):cube.index('const glm::mat4 saved_proj')], 'the restore mode must be captured at construction, not read at exit'
-    assert 'gSnapshot ||' in cube and 'ALWorldShadow::plannedLights(' in residency
+    assert 'gSnapshot ||' in cube and 'ALWorldShadow::plannedLightsFitting(' in residency
     # Round 7's pin release stays (an UNPICKED projector that samples a native map releases its pin) and a PICKED one is exempt:
     # the release is one rule, ALWorldShadow::worldEligibleWithNative, exercised by unit test 41.
     assert 'spotShadowMapSampled(slot)) { native_sampled = true; break; }' in residency, 'native sampling must still be detected'
@@ -137,12 +137,12 @@ def build_host(out, glm_include):
     src = REPO / 'scripts/code_tools/relight_world_gl_host.cpp'
     exe = out / 'world_gl_host.exe'
     vswhere = Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
-    vs = subprocess.check_output([str(vswhere), '-latest', '-property', 'installationPath'], text=True).strip()
+    vs = subprocess.check_output([str(vswhere), '-latest', '-property', 'installationPath'], text=True, timeout=30).strip()
     vcvars = Path(vs) / 'VC/Auxiliary/Build/vcvars64.bat'
     cmd = out / 'build_host.cmd'
-    cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /EHsc /I "%s" /I "%s" "%s" /Fe:"%s" /Fo:"%s"\n' %
+    cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /utf-8 /bigobj /EHsc /Gy /GS /GR /W3 /WX /fp:fast /MP /permissive- /Zc:preprocessor /Zc:__cplusplus /Zc:inline /Zc:wchar_t /O2 /Ob3 /MT /arch:AVX2 /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /I "%s" /I "%s" "%s" /Fe:"%s" /Fo:"%s"\n' %
                    (vcvars, glm_include, REPO / 'indra/newview', src, exe, out / 'world_gl_host.obj'))
-    r = subprocess.run([str(cmd)], cwd=out, capture_output=True, text=True, shell=True)
+    r = subprocess.run([str(cmd)], cwd=out, capture_output=True, text=True, shell=True, timeout=120)
     assert r.returncode == 0, 'host compile FAIL:\n' + r.stdout + r.stderr
     return subprocess.Popen([str(exe)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
 
@@ -222,10 +222,12 @@ class Raster:
         self.disable_attr = gl.fn('glDisableVertexAttribArray', None, gl.U)
         self.palette = gl.fn('glUniformMatrix3x4fv', None, gl.I, gl.I, C.c_ubyte, C.c_void_p)
 
-    def atlas(self, scene, light, near, alpha=1.):
+    def atlas(self, scene, light, near, alpha=1., *, lights=1, slot=0, atlas=None):
+        assert 1 <= lights <= 4 and 0 <= slot < lights
         gl, r = self.gl, self.r
         scratch = r._texture('raster_scratch', 5, 0x8CAC, CS.TILE, CS.TILE, 0x1902, 0x1406, None)
-        atlas = r._texture('raster_atlas', 6, 0x8CAC, CS.ATLAS_W, CS.ATLAS_H_PER_LIGHT, 0x1902, 0x1406, None)
+        if atlas is None:
+            atlas = r._texture('raster_atlas', 6, 0x8CAC, CS.ATLAS_W, CS.ATLAS_H_PER_LIGHT*lights, 0x1902, 0x1406, None)
         gl.bind_fbo(0x8D40, self.fbo)
         gl.fbo_tex(0x8D40, 0x8D00, 0x0DE1, scratch, 0)
         self.draw_buffer(0); self.read_buffer(0)
@@ -271,7 +273,7 @@ class Raster:
                 gl.bind_buf(0x8892, self.vbo); gl.buffer_data(0x8892, data.nbytes, data.ctypes.data, 0x88E4)
                 idx = gl.attr_loc(self.program, b'position'); gl.enable_attr(idx); gl.attr_ptr(idx, 3, 0x1406, 0, 0, None)
                 gl.draw(4, 0, len(data))
-            self.copy(scratch, 0x0DE1, 0, 0, 0, 0, atlas, 0x0DE1, 0, (face % 3)*CS.TILE, (face // 3)*CS.TILE, 0, CS.TILE, CS.TILE, 1)
+            self.copy(scratch, 0x0DE1, 0, 0, 0, 0, atlas, 0x0DE1, 0, (face % 3)*CS.TILE, (2*slot+face // 3)*CS.TILE, 0, CS.TILE, CS.TILE, 1)
             assert self.error() == 0, 'GL error during face raster/copy'
         # Resolve binds the actual GPU atlas, not a CPU readback/re-upload.
         gl.disable(0x0B71); gl.disable(0x0B44)
@@ -788,6 +790,41 @@ def evaluate(r, raster, scene, light, yaw=-54.462, pitch=28.635, contact=0., thi
     return v, mask, 100 * float(np.mean(v[mask] < .5))
 
 
+def light_cap_checks(r, raster, count):
+    """Resolve every active channel from its own six rasterized faces, including the last atlas row."""
+    scene, _ = fixture()
+    lights = [S.Light('cap%d' % i, pos, .1, 10., seed=123+i) for i,pos in enumerate(
+        [(0.,0.,1.), (0.,1.,1.3), (0.,-1.,1.6), (-1.,0.,1.9)][:count])]
+    cam = S.Camera((4.,-5.,3.), (0.,0.,.4), 640, 360)
+    g = S.cast_primary(scene,cam)
+    _, depth, norm = S.encode_gbuffer(cam,g)
+    plan = dict(samples=8, steps=12, half=True, near_steps=0)
+    channels = [dict(row=2*i, near=.05, far=l.range, r_map=l.radius, contact=0., seed=l.seed) for i,l in enumerate(lights)]
+    references = []
+    for light,channel in zip(lights,channels):
+        r.gpu_atlas = raster.atlas(scene,light,.05)
+        world = dict(atlas=np.empty((CS.ATLAS_H_PER_LIGHT,CS.ATLAS_W),np.float32),channels=[dict(channel,row=0)])
+        references.append(r.run(cam,depth,norm,[light],plan,world=world)[0])
+    atlas = None
+    for slot,light in enumerate(lights):
+        atlas = raster.atlas(scene,light,.05,lights=count,slot=slot,atlas=atlas)
+    r.gpu_atlas = atlas
+    world = dict(atlas=np.empty((CS.ATLAS_H_PER_LIGHT*count,CS.ATLAS_W),np.float32),channels=channels)
+    result = r.run(cam,depth,norm,lights,plan,world=world)
+    rows = []
+    floor = g['surf'] == 0
+    for slot,reference in enumerate(references):
+        delta = float(np.max(np.abs(result[slot]-reference)))
+        rows.append(dict(name='cap%d_slot%d_matches_single_cube' % (count,slot),max_delta=delta,
+                         passed=bool(delta <= 1./255 and np.any(reference[floor]<.5) and np.any(reference[floor]>.99))))
+    # Wrong row for the last light must disagree: otherwise the fixture could pass without reading the added rows.
+    wrong = [dict(c) for c in channels]; wrong[-1]['row'] = 0
+    broken = r.run(cam,depth,norm,lights,plan,world=dict(world,channels=wrong))
+    delta = float(np.max(np.abs(broken[-1]-references[-1])))
+    rows.append(dict(name='cap%d_wrong_last_row_rejected' % count,max_delta=delta,passed=bool(delta > 1./255)))
+    return rows
+
+
 def image_fixtures():
     """Illustrations only: no changes to the acceptance fixtures or their limits."""
     for name, title, kw in [
@@ -1232,6 +1269,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--glm-include'); ap.add_argument('--out', default='.tmp/relight_world_gl')
     ap.add_argument('--shader-ref',default='WORKTREE')
+    ap.add_argument('--lights', type=int, choices=(2,4), default=2, help='also require every channel of an N-light raster atlas to match an independent single-light resolve')
     ap.add_argument('--images', metavar='DIR', help='also save five labelled real-GL contact sheets (does not affect gate checks)')
     args = ap.parse_args()
     out = Path(args.out).resolve(); out.mkdir(parents=True, exist_ok=True)
@@ -1245,6 +1283,9 @@ def main():
         r = RealRunner(G.SourceTree(args.shader_ref), host, gl=gl)
         print('[world-gl] GPU:', r.gl.renderer, flush=True)
         raster = Raster(r)
+        cap_rows = light_cap_checks(r,raster,args.lights)
+        rows.extend(cap_rows)
+        for row in cap_rows: print('[world-gl]',row,flush=True)
         reference = None
         for name, kw in [('empty_floor', dict(capsule=False)), ('capsule', {}),
                          ('rotated_single', dict(emitter='back')), ('rotated_double', dict(emitter='none')),

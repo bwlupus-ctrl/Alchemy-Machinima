@@ -21985,7 +21985,7 @@
     </map>
     <key>RenderAreaShadowCubeLights</key>
     <map>
-        <key>Comment</key><string>How many lights (point or projector) get a world shadow map (1-2, default 2). Each costs six shadow passes and 6.8 MiB of video memory.</string>
+        <key>Comment</key><string>How many lights (point or projector) get a world shadow map (1-4, default 2). Each costs six shadow passes and 6.8 MiB of video memory. Resolve cost scales with lights x resolution; the resolution budget can reduce this count (at 4K it allows 2). World-shadow lights take soft-shadow channels first: with the soft-shadow light limit at 4 and four world lights, other lights lose their soft-shadow trace.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>2</integer>

@@ -1,4 +1,4 @@
-"""Compile/run production world maths tests 37..43 and 46 without a viewer build.
+"""Compile/run production world maths tests 37..43 and 46..48 without a viewer build.
 
 python scripts/code_tools/relight_world_math_check.py [--out DIR]
 The assertions are extracted verbatim from alrelightmath_test.cpp. The small TUT
@@ -36,6 +36,8 @@ def check(out):
 #include <vector>
 #include "alareashadowmath.h"
 #include "alworldshadowmath.h"
+CAMERA_DECLARATION
+TAKE_DECLARATION
 namespace tut {
 void ensure(const char* m, bool c) { if (!c) { std::fprintf(stderr,"FAIL: %s\\n",m); std::exit(1); } }
 template<class A,class B> void ensure_equals(const char* m,const A& a,const B& b) { ensure(m,a==b); }
@@ -44,6 +46,28 @@ template<class T> struct test_group { struct object : T { template<int N> void t
 using relight_object = test_group<relight_data>::object;
 void close(const char* m,double a,double b,double tol=1.e-10) { ensure(m,std::isfinite(a)&&std::abs(a-b)<=tol); }
 '''
+    camera = (REPO / 'indra/newview/llviewercamera.h').read_text()
+    enum = re.search(r'typedef enum\s*\{.*?\} eCameraID;', camera, re.S)[0]
+    avatar = (REPO / 'indra/newview/lldrawpoolavatar.cpp').read_text()
+    camera_assert = re.search(r'static_assert\(LLViewerCamera::CAMERA_WORLD_SHADOW.*?;', avatar, re.S)[0]
+    shim = shim.replace('CAMERA_DECLARATION', 'struct LLViewerCamera { '+enum+' };\n'+camera_assert)
+    take = (REPO / 'indra/newview/alrelighttakerecord.h').read_text()
+    resident = re.search(r'    std::array<LLUUID, [^;]+worldResident\{\};', take)[0]
+    # Compile the actual diagnostic member declaration; unrelated LLSD serialization is outside this adapter.
+    shim = shim.replace('TAKE_DECLARATION', 'using LLUUID = int;\nnamespace ALRelight { struct AreaTakeState {\n'+resident+'\n}; }')
+    pipe = (REPO / 'indra/newview/pipeline.cpp').read_text()
+    row = re.search(r'world_info\[i\]\.set\((.*?),worldShadowLightNear', pipe)[1]
+    # Execute the viewer's actual row-upload expression, with slot identity independent of the RGBA channel/draw.
+    upload = '''
+void check_upload_rows() {
+    for (unsigned plane=0; plane<2; ++plane) for (unsigned channel=0; channel<4; ++channel)
+        for (unsigned world_slot=0; world_slot<4; ++world_slot) {
+            const float row = ROW_EXPRESSION;
+            tut::ensure("actual upload retains all resident slots in every draw/channel",row == float(2*world_slot));
+            if (world_slot==3) tut::ensure("actual slot 3 upload uses row 6",row == 6.f);
+        }
+}
+'''.replace('ROW_EXPRESSION', row).replace('static_cast<F32>', 'static_cast<float>')
     # Execute the actual scene-load settings loop and migration with tiny value/control adapters.
     # Load every sparse combination after non-default live values, including an absent settings map.
     director = (REPO / 'indra/newview/llfloaterdirector.cpp').read_text()
@@ -101,11 +125,11 @@ void check() {
 }
 '''
     cpp = out / 'world_math.cpp'
-    cpp.write_text(shim+tests+'\n}\n'+scene_shim+'\nint main() { scene_regression::check(); tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); o.test<43>(); o.test<46>(); std::puts("[world-math] PASS tests 37..43 + 46"); }\n')
+    cpp.write_text(shim+tests+'\n}\n'+upload+scene_shim+'\nint main() { check_upload_rows(); scene_regression::check(); tut::relight_object o; o.test<37>(); o.test<38>(); o.test<39>(); o.test<40>(); o.test<41>(); o.test<42>(); o.test<43>(); o.test<46>(); o.test<47>(); o.test<48>(); std::puts("[world-math] PASS tests 37..43 + 46..48 + actual upload rows"); }\n')
     vswhere = Path(os.environ.get('ProgramFiles(x86)','C:/Program Files (x86)')) / 'Microsoft Visual Studio/Installer/vswhere.exe'
-    vs = subprocess.check_output([str(vswhere),'-latest','-property','installationPath'],text=True).strip()
+    vs = subprocess.check_output([str(vswhere),'-latest','-property','installationPath'],text=True,timeout=30).strip()
     cmd = out / 'world_math.cmd'; exe = out / 'world_math.exe'
-    cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /EHsc /I "%s" "%s" /Fe:"%s" /Fo:"%s"\nif errorlevel 1 exit /b 1\n"%s"\n' %
+    cmd.write_text('@echo off\ncall "%s" >nul 2>&1\ncl /nologo /std:c++20 /utf-8 /bigobj /EHsc /Gy /GS /GR /W3 /WX /fp:fast /MP /permissive- /Zc:preprocessor /Zc:__cplusplus /Zc:inline /Zc:wchar_t /O2 /Ob3 /MT /arch:AVX2 /DNDEBUG /DLL_WINDOWS=1 /DNOMINMAX /I "%s" "%s" /Fe:"%s" /Fo:"%s"\nif errorlevel 1 exit /b 1\n"%s"\n' %
                    (Path(vs)/'VC/Auxiliary/Build/vcvars64.bat',REPO/'indra/newview',cpp,exe,out/'world_math.obj',exe))
     result = subprocess.run([str(cmd)],cwd=out,shell=True,capture_output=True,text=True,timeout=120)
     assert result.returncode == 0, result.stdout+result.stderr

@@ -2,6 +2,7 @@
 #ifndef AL_RELIGHT_TAKE_RECORD_H
 #define AL_RELIGHT_TAKE_RECORD_H
 #include "alareashadowmath.h"
+#include "alworldshadowmath.h"
 #include "llsd.h"
 #include "lluuid.h"
 #include <string>
@@ -22,7 +23,7 @@ struct AreaTakeState
     // P1-lite world cube maps (main view): whether the setting was on for this pass and the pinned resident lights (null = empty
     // slot). Diagnostics only.
     bool worldOn = false;
-    std::array<LLUUID, 2> worldResident{};
+    std::array<LLUUID, ALWorldShadow::kMaxLights> worldResident{};
 };
 
 inline LLSD areaTakeRecord(const AreaTakeState& state)
@@ -48,6 +49,7 @@ inline LLSD areaTakeRecord(const AreaTakeState& state)
     out["view"] = state.feed ? "vcam_feed" : "main";
     out["world_shadows"] = state.worldOn;
     out["world_resident"] = LLSD::emptyArray();
+    // Notation arrays are variable-length; older takes may contain only two resident entries.
     if (state.worldOn)
         for (const LLUUID& id : state.worldResident)
             out["world_resident"].append(id);

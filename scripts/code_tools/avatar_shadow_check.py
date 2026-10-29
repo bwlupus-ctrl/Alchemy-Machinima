@@ -100,7 +100,7 @@ def contracts():
     routing = function(avatar, 'bool LLDrawPoolAvatar::shadowDrawsBake(')
     assert 'image && image->isMinAlphaKnown() && image->getMinAlpha() <' in routing
     assert 'SHADOW_BAKES_ALL : SHADOW_BAKES_SOLID' in begin
-    assert 'CAMERA_WORLD_SHADOW0' in begin and 'CAMERA_WORLD_SHADOW1' in begin
+    assert 'CAMERA_WORLD_SHADOW0' in begin and 'CAMERA_WORLD_SHADOW3' in begin
     cube = function(pipeline, 'void LLPipeline::generateWorldShadowCubes(')
     assert cube.index('LLViewerCamera::sCurCameraID = static_cast<LLViewerCamera::eCameraID>') < cube.index('renderShadow(')
     assert 'LLViewerCamera::sCurCameraID = saved_camera_id;' in cube
@@ -367,7 +367,7 @@ int main() {
         for (int visit=0;visit<2;++visit) {
             const bool cubes = (visit==0)==cube_first;
             for (int camera=0;camera<LLViewerCamera::NUM_CAMERAS;++camera) {
-                const bool cube=camera>=LLViewerCamera::CAMERA_WORLD_SHADOW0 && camera<=LLViewerCamera::CAMERA_WORLD_SHADOW1;
+                const bool cube=camera>=LLViewerCamera::CAMERA_WORLD_SHADOW0 && camera<=LLViewerCamera::CAMERA_WORLD_SHADOW3;
                 if (cube!=cubes) continue;
                 for (int face_index=0;face_index<(cube?6:1);++face_index) {
                     LLViewerCamera::sCurCameraID=static_cast<LLViewerCamera::eCameraID>(camera);

@@ -879,7 +879,7 @@ public:
     void postDeferredGammaCorrect(LLRenderTarget* screen_target);
 
     void generateSunShadow(LLCamera& camera, bool clip_only = false);
-    // [P1-lite] World cube shadow maps for the top 1-2 resident lights (point or projector) (alworldshadowmath.h). Main view only; returns before
+    // [P1-lite] World cube shadow maps for the top 1-4 resident lights (point or projector) (alworldshadowmath.h). Main view only; returns before
     // any GL call while RenderAreaShadowCubeMaps is off. Never touches the native sun/projector slots, fades or matrices.
     void generateWorldShadowCubes(LLCamera& camera);
     // [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the
@@ -1713,6 +1713,7 @@ public:
     U32 mWorldShadowFrame[ALWorldShadow::kMaxLights] = {};
     U32 mWorldShadowLiveFrame = 0;             // gFrameCount of the last NON-snapshot main frame generateWorldShadowCubes ran on: a snapshot samples the stamps of that frame
     U32 mWorldShadowAtlasLights = 0;           // lights the atlas was allocated for (0 = not allocated)
+    U32 mWorldShadowRequested = 2, mWorldShadowBudgeted = 0, mWorldShadowPlanned = 0; // last live plan, before and after hardware limits
     bool mWorldShadowAllocFailed = false;
     bool mWorldShadowUniformsLive = false;     // the area programs hold non-zero world uniforms (zeros are re-uploaded once on the way out)
     U32 mWorldShadowEligible = 0;              // eligible lights the main pass saw (readout: no light in view)

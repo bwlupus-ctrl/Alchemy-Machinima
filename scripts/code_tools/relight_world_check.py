@@ -437,6 +437,72 @@ def check_picks():
     print('[world] picks PASS: menu item beside Volumetric Shaft (any owner), session set cleared with the shaft flags, picks-first residency (OFF = updateResidency), picked projector exempt from the native pin release and the channel, lighting-pass hand-over, scene key save/load/clear, Director row + button', flush=True)
 
 
+def check_light_cap():
+    """Cap, default, allocation and per-channel uniforms must agree end to end."""
+    import json
+    import xml.etree.ElementTree as ET
+    header = text(NV / 'alworldshadowmath.h')
+    assert re.search(r'kMaxLights = 4;', header)
+    pipe = text(NV / 'pipeline.cpp')
+    cube = pipe[pipe.index('void LLPipeline::generateWorldShadowCubes('):pipe.index('void LLPipeline::renderGroups(')]
+    assert 'mWorldShadowAtlasLights != planned' in cube, 'count changes must reallocate'
+    assert 'ALWorldShadow::atlasFits(planned, static_cast<U32>(gGLManager.mGLMaxTextureSize)) &&' in cube, 'reject truncated allocation'
+    assert 'mWorldShadowAtlas.allocate(ALWorldShadow::kAtlasWidth, ALWorldShadow::atlasHeight(planned)' in cube, 'allocate active count only'
+    assert 'k < ALWorldShadow::kMaxLights && k < planned' in cube, 'render active slots only'
+    assert pipe.count('ALWorldShadow::plannedLightsFitting(') == 2, 'residency and allocation must share the hardware-aware plan'
+    unknown = cube[cube.index('if (gGLManager.mGLMaxTextureSize <= 0)'):cube.index('mWorldShadowLiveFrame =')]
+    assert 'return;' in unknown and 'WaitingForLimits' in unknown and 'releaseWorldShadowTargets' not in unknown, 'unqueried limit must preserve targets'
+    assert 'if (cube_main && !gSnapshot && gGLManager.mGLMaxTextureSize > 0)' in pipe, 'unqueried limit must preserve pins'
+    assert 'labels, reasons, mWorldShadowPlanned,' in pipe, 'report denominator must use the plan'
+    arrays = {
+        'llvieweroctree.h': ('mVisible','mOcclusionState','mOcclusionIssued','mOcclusionQuery','mOcclusionCheckCount'),
+        'llvocache.h': ('mCulledTime',),
+        'llspatialpartition.cpp': ('mInheritedMask','temp'),
+    }
+    for file,names in arrays.items():
+        source = text(NV / file)
+        if file == 'llspatialpartition.cpp':
+            source = source[source.index('class LLOctreeStateCheck'):source.index('class LLOctreeStateCheck')+3000]
+        for name in names:
+            bound = re.search(r'\b(?:S32|U32)\s+'+name+r'\s*\[([^]]+)\]\s*;',source)
+            assert bound and re.sub(r'\s+','',bound[1]) == 'LLViewerCamera::NUM_CAMERAS', file+': '+name+' must grow with camera IDs'
+    owned = pipe[pipe.index('bool LLPipeline::worldShadowOwned('):pipe.index('void LLPipeline::renderAreaShadows(')]
+    compact = re.sub(r'\s+','',owned)
+    assert 'for(U32k=0;k<ALWorldShadow::kMaxLights;++k)' in compact and 'slot=k;' in compact, 'ownership must return slots 2/3 unchanged'
+    upload = pipe[pipe.index('U32 world_slot = 0;'):pipe.index('world_seed[i] = seeds[i];')]
+    compact = re.sub(r'\s+','',upload)
+    assert 'if(cube_main&&!selected.lights[plane*4+i].shadowMap&&worldShadowOwned(id,world_slot))' in compact, 'each draw/channel must accept any resident slot'
+    assert 'world_info[i].set(static_cast<F32>(ALWorldShadow::kRowsPerLight*world_slot),' in compact, 'actual slot row must not clamp slots 2/3'
+    assert 'uniform4fv(LLStaticHashedString("area_world_info"),4,world_info[0].mV)' in re.sub(r'\s+','',pipe), 'upload every channel row'
+    assert 'std::array<LLUUID, ALWorldShadow::kMaxLights> worldResident{};' in text(NV / 'alrelighttakerecord.h')
+    avatar = text(NV / 'lldrawpoolavatar.cpp')
+    assert 'sCurCameraID <= LLViewerCamera::CAMERA_WORLD_SHADOW3;' in avatar, 'all four avatar shadow cameras must route'
+    settings = ET.parse(NV / 'app_settings/settings.xml').getroot().find('map')
+    entries = list(settings)
+    value = entries[next(i for i,e in enumerate(entries) if e.tag == 'key' and e.text == 'RenderAreaShadowCubeLights')+1]
+    fields = list(value)
+    values = {fields[i].text: fields[i+1].text for i in range(0,len(fields),2)}
+    note = 'Each costs six shadow passes and 6.8 MiB of video memory.'
+    assert values['Value'] == '2' and '(1-4, default 2)' in values['Comment'] and note in values['Comment']
+    assert all(term in values['Comment'] for term in ('lights x resolution','4K it allows 2','channels first','other lights lose'))
+    data = json.loads(text(REPO / 'scripts/code_tools/director_kit/director_mockup_data.json'))
+    rows = [r for g in data['groups'] for p in g['pages'] for c in p['cards'] for r in c['rows'] if r.get('s') == 'RenderAreaShadowCubeLights']
+    assert len(rows) == 1 and rows[0]['mx'] == 4 and rows[0]['d'] == 2 and note in rows[0]['h']
+    assert all(term in rows[0]['h'] for term in ('lights x resolution','4K it allows 2','channels first','other lights lose'))
+    page = ET.parse(NV / 'skins/default/xui/en/panel_dpage_light_rim.xml')
+    spinner = page.find('.//spinner[@name="area_shadow_world_lights"]')
+    assert spinner is not None and spinner.get('min_val') == '1' and spinner.get('max_val') == '4'
+    # These are the existing four channels per RGBA draw, independent of the resident cap.
+    gather = text(GLSL / 'areaShadowF.glsl')
+    resolve = text(GLSL / 'areaShadowFilterF.glsl')
+    assert 'uniform vec4 area_lights[4];' in gather
+    for name in ('area_world_light', 'area_world_info'):
+        assert 'uniform vec4 '+name+'[4];' in resolve, 'shader must retain four channels per draw'
+    assert 'for (int c = 0; c < 4; ++c)' in resolve and 'if (area_world[c] > 0.5)' in resolve
+    print('[world] cap PASS: 1..4/default 2, active atlas/reallocation, hardware guard, take slots, avatar routing, UI, four shader channels', flush=True)
+
+
+check_light_cap()
 check_face_tables()
 check_constants()
 check_camera_id()
