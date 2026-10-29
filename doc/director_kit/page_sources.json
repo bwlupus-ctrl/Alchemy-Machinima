@@ -1092,7 +1092,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4268,
+          "line": 4290,
           "group": "Global",
           "type": "F32"
         }
@@ -1142,7 +1142,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4261,
+          "line": 4283,
           "group": "Global",
           "type": "Boolean"
         }
@@ -1203,7 +1203,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4209,
+          "line": 4231,
           "group": "Global",
           "type": "F32"
         }
@@ -1264,7 +1264,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4220,
+          "line": 4242,
           "group": "Global",
           "type": "F32"
         }
@@ -1325,7 +1325,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4231,
+          "line": 4253,
           "group": "Global",
           "type": "F32"
         }
@@ -1386,7 +1386,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4242,
+          "line": 4264,
           "group": "Global",
           "type": "F32"
         }
@@ -1447,7 +1447,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4289,
+          "line": 4311,
           "group": "Global",
           "type": "Boolean"
         }
@@ -1508,7 +1508,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4253,
+          "line": 4275,
           "group": "Global",
           "type": "F32"
         }
@@ -1569,7 +1569,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4198,
+          "line": 4220,
           "group": "Global",
           "type": "F32"
         }
@@ -1630,7 +1630,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4187,
+          "line": 4209,
           "group": "Global",
           "type": "Boolean"
         }
@@ -1691,7 +1691,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4392,
+          "line": 4414,
           "group": "Global",
           "type": "F32"
         }
@@ -1752,7 +1752,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4173,
+          "line": 4195,
           "group": "Global",
           "type": "F32"
         }
@@ -1813,7 +1813,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4162,
+          "line": 4184,
           "group": "Global",
           "type": "F32"
         }
@@ -1897,7 +1897,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1286,
+          "line": 1308,
           "group": "Global",
           "type": "S32"
         }
@@ -1947,7 +1947,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1397,
+          "line": 1419,
           "group": "Global",
           "type": "F32"
         }
@@ -2031,7 +2031,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1386,
+          "line": 1408,
           "group": "Global",
           "type": "F32"
         }
@@ -2081,7 +2081,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1375,
+          "line": 1397,
           "group": "Global",
           "type": "F32"
         }
@@ -2131,7 +2131,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1430,
+          "line": 1452,
           "group": "Global",
           "type": "F32"
         }
@@ -2181,7 +2181,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1419,
+          "line": 1441,
           "group": "Global",
           "type": "F32"
         }
@@ -2231,7 +2231,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1408,
+          "line": 1430,
           "group": "Global",
           "type": "F32"
         }
@@ -2281,7 +2281,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1441,
+          "line": 1463,
           "group": "Global",
           "type": "F32"
         }
@@ -2331,7 +2331,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1452,
+          "line": 1474,
           "group": "Global",
           "type": "F32"
         }
@@ -2381,7 +2381,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1463,
+          "line": 1485,
           "group": "Global",
           "type": "F32"
         }
@@ -2420,7 +2420,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1309,
+          "line": 1331,
           "group": "Global",
           "type": "S32"
         }
@@ -2504,7 +2504,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1364,
+          "line": 1386,
           "group": "Global",
           "type": "F32"
         }
@@ -2543,7 +2543,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1320,
+          "line": 1342,
           "group": "Global",
           "type": "S32"
         }
@@ -2593,7 +2593,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1331,
+          "line": 1353,
           "group": "Global",
           "type": "F32"
         }
@@ -2632,7 +2632,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1342,
+          "line": 1364,
           "group": "Global",
           "type": "S32"
         }
@@ -2682,7 +2682,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1353,
+          "line": 1375,
           "group": "Global",
           "type": "F32"
         }
@@ -2732,7 +2732,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1474,
+          "line": 1496,
           "group": "Global",
           "type": "F32"
         }
@@ -2805,7 +2805,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1298,
+          "line": 1320,
           "group": "Global",
           "type": "Boolean"
         }
@@ -9228,7 +9228,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4052,
+          "line": 4074,
           "group": "Global",
           "type": "Color3"
         }
@@ -9267,7 +9267,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4067,
+          "line": 4089,
           "group": "Global",
           "type": "F32"
         }
@@ -9306,7 +9306,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4041,
+          "line": 4063,
           "group": "Global",
           "type": "S32"
         }
@@ -9345,7 +9345,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4148,
+          "line": 4170,
           "group": "Global",
           "type": "S32"
         }
@@ -9384,7 +9384,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4008,
+          "line": 4030,
           "group": "Global",
           "type": "F32"
         }
@@ -9412,7 +9412,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3986,
+          "line": 4008,
           "group": "Global",
           "type": "Boolean"
         }
@@ -9440,7 +9440,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4078,
+          "line": 4100,
           "group": "Global",
           "type": "Boolean"
         }
@@ -9479,7 +9479,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4100,
+          "line": 4122,
           "group": "Global",
           "type": "F32"
         }
@@ -9518,7 +9518,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4030,
+          "line": 4052,
           "group": "Global",
           "type": "F32"
         }
@@ -9557,7 +9557,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4089,
+          "line": 4111,
           "group": "Global",
           "type": "F32"
         }
@@ -9596,7 +9596,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4019,
+          "line": 4041,
           "group": "Global",
           "type": "F32"
         }
@@ -9635,7 +9635,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3997,
+          "line": 4019,
           "group": "Global",
           "type": "F32"
         }
@@ -9674,7 +9674,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4137,
+          "line": 4159,
           "group": "Global",
           "type": "F32"
         }
@@ -9713,7 +9713,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4126,
+          "line": 4148,
           "group": "Global",
           "type": "F32"
         }
@@ -9752,7 +9752,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4111,
+          "line": 4133,
           "group": "Global",
           "type": "Color3"
         }
@@ -18791,7 +18791,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4517,
+          "line": 4539,
           "group": "Global",
           "type": "U32"
         }
@@ -18819,7 +18819,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4539,
+          "line": 4561,
           "group": "Global",
           "type": "F32"
         }
@@ -18847,7 +18847,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4572,
+          "line": 4594,
           "group": "Global",
           "type": "F32"
         }
@@ -18875,7 +18875,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4682,
+          "line": 4704,
           "group": "Global",
           "type": "F32"
         }
@@ -18903,7 +18903,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4660,
+          "line": 4682,
           "group": "Global",
           "type": "F32"
         }
@@ -18931,7 +18931,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4693,
+          "line": 4715,
           "group": "Global",
           "type": "F32"
         }
@@ -18959,7 +18959,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4671,
+          "line": 4693,
           "group": "Global",
           "type": "F32"
         }
@@ -18987,7 +18987,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4704,
+          "line": 4726,
           "group": "Global",
           "type": "F32"
         }
@@ -19015,7 +19015,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4594,
+          "line": 4616,
           "group": "Global",
           "type": "F32"
         }
@@ -19043,7 +19043,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4627,
+          "line": 4649,
           "group": "Global",
           "type": "F32"
         }
@@ -19071,7 +19071,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4605,
+          "line": 4627,
           "group": "Global",
           "type": "F32"
         }
@@ -19099,7 +19099,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4638,
+          "line": 4660,
           "group": "Global",
           "type": "F32"
         }
@@ -19127,7 +19127,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4616,
+          "line": 4638,
           "group": "Global",
           "type": "F32"
         }
@@ -19155,7 +19155,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4649,
+          "line": 4671,
           "group": "Global",
           "type": "F32"
         }
@@ -19183,7 +19183,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4583,
+          "line": 4605,
           "group": "Global",
           "type": "F32"
         }
@@ -19211,7 +19211,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4462,
+          "line": 4484,
           "group": "Global",
           "type": "Boolean"
         }
@@ -19239,7 +19239,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4528,
+          "line": 4550,
           "group": "Global",
           "type": "F32"
         }
@@ -19267,7 +19267,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4506,
+          "line": 4528,
           "group": "Global",
           "type": "U32"
         }
@@ -19295,7 +19295,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4550,
+          "line": 4572,
           "group": "Global",
           "type": "Boolean"
         }
@@ -37167,7 +37167,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1866,
+          "line": 1888,
           "group": "Global",
           "type": "F32"
         }
@@ -37195,7 +37195,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1789,
+          "line": 1811,
           "group": "Global",
           "type": "Boolean"
         }
@@ -37223,7 +37223,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1888,
+          "line": 1910,
           "group": "Global",
           "type": "Boolean"
         }
@@ -37251,7 +37251,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1899,
+          "line": 1921,
           "group": "Global",
           "type": "F32"
         }
@@ -37279,7 +37279,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1910,
+          "line": 1932,
           "group": "Global",
           "type": "Color3"
         }
@@ -37307,7 +37307,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1822,
+          "line": 1844,
           "group": "Global",
           "type": "F32"
         }
@@ -37346,7 +37346,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1833,
+          "line": 1855,
           "group": "Global",
           "type": "S32"
         }
@@ -37374,7 +37374,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1844,
+          "line": 1866,
           "group": "Global",
           "type": "S32"
         }
@@ -37402,7 +37402,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1855,
+          "line": 1877,
           "group": "Global",
           "type": "F32"
         }
@@ -37464,7 +37464,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1877,
+          "line": 1899,
           "group": "Global",
           "type": "F32"
         }
@@ -37526,7 +37526,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1811,
+          "line": 1833,
           "group": "Global",
           "type": "F32"
         }
@@ -37604,7 +37604,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2206,
+          "line": 2228,
           "group": "Global",
           "type": "F32"
         }
@@ -37632,7 +37632,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2217,
+          "line": 2239,
           "group": "Global",
           "type": "F32"
         }
@@ -37660,7 +37660,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2195,
+          "line": 2217,
           "group": "Global",
           "type": "F32"
         }
@@ -37688,7 +37688,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2250,
+          "line": 2272,
           "group": "Global",
           "type": "F32"
         }
@@ -37716,7 +37716,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2261,
+          "line": 2283,
           "group": "Global",
           "type": "F32"
         }
@@ -37744,7 +37744,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2228,
+          "line": 2250,
           "group": "Global",
           "type": "F32"
         }
@@ -37772,7 +37772,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2239,
+          "line": 2261,
           "group": "Global",
           "type": "F32"
         }
@@ -37800,7 +37800,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2184,
+          "line": 2206,
           "group": "Global",
           "type": "F32"
         }
@@ -37839,7 +37839,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3325,
+          "line": 3347,
           "group": "Global",
           "type": "F32"
         }
@@ -37878,7 +37878,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3358,
+          "line": 3380,
           "group": "Global",
           "type": "F32"
         }
@@ -37917,7 +37917,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3314,
+          "line": 3336,
           "group": "Global",
           "type": "F32"
         }
@@ -37956,7 +37956,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3336,
+          "line": 3358,
           "group": "Global",
           "type": "F32"
         }
@@ -37984,7 +37984,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2272,
+          "line": 2294,
           "group": "Global",
           "type": "Boolean"
         }
@@ -38012,7 +38012,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2450,
+          "line": 2472,
           "group": "Global",
           "type": "F32"
         }
@@ -38040,7 +38040,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2472,
+          "line": 2494,
           "group": "Global",
           "type": "F32"
         }
@@ -38068,7 +38068,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2483,
+          "line": 2505,
           "group": "Global",
           "type": "F32"
         }
@@ -38096,7 +38096,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2494,
+          "line": 2516,
           "group": "Global",
           "type": "F32"
         }
@@ -38124,7 +38124,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2538,
+          "line": 2560,
           "group": "Global",
           "type": "F32"
         }
@@ -38163,7 +38163,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2283,
+          "line": 2305,
           "group": "Global",
           "type": "String"
         }
@@ -38191,7 +38191,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2294,
+          "line": 2316,
           "group": "Global",
           "type": "F32"
         }
@@ -38219,7 +38219,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2516,
+          "line": 2538,
           "group": "Global",
           "type": "F32"
         }
@@ -38247,7 +38247,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2505,
+          "line": 2527,
           "group": "Global",
           "type": "F32"
         }
@@ -38275,7 +38275,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2527,
+          "line": 2549,
           "group": "Global",
           "type": "F32"
         }
@@ -38303,7 +38303,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2383,
+          "line": 2405,
           "group": "Global",
           "type": "F32"
         }
@@ -38331,7 +38331,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2394,
+          "line": 2416,
           "group": "Global",
           "type": "F32"
         }
@@ -38359,7 +38359,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2461,
+          "line": 2483,
           "group": "Global",
           "type": "F32"
         }
@@ -38409,7 +38409,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2774,
+          "line": 2796,
           "group": "Global",
           "type": "Color3"
         }
@@ -38459,7 +38459,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2763,
+          "line": 2785,
           "group": "Global",
           "type": "String"
         }
@@ -38509,7 +38509,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2800,
+          "line": 2822,
           "group": "Global",
           "type": "F32"
         }
@@ -38559,7 +38559,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2789,
+          "line": 2811,
           "group": "Global",
           "type": "F32"
         }
@@ -38637,7 +38637,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3736,
+          "line": 3758,
           "group": "Global",
           "type": "Boolean"
         }
@@ -38698,7 +38698,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 4416,
+          "line": 4438,
           "group": "Global",
           "type": "Boolean"
         }
@@ -38832,7 +38832,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2649,
+          "line": 2671,
           "group": "Global",
           "type": "F32"
         }
@@ -38860,7 +38860,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2660,
+          "line": 2682,
           "group": "Global",
           "type": "Boolean"
         }
@@ -38888,7 +38888,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2671,
+          "line": 2693,
           "group": "Global",
           "type": "F32"
         }
@@ -38916,7 +38916,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2682,
+          "line": 2704,
           "group": "Global",
           "type": "F32"
         }
@@ -38944,7 +38944,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2693,
+          "line": 2715,
           "group": "Global",
           "type": "S32"
         }
@@ -38972,7 +38972,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2704,
+          "line": 2726,
           "group": "Global",
           "type": "Color3"
         }
@@ -39033,7 +39033,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2741,
+          "line": 2763,
           "group": "Global",
           "type": "Boolean"
         }
@@ -39072,7 +39072,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2730,
+          "line": 2752,
           "group": "Global",
           "type": "Boolean"
         }
@@ -39122,7 +39122,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2719,
+          "line": 2741,
           "group": "Global",
           "type": "Boolean"
         }
@@ -39411,7 +39411,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1997,
+          "line": 2019,
           "group": "Global",
           "type": "F32"
         }
@@ -39472,7 +39472,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1986,
+          "line": 2008,
           "group": "Global",
           "type": "F32"
         }
@@ -39500,7 +39500,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2063,
+          "line": 2085,
           "group": "Global",
           "type": "Boolean"
         }
@@ -39550,7 +39550,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2008,
+          "line": 2030,
           "group": "Global",
           "type": "F32"
         }
@@ -39600,7 +39600,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1975,
+          "line": 1997,
           "group": "Global",
           "type": "U32"
         }
@@ -39650,7 +39650,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2030,
+          "line": 2052,
           "group": "Global",
           "type": "F32"
         }
@@ -39700,7 +39700,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2019,
+          "line": 2041,
           "group": "Global",
           "type": "F32"
         }
@@ -39750,7 +39750,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2052,
+          "line": 2074,
           "group": "Global",
           "type": "F32"
         }
@@ -39800,7 +39800,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2041,
+          "line": 2063,
           "group": "Global",
           "type": "F32"
         }
@@ -39839,7 +39839,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1960,
+          "line": 1982,
           "group": "Global",
           "type": "F32"
         }
@@ -39878,7 +39878,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1959,
+          "line": 1981,
           "group": "Global",
           "type": "Color3"
         }
@@ -39917,7 +39917,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1926,
+          "line": 1948,
           "group": "Global",
           "type": "U32"
         }
@@ -39967,7 +39967,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1927,
+          "line": 1949,
           "group": "Global",
           "type": "F32"
         }
@@ -40006,7 +40006,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1963,
+          "line": 1985,
           "group": "Global",
           "type": "F32"
         }
@@ -40045,7 +40045,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1961,
+          "line": 1983,
           "group": "Global",
           "type": "U32"
         }
@@ -40084,7 +40084,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3244,
+          "line": 3266,
           "group": "Global",
           "type": "F32"
         }
@@ -40123,7 +40123,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3200,
+          "line": 3222,
           "group": "Global",
           "type": "F32"
         }
@@ -40162,7 +40162,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3079,
+          "line": 3101,
           "group": "Global",
           "type": "F32"
         }
@@ -40201,7 +40201,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3090,
+          "line": 3112,
           "group": "Global",
           "type": "F32"
         }
@@ -40240,7 +40240,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3101,
+          "line": 3123,
           "group": "Global",
           "type": "F32"
         }
@@ -40279,7 +40279,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3303,
+          "line": 3325,
           "group": "Global",
           "type": "F32"
         }
@@ -40318,7 +40318,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3145,
+          "line": 3167,
           "group": "Global",
           "type": "F32"
         }
@@ -40357,7 +40357,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3292,
+          "line": 3314,
           "group": "Global",
           "type": "F32"
         }
@@ -40396,7 +40396,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3013,
+          "line": 3035,
           "group": "Global",
           "type": "F32"
         }
@@ -40435,7 +40435,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3046,
+          "line": 3068,
           "group": "Global",
           "type": "F32"
         }
@@ -40474,7 +40474,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3035,
+          "line": 3057,
           "group": "Global",
           "type": "F32"
         }
@@ -40513,7 +40513,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3024,
+          "line": 3046,
           "group": "Global",
           "type": "S32"
         }
@@ -40552,7 +40552,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3266,
+          "line": 3288,
           "group": "Global",
           "type": "F32"
         }
@@ -40591,7 +40591,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3255,
+          "line": 3277,
           "group": "Global",
           "type": "F32"
         }
@@ -40787,7 +40787,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2129,
+          "line": 2151,
           "group": "Global",
           "type": "Boolean"
         }
@@ -40837,7 +40837,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2140,
+          "line": 2162,
           "group": "Global",
           "type": "F32"
         }
@@ -40887,7 +40887,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2173,
+          "line": 2195,
           "group": "Global",
           "type": "F32"
         }
@@ -40937,7 +40937,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2151,
+          "line": 2173,
           "group": "Global",
           "type": "F32"
         }
@@ -40987,7 +40987,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2162,
+          "line": 2184,
           "group": "Global",
           "type": "F32"
         }
@@ -41037,7 +41037,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2085,
+          "line": 2107,
           "group": "Global",
           "type": "U32"
         }
@@ -41087,7 +41087,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2118,
+          "line": 2140,
           "group": "Global",
           "type": "F32"
         }
@@ -41137,7 +41137,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2107,
+          "line": 2129,
           "group": "Global",
           "type": "F32"
         }
@@ -41198,7 +41198,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2096,
+          "line": 2118,
           "group": "Global",
           "type": "F32"
         }
@@ -42473,7 +42473,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1952,
+          "line": 1974,
           "group": "Global",
           "type": "F32"
         }
@@ -42512,7 +42512,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 1943,
+          "line": 1965,
           "group": "Global",
           "type": "U32"
         }
@@ -42540,7 +42540,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2305,
+          "line": 2327,
           "group": "Global",
           "type": "F32"
         }
@@ -42568,7 +42568,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2316,
+          "line": 2338,
           "group": "Global",
           "type": "F32"
         }
@@ -42596,7 +42596,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2342,
+          "line": 2364,
           "group": "Global",
           "type": "Color3"
         }
@@ -42624,7 +42624,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2372,
+          "line": 2394,
           "group": "Global",
           "type": "F32"
         }
@@ -42652,7 +42652,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2357,
+          "line": 2379,
           "group": "Global",
           "type": "Color3"
         }
@@ -42680,7 +42680,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 2327,
+          "line": 2349,
           "group": "Global",
           "type": "Color3"
         }
@@ -42925,7 +42925,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3457,
+          "line": 3479,
           "group": "Global",
           "type": "F32"
         }
@@ -42953,7 +42953,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3483,
+          "line": 3505,
           "group": "Global",
           "type": "Color3"
         }
@@ -42981,7 +42981,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3498,
+          "line": 3520,
           "group": "Global",
           "type": "Boolean"
         }
@@ -43009,7 +43009,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3509,
+          "line": 3531,
           "group": "Global",
           "type": "F32"
         }
@@ -43037,7 +43037,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3520,
+          "line": 3542,
           "group": "Global",
           "type": "Color3"
         }
@@ -43065,7 +43065,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3535,
+          "line": 3557,
           "group": "Global",
           "type": "F32"
         }
@@ -43093,7 +43093,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3546,
+          "line": 3568,
           "group": "Global",
           "type": "F32"
         }
@@ -43121,7 +43121,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3557,
+          "line": 3579,
           "group": "Global",
           "type": "F32"
         }
@@ -43149,7 +43149,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings_alchemy.xml",
-          "line": 3568,
+          "line": 3590,
           "group": "Global",
           "type": "F32"
         }
@@ -142931,7 +142931,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3736,
+              "line": 3758,
               "group": "Global",
               "type": "Boolean"
             }
@@ -143189,7 +143189,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2719,
+              "line": 2741,
               "group": "Global",
               "type": "Boolean"
             }
@@ -143277,7 +143277,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2730,
+              "line": 2752,
               "group": "Global",
               "type": "Boolean"
             }
@@ -143353,7 +143353,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2741,
+              "line": 2763,
               "group": "Global",
               "type": "Boolean"
             }
@@ -143456,7 +143456,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2763,
+              "line": 2785,
               "group": "Global",
               "type": "String"
             }
@@ -143554,7 +143554,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2774,
+              "line": 2796,
               "group": "Global",
               "type": "Color3"
             }
@@ -143645,7 +143645,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2789,
+              "line": 2811,
               "group": "Global",
               "type": "F32"
             }
@@ -143736,7 +143736,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2800,
+              "line": 2822,
               "group": "Global",
               "type": "F32"
             }
@@ -143868,7 +143868,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1975,
+              "line": 1997,
               "group": "Global",
               "type": "U32"
             }
@@ -143979,7 +143979,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1986,
+              "line": 2008,
               "group": "Global",
               "type": "F32"
             }
@@ -144081,7 +144081,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2008,
+              "line": 2030,
               "group": "Global",
               "type": "F32"
             }
@@ -144171,7 +144171,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2019,
+              "line": 2041,
               "group": "Global",
               "type": "F32"
             }
@@ -144261,7 +144261,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1997,
+              "line": 2019,
               "group": "Global",
               "type": "F32"
             }
@@ -144351,7 +144351,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2030,
+              "line": 2052,
               "group": "Global",
               "type": "F32"
             }
@@ -144441,7 +144441,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2041,
+              "line": 2063,
               "group": "Global",
               "type": "F32"
             }
@@ -144531,7 +144531,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2052,
+              "line": 2074,
               "group": "Global",
               "type": "F32"
             }
@@ -144621,7 +144621,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2063,
+              "line": 2085,
               "group": "Global",
               "type": "Boolean"
             }
@@ -144685,7 +144685,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1959,
+              "line": 1981,
               "group": "Global",
               "type": "Color3"
             }
@@ -144763,7 +144763,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1960,
+              "line": 1982,
               "group": "Global",
               "type": "F32"
             }
@@ -144841,7 +144841,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2085,
+              "line": 2107,
               "group": "Global",
               "type": "U32"
             }
@@ -144950,7 +144950,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2096,
+              "line": 2118,
               "group": "Global",
               "type": "F32"
             }
@@ -145052,7 +145052,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2151,
+              "line": 2173,
               "group": "Global",
               "type": "F32"
             }
@@ -145142,7 +145142,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2118,
+              "line": 2140,
               "group": "Global",
               "type": "F32"
             }
@@ -145232,7 +145232,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2107,
+              "line": 2129,
               "group": "Global",
               "type": "F32"
             }
@@ -145322,7 +145322,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2162,
+              "line": 2184,
               "group": "Global",
               "type": "F32"
             }
@@ -145412,7 +145412,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2173,
+              "line": 2195,
               "group": "Global",
               "type": "F32"
             }
@@ -145502,7 +145502,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2129,
+              "line": 2151,
               "group": "Global",
               "type": "Boolean"
             }
@@ -145566,7 +145566,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2140,
+              "line": 2162,
               "group": "Global",
               "type": "F32"
             }
@@ -145656,7 +145656,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1961,
+              "line": 1983,
               "group": "Global",
               "type": "U32"
             }
@@ -145757,7 +145757,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1963,
+              "line": 1985,
               "group": "Global",
               "type": "F32"
             }
@@ -145925,7 +145925,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1926,
+              "line": 1948,
               "group": "Global",
               "type": "U32"
             }
@@ -146006,7 +146006,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1927,
+              "line": 1949,
               "group": "Global",
               "type": "F32"
             }
@@ -146277,7 +146277,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1943,
+              "line": 1965,
               "group": "Global",
               "type": "U32"
             }
@@ -146358,7 +146358,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1952,
+              "line": 1974,
               "group": "Global",
               "type": "F32"
             }
@@ -160390,7 +160390,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3303,
+              "line": 3325,
               "group": "Global",
               "type": "F32"
             }
@@ -160468,7 +160468,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3314,
+              "line": 3336,
               "group": "Global",
               "type": "F32"
             }
@@ -160546,7 +160546,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3325,
+              "line": 3347,
               "group": "Global",
               "type": "F32"
             }
@@ -160624,7 +160624,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3358,
+              "line": 3380,
               "group": "Global",
               "type": "F32"
             }
@@ -160702,7 +160702,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3336,
+              "line": 3358,
               "group": "Global",
               "type": "F32"
             }
@@ -160780,7 +160780,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3013,
+              "line": 3035,
               "group": "Global",
               "type": "F32"
             }
@@ -160858,7 +160858,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3024,
+              "line": 3046,
               "group": "Global",
               "type": "S32"
             }
@@ -160936,7 +160936,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3035,
+              "line": 3057,
               "group": "Global",
               "type": "F32"
             }
@@ -161014,7 +161014,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3046,
+              "line": 3068,
               "group": "Global",
               "type": "F32"
             }
@@ -161092,7 +161092,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3101,
+              "line": 3123,
               "group": "Global",
               "type": "F32"
             }
@@ -161170,7 +161170,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3145,
+              "line": 3167,
               "group": "Global",
               "type": "F32"
             }
@@ -161248,7 +161248,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3200,
+              "line": 3222,
               "group": "Global",
               "type": "F32"
             }
@@ -161326,7 +161326,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3244,
+              "line": 3266,
               "group": "Global",
               "type": "F32"
             }
@@ -161404,7 +161404,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3255,
+              "line": 3277,
               "group": "Global",
               "type": "F32"
             }
@@ -161482,7 +161482,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3079,
+              "line": 3101,
               "group": "Global",
               "type": "F32"
             }
@@ -161560,7 +161560,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3090,
+              "line": 3112,
               "group": "Global",
               "type": "F32"
             }
@@ -161638,7 +161638,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3266,
+              "line": 3288,
               "group": "Global",
               "type": "F32"
             }
@@ -161716,7 +161716,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3292,
+              "line": 3314,
               "group": "Global",
               "type": "F32"
             }
@@ -169879,7 +169879,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4162,
+              "line": 4184,
               "group": "Global",
               "type": "F32"
             }
@@ -169982,7 +169982,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4173,
+              "line": 4195,
               "group": "Global",
               "type": "F32"
             }
@@ -170085,7 +170085,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4242,
+              "line": 4264,
               "group": "Global",
               "type": "F32"
             }
@@ -170188,7 +170188,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4253,
+              "line": 4275,
               "group": "Global",
               "type": "F32"
             }
@@ -170291,7 +170291,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4392,
+              "line": 4414,
               "group": "Global",
               "type": "F32"
             }
@@ -170394,7 +170394,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4187,
+              "line": 4209,
               "group": "Global",
               "type": "Boolean"
             }
@@ -170497,7 +170497,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4198,
+              "line": 4220,
               "group": "Global",
               "type": "F32"
             }
@@ -170600,7 +170600,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4209,
+              "line": 4231,
               "group": "Global",
               "type": "F32"
             }
@@ -170703,7 +170703,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4220,
+              "line": 4242,
               "group": "Global",
               "type": "F32"
             }
@@ -170806,7 +170806,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4231,
+              "line": 4253,
               "group": "Global",
               "type": "F32"
             }
@@ -170909,7 +170909,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4289,
+              "line": 4311,
               "group": "Global",
               "type": "Boolean"
             }
@@ -171012,7 +171012,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4261,
+              "line": 4283,
               "group": "Global",
               "type": "Boolean"
             }
@@ -171114,7 +171114,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4268,
+              "line": 4290,
               "group": "Global",
               "type": "F32"
             }
@@ -171373,7 +171373,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4416,
+              "line": 4438,
               "group": "Global",
               "type": "Boolean"
             }
@@ -171631,7 +171631,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1286,
+              "line": 1308,
               "group": "Global",
               "type": "S32"
             }
@@ -171875,7 +171875,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1386,
+              "line": 1408,
               "group": "Global",
               "type": "F32"
             }
@@ -172029,7 +172029,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1364,
+              "line": 1386,
               "group": "Global",
               "type": "F32"
             }
@@ -172183,7 +172183,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1298,
+              "line": 1320,
               "group": "Global",
               "type": "Boolean"
             }
@@ -172645,7 +172645,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1877,
+              "line": 1899,
               "group": "Global",
               "type": "F32"
             }
@@ -172753,7 +172753,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1811,
+              "line": 1833,
               "group": "Global",
               "type": "F32"
             }
@@ -172953,7 +172953,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4462,
+              "line": 4484,
               "group": "Global",
               "type": "Boolean"
             }
@@ -173002,7 +173002,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4495,
+              "line": 4517,
               "group": "Global",
               "type": "F32"
             }
@@ -173114,7 +173114,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4506,
+              "line": 4528,
               "group": "Global",
               "type": "U32"
             }
@@ -173168,7 +173168,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4517,
+              "line": 4539,
               "group": "Global",
               "type": "U32"
             }
@@ -173220,7 +173220,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4528,
+              "line": 4550,
               "group": "Global",
               "type": "F32"
             }
@@ -173269,7 +173269,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4539,
+              "line": 4561,
               "group": "Global",
               "type": "F32"
             }
@@ -173318,7 +173318,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4550,
+              "line": 4572,
               "group": "Global",
               "type": "Boolean"
             }
@@ -173367,7 +173367,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4561,
+              "line": 4583,
               "group": "Global",
               "type": "U32"
             }
@@ -173554,7 +173554,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4572,
+              "line": 4594,
               "group": "Global",
               "type": "F32"
             }
@@ -173603,7 +173603,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4583,
+              "line": 4605,
               "group": "Global",
               "type": "F32"
             }
@@ -173652,7 +173652,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4594,
+              "line": 4616,
               "group": "Global",
               "type": "F32"
             }
@@ -173701,7 +173701,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4605,
+              "line": 4627,
               "group": "Global",
               "type": "F32"
             }
@@ -173750,7 +173750,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4616,
+              "line": 4638,
               "group": "Global",
               "type": "F32"
             }
@@ -173799,7 +173799,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4627,
+              "line": 4649,
               "group": "Global",
               "type": "F32"
             }
@@ -173848,7 +173848,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4638,
+              "line": 4660,
               "group": "Global",
               "type": "F32"
             }
@@ -173897,7 +173897,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4649,
+              "line": 4671,
               "group": "Global",
               "type": "F32"
             }
@@ -173946,7 +173946,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4660,
+              "line": 4682,
               "group": "Global",
               "type": "F32"
             }
@@ -173995,7 +173995,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4671,
+              "line": 4693,
               "group": "Global",
               "type": "F32"
             }
@@ -174044,7 +174044,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4682,
+              "line": 4704,
               "group": "Global",
               "type": "F32"
             }
@@ -174093,7 +174093,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4693,
+              "line": 4715,
               "group": "Global",
               "type": "F32"
             }
@@ -174142,7 +174142,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4704,
+              "line": 4726,
               "group": "Global",
               "type": "F32"
             }
@@ -183859,7 +183859,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1286,
+              "line": 1308,
               "group": "Global",
               "type": "S32"
             }
@@ -184155,7 +184155,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1298,
+              "line": 1320,
               "group": "Global",
               "type": "Boolean"
             }
@@ -184274,7 +184274,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1386,
+              "line": 1408,
               "group": "Global",
               "type": "F32"
             }
@@ -184417,7 +184417,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1364,
+              "line": 1386,
               "group": "Global",
               "type": "F32"
             }
@@ -184560,7 +184560,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1474,
+              "line": 1496,
               "group": "Global",
               "type": "F32"
             }
@@ -184662,7 +184662,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1441,
+              "line": 1463,
               "group": "Global",
               "type": "F32"
             }
@@ -185035,7 +185035,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2272,
+              "line": 2294,
               "group": "Global",
               "type": "Boolean"
             }
@@ -185101,7 +185101,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2283,
+              "line": 2305,
               "group": "Global",
               "type": "String"
             }
@@ -185268,7 +185268,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2294,
+              "line": 2316,
               "group": "Global",
               "type": "F32"
             }
@@ -185334,7 +185334,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2383,
+              "line": 2405,
               "group": "Global",
               "type": "F32"
             }
@@ -185400,7 +185400,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2394,
+              "line": 2416,
               "group": "Global",
               "type": "F32"
             }
@@ -185466,7 +185466,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2405,
+              "line": 2427,
               "group": "Global",
               "type": "Vector3"
             }
@@ -185503,7 +185503,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2420,
+              "line": 2442,
               "group": "Global",
               "type": "Vector3"
             }
@@ -185582,7 +185582,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2435,
+              "line": 2457,
               "group": "Global",
               "type": "Vector3"
             }
@@ -185619,7 +185619,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2472,
+              "line": 2494,
               "group": "Global",
               "type": "F32"
             }
@@ -185685,7 +185685,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2483,
+              "line": 2505,
               "group": "Global",
               "type": "F32"
             }
@@ -185751,7 +185751,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2516,
+              "line": 2538,
               "group": "Global",
               "type": "F32"
             }
@@ -185817,7 +185817,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2527,
+              "line": 2549,
               "group": "Global",
               "type": "F32"
             }
@@ -185883,7 +185883,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2494,
+              "line": 2516,
               "group": "Global",
               "type": "F32"
             }
@@ -185949,7 +185949,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2505,
+              "line": 2527,
               "group": "Global",
               "type": "F32"
             }
@@ -186015,7 +186015,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2450,
+              "line": 2472,
               "group": "Global",
               "type": "F32"
             }
@@ -186081,7 +186081,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2461,
+              "line": 2483,
               "group": "Global",
               "type": "F32"
             }
@@ -186147,7 +186147,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2538,
+              "line": 2560,
               "group": "Global",
               "type": "F32"
             }
@@ -186213,7 +186213,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2549,
+              "line": 2571,
               "group": "Global",
               "type": "Color3"
             }
@@ -186250,7 +186250,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2564,
+              "line": 2586,
               "group": "Global",
               "type": "Color3"
             }
@@ -186287,7 +186287,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2579,
+              "line": 2601,
               "group": "Global",
               "type": "Color3"
             }
@@ -186324,7 +186324,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2305,
+              "line": 2327,
               "group": "Global",
               "type": "F32"
             }
@@ -186390,7 +186390,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2316,
+              "line": 2338,
               "group": "Global",
               "type": "F32"
             }
@@ -186456,7 +186456,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2327,
+              "line": 2349,
               "group": "Global",
               "type": "Color3"
             }
@@ -186522,7 +186522,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2342,
+              "line": 2364,
               "group": "Global",
               "type": "Color3"
             }
@@ -186588,7 +186588,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2372,
+              "line": 2394,
               "group": "Global",
               "type": "F32"
             }
@@ -186654,7 +186654,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2357,
+              "line": 2379,
               "group": "Global",
               "type": "Color3"
             }
@@ -186720,7 +186720,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3457,
+              "line": 3479,
               "group": "Global",
               "type": "F32"
             }
@@ -186786,7 +186786,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3546,
+              "line": 3568,
               "group": "Global",
               "type": "F32"
             }
@@ -186852,7 +186852,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3509,
+              "line": 3531,
               "group": "Global",
               "type": "F32"
             }
@@ -186918,7 +186918,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3568,
+              "line": 3590,
               "group": "Global",
               "type": "F32"
             }
@@ -186984,7 +186984,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3483,
+              "line": 3505,
               "group": "Global",
               "type": "Color3"
             }
@@ -187050,7 +187050,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3535,
+              "line": 3557,
               "group": "Global",
               "type": "F32"
             }
@@ -187116,7 +187116,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3520,
+              "line": 3542,
               "group": "Global",
               "type": "Color3"
             }
@@ -187182,7 +187182,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3557,
+              "line": 3579,
               "group": "Global",
               "type": "F32"
             }
@@ -187248,7 +187248,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3468,
+              "line": 3490,
               "group": "Global",
               "type": "Vector3"
             }
@@ -187285,7 +187285,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3498,
+              "line": 3520,
               "group": "Global",
               "type": "Boolean"
             }
@@ -187351,7 +187351,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2649,
+              "line": 2671,
               "group": "Global",
               "type": "F32"
             }
@@ -187417,7 +187417,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2682,
+              "line": 2704,
               "group": "Global",
               "type": "F32"
             }
@@ -187483,7 +187483,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2671,
+              "line": 2693,
               "group": "Global",
               "type": "F32"
             }
@@ -187549,7 +187549,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2693,
+              "line": 2715,
               "group": "Global",
               "type": "S32"
             }
@@ -187620,7 +187620,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2660,
+              "line": 2682,
               "group": "Global",
               "type": "Boolean"
             }
@@ -187686,7 +187686,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2704,
+              "line": 2726,
               "group": "Global",
               "type": "Color3"
             }
@@ -187752,7 +187752,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2184,
+              "line": 2206,
               "group": "Global",
               "type": "F32"
             }
@@ -187818,7 +187818,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2195,
+              "line": 2217,
               "group": "Global",
               "type": "F32"
             }
@@ -187884,7 +187884,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2206,
+              "line": 2228,
               "group": "Global",
               "type": "F32"
             }
@@ -187950,7 +187950,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2217,
+              "line": 2239,
               "group": "Global",
               "type": "F32"
             }
@@ -188016,7 +188016,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2228,
+              "line": 2250,
               "group": "Global",
               "type": "F32"
             }
@@ -188082,7 +188082,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2239,
+              "line": 2261,
               "group": "Global",
               "type": "F32"
             }
@@ -188148,7 +188148,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2250,
+              "line": 2272,
               "group": "Global",
               "type": "F32"
             }
@@ -188214,7 +188214,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 2261,
+              "line": 2283,
               "group": "Global",
               "type": "F32"
             }
@@ -188280,7 +188280,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1452,
+              "line": 1474,
               "group": "Global",
               "type": "F32"
             }
@@ -188382,7 +188382,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1463,
+              "line": 1485,
               "group": "Global",
               "type": "F32"
             }
@@ -188484,7 +188484,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1375,
+              "line": 1397,
               "group": "Global",
               "type": "F32"
             }
@@ -188586,7 +188586,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1397,
+              "line": 1419,
               "group": "Global",
               "type": "F32"
             }
@@ -188688,7 +188688,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1408,
+              "line": 1430,
               "group": "Global",
               "type": "F32"
             }
@@ -188790,7 +188790,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1419,
+              "line": 1441,
               "group": "Global",
               "type": "F32"
             }
@@ -188892,7 +188892,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1430,
+              "line": 1452,
               "group": "Global",
               "type": "F32"
             }
@@ -188994,7 +188994,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1309,
+              "line": 1331,
               "group": "Global",
               "type": "S32"
             }
@@ -189089,7 +189089,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1320,
+              "line": 1342,
               "group": "Global",
               "type": "S32"
             }
@@ -189184,7 +189184,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1331,
+              "line": 1353,
               "group": "Global",
               "type": "F32"
             }
@@ -189286,7 +189286,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1342,
+              "line": 1364,
               "group": "Global",
               "type": "S32"
             }
@@ -189379,7 +189379,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1353,
+              "line": 1375,
               "group": "Global",
               "type": "F32"
             }
@@ -190060,7 +190060,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1789,
+              "line": 1811,
               "group": "Global",
               "type": "Boolean"
             }
@@ -190126,7 +190126,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1877,
+              "line": 1899,
               "group": "Global",
               "type": "F32"
             }
@@ -190277,7 +190277,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1811,
+              "line": 1833,
               "group": "Global",
               "type": "F32"
             }
@@ -190428,7 +190428,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1822,
+              "line": 1844,
               "group": "Global",
               "type": "F32"
             }
@@ -190494,7 +190494,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1888,
+              "line": 1910,
               "group": "Global",
               "type": "Boolean"
             }
@@ -190560,7 +190560,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1899,
+              "line": 1921,
               "group": "Global",
               "type": "F32"
             }
@@ -190626,7 +190626,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1910,
+              "line": 1932,
               "group": "Global",
               "type": "Color3"
             }
@@ -190692,7 +190692,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1855,
+              "line": 1877,
               "group": "Global",
               "type": "F32"
             }
@@ -190758,7 +190758,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1833,
+              "line": 1855,
               "group": "Global",
               "type": "S32"
             }
@@ -190853,7 +190853,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1844,
+              "line": 1866,
               "group": "Global",
               "type": "S32"
             }
@@ -190925,7 +190925,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 1866,
+              "line": 1888,
               "group": "Global",
               "type": "F32"
             }
@@ -223431,7 +223431,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3986,
+              "line": 4008,
               "group": "Global",
               "type": "Boolean"
             }
@@ -223497,7 +223497,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 3997,
+              "line": 4019,
               "group": "Global",
               "type": "F32"
             }
@@ -223575,7 +223575,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4008,
+              "line": 4030,
               "group": "Global",
               "type": "F32"
             }
@@ -223653,7 +223653,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4019,
+              "line": 4041,
               "group": "Global",
               "type": "F32"
             }
@@ -223731,7 +223731,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4030,
+              "line": 4052,
               "group": "Global",
               "type": "F32"
             }
@@ -223809,7 +223809,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4041,
+              "line": 4063,
               "group": "Global",
               "type": "S32"
             }
@@ -223890,7 +223890,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4052,
+              "line": 4074,
               "group": "Global",
               "type": "Color3"
             }
@@ -223968,7 +223968,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4067,
+              "line": 4089,
               "group": "Global",
               "type": "F32"
             }
@@ -224046,7 +224046,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4126,
+              "line": 4148,
               "group": "Global",
               "type": "F32"
             }
@@ -224124,7 +224124,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4111,
+              "line": 4133,
               "group": "Global",
               "type": "Color3"
             }
@@ -224202,7 +224202,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4137,
+              "line": 4159,
               "group": "Global",
               "type": "F32"
             }
@@ -224280,7 +224280,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4078,
+              "line": 4100,
               "group": "Global",
               "type": "Boolean"
             }
@@ -224346,7 +224346,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4089,
+              "line": 4111,
               "group": "Global",
               "type": "F32"
             }
@@ -224508,7 +224508,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4100,
+              "line": 4122,
               "group": "Global",
               "type": "F32"
             }
@@ -224586,7 +224586,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4148,
+              "line": 4170,
               "group": "Global",
               "type": "S32"
             }
