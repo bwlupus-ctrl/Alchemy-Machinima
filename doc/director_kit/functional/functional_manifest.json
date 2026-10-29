@@ -44,10 +44,10 @@
    "shadows_probes_tab",
    "weather_tab"
   ],
-  "generated_kit_rows": 2436,
-  "entries": 4526,
+  "generated_kit_rows": 2437,
+  "entries": 4527,
   "pages": 38,
-  "settings_declared": 3827,
+  "settings_declared": 3828,
   "xui_files": 845,
   "rim_presets": 40,
   "rim_preset_written_settings": [
@@ -12213,6 +12213,38 @@
     {
      "label": "March actor path",
      "value": "5"
+    },
+    {
+     "label": "Hover",
+     "value": "6"
+    },
+    {
+     "label": "Jump",
+     "value": "7"
+    },
+    {
+     "label": "Space walk",
+     "value": "8"
+    },
+    {
+     "label": "Float in space",
+     "value": "9"
+    },
+    {
+     "label": "Ascend & hold",
+     "value": "10"
+    },
+    {
+     "label": "Vortex",
+     "value": "11"
+    },
+    {
+     "label": "Pendulum",
+     "value": "12"
+    },
+    {
+     "label": "Bounce",
+     "value": "13"
     }
    ],
    "test_value_resolved": "1",
@@ -166449,6 +166481,38 @@
     {
      "label": "March actor path",
      "value": "5"
+    },
+    {
+     "label": "Hover",
+     "value": "6"
+    },
+    {
+     "label": "Jump",
+     "value": "7"
+    },
+    {
+     "label": "Space walk",
+     "value": "8"
+    },
+    {
+     "label": "Float in space",
+     "value": "9"
+    },
+    {
+     "label": "Ascend & hold",
+     "value": "10"
+    },
+    {
+     "label": "Vortex",
+     "value": "11"
+    },
+    {
+     "label": "Pendulum",
+     "value": "12"
+    },
+    {
+     "label": "Bounce",
+     "value": "13"
     }
    ],
    "binding": "code",
@@ -166685,7 +166749,62 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_group_unit:kit:134",
+   "id": "v2:ghosts_tab:motion_animations_check:kit:134",
+   "csv_index": null,
+   "card": "formation_motion",
+   "card_title": "Formation motion",
+   "row_label": "Motion animations",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+   "xui_line": null,
+   "widget_name": "motion_animations_check",
+   "widget_type": "toggle",
+   "csv_kind": "toggle",
+   "wiring_status": "GENERATED_KIT",
+   "resolution": "generated_kit_xml",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "toggle",
+   "test_value": false,
+   "expect": {
+    "setting": "GhostMotionAnimations",
+    "type": "Boolean",
+    "value": false
+   },
+   "restore": {
+    "setting": "GhostMotionAnimations",
+    "value": true
+   },
+   "setting": "GhostMotionAnimations",
+   "setting_source": "kit_row setting",
+   "setting_type": "Boolean",
+   "default": true,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "combo_items": [],
+   "binding": "setting",
+   "link_to": null,
+   "kit_action": null,
+   "shortcut_of": null,
+   "callbacks": null,
+   "owner": null,
+   "evidence": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v2",
+   "source": "generated_kit_xml",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v2:ghosts_tab:btn_group_unit:kit:135",
    "csv_index": null,
    "card": "directing_unit",
    "card_title": "Group as one unit",
@@ -166740,7 +166859,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_ungroup_unit:kit:135",
+   "id": "v2:ghosts_tab:btn_ungroup_unit:kit:136",
    "csv_index": null,
    "card": "directing_unit",
    "card_title": "Group as one unit",
@@ -166795,7 +166914,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:motion_precedence_help:kit:136",
+   "id": "v2:ghosts_tab:motion_precedence_help:kit:137",
    "csv_index": null,
    "card": "directing_unit",
    "card_title": "Group as one unit",
@@ -166845,7 +166964,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:btn_rig_diag_refresh:kit:137",
+   "id": "v2:ghosts_tab:btn_rig_diag_refresh:kit:138",
    "csv_index": null,
    "card": "ghost_diagnostics",
    "card_title": "Diagnostics",
@@ -166900,7 +167019,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:rig_diagnostics:kit:138",
+   "id": "v2:ghosts_tab:rig_diagnostics:kit:139",
    "csv_index": null,
    "card": "ghost_diagnostics",
    "card_title": "Diagnostics",
@@ -166955,7 +167074,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:chaos_check:kit:139",
+   "id": "v2:ghosts_tab:chaos_check:kit:140",
    "csv_index": null,
    "card": "chaos",
    "card_title": "Chaos & speed",
@@ -167011,7 +167130,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:autoanim_check:kit:140",
+   "id": "v2:ghosts_tab:autoanim_check:kit:141",
    "csv_index": null,
    "card": "autoanim",
    "card_title": "Auto-animate",
@@ -167067,7 +167186,7 @@
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v2:ghosts_tab:lens_gaze_check:kit:141",
+   "id": "v2:ghosts_tab:lens_gaze_check:kit:142",
    "csv_index": null,
    "card": "head_gaze",
    "card_title": "Head gaze",
@@ -256382,13 +256501,22 @@
    "mode_sequence_item",
    "mode_shuffle",
    "mode_shuffle_item",
+   "motion_animations_check",
+   "motion_ascend",
+   "motion_bounce",
    "motion_breathe",
+   "motion_float",
+   "motion_hover",
+   "motion_jump",
    "motion_off",
    "motion_orbit",
    "motion_path",
+   "motion_pendulum",
    "motion_precedence_help",
    "motion_ripple",
+   "motion_space_walk",
    "motion_spin",
+   "motion_vortex",
    "move_btn_stop",
    "move_heading_dial",
    "move_hint",

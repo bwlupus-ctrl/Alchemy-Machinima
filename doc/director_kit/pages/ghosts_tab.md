@@ -1,11 +1,11 @@
 # Clones — Director Kit page contract
 
 Page key: `ghosts_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (5/139 setting-bound rows; 136 C++-referenced rows).
+Computed class: **code-driven** (6/140 setting-bound rows; 136 C++-referenced rows).
 
 ## Real owners
 
-- `panel_ghost_studio` / `panel` at `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:10` (139 matching rows).
+- `panel_ghost_studio` / `panel` at `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:10` (140 matching rows).
 - Referencing classes: `ALPanelGhostStudio` (283), `ALGhostStudio` (3), `ALKitBindingRegistry` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
@@ -24,7 +24,7 @@ Reuse the existing preview/diagnostics controls with a 240 px maximum and visibl
 | `ghost_list` / `show_all_check` (Show clones) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:18` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onShowAllToggle()` (`indra/newview/alpanelghoststudio.cpp:607`) | none |
 | `ghost_list` / `edit_ghosts_check` (Edit clones) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:16` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onToggleEditMode()` (`indra/newview/alpanelghoststudio.cpp:608`) | none |
 | `ghost_list` / `ghost_list` (Clones) | `scroll_list` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:23` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onListSelect()` (`indra/newview/alpanelghoststudio.cpp:609`), wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onListMouseUp()` (`indra/newview/alpanelghoststudio.cpp:611`) | none |
-| `ghost_list` / `studio_status` (Count) | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:537` | kit readout ← approved static copy; no runtime writer | none |
+| `ghost_list` / `studio_status` (Count) | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:547` | kit readout ← approved static copy; no runtime writer | none |
 | `ghost_list` / `btn_ghost_dup` (Duplicate) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:42` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickDuplicate()` (`indra/newview/alpanelghoststudio.cpp:616`) | none |
 | `ghost_list` / `btn_ghost_del` (Delete) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:44` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickDelete()` (`indra/newview/alpanelghoststudio.cpp:617`) | none |
 | `ghost_list` / `btn_ghost_refresh` (Refresh) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:46` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickRefresh()` (`indra/newview/alpanelghoststudio.cpp:618`) | none |
@@ -150,13 +150,14 @@ Reuse the existing preview/diagnostics controls with a 240 px maximum and visibl
 | `pose_strip` / `btn_strip_cancel` (Cancel) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:502` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickCancelStrip()` (`indra/newview/alpanelghoststudio.cpp:781`) | none |
 | `pose_strip` / `strip_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:504` | kit readout ← approved static copy; no runtime writer | none |
 | `formation_motion` / `formation_motion_combo` (Motion) | `combo_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:505` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onMotionCommit()` (`indra/newview/alpanelghoststudio.cpp:4340`) | none |
-| `formation_motion` / `formation_motion_speed` (Speed) | `spinner` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:514` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::updateOwnedCrowdPlacement()` (`indra/newview/alpanelghoststudio.cpp:3918`) | none |
-| `formation_motion` / `formation_motion_amplitude` (Amp) | `spinner` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:517` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::updateOwnedCrowdPlacement()` (`indra/newview/alpanelghoststudio.cpp:3918`) | none |
-| `formation_motion` / `btn_formation_motion_apply` (Apply) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:520` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onMotionCommit()` (`indra/newview/alpanelghoststudio.cpp:782`) | none |
-| `formation_motion` / `pose_rate_spinner` (Pose fps) | `spinner` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:526` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onPoseRateCommit()` (`indra/newview/alpanelghoststudio.cpp:805`) | none |
-| `directing_unit` / `btn_group_unit` (Group) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:522` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickGroup()` (`indra/newview/alpanelghoststudio.cpp:785`) | none |
-| `directing_unit` / `btn_ungroup_unit` (Ungroup) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:524` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickUngroup()` (`indra/newview/alpanelghoststudio.cpp:786`) | none |
-| `directing_unit` / `motion_precedence_help` (Note) | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:528` | kit readout ← approved static copy; no runtime writer | none |
+| `formation_motion` / `formation_motion_speed` (Speed) | `spinner` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:522` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::updateOwnedCrowdPlacement()` (`indra/newview/alpanelghoststudio.cpp:3918`) | none |
+| `formation_motion` / `formation_motion_amplitude` (Amp) | `spinner` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:525` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::updateOwnedCrowdPlacement()` (`indra/newview/alpanelghoststudio.cpp:3918`) | none |
+| `formation_motion` / `btn_formation_motion_apply` (Apply) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:528` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onMotionCommit()` (`indra/newview/alpanelghoststudio.cpp:782`) | none |
+| `formation_motion` / `pose_rate_spinner` (Pose fps) | `spinner` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:534` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onPoseRateCommit()` (`indra/newview/alpanelghoststudio.cpp:805`) | none |
+| `formation_motion` / `motion_animations_check` (Motion animations) | `check_box` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:536` | kit `toggle` ↔ `GhostMotionAnimations` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml:700` `motion_animations_check` |
+| `directing_unit` / `btn_group_unit` (Group) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:530` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickGroup()` (`indra/newview/alpanelghoststudio.cpp:785`) | none |
+| `directing_unit` / `btn_ungroup_unit` (Ungroup) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:532` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickUngroup()` (`indra/newview/alpanelghoststudio.cpp:786`) | none |
+| `directing_unit` / `motion_precedence_help` (Note) | `text` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:538` | kit readout ← approved static copy; no runtime writer | none |
 | `ghost_diagnostics` / `btn_rig_diag_refresh` (Refresh) | `button` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:330` | `ALGhostStudioKitAdapter` command/model binding → wired in `ALPanelGhostStudio::postBuild()`; behavior `ALPanelGhostStudio::onClickRigDiagRefresh()` (`indra/newview/alpanelghoststudio.cpp:712`) | none |
 | `ghost_diagnostics` / `rig_diagnostics` (Report) | `text_editor` `indra/newview/skins/default/xui/en/panel_ghost_studio.xml:332` | kit readout ← approved static copy; no runtime writer | none |
 
@@ -260,7 +261,7 @@ Reuse the existing preview/diagnostics controls with a 240 px maximum and visibl
 
 ## Bounded non-default audit states
 
-Manifest size: **221 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **230 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -474,6 +475,15 @@ Manifest size: **221 states**, hard cap 256, page runtime budget 2 minutes. Each
 | `formation_motion_combo-option-3` | Only `formation_motion_combo` selects `Breathe`; other selectors remain default. |
 | `formation_motion_combo-option-4` | Only `formation_motion_combo` selects `Ripple`; other selectors remain default. |
 | `formation_motion_combo-option-5` | Only `formation_motion_combo` selects `March actor path`; other selectors remain default. |
+| `formation_motion_combo-option-6` | Only `formation_motion_combo` selects `Hover`; other selectors remain default. |
+| `formation_motion_combo-option-7` | Only `formation_motion_combo` selects `Jump`; other selectors remain default. |
+| `formation_motion_combo-option-8` | Only `formation_motion_combo` selects `Space walk`; other selectors remain default. |
+| `formation_motion_combo-option-9` | Only `formation_motion_combo` selects `Float in space`; other selectors remain default. |
+| `formation_motion_combo-option-10` | Only `formation_motion_combo` selects `Ascend & hold`; other selectors remain default. |
+| `formation_motion_combo-option-11` | Only `formation_motion_combo` selects `Vortex`; other selectors remain default. |
+| `formation_motion_combo-option-12` | Only `formation_motion_combo` selects `Pendulum`; other selectors remain default. |
+| `formation_motion_combo-option-13` | Only `formation_motion_combo` selects `Bounce`; other selectors remain default. |
+| `motion_animations_check-on` | Only `motion_animations_check` is on; dependent visibility is measured. |
 | `card-directing_unit-tallest-850` | Only `directing_unit` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-directing_unit-tallest-1160` | Only `directing_unit` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `card-ghost_diagnostics-tallest-850` | Only `ghost_diagnostics` is put in its tallest local state at 850 px; all other cards stay default. |
@@ -499,7 +509,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-158 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+159 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
