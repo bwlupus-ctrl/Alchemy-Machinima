@@ -26,6 +26,9 @@
 uniform mat4 projection_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec3 normal;
 in vec2 texcoord0;
 #ifdef AVATAR_CLOTH
@@ -51,6 +54,9 @@ const vec4 gPiConstants = vec4(0.159154943, 6.28318530, 3.141592653, 1.5707963);
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     vary_texcoord0 = texcoord0;
 
     vec4 pos;
@@ -135,5 +141,4 @@ void main()
     vary_position = pos.xyz;
     gl_Position = projection_matrix * pos;
 }
-
 

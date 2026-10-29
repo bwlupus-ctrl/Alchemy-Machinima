@@ -410,7 +410,7 @@ void LLCameraOperator::reset()
     mOnsetEnv = mSettleEnv = 0.f;
     mLatchX = mLatchY = 0.f;
 
-    // Phases are reset ONLY under a locomotion mode.
+    // Phases are reset under a locomotion mode or explicit reaction-lag opt-in.
     //
     // Zeroing them makes takes repeatable: replaying the same recorded path
     // with the same seed otherwise started at a different point in the noise,
@@ -418,11 +418,13 @@ void LLCameraOperator::reset()
     // fires at cuts, flycam toggles, playback starts and CineCam mode/target
     // changes -- all already discontinuities -- so nothing pops.
     //
-    // But it IS a behaviour change, and LEGACY promises stock behaviour. Legacy
-    // therefore keeps the original "leave the phases running" semantics, and
-    // determinism arrives with the locomotion feature the director opted into.
+    // But it IS a behaviour change, and zero-lag LEGACY promises stock
+    // behaviour. That path keeps the original "leave the phases running"
+    // semantics; locomotion or latency is the director's determinism opt-in.
     static LLCachedControl<S32> reset_loco(gSavedSettings, "FlycamOperatorLocomotionMode", 0);
-    if (reset_loco != LOCO_LEGACY)
+    static LLCachedControl<F32> reset_reaction_lag(
+        gSavedSettings, "FlycamOperatorReactionLag", 0.f);
+    if (reset_loco != LOCO_LEGACY || (F32)reset_reaction_lag > 0.0001f)
     {
         mPhaseXY = mPhaseRoll = mPhaseBreath = 0.f;
         mPhaseGait = mPhaseSettle = mPhaseRecompose = 0.f;
@@ -444,10 +446,67 @@ void LLCameraOperator::reset()
     mPreviousRenderRotation.loadIdentity();
     mLastSimPosition = LLVector3::zero;
     mLastSimRotation.loadIdentity();
+    mReactionSamples.clear();
+    mReactionTime = 0.0;
+    mReactionLatency = -1.f;
 
     mModeBlend = 1.f;
     mModeCurrent = -1;
     sModeSource = sModeLive = getLocomotion(LOCO_LEGACY);
+}
+
+LLCameraOperatorInput LLCameraOperator::delayedReactiveInput(
+    const LLCameraOperatorInput& input, F32 latency)
+{
+    LLCameraOperatorInput delayed = input;
+    const F32 safe_latency = vc_safe(latency, 0.f, 0.f, 1.5f);
+    if (safe_latency <= 0.0001f)
+    {
+        mReactionSamples.clear();
+        mReactionTime = 0.0;
+        mReactionLatency = 0.f;
+        return delayed;
+    }
+
+    if (fabsf(safe_latency - mReactionLatency) > 0.0001f)
+    {
+        mReactionSamples.clear();
+        mReactionTime = 0.0;
+        mReactionLatency = safe_latency;
+        mReactionSamples.push_back(ReactionSample());
+    }
+
+    mReactionTime += vc_safe(input.mDeltaTime, DT_REF, 0.0005f, 0.25f);
+    ReactionSample sample;
+    sample.mTime = mReactionTime;
+    sample.mLinearVel = input.mLinearVel;
+    sample.mAngularVel = input.mAngularVel;
+    mReactionSamples.push_back(sample);
+
+    const F64 target_time = mReactionTime - safe_latency;
+    while (mReactionSamples.size() > 2 &&
+           mReactionSamples[1].mTime <= target_time)
+    {
+        mReactionSamples.pop_front();
+    }
+    // 1.5 seconds at the minimum accepted dt is at most 3000 samples. Keep a
+    // defensive constant bound for malformed callers without unbounded growth.
+    while (mReactionSamples.size() > 4096)
+    {
+        mReactionSamples.pop_front();
+    }
+
+    const ReactionSample& before = mReactionSamples.front();
+    const ReactionSample& after = mReactionSamples.size() > 1
+        ? mReactionSamples[1] : before;
+    const F64 span = after.mTime - before.mTime;
+    const F32 alpha = span > 0.0
+        ? vc_sat((F32)((target_time - before.mTime) / span)) : 0.f;
+    delayed.mLinearVel = before.mLinearVel +
+        (after.mLinearVel - before.mLinearVel) * alpha;
+    delayed.mAngularVel = before.mAngularVel +
+        (after.mAngularVel - before.mAngularVel) * alpha;
+    return delayed;
 }
 
 LLCameraOperatorOutput LLCameraOperator::interpolateOutput() const
@@ -465,7 +524,7 @@ void LLCameraOperator::prepareFixedPath()
         return;
     }
 
-    // Returning from Legacy starts a new fixed-step timeline. Stale fractional
+    // Leaving variable-step Legacy starts a new fixed-step timeline. Stale fractional
     // time or sampled poses from an earlier opted-in take must not leak across
     // the Legacy hard cut. Procedural phases remain governed by reset(), so
     // merely selecting a mode does not invent an additional phase reset.
@@ -514,11 +573,13 @@ LLCameraOperatorOutput LLCameraOperator::update(const LLCameraOperatorInput& inp
     static LLCachedControl<S32> loco_mode(gSavedSettings,
                                            "FlycamOperatorLocomotionMode",
                                            LOCO_LEGACY);
+    static LLCachedControl<F32> reaction_lag(
+        gSavedSettings, "FlycamOperatorReactionLag", 0.f);
 
-    // Legacy remains the original variable-step path. In particular, it does
-    // not touch the accumulator or interpolate output, preserving the existing
-    // finite-input output bits for users who have not opted into locomotion.
-    if ((S32)loco_mode == LOCO_LEGACY)
+    // Zero-lag Legacy remains the original variable-step path. Enabling a
+    // reaction delay is an explicit opt-in to fixed ticks so the delayed input
+    // history is independent of render-frame grouping.
+    if ((S32)loco_mode == LOCO_LEGACY && (F32)reaction_lag <= 0.0001f)
     {
         mFixedPathActive = false;
         return step(input);
@@ -574,6 +635,8 @@ LLCameraOperatorOutput LLCameraOperator::updateFromPose(
     static LLCachedControl<S32> loco_mode(gSavedSettings,
                                            "FlycamOperatorLocomotionMode",
                                            LOCO_LEGACY);
+    static LLCachedControl<F32> reaction_lag(
+        gSavedSettings, "FlycamOperatorReactionLag", 0.f);
     // Pose timestamps are timeline data, not merely a filter coefficient.
     // Preserve finite hitch duration so the fixed-step cap can defer, rather
     // than discard, its backlog.
@@ -595,7 +658,7 @@ LLCameraOperatorOutput LLCameraOperator::updateFromPose(
     // This fallback is intentionally equivalent to the old caller-side
     // frame-to-frame velocity calculation. Production callers keep using
     // update() explicitly for Legacy, but the public sampled API remains safe.
-    if ((S32)loco_mode == LOCO_LEGACY)
+    if ((S32)loco_mode == LOCO_LEGACY && (F32)reaction_lag <= 0.0001f)
     {
         mFixedPathActive = false;
         LLCameraOperatorInput input;
@@ -750,6 +813,7 @@ LLCameraOperatorOutput LLCameraOperator::step(const LLCameraOperatorInput& input
     static LLCachedControl<F32> recomposeInterval(gSavedSettings, "FlycamOperatorRecomposeInterval", 7.f);
     static LLCachedControl<F32> timeSpeed(gSavedSettings, "FlycamOperatorTimeSpeed", 1.f);
     static LLCachedControl<F32> seed(gSavedSettings, "FlycamOperatorSeed", 0.f);
+    static LLCachedControl<F32> reactionLag(gSavedSettings, "FlycamOperatorReactionLag", 0.f);
     // reactive dynamics
     static LLCachedControl<F32> motionPan(gSavedSettings, "FlycamOperatorMotionPan", 1.f);
     static LLCachedControl<F32> motionTilt(gSavedSettings, "FlycamOperatorMotionTilt", 1.f);
@@ -986,6 +1050,8 @@ LLCameraOperatorOutput LLCameraOperator::step(const LLCameraOperatorInput& input
     }
 
     const F32 dt = vc_safe(input.mDeltaTime, DT_REF, 0.0005f, 0.25f);
+    const LLCameraOperatorInput reactive_input =
+        delayedReactiveInput(input, reactionLag);
 
     // ---- ground-truth speed metric (replaces MV estimation + AGC) ---------
     const F32 linRef = loco_active
@@ -997,16 +1063,16 @@ LLCameraOperatorOutput LLCameraOperator::step(const LLCameraOperatorInput& input
 
     // pan-plane flow equivalent: yaw+lateral => X, pitch+vertical => Y
     const F32 vx = vc_mode_safe(
-        input.mAngularVel.mV[VZ] / angRef +
-        input.mLinearVel.mV[VY] / linRef,
+        reactive_input.mAngularVel.mV[VZ] / angRef +
+        reactive_input.mLinearVel.mV[VY] / linRef,
         0.f, -REACT_MAX, REACT_MAX, loco_active);
     const F32 vy = vc_mode_safe(
-        input.mAngularVel.mV[VY] / angRef +
-        input.mLinearVel.mV[VZ] / linRef,
+        reactive_input.mAngularVel.mV[VY] / angRef +
+        reactive_input.mLinearVel.mV[VZ] / linRef,
         0.f, -REACT_MAX, REACT_MAX, loco_active);
     const F32 coherentRaw  = sqrtf(vx * vx + vy * vy);
     const F32 divergentRaw = vc_mode_safe(
-        fabsf(input.mLinearVel.mV[VX]) / linRef,
+        fabsf(reactive_input.mLinearVel.mV[VX]) / linRef,
         0.f, 0.f, REACT_MAX, loco_active);
     const F32 rawSpd = vc_finite(
         llmin(coherentRaw + divergentRaw, REACT_MAX), 0.f);

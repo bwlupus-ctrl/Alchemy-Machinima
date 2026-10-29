@@ -32,6 +32,9 @@
 #include "llsettingssky.h"
 #include "llenvironment.h"
 
+#include <string>
+#include <vector>
+
 #include "boost/signals2.hpp"
 
 class LLButton;
@@ -89,6 +92,29 @@ private:
     void                        updateGammaLabel();
     void                        onButtonReset();
 
+    // [EnvIntensity v2] Advanced exposure panel show/hide (AlchemyEnvIntensityAdvanced)
+    // and the Sun/Moon link label + Moon slider enable (AlchemyEnvMoonLinked).
+    void                        applyEnvIntensityAdvanced();
+    void                        updateEnvIntensityMoonLink();
+
+    // [EnvIntensity presets] Quick Preset combo (env_intensity_preset) on the
+    // Light Intensity strip. Applying a preset writes the full deterministic
+    // set of AlchemyEnv* keys in the ENV_INTENSITY_PRESETS table (llfloaterenvironmentadjust.cpp;
+    // never the Advanced-panel toggle, never AlchemyEnvLocalLightIncludeRig,
+    // never auto-exposure); ALEnvIntensityPresets::isApplying() suppresses the per-
+    // setting listeners below while that write happens. refreshEnvIntensityPresetCombo
+    // re-derives the combo's selection from the live settings (exact match ->
+    // that preset; otherwise the "Custom" placeholder) and is the handler for
+    // every tracked setting's signal, so a manual slider/swatch/Debug Settings
+    // edit always falls back to Custom.
+    void                        onEnvIntensityPresetSelected();
+    void                        applyEnvIntensityPreset(const std::string& key);
+    void                        refreshEnvIntensityPresetCombo();
+    // [EnvIntensity userpresets] "-- My presets --" section of the same combo
+    // (items "user:<name>", after the static XUI items); rebuilt whenever
+    // ALEnvIntensityPresets saves / deletes a preset.
+    void                        rebuildEnvIntensityUserPresets();
+
     void                        onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version);
 
     // [BDMerge B13] BD - Windlight Stuff (gated by BDMergeEnvLocalPresets;
@@ -117,6 +143,28 @@ private:
     LLSettingsSky::ptr_t        mLiveSky;
     LLSettingsWater::ptr_t      mLiveWater;
     LLEnvironment::connection_t mEventConnection;
+
+    // [EnvIntensity] RenderSkyAutoAdjustLegacy change -> updateGammaLabel(),
+    // so the Light Intensity classic/legacy note never goes stale. Scoped:
+    // disconnects automatically when the floater is destroyed.
+    boost::signals2::scoped_connection mEnvIntensityAutoAdjustConn;
+    // [EnvIntensity v2] setting listeners (Debug Settings edits show live)
+    boost::signals2::scoped_connection mEnvIntensityAdvancedConn;
+    boost::signals2::scoped_connection mEnvIntensityMoonLinkedConn;
+
+    // [EnvIntensity presets] one scoped connection per tracked AlchemyEnv* key
+    // (see ENV_INTENSITY_PRESET_WATCHED_KEYS), all routed to
+    // refreshEnvIntensityPresetCombo(). The "applying" suppression flag now lives
+    // in ALEnvIntensityPresets::isApplying() (apply() is shared with the user
+    // presets floater), so that fan-out does not fight the write or flash
+    // "Custom" mid-apply; the explicit refresh comes from the "applied" signal.
+    std::vector<boost::signals2::scoped_connection> mEnvIntensityPresetConns;
+
+    // [EnvIntensity userpresets] number of static (XUI) combo items; everything
+    // after that index is the dynamic user-preset section.
+    S32                                 mEnvIntensityPresetStaticCount = 0;
+    boost::signals2::scoped_connection  mEnvIntensityUserListConn;
+    boost::signals2::scoped_connection  mEnvIntensityUserAppliedConn;
 };
 
 #endif // LL_FLOATERFIXEDENVIRONMENT_H

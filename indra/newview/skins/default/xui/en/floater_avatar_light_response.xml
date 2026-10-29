@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- [AvatarLightResponse] per-avatar, light-independent Diffuse / Tame / Brightness / Glow trim -->
+<floater
+ can_close="true"
+ can_minimize="true"
+ can_resize="false"
+ height="470"
+ layout="topleft"
+ name="avatar_light_response"
+ save_rect="true"
+ single_instance="true"
+ title="AVATAR LIGHT RESPONSE"
+ tool_tip="Changes how this avatar responds to every light, on your screen only. Adjusted avatars are always rendered and animated in full."
+ width="360">
+    <check_box
+     control_name="AvatarLightResponseEnabled"
+     follows="left|top"
+     height="18"
+     label="Enable Avatar Light Response"
+     layout="topleft"
+     left="10"
+     name="chk_enabled"
+     tool_tip="Master switch. Off restores every avatar to its normal look without losing your settings."
+     top="28"
+     width="240" />
+    <button
+     follows="right|top"
+     height="20"
+     label="Refresh"
+     layout="topleft"
+     left="270"
+     name="btn_refresh"
+     tool_tip="Rebuild the target list"
+     top="27"
+     width="80" />
+    <scroll_list
+     draw_heading="true"
+     can_sort="false"
+     follows="left|top"
+     height="140"
+     layout="topleft"
+     left="10"
+     multi_select="true"
+     name="target_list"
+     tool_tip="State: green = trim uploaded and visible; amber = adjusted but not uploaded, not visible or muted; hollow = explicit identity or bypass; blank = inherits."
+     top="52"
+     width="340">
+        <scroll_list.columns
+         label=""
+         name="state"
+         width="22" />
+        <scroll_list.columns
+         dynamic_width="true"
+         label="Target"
+         name="name" />
+        <scroll_list.columns
+         label="Kind"
+         name="kind"
+         width="70" />
+    </scroll_list>
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Only adjusted"
+     layout="topleft"
+     left="10"
+     name="chk_only_adjusted"
+     top="196"
+     width="200" />
+    <slider
+     decimal_digits="0"
+     follows="left|top"
+     height="20"
+     increment="1"
+     initial_value="0"
+     label="Diffuse (%)"
+     label_width="96"
+     layout="topleft"
+     left="10"
+     max_val="100"
+     min_val="0"
+     name="sld_diffuse"
+     tool_tip="Blurs and dims highlights: raises material roughness toward fully rough."
+     top="220"
+     width="340" />
+    <slider
+     decimal_digits="0"
+     follows="left|top"
+     height="20"
+     increment="1"
+     initial_value="0"
+     label="Tame reflections (%)"
+     label_width="96"
+     layout="topleft"
+     left="10"
+     max_val="100"
+     min_val="0"
+     name="sld_tame"
+     tool_tip="Scales down evaluated specular and environment reflections (sun, probes, local lights, mirrors). Diffuse shading is untouched."
+     top="244"
+     width="340" />
+    <slider
+     decimal_digits="2"
+     follows="left|top"
+     height="20"
+     increment="0.05"
+     initial_value="0"
+     label="Brightness"
+     label_width="96"
+     layout="topleft"
+     left="10"
+     max_val="1"
+     min_val="-2"
+     name="sld_brightness"
+     tool_tip="Scales diffuse albedo by 2^EV. Highlights and glow keep their level."
+     top="268"
+     width="262" />
+    <text
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="278"
+     name="txt_brightness_ev"
+     top="270"
+     width="72">
+        +0.00 EV
+    </text>
+    <slider
+     decimal_digits="0"
+     follows="left|top"
+     height="20"
+     increment="1"
+     initial_value="100"
+     label="Glow (%)"
+     label_width="96"
+     layout="topleft"
+     left="10"
+     max_val="200"
+     min_val="0"
+     name="sld_glow"
+     tool_tip="Scales creator-authored glow and emissive. Effects you add with Actor FX are not affected."
+     top="292"
+     width="340" />
+    <check_box
+     follows="left|top"
+     height="18"
+     label="Bypass (A/B: show this avatar untrimmed)"
+     layout="topleft"
+     left="10"
+     name="chk_bypass"
+     tool_tip="Explicit identity for the selected rows. It still blocks fallback to a wearer or source."
+     top="318"
+     width="340" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="10"
+     name="combo_preset"
+     top="342"
+     width="220">
+        <combo_box.item
+         label="Reset"
+         name="preset_reset"
+         value="0" />
+        <combo_box.item
+         label="Powdered"
+         name="preset_powdered"
+         value="1" />
+        <combo_box.item
+         label="Matte skin"
+         name="preset_matte_skin"
+         value="2" />
+        <combo_box.item
+         label="Tame gloss"
+         name="preset_tame_gloss"
+         value="3" />
+        <combo_box.item
+         label="Kill sheen"
+         name="preset_kill_sheen"
+         value="4" />
+        <combo_box.item
+         label="-1/2 stop"
+         name="preset_minus_half_stop"
+         value="5" />
+        <combo_box.item
+         label="-1 stop"
+         name="preset_minus_one_stop"
+         value="6" />
+        <combo_box.item
+         label="Glow off"
+         name="preset_glow_off"
+         value="7" />
+    </combo_box>
+    <button
+     follows="left|top"
+     height="20"
+     label="Apply preset"
+     layout="topleft"
+     left="236"
+     name="btn_apply_preset"
+     top="342"
+     width="114" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Reset"
+     layout="topleft"
+     left="10"
+     name="btn_reset_selected"
+     tool_tip="Set the selected rows to explicit identity (no trim, still blocks fallback)"
+     top="368"
+     width="100" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Inherit"
+     layout="topleft"
+     left="114"
+     name="btn_inherit_selected"
+     tool_tip="Remove the selected rows' own entry so they follow their wearer or source again (animesh and clones)"
+     top="368"
+     width="100" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Copy"
+     layout="topleft"
+     left="218"
+     name="btn_copy"
+     top="368"
+     width="64" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Paste"
+     layout="topleft"
+     left="286"
+     name="btn_paste"
+     top="368"
+     width="64" />
+    <button
+     follows="left|top"
+     height="20"
+     label="Reset all..."
+     layout="topleft"
+     left="10"
+     name="btn_reset_all"
+     tool_tip="Remove every avatar's light response"
+     top="394"
+     width="100" />
+    <check_box
+     control_name="AvatarLightResponseDebugTint"
+     follows="left|top"
+     height="18"
+     label="Debug: paint adjusted avatars magenta"
+     layout="topleft"
+     left="120"
+     name="chk_debug_tint"
+     tool_tip="Reveals surfaces the trim does not cover: every adjusted surface should turn magenta"
+     top="395"
+     width="230" />
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="10"
+     name="txt_status"
+     top="420"
+     use_ellipses="true"
+     width="340">
+        0 adjusted  |  0 uploaded  |  0 visible
+    </text>
+    <text
+     follows="left|top"
+     height="30"
+     layout="topleft"
+     left="10"
+     name="txt_budget"
+     top="436"
+     visible="false"
+     word_wrap="true"
+     width="340">
+    </text>
+</floater>

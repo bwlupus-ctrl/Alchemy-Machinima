@@ -114,7 +114,7 @@ class LLViewerJoystick final : public LLSingleton<LLViewerJoystick>
     LOG_CLASS(LLViewerJoystick);
 
 public:
-    void init(bool autoenable);
+    void init(bool autoenable, bool apply_defaults = true);
     void initDevice(LLSD &guid);
     bool initDevice(void * preffered_device /*LPDIRECTINPUTDEVICE8*/);
     bool initDevice(void * preffered_device /*LPDIRECTINPUTDEVICE8*/, std::string &name, LLSD &guid);
@@ -153,8 +153,17 @@ protected:
     void agentYaw(F32 yaw_inc);
     void agentJump();
     void resetDeltas(S32 axis[]);
+    void pollForXboxController();
     void loadDeviceIdFromSettings();
     void refreshFromSettings();
+public:
+    // WM_DEVICECHANGE (via LLViewerWindow::handleDeviceChange) marks the
+    // device list dirty; pollForXboxController only enumerates DirectInput
+    // when this is set. Eliminates the periodic main-thread DI8 EnumDevices
+    // walk (a filming micro-stutter every few seconds) — enumeration now
+    // happens only on actual plug/unplug events and once at startup.
+    void setDeviceListDirty() { mDeviceListDirty = true; }
+private:
 #if LIB_NDOF
     static NDOF_HotPlugResult HotPlugAddCallback(NDOF_Device *dev);
     static void HotPlugRemovalCallback(NDOF_Device *dev);
@@ -170,6 +179,10 @@ private:
     bool                    mCameraUpdated;
     bool                    mOverrideCamera;
     U32                     mJoystickRun;
+    bool                    mXboxWasPresent;
+    bool                    mXboxUserReleased;   // user manually chose a different device after the auto Xbox handoff; respect it this session
+    LLSD                    mXboxAutoGuid;        // GUID the auto-poll handed off to, for detecting a manual override
+    bool                    mDeviceListDirty = true;  // true at startup so the first scan enumerates once
 
     // Windows: _GUID as U8 binary map
     // MacOS: long as an U8 binary map

@@ -24,8 +24,15 @@
  */
 
 out vec4 frag_color;
+in vec3 vary_actor_fx_position;
+
+bool actorFxDissolveDiscard(vec3 object_position);
 
 void main()
 {
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
+    {
+        discard;
+    }
     frag_color = vec4(1,1,1,1);
 }

@@ -28,8 +28,12 @@ uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 void passTextureIndex();
 in vec4 emissive;
+in vec4 diffuse_color;
 in vec2 texcoord0;
 
 void calcAtmospherics(vec3 inPositionEye);
@@ -38,6 +42,7 @@ vec3 atmosAmbient();
 vec3 atmosAffectDirectionalLight(float lightIntensity);
 
 out vec4 vertex_color;
+out float vertex_alpha;
 out vec2 vary_texcoord0;
 
 #ifdef HAS_SKIN
@@ -47,6 +52,9 @@ uniform mat4 projection_matrix;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     //transform vertex
     passTextureIndex();
 
@@ -66,6 +74,7 @@ void main()
     calcAtmospherics(pos.xyz);
 
     vertex_color = emissive;
+    vertex_alpha = diffuse_color.a;
 
 
 }

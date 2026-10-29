@@ -84,16 +84,29 @@ uniform vec3 light_direction[8]; // spot direction
 uniform vec4 light_attenuation[8]; // linear, quadratic, is omni, unused, See: LLPipeline::setupHWLights() and syncLightState()
 uniform vec3 light_diffuse[8];
 uniform vec2 light_deferred_attenuation[8]; // light size and falloff
+uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
 
 vec3 srgb_to_linear(vec3 c);
 vec3 linear_to_srgb(vec3 c);
 
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, out vec3 sunlit, out vec3 amblit, out vec3 atten, out vec3 additive);
 vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec2 actorFxPbrMaterial(vec2 roughness_metallic);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+float actorFxAuthoredMaterialResponse();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+#endif
 
 void calcHalfVectors(vec3 lv, vec3 n, vec3 v, out vec3 h, out vec3 l, out float nh, out float nl, out float nv, out float vh, out float lightDist);
 float calcLegacyDistanceAttenuation(float distance, float falloff);
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
 void sampleReflectionProbes(inout vec3 ambenv, inout vec3 glossenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, bool transparent, vec3 amblit_linear);
 
@@ -129,8 +142,43 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance);
 
+// [RigRim] same as above plus the per-light rim params (deferredUtil.glsl)
+vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim);
+
+// [AvatarLightResponse] spec_keep variants (deferredUtil.glsl); alr* from avatarLightResponseF.glsl
+vec3 pbrBaseLightKeep(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 pos, vec3 norm,
+                      float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol,
+                      vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao,
+                      vec3 additive, vec3 atten, float spec_keep);
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld, vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, float spec_keep);
+#ifdef HAS_ACTOR_FX
+vec3 alrEmissive(vec3 e);
+vec3 alrAlbedoLinear(vec3 c);
+float alrRoughness(float r);
+float alrSpecKeep();
+bool alrDebug();
+#endif
+
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     vec3 color = vec3(0,0,0);
@@ -141,7 +189,6 @@ void main()
     waterClip(pos);
 
     vec4 basecolor = texture(diffuseMap, base_color_texcoord.xy).rgba;
-    basecolor.rgb = srgb_to_linear(basecolor.rgb);
 #ifdef HAS_ALPHA_MASK
     if (basecolor.a < minimum_alpha)
     {
@@ -149,14 +196,45 @@ void main()
     }
 #endif
 
+#ifdef HAS_ACTOR_FX
+    bool fx_uv_transform = actorFxUvTransformEnabled();
+    bool fx_rgb_split = actorFxRgbSplitEnabled();
+    vec2 fx_base_uv = base_color_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_base_uv = actorFxUv(fx_base_uv, vary_position);
+        basecolor.rgb = texture(diffuseMap, fx_base_uv).rgb;
+    }
+    if (fx_rgb_split)
+    {
+        basecolor.r = texture(diffuseMap, actorFxRgbSplitUv(fx_base_uv, -1.0)).r;
+        basecolor.b = texture(diffuseMap, actorFxRgbSplitUv(fx_base_uv,  1.0)).b;
+    }
+#endif
+    basecolor.rgb = srgb_to_linear(basecolor.rgb);
+
     vec3 col = vertex_color.rgb * basecolor.rgb;
 
+#ifdef HAS_ACTOR_FX
+    vec2 fx_normal_uv = normal_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+    }
+    vec3 vNt = texture(bumpMap, fx_normal_uv).xyz*2.0-1.0;
+#else
     vec3 vNt = texture(bumpMap, normal_texcoord.xy).xyz*2.0-1.0;
+#endif
     float sign = vary_sign;
     vec3 vN = vary_normal;
     vec3 vT = vary_tangent.xyz;
 
     vec3 vB = sign * cross(vN, vT);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    vNt = mix(vec3(0.0, 0.0, 1.0), vNt,
+              actor_fx_material_response);
+#endif
     vec3 norm = normalize( vNt.x * vT + vNt.y * vB + vNt.z * vN );
 
     norm *= gl_FrontFacing ? 1.0 : -1.0;
@@ -177,22 +255,62 @@ void main()
     scol = sampleDirectionalShadow(pos.xyz, norm.xyz, frag);
 #endif
 
-    vec3 orm = texture(specularMap, metallic_roughness_texcoord.xy).rgb; //orm is packed into "emissiveRect" to keep the data in linear color space
+#ifdef HAS_ACTOR_FX
+    vec2 fx_orm_uv = metallic_roughness_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_orm_uv = actorFxUv(fx_orm_uv, vary_position);
+    }
+    vec3 orm = texture(specularMap, fx_orm_uv).rgb;
+#else
+    vec3 orm = texture(specularMap, metallic_roughness_texcoord.xy).rgb;
+#endif // orm is packed into "emissiveRect" to keep the data in linear color space
 
     float perceptualRoughness = orm.g * roughnessFactor;
     float metallic = orm.b * metallicFactor;
     float ao = orm.r;
+#ifdef HAS_ACTOR_FX
+    ao = mix(1.0, ao, actor_fx_material_response);
+#endif
 
     // emissiveColor is the emissive color factor from GLTF and is already in linear space
     vec3 colorEmissive = emissiveColor;
     // emissiveMap here is a vanilla RGB texture encoded as sRGB, manually convert to linear
+#ifdef HAS_ACTOR_FX
+    vec2 fx_emissive_uv = emissive_texcoord.xy;
+    if (fx_uv_transform)
+    {
+        fx_emissive_uv = actorFxUv(fx_emissive_uv, vary_position);
+    }
+    vec3 emissive_texel = texture(emissiveMap, fx_emissive_uv).rgb;
+    if (fx_rgb_split)
+    {
+        emissive_texel.r = texture(emissiveMap,
+                                   actorFxRgbSplitUv(fx_emissive_uv, -1.0)).r;
+        emissive_texel.b = texture(emissiveMap,
+                                   actorFxRgbSplitUv(fx_emissive_uv,  1.0)).b;
+    }
+    colorEmissive *= srgb_to_linear(emissive_texel);
+#else
     colorEmissive *= srgb_to_linear(texture(emissiveMap, emissive_texcoord.xy).rgb);
+#endif
+
+#ifdef HAS_ACTOR_FX
+    colorEmissive = alrEmissive(colorEmissive); // [AvatarLightResponse] authored glow, before the look emissive
+    col = actorFxApply(col, norm, vary_position, base_color_texcoord.xy);
+    vec2 fx_rm = actorFxPbrMaterial(vec2(perceptualRoughness, metallic));
+    perceptualRoughness = fx_rm.x;
+    metallic = fx_rm.y;
+    colorEmissive = actorFxEmissive(colorEmissive, col);
+    col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
+#endif
 
     // PBR IBL
     float gloss      = 1.0 - perceptualRoughness;
     vec3  irradiance = amblit;
     vec3  radiance  = vec3(0);
     sampleReflectionProbes(irradiance, radiance, vary_position.xy*0.5+0.5, pos.xyz, norm.xyz, gloss, true, amblit);
+    irradiance = applyShadowLift(irradiance, norm.xyz, light_dir, scol); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     vec3 diffuseColor = vec3(0.0);
     vec3 specularColor = vec3(0.0);
@@ -200,12 +318,18 @@ void main()
 
     vec3 v = -normalize(pos.xyz);
 
-    color = pbrBaseLight(diffuseColor, specularColor, metallic, v, norm.xyz, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten);
+    float alr_keep = 1.0; // [AvatarLightResponse] Tame: scales evaluated specular only
+#ifdef HAS_ACTOR_FX
+    alr_keep = alrSpecKeep();
+#endif
+    color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, norm.xyz, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten, alr_keep);
 
     vec3 light = vec3(0);
 
     // Punctual lights
-#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLight(diffuseColor, specularColor, perceptualRoughness, metallic, norm.xyz, pos.xyz, v, light_position[i].xyz, light_direction[i].xyz, light_diffuse[i].rgb, light_deferred_attenuation[i].x, light_deferred_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w);
+    // [RigRim] ...Rim variant carries rig_rim_lights[i]; identical result when
+    // the rim params are zero / rig_rim_mode is 0.
+#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic, norm.xyz, pos.xyz, v, light_position[i].xyz, light_direction[i].xyz, light_diffuse[i].rgb, light_deferred_attenuation[i].x, light_deferred_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], alr_keep);
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
@@ -223,6 +347,9 @@ void main()
     float final_scale = 1;
     if (classic_mode > 0)
         final_scale = 1.1;
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(vec4(color.rgb * final_scale,a), vec4(0));
 #ifdef HAS_VISIBLE_DIFFUSE
     visible_diffuse = vec4(max(diffuseColor, vec3(0)), a);

@@ -103,8 +103,33 @@ vec3 pbrBaseLight(vec3 diffuseColor,
                   vec3 additive,
                   vec3 atten);
 
+// [AvatarLightResponse] spec_keep variant (deferredUtil.glsl): PBR pixels carry Tame in normal.b (envIntensity)
+vec3 pbrBaseLightKeep(vec3 diffuseColor,
+                      vec3 specularColor,
+                      float metallic,
+                      vec3 pos,
+                      vec3 norm,
+                      float perceptualRoughness,
+                      vec3 light_dir,
+                      vec3 sunlit,
+                      float scol,
+                      vec3 radiance,
+                      vec3 irradiance,
+                      vec3 colorEmissive,
+                      float ao,
+                      vec3 additive,
+                      vec3 atten,
+                      float spec_keep);
+
 GBufferInfo getGBuffer(vec2 screenpos);
 vec3 clampHDRRange(vec3 color);
+
+// [EnvIntensity v2] deferredUtil.glsl: shadow lift (0 gain = untouched).
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol);
+// [EnvIntensity v2] luminance-normalised ambient tint (vec3(1) = off); the
+// SSAO ceiling is an absolute clamp, so it is tinted too or a scalar clamp
+// would strip the tint in saturated corners.
+uniform vec3 sky_amb_tint;
 
 void adjustIrradiance(inout vec3 irradiance, float ambocc)
 {
@@ -112,7 +137,12 @@ void adjustIrradiance(inout vec3 irradiance, float ambocc)
     //irradiance = max(amblit_linear, irradiance);
 
 #if defined(HAS_SSAO)
-    irradiance = mix(ssao_effect_mat * min(irradiance.rgb*ssao_irradiance_scale, vec3(ssao_irradiance_max)), irradiance.rgb, ambocc);
+    vec3 ssao_ceiling = vec3(ssao_irradiance_max);
+    if (sky_amb_tint != vec3(1.0)) // [EnvIntensity v2]
+    {
+        ssao_ceiling *= sky_amb_tint;
+    }
+    irradiance = mix(ssao_effect_mat * min(irradiance.rgb*ssao_irradiance_scale, ssao_ceiling), irradiance.rgb, ambocc);
 #endif
 }
 
@@ -179,13 +209,14 @@ void main()
         sampleReflectionProbes(irradiance, radiance, tc, pos.xyz, gb.normal, gloss, false, amblit_linear);
 
         adjustIrradiance(irradiance, ambocc);
+        irradiance = applyShadowLift(irradiance, gb.normal, light_dir, scol); // [EnvIntensity v2] after the SSAO ceiling
 
         vec3 diffuseColor = vec3(0.0);
         vec3 specularColor = vec3(0.0);
         calcDiffuseSpecular(baseColor.rgb, metallic, diffuseColor, specularColor);
 
         vec3 v = -normalize(pos.xyz);
-        color = pbrBaseLight(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten);
+        color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten, 1.0 - gb.envIntensity); // [AvatarLightResponse] Tame carrier
     }
     else if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_HDRI))
     {
@@ -218,6 +249,7 @@ void main()
         sampleReflectionProbesLegacy(irradiance, glossenv, legacyenv, tc, pos.xyz, gb.normal, spec.a, envIntensity, false, amblit_linear);
 
         adjustIrradiance(irradiance, ambocc);
+        irradiance = applyShadowLift(irradiance, gb.normal, light_dir, scol); // [EnvIntensity v2] gain is 0 in classic mode
 
         // apply lambertian IBL only (see pbrIbl)
         color.rgb = irradiance;

@@ -1,0 +1,108 @@
+FIX ROUND 3 — Cinematic Light Rig. Findings from two round-3 adversarial reviews.
+
+Repo: I:\alchemy-machinima. Do NOT build, do NOT run cmake, do NOT run the viewer.
+Apply ALL items in ONE pass. This is the final cleanup before the build.
+
+Round 3 returned ZERO must-fix on both slices — three consecutive rounds at 0 must-fix. These
+are should-fix and nit items; two of them (R3-2, R3-3) are regressions the round-2 U1 fix
+introduced and must not ship. Locate by symbol and context, not by line number.
+
+=============================================================================
+BEHAVIOUR
+=============================================================================
+
+--- R3-1. Legacy integer seed with the high bit set is rejected and overwrites the correct value
+
+  alcinelightrig.cpp applySceneData seed branch: `const S32 integer_seed = data["seed"].asInteger();
+  valid_seed = integer_seed > 0;`. A U32 seed >= 0x80000000 stored as an LLSD integer reads back as
+  a NEGATIVE S32, fails `> 0`, and is stomped to DEFAULT_SEED — while the STRING branch two lines up
+  already accepts "-1" as 4294967295 via convertToU32. The two branches disagree.
+
+  FIX: accept any nonzero bit pattern on the integer path, matching the string path:
+    valid_seed = (integer_seed != 0);
+    seed = static_cast<U32>(integer_seed);
+  Keep the zero rejection (0 -> DEFAULT_SEED with the warning). This only affects foreign/
+  hand-edited scenes (no build of this code has shipped), but the asymmetry is a real latent bug.
+
+--- R3-2. Cross-instance setup refresh stomps a mid-typed setup name  (REGRESSION from round-2 U1)
+
+  panel_cine_light_rig.xml: the setup combo has allow_text_entry="true". The round-2 anchor combo
+  and seed editor both got focus guards; the setup combo did not. So while the user is typing a new
+  preset name into one host's setup combo (before pressing Save), a Save/Delete/Reset in the OTHER
+  host triggers refreshAllSetupLists -> clearRows() + setSelectedByValue on the focused combo, whose
+  setLabel replaces the in-progress text with the last selected row's label. The typed name is lost.
+
+  FIX: guard the setup-combo refresh the same way the anchor combo is guarded — do NOT
+  clearRows()/setSelectedByValue on a setup combo that currently owns keyboard focus (or whose
+  dropdown is open); defer that panel's refresh until it loses focus (the next draw() re-syncs).
+  A refresh triggered by THIS panel's own Save is fine (Save has already consumed the text).
+
+--- R3-3. Stale combo label after another host deletes your selected setup  (from round-2 U1)
+
+  When host A deletes setup X while host B has X selected AND loaded, B's combo (and A's) fall back
+  to selecting "Classic 3-Point" WITHOUT calling loadSetup — so the label reads "Classic 3-Point"
+  while B's live settings are still X's values. The invariant is "the combo label names what is
+  actually loaded."
+
+  FIX: when a panel's currently-selected setup no longer exists after a refresh, do NOT display a
+  false name. Select NOTHING (empty/no selection) and leave live settings untouched — the user's
+  lights keep looking exactly as they did; the combo simply no longer claims a saved preset.
+  Do NOT silently loadSetup(Classic): that would mutate the user's live rig without them asking.
+  (If an empty selection is awkward with this combo widget, a neutral non-selectable "(unsaved)"
+  placeholder label is acceptable, as long as it does not name a real setup that is not loaded.)
+
+=============================================================================
+TESTS
+=============================================================================
+
+--- R3-4. Profile and FX-name goldens are spot checks; a swap of two unpinned rows passes
+
+  alcinelightrigmodel_test.cpp: only profile rows 7/12/18/23 and FX names 0/32 are value-pinned. A
+  shift-by-one is caught, but swapping two unpinned profile rows (e.g. 5 "8000K Moon" <-> 6
+  "10000K Sky") or two interior FX names passes the whole suite — the rest is only bounds/non-empty.
+
+  FIX: pin ALL 24 profile rows (name AND the RGB triple) and ALL 33 FX names to exact goldens taken
+  from the LSL reference (doc/reference/cinematic_studio_render_engine_v20.lsl PROFILES and
+  cinematic_studio_fx_pack1.lsl MY_FX / PCOLORS). Intervals and beams are already fully pinned;
+  match that thoroughness. A swap OR shift of any single row must now fail.
+
+--- R3-5. T3 never crosses an Explosion cycle boundary
+
+  The beat-44/45/63 samples are all in cycle 0, where cycle_start == 0, so the
+  `cycle_start = counter - beat` arithmetic is only exercised in its degenerate form. A bug
+  affecting only cycles >= 1 would pass.
+
+  FIX: add a sample that lands in a later cycle (e.g. cycle 1: a presentation time near beat 65+44
+  .. 65+45) and assert the same ember bit-equality there, so the non-zero cycle_start path is
+  exercised.
+
+=============================================================================
+NITS
+=============================================================================
+
+R3-N1. deleteSetupCallback hard-codes acting_selection = CLASSIC_SETUP_NAME instead of the panel's
+       live selection; combined with the deleted_name fallback this needlessly discards a still-
+       valid selection if the user changed it while the "Delete X?" confirm dialog was up. Use the
+       live selection with the deleted_name fallback.
+
+R3-N2. applySceneData's seed STRING path is lenient where the UI is strict: istream extraction
+       accepts "-5" (wraps to 4294967291) and "42abc" (->42). Zero still cannot slip through, so
+       B1's contract holds, but make the scene string parse reject non-all-digit input for
+       consistency with the UI (fall back to DEFAULT_SEED with the existing warning).
+
+=============================================================================
+OFF-LIMITS — unchanged
+=============================================================================
+
+indra/llprimitive/*; all GLSL; llpresentationtime.* / lltemporalframecontext.*; alweathermodel.*
+and its test; the gate BODIES; the renderDeferredLighting count-before-filter ordering;
+llprismlens.*; lldirectorcast.*; alghostmanipproxy.* / lllocalmesh.*. The nine gate exemptions,
+the llselectmgr rejection, and the three-way applySceneData version split are FINAL — for R3-1
+touch ONLY the seed sub-branch, not the version split around it.
+
+=============================================================================
+REPORT
+=============================================================================
+
+For each R3-1..R3-5, R3-N1, R3-N2: what changed and where, or why not. Then anything you think a
+reviewer got wrong. Do not build.

@@ -39,8 +39,14 @@ class LLVolumeParams;
 class BDMergeMeshPool
 {
 public:
-    // Main thread only (LLMeshRepository::notifyLoadedMeshes).
+    // Main thread only: refresh the shared memory governor.
     static void refreshSettings();
+
+    // Main thread only; called by BDMergeMemoryBudget.
+    static void configure(bool enabled, U64 budget_bytes, bool allow_inserts);
+
+    // Thread-safe live occupancy used by the shared governor.
+    static U64 getBytes();
 
     // Any thread.
     static bool enabled();

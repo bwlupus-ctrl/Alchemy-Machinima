@@ -12,6 +12,7 @@
 #include "altoolcrowdplace.h"
 
 #include "alghoststudio.h"
+#include "alghostplacementadapter.h"
 #include "altoolghostedit.h"
 #include "indra_constants.h"
 #include "llagent.h"
@@ -155,7 +156,7 @@ bool ALToolCrowdPlace::armFor(const LLUUID& owner_id,
     start.mPrototypeAvailable = true;
     start.mHasWorldHit = true;
     start.mWorldHit = worldPoint(draft.mAnchor);
-    start.mInitialYaw = draft.mYaw;
+    start.mInitialYaw = draft.mPatternYaw;
     start.mInitialHeight = draft.mHeight;
     ALGhostInteractionState::Transition started =
         ALGhostInteractionState::reduce(mState, start, mConfig);
@@ -301,21 +302,31 @@ bool ALToolCrowdPlace::ensureLiveSession()
     return true;
 }
 
-bool ALToolCrowdPlace::groundPointAt(S32 x, S32 y,
-                                     LLVector3d& out_global) const
+ALGhostPlacementResolver::ALGhostPlacementHit
+ALToolCrowdPlace::resolveAnchorAt(S32 x, S32 y) const
 {
-    if (!gViewerWindow)
+    // Work-plane fallback height: the last authored anchor's Z if we have
+    // one yet, otherwise the prototype's own foot Z at the moment placement
+    // began. Either way this is a caller-supplied "last-valid/source-foot"
+    // height, never a magic constant.
+    const ALGhostStudio::CrowdPlacementDraft& draft =
+        ALGhostStudio::instance().getCrowdPlacementDraft();
+    const F64 work_plane_z = mState.mHasAnchor
+        ? mState.mAnchor.mZ : draft.mSource.mFoot.mdV[VZ];
+
+    const ALGhostPlacementResolver::Request request =
+        ALGhostPlacementAdapter::screenRequest(x, y, work_plane_z);
+    const ALGhostPlacementResolver::Probes probes =
+        ALGhostPlacementAdapter::realProbes(x, y);
+    const ALGhostPlacementResolver::ALGhostPlacementHit hit =
+        ALGhostPlacementResolver::resolve(request, probes);
+
+    if (sessionMatchesDraft())
     {
-        return false;
+        ALGhostStudio::instance().setCrowdPlacementAnchorInfo(
+            mOwnerId, hit.mBasis, hit.mValid, hit.mWarning);
     }
-    const LLPickInfo pick = gViewerWindow->pickImmediate(
-        x, y, /*pick_transparent*/ false, /*pick_rigged*/ false);
-    if (pick.mPosGlobal.isExactlyZero())
-    {
-        return false;
-    }
-    out_global = pick.mPosGlobal;
-    return out_global.isFinite();
+    return hit;
 }
 
 bool ALToolCrowdPlace::projectedNear(const LLVector3d& point_global,
@@ -490,7 +501,7 @@ void ALToolCrowdPlace::restoreReducerAfterFailedCommit(bool pinned)
     start.mPrototypeAvailable = true;
     start.mHasWorldHit = true;
     start.mWorldHit = worldPoint(draft.mAnchor);
-    start.mInitialYaw = draft.mYaw;
+    start.mInitialYaw = draft.mPatternYaw;
     start.mInitialHeight = draft.mHeight;
     mState = ALGhostInteractionState::reduce(
         ALGhostInteractionState::State(), start, mConfig).mState;
@@ -525,17 +536,40 @@ bool ALToolCrowdPlace::handleHover(S32 x, S32 y, MASK mask)
     ALGhostInteractionState::Event hover;
     hover.mType = ALGhostInteractionState::EVENT_HOVER_HIT;
     hover.mContext = eventContext(x, y, mask);
-    LLVector3d surface;
-    hover.mHasWorldHit = groundPointAt(x, y, surface);
+    // The ladder always produces a finite candidate anchor; only legality can
+    // make it invalid (Blocked). Either way this is a real resolution, never
+    // the old render-hit-only "sky miss = no anchor".
+    const ALGhostPlacementResolver::ALGhostPlacementHit hit =
+        resolveAnchorAt(x, y);
+    hover.mHasWorldHit = hit.mValid;
     if (hover.mHasWorldHit)
     {
-        hover.mWorldHit = worldPoint(surface);
+        hover.mWorldHit = worldPoint(hit.mPointGlobal);
     }
     const bool consumed = reduceEvent(hover);
     gViewerWindow->setCursor(
         mState.mMode == ALGhostInteractionState::MODE_PINNED
             ? UI_CURSOR_CROSS : UI_CURSOR_TOOLCREATE);
     return consumed;
+}
+
+void ALToolCrowdPlace::refreshHoverBeforeCommit(S32 x, S32 y, MASK mask)
+{
+    if (mState.mMode != ALGhostInteractionState::MODE_FOLLOW_CURSOR)
+    {
+        return;
+    }
+    ALGhostInteractionState::Event hover;
+    hover.mType = ALGhostInteractionState::EVENT_HOVER_HIT;
+    hover.mContext = eventContext(x, y, mask);
+    const ALGhostPlacementResolver::ALGhostPlacementHit hit =
+        resolveAnchorAt(x, y);
+    hover.mHasWorldHit = hit.mValid;
+    if (hover.mHasWorldHit)
+    {
+        hover.mWorldHit = worldPoint(hit.mPointGlobal);
+    }
+    reduceEvent(hover);
 }
 
 bool ALToolCrowdPlace::handleMouseDown(S32 x, S32 y, MASK mask)
@@ -547,19 +581,7 @@ bool ALToolCrowdPlace::handleMouseDown(S32 x, S32 y, MASK mask)
 
     // Resolve the click location one last time before pinning.  This prevents
     // a low-frame-rate hover from pinning the previous cursor position.
-    if (mState.mMode == ALGhostInteractionState::MODE_FOLLOW_CURSOR)
-    {
-        ALGhostInteractionState::Event hover;
-        hover.mType = ALGhostInteractionState::EVENT_HOVER_HIT;
-        hover.mContext = eventContext(x, y, mask);
-        LLVector3d surface;
-        hover.mHasWorldHit = groundPointAt(x, y, surface);
-        if (hover.mHasWorldHit)
-        {
-            hover.mWorldHit = worldPoint(surface);
-        }
-        reduceEvent(hover);
-    }
+    refreshHoverBeforeCommit(x, y, mask);
 
     ALGhostInteractionState::Event click;
     click.mType = ALGhostInteractionState::EVENT_LEFT_CLICK;
@@ -641,6 +663,16 @@ bool ALToolCrowdPlace::handleKey(KEY key, MASK mask)
     if (key == KEY_RETURN)
     {
         event.mType = ALGhostInteractionState::EVENT_ENTER;
+        // KEY events carry no cursor position, so use the viewer's own last
+        // known one. Re-resolving here -- exactly like handleMouseDown does
+        // before pinning -- is what makes Enter and click genuinely
+        // symmetric instead of Enter trusting a cached mCurrentHoverValid
+        // that could be stale relative to where the cursor actually is now.
+        if (gViewerWindow)
+        {
+            refreshHoverBeforeCommit(gViewerWindow->getCurrentMouseX(),
+                                     gViewerWindow->getCurrentMouseY(), mask);
+        }
     }
     else if (key == KEY_ESCAPE)
     {

@@ -1,0 +1,55 @@
+Adversarially review the uncommitted diff: the Cinematic Light Rig MULTI-INSTANCE feature (per-subject
+concurrent rigs). The normative spec is doc/CINE_LIGHT_RIG_MULTIINSTANCE_DESIGN.md (read it, esp.
+§A/§B/§B.2a/§D/§E and the MI-* items). This is an architecture refactor on the every-shot render path;
+be skeptical and concrete. Prioritize these, most severe first:
+
+1. R1 — SINGLE-RIG BITWISE (highest). Prove/disprove that a lone enabled+selected SELF rig ticks
+   byte-identically to the pre-change behaviour. Diff tickSelected against the ORIGINAL tick() body
+   (baseline branch has it): are the enable/power gates, facing, scale, group/anchor resolve (SELF =
+   resolve(null) == old resolve(mAnchor) with null mAnchor), memberTrackPoint+OffsetZ, smoother,
+   FX/transition, render+applyFrame, updateShadowPolicy, updateProjectorFlags STATEMENT-IDENTICAL and
+   in the same order? Then diff tickFromBlob against tickSelected: same statements, only the value
+   source swapped (ParamBlob vs LLCachedControl)? Any divergence that changes rendered output is a
+   must-fix.
+
+2. SHADOW INTERLOCK (§B.2a). Verify only the camera-focus rig ever mutates the shared
+   sNoShadowProjectors set: the owns_shadows gate on updateShadowPolicy; the focus rig sourcing its
+   OWN ShadowMode (live if selected, blob if not); applyShadowSuppression running AFTER all ticks and
+   force-suppressing every ENABLED non-focus projector; shutdown removing all rig UUIDs it added.
+   Look for: a non-focus rig un-suppressing its projectors; a rig reading another rig's ShadowMode;
+   the 6-slot cap being exceedable; a former-focus rig left un-suppressed after a focus hand-off.
+
+3. CROSS-INSTANCE STATE LEAK. Confirm every per-instance read on a NON-selected rig comes from its
+   ParamBlob, never gSavedSettings — check ALL side paths, not just readSettings: CookieUUID/gobo,
+   ShadowMode, Gizmo, FX, shaft/hero. A single stray gSavedSettings read on a non-selected tick makes
+   that rig silently mirror the SELECTED rig's value. Verify ParamBlob captures all 49 keys + session
+   state and that flush(fromSettings)/load(toSettings) round-trip loses nothing.
+
+4. EDITING-BUFFER ORDERING (R5). The selector switch must FLUSH outgoing edits (fromSettings ->
+   outgoing blob) BEFORE loading the incoming blob -> settings, and the per-tick mirror
+   (mBlobs[mSelected]=fromSettings) must run BEFORE any tick. Find any path that loses in-progress
+   edits, leaks a stale displayed-state cache from the previous instance, or double-applies.
+
+5. SCENE CROSS-VERSION (§D). Additive instances/selected_slot read AFTER the frozen three-way split;
+   legacy block still written; migration anchor->slot (null->SELF, subjectA..D->A..D, unknown->SELF
+   with mAnchor carrier); NO version bump. Check all four cross-version cases degrade sanely and that
+   a malformed/absent instances array can't crash or wrongly enable rigs.
+
+6. FOCUS HYSTERESIS. margin+dwell filter can't oscillate faster than the dwell; a sustained clear
+   challenger flips exactly once; disabled slots are never chosen; ties resolve to the lower slot.
+
+7. LIFECYCLE / OWNERSHIP. Retiring the singleton across the 5 call sites; per-instance emitter
+   lifecycle (each rig owns its emitters; one rig going dark doesn't touch others); manager shutdown
+   destroys all five and clears its shadow-set additions; no dangling LLPointer or double-free.
+
+8. OFF-LIMITS violations. Confirm ZERO changes to alcinelightrigmodel.*, pipeline/shaders/llprimitive,
+   lldirectorcast.*, scene/preset versions, and the panel/floater XML layout. Flag any that slipped
+   in. NOTE: the implementer added CineLightRigScaleAware to the scene settings list in
+   llfloaterdirector.cpp — judge whether that is a correct, in-scope fix or an unintended behaviour
+   change.
+
+9. TESTS. The 8 new tests (16-23) must FAIL on regression and assert against independent expected
+   values, not self-comparisons. Flag any tautological test (the prior feature shipped one).
+
+Report each finding with file:line, severity (must-fix / should-fix / nit), the concrete failure
+scenario, and a suggested fix. If a claimed invariant holds, say so explicitly. Do not modify code.

@@ -364,6 +364,68 @@ public:
     // For rendering that doesn't use LLDrawInfo for some reason
     static void applyModelMatrix(const LLMatrix4* model_matrix);
     static void invalidateModelMatrixCache();
+    // Upload native per-actor cinematic styling to the currently bound shader.
+    // The UUID overload follows Director identity rules (null explicitly means
+    // You); LLDrawInfo's null mActorFxOwner instead means disabled and is
+    // routed through the draw-info overload/disabled helper.
+    // Returns true when this draw's effective style emits synthetic glow. Call
+    // sites that do not need that classification may ignore the result.
+    // allow_native_wire is reserved for the second GL_LINE draw of classic/
+    // system-avatar body and eye geometry, which the live harvester cannot see.
+    // force_native is reserved for auxiliary coverage sweeps (currently alpha
+    // DoF depth) that must retain native dissolve/cutout semantics even while a
+    // shared colour replay is active.
+    static bool uploadActorFx(const LLUUID& actor_id,
+                              bool allow_native_wire = false,
+                              bool force_native = false);
+    static bool uploadActorFx(const LLDrawInfo& params,
+                              bool force_native = false);
+    static void uploadActorFxDisabled();
+    // [AvatarLightResponse] Per-avatar Diffuse / Tame / Brightness / Glow trim
+    // (doc/AVATAR_LIGHT_RESPONSE_DESIGN.md section 5).  uploadActorFxStyleOnly
+    // is the style upload WITHOUT the response upload (shared-replay sites that
+    // upload the response from the command's own draw info instead).
+    // uploadAvatarLightResponse*: first non-null key with a stored entry wins;
+    // an explicit identity/bypass entry terminates the chain; no entry = identity.
+    // GLOW slot packs z := g (actorghost SWEEP_GLOW only).
+    enum EAlrSlot { ALR_SLOT_BEAUTY = 0, ALR_SLOT_GLOW = 1 };
+    static bool uploadActorFxStyleOnly(const LLUUID& actor_id,
+                                       bool allow_native_wire = false,
+                                       bool force_native = false);
+    static void uploadAvatarLightResponse(const LLUUID& k1,
+                                          const LLUUID& k2 = LLUUID::null,
+                                          const LLUUID& k3 = LLUUID::null);
+    static void uploadAvatarLightResponseTo(LLGLSLShader& shader,
+                                            const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
+                                            EAlrSlot slot = ALR_SLOT_BEAUTY);
+    static void uploadAvatarLightResponseDisabled();
+    static bool actorFxLookNeedsSyntheticBloom(S32 look);
+    // One frame-coherent clock and whole-frame device-coordinate contract for
+    // every shared Actor FX shader family.  The clock freezes across an entire
+    // tiled snapshot and quantizes only at the final upload; frag offset and
+    // screen size use raw framebuffer pixels so procedural motifs cannot seam
+    // between legacy/PBR faces or snapshot tiles.
+    static F32 actorFxFrameTime(F32 requested_fps);
+    static LLVector2 actorFxFragOffset();
+    static LLVector2 actorFxScreenSize();
+    // Replace/Cover Actor FX is replayed from the shared live-proxy queue so it
+    // can use true forward alpha.  Suppress the native beauty draw only when
+    // that exact actor has a frame-ready proxy; every auxiliary render remains
+    // fail-open.  The LLDrawInfo overload resolves primary/fallback ownership.
+    static bool shouldSuppressSharedActorFx(const LLUUID& actor_id);
+    static bool shouldSuppressSharedActorFx(const LLDrawInfo& params,
+                                             bool depth_only = false);
+    // PBR is rendered authoritatively by the shared forward replay for both
+    // Layer and Cover.  This separate query prevents legacy Layer geometry
+    // from inheriting the PBR-only native suppression policy.
+    static bool shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
+                                                bool depth_only = false);
+
+    // Exact SL texture-animation half of the GLTF UV contract.  Shared PBR
+    // replay binds KHR transforms through LLFetchedGLTFMaterial and uses this
+    // helper for texture_matrix0, matching the native scalar path.
+    static void setupGLTFTextureMatrix(const LLMatrix4* texture_matrix);
+    static void teardownGLTFTextureMatrix(const LLMatrix4* texture_matrix);
     void pushBatches(U32 type, bool texture = true, bool batch_textures = false);
     void pushUntexturedBatches(U32 type);
 
@@ -375,7 +437,11 @@ public:
     // writes the current matrix back for next frame. The *Textured variant also
     // binds the diffuse texture for alpha-mask cutout.
     void pushVelocityBatches(U32 type);
-    void pushVelocityBatchesTextured(U32 type);
+    void pushVelocityBatchesTextured(U32 type, bool legacy_material = false);
+    // Multi-material cutout velocity.  The caller binds either the legacy or
+    // GLTF indexed alpha program; this helper binds per-slot base textures,
+    // cutoffs and (for GLTF) KHR base-color transforms.
+    void pushVelocityAlphaBatchesIndexed(U32 type, bool gltf, bool rigged);
     // [BDMerge A5.4-1b] Rigged velocity pushers: upload CURRENT palette
     // (matrixPalette) + PREVIOUS palette (lastMatrixPalette) per (avatar, mesh)
     // key, then draw. Donor: Black Dragon lldrawpool.cpp:838-869/912-948, with
@@ -385,7 +451,7 @@ public:
     // and it is re-uploaded on every key change so a stale palette from the
     // previous avatar can never leak into this draw.
     void pushRiggedVelocityBatches(U32 type);
-    void pushRiggedVelocityBatchesTextured(U32 type);
+    void pushRiggedVelocityBatchesTextured(U32 type, bool legacy_material = false);
     // Upload both palettes for a rigged velocity draw. Returns false if the
     // skin isn't ready (skip the draw). Dedup via lastAvatar/lastMeshId.
     static bool uploadVelocityMatrixPalettes(LLVOAvatar* avatar, LLMeshSkinInfo* skinInfo,
@@ -408,6 +474,7 @@ public:
         GLTF_MAPS_FULL = 0,    // base color + normal + ORM + emissive (GBuffer write)
         GLTF_MAPS_BASE_COLOR,  // base color only (shadow alpha-mask discard)
         GLTF_MAPS_GLOW,        // base color + emissive (glow/emissive pass)
+        GLTF_MAPS_NONE,        // no maps (opaque depth-only geometry)
     };
 
     // Indexed (multi-material) GLTF PBR helpers. Indexed and scalar draw infos
@@ -419,7 +486,9 @@ public:
     //   pushGLTFBatchesIndexed -- renders only multi-material infos (indexed program bound)
     void pushGLTFBatchesScalar(U32 type);
     void pushGLTFBatchesIndexed(U32 type, eGLTFIndexedMaps maps = GLTF_MAPS_FULL);
-    static void pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps maps = GLTF_MAPS_FULL);
+    static void pushGLTFBatchIndexed(LLDrawInfo& params,
+                                     eGLTFIndexedMaps maps = GLTF_MAPS_FULL,
+                                     bool shared_replay = false);
 
     // like pushGLTFBatches, but will not bind textures or set up texture transforms
     void pushUntexturedGLTFBatches(U32 type);

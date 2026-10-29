@@ -36,8 +36,10 @@
 #define AL_ALGHOSTSTUDIO_H
 
 #include "alghostgroupmodel.h"
+#include "alghostplacementresolver.h"
 #include "alformationsolver.h"
 #include "lluuid.h"
+#include "alghostautoanimmodel.h" // [AutoAnimate] llcommon-only API, no avatar include.
 #include "v3math.h"
 #include "v3dmath.h"
 #include "m4math.h"         // frozen attachment matrices
@@ -96,8 +98,17 @@ public:
     // avatar. MIRROR = copy the source's live animation state (default; the
     // current behaviour). DIRECTED = play mDirectedAnim on the clone's OWN
     // motion controller only, ignoring the source. FROZEN = hold the current
-    // pose. Ignored for overlay instances.
-    enum EDriveMode : S32 { DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN };
+    // pose. TRUE_MIRROR = stamp the source's FINAL evaluated pose (post-motion,
+    // post-gaze/IK/Pose-Polish local joint state + animated face morphs) onto
+    // the clone every frame from updatePostObjectList(); the clone's own
+    // controller is paused so nothing competes with the stamp. Heavier than
+    // MIRROR (per-joint copy per clone per frame), so MIRROR stays the default.
+    // Appended LAST so existing numeric values (UI combo, chat) are unchanged.
+    // Ignored for overlay instances.
+    enum EDriveMode : S32
+    {
+        DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR
+    };
     enum ELoopMode : S32 { LOOP_RETRIGGER = 0, LOOP_PLAY_ONCE };
     enum ELockMode : S32
     {
@@ -223,6 +234,11 @@ public:
         ELockMode mLockMode = LOCK_RIGID_UNIT;
         bool mHasFacingPoint = false;
         LLVector3d mFacingPointGlobal;
+        // FACING_SOURCE normally extracts a pure world-Z yaw from the
+        // prototype's rotation (its label says "Source yaw"). Set this to
+        // restore the old behaviour of copying the prototype's FULL
+        // pitched/rolled quaternion instead.
+        bool mPreserveSourceTilt = false;
     };
 
     struct PlacementSourceSnapshot
@@ -273,12 +289,39 @@ public:
         PlacementSourceSnapshot mSource;
         FormationSpec mSpec;
         LLVector3d mAnchor;
-        F32 mYaw = 0.f;
+        // PATTERN rotation: spins the whole formation (slot layout) rigidly
+        // about the anchor pivot -- driven by the crowd tool's wheel/
+        // middle-drag. Formerly the single overloaded "mYaw" that ALSO stood
+        // in for body facing; kept as the persisted concept ("heading") a
+        // future scene-serialization schema would key on, since Ghost Studio
+        // scenes are currently session-only (see the file header) and no
+        // migration exists yet to write.
+        F32 mPatternYaw = 0.f;
+        // BODY facing bias, independent of the pattern's own rotation: an
+        // additive offset applied on top of whatever the facing mode (Author/
+        // "Rotate with formation", camera, target point, ...) resolves to.
+        // Zero reproduces the pre-split behaviour exactly (facing == pattern
+        // yaw for FACING_AUTHOR; unbiased target-facing otherwise).
+        F32 mFacingYawOffset = 0.f;
         F32 mHeight = 0.f;
         U64 mRevision = 0;
         U64 mInputFingerprint = 0;
         U64 mSolutionFingerprint = 0;
         PlacementValidation mValidation;
+        // Last anchor resolution the placement tool reported (surface /
+        // terrain / water / free-space plane / camera depth), for the studio
+        // status line. Not authoritative for the resolved slots themselves --
+        // those already sit at mAnchor. mAnchorValid is the resolver's own
+        // mValid (a legality BLOCK, not merely a warning) -- distinct from
+        // mAnchorWarning, which is also populated for a non-blocking
+        // clamp/water-snap. Without this separate flag a legality failure
+        // collapsed into just "a nonempty warning", which the status line
+        // could not tell apart from "Ready with warnings", and Confirm
+        // stayed wrongly enabled.
+        ALGhostPlacementResolver::EGhostPlacementBasis mAnchorBasis =
+            ALGhostPlacementResolver::EGhostPlacementBasis::WORK_PLANE;
+        bool mAnchorValid = true;
+        std::string mAnchorWarning;
         std::vector<ResolvedFormationSlot> mSlots;
         std::vector<U64> mOverflowMemberIds;
     };
@@ -321,6 +364,12 @@ public:
 
         // ---- entity-clone animation drive (Track B; ignored for overlays) ----
         EDriveMode  mDriveMode = DRIVE_MIRROR;
+        // [AutoAnimate] Shared sealed performance; independent runtime recorder and seed.
+        bool mAutoAnimate = false;
+        F32 mAutoAnimWindow = 0.f;
+        bool mAutoAnimManual = false;
+        U32 mAutoAnimSeedSalt = 0;
+        std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoAnimPool;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
         bool        mPhysicsEnabled = true;
@@ -349,6 +398,12 @@ public:
         EFormationFacing mCrowdFacing = FACING_AUTHOR;
         U32         mCrowdSlot = 0;
         F32         mCrowdBaseYaw = 0.f;
+        // The crowd draft's independent facing-offset bias, persisted onto
+        // the runtime driver at commit time so a live Track/Wave update
+        // (updatePerFrame()) reproduces the SAME authored facing the preview
+        // showed instead of snapping back to an unbiased heading on its
+        // first tick.
+        F32         mCrowdFacingYawOffset = 0.f;
         F64         mCrowdFacingStart = 0.0;
 
         // ---- body turn (independent of look-at above) ----
@@ -541,10 +596,24 @@ public:
                             const LLUUID& target_id, bool keep_facing);
     void      updateLookAt();
     void      updatePerFrame();
+    // [TrueMirror] Runs AFTER gObjectList.update() (llappviewer.cpp), i.e.
+    // after every avatar's updateCharacter() for this frame, so a
+    // DRIVE_TRUE_MIRROR clone reads its source's FINAL pose (motions, then
+    // Pose Polish, then gaze/IK) with zero frame lag. updatePerFrame() runs
+    // BEFORE the object list and cannot see that pose.
+    void      updatePostObjectList();
     bool      refreshEntityClone(const LLUUID& id);   // re-pull source appearance + worn attachments onto the clone
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
     LLGhostAvatar* resolveEntityClone(const LLUUID& id) const;
+    // [AutoAnimate]
+    bool setInstanceAutoAnimate(const LLUUID& id, bool enabled);
+    bool setInstanceAutoAnimWindow(const LLUUID& id, F32 seconds);
+    bool autoAnimateAction(const LLUUID& id, ALGhostAutoAnim::Action action);
+    bool saveAutoAnimate(const LLUUID& id, const std::string& path);
+    bool loadAutoAnimate(const LLUUID& id, const std::string& path);
+    void getAutoAnimateStatus(const LLUUID& id, ALGhostAutoAnim::LearnStatus& status) const;
+    const Instance* findInstanceByRuntime(const LLUUID& runtime) const;
     bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
                                    const LLUUID& directed_anim = LLUUID::null);
     void      refreshLifecycleStates();
@@ -609,6 +678,17 @@ public:
     bool updateCrowdPlacementTransform(const LLUUID& owner_id,
                                        const LLVector3d& anchor,
                                        F32 yaw, F32 height);
+    // Independent of the pattern yaw above: the additive body-facing bias
+    // (see CrowdPlacementDraft::mFacingYawOffset).
+    bool setCrowdPlacementFacingOffset(const LLUUID& owner_id, F32 offset_rad);
+    // Records what the placement tool's anchor resolution rung/valid/warning
+    // was, for the studio status line's basis label and Blocked/Ready
+    // classification. Never fails the draft.
+    bool setCrowdPlacementAnchorInfo(
+        const LLUUID& owner_id,
+        ALGhostPlacementResolver::EGhostPlacementBasis basis,
+        bool valid,
+        const std::string& warning);
     bool setCrowdPlacementPinned(const LLUUID& owner_id, bool pinned);
     bool cancelCrowdPlacement(const LLUUID& owner_id = LLUUID::null);
     PlacementCommitResult commitCrowdPlacement(const LLUUID& owner_id,
@@ -719,6 +799,11 @@ private:
     bool mCrowdCommitInProgress = false;
 
     void stepAllTurns();
+    // [TrueMirror] True if this instance's body facing is owned by the stamped
+    // source root (DRIVE_TRUE_MIRROR entity clone with GhostTrueMirrorCopyFacing
+    // on). The Studio's own yaw writers (keep-facing, turn-to, crowd facing)
+    // are skipped for it so they neither fight the stamp nor drift mRotation.
+    bool trueMirrorOwnsFacing(const Instance& inst) const;
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);
@@ -727,6 +812,7 @@ private:
                                  LLGhostAvatar* new_ghost = nullptr,
                                  bool removing_instance = false);
     void finishPendingRuntimeFreezes();
+    void updateAutoAnimate(); // [AutoAnimate]
     bool applyGroupTransforms(
         const LLUUID& group_id,
         const ALGhostGroupModel::Group* rollback_model = nullptr);

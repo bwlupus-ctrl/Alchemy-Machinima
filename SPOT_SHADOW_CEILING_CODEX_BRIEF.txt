@@ -1,0 +1,80 @@
+IMPLEMENTATION TASK — raise the projector (spot) shadow ceiling from 6 to 10, with a hardware gate and
+rig auto-slots. Repo: I:\alchemy-machinima, branch feature/cine-light-rig (large uncommitted work
+present — leave it; build on top). You IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds;
+codex review adversarially reviews before any build. Locate by symbol/context.
+
+=============================================================================
+READ FIRST — the design is NORMATIVE (adjust ONE number: target 10, not 8)
+=============================================================================
+doc/SPOT_SHADOW_CEILING_DESIGN.md scopes the change for MAX_SPOT_SHADOWS = 8 and enumerates every edit
+site, the texture-unit feasibility, the hardware gate, and the rig auto-slots. FOLLOW IT EXACTLY, with
+ONE change: the TARGET IS 10, not 8. Apply the identical methodology at 10 (10 spot slots). Feasibility:
+10 spot + 4 sun = 14 shadow samplers ~= 30 texture units of the 32 guaranteed on a desktop GPU (~2
+headroom) — so 10 is the practical ceiling and MUST be hardware-gated (see below). Everything at 6-and-
+below stays BYTE-IDENTICAL; sun shadows and the categorical rig priority are untouched.
+
+=============================================================================
+THE EDITS (per the design, at count = 10). Confirm each against the doc's cited lines.
+=============================================================================
+1. pipeline.h: MAX_SPOT_SHADOWS 6 -> 10 (MAX_SHADOW_MATS auto -> 14). Per the design this is the ONLY
+   pipeline.h/.cpp constant edit — all MAX_SPOT_SHADOWS / bdmergeMaxSpotShadows() sites are loops/
+   clamps/array-sizes that auto-adjust. VERIFY none hardcodes 6; report any that do.
+2. CRITICAL — llviewercamera.h camera-ID enum: the shadow loops set sCurCameraID = CAMERA_SPOT_SHADOW0
+   + i (pipeline.cpp:19737, 19888, 20297) for i in [0, spotcount). Today only CAMERA_SPOT_SHADOW0..5
+   exist; at i>=6 the id STOMPS CAMERA_WATER0/1 and beyond. Add CAMERA_SPOT_SHADOW6,7,8,9 CONTIGUOUSLY
+   after CAMERA_SPOT_SHADOW5, shifting the subsequent enum values (CAMERA_WATER0, ...) so NOTHING
+   collides. Audit every consumer of the camera-ID enum for the shift (sizes/switches keyed on these
+   IDs). This is correctness-critical — a wrong enum = water/other cameras corrupted.
+3. shadowUtil.glsl (the ONLY shader with the samplers/dispatch; spotLightF/projectorVolumetricF call in):
+   add shadowMap10,11,12,13 (sampler2DShadow); shadow_matrix[10] -> [14]; spot_shadow_softness[6] ->
+   [10]; extend BOTH index dispatches — sampleSpotShadow AND sampleSpotShadowConservative — with cases
+   for spot slots up to 13 (they map spot slot -> shadowMap4..13). Miss either dispatch or a case and
+   the shader silently samples the wrong/no map.
+4. llshadermgr.cpp/.h: add DEFERRED_SHADOW10,11,12,13 (CONTIGUOUS — the bind loop uses DEFERRED_SHADOW0
+   + i) and register shadowMap10..13 uniform names; fix the already-stale llassert at llshadermgr.cpp
+   :1439 (it references DEFERRED_SHADOW5+1 vs the actual last index — correct it to the new last index).
+5. HARDWARE GATE in bdmergeMaxSpotShadows() (pipeline.cpp:598-601): the runtime max must be derived
+   from GPU texture-image-unit capacity, NOT a bare 10. Key on gGLManager.mNumTextureImageUnits (the
+   pattern at llfeaturemanager.cpp:801-807): allow 10 only when units are sufficient (>= 32), tier down
+   (e.g. 8, then 6) on constrained GPUs, and clamp the setting to that hardware max. So the setting can
+   request up to 10 but a weak GPU silently caps lower. Cross-check the over-budget warning at
+   llglslshader.cpp:520-530.
+6. settings.xml: BDMergeMaxSpotShadows comment "max 6" -> "max 10" (VALUE stays 2 — no migration). Add
+   CineLightRigAutoShadowSlots (BOOL, default true, persisted) with a clear comment.
+7. floater_lightbox_settings.xml: the Max Spot Shadows slider max_val 6 -> 10.
+8. alpanelcinelightrig.cpp: the shadow-slot clamps 6 -> 10 (~:827, :882); extend computeRequestedShadow
+   Slots() to sum across the multi-instance rigs (up to 5 instances x their ShadowMode-allowed
+   projectors); add the AUTO-SLOTS hook.
+9. RIG AUTO-SLOTS (design's option a, opt-in): when CineLightRigAutoShadowSlots is true, on rig enable /
+   ShadowMode change, RAISE-ONLY: BDMergeMaxSpotShadows = max(current, min(sum_requested, hardware_max)).
+   On the rig going fully dark, restore the pre-raise baseline ONLY if the value hasn't been changed by
+   something else meanwhile. It writes a PERSISTED GLOBAL on the user's behalf — surface it in the panel
+   (a checkbox + the existing shadow hint). Sum must span all rig instances, capped at the hardware max.
+10. Per-light shadow-softness registry (added last round): it resolves softness into "the current spot-
+    shadow slots" — extend it to cover up to 10 slots (the uniform array is now [10]).
+
+=============================================================================
+TRAPS / OFF-LIMITS
+=============================================================================
+- BYTE-IDENTICAL at 6-and-below: with the setting at its default (2) and on today's hardware path, the
+  rendered result and the shader (for slots 0-9 as they exist now) must be unchanged. The new samplers/
+  matrix slots are only exercised above 6.
+- SUN shadows (slots 0-3) and the 4-split sun path: DO NOT change.
+- The categorical rig-vs-world priority (alcinelightrigmanager / the pipeline auction) and the shadow-
+  softness math: unchanged except the array-size extension.
+- handleShadowsResized live reallocation must handle 10 (it is already wired, llviewercontrol.cpp:1155).
+- NO scene/settings VERSION bump (design confirms none needed).
+- Do NOT touch the light-rig 5-feature code, multi-instance finals, lens-gaze, or vcam work beyond the
+  slot-count extension points named above.
+
+=============================================================================
+TESTS + REPORT
+=============================================================================
+TUT where pure-testable: the hardware-gate tiering (units -> max), the spot slot -> sampler index
+mapping (each slot returns the right shadowMap), the rig requested-slots sum across instances, and the
+auto-slots raise-only/restore logic. Non-tautological, independent expected values.
+REPORT: every file/site changed at count=10; the camera-enum extension and the consumers you audited;
+both shader dispatches extended; DEFERRED_SHADOW contiguity + the fixed llassert; the hardware-gate
+tiers; the auto-slots behavior; confirmation that 6-and-below is byte-identical and sun shadows are
+untouched; and whether the texture-unit count at 10 stays within the shader's channel budget. Note
+anything you think is wrong (esp. if 10 is too tight and 8 is the safer real ceiling). Do not build.

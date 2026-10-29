@@ -29,12 +29,16 @@
 #define LL_LLACTORMOVER_H
 
 #include "lluuid.h"
+#include "llsd.h"
 #include "v3math.h"
 #include "v3dmath.h"
 #include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
+#include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
+#include "altrajectory.h"   // deterministic C2 path-facing trajectory
+#include "alpathgeometry.h" // exact circle/ellipse/helix path primitives
 
 #include <map>
 #include <vector>
@@ -46,6 +50,7 @@ class LLFace;
 class LLCamera;     // [GhostDeferred] proxy-queue build/cull takes an explicit view
 class LLSpatialGroup;   // [CloneFidelity] shared source-walk callback arg
 class LLViewerObject;   // [CloneFidelity] shared source-walk callback arg
+class LLFetchedGLTFMaterial;
 template <class T> class LLPointer;
 
 class LLActorMover
@@ -61,7 +66,7 @@ public:
     // (byte-identical default behavior). Waypoints are stored in GLOBAL
     // coordinates so a path survives region crossings (same idiom as
     // LLFlycamRecorder::Keyframe). Session-only for now; the accessors below
-    // let scene code read/write nodes + params without touching the internals.
+    // round-trip the authored schema without exposing compiled caches.
     // -----------------------------------------------------------------------
     struct Waypoint
     {
@@ -70,6 +75,7 @@ public:
         F32        mSpeedOverride = 0.f;// local ground speed, m/s (0 = use path speed)
         LLUUID     mAnim;               // per-node anim (null = use loco anim)
         F32        mGroundOffset = 0.f; // manual Z nudge at this node, m
+        F32        mCornerRadius = 0.f; // exact line-to-arc fillet radius, m (0 = off)
         // [ObjectPath] authored yaw offset at this node, radians: the object
         // path mover ADDS this to the tangent facing as a drive passes the
         // node (fake a skid / drift through a corner; interpolated across the
@@ -100,6 +106,19 @@ public:
         LLQuaternion mCamRot;            // camera orientation, world frame
         F32          mCamFov = 0.f;      // vertical FOV, radians (0 = viewer default)
         S32          mCamTransition = 1; // how the camera REACHES this node: 0 cut, 1 ease
+
+        // [ObjectPath] authored world-frame orientation, captured verbatim from
+        // the prop's live rotation by the panel's "Capture Orient" button. What
+        // it MEANS is decided by Path::mRotationMode (evalPathOrientation):
+        // AUTHORED reads it as an absolute world pose; FACE_PATH_PLUS_OFFSET
+        // reads it as "what I wanted the pose to look like here", from which the
+        // tangent-facing component at this node is factored out to leave a pure
+        // extra offset. Ignored in FACE_PATH mode and always ignored by the
+        // avatar walk (whose facing is the turn-rate-smoothed tangent -- same
+        // carve-out as mYawOffset). Rides PathState/undo automatically, like the
+        // other per-node fields.
+        bool         mHasOrient = false;
+        LLQuaternion mOrient;
     };
 
     struct Path
@@ -107,6 +126,7 @@ public:
         // ---- authored data (this is what scene code serializes) ----
         std::vector<Waypoint> mNodes;
         F32    mSpeed        = 1.f;     // nominal ground speed, m/s
+        F32    mCadence      = 3.f;     // animation design speed / foot cadence reference
         S32    mEndMode      = 0;       // 0 stop, 1 loop, 2 ping-pong
         F32    mTension      = 0.5f;    // 0 = tight/near-polyline, 1 = loose/flowing
         F32    mEaseIn       = 0.f;     // accel ramp at path start, s
@@ -116,6 +136,40 @@ public:
         LLUUID mArrivalTarget;          // cast member id (mode 2)
         bool   mGroundFollow = false;   // clamp feet to terrain/prims each frame
         bool   mPitchToSlope = false;   // tilt root pitch to the local slope
+        bool   mAirborne = false;       // authored air path: fly/hover roles, no contacts
+
+        // [ObjectPath] base-rotation mode for the OBJECT path drive. The avatar
+        // walk never reads this (its facing is always the turn-rate-smoothed
+        // tangent -- same carve-out as mYawOffset), so a pathless-of-this-field
+        // avatar scene is unaffected; only ALObjectPathMover::update() switches
+        // on it. FACE_PATH is the default and is the untouched original formula
+        // (tangent facing + skid, start-alignment preserved), so existing prop
+        // paths stay byte-identical. See evalPathOrientation() for AUTHORED /
+        // FACE_PATH_PLUS_OFFSET.
+        enum EObjectPathRotationMode
+        {
+            OBJPATH_ROT_FACE_PATH = 0,             // default: tangent facing + skid
+            OBJPATH_ROT_AUTHORED = 1,               // slerp authored mOrient across nodes
+            OBJPATH_ROT_FACE_PATH_PLUS_OFFSET = 2   // tangent facing * authored offset
+        };
+        S32    mRotationMode = OBJPATH_ROT_FACE_PATH;
+
+        // ---- V2 exact whole-path primitive ---------------------------------
+        // WAYPOINTS preserves the centripetal Catmull-Rom path. The other types
+        // evaluate an exact parametric span across 0..1. mNodes remain event
+        // anchors (dwell/animation/camera metadata) and are compiled onto evenly
+        // spaced primitive parameters; their positions are never approximate
+        // control geometry for a primitive.
+        S32        mShape = ALPathGeometry::WAYPOINTS;
+        LLVector3d mPrimitiveCenterGlobal;
+        F32        mPrimitiveRadiusX = 3.f;
+        F32        mPrimitiveRadiusY = 2.f;
+        F32        mPrimitiveStartDeg = 0.f;
+        F32        mPrimitiveSweepDeg = 360.f;
+        F32        mPrimitiveYawDeg = 0.f;
+        F32        mPrimitivePitchDeg = 0.f;
+        F32        mPrimitiveRollDeg = 0.f;
+        F32        mPrimitiveRise = 3.f;
 
         // ---- P3 sync-to-take: the Flycam Recorder playhead drives the arc ------
         // When mSyncToTake AND a take is loaded (>=1 keyframe, duration > 0), the
@@ -137,23 +191,54 @@ public:
         // Treat as opaque. Built in GLOBAL coords so it is origin-independent
         // (a region crossing does not invalidate it).
         struct ArcSample { F32 mDist; S32 mSeg; F32 mLocalT; };
+        struct CompiledPiece
+        {
+            bool   mIsArc = false;
+            LLVector3d mStart;
+            LLVector3d mEnd;
+            ALPathGeometry::CornerFillet mFillet;
+            F32    mArcStart = 0.f;
+            F32    mArcEnd = 1.f;
+            F32    mStartDistance = 0.f;
+            F32    mEndDistance = 0.f;
+            S32    mNodeAtEnd = -1;
+        };
         bool                   mDirty = true;
         F32                    mTotalLength = 0.f;
         std::vector<F32>       mNodeDist;   // cumulative arc distance at each node
         std::vector<ArcSample> mArc;        // cumulative arc-length lookup
+        std::vector<CompiledPiece> mCornerPieces; // exact line/fillet route, when active
 
-        S32        segmentCount() const;    // n-1 (stop/pingpong) or n (loop)
+        S32        segmentCount() const;    // compiled pieces, else n-1/n
+        bool       isPrimitive() const { return ALPathGeometry::isPrimitive(mShape); }
+        ALPathGeometry::Primitive primitive() const;
+        LLVector3d evalPrimitive(F32 u) const;
+        void       syncPrimitiveNodes();
+        void       compileCornerPieces();
         void       rebuild();               // fills mArc / mNodeDist / mTotalLength
         LLVector3d evalSegment(S32 seg, F32 t) const;   // centripetal CR + tension blend
+        F32        cornerSpeedLimitAt(F32 d) const;
         // position (global) + unit travel tangent (global) at arc distance d
         void       evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tangent) const;
     };
 
-    // path accessors (session-only; scene code reads/writes through these)
+    // Path accessors. Geometry caches and edit history remain session-only;
+    // authored state round-trips through the versioned Director scene schema.
     Path&       editPath(const LLUUID& actor_id);          // creates an empty path if absent
     const Path* getPath(const LLUUID& actor_id) const;     // nullptr when none
     bool        hasWalkablePath(const LLUUID& actor_id) const;   // path with >= 2 nodes
     void        clearPath(const LLUUID& actor_id);
+    LLSD        pathSceneData(const LLUUID& actor_id) const;
+    bool        applyPathSceneData(const LLUUID& actor_id, const LLSD& data);
+    // Explicit, undo-friendly exact-shape authoring. Selecting a shape is a
+    // visible conversion: existing node metadata is retained and evenly mapped;
+    // a pathless actor receives event anchors. Switching back freezes the
+    // currently compiled primitive anchors as an ordinary waypoint path.
+    bool        setPathShape(const LLUUID& actor_id, S32 shape);
+    // Fit an exact half arc or sine wave between the existing first/last nodes.
+    // Per-node metadata is retained and redistributed along the fitted shape.
+    bool        fitPathPrimitiveToEndpoints(const LLUUID& actor_id, S32 shape);
+    bool        centerPathPrimitiveOnActor(const LLUUID& actor_id);
 
     // test harness (chat commands) + panel "Add": append a ground-snapped
     // waypoint at the actor's current rendered position.
@@ -174,7 +259,18 @@ public:
     bool setNodeSpeed(const LLUUID& actor_id, S32 index, F32 speed_override);
     bool setNodeAnim(const LLUUID& actor_id, S32 index, const LLUUID& anim);
     bool setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m);
+    bool setNodeCornerRadius(const LLUUID& actor_id, S32 index, F32 radius_m);
     bool setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_rad);  // [ObjectPath] skid
+    // [ObjectPath] per-node authored orientation (Path::mRotationMode AUTHORED /
+    // FACE_PATH_PLUS_OFFSET). setNodeOrient stores the given WORLD rotation
+    // verbatim (the panel's "Capture Orient" passes the prop's live rotation)
+    // and sets mHasOrient; clearNodeOrient drops back to "no authored pose here"
+    // (AUTHORED falls back to tangent facing at that node; the offset mode falls
+    // back to no extra offset). Does not affect arc-length geometry, but marks
+    // dirty anyway for the same reason the other per-node setters do (one path
+    // to rebuild, never two).
+    bool setNodeOrient(const LLUUID& actor_id, S32 index, const LLQuaternion& orient);
+    bool clearNodeOrient(const LLUUID& actor_id, S32 index);
 
     // [ObjectPath] evaluation helpers shared with the object path mover, so an
     // object drive uses the EXACT speed math the avatar walk uses (per-node
@@ -182,6 +278,16 @@ public:
     // implementation to drift) plus the interpolated per-node yaw offset.
     static F32 evalPathSpeed(const Path& path, F32 dist, bool skip_ease);
     static F32 evalPathYawOffset(const Path& path, F32 dist);
+    // [ObjectPath] interpolated per-node authored orientation at arc distance
+    // dist, bracketed exactly like evalPathYawOffset. as_offset selects how a
+    // node with no authored orientation (mHasOrient == false) contributes:
+    // false (AUTHORED mode) -> that node's own tangent-facing quaternion, so an
+    // un-authored node reads as "keep facing the path"; true
+    // (FACE_PATH_PLUS_OFFSET) -> identity, so an un-authored node adds no extra
+    // rotation on top of the live tangent facing. See llactormover.cpp for the
+    // full derivation (mirrors the Drive start-alignment idiom in
+    // ALObjectPathMover::start()).
+    static LLQuaternion evalPathOrientation(const Path& path, F32 dist, bool as_offset);
 
     // ---- P3 per-node camera (author an actor+camera TAKE inline) --------------
     // Capture a camera into a node from a render-camera pose already resolved to
@@ -319,29 +425,159 @@ public:
     // resolved actor id, and persists across stop/start like the path.
     //
     // Target modes: 0 = path tangent ("look where I'm going", DEFAULT), 1 =
-    // camera, 2 = cast member, 3 = fixed point (global). An unresolvable cast
+    // camera, 2 = cast member, 3 = fixed point (global), 4 = object. An unresolvable cast
     // target / degenerate direction falls back to the path tangent gracefully.
-    enum { GAZE_TANGENT = 0, GAZE_CAMERA = 1, GAZE_CAST = 2, GAZE_POINT = 3 };
+    enum { GAZE_TANGENT = 0, GAZE_CAMERA = 1, GAZE_CAST = 2, GAZE_POINT = 3, GAZE_OBJECT = 4 };
 
-    void   setGazeEnabled(const LLUUID& actor_id, bool on);
-    bool   isGazeEnabled(const LLUUID& actor_id) const;
-    void   setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..3
-    S32    getGazeTargetMode(const LLUUID& actor_id) const;
-    void   setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id);
-    LLUUID getGazeCastTarget(const LLUUID& actor_id) const;
-    void   setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p);
-    void   setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
-    F32    getGazeHeadEyeBlend(const LLUUID& actor_id) const;
-    void   setGazeTorsoAmount(const LLUUID& actor_id, F32 v);        // 0 still chest .. 1 full share
-    F32    getGazeTorsoAmount(const LLUUID& actor_id) const;
-    void   setGazeIntensity(const LLUUID& actor_id, F32 v);          // 0..1
-    F32    getGazeIntensity(const LLUUID& actor_id) const;
-    void   setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
-    F32    getGazeSmoothing(const LLUUID& actor_id) const;
+    // Global render-pose ownership policy. The anatomical chain still decides
+    // each joint's target; priority only decides how completely that target
+    // replaces the animation pose at full acquire.
+    enum EGazePriority
+    {
+        GAZE_PRIORITY_BLEND = 0,
+        GAZE_PRIORITY_HEAD_EYES = 1,
+        GAZE_PRIORITY_UPPER_BODY = 2,
+        // [Machinima] Planted-spine "IK-like" scope: owns torso/neck/head/eyes
+        // like Upper body but NEVER allocates a hips share and NEVER writes
+        // mPelvis, so the base/legs stay put and only the spine leans toward the
+        // target (Turn-body mode handles yaw beyond the planted reach). Resolved
+        // via explicit predicates -- do NOT rely on numeric >= ordering, so this
+        // higher value never accidentally implies pelvis ownership.
+        GAZE_PRIORITY_PLANTED_SPINE = 3
+    };
+
+    // [Machinima] Pose composition: how an ALLOWED joint endpoint is built.
+    // Orthogonal to ownership scope (which joints) and SL anim priority (may
+    // veto the write). Replace is the exact current behavior; Additive overlays
+    // the smallest gaze correction on top of the animation; Blend nlerps the
+    // two local endpoints. Default Replace enters the current statements
+    // verbatim, so the default path is byte-identical.
+    enum EGazeComposition
+    {
+        GAZE_COMPOSE_REPLACE  = 0,
+        GAZE_COMPOSE_ADDITIVE = 1,
+        GAZE_COMPOSE_BLEND    = 2
+    };
+
+    // [Machinima] Spine-recruitment curve. Legacy fills the chain by hard
+    // capacity order (default, byte-identical); Angle-ease drives an
+    // angle-driven smootherstep lean of the spine (Planted spine only in v1).
+    enum EGazeLeanCurve
+    {
+        GAZE_LEAN_LEGACY    = 0,
+        GAZE_LEAN_ANGLE_EASE = 1
+    };
+
+    struct GazeTarget
+    {
+        // RELAXED is eyes-only: the eye-target combo's "Relaxed (eyes idle)"
+        // choice. It carries no aim data -- gazePaint() skips fixation and
+        // vergence for it and drives the eyes with micro-life alone. Never
+        // sent as a HEAD target; setGazeTarget()/the head combo never
+        // produce it.
+        // NEAR_LENS ("just off camera") is also eyes-only: the eyes aim at the
+        // SAME direction the head aims (the camera/head target) but with a
+        // small, slowly-drifting off-lens offset (DirectorGazeNearLensDeg) so
+        // they read as "almost contact but alive". It carries no aim data of
+        // its own; the head keeps aiming at the camera normally.
+        enum EMode { MOTION = 0, CAMERA = 1, CAST_MEMBER = 2, FIXED_POINT = 3, OBJECT = 4, RELAXED = 5, NEAR_LENS = 6 };
+        EMode      mMode = MOTION;
+        LLUUID     mCastRef;
+        LLVector3d mFixedPoint = LLVector3d::zero;
+        LLUUID     mObjectRef;
+        // Per-subject expressive config. Neutral/default values preserve old
+        // scenes; optional preset overrides use -1 as "inherit the base slider".
+        F32        mPersonaDominance = 0.f;
+        F32        mPersonaAffection = 0.f;
+        F32        mPersonaAnxiety = 0.f;
+        // Cue targets inherit the cast member's persona unless an external
+        // author explicitly supplied persona fields for the cue.
+        bool       mPersonaOverride = false;
+        F32        mHeadEyeBlendOverride = -1.f;
+        F32        mTorsoAmountOverride = -1.f;
+        F32        mIntensityOverride = -1.f;
+        F32        mSmoothingOverride = -1.f;
+        bool       mEyelineOverride = false;
+        F32        mEyelineYawDegOverride = 0.f;
+        F32        mEyelinePitchDegOverride = 0.f;
+        F32        mMicroLifeOverride = -1.f;
+        S32        mBlinksOverride = -1; // -1 inherits the global switch
+        F32        mVariationOverride = -1.f;
+        F32        mBreakFrequencyOverride = -1.f;
+        F32        mEaseAcquireOverride = -1.f;
+        F32        mEaseReleaseOverride = -1.f;
+        F32        mDeadZoneDegOverride = -1.f;
+        F32        mBlinkRateScale = 1.f;
+        F32        mVergenceScale = 1.f;
+        // Additional per-actor overrides so no operator-edited row bleeds to
+        // other cast members. -1 means "inherit the matching global control".
+        F32        mCameraRollOverride = -1.f;   // else DirectorGazeCameraRoll
+        F32        mExaggerateOverride = -1.f;    // else DirectorGazeExaggerate
+        S32        mGazePriorityOverride = -1;    // ownership scope; else DirectorGazePriority
+        // [Machinima] SL animation priority for the gaze-yield gate. NOTE the
+        // sentinel differs from the others: -2 = inherit DirectorGazeAnimationPriority,
+        // -1 = Legacy final (always apply, ignore anim priority), 0..6 = yield per
+        // joint to animations of strictly HIGHER effective rotation priority.
+        S32        mAnimPriorityOverride = -2;
+        S32        mCameraModeOverride = -1;      // else DirectorLookAtCameraMode
+        // [Machinima] Phase 2-5 structural overrides. Discrete fields use -1 =
+        // inherit the matching global; continuous fields use -1.f = inherit.
+        // All default to inherit so old scenes and default configs enter none
+        // of the new math.
+        S32        mCompositionOverride = -1;     // EGazeComposition; else DirectorGazeComposition
+        F32        mCompositionMixOverride = -1.f;// Blend mix; else DirectorGazeCompositionMix
+        F32        mChestShareOverride = -1.f;    // else DirectorGazeChestShare (Planted spine)
+        // Limit profile: tri-state mode override (-1 inherit global,
+        // 0 force legacy constants, 1 use this actor's custom profile) plus the
+        // actor's own profile values (only consulted when the resolved mode==1).
+        S32        mLimitProfileModeOverride = -1;
+        ALGazeMath::AnatomicalLimitProfile mLimitProfile;
+        // Lean curve: mode override + continuous threshold/softness/max, each
+        // -1/-1.f = inherit the matching global.
+        S32        mLeanCurveOverride = -1;
+        F32        mLeanThresholdDegOverride = -1.f;
+        F32        mLeanSoftnessDegOverride = -1.f;
+        F32        mLeanMaxDegOverride = -1.f;
+    };
+
+    void        setGazeEnabled(const LLUUID& actor_id, bool on);
+    bool        isGazeEnabled(const LLUUID& actor_id) const;
+    void        setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..4
+    S32         getGazeTargetMode(const LLUUID& actor_id) const;
+    void        setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id);
+    LLUUID      getGazeCastTarget(const LLUUID& actor_id) const;
+    void        setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p);
+    LLVector3d  getGazePointGlobal(const LLUUID& actor_id) const;
+    void        setGazeObjectTarget(const LLUUID& actor_id, const LLUUID& object_id);
+    LLUUID      getGazeObjectTarget(const LLUUID& actor_id) const;
+    void        setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget& target);
+    // Preset-transition entry point: applies @target like setGazeTargetConfig,
+    // but when DirectorGazeTransitionSec > 0 the CONTINUOUS params ease from
+    // the actor's current effective (sentinel-resolved) values to the target's
+    // effective values over that duration with the DirectorGazeEasing curve,
+    // driven per-frame in applyGaze() on the presentation clock (so a blend
+    // keeps running with the gaze panel closed and stays scrub-safe).
+    // DISCRETE fields (mode, target refs, blinks on/off, eyeline flag,
+    // priority, camera mode) switch immediately at transition start.
+    // Duration 0 falls through to the legacy instant snap, byte-identical.
+    void        setGazeTargetConfigBlended(const LLUUID& actor_id, const GazeTarget& target);
+    GazeTarget  getGazeTargetConfig(const LLUUID& actor_id) const;
+    void        setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v);       // 0 eyes-only .. 1 full
+    F32         getGazeHeadEyeBlend(const LLUUID& actor_id) const;
+    void        setGazeTorsoAmount(const LLUUID& actor_id, F32 v);        // 0 still chest .. 1 full share
+    F32         getGazeTorsoAmount(const LLUUID& actor_id) const;
+    void        setGazeIntensity(const LLUUID& actor_id, F32 v);          // 0..1
+    F32         getGazeIntensity(const LLUUID& actor_id) const;
+    void        setGazeSmoothing(const LLUUID& actor_id, F32 v);          // 0 snappy .. 1 very smooth
+    F32         getGazeSmoothing(const LLUUID& actor_id) const;
+    void        setGazeEyelineOffset(const LLUUID& actor_id, F32 yaw_degrees,
+                                     F32 pitch_degrees);
+    F32         getGazeEyelineYaw(const LLUUID& actor_id) const;
+    F32         getGazeEyelinePitch(const LLUUID& actor_id) const;
     // one-line status for the panel (e.g. "Looking at Kestrel", "Gaze off",
     // "Gaze armed -- starts with the walk"). Always fills out; returns false only
     // when the actor id is null.
-    bool   getGazeStatus(const LLUUID& actor_id, std::string& out) const;
+    bool        getGazeStatus(const LLUUID& actor_id, std::string& out) const;
 
     // per-frame gaze paint: called from the avatar update AFTER updateMotions has
     // posed the skeleton, so the override layers on the current anim pose and is
@@ -385,6 +621,7 @@ public:
     void placeAt(const LLUUID& actor_id, const LLVector3& pos);
     bool anyMoving() const { return !mMoves.empty(); }
     bool isMoving(const LLUUID& id) const { return mMoves.count(id) != 0; }
+    bool isDriving(const LLUUID& id) const;
 
     // floater status readout: distance traveled along the CURRENT leg vs the
     // configured path length. Returns false when the actor is not moving.
@@ -462,16 +699,16 @@ public:
     void onActorRuntimeReplaced(const LLUUID& stable_id, const LLUUID& old_id,
                                 const LLUUID& new_id, bool removing_instance);
 
-    // in-world heading preview lines (called from render_ui_3d, same pass as
-    // the debug beacons). Zero cost unless ActorMoverShowHeading is on AND
-    // the Actor Mover floater is open.
-    void renderHeadingPreview();
+    // In-world heading/path preview. The main view calls this while its scene
+    // color + depth target is still bound, so avatars and real actor ghosts
+    // correctly occlude guides. depth_aware=false remains available to tools.
+    void renderHeadingPreview(bool depth_aware = false);
 
     // Lean editing overlay for ONE actor's path (spline + numbered node markers +
-    // hover/selection highlight), called from render_ui_3d while the path-edit tool
-    // is active so markers always show what is being marked -- from the first node --
-    // independent of the Show-path toggle / roster / >=2-node gating above.
-    void renderActorPathOverlay(const LLUUID& actor_id, bool editing, S32 hover_node = -1);
+    // hover/selection highlight), drawn with scene depth while the path-edit tool
+    // is active so markers always show what is being marked -- from the first node.
+    void renderActorPathOverlay(const LLUUID& actor_id, bool editing,
+                                S32 hover_node = -1, bool depth_aware = false);
 
     // [GhostStudio] draw every enabled studio ghost instance (far-to-near)
     // through the model-ghost renderer with its per-instance placement, style
@@ -481,6 +718,56 @@ public:
     // hidden and every floater closed. Self-contained overlay state; zero
     // cost when the studio has no enabled instances.
     void renderStudioGhosts();
+
+    // [ActorStyle/SharedActivation] Frame-local live-replay stream. Actor FX
+    // reuses the exact harvested avatar/attachment geometry and is merged with
+    // world + rigged alpha far-to-near; it is never a late UI overlay. The
+    // queue is valid only in the main world view for the frame in which
+    // collectGhostBatches() built it. These small accessors let the alpha pool
+    // consume one proxy at its sorted turn without exposing frame-lifetime
+    // draw pointers outside this class.
+    bool   hasSharedActorStyleProxies() const;
+    size_t sharedActorStyleProxyCount() const;
+    F32    sharedActorStyleProxyDepth(size_t index) const;
+    // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
+    // before any native/shared alpha is drained so already-blended world alpha
+    // cannot leak through a styled actor whose sorted colour turn is later.
+    void   renderSharedActorStyleDepthPrepass();
+    bool   renderSharedActorStyleProxy(size_t index);
+
+    // Fail-open exclusion contract for native beauty renderers. True means a
+    // Cover/Replace actor has a complete, same-frame replay and can safely have
+    // its native COLOR draw skipped. Layer actors deliberately return false.
+    // Accepts either the stable Director style id or the runtime/wearer id.
+    bool isSharedActorStyleReady(const LLUUID& actor_id) const;
+
+    // Same-frame complete shared replay for either Layer or Cover. Native
+    // beauty uses this to stay authored/unstyled while the proxy owns the FX;
+    // unlike isSharedActorStyleReady(), Layer is included here.
+    bool isSharedActorStyleActive(const LLUUID& actor_id) const;
+
+    // PBR beauty/glow is authoritative in the shared replay for both Layer and
+    // Cover.  Native PBR call sites use this stricter, whole-actor readiness
+    // gate; legacy Layer still keeps its authored native draw underneath the
+    // actorghost treatment.
+    bool isSharedActorStylePBRReady(const LLUUID& actor_id) const;
+
+    // True only while renderSharedActorStyleProxy() is replaying geometry.
+    // Native suppression must bypass itself in this scope or it would also
+    // suppress the shared replay's source batches.
+    bool isRenderingSharedActorStyle() const { return mRenderingSharedActorStyle; }
+
+    // Shared Actor FX replay hook for the classic/system avatar body. The
+    // readiness query is fail-open (false unless both body + rigid-eye world
+    // actorghost programs linked). Call the draw once for solid and once for
+    // blend so the shared proxy queue can interleave authored alpha correctly.
+    bool canRenderSystemActorGhost(LLVOAvatar* avatar,
+                                   const LLUUID& style_id) const;
+    bool renderSystemActorGhost(LLVOAvatar* avatar,
+                                const LLUUID& style_id,
+                                bool blend_sweep,
+                                bool depth_only = false,
+                                bool depth_available = false);
 
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
     // Refresh each roster actor's cached impostor snapshot (a billboard image of
@@ -524,7 +811,14 @@ public:
         std::function<void(LLVOAvatar* wearer, LLViewerObject* object, LLFace* face)>;
     void walkGhostSourceGeometry(LLVOAvatar* avatar,
                                  const ghost_rigged_source_cb_t& rigged_cb,
-                                 const ghost_static_source_cb_t& static_cb);
+                                 const ghost_static_source_cb_t& static_cb,
+                                 // Shared activation alone needs the legacy
+                                 // authored-glow duplicate. Keeping it on a
+                                 // distinct callback prevents Ghost Studio and
+                                 // clone fidelity from treating PASS_GLOW_RIGGED
+                                 // as ordinary beauty geometry.
+                                 const ghost_rigged_source_cb_t&
+                                     shared_legacy_glow_cb = {});
 
     void collectGhostBatches();
 
@@ -539,6 +833,7 @@ public:
     {
         LLDrawInfo* mInfo = nullptr;
         U32         mPass = 0;      // LLRenderPass::PASS_*_RIGGED it was collected from
+        LLSpatialGroup* mGroup = nullptr; // source visibility; frame-local
     };
 
     // [GhostStudio] this frame's collected batches for a wearer (nullptr /
@@ -714,6 +1009,37 @@ public:
         F32        mDistortAmount = 0.5f;    // 0..1 selected distortion strength
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
         F32        mEffectFps = 0.f;        // 0 smooth; 1..30 quantized ghostTime
+        // [AvatarLightResponse] Ghost Studio instance id for a Studio CLONE draw (light-response key);
+        // null for path ghosts and shared Actor FX live replays => identity.
+        LLUUID     mLightResponseKey;
+        F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1
+        // actorghostF historically composites after tone mapping and therefore
+        // authors its output in display/sRGB space.  The native live Wire pass
+        // is submitted into the linear HDR world target instead; flag that one
+        // caller so the shader converts its final colour exactly once.
+        bool       mWorldLinear = false;
+        // Shared world replay needs the composition mode independently of depth
+        // ownership: Layer and a partially faded Cover alpha-blend Clone over
+        // the native/background colour, while only full-opacity Cover may use
+        // opaque RGB replacement. Ghost Studio leaves this false.
+        bool       mCoverMode = false;
+        // Layer normally composites over the retained native actor. Dissolve is
+        // coverage-changing, so its live-world replay must instead own the
+        // authored surface while the Layer alpha remains treatment strength.
+        // A non-negative value carries that strength; Ghost Studio and every
+        // ordinary shared draw leave the sentinel untouched.
+        F32        mCoverageLayerStrength = -1.f;
+        // Shared Layer already has the authored native beauty/depth in the
+        // world target. Re-running the colorless full-body depth prime would
+        // be redundant (and GL_LESS would reject it at equality), so that one
+        // caller may use the native surface as its front-layer depth. Cover
+        // leaves this false because its suppressed native beauty must be
+        // replaced by a complete proxy-owned depth surface.
+        bool       mNativeDepthAvailable = false;
+        // Shared Cover primes its solid/masked silhouette before the merged
+        // alpha stream. This draw-only mode emits that depth and skips every
+        // styled colour sweep; Layer never needs it because native depth stays.
+        bool       mDepthOnly = false;
         // [R2-1] output brightness multiplier (rides ghostFx.w; 1 = as-is).
         // The ghost is unlit in the post-tonemap overlay, so this is how a
         // clone sits into a night scene instead of glowing fullbright.
@@ -736,6 +1062,27 @@ public:
 
 private:
     LLActorMover() = default;
+
+    struct LocalMotionHandle
+    {
+        LLUUID mSourceAnim;
+        LLUUID mActualAnim;
+        LLUUID mOwnerToken;
+        bool   mOwnsMotion = false;
+        bool   mControlsMotion = false;
+        bool   mPendingLoad = false;
+
+        void clear()
+        {
+            mSourceAnim.setNull();
+            mActualAnim.setNull();
+            mOwnerToken.setNull();
+            mOwnsMotion = false;
+            mControlsMotion = false;
+            mPendingLoad = false;
+        }
+        bool valid() const { return mActualAnim.notNull(); }
+    };
 
     struct Move
     {
@@ -775,6 +1122,26 @@ private:
         S32       mLastDwellNode = -1;  // last node already dwelled (avoid re-trigger)
         LLUUID    mDwellAnim;           // per-node anim started for the dwell (stop on resume)
 
+        LocalMotionHandle mLocomotion;
+        LocalMotionHandle mSecondaryLocomotion;
+        LocalMotionHandle mDwellMotion;
+        F64       mTravelOdometer = 0.0;
+        F32       mPhaseOrigin = 0.f;
+        F32       mSecondaryNominal = 3.f;
+        F32       mSecondaryPhaseOrigin = 0.f;
+        S32       mRole = 0;
+        S32       mSecondaryRole = 0;
+        LLUUID    mFailedLocomotionAnim; // suppress per-frame retry of one bad asset
+        F32       mTransitionElapsed = 0.f;
+        F32       mTransitionDuration = 0.25f;
+        ALTrajectory::ScalarProgram mYawProgram;
+        F64       mYawClock = 0.0;
+        F32       mYawTarget = 0.f;
+        bool      mYawProgramValid = false;
+        bool      mContactDiscontinuity = false;
+        bool      mAirborne = false;
+
+
         // ---- TP-away suspend/resume state ---------------------------------
         // A suspended walk freezes here: applyOverride() returns early (no clock
         // advance, no stale placement) until the state machine resumes or
@@ -790,6 +1157,32 @@ private:
     };
 
     static F32 pathParam(const Move& mv, F32* face); // leg progress s, facing
+
+    bool startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
+                          const LLUUID& source_anim, bool allow_ao,
+                          F32 initial_weight = 1.f,
+                          bool external_sample = true,
+                          F64 sample_base_time = 0.0,
+                          F32 sample_phase = -1.f);
+    void stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle);
+    bool setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handle,
+                              F64 traveled_distance, F32 nominal_speed,
+                              F32 phase_origin = 0.f);
+    bool setLocalMotionWeight(LLVOAvatar* av, LocalMotionHandle& handle, F32 weight);
+    F32 resolveLocalMotionPhase(LLVOAvatar* av, const LocalMotionHandle& handle,
+                                F32 configured_phase) const;
+    void startLocomotion(LLVOAvatar* av, Move& mv);
+    void stopLocomotion(LLVOAvatar* av, Move& mv);
+    void updateLocomotionSample(LLVOAvatar* av, Move& mv);
+    bool resolveLocomotionRole(LLVOAvatar* av, S32 requested_role,
+                               LLUUID& anim, F32& nominal_speed,
+                               F32& phase_origin, bool& allow_ao) const;
+    S32 desiredLocomotionRole(LLVOAvatar* av, const Move& mv, F32 speed) const;
+    void beginLocomotionTransition(LLVOAvatar* av, Move& mv, S32 target_role);
+    void updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
+                              F32 dt, bool discontinuity);
+    void updatePathFacing(Move& mv, F32 target_yaw, F32 target_pitch,
+                          F32 dt, bool discontinuity);
 
     // per-frame evaluation of an active path traversal (called from
     // applyOverride once the path clock has advanced this frame)
@@ -829,6 +1222,7 @@ private:
     {
         std::vector<Waypoint> mNodes;
         F32    mSpeed        = 1.f;
+        F32    mCadence      = 3.f;
         S32    mEndMode      = 0;
         F32    mTension      = 0.5f;
         F32    mEaseIn       = 0.f;
@@ -838,6 +1232,17 @@ private:
         LLUUID mArrivalTarget;
         bool   mGroundFollow = false;
         bool   mPitchToSlope = false;
+        bool   mAirborne = false;
+        S32        mShape = ALPathGeometry::WAYPOINTS;
+        LLVector3d mPrimitiveCenterGlobal;
+        F32        mPrimitiveRadiusX = 3.f;
+        F32        mPrimitiveRadiusY = 2.f;
+        F32        mPrimitiveStartDeg = 0.f;
+        F32        mPrimitiveSweepDeg = 360.f;
+        F32        mPrimitiveYawDeg = 0.f;
+        F32        mPrimitivePitchDeg = 0.f;
+        F32        mPrimitiveRollDeg = 0.f;
+        F32        mPrimitiveRise = 3.f;
         bool   mSyncToTake   = false;
         F32    mSyncLeadTrail = 0.f;
     };
@@ -855,13 +1260,54 @@ private:
     {
         // authored (panel writes these)
         bool       mEnabled      = false;
-        S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_POINT
+        S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_OBJECT
         LLUUID     mCastTarget;             // cast member (mode GAZE_CAST)
         LLVector3d mPoint;                  // fixed point, global (mode GAZE_POINT)
+        LLUUID     mObjectTarget;           // in-world object target (mode GAZE_OBJECT)
+        F32        mPersonaDominance = 0.f;
+        F32        mPersonaAffection = 0.f;
+        F32        mPersonaAnxiety = 0.f;
+        F32        mHeadEyeBlendOverride = -1.f;
+        F32        mTorsoAmountOverride = -1.f;
+        F32        mIntensityOverride = -1.f;
+        F32        mSmoothingOverride = -1.f;
+        bool       mEyelineOverride = false;
+        F32        mEyelineYawDegOverride = 0.f;
+        F32        mEyelinePitchDegOverride = 0.f;
+        F32        mMicroLifeOverride = -1.f;
+        S32        mBlinksOverride = -1;
+        F32        mVariationOverride = -1.f;
+        F32        mBreakFrequencyOverride = -1.f;
+        F32        mEaseAcquireOverride = -1.f;
+        F32        mEaseReleaseOverride = -1.f;
+        F32        mDeadZoneDegOverride = -1.f;
+        F32        mBlinkRateScale = 1.f;
+        F32        mVergenceScale = 1.f;
+        // Per-actor override mirrors of the matching global controls (-1 = inherit).
+        // Consumed in gazePaint; keep gate-off byte-identical when left at -1.
+        F32        mCameraRollOverride = -1.f;
+        F32        mExaggerateOverride = -1.f;
+        S32        mGazePriorityOverride = -1;
+        // [Machinima] SL animation priority for the gaze-yield gate: -2 inherit
+        // DirectorGazeAnimationPriority, -1 Legacy final, 0..6 selected priority.
+        S32        mAnimPriorityOverride = -2;
+        // [Machinima] Phase 2-5 structural override mirrors (see GazeTarget).
+        // All inherit by default so gate-off / default output is byte-identical.
+        S32        mCompositionOverride = -1;
+        F32        mCompositionMixOverride = -1.f;
+        F32        mChestShareOverride = -1.f;
+        S32        mLimitProfileModeOverride = -1;
+        ALGazeMath::AnatomicalLimitProfile mLimitProfile;
+        S32        mLeanCurveOverride = -1;
+        F32        mLeanThresholdDegOverride = -1.f;
+        F32        mLeanSoftnessDegOverride = -1.f;
+        F32        mLeanMaxDegOverride = -1.f;
         F32        mHeadEyeBlend  = 0.7f;   // 0 = eyes only, 1 = full head+neck+torso
         F32        mTorsoAmount   = 0.25f;  // torso share; 0 = still chest, 1 = full aim
         F32        mIntensity     = 1.f;    // overall weight 0..1
         F32        mSmoothing     = 0.5f;   // 0 = snappy, 1 = very smooth
+        F32        mEyelineYawDeg = 0.f;    // actor-local off-lens trim, +/-15 degrees
+        F32        mEyelinePitchDeg = 0.f;  // actor-local off-lens trim, +/-10 degrees
         // runtime (paint carries these; not authored)
         F32        mEnv           = 0.f;    // ease-in/out envelope 0..1
         bool       mDirValid      = false;  // mSmoothDir seeded yet
@@ -873,13 +1319,106 @@ private:
         bool       mAppliedSlewing = false; // traversing a large clamp seam
         F32        mAppliedPitch  = 0.f;    // actually applied head-chain aim
         F32        mAppliedYaw    = 0.f;
+        F32        mTorsoAimPitch = 0.f;    // extra torso-only chase behind applied aim
+        F32        mTorsoAimYaw   = 0.f;
+        // [Machinima] behind-shoulder / no-snap runtime (see
+        // resolveBehindShoulderChainYaw in llactormover.cpp). While the
+        // target stays within the chain's physical yaw reach the resolver is
+        // a bit-exact pass-through of the raw feed; these only engage once
+        // the target goes beyond reach (behind the actor), where they hold
+        // the committed shoulder across the +-180 seam and then sweep the
+        // chain feed to the other shoulder through the FRONT, rate-limited.
+        bool       mChainYawValid = false;  // mChainYaw seeded yet
+        F32        mChainYaw      = 0.f;    // resolved no-snap chain-feed yaw
+        F32        mBehindShoulderSign = 0.f; // +-1 committed shoulder beyond reach, 0 none
+        bool       mBehindSweeping = false; // front sweep to the other shoulder in flight
         F32        mBehindEnv     = 1.f;    // smooth Release-policy weight
         U32        mLastFrame     = 0xFFFFFFFF;  // per-frame temporal-advance guard
+        // Preset transition runtime (DirectorGazeTransitionSec / Easing).
+        // Captures sentinel-RESOLVED endpoints for every continuous gaze
+        // param when a preset is applied through the blended entry point and
+        // eases between them on presentation dt in applyGaze(). Inactive by
+        // default so the legacy snap path stays byte-identical.
+        struct ParamTransition
+        {
+            // Continuous blended params, indices into mFrom/mTo. Discrete
+            // fields (mode, refs, blinks, eyeline flag, priority, camera
+            // mode) are never here -- they hard-switch at transition start.
+            enum EParam
+            {
+                P_DOMINANCE = 0, P_AFFECTION, P_ANXIETY,
+                P_HEAD_EYE, P_TORSO, P_INTENSITY, P_SMOOTHING,
+                P_EYELINE_YAW, P_EYELINE_PITCH,
+                P_MICRO_LIFE, P_VARIATION, P_BREAK_FREQ,
+                P_EASE_ACQ, P_EASE_REL, P_DEAD_ZONE,
+                P_BLINK_RATE, P_VERGENCE,
+                P_CAMERA_ROLL, P_EXAGGERATE,
+                P_COUNT
+            };
+            bool mActive   = false;
+            F32  mElapsed  = 0.f;
+            F32  mDuration = 0.f;
+            U32  mEasing   = 2;              // DirectorGazeEasing at start
+            // Once-per-frame advance guard OWN to the transition (distinct
+            // from Gaze::mLastFrame, which gates the envelope advance): both
+            // applyGaze() and the Director look-at path call the advance, and
+            // whichever runs first in a frame wins without double-stepping.
+            U32  mLastFrame = 0xFFFFFFFF;
+            F32  mFrom[P_COUNT] = {};        // resolved effective, pre-commit
+            F32  mTo[P_COUNT] = {};          // resolved effective, post-commit
+            // The authored target this transition eases toward, raw sentinels
+            // included: completion restores these override values exactly so
+            // the settled state is byte-identical to a legacy snap, and
+            // setGazeTargetConfig() uses it to recognize a re-snap of the
+            // identical config (the cast mirror forwarding our own write).
+            GazeTarget mAuthored;
+        };
+        ParamTransition mParamTransition;
+        // Coordinated gaze motor state (spec 6A). Only touched on the
+        // DirectorGazeMotionPrograms gate-on path; reset on release / runtime
+        // replace so re-enabling re-initializes on the current target. The
+        // legacy path never reads or writes it (gate-off stays byte-identical).
+        ALGazeMotor::GazeMotorState mGazeMotor;
     };
+    // ---- Preset transition helpers (see Gaze::ParamTransition) --------------
+    // Resolve the CURRENT effective value of every continuous gaze param:
+    // direct fields as-is, resolved runtime copies (head/eye blend, torso,
+    // intensity, smoothing, eyeline) as-is, and override-or-global fields via
+    // the same override>=0 rule gazePaint() consumes them with. A -1/INHERIT
+    // sentinel is never used as a numeric endpoint.
+    static void resolveGazeBlendValues(const Gaze& g,
+                                       F32 out[Gaze::ParamTransition::P_COUNT]);
+    // Write one blended frame of continuous values into the runtime Gaze,
+    // with the same clamps setGazeTargetConfig() applies.
+    static void writeGazeBlendValues(Gaze& g,
+                                     const F32 v[Gaze::ParamTransition::P_COUNT]);
+    // Land the transition: TO endpoint plus the authored raw override values
+    // (sentinels restored) so the settled state matches a legacy snap exactly.
+    static void finishGazeParamTransition(Gaze& g);
+    // Raw advance: accumulate dt and ease/finish. Callers go through
+    // advanceGazeParamTransition(), which owns the once-per-frame guard.
+    void stepGazeParamTransition(Gaze& g, F32 dt);
+    // Once-per-frame transition advance shared by BOTH per-frame gaze paths
+    // (applyGaze and applyDirectorLookAt -- the Director path skips
+    // applyGaze entirely, so it must tick the blend itself). Computes the
+    // same presentation dt as the envelope advance; no-op when inactive or
+    // when the other path already advanced this frame.
+    void advanceGazeParamTransition(Gaze& g);
+    // Director-path consumption: replace the CONTINUOUS fields the authored
+    // @target sets with the current blended concrete values from @g, so a
+    // Director-driven actor eases a preset change exactly like the
+    // applyGaze() path instead of snapping. Inherited (-1) fields are left
+    // alone and keep resolving through the Director base fallbacks.
+    static void overlayGazeTransition(const Gaze& g, GazeTarget& target);
     struct DirectorJointPose
     {
         bool         mValid = false;
         LLQuaternion mRotation;
+    };
+    struct DirectorVisualParamPose
+    {
+        bool mValid = false;
+        F32  mWeight = 0.f;
     };
     struct DirectorGaze
     {
@@ -888,27 +1427,66 @@ private:
         bool             mStrengthValid = false;
         S32              mMode = 0;
         DirectorJointPose mRoot;
+        DirectorJointPose mPelvis;
         DirectorJointPose mTorso;
+        DirectorJointPose mChest;   // planted-spine chest split (capture/restore beside mTorso)
         DirectorJointPose mNeck;
         DirectorJointPose mHead;
         DirectorJointPose mEyeLeft;
         DirectorJointPose mEyeRight;
         DirectorJointPose mAltEyeLeft;
         DirectorJointPose mAltEyeRight;
+        DirectorVisualParamPose mBlinkLeft;
+        DirectorVisualParamPose mBlinkRight;
         bool             mBodyYawValid = false;
+        bool             mBodyTurnActive = false;
         F32              mBodyYaw = 0.f;
         U32              mBodyLastFrame = 0xFFFFFFFF;
         LLUUID           mTurnAnim;       // exact built-in/AO UUID Director started
         LLUUID           mTurnSourceAnim; // canonical TURNLEFT/RIGHT AO state
         bool             mOwnsTurnAnim = false;
         bool             mTurnAOOverrideActive = false;
+        S32              mTurnPendingDirection = 0;
+        F32              mTurnPendingSeconds = 0.f;
+        F32              mTurnStopSeconds = 0.f;
+        F32              mTurnRestartDelay = 0.f;
+        bool             mAcquisitionValid = false;
+        bool             mWasSelected = false;
+        bool             mReactionPending = false;
+        F64              mAcquireStartPresentation = 0.0;
+        F32              mReactionDelay = 0.f;
+        LLActorMover::GazeTarget mLastTarget;
+        bool             mCueOverride = false;
+        LLActorMover::GazeTarget mCueFromBaseTarget;
+        LLActorMover::GazeTarget mCueFromTarget;
+        F32              mCueFromTargetBlend = 1.f;
+        F32              mCueTargetBlend = 1.f;
+        F32              mCueEyeWeight = 1.f;
+        F32              mCueHeadWeight = 1.f;
+        F32              mCueBodyWeight = 1.f;
+        F32              mCueLidWiden = 0.f;
+        F32              mCueHeadRecoilPitch = 0.f;
+        bool             mLastGateActive = false;
+        U64              mLastGateCutSerial = 0;
     };
     // per-frame gaze solve helpers (file-scope math lives in the cpp)
     void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
-                   bool constrain_eye_cone);
-    void captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime);
+                   bool constrain_eye_cone, bool allow_natural_break,
+                   DirectorGaze* director_runtime = nullptr,
+                   F32 body_turn_threshold_deg = 90.f,
+                   const GazeTarget* eye_target = nullptr,
+                   // [Machinima] Goal 3b: keyframed influence multiplier on the
+                   // FINAL write envelope. 1.f (the default / empty track) takes
+                   // the exact legacy env assignments; a value < 1 scales the
+                   // write so influence 0 performs NO gaze write (animation
+                   // shows) while the aim/motor state stays warm.
+                   F32 timeline_influence = 1.f);
+    bool resolveGazeObjectCenter(const LLUUID& object_id, LLVector3& out_agent);
+    void captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime,
+                                   bool capture_blinks);
     void restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime);
-    bool applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime);
+    bool applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime,
+                               const LLVector3& target_direction);
     void updateDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime,
                                      S32 direction);
     void stopDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime);
@@ -937,9 +1515,106 @@ private:
     // skeleton, so their mAvatar is the control avatar, not the wearer) are
     // bucketed under the wearing actor so the whole outfit ghosts as one body.
     std::map<LLUUID, std::vector<GhostBatch> > mGhostBatches;
+    // Shared-activation-only PASS_GLOW_RIGGED duplicates. These never enter
+    // mGhostBatches, Ghost Studio, path ghosts, or clone fidelity auditing.
+    std::map<LLUUID, std::vector<GhostBatch> >
+        mSharedActorLegacyGlowBatches;
     // [R2-2] per-wearer NON-RIGGED worn-attachment faces (collar/jewelry/flexi),
     // collected alongside the batches each frame; same lifetime rules
     std::map<LLUUID, std::vector<GhostStaticFace> > mGhostStaticFaces;
+
+    // [ActorStyle/SharedActivation] Same-frame alpha-stream items. Solid/masked
+    // geometry is one actor item; every authored alpha component is a separate
+    // item so the third stream can interleave it far-to-near with native world,
+    // rigged alpha and other styled actors. ActorStyle is intentionally copied
+    // into primitive fields here because lldirectorcast.h depends on this header.
+    enum class ESharedActorStylePart : U8
+    {
+        ACTOR_SOLID,
+        RIGGED_BLEND,
+        STATIC_BLEND,
+        SYSTEM_BLEND
+    };
+
+    struct SharedActorPBRCommand
+    {
+        // Exactly one of mBatch.mInfo / mStaticFace.mFace is populated.  An
+        // indexed rigged batch remains one command and one geometry draw; its
+        // per-vertex texture_index selects the complete material-array contract.
+        GhostBatch mBatch;
+        GhostStaticFace mStaticFace;
+        LLFetchedGLTFMaterial* mMaterial = nullptr; // scalar or representative indexed material
+        LLDrawInfo* mGlowInfo = nullptr;             // matched authored sidecar
+        U8 mAlphaMode = 0;                           // ESharedActorFxPBRAlphaMode
+        bool mRigged = false;
+        bool mIndexed = false;
+        bool mAuthoredGlow = false;
+    };
+
+    struct SharedActorStyleProxy
+    {
+        LLUUID mStyleId;
+        LLUUID mWearerId;
+        LLVOAvatar* mAvatar = nullptr; // non-owning; mFrameStamp only
+        // Filtered from the permissive Ghost Studio harvest to geometry that
+        // belongs to the current main-world cull only. Copies descriptors, not
+        // VBOs/faces; the pointed-to render data remains frame-local.
+        std::vector<GhostBatch> mBatches;
+        // Coverage-owner PASS_GLOW_RIGGED sidecars matched to the base geometry
+        // in this exact sorted item. Used by Cover and Layer+Dissolve only;
+        // never fed to drawGeometryGhost beauty.
+        std::vector<GhostBatch> mLegacyGlowBatches;
+        // Legacy BLEND geometry has no separate PASS_GLOW_RIGGED sidecar: the
+        // native alpha pool replays the base DrawInfo in-place. When shared
+        // coverage suppresses that native draw, retain its exact base range for
+        // authored-only bloom replay after this component's shared beauty.
+        std::vector<GhostBatch> mLegacyBlendGlowBatches;
+        // Same contract for non-rigged worn-attachment PASS_GLOW. GhostBatch is
+        // reused as a frame-local DrawInfo/range carrier; no skin is expected.
+        std::vector<GhostBatch> mStaticLegacyGlowBatches;
+        // Static BLEND faces likewise emit from their base face/range in the
+        // alpha pool and therefore cannot be represented by PASS_GLOW.
+        std::vector<GhostStaticFace> mStaticLegacyBlendGlowFaces;
+        std::vector<GhostStaticFace> mStaticFaces;
+        std::vector<SharedActorPBRCommand> mPBRCommands;
+        LLVector3 mFootAgent;
+        F32 mAlphaDepth = 0.f;
+        F32 mAlpha = 0.f;
+        S32 mStyle = 0;
+        bool mUseActorHue = true;
+        F32 mHue = 200.f;
+        F32 mPixelSize = 0.f;
+        F32 mShimmerSpeed = 0.f;
+        F32 mShimmerAmount = 0.f;
+        F32 mGlitch = 0.f;
+        S32 mDistortion = 0;
+        F32 mDistortionAmount = 0.f;
+        F32 mBrightness = 1.f;
+        F32 mEffectFps = 0.f;
+        F32 mDissolveProgress = 0.5f;
+        ESharedActorStylePart mPart = ESharedActorStylePart::ACTOR_SOLID;
+        bool mActive = false;
+        // Cover composition/opacity semantics. This deliberately remains false
+        // for coverage-changing Layer+Dissolve.
+        bool mSuppressible = false;
+        // Native main-world beauty/glow ownership. Cover always owns it;
+        // Layer owns it only for Dissolve so holes cannot reveal native colour.
+        bool mSuppressNativeBeauty = false;
+        bool mCoverageReplacement = false;
+        bool mPBRReady = false;
+        bool mDepthPrimed = false;
+    };
+    void buildSharedActorStyleQueue();
+    bool renderSharedActorStyleProxyItem(SharedActorStyleProxy& proxy,
+                                         bool depth_only);
+    bool renderSharedActorPBRCommands(const SharedActorStyleProxy& proxy,
+                                      bool depth_only);
+    bool renderSharedActorLegacyGlowCommands(
+        const SharedActorStyleProxy& proxy);
+    std::vector<SharedActorStyleProxy> mSharedActorStyleProxies;
+    U32 mSharedActorStyleFrame = 0xFFFFFFFF;
+    U32 mSharedActorStyleDepthFrame = 0xFFFFFFFF;
+    bool mRenderingSharedActorStyle = false;
 
     // [GhostDeferred/P0] frame-local proxy queue + diagnostics counters, built by
     // buildGhostDeferredQueue() and (P1) consumed by the deferred submission.
@@ -961,6 +1636,13 @@ private:
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime
+    struct GazeObjectCenterCache
+    {
+        U32 mFrame = 0xFFFFFFFF;
+        bool mValid = false;
+        LLVector3 mCenter;
+    };
+    std::map<LLUUID, GazeObjectCenterCache> mGazeObjectCenters;
 
     // P2 edit selection: the path key under edit + the selected node index
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)

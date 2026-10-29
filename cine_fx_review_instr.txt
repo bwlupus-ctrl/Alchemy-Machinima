@@ -1,0 +1,11 @@
+Adversarially review the uncommitted diff for ONE change only: the 15 new FX (ids 33-47) + 14 new presets added to the Cinematic Light Rig (spec: doc/CINE_FX_PRESETS_EXPANSION.md). Ignore all other uncommitted work (already reviewed). Files: alcinelightrigmodel.cpp/.h, cine_light_rig_presets.xml, tests/alcinelightrigmodel_test.cpp. Cite file:line. Most severe first.
+
+1. FX PURITY / BYTE-STABILITY (highest — the golden tests enforce this but can't be run here). Every new FX (ids 33-47) MUST be a pure closed-form function of (fx, seed, t): NO std::rand/Math.random, NO static/member mutable state, NO frame counter, NO wall-clock/LLTimer, NO persistent accumulation. Only the existing helpers phaseSin/phaseCos, unitHash, valueNoise, positiveFmod/Mod. Scrub-safe: the SAME t must always yield the SAME output (so scrubbing a timeline back/forth is deterministic). Flag any FX that reads state or a non-(fx,seed,t) input. Also: NO new FX may write a gel (the rig re-layers the operator gel). Verify EV clamping/black uses the -10 idiom, and colour changes step the 24-profile table (not synthesized colours).
+
+2. TABLE/SWITCH CONSISTENCY. FX_COUNT=48 must match: the FX name table, the interval table, the initializeFX base-pose switch, and the evalFX switch. Every id 33-47 has exactly one entry in EACH, no gap/duplicate, no out-of-range index into the 24-profile or beam tables (a bad index = crash or garbage). Confirm ids 0-32 (existing FX) are byte-identical.
+
+3. PRESETS. The 14 new presets in cine_light_rig_presets.xml: well-formed maps, exactly 4 lights each, every profile/beam/gel index within the valid range, radius/EV/ratio within their ranges, byte-exact enum names. They must not break the loader or shift/alter the 35 existing presets (existing entries byte-identical). Genre/Mood tagging consistent.
+
+4. TESTS. The updated count assertions + name/interval mirror tables + the random_fx seed-separation list {33,34,35,37,41,42,43,44} are correct and non-tautological; the FX id set they iterate now covers 0-47.
+
+Report each finding: file:line, severity (must-fix/should-fix/nit), concrete failure, fix. Explicit verdict on (1) all 15 FX are pure/scrub-safe, and (2) existing FX+presets byte-identical. Do not modify code.

@@ -1,0 +1,93 @@
+FOLLOW-UP TASK — finish the Cinematic Light Rig display gizmo
+
+Repo: I:\alchemy-machinima. You implemented this feature in the previous turn.
+Do NOT build, do NOT run cmake, do NOT run the viewer.
+
+=============================================================================
+YOU WERE RIGHT TO STOP — THE ALLOWLIST WAS WRONG, NOT YOU
+=============================================================================
+
+Your report said:
+
+  "The design explicitly requires a call from llviewerdisplay.cpp beside
+   LLPrismLens::renderCameraGuides(), while that file is outside the
+   modification allowlist ... Implementing a functional gizmo therefore
+   requires authorization to modify llviewerdisplay.cpp."
+
+That was a defect in the brief, not in the design. The allowlist was derived from
+design doc §3.1, which omitted llviewerdisplay.cpp while §8 still put the
+display-only gizmo in delivery 1. You were correct to refuse rather than exceed the
+allowlist. Authorization is now granted for exactly that one file.
+
+Verified in-tree: LLPrismLens::renderCameraGuides() is called at
+indra/newview/llviewerdisplay.cpp:1812. The CineLightRigGizmo setting already
+exists at indra/newview/app_settings/settings.xml:124.
+
+=============================================================================
+THE TASK
+=============================================================================
+
+Make the gizmo checkbox actually do something. Ship the DISPLAY-ONLY wire-cone
+gizmo described in the design doc: a role-coloured wireframe cone per active rig
+light showing where it sits and where it aims.
+
+DISPLAY ONLY. No picking, no selection, no drag-editing — drag-editing is
+deferred (design doc §8 item 5) and stays deferred.
+
+Read for the drawing pattern: the client-side wireframe overlay in
+llprismlens.cpp (the camera frustum gizmo) — UI shader, no depth write, world
+coordinates, hidden while the UI is hidden and while filming. Mirror that
+approach; do not invent a new one.
+
+=============================================================================
+FILES YOU MAY MODIFY — ONLY THESE THREE
+=============================================================================
+
+  indra/newview/llviewerdisplay.cpp   ONE call beside LLPrismLens::renderCameraGuides()
+                                      at line 1812. Nothing else in this file.
+  indra/newview/alcinelightrig.h      the render entry point declaration
+  indra/newview/alcinelightrig.cpp    the gizmo drawing implementation
+
+Everything else remains OFF-LIMITS exactly as before — in particular all GLSL
+shaders, indra/llprimitive/*, pipeline.cpp (the six gate edits are final; add
+nothing), llprismlens.* (template to copy from, not a host to edit), and every
+other file you already delivered. Do NOT revisit or "improve" the rest of the
+feature in this turn.
+
+=============================================================================
+REQUIREMENTS
+=============================================================================
+
+1. Gated on the existing CineLightRigGizmo setting. Off = zero work done and
+   provably zero render-state change. Prove the off path is inert (CLAUDE.md rule 1).
+2. Hidden when the UI is hidden and while filming, matching the prism camera-guide
+   behaviour.
+3. Role colours matching the rig's KEY / FILL / RIM / BG identity.
+4. Draw only for lights that are currently ON. An off light draws nothing.
+5. Touch NO shared GL state that outlives the draw. Anything you enable, you
+   restore. The beauty pass must be byte-identical with the gizmo off AND with it
+   on-but-no-rig-active. This is the specific failure class CLAUDE.md rule 1 was
+   written for — a GL_BLEND enable that leaked into the beauty pass and made
+   opaque surfaces transparent.
+6. No allocation per frame in the draw path if the surrounding code avoids it.
+
+=============================================================================
+ALSO: THE FOUR DESIGN-DOC DEFECTS YOU FOUND
+=============================================================================
+
+Your report flagged four contradictions in doc/CINEMATIC_LIGHT_RIG_DEEP_DESIGN.md:
+the gizmo/allowlist contradiction (now resolved), §6.5.1 Shaft/Hero controls with no
+storage or layout defined in §3.4/§3.5, the preset schema omitting beam_name while
+the prose requires it, and §5.2 saying 13 randomness effects while listing 14.
+
+Your resolutions (controller-owned session state; store beam_name; use the explicit
+14) are accepted — keep them. Do not change that code now.
+
+Do NOT edit the design document.
+
+=============================================================================
+REPORT
+=============================================================================
+
+State what you changed in each of the three files, how the off path is inert, what
+GL state you touch and where you restore it, and anything you are unsure about.

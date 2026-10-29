@@ -39,30 +39,13 @@
 class FSVirtualTrackpad;
 class LLButton;
 class LLCheckBoxCtrl;
+class LLComboBox;
 class LLLineEditor;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLTabContainer;
+class LLTextBox;
 class FSLoadPoseTimer;
-
-/// <summary>
-/// Describes how to load a pose file.
-/// </summary>
-typedef enum E_LoadPoseMethods
-{
-    ROTATIONS               = 1,
-    POSITIONS               = 2,
-    SCALES                  = 3,
-    ROTATIONS_AND_POSITIONS = 4,
-    ROTATIONS_AND_SCALES    = 5,
-    POSITIONS_AND_SCALES    = 6,
-    ROT_POS_AND_SCALES      = 7,
-    HAND_RIGHT              = 8,
-    HAND_LEFT               = 9,
-    FACE_ONLY               = 10,
-    SELECTIVE               = 11,
-    SELECTIVE_ROT           = 12,
-} E_LoadPoseMethods;
 
 /// <summary>
 /// Describes the columns of the avatars scroll-list.
@@ -270,6 +253,11 @@ public:
     void onAnimPlay();
     void onAnimStop();
     void onAnimStopAll();
+    // Bridge the nearby-anim list into the Director Anim Switchboard: drop the
+    // selected animation into the switchboard slot chosen in the combo below.
+    void onAnimSendToSwitchboard();
+    void onPoseSendToSwitchboard();
+    void refreshSwitchboardSlotCombo();
 
     // UI Event Handlers
     void onAvatarsRefresh();
@@ -539,6 +527,13 @@ public:
     LLScrollListCtrl* mPosesScrollList{ nullptr };
     LLScrollListCtrl* mHandPresetsScrollList{ nullptr };
     LLScrollListCtrl* mAnimPlaybackScrollList{ nullptr };
+    LLComboBox*       mAnimSwitchboardSlotCombo{ nullptr };
+    LLButton*         mAnimToSwitchboardBtn{ nullptr };
+    LLTextBox*        mAnimSwitchboardStatus{ nullptr };
+    LLComboBox*       mPoseSwitchboardSlotCombo{ nullptr };
+    LLComboBox*       mPoseSwitchboardLoadMethodCombo{ nullptr };
+    LLButton*         mPoseToSwitchboardBtn{ nullptr };
+    LLTextBox*        mPoseSwitchboardStatus{ nullptr };
 
     // [BDMerge] target avatar/animesh id -> set of animation ids WE started locally,
     // so Stop / Stop All can reliably stop exactly what this floater played.

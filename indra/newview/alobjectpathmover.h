@@ -76,6 +76,65 @@ public:
     void stopAll();
     bool isDriving(const LLUUID& root_id) const { return mDrives.count(root_id) != 0; }
 
+    // ---- orientation capture (panel "Capture Orient") ----
+    // resolves root_id and writes its LIVE world rotation to out_rot; false
+    // when unresolvable. A thin public wrapper over the same resolve used
+    // internally, so the panel never needs its own object lookup.
+    static bool getWorldRotation(const LLUUID& root_id, LLQuaternion& out_rot);
+
+    // ---- oscillation / rock / spin (session-only, additive, neutral by
+    // default) ----
+    // Config lives keyed by root id like mDrives, but in its OWN map: it
+    // persists across Drive/stop (tuning a hover doesn't need re-entering every
+    // time you hit Stop), and is dropped only when the prop leaves the roster
+    // (toggleTarget), same lifetime as its path.
+    enum EHoverWave { HOVER_WAVE_FULL = 0, HOVER_WAVE_HALF = 1 };
+    enum ERockAxis  { ROCK_AXIS_X = 0, ROCK_AXIS_XY = 1, ROCK_AXIS_XYZ = 2 };
+    enum ESpinAxis  { SPIN_AXIS_X = 0, SPIN_AXIS_Y = 1, SPIN_AXIS_Z = 2 };
+    enum EShuttleAxis { SHUTTLE_AXIS_X = 0, SHUTTLE_AXIS_Y = 1, SHUTTLE_AXIS_Z = 2,
+                        SHUTTLE_AXIS_XZ = 3 };
+
+    struct Hover
+    {
+        bool mOn = false;
+        F32  mAmpMeters = 0.2f;   // sine amplitude, m
+        F32  mFreqHz = 0.25f;
+        S32  mWave = HOVER_WAVE_FULL; // FULL = sine, HALF = |sine| (LSL half-wave hover)
+    };
+    struct Rock
+    {
+        bool mOn = false;
+        S32  mAxis = ROCK_AXIS_X;  // which local axes the sine angle drives
+        F32  mAmpDeg = 5.f;
+        F32  mFreqHz = 0.25f;
+    };
+    struct Spin
+    {
+        bool mOn = false;
+        S32  mAxis = SPIN_AXIS_Z;
+        F32  mDegPerSec = 30.f;
+    };
+    struct Effects
+    {
+        Hover mHover;
+        Rock  mRock;
+        Spin  mSpin;
+    };
+
+    Effects&       editEffects(const LLUUID& root_id);        // creates a default (all-off) entry if absent
+    const Effects* getEffects(const LLUUID& root_id) const;   // nullptr when none configured
+    void           clearEffects(const LLUUID& root_id);
+
+    // ---- simple axis shuttle ----
+    // Builds a straight 2-node ping-pong path at the prop's CURRENT position
+    // (replacing any existing path on it) and starts driving it -- a thin
+    // convenience over appendWaypointHere()+editPath()+start() that reuses the
+    // whole engine, so a shuttle inherits oscillation/spin/orientation/seated-
+    // carry same as any authored path. False when the prop is unresolvable or
+    // the axis selection is degenerate.
+    bool buildAxisShuttle(const LLUUID& root_id, S32 axis, bool negative,
+                          F32 distance_m, F32 speed, F32 xz_slope_deg);
+
     // ---- per-frame drive ----
     // called once from the main idle loop (llappviewer): advances every drive
     // and re-asserts the rendered transform. Zero cost with no drives.
@@ -102,8 +161,22 @@ private:
         // delta) * R0, where yaw delta = tangent yaw now - tangent yaw at start)
         LLQuaternion mStartRot;         // object world rotation at start
         F32          mStartTangentYaw = 0.f;    // path tangent yaw at start, radians
+        // Last VALID tangent yaw, held when the tangent is vertical (a pure-Z
+        // shuttle): atan2(0,0) is undefined and the ping-pong return leg's
+        // atan2(-0,-0) = -pi would spuriously flip the prop 180 deg. Init to
+        // mStartTangentYaw; only updated when the horizontal tangent is nonzero.
+        F32          mLastTangentYaw = 0.f;
+        // [Oscillation/Spin] elapsed drive time, s -- the clock hover/rock/spin
+        // phase off. Own accumulator (not mDist/arc-length) so it keeps running
+        // while mArrived holds the prop at a stop-mode end, and resets cleanly
+        // on the next start() like mDist does. Frozen by the same FreezeTime
+        // early-return that freezes mDist.
+        F32          mEffectTime = 0.f;
     };
     std::map<LLUUID, Drive> mDrives;
+
+    // [Oscillation/Spin] session-only per-prop effect config; see Effects above.
+    std::map<LLUUID, Effects> mEffects;
 
     uuid_vec_t mRoster;
 };

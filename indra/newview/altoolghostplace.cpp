@@ -13,7 +13,9 @@
 
 #include "indra_constants.h"        // KEY_ESCAPE
 #include "alghoststudio.h"
+#include "alghostplacementadapter.h"
 #include "altoolghostedit.h"
+#include "llagent.h"
 #include "lltoolmgr.h"
 #include "llviewerwindow.h"         // gViewerWindow, pickImmediate
 
@@ -111,12 +113,31 @@ void ALToolGhostPlace::disarm(bool notify_cancel)
 // ---------------------------------------------------------------------------
 bool ALToolGhostPlace::handleMouseDown(S32 x, S32 y, MASK mask)
 {
-    // normal world pick, avatars excluded (rigged false) so the ray falls
-    // through a body to the floor behind it -- same pick as the path tool
-    LLPickInfo pick = gViewerWindow->pickImmediate(x, y, /*transparent*/ false, /*rigged*/ false);
-    if (pick.mPosGlobal.isExactlyZero())
+    // Work-plane fallback height: the target instance's own current foot Z
+    // when we have one (this is the "source-foot height" the resolver ladder
+    // wants), otherwise the agent's own height for the facing-point picker
+    // (which has no instance yet).
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLVector3d unit_foot;
+    LLQuaternion unit_rotation;
+    F32 unit_scale = 1.f;
+    const bool have_unit_transform = mInstance.notNull() &&
+        studio.getUnitTransform(mInstance, unit_foot, unit_rotation, unit_scale);
+    const F64 work_plane_z = have_unit_transform
+        ? unit_foot.mdV[VZ] : gAgent.getPositionGlobal().mdV[VZ];
+
+    // Shared placement resolver: a sky/air render-pick miss now falls
+    // through to an independent terrain ray, then a bounded work plane, then
+    // a bounded camera-depth point -- open-space placement (over water, off
+    // in the void, above a terrain dip the render pick skipped) is no longer
+    // simply impossible. Only legality can still block the resolved anchor.
+    const ALGhostPlacementResolver::ALGhostPlacementHit hit =
+        ALGhostPlacementResolver::resolve(
+            ALGhostPlacementAdapter::screenRequest(x, y, work_plane_z),
+            ALGhostPlacementAdapter::realProbes(x, y));
+    if (!hit.mValid)
     {
-        return true;    // sky-miss: consumed, still armed for another try
+        return true;    // blocked (or truly unresolvable): consumed, still armed
     }
 
     // The crowd-facing picker is intentionally a data-only branch. Move the
@@ -125,27 +146,22 @@ bool ALToolGhostPlace::handleMouseDown(S32 x, S32 y, MASK mask)
     if (mPointPickCallback)
     {
         PointPickCallback accepted = std::move(mPointPickCallback);
-        accepted(true, pick.mPosGlobal);
+        accepted(true, hit.mPointGlobal);
     }
     else
     {
-        ALGhostStudio& studio = ALGhostStudio::instance();
         const ALGhostGroupModel::Group* group =
             studio.groupForMember(mInstance);
         const bool group_key =
             group && group->mId == mInstance;
-        LLVector3d unit_foot;
-        LLQuaternion unit_rotation;
-        F32 unit_scale = 1.f;
-        if (!studio.getUnitTransform(
-                mInstance, unit_foot, unit_rotation, unit_scale))
+        if (!have_unit_transform)
         {
             LLToolMgr::getInstance()->clearTransientTool();
             return true;
         }
         if (mFacingTarget)
         {
-            const LLVector3d delta = pick.mPosGlobal - unit_foot;
+            const LLVector3d delta = hit.mPointGlobal - unit_foot;
             if (delta.mdV[VX] * delta.mdV[VX] + delta.mdV[VY] * delta.mdV[VY] >= 0.000001)
             {
                 const LLQuaternion facing(
@@ -168,20 +184,20 @@ bool ALToolGhostPlace::handleMouseDown(S32 x, S32 y, MASK mask)
                 {
                     member->mLookTarget = ALGhostStudio::LOOK_TARGET_POINT;
                     member->mLookTargetId.setNull();
-                    member->mLookPointGlobal = pick.mPosGlobal;
+                    member->mLookPointGlobal = hit.mPointGlobal;
                 }
             }
         }
         else if (group_key)
         {
             studio.transformGroup(
-                mInstance, pick.mPosGlobal,
+                mInstance, hit.mPointGlobal,
                 unit_rotation, unit_scale);
         }
         else
         {
             studio.transformUnit(
-                mInstance, pick.mPosGlobal,
+                mInstance, hit.mPointGlobal,
                 unit_rotation, unit_scale);
         }
     }

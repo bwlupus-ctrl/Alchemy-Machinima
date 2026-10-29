@@ -55,8 +55,10 @@
 // most important memory metric for texture streaming
 //  On Windows, this should agree with resource monitor -> performance -> memory -> available
 //  On OS X, this should be activity monitor -> memory -> (physical memory - memory used)
-// NOTE: this number MAY be less than the actual available memory on systems with more than MaxHeapSize64 GB of physical memory (default 16GB)
-//  In that case, should report min(available, sMaxHeapSizeInKB-sAllocateMemInKB)
+// Raw immediately reusable physical memory. The effective allocation budget
+// below also accounts for commit availability and the process-private cap.
+U32Kilobytes LLMemory::sAvailSystemPhysicalMemInKB(U32_MAX);
+U32Kilobytes LLMemory::sAvailCommitInKB(U32_MAX);
 U32Kilobytes LLMemory::sAvailPhysicalMemInKB(U32_MAX);
 
 // Installed physical memory
@@ -69,6 +71,8 @@ U32Kilobytes LLMemory::sMaxHeapSizeInKB(U32_MAX);
 U32Kilobytes LLMemory::sAllocatedMemInKB(0);
 
 U32Kilobytes LLMemory::sAllocatedPageSizeInKB(0);
+U32Kilobytes LLMemory::sAllocatedPrivateMemInKB(0);
+bool LLMemory::sSystemLowMemory(false);
 
 
 static LLTrace::SampleStatHandle<F64Megabytes> sAllocatedMem("allocated_mem", "active memory in use by application");
@@ -103,15 +107,33 @@ void LLMemory::updateMemoryInfo()
     LL_PROFILE_ZONE_SCOPED;
 
     sMaxPhysicalMemInKB = gSysMemory.getPhysicalMemoryKB();
-
-    U32Kilobytes avail_mem;
-    LLMemoryInfo::getAvailableMemoryKB(avail_mem);
-    sAvailPhysicalMemInKB = avail_mem;
+    sSystemLowMemory = false;
 
 #if LL_WINDOWS
-    PROCESS_MEMORY_COUNTERS counters;
+    MEMORYSTATUSEX state = {};
+    state.dwLength = sizeof(state);
+    if (GlobalMemoryStatusEx(&state))
+    {
+        sAvailSystemPhysicalMemInKB = U32Kilobytes::convert(U64Bytes(state.ullAvailPhys));
+        // This is the maximum additional commit available to this process;
+        // unlike physical availability it also catches commit-limit exhaustion.
+        sAvailCommitInKB = U32Kilobytes::convert(U64Bytes(state.ullAvailPageFile));
+    }
+    else
+    {
+        LL_WARNS() << "GlobalMemoryStatusEx failed" << LL_ENDL;
+    }
 
-    if (!GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters)))
+    static HANDLE low_memory = CreateMemoryResourceNotification(LowMemoryResourceNotification);
+    BOOL is_low = FALSE;
+    sSystemLowMemory = low_memory && QueryMemoryResourceNotification(low_memory, &is_low) && is_low;
+
+    PROCESS_MEMORY_COUNTERS_EX counters = {};
+    counters.cb = sizeof(counters);
+
+    if (!GetProcessMemoryInfo(GetCurrentProcess(),
+                              reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+                              sizeof(counters)))
     {
         LL_WARNS() << "GetProcessMemoryInfo failed" << LL_ENDL;
         return ;
@@ -119,16 +141,20 @@ void LLMemory::updateMemoryInfo()
 
     sAllocatedMemInKB = U32Kilobytes::convert(U64Bytes(counters.WorkingSetSize));
     sAllocatedPageSizeInKB = U32Kilobytes::convert(U64Bytes(counters.PagefileUsage));
-    sample(sVirtualMem, sAllocatedPageSizeInKB);
+    sAllocatedPrivateMemInKB = U32Kilobytes::convert(U64Bytes(counters.PrivateUsage));
 
 #elif defined(LL_DARWIN)
+    U32Kilobytes avail_mem;
+    LLMemoryInfo::getAvailableMemoryKB(avail_mem);
+    sAvailSystemPhysicalMemInKB = avail_mem;
+    sAvailCommitInKB = avail_mem;
     task_vm_info info;
     mach_msg_type_number_t  infoCount = TASK_VM_INFO_COUNT;
     // MACH_TASK_BASIC_INFO reports the same resident_size, but does not tell us the reusable bytes or phys_footprint.
     if (task_info(mach_task_self(), TASK_VM_INFO, reinterpret_cast<task_info_t>(&info), &infoCount) == KERN_SUCCESS)
     {
-        // Our Windows definition of PagefileUsage is documented by Microsoft as "the total amount of
-        // memory that the memory manager has committed for a running process", which is rss.
+        // Use resident size as the closest portable approximation of this
+        // process's committed footprint on Darwin.
         sAllocatedPageSizeInKB = U32Kilobytes::convert(U64Bytes(info.resident_size));
 
         // Activity Monitor => Inspect Process => Real Memory Size appears to report resident_size
@@ -140,21 +166,44 @@ void LLMemory::updateMemoryInfo()
         //
         // (On Windows, we use WorkingSetSize.)
         sAllocatedMemInKB = U32Kilobytes::convert(U64Bytes(info.resident_size - info.reusable));
+        sAllocatedPrivateMemInKB = sAllocatedPageSizeInKB;
      }
     else
     {
         LL_WARNS() << "task_info failed" << LL_ENDL;
     }
 #elif defined(LL_LINUX)
+    U32Kilobytes avail_mem;
+    LLMemoryInfo::getAvailableMemoryKB(avail_mem);
+    sAvailSystemPhysicalMemInKB = avail_mem;
+    sAvailCommitInKB = avail_mem;
     sAllocatedMemInKB = U32Kilobytes::convert(U64Bytes(LLMemory::getCurrentRSS())); // represents the RAM allocated by this process only (in line with the windows implementation)
+    sAllocatedPageSizeInKB = sAllocatedMemInKB;
+    sAllocatedPrivateMemInKB = sAllocatedMemInKB;
 #else
     //not valid for other systems for now.
     LL_WARNS() << "LLMemory::updateMemoryInfo() not implemented for this platform." << LL_ENDL;
     sAllocatedMemInKB = U64Bytes(LLMemory::getCurrentRSS());
+    U32Kilobytes avail_mem;
+    LLMemoryInfo::getAvailableMemoryKB(avail_mem);
+    sAvailSystemPhysicalMemInKB = avail_mem;
+    sAvailCommitInKB = avail_mem;
+    sAllocatedPageSizeInKB = sAllocatedMemInKB;
+    sAllocatedPrivateMemInKB = sAllocatedMemInKB;
 #endif
     sample(sAllocatedMem, sAllocatedMemInKB);
+    sample(sVirtualMem, sAllocatedPrivateMemInKB);
 
-    sAvailPhysicalMemInKB = llmin(sAvailPhysicalMemInKB, sMaxHeapSizeInKB - sAllocatedMemInKB);
+    // The heap ceiling is a commit ceiling, not a resident-working-set
+    // ceiling. Use private commit and saturate the subtraction: the prior
+    // unsigned underflow reported ~4 TB available once usage crossed the cap.
+    U32Kilobytes heap_available(0);
+    if (sAllocatedPrivateMemInKB.value() < sMaxHeapSizeInKB.value())
+    {
+        heap_available = sMaxHeapSizeInKB - sAllocatedPrivateMemInKB;
+    }
+    sAvailPhysicalMemInKB = llmin(sAvailSystemPhysicalMemInKB,
+                                  llmin(sAvailCommitInKB, heap_available));
 
     return ;
 }
@@ -193,15 +242,29 @@ void LLMemory::logMemoryInfo(bool update)
     }
 
     LL_INFOS() << llformat("Current allocated physical memory: %.2f MB", sAllocatedMemInKB / 1024.0) << LL_ENDL;
-    LL_INFOS() << llformat("Current allocated page size: %.2f MB", sAllocatedPageSizeInKB / 1024.0) << LL_ENDL;
-    LL_INFOS() << llformat("Current available physical memory: %.2f MB", sAvailPhysicalMemInKB / 1024.0) << LL_ENDL;
-    LL_INFOS() << llformat("Current max usable memory: %.2f MB", sMaxPhysicalMemInKB / 1024.0) << LL_ENDL;
+    LL_INFOS() << llformat("Current committed private memory: %.2f MB", sAllocatedPrivateMemInKB / 1024.0) << LL_ENDL;
+    LL_INFOS() << llformat("Current available physical memory: %.2f MB", sAvailSystemPhysicalMemInKB / 1024.0) << LL_ENDL;
+    LL_INFOS() << llformat("Current available commit: %.2f MB", sAvailCommitInKB / 1024.0) << LL_ENDL;
+    LL_INFOS() << llformat("Current effective allocation budget: %.2f MB", sAvailPhysicalMemInKB / 1024.0) << LL_ENDL;
+    LL_INFOS() << llformat("Current installed physical memory: %.2f MB", sMaxPhysicalMemInKB / 1024.0) << LL_ENDL;
 }
 
 //static
 U32Kilobytes LLMemory::getAvailableMemKB()
 {
     return sAvailPhysicalMemInKB ;
+}
+
+//static
+U32Kilobytes LLMemory::getAvailablePhysicalMemKB()
+{
+    return sAvailSystemPhysicalMemInKB;
+}
+
+//static
+U32Kilobytes LLMemory::getAvailableCommitKB()
+{
+    return sAvailCommitInKB;
 }
 
 //static
@@ -214,6 +277,18 @@ U32Kilobytes LLMemory::getMaxMemKB()
 U32Kilobytes LLMemory::getAllocatedMemKB()
 {
     return sAllocatedMemInKB ;
+}
+
+//static
+U32Kilobytes LLMemory::getAllocatedPrivateMemKB()
+{
+    return sAllocatedPrivateMemInKB;
+}
+
+//static
+bool LLMemory::isSystemMemoryLow()
+{
+    return sSystemLowMemory;
 }
 
 //----------------------------------------------------------------------------

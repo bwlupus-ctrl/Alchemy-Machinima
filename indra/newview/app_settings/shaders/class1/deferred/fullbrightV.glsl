@@ -29,6 +29,9 @@ uniform mat4 modelview_projection_matrix;
 
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 void passTextureIndex();
 in vec4 diffuse_color;
 in vec2 texcoord0;
@@ -50,6 +53,9 @@ uniform mat4 projection_matrix;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     //transform vertex
     vec4 vert = vec4(position.xyz, 1.0);
     passTextureIndex();

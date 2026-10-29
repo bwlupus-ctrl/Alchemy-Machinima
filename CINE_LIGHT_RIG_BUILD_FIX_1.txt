@@ -1,0 +1,33 @@
+BUILD FIX — Cinematic Light Rig. Two compile errors, same cause. Do NOT build (Claude builds).
+
+The Release build of the viewer produced exactly two errors, both in
+indra/newview/alpanelcinelightrig.cpp, both identical in cause:
+
+  alpanelcinelightrig.cpp(589,26): error C2664: 'void LLTextBox::setText(const LLStringExplicit &,
+    const LLStyle::Params &)': cannot convert argument 1 from 'const char [141]' to
+    'const LLStringExplicit &'
+  alpanelcinelightrig.cpp(596,26): error C2664: ... cannot convert argument 1 from
+    'const char [117]' to 'const LLStringExplicit &'
+
+CAUSE: LLStringExplicit's constructor from const char* is `explicit`, so a bare string literal
+does not implicitly convert. In the same function the hint_state == 1 branch compiles fine because
+it wraps its text in llformat(...), which returns std::string (which DOES convert). The two static
+branches (hint_state == 2 at ~589, hint_state == 3 at ~596) pass bare string literals.
+
+FIX: wrap both bare-literal setText arguments so they convert — match the surrounding idiom. Use
+std::string(...) around each literal (consistent with the llformat branch already returning
+std::string), e.g.:
+
+    mShadowHint->setText(std::string(
+        "A shafted light is excluded by the current shadow policy. "
+        "Shafts require a shadow slot; choose All projectors "
+        "compete (or Key only for KEY)."));
+
+and likewise for the hint_state == 3 literal at ~596. Do not change the wording, the surrounding
+logic, or anything else — this is purely the type conversion.
+
+Check the rest of this file (and the other new rig files) for any OTHER bare-literal setText/
+setLabel/setToolTip calls that would hit the same explicit-conversion error, and fix them the same
+way if present — better to catch them now than in the next build.
+
+Do NOT build. Report what you changed.

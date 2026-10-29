@@ -54,6 +54,16 @@ public:
     // Render time method to upload batches of joint matrices
     void uploadJointMatrices();
 
+    // [ActorStyle/SharedActivation] Read-only readiness proof used before a
+    // Cover actor suppresses its native system-avatar beauty.  A visible mesh
+    // is ready only when drawShape() can consume its complete VB/index range;
+    // an invisible mesh is not a required source descriptor for this frame.
+    bool isActorGhostReplayReady() const;
+
+    // uploadActorGhostPalette() needs a valid weighted reference mesh even
+    // when the particular core mesh is not visible in this frame.
+    bool isActorGhostPaletteReady() const;
+
     // overloaded from base class
     U32 drawShape( F32 pixelArea, bool first_pass, bool is_dummy ) override;
 

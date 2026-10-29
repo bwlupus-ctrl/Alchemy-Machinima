@@ -490,6 +490,15 @@ void LLCinematicCamera::requestAutoReframe()
     ++mAutoFrameRequestSerial;
 }
 
+void LLCinematicCamera::triggerMode(EMode mode, bool force_look_at_head)
+{
+    gSavedSettings.setS32("CinematicCamMode", static_cast<S32>(mode));
+    gSavedSettings.setBOOL("CinematicCamEnabled", true);
+    mTriggeredLookAtHead = force_look_at_head;
+    mTriggeredLookAtHeadMode = mode;
+    ++mTriggerSerial;
+}
+
 //static
 S32 LLCinematicCamera::migrateLegacyMode(S32 mode)
 {
@@ -515,9 +524,10 @@ const char* LLCinematicCamera::modeName(S32 mode)
         "Breathing Hold", "Static Wide", "Static Medium",
         "Static Close", "Static Profile Left", "Static Profile Right",
         "Static Low Hero", "Static High Angle", "Static Full Body",
+        "Pedro Cam",
     };
     constexpr S32 count = (S32)(sizeof(names) / sizeof(names[0]));
-    static_assert(count == MODE_STATIC_FULL + 1,
+    static_assert(count == MODE_PEDRO_BOB + 1,
                   "Every persisted CineCam mode needs one stable label");
     mode = migrateLegacyMode(mode);
     return mode >= 0 && mode < count ? names[mode] : "Unknown";
@@ -565,7 +575,7 @@ bool LLCinematicCamera::isActive() const
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const S32 effective_mode =
         switcher.isDrivingCamera() ? switcher.activeMode() : migrated_mode;
-    if (effective_mode <= MODE_OFF || effective_mode > MODE_STATIC_FULL)
+    if (effective_mode <= MODE_OFF || effective_mode > MODE_PEDRO_BOB)
     {
         return false;
     }
@@ -596,14 +606,21 @@ bool LLCinematicCamera::isActiveHeadFramingTarget(const LLUUID& avatar_id) const
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
     static LLCachedControl<bool> look_at_head(gSavedSettings, "CinematicCamLookAtHead", true);
-    if (avatar_id.isNull() || !enabled || !look_at_head)
+    if (avatar_id.isNull() || !enabled)
     {
         return false;
     }
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const S32 effective_mode =
         switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
-    if (effective_mode <= MODE_OFF || effective_mode > MODE_STATIC_FULL ||
+    const bool effective_look_at_head = (bool)look_at_head ||
+        (!switcher.isDrivingCamera() && mTriggeredLookAtHead &&
+         effective_mode == static_cast<S32>(mTriggeredLookAtHeadMode));
+    if (!effective_look_at_head)
+    {
+        return false;
+    }
+    if (effective_mode <= MODE_OFF || effective_mode > MODE_PEDRO_BOB ||
         effective_mode == MODE_BONE_LOCK)
     {
         return false;
@@ -913,6 +930,15 @@ F32 cc_progress(F32 phase, F32 duration, S32 end_mode)
 {
     const F32 u = cc_progress_raw(phase, duration, end_mode);
     return u * u * (3.f - 2.f * u);     // smoothstep ease in/out
+}
+
+// Pure retime with fixed endpoints. Positive strength runs faster at the
+// edges and slower through the middle; clamping below one keeps it monotonic.
+F32 cc_speedRampPhase(F32 phase, F32 strength)
+{
+    const F32 u = llclamp(phase, 0.f, 1.f);
+    const F32 s = llclamp(strength, 0.f, 0.95f);
+    return u + (s / F_TWO_PI) * sinf(F_TWO_PI * u);
 }
 
 U64 cc_motionHash(S32 seed, S32 mode, S32 slot, U64 shot_index, U64 lane)
@@ -1258,9 +1284,17 @@ LLVector3 LLCinematicCamera::patternArc(LLVOAvatar* av, const LLVector3& center,
     static LLCachedControl<F32> duration(gSavedSettings, "CinematicCamArcDuration", 9.f);
     static LLCachedControl<F32> distance(gSavedSettings, "CinematicCamArcDistance", 2.6f);
     static LLCachedControl<F32> height(gSavedSettings, "CinematicCamArcHeight", 1.3f);
+    static LLCachedControl<F32> height_drift(gSavedSettings, "CinematicCamArcHeightDrift", 0.f);
     static LLCachedControl<S32> end_mode(gSavedSettings, "CinematicCamArcEndMode", 0);     // hold
+    static LLCachedControl<bool> speed_ramp(gSavedSettings, "CinematicCamSpeedRampEnabled", false);
+    static LLCachedControl<F32> speed_ramp_strength(gSavedSettings, "CinematicCamSpeedRampStrength", 0.65f);
 
-    F32 u = cc_progress(phase, duration, end_mode);
+    F32 u = cc_progress_raw(phase, duration, end_mode);
+    if (speed_ramp)
+    {
+        u = cc_speedRampPhase(u, speed_ramp_strength);
+    }
+    u = u * u * (3.f - 2.f * u);
     if (mMotionDir < 0.f)
     {
         u = 1.f - u;
@@ -1268,7 +1302,8 @@ LLVector3 LLCinematicCamera::patternArc(LLVOAvatar* av, const LLVector3& center,
     const F32 yaw = motionStartAzimuth(cc_avatarYaw(av)) +
                     cc_lerp((F32)from_deg, (F32)to_deg, u) *
                     DEG_TO_RAD;
-    return center + LLVector3(cosf(yaw) * distance, sinf(yaw) * distance, (F32)height);
+    return center + LLVector3(cosf(yaw) * distance, sinf(yaw) * distance,
+                              (F32)height + (F32)height_drift * u);
 }
 
 // epic arrival: starts low behind the subject, rises over their shoulder while
@@ -1911,7 +1946,45 @@ LLVector3 LLCinematicCamera::patternBreathingHold(LLVOAvatar* av, const LLVector
     const LLVector3 side(-sinf(yaw), cosf(yaw), 0.f);
     return center + away * (llmax((F32)distance, 0.3f) + (F32)amplitude * sinf(t))
                   + side * ((F32)amplitude * 0.45f * sinf(t * 0.5f))
-                  + LLVector3(0.f, 0.f, (F32)height + (F32)amplitude * 0.35f * cosf(t));
+                   + LLVector3(0.f, 0.f, (F32)height + (F32)amplitude * 0.35f * cosf(t));
+}
+
+// Pedro Cam: a close, low, face-locked two-beat sway with one dip per beat.
+// Every component is addressed only by the presentation-clock phase.
+LLVector3 LLCinematicCamera::patternPedroBob(
+    LLVOAvatar* av, const LLVector3& focus, F32 phase,
+    F32& roll_out, F32& fov_mul)
+{
+    static LLCachedControl<F32> bpm(
+        gSavedSettings, "CinematicCamPedroBPM", 148.f);
+    static LLCachedControl<F32> sway_amt(
+        gSavedSettings, "CinematicCamPedroSway", 0.22f);
+    static LLCachedControl<F32> bob_amt(
+        gSavedSettings, "CinematicCamPedroBob", 0.10f);
+    static LLCachedControl<F32> roll_deg(
+        gSavedSettings, "CinematicCamPedroRoll", 6.f);
+    static LLCachedControl<F32> distance(
+        gSavedSettings, "CinematicCamPedroDistance", 0.9f);
+    static LLCachedControl<F32> height(
+        gSavedSettings, "CinematicCamPedroHeight", -0.35f);
+    static LLCachedControl<F32> fov_deg(
+        gSavedSettings, "CinematicCamPedroFov", 120.f);
+
+    const F32 beats = phase * ((F32)bpm / 60.f);
+    const F32 sway = (F32)sway_amt * sinf(F_PI * beats);
+    const F32 bob = -(F32)bob_amt * 0.5f *
+                    (1.f - cosf(F_TWO_PI * beats));
+    roll_out = (F32)roll_deg * DEG_TO_RAD * sinf(F_PI * beats);
+
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    fov_mul = llclamp(
+        (F32)fov_deg * DEG_TO_RAD / cam->getDefaultFOV(), 0.05f, 4.f);
+
+    const F32 yaw = cc_avatarYaw(av);
+    const LLVector3 dir(cosf(yaw), sinf(yaw), 0.f);
+    const LLVector3 perp(-sinf(yaw), cosf(yaw), 0.f);
+    return focus + dir * (F32)distance + perp * sway +
+           LLVector3(0.f, 0.f, (F32)height + bob);
 }
 
 // Fixed, subject-relative switcher coverage. These authored framings have no
@@ -2562,6 +2635,16 @@ void LLCinematicCamera::updateCamera()
         current_target != mLastTargetId;
     const bool serial_changed =
         switcher_serial != mLastSwitcherCutSerial;
+    const bool trigger_changed =
+        mTriggerSerial != mConsumedTriggerSerial;
+    if (switcher_driving || (mode_changed && !trigger_changed))
+    {
+        mTriggeredLookAtHead = false;
+        mTriggeredLookAtHeadMode = MODE_OFF;
+    }
+    const bool effective_look_at_head = (bool)look_at_head ||
+        (!switcher_driving && mTriggeredLookAtHead &&
+         current_mode == static_cast<S32>(mTriggeredLookAtHeadMode));
     const bool stale_reentry =
         mLastUpdateFrame != 0 && fresh_activation;
     if (switcher_driving)
@@ -2581,13 +2664,19 @@ void LLCinematicCamera::updateCamera()
         // A fresh re-entry after recorder/path/pilot pre-emption deliberately
         // keeps the existing take anchor and resumes at its current phase.
     }
+    else if (fresh_activation || mode_changed || target_changed || trigger_changed)
+    {
+        mSwitcherPhaseAnchor = presentation_time;
+    }
     // Every mode and resolved-target change is a camera cut. Restart pattern,
     // tripod, smoothing, velocity, and operator state. A switcher serial also
     // makes two different slots carrying the same mode a real cut.
-    if (fresh_activation || mode_changed || target_changed || serial_changed)
+    if (fresh_activation || mode_changed || target_changed || serial_changed ||
+        trigger_changed)
     {
         const bool motion_shot_changed = mode_changed || target_changed ||
-            serial_changed || (!switcher_driving && fresh_activation) ||
+            serial_changed || trigger_changed ||
+            (!switcher_driving && fresh_activation) ||
             !mMotionStartCaptured;
         const F32 ease_seconds =
             switcher_driving && serial_changed
@@ -2639,30 +2728,19 @@ void LLCinematicCamera::updateCamera()
     mLastMode = current_mode;
     mLastTargetId = current_target;
     mLastSwitcherCutSerial = switcher_serial;
+    mConsumedTriggerSerial = mTriggerSerial;
     mLastUpdateFrame = gFrameCount;
 
     F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
-    if (switcher_driving)
-    {
-        // Absolute presentation age removes render-frame grouping from a
-        // switcher-authored motion shot. Legacy CineCam retains its exact
-        // gFrameIntervalSeconds accumulator below.
-        const F64 age =
-            llmax(0.0, presentation_time - mSwitcherPhaseAnchor);
-        mPhase = (F32)fmod(age, (F64)PHASE_WRAP);
-    }
-    else
-    {
-        mPhase += dt;
-        if (mPhase > PHASE_WRAP)
-        {
-            mPhase -= PHASE_WRAP;
-        }
-    }
+    // All pattern motion is presentation-clock addressed. Rendering the same
+    // presentation sample after a scrub therefore produces the same phase,
+    // independent of the number or grouping of viewer frames.
+    const F64 age = llmax(0.0, presentation_time - mSwitcherPhaseAnchor);
+    mPhase = (F32)fmod(age, (F64)PHASE_WRAP);
 
     // the point patterns frame: head when available, else chest height
     LLVector3 focus = av->getPositionAgent() + LLVector3(0.f, 0.f, 1.f);
-    if (look_at_head)
+    if (effective_look_at_head)
     {
         if (LLJoint* head = av->getJoint("mHead"))
         {
@@ -2736,6 +2814,7 @@ void LLCinematicCamera::updateCamera()
         case MODE_DETAIL_SWEEP:  pos = patternDetailSweep(av, center, mPhase, focus, mode_fov_mul); break;
         case MODE_CABLE_CAM:     pos = patternCableCam(av, center, mPhase); break;
         case MODE_BREATHING_HOLD:pos = patternBreathingHold(av, center, mPhase); break;
+        case MODE_PEDRO_BOB:     pos = patternPedroBob(av, focus, mPhase, mode_roll, mode_fov_mul); break;
         case MODE_STATIC_WIDE:
         case MODE_STATIC_MEDIUM:
         case MODE_STATIC_CLOSE:

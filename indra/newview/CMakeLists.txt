@@ -148,6 +148,7 @@ endif ()
 
 set(viewer_SOURCE_FILES
     ao.cpp
+    bdmergememorybudget.cpp
     bdmergemeshpool.cpp
     bdmergetexpool.cpp
     bdmergeenvlibrary.cpp
@@ -164,6 +165,7 @@ set(viewer_SOURCE_FILES
     alclassifieditem.cpp
     alderenderlist.cpp
     aldirectoranimswitcher.cpp
+    allocalfogmanager.cpp
     aldirectorhotkeys.cpp
     aldirectorswitcher.cpp
     aldirectorswitchermodel.cpp
@@ -280,11 +282,32 @@ set(viewer_SOURCE_FILES
     llclonefidelityaudit.cpp
     llghostdeferreddiagnostics.cpp
     alformationsolver.cpp
+    alcinelightrig.cpp
+    alcinelightrigmanager.cpp
+    alcinehaze.cpp
+    alcinerigrim.cpp
+    alenvintensity.cpp
+    alenvintensitypresets.cpp
+    alfloaterenvintensitypresets.cpp
+    alrotoink.cpp
+    altron.cpp
+    alcinelightrigmodel.cpp
+    alavatarlightresponse.cpp # [AvatarLightResponse]
+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]
+    alfloateravatarlightresponse.cpp # [AvatarLightResponse]
+    aldiopterpresetbank.cpp
+    aldiopterrelevance.cpp
+    alfloatercinelightcues.cpp
+    alfloaterultimatediopter.cpp
+    alvcambonepov.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
+    alghostplacementresolver.cpp
+    alghostplacementadapter.cpp
     alghostmanipproxy.cpp
     alghostnameplates.cpp
+    alghostautoanimmodel.cpp # [AutoAnimate]
     alghoststudio.cpp
     alghostanimassetindex.cpp
     alworldoverlayviz.cpp
@@ -292,6 +315,7 @@ set(viewer_SOURCE_FILES
     alpanelghoststudio.cpp
     alpanelpropmover.cpp
     altoolcrowdplace.cpp
+    altoolfocuspick.cpp
     altoolghostedit.cpp
     altoolghostplace.cpp
     altoolpathedit.cpp
@@ -299,13 +323,20 @@ set(viewer_SOURCE_FILES
     lldirectorcast.cpp
     llfloateractormover.cpp
     llfloaterdirector.cpp
+    alfloateractorgaze.cpp
+    alfloatergazecues.cpp
     llfloaterprismmanager.cpp
     alfloatertemporalcapture.cpp
     alpaneltemporalcapture.cpp
     llpresentationtime.cpp
     alpanelactormover.cpp
     alpanelanimpreview.cpp
+    alpanelatmosphericvolumes.cpp
+    alpanelcinelightrig.cpp
+    alprobedirty.cpp # [ProbeOnDemand]
+    alprojectorshaftpresets.cpp
     alpanelcinecamparams.cpp
+    alpanellensgaze.cpp
     alpaneldirectoranimswitcher.cpp
     alpaneldirectorswitcher.cpp
     alpanelweathersettings.cpp
@@ -763,6 +794,7 @@ set(viewer_SOURCE_FILES
     llpreviewscript.cpp
     llpreviewsound.cpp
     llpreviewtexture.cpp
+    llprismgate.cpp
     llprismlens.cpp
     llproductinforequest.cpp
     llprogressview.cpp
@@ -985,6 +1017,7 @@ set(viewer_SOURCE_FILES
 set(viewer_HEADER_FILES
     ViewerInstall.cmake
     ao.h
+    bdmergememorybudget.h
     bdmergemeshpool.h
     bdmergetexpool.h
     bdmergeenvlibrary.h
@@ -1000,6 +1033,7 @@ set(viewer_HEADER_FILES
     alclassifieditem.h
     alderenderlist.h
     aldirectoranimswitcher.h
+    allocalfogmanager.h
     aldirectorhotkeys.h
     aldirectorswitcher.h
     aldirectorswitchermodel.h
@@ -1118,11 +1152,27 @@ set(viewer_HEADER_FILES
     llghostcoverage.h
     llghostdeferreddiagnostics.h
     alformationsolver.h
+    alcinelightrig.h
+    alcinelightrigmanager.h
+    alcinelightrigmodel.h
+    alcineliveproberefresh.h # [LiveProbeRefresh]
+    alavatarlightresponse.h # [AvatarLightResponse]
+    alavatarlightresponsemodel.h # [AvatarLightResponse]
+    alfloateravatarlightresponse.h # [AvatarLightResponse]
+    aldiopterpresetbank.h
+    aldiopterrelevance.h
+    alfloatercinelightcues.h
+    alfloaterultimatediopter.h
+    alvcambonepov.h
+    alvcambonepovmath.h
     alweathermodel.h
     alghostgroupmodel.h
     alghostinteractionstate.h
+    alghostplacementresolver.h
+    alghostplacementadapter.h
     alghostmanipproxy.h
     alghostnameplates.h
+    alghostautoanimmodel.h # [AutoAnimate]
     alghoststudio.h
     alghostanimassetindex.h
     alworldoverlayviz.h
@@ -1131,6 +1181,7 @@ set(viewer_HEADER_FILES
     alpanelghoststudio.h
     alpanelpropmover.h
     altoolcrowdplace.h
+    altoolfocuspick.h
     altoolghostedit.h
     altoolghostplace.h
     altoolpathedit.h
@@ -1138,6 +1189,8 @@ set(viewer_HEADER_FILES
     lldirectorcast.h
     llfloateractormover.h
     llfloaterdirector.h
+    alfloateractorgaze.h
+    alfloatergazecues.h
     llfloaterprismmanager.h
     alfloatertemporalcapture.h
     alpaneltemporalcapture.h
@@ -1145,7 +1198,28 @@ set(viewer_HEADER_FILES
     lltemporalframecontext.h
     alpanelactormover.h
     alpanelanimpreview.h
+    alpanelatmosphericvolumes.h
+    alcinehaze.h
+    alcinerigrim.h
+    alenvintensity.h
+    alenvintensitypresets.h
+    alfloaterenvintensitypresets.h
+    alrotoink.h
+    altron.h
+    alpanelcinelightrig.h
+    alprobedirty.h # [ProbeOnDemand]
+    alprobeschedule.h # [ProbeOnDemand]
+    alprojectorshaftpresets.h
     alpanelcinecamparams.h
+    algazemath.h
+    alpathgeometry.h
+    altrajectory.h
+    algazerecruit.h
+    algazeblink.h
+    algazenoise.h
+    algazepolicy.h
+    algazemotor.h
+    alpanellensgaze.h
     alpaneldirectoranimswitcher.h
     alpaneldirectorswitcher.h
     alpanelweathersettings.h
@@ -1593,6 +1667,7 @@ set(viewer_HEADER_FILES
     llpreviewscript.h
     llpreviewsound.h
     llpreviewtexture.h
+    llprismgate.h
     llprismlens.h
     llproductinforequest.h
     llprogressview.h
@@ -2042,6 +2117,7 @@ set_source_files_properties(${viewer_CHARACTER_FILES}
 list(APPEND viewer_SOURCE_FILES ${viewer_CHARACTER_FILES})
 
 set(viewer_MISC_FILES
+    stage_runtime_assets.cmake
     viewer_manifest.py
     )
 
@@ -2321,6 +2397,38 @@ elseif(LINUX)
   set(MANIFEST_PACKAGE_OUT_FILE ${product}.tar.xz)
 endif()
 
+# Runtime settings and XUI are consumed from the staged tree, but the viewer
+# manifest POST_BUILD command does not run when only an asset changes. Keep a
+# lightweight, always-run dependency for Windows developer builds so direct
+# viewer-target builds refresh those files without forcing a C++ relink.
+set(RUNTIME_ASSET_PACKAGE_DEPENDENCIES)
+if(WINDOWS)
+  set(RUNTIME_ASSET_CONFIG
+    "$<IF:$<BOOL:${LL_GENERATOR_IS_MULTI_CONFIG}>,$<CONFIG>,default>")
+  set(RUNTIME_ASSET_INDEX
+    "${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.txt")
+  set(RUNTIME_ASSET_STAMP
+    "${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.sha256")
+  add_custom_target(stage_viewer_runtime_assets
+    COMMAND ${CMAKE_COMMAND}
+      "-DRUNTIME_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+      "-DRUNTIME_DEST_DIR=${MANIFEST_DEST_DIR}"
+      "-DRUNTIME_INDEX_FILE=${RUNTIME_ASSET_INDEX}"
+      "-DRUNTIME_STAMP_FILE=${RUNTIME_ASSET_STAMP}"
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake
+    # The index is intentionally not a BYPRODUCT: preserving it across `clean`
+    # retains deletion provenance for files staged before the clean. The stamp
+    # is disposable and exists only to retrigger package/local-dist outputs.
+    BYPRODUCTS ${RUNTIME_ASSET_STAMP}
+    COMMENT "Staging viewer runtime settings, shaders, dust, and XUI"
+    VERBATIM
+    )
+  add_dependencies(${VIEWER_BINARY_NAME} stage_viewer_runtime_assets)
+  list(APPEND RUNTIME_ASSET_PACKAGE_DEPENDENCIES
+    ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake
+    ${RUNTIME_ASSET_STAMP})
+endif()
+
 # Viewer Manifest Copy
 add_custom_command(
   TARGET ${VIEWER_BINARY_NAME} POST_BUILD
@@ -2384,6 +2492,7 @@ if(IS_DIRECTORY ${LOCAL_DIST_DIR})
       DEPENDS
       ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py
       ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt
+      ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}
       ${VIEWER_BINARY_NAME}
       COMMENT "Performing viewer_manifest local dist copy"
       )
@@ -2423,6 +2532,7 @@ if (PACKAGE)
       DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py
         ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt
+        ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}
         ${VIEWER_BINARY_NAME} # Prevents two copies of manifest from running at the same time
     COMMENT "Performing viewer_manifest package"
     )
@@ -2511,12 +2621,17 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    alghostautoanimmodel.cpp # [AutoAnimate]
     alformationsolver.cpp
+    alcinelightrigmodel.cpp
+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]
     aldirectorswitchermodel.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
+    alghostplacementresolver.cpp
     alsceneexplorerpredicate.cpp
+    llprismgate.cpp
     llagentaccess.cpp
     lldateutil.cpp
 #    llmediadataclient.cpp
@@ -2527,6 +2642,13 @@ if (BUILD_TESTING)
 #    llvocache.cpp
     llworldmap.cpp
     llworldmipmap.cpp
+  )
+
+  set_source_files_properties(
+    llprismgate.cpp
+    PROPERTIES
+    LL_TEST_ADDITIONAL_SOURCE_FILES
+    aldirectorswitchermodel.cpp
   )
 
   set_source_files_properties(
@@ -2582,6 +2704,92 @@ if (BUILD_TESTING)
   )
 
   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} "${viewer_TEST_SOURCE_FILES}")
+
+  # ALGazeMath is deliberately header-only, so register its TUT directly
+  # instead of inventing a production .cpp solely for the per-source macro.
+  LL_ADD_INTEGRATION_TEST(algazemath
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # [Machinima] Pose Polish pure-math modules (inertialization, contact, etc.);
+  # header-only, TUT registered directly like ALGazeMath.
+  LL_ADD_INTEGRATION_TEST(alposepolish
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Character Mover exact path primitives are header-only pure geometry so the
+  # runtime, preview and tests share one evaluator.
+  LL_ADD_INTEGRATION_TEST(alpathgeometry
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);
+  # like ALGazeMath its TUT is registered directly against the header.
+  LL_ADD_INTEGRATION_TEST(altrajectory
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Gaze life/feel/emotion pure leaf modules (gaze spec 2.2): soft anatomical
+  # recruitment, asymmetric blink shape, band-limited fixation noise, and
+  # oculomotor policy math. All header-only, TUTs registered directly.
+  LL_ADD_INTEGRATION_TEST(algazerecruit
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazeblink
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazenoise
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazepolicy
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # ALGazeMotor is the header-only assembly core (gaze spec 6A) composing the
+  # leaf modules above with ALTrajectory; TUT registered directly.
+  LL_ADD_INTEGRATION_TEST(algazemotor
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Bone POV math and selection normalization are pure/header-only, so their
+  # regression tests need no viewer singleton or avatar fixture.
+  LL_ADD_INTEGRATION_TEST(alvcambonepov
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # [Ultimate Diopter] §2.3 relevance model: the 181-row sRelevance table,
+  # its predicate helpers, and the S0-S8 sweep corpus asserted against the
+  # committed consumed-set oracle (tests/aldiopterrelevance_oracle.llsd,
+  # regenerated by tests/aldiopterrelevance_oracle.py). The model unit is
+  # LLUI/gSavedSettings-free, so only the production .cpp is linked in.
+  LL_ADD_INTEGRATION_TEST(aldiopterrelevance
+    "aldiopterrelevance.cpp"
+    "${test_libs}"
+    "${test_project}"
+  )
 
   #set(TEST_DEBUG on)
   LL_ADD_INTEGRATION_TEST(cppfeatures
@@ -2660,6 +2868,29 @@ if (BUILD_TESTING)
   )
   LL_ADD_INTEGRATION_TEST(llcameraoperator
     "${llcameraoperator_test_sources}"
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # [Ultimate Diopter] §6.3 Custom preset bank state machine (design doc
+  # DIOPTER_SMART_UI_DESIGN.md). llcontrol/llxmltree/llxmlparser/commoncontrol
+  # give a working LLControlGroup (same combination as llviewercontrollistener
+  # and llcameraoperator above). test_libs already brings in `llfilesystem`,
+  # which supplies the real LLDir/gDirUtilp (lldir.cpp/lldir_win32.cpp) --
+  # aldiopterpresetbank_test_stubs.cpp must NOT also define those (Codex
+  # review finding F1: doing so collided with the real symbols, LNK2005); it
+  # stubs only LLNotificationsUtil::add, since the real llnotifications.cpp
+  # needs the full LLNotifications singleton and is far too heavy here.
+  set(aldiopterpresetbank_test_sources
+    aldiopterpresetbank.cpp
+    ../llxml/llcontrol.cpp
+    ../llxml/llxmltree.cpp
+    ../llxml/llxmlparser.cpp
+    ../llcommon/commoncontrol.cpp
+    tests/aldiopterpresetbank_test_stubs.cpp
+  )
+  LL_ADD_INTEGRATION_TEST(aldiopterpresetbank
+    "${aldiopterpresetbank_test_sources}"
     "${test_libs}"
     "${test_project}"
   )

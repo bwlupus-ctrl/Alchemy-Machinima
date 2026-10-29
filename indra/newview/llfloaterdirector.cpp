@@ -10,21 +10,29 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloaterdirector.h"
+#include "alghoststudio.h" // [AutoAnimate]
 #include "alscrollfocus.h"
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
+#include "alfloateractorgaze.h"
 #include "alpanelactormover.h"      // embedded shared Actor Mover transport
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
+#include "alprojectorshaftpresets.h"
+#include "alcinelightrigmanager.h"
+#include "alrotoink.h"
+#include "altron.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
+#include "llagent.h"                   // stable self id while avatar rebuilds
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llclipboard.h"
 #include "llcombobox.h"
+#include "llcontrolavatar.h"        // animesh control-avatar resolution (Add Animesh to Cast)
 #include "lldir.h"                  // gDirUtilp (scene files)
 #include "lldirectorcast.h"
 #include "lldiriterator.h"          // scene file listing
@@ -42,6 +50,7 @@
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"          // scene LLSD XML files
 #include "llselectmgr.h"
+#include "llsliderctrl.h"
 #include "llspinctrl.h"             // group start-delay spinner (Groups section)
 #include "lltabcontainer.h"
 #include "lltextbox.h"
@@ -49,12 +58,14 @@
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
+#include "llviewerobject.h"         // getRootEdit/isAnimatedObject/getControlAvatar
 #include "llviewerobjectlist.h"     // gObjectList
 #include "llmotion.h"               // LLMotion::setPriorityOverride (play-local priority)
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 
 #include <algorithm>
+#include <set>
 
 namespace
 {
@@ -73,12 +84,31 @@ constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
 constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
 constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
 constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
+constexpr char TAB_ICON_LIGHTS[]  = "Command_Lightbox_Icon";
 constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
 constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
+constexpr F32 PRISM_SNAPSHOT_POLL_SECONDS = 0.25f;
+
+bool can_start_manual_subject_shot(std::string* reason)
+{
+    if (!LLDirectorCast::instance().resolveSubjectA())
+    {
+        if (reason) *reason = "Set a live Director Subject A first";
+        return false;
+    }
+    if (ALDirectorSwitcher::instance().isDrivingCamera())
+    {
+        if (reason) *reason =
+            "Stop the Director Switcher before starting a manual shot";
+        return false;
+    }
+    if (reason) reason->clear();
+    return true;
+}
 
 // scene files live beside the cinematic presets, same idiom
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
-constexpr S32  SCENE_VERSION   = 3;
+constexpr S32  SCENE_VERSION   = 6;
 
 // the assign combo's explicit "ungroup" row: discoverable equivalent of
 // committing an empty name (which still works)
@@ -164,11 +194,60 @@ const char* cinecam_mode_name(S32 mode)
     return LLCinematicCamera::modeName(mode);
 }
 
+const char* locomotion_role_label(S32 role)
+{
+    using Cast = LLDirectorCast;
+    switch (role)
+    {
+        case Cast::LOCO_IDLE:          return "Idle";
+        case Cast::LOCO_WALK_FORWARD:  return "Walk forward";
+        case Cast::LOCO_RUN_FORWARD:   return "Run forward";
+        case Cast::LOCO_TURN_LEFT:     return "Turn left";
+        case Cast::LOCO_TURN_RIGHT:    return "Turn right";
+        case Cast::LOCO_WALK_BACKWARD: return "Walk backward";
+        case Cast::LOCO_STRAFE_LEFT:   return "Strafe left";
+        case Cast::LOCO_STRAFE_RIGHT:  return "Strafe right";
+        case Cast::LOCO_FLY:           return "Fly";
+        case Cast::LOCO_HOVER:         return "Hover";
+        case Cast::LOCO_TAKEOFF:       return "Takeoff";
+        case Cast::LOCO_LAND:          return "Land";
+        default:                       return "Unknown";
+    }
+}
+
+F32 default_locomotion_speed(S32 role)
+{
+    using Cast = LLDirectorCast;
+    switch (role)
+    {
+        case Cast::LOCO_RUN_FORWARD:
+        case Cast::LOCO_FLY:
+            return 6.f;
+        case Cast::LOCO_WALK_FORWARD:
+        case Cast::LOCO_WALK_BACKWARD:
+        case Cast::LOCO_STRAFE_LEFT:
+        case Cast::LOCO_STRAFE_RIGHT:
+            return 3.f;
+        default:
+            return 1.f;
+    }
+}
+
 } // anonymous namespace
 
 LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 :   LLFloater(key)
 {
+    mCommitCallbackRegistrar.add(
+        "Director.ResetControlDefault",
+        [](LLUICtrl*, const LLSD& data)
+        {
+            if (LLControlVariable* control =
+                    gSavedSettings.getControl(data.asString()))
+            {
+                control->resetToDefault(true);
+            }
+        });
 }
 
 LLFloaterDirector::~LLFloaterDirector()
@@ -197,6 +276,12 @@ void LLFloaterDirector::onClose(bool app_quitting)
 
 bool LLFloaterDirector::postBuild()
 {
+    getChild<LLComboBox>("director_ps_preset")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            ALProjectorShaftPresets::apply(control->getValue().asInteger());
+        });
+
     // ---- transport ----
     mActionBtn = getChild<LLButton>("btn_action");
     mCutBtn = getChild<LLButton>("btn_cut");
@@ -229,11 +314,13 @@ bool LLFloaterDirector::postBuild()
         { "move_tab",    TAB_ICON_MOVE },
         { "path_tab",    TAB_ICON_PATH },
         { "ghosts_tab",  TAB_ICON_GHOSTS },
+        { "actor_style_tab", TAB_ICON_GHOSTS },
         { "props_tab",   TAB_ICON_PROPS },
         { "animate_tab", TAB_ICON_ANIMATE },
         { "camera_tab",  TAB_ICON_CAMERA },
         { "takes_tab",   TAB_ICON_TAKES },
         { "projector_volumetrics_tab", TAB_ICON_SHAFTS },
+        { "cine_light_rig_tab", TAB_ICON_LIGHTS },
         { "weather_tab", TAB_ICON_WEATHER },
         { "temporal_tab", TAB_ICON_TEMPORAL },
     };
@@ -259,21 +346,41 @@ bool LLFloaterDirector::postBuild()
     mFocusBtn = getChild<LLButton>("btn_focus");
     getChild<LLButton>("btn_add_you")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickAddYou(); });
+    getChild<LLButton>("btn_add_animesh")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickAddAnimesh(); });
     mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastRemove(); });
     mFocusBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFocusActor(); });
     mCastList->setRightMouseDownCallback(
         [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onCastRightClick(ctrl, x, y); });
     // double-click a cast row = Set Subject A (mirrors the right-click path)
-    mCastList->setDoubleClickCallback([this]() { onCastSetSubject(true); });
+    mCastList->setDoubleClickCallback([this]() { onCastSetSubject(SUBJECT_A); });
     {
         // same LLContextMenu idiom as the Animation Explorer's list menu
         LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
-        registrar.add("Director.SetSubjectA", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(true); });
-        registrar.add("Director.SetSubjectB", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(false); });
+        // [AutoAnimate] Keep enable registration alive through menu construction.
+        LLUICtrl::EnableCallbackRegistry::ScopedRegistrar autoanim_enables;
+        autoanim_enables.add("Director.CastHasGhostEntity", [this](LLUICtrl*, const LLSD&) { return castHasGhostEntity(); });
+        registrar.add("Director.AutoAnimToggle", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(0); });
+        registrar.add("Director.AutoAnimGo", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(1); });
+        registrar.add("Director.AutoAnimFollow", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(2); });
+        registrar.add("Director.SetSubjectA", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_A); });
+        registrar.add("Director.SetSubjectB", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_B); });
+        registrar.add("Director.SetSubjectC", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_C); });
+        registrar.add("Director.SetSubjectD", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_D); });
         registrar.add("Director.SetMarkHere", [this](LLUICtrl*, const LLSD&) { onCastSetMarkHere(); });
         registrar.add("Director.ResetToMark", [this](LLUICtrl*, const LLSD&) { onCastResetToMark(); });
         registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
         registrar.add("Director.CopyUUID", [this](LLUICtrl*, const LLSD&) { onCastCopyUUID(); });
+        // [AvatarLightResponse] cast row > Light Response...: null cast id means You
+        registrar.add("Director.LightResponse", [this](LLUICtrl*, const LLSD&)
+        {
+            LLUUID id = firstSelectedCastId();
+            if (id.isNull())
+            {
+                id = gAgentID;
+            }
+            LLFloaterReg::showInstance("avatar_light_response", LLSD(id));
+        });
         registrar.add("Director.RemoveFromCast", [this](LLUICtrl*, const LLSD&) { onCastRemove(); });
         // Animate tab's list menu shares the registrar scope
         registrar.add("Director.AnimCopyUUID", [this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
@@ -330,6 +437,54 @@ bool LLFloaterDirector::postBuild()
     // actor re-pointed each draw to the console's cast selection
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
 
+    // ---- Actor FX tab ----
+    // This is a view over LLDirectorCast's per-actor model. It deliberately
+    // does not share Ghost Studio's selected instance: actor styles attach to
+    // stable cast ids, with a separate null-id record for You.
+    mActorStyleTarget = getChild<LLComboBox>("actor_style_target");
+    mActorStyleEnabled = getChild<LLCheckBoxCtrl>("actor_style_enabled");
+    mActorStyleMode = getChild<LLComboBox>("actor_style_mode");
+    mActorStyleLook = getChild<LLComboBox>("actor_style_look");
+    mActorStyleUseActorHue = getChild<LLCheckBoxCtrl>("actor_style_use_actor_hue");
+    mActorStyleHue = getChild<LLSliderCtrl>("actor_style_hue");
+    mActorStyleAlpha = getChild<LLSliderCtrl>("actor_style_alpha");
+    mActorStyleDissolveProgress = getChild<LLSliderCtrl>("actor_style_dissolve_progress");
+    mActorStylePixel = getChild<LLSliderCtrl>("actor_style_pixel");
+    mActorStyleShimmerSpeed = getChild<LLSliderCtrl>("actor_style_shimmer_speed");
+    mActorStyleShimmerAmount = getChild<LLSliderCtrl>("actor_style_shimmer_amount");
+    mActorStyleGlitch = getChild<LLSliderCtrl>("actor_style_glitch");
+    mActorStyleDistortion = getChild<LLComboBox>("actor_style_distortion");
+    mActorStyleDistortionAmount = getChild<LLSliderCtrl>("actor_style_distortion_amount");
+    mActorStyleBrightness = getChild<LLSliderCtrl>("actor_style_brightness");
+    mActorStyleEffectFps = getChild<LLSpinCtrl>("actor_style_effect_fps");
+    mActorStyleReset = getChild<LLButton>("actor_style_reset");
+    mActorStyleStatus = getChild<LLTextBox>("actor_style_status");
+
+    mActorStyleTarget->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onActorStyleTargetChanged(); });
+    for (LLUICtrl* control : {
+            static_cast<LLUICtrl*>(mActorStyleEnabled),
+            static_cast<LLUICtrl*>(mActorStyleMode),
+            static_cast<LLUICtrl*>(mActorStyleLook),
+            static_cast<LLUICtrl*>(mActorStyleUseActorHue),
+            static_cast<LLUICtrl*>(mActorStyleHue),
+            static_cast<LLUICtrl*>(mActorStyleAlpha),
+            static_cast<LLUICtrl*>(mActorStyleDissolveProgress),
+            static_cast<LLUICtrl*>(mActorStylePixel),
+            static_cast<LLUICtrl*>(mActorStyleShimmerSpeed),
+            static_cast<LLUICtrl*>(mActorStyleShimmerAmount),
+            static_cast<LLUICtrl*>(mActorStyleGlitch),
+            static_cast<LLUICtrl*>(mActorStyleDistortion),
+            static_cast<LLUICtrl*>(mActorStyleDistortionAmount),
+            static_cast<LLUICtrl*>(mActorStyleBrightness),
+            static_cast<LLUICtrl*>(mActorStyleEffectFps) })
+    {
+        control->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onActorStyleControlChanged(); });
+    }
+    mActorStyleReset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onActorStyleReset(); });
+
     // ---- Animate tab ----
     mAnimateHeader = getChild<LLTextBox>("animate_header");
     mAnimList = getChild<LLScrollListCtrl>("anim_list");
@@ -342,6 +497,11 @@ bool LLFloaterDirector::postBuild()
     mPastePlayBtn = getChild<LLButton>("btn_paste_play");
     mPasteStopBtn = getChild<LLButton>("btn_paste_stop");
     mPasteSetLocoBtn = getChild<LLButton>("btn_paste_setloco");
+    mLocomotionRoleCombo = getChild<LLComboBox>("locomotion_role_combo");
+    mLocomotionSpeed = getChild<LLSpinCtrl>("locomotion_speed");
+    mLocomotionPhase = getChild<LLSpinCtrl>("locomotion_phase");
+    mLocomotionAllowAO = getChild<LLCheckBoxCtrl>("locomotion_allow_ao");
+    mLocomotionRoleCombo->setValue(LLDirectorCast::LOCO_WALK_FORWARD);
     mLocoText = getChild<LLTextBox>("loco_text");
     mClearLocoBtn = getChild<LLButton>("btn_clear_loco");
     mAnimCopyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
@@ -352,6 +512,12 @@ bool LLFloaterDirector::postBuild()
     mPasteStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPastePlayLocal(false); });
     mPasteSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPasteSetLoco(); });
     mClearLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearLoco(); });
+    mLocomotionRoleCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLocomotionRoleChanged(); });
+    for (LLUICtrl* control : { static_cast<LLUICtrl*>(mLocomotionSpeed),
+                               static_cast<LLUICtrl*>(mLocomotionPhase),
+                               static_cast<LLUICtrl*>(mLocomotionAllowAO) })
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLocomotionMetadataCommit(); });
     mAnimList->setRightMouseDownCallback(
         [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onAnimRightClick(ctrl, x, y); });
     getChild<LLButton>("btn_open_animexp")->setCommitCallback(
@@ -372,6 +538,16 @@ bool LLFloaterDirector::postBuild()
     LLScrollContainer* animate_scroll = getChild<LLScrollContainer>("animate_scroll");
     LLView* animate_document = getChildView("animate_scroll_content");
     ALScrollFocus::install(animate_scroll, animate_document, animate_document);
+    LLScrollContainer* actor_style_scroll =
+        getChild<LLScrollContainer>("actor_style_scroll");
+    LLView* actor_style_document = getChildView("actor_style_scroll_content");
+    ALScrollFocus::install(actor_style_scroll, actor_style_document,
+                           actor_style_document);
+    LLScrollContainer* shafts_scroll =
+        getChild<LLScrollContainer>("projector_volumetrics_scroll");
+    LLView* shafts_document =
+        getChildView("projector_volumetrics_scroll_content");
+    ALScrollFocus::install(shafts_scroll, shafts_document, shafts_document);
 
     // ---- Camera tab ----
     mSubjectAText = getChild<LLTextBox>("subject_a_text");
@@ -386,10 +562,6 @@ bool LLFloaterDirector::postBuild()
     mClearBBtn = getChild<LLButton>("btn_clear_b");
     mClearCBtn = getChild<LLButton>("btn_clear_c");
     mClearDBtn = getChild<LLButton>("btn_clear_d");
-    mLookAtSetBtn = getChild<LLButton>("btn_look_at_set");
-    mLookAtClearBtn = getChild<LLButton>("btn_look_at_clear");
-    mPrismSummaryText = getChild<LLTextBox>("prism_summary");
-    mPrismManageBtn = getChild<LLButton>("btn_prism_manage");
     mSetABtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_A); });
     mSetBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_B); });
     mSetCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetSubjectFromSelection(SUBJECT_C); });
@@ -398,12 +570,23 @@ bool LLFloaterDirector::postBuild()
     mClearBBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_B); });
     mClearCBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_C); });
     mClearDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_D); });
-    mLookAtSetBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(true); });
-    mLookAtClearBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickSetLookAtCamera(false); });
+    getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
+    mPrismSummaryText = getChild<LLTextBox>("prism_summary");
+    mPrismManageBtn = getChild<LLButton>("btn_prism_manage");
+    mOtsPairBtn = getChild<LLButton>("btn_build_ots_pair");
+    mZollyBtn = getChild<LLButton>("btn_start_zolly");
+    mHeroArcBtn = getChild<LLButton>("btn_start_hero_arc");
     mPrismManageBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickManagePrism(); });
+    mOtsPairBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickBuildOtsPair(); });
+    mZollyBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickZolly(); });
+    mHeroArcBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickHeroArc(); });
+    getChild<LLButton>("btn_ultimate_diopter")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("ultimate_diopter"); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
@@ -472,6 +655,7 @@ void LLFloaterDirector::draw()
     refreshTransport();
     refreshMoveTab();
     refreshPathTab();
+    refreshActorStyleTab();
     refreshAnimateTab();
     refreshCameraTab();
     refreshStatusStrip();
@@ -711,8 +895,107 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         // Surface Lens appearance is creative scene intent. Adaptive controls,
         // aggregate budget, master enable and debug remain global preferences.
         "PrismLensZoom",
+        // Client-only cinematic light rig. Anchor and FX phase are stored in
+        // the structured light_rig block; every persisted control is included
+        // here so a scene remains a complete settings snapshot.
+        "CineLightRigEnabled",
+        "CineLightRigScaleAware",
+        "CineLightRigPower",
+        "CineLightRigRadius",
+        "CineLightRigMasterEV",
+        "CineLightRigMasterTempMired",
+        "CineLightRigOffsetZ",
+        "CineLightRigHeadroomStops",
+        "CineLightRigBounceEnabled",
+        "CineLightRigBounceRatio",
+        "CineLightRigTransitionSec",
+        "CineLightRigDamping",
+        "CineLightRigTrackMode",
+        "CineLightRigCookieUUID",
+        "CineLightRigSeed",
+        "CineLightRigMirror",
+        "CineLightRigOrbitYaw",
+        "CineLightRigOrbitPitch",
+        "CineLightRigFX",
+        "CineLightRigShadowMode",
+        "CineLightRigGizmo",
+        "CineLightRigKeyYaw",
+        "CineLightRigKeyPitch",
+        "CineLightRigKeyOffsetZ",
+        "CineLightRigKeyProfile",
+        "CineLightRigKeyEV",
+        "CineLightRigKeyBeam",
+        "CineLightRigKeyGobo",
+        "CineLightRigKeyOn",
+        "CineLightRigFillYaw",
+        "CineLightRigFillPitch",
+        "CineLightRigFillOffsetZ",
+        "CineLightRigFillProfile",
+        "CineLightRigFillEV",
+        "CineLightRigFillBeam",
+        "CineLightRigFillGobo",
+        "CineLightRigFillOn",
+        "CineLightRigRimYaw",
+        "CineLightRigRimPitch",
+        "CineLightRigRimOffsetZ",
+        "CineLightRigRimProfile",
+        "CineLightRigRimEV",
+        "CineLightRigRimBeam",
+        "CineLightRigRimGobo",
+        "CineLightRigRimOn",
+        "CineLightRigBgYaw",
+        "CineLightRigBgPitch",
+        "CineLightRigBgOffsetZ",
+        "CineLightRigBgProfile",
+        "CineLightRigBgEV",
+        "CineLightRigBgBeam",
+        "CineLightRigBgGobo",
+        "CineLightRigBgOn",
+        // [RigRim] Rig Rim Light (Phase A).
+        "CineRigRimEnabled",
+        "CineRigRimMasterGain",
+        "CineRigRimRoughnessSoften",
+        "CineRigRimBackSoftness",
+        "CineRigRimTint",
+        "CineRigRimShadow", // [RigRim]
+        "CineRigRimIncludeAlpha",
+        "CineRigRimIncludeProbes",
+        "CineRigRimIncludeBounce",
+        // [RigRim] P2-4: CineRigRimDebugRimOnly is deliberately NOT part of
+        // scene state (Persist 0 in settings.xml) — a debug view should
+        // never be saved into, or restored from, a Director scene.
+        "CineRigRimKeyGain",
+        "CineRigRimKeySharpness",
+        "CineRigRimKeyWrap",
+        "CineRigRimKeyBackBias",
+        "CineRigRimFillGain",
+        "CineRigRimFillSharpness",
+        "CineRigRimFillWrap",
+        "CineRigRimFillBackBias",
+        "CineRigRimRimGain",
+        "CineRigRimRimSharpness",
+        "CineRigRimRimWrap",
+        "CineRigRimRimBackBias",
+        "CineRigRimBgGain",
+        "CineRigRimBgSharpness",
+        "CineRigRimBgWrap",
+        "CineRigRimBgBackBias",
     };
-    return settings;
+    // [RotoInk] Append every CineOutline* key (Enabled + all [RotoInk]
+    // settings) from ALRotoInk::settings() -- the single source of truth
+    // shared with the Lightbox tab's preset/reset code -- rather than
+    // duplicating the list here where it could drift.
+    // [TronT0] Same pattern for every Tron* key, from ALTron::settings().
+    static const std::vector<std::string> settings_with_roto = []
+    {
+        std::vector<std::string> v = settings;
+        const std::vector<std::string>& roto = ALRotoInk::settings();
+        v.insert(v.end(), roto.begin(), roto.end());
+        const std::vector<std::string>& tron = ALTron::settings();
+        v.insert(v.end(), tron.begin(), tron.end());
+        return v;
+    }();
+    return settings_with_roto;
 }
 
 void LLFloaterDirector::refreshSceneList(const std::string& select_name)
@@ -826,6 +1109,8 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     const LLSD prism = LLPrismLens::sceneData();
     scene["prism_captures"] = prism["prism_captures"];
     scene["prism_displays"] = prism["prism_displays"];
+    scene["prism_gates"] = prism["prism_gates"];
+    scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
 
     // ... plus everything settings-backed
     LLSD settings = LLSD::emptyMap();
@@ -833,7 +1118,10 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     {
         if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
         {
-            settings[setting] = ctrl->getValue();
+            settings[setting] = setting == "CineLightRigFX"
+                ? LLSD(ALCineLightRigPersistence::legacyFXForStorage(
+                    ctrl->getValue().asInteger()))
+                : ctrl->getValue();
         }
     }
     scene["settings"] = settings;
@@ -935,8 +1223,10 @@ void LLFloaterDirector::loadScene(const std::string& name)
                                 "Prism configuration and loading only tolerant "
                                 "legacy scene fields" << LL_ENDL;
     }
-    else if (version == 3)
+    else if (version >= 3 && version <= SCENE_VERSION)
     {
+        // v3-v6 share the same Prism schema. Later versions add cast locomotion
+        // and actor-path data without changing Prism's atomic registry contract.
         // Validate and atomically replace Prism before mutating transport, cast,
         // settings, or CineCam state. A malformed payload leaves the live scene
         // and retained Prism outputs wholly untouched.
@@ -991,6 +1281,114 @@ void LLFloaterDirector::loadScene(const std::string& name)
             }
         }
     }
+
+    // [RigRim] P1-C fix: a scene saved before Rig Rim existed (or any scene
+    // whose settings map simply omits it) has no "CineRigRimEnabled" key.
+    // The loop above only ever SETS a key it finds, so leaving the rest
+    // untouched would let a PREVIOUSLY loaded scene's rim state (enabled,
+    // custom per-light values) leak into this one. Reset every CineRigRim*
+    // control to its default (master Enabled -> off, per-light values -> the
+    // contract per-light defaults) so an old scene renders exactly as it was
+    // authored, with Rig Rim off.
+    if (!scene["settings"].isMap() ||
+        !scene["settings"].has("CineRigRimEnabled"))
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("CineRigRim", 0) == 0)
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+
+    // [RotoInk] Same old-scene fix as the CineRigRim block above: a scene
+    // saved before Rotoscope Ink existed has no "CineOutlineEnabled" key, so
+    // reset every CineOutline* control to its default rather than let a
+    // previously loaded scene's ink state leak into this one.
+    if (!scene["settings"].isMap() ||
+        !scene["settings"].has("CineOutlineEnabled"))
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("CineOutline", 0) == 0)
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+    else
+    {
+        // [RotoInk Anim Round-A review fix, P2 Opus] The scene HAS
+        // CineOutlineEnabled (saved before Round-A's 23 look / 11 subject
+        // keys existed, or otherwise just missing a few), so the all-reset
+        // above did not fire -- but the per-key loop further up only ever
+        // SETS a key the scene actually carries, leaving any key it lacks at
+        // whatever the live session (or a previously loaded scene) left it
+        // at. Reset to default every CineOutline* key this SPECIFIC scene
+        // lacks; keys it does carry were already applied above and must
+        // stay untouched.
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("CineOutline", 0) == 0 && !scene["settings"].has(setting))
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+
+    // [TronT0] Same old-scene fix as the CineOutline block above: a scene
+    // saved before the Tron effects package existed has no "TronEnabled"
+    // key, so reset every Tron* control to its default rather than let a
+    // previously loaded scene's Tron state leak into this one.
+    if (!scene["settings"].isMap() ||
+        !scene["settings"].has("TronEnabled"))
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("Tron", 0) == 0)
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+    else
+    {
+        // Scene HAS TronEnabled but may predate a later Tron key (grade/
+        // grid/trace/rim/trail keys land in T1-T3): reset to default every
+        // Tron* key this SPECIFIC scene lacks; keys it does carry were
+        // already applied above and must stay untouched.
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("Tron", 0) == 0 && !scene["settings"].has(setting))
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+
+    // [TronT3] A scene load is a hard edit: light-cycle trails laid under the
+    // previous scene's cast/set have no business surviving into this one.
+    ALTron::clearTrails();
+
+    // Structured state carries the session-only anchor and the deterministic
+    // FX phase, plus a denormalized base setup for self-contained scenes.
+    ALCineLightRigManager::instance().applySceneData(scene["light_rig"]);
 
     // named preset first (its apply path writes CinematicCam* including the
     // mode), THEN the scene's explicit mode wins
@@ -1243,6 +1641,40 @@ void LLFloaterDirector::onClickAddYou()
     }
 }
 
+// Add every in-world-selected animesh object to the cast, resolving each linkset
+// to its control avatar (the same id the right-click Director > Add to Cast uses).
+// Non-animesh selections are skipped; add() is idempotent, so re-adds are no-ops.
+void LLFloaterDirector::onClickAddAnimesh()
+{
+    LLObjectSelectionHandle sel = LLSelectMgr::getInstance()->getSelection();
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    for (LLObjectSelection::valid_iterator it = sel->valid_begin(), end = sel->valid_end();
+         it != end; ++it)
+    {
+        LLViewerObject* obj = (*it)->getObject();
+        if (!obj)
+        {
+            continue;
+        }
+        LLViewerObject* root = obj->getRootEdit();
+        if (!root)
+        {
+            root = obj;
+        }
+        if (!root->isAnimatedObject())
+        {
+            continue;
+        }
+        if (LLControlAvatar* cav = root->getControlAvatar())
+        {
+            if (!cav->isDead() && cav->getID().notNull())
+            {
+                cast.add(cav->getID()); // idempotent
+            }
+        }
+    }
+}
+
 void LLFloaterDirector::onClickFocusActor()
 {
     const LLUUID id = firstSelectedCastId();
@@ -1258,7 +1690,7 @@ void LLFloaterDirector::onClickFocusActor()
     }
 }
 
-void LLFloaterDirector::onCastSetSubject(bool subject_a)
+void LLFloaterDirector::onCastSetSubject(S32 subject)
 {
     const LLUUID id = firstSelectedCastId();
     if (id.isNull())
@@ -1266,7 +1698,7 @@ void LLFloaterDirector::onCastSetSubject(bool subject_a)
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    assign_subject(cast, subject_a ? SUBJECT_A : SUBJECT_B, id);
+    assign_subject(cast, subject, id);
 }
 
 void LLFloaterDirector::onCastSetMarkHere()
@@ -1305,7 +1737,30 @@ void LLFloaterDirector::onCastClearLocoAnim()
         if (LLDirectorCast::CastMember* m = cast.getMember(id))
         {
             m->mLocoAnim.setNull();
+            m->mLocomotionSet.mRoles.erase(LLDirectorCast::LOCO_WALK_FORWARD);
         }
+    }
+}
+
+// [AutoAnimate] Do not mutate the cast model or rely on the Studio list selection.
+bool LLFloaterDirector::castHasGhostEntity() const
+{
+    const ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& runtime : selectedCastIds()) if (studio.findInstanceByRuntime(runtime)) return true;
+    return false;
+}
+void LLFloaterDirector::onCastAutoAnim(S32 operation)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<LLUUID> instances;
+    bool enable = false;
+    for (const LLUUID& runtime : selectedCastIds())
+        if (const auto* inst = studio.findInstanceByRuntime(runtime))
+        { instances.push_back(inst->mId); enable = enable || !inst->mAutoAnimate; }
+    for (const LLUUID& id : instances)
+    {
+        if (operation == 0) studio.setInstanceAutoAnimate(id, enable);
+        else studio.autoAnimateAction(id, operation == 1 ? ALGhostAutoAnim::Action::GoAutonomous : ALGhostAutoAnim::Action::FollowSource);
     }
 }
 
@@ -1593,9 +2048,10 @@ void LLFloaterDirector::refreshMoveTab()
     // drives startAll/stopAll, Selected acts on exactly this set, so the buttons
     // behave identically to the standalone floater (which feeds its roster
     // selection the same way).
+    const uuid_vec_t selected = selectedCastIds();
     if (mMoverPanel)
     {
-        mMoverPanel->setSelectedActors(selectedCastIds());
+        mMoverPanel->setSelectedActors(selected);
     }
 }
 
@@ -1611,6 +2067,254 @@ void LLFloaterDirector::refreshPathTab()
     {
         mPathPanel->setTargetActor(firstSelectedCastId());
     }
+}
+
+// ---------------------------------------------------------------------------
+// Actor FX tab: per-actor live-render styling
+// ---------------------------------------------------------------------------
+bool LLFloaterDirector::hasActorStyleTarget() const
+{
+    return mActorStyleTarget && mActorStyleTarget->getCurrentIndex() >= 0;
+}
+
+LLUUID LLFloaterDirector::actorStyleTargetId() const
+{
+    return hasActorStyleTarget()
+        ? mActorStyleTarget->getSelectedValue().asUUID()
+        : LLUUID::null;
+}
+
+void LLFloaterDirector::onActorStyleTargetChanged()
+{
+    // Null is both a legitimate target (You) and LLUUID's empty value, so the
+    // separate mActorStyleHadTarget flag distinguishes it from no combo row.
+    mActorStyleHadTarget = false;
+    mActorStyleSnapshot.clear();
+    refreshActorStyleTab();
+}
+
+void LLFloaterDirector::onActorStyleControlChanged()
+{
+    if (mRefreshingActorStyle || !hasActorStyleTarget())
+    {
+        return;
+    }
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID id = actorStyleTargetId();
+    // Start from the model record so future fields this UI does not know about
+    // survive an edit to one of today's controls.
+    LLDirectorCast::ActorStyle style = cast.getActorStyle(id);
+    style.mEnabled = mActorStyleEnabled->get();
+    style.mMode = static_cast<LLDirectorCast::EActorStyleMode>(llclamp(
+        mActorStyleMode->getValue().asInteger(),
+        static_cast<S32>(LLDirectorCast::ACTOR_STYLE_LAYER),
+        static_cast<S32>(LLDirectorCast::ACTOR_STYLE_REPLACE)));
+    style.mStyle = llclamp(
+        mActorStyleLook->getValue().asInteger(),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX));
+    style.mUseActorHue = mActorStyleUseActorHue->get();
+    style.mHue = (F32)mActorStyleHue->getValue().asReal();
+    style.mAlpha = (F32)mActorStyleAlpha->getValue().asReal();
+    style.mDissolveProgress =
+        (F32)mActorStyleDissolveProgress->getValue().asReal();
+    style.mPixelSize = (F32)mActorStylePixel->getValue().asReal();
+    style.mShimmerSpeed = (F32)mActorStyleShimmerSpeed->getValue().asReal();
+    style.mShimmerAmount = (F32)mActorStyleShimmerAmount->getValue().asReal();
+    style.mGlitch = (F32)mActorStyleGlitch->getValue().asReal();
+    style.mDistortion = llclamp(
+        mActorStyleDistortion->getValue().asInteger(), 0, 8);
+    style.mDistortionAmount =
+        (F32)mActorStyleDistortionAmount->getValue().asReal();
+    style.mBrightness = (F32)mActorStyleBrightness->getValue().asReal();
+    style.mEffectFps = (F32)mActorStyleEffectFps->getValue().asReal();
+    cast.setActorStyle(id, style);
+
+    // Refresh dependent enablement (master, actor hue, distortion amount) on
+    // the next draw without hammering values during a slider drag.
+    mActorStyleSnapshot.clear();
+}
+
+void LLFloaterDirector::onActorStyleReset()
+{
+    if (!hasActorStyleTarget())
+    {
+        return;
+    }
+    LLDirectorCast::instance().setActorStyle(
+        actorStyleTargetId(), LLDirectorCast::ActorStyle());
+    mActorStyleSnapshot.clear();
+}
+
+void LLFloaterDirector::refreshActorStyleTab()
+{
+    if (!mActorStyleTarget)
+    {
+        return;
+    }
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const bool have_self = isAgentAvatarValid();
+    // De-duplicate against the stable agent id even during a transient avatar
+    // rebuild. If self is momentarily invalid, do not expose the same body as a
+    // CastMember record whose style would disappear when null-id You returns.
+    const LLUUID self_id = gAgent.getID();
+
+    // Rebuild only when membership, display names, or world availability
+    // changes. The explicit You row maps to null; skip the agent's real UUID
+    // when it is also enrolled in Cast so the UI cannot offer two controls for
+    // one rendered body.
+    std::string roster_signature = have_self
+        ? "you:" + self_id.asString() + "|"
+        : std::string("no-you|");
+    for (const LLDirectorCast::CastMember& member : cast.getCast())
+    {
+        if (self_id.notNull() && member.mId == self_id)
+        {
+            continue;
+        }
+        const bool in_world = cast.resolve(member.mId) != nullptr;
+        roster_signature += member.mId.asString() + ":" + member.mLastName
+                         + (in_world ? "+|" : "-|");
+    }
+
+    if (roster_signature != mActorStyleRosterSignature)
+    {
+        mActorStyleRosterSignature = roster_signature;
+        const bool had_previous = mActorStyleTarget->getCurrentIndex() >= 0;
+        const LLSD previous = mActorStyleTarget->getSelectedValue();
+
+        mRefreshingActorStyle = true;
+        mActorStyleTarget->clearRows();
+        if (have_self)
+        {
+            mActorStyleTarget->add("You", LLSD(LLUUID::null));
+        }
+        for (const LLDirectorCast::CastMember& member : cast.getCast())
+        {
+            if (self_id.notNull() && member.mId == self_id)
+            {
+                continue;
+            }
+            const bool in_world = cast.resolve(member.mId) != nullptr;
+            std::string label = castMemberName(member.mId);
+            if (!in_world)
+            {
+                label += " (away)";
+            }
+            mActorStyleTarget->add(label, LLSD(member.mId));
+        }
+        if (!had_previous ||
+            !mActorStyleTarget->setSelectedByValue(previous, true))
+        {
+            mActorStyleTarget->selectFirstItem();
+        }
+        mRefreshingActorStyle = false;
+        mActorStyleHadTarget = false;
+        mActorStyleSnapshot.clear();
+    }
+
+    const bool have_target = hasActorStyleTarget();
+    mActorStyleTarget->setEnabled(mActorStyleTarget->getItemCount() > 0);
+    if (!have_target)
+    {
+        mActorStyleEnabled->setEnabled(false);
+        mActorStyleMode->setEnabled(false);
+        mActorStyleLook->setEnabled(false);
+        mActorStyleUseActorHue->setEnabled(false);
+        mActorStyleHue->setEnabled(false);
+        mActorStyleAlpha->setEnabled(false);
+        mActorStyleDissolveProgress->setEnabled(false);
+        mActorStyleDissolveProgress->setVisible(false);
+        mActorStylePixel->setEnabled(false);
+        mActorStyleShimmerSpeed->setEnabled(false);
+        mActorStyleShimmerAmount->setEnabled(false);
+        mActorStyleGlitch->setEnabled(false);
+        mActorStyleDistortion->setEnabled(false);
+        mActorStyleDistortionAmount->setEnabled(false);
+        mActorStyleBrightness->setEnabled(false);
+        mActorStyleEffectFps->setEnabled(false);
+        mActorStyleReset->setEnabled(false);
+        mActorStyleStatus->setText(LLStringExplicit(
+            "You is unavailable and the Director cast is empty."));
+        mActorStyleHadTarget = false;
+        mActorStyleSnapshot.clear();
+        return;
+    }
+
+    const LLUUID id = actorStyleTargetId();
+    const LLDirectorCast::ActorStyle& style = cast.getActorStyle(id);
+    const std::string snapshot = llformat(
+        "%d|%d|%d|%d|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%d|%.4f|%.4f|%.4f",
+        style.mEnabled ? 1 : 0, static_cast<S32>(style.mMode), style.mStyle,
+        style.mUseActorHue ? 1 : 0, style.mHue, style.mAlpha,
+        style.mDissolveProgress, style.mPixelSize, style.mShimmerSpeed,
+        style.mShimmerAmount,
+        style.mGlitch, style.mDistortion, style.mDistortionAmount,
+        style.mBrightness, style.mEffectFps);
+
+    if (!mActorStyleHadTarget || id != mActorStyleShownFor ||
+        snapshot != mActorStyleSnapshot)
+    {
+        mRefreshingActorStyle = true;
+        mActorStyleEnabled->set(style.mEnabled);
+        mActorStyleMode->setValue(static_cast<S32>(style.mMode));
+        mActorStyleLook->setValue(style.mStyle);
+        mActorStyleUseActorHue->set(style.mUseActorHue);
+        mActorStyleHue->setValue(style.mHue);
+        mActorStyleAlpha->setValue(style.mAlpha);
+        mActorStyleDissolveProgress->setValue(style.mDissolveProgress);
+        mActorStylePixel->setValue(style.mPixelSize);
+        mActorStyleShimmerSpeed->setValue(style.mShimmerSpeed);
+        mActorStyleShimmerAmount->setValue(style.mShimmerAmount);
+        mActorStyleGlitch->setValue(style.mGlitch);
+        mActorStyleDistortion->setValue(style.mDistortion);
+        mActorStyleDistortionAmount->setValue(style.mDistortionAmount);
+        mActorStyleBrightness->setValue(style.mBrightness);
+        mActorStyleEffectFps->setValue(style.mEffectFps);
+        mRefreshingActorStyle = false;
+        mActorStyleShownFor = id;
+        mActorStyleHadTarget = true;
+        mActorStyleSnapshot = snapshot;
+    }
+
+    mActorStyleEnabled->setEnabled(true);
+    const bool active = style.mEnabled;
+    mActorStyleMode->setEnabled(active);
+    mActorStyleLook->setEnabled(active);
+    mActorStyleUseActorHue->setEnabled(active);
+    mActorStyleHue->setEnabled(active && !style.mUseActorHue);
+    // Effect opacity belongs to the shared replay in both modes. Layer
+    // composites it over authored beauty; Cover uses it for the replacement
+    // itself (including the intentional fully-invisible zero endpoint).
+    mActorStyleAlpha->setEnabled(active);
+    const bool dissolve = style.mStyle == 10;
+    mActorStyleDissolveProgress->setVisible(dissolve);
+    mActorStyleDissolveProgress->setEnabled(active && dissolve);
+    mActorStylePixel->setEnabled(active);
+    mActorStyleShimmerSpeed->setEnabled(active);
+    mActorStyleShimmerAmount->setEnabled(active);
+    mActorStyleGlitch->setEnabled(active);
+    mActorStyleDistortion->setEnabled(active);
+    mActorStyleDistortionAmount->setEnabled(
+        active && style.mDistortion != 0);
+    mActorStyleBrightness->setEnabled(active);
+    mActorStyleEffectFps->setEnabled(active);
+    mActorStyleReset->setEnabled(true);
+
+    std::string who = id.isNull() ? std::string("You")
+                                  : castMemberName(id);
+    if (id.notNull() && cast.resolve(id) == nullptr)
+    {
+        who += " (away)";
+    }
+    const char* mode = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        ? "Opaque cover preview"
+        : "Layer";
+    mActorStyleStatus->setText(LLStringExplicit(
+        style.mEnabled ? who + " \xC2\xB7 " + mode + " style active"
+                       : who + " \xC2\xB7 styling off"));
 }
 
 // ---------------------------------------------------------------------------
@@ -1666,16 +2370,52 @@ void LLFloaterDirector::onAnimCopyUUID()
     LLClipboard::instance().copyToClipboard(idwstr, 0, narrow(idwstr.size()));
 }
 
-void LLFloaterDirector::onAnimSetLoco()
+S32 LLFloaterDirector::selectedLocomotionRole() const
 {
-    const LLUUID anim = selectedAnimId();
+    const S32 role = mLocomotionRoleCombo
+        ? mLocomotionRoleCombo->getValue().asInteger()
+        : LLDirectorCast::LOCO_WALK_FORWARD;
+    switch (role)
+    {
+        case LLDirectorCast::LOCO_IDLE:
+        case LLDirectorCast::LOCO_WALK_FORWARD:
+        case LLDirectorCast::LOCO_RUN_FORWARD:
+        case LLDirectorCast::LOCO_FLY:
+        case LLDirectorCast::LOCO_HOVER:
+            return role;
+        default:
+            return LLDirectorCast::LOCO_WALK_FORWARD;
+    }
+}
+
+void LLFloaterDirector::applySelectedLocomotion(const LLUUID& anim)
+{
     LLDirectorCast::CastMember* m =
         LLDirectorCast::instance().getMember(firstSelectedCastId());
-    if (anim.notNull() && m)
+    if (anim.isNull() || !m)
     {
-        // the loco line under the paste row is the visible confirmation
+        return;
+    }
+
+    const S32 role = selectedLocomotionRole();
+    auto& entry = m->mLocomotionSet.edit(
+        static_cast<LLDirectorCast::ELocomotionRole>(role));
+    entry.mAnim = anim;
+    entry.mNominalSpeed = llclamp(
+        (F32)mLocomotionSpeed->getValue().asReal(), 0.05f, 20.f);
+    entry.mManualLeftPlantPhase = llclamp(
+        (F32)mLocomotionPhase->getValue().asReal(), -1.f, 1.f);
+    entry.mAllowAO = mLocomotionAllowAO->get();
+    if (role == LLDirectorCast::LOCO_WALK_FORWARD)
+    {
         m->mLocoAnim = anim;
     }
+    mLocomotionEditorLoaded = false;
+}
+
+void LLFloaterDirector::onAnimSetLoco()
+{
+    applySelectedLocomotion(selectedAnimId());
 }
 
 // Apply the client-side play-local priority (DirectorAnimPlayLocalPriority) to a
@@ -1732,13 +2472,7 @@ void LLFloaterDirector::onPastePlayLocal(bool play)
 
 void LLFloaterDirector::onPasteSetLoco()
 {
-    const LLUUID anim = pasteAnimId();
-    LLDirectorCast::CastMember* m =
-        LLDirectorCast::instance().getMember(firstSelectedCastId());
-    if (anim.notNull() && m)
-    {
-        m->mLocoAnim = anim;
-    }
+    applySelectedLocomotion(pasteAnimId());
 }
 
 void LLFloaterDirector::onClickClearLoco()
@@ -1746,7 +2480,136 @@ void LLFloaterDirector::onClickClearLoco()
     if (LLDirectorCast::CastMember* m =
             LLDirectorCast::instance().getMember(firstSelectedCastId()))
     {
-        m->mLocoAnim.setNull();
+        const S32 role = selectedLocomotionRole();
+        m->mLocomotionSet.mRoles.erase(role);
+        if (role == LLDirectorCast::LOCO_WALK_FORWARD)
+        {
+            m->mLocoAnim.setNull();
+        }
+        mLocomotionEditorLoaded = false;
+    }
+}
+
+void LLFloaterDirector::onLocomotionRoleChanged()
+{
+    mLocomotionEditorLoaded = false;
+    refreshLocomotionRoleEditor(firstSelectedCastId());
+}
+
+void LLFloaterDirector::onLocomotionMetadataCommit()
+{
+    LLDirectorCast::CastMember* member =
+        LLDirectorCast::instance().getMember(firstSelectedCastId());
+    if (!member)
+    {
+        return;
+    }
+    const S32 role = selectedLocomotionRole();
+    auto& entry = member->mLocomotionSet.mRoles[role];
+    entry.mNominalSpeed = llclamp(
+        (F32)mLocomotionSpeed->getValue().asReal(), 0.05f, 20.f);
+    entry.mManualLeftPlantPhase = llclamp(
+        (F32)mLocomotionPhase->getValue().asReal(), -1.f, 1.f);
+    entry.mAllowAO = mLocomotionAllowAO->get();
+    mLocomotionEditorLoaded = false;
+}
+
+void LLFloaterDirector::refreshLocomotionRoleEditor(const LLUUID& member_id)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLDirectorCast::CastMember* member = cast.getMember(member_id);
+    const S32 role = selectedLocomotionRole();
+    const LLDirectorCast::LocomotionRoleEntry* entry = member
+        ? member->mLocomotionSet.get(
+              static_cast<LLDirectorCast::ELocomotionRole>(role))
+        : nullptr;
+    const LLUUID anim = entry ? entry->mAnim : LLUUID::null;
+    const bool configured = entry && anim.notNull();
+    const F32 speed = entry ? entry->mNominalSpeed
+                            : default_locomotion_speed(role);
+    const F32 phase = entry ? entry->mManualLeftPlantPhase : -1.f;
+    const bool allow_ao = entry && entry->mAllowAO;
+    const bool changed = !mLocomotionEditorLoaded ||
+        member_id != mLocomotionEditorMember ||
+        role != mLocomotionEditorRole || anim != mLocomotionEditorAnim ||
+        speed != mLocomotionEditorSpeed || phase != mLocomotionEditorPhase ||
+        allow_ao != mLocomotionEditorAllowAO;
+    if (changed)
+    {
+        mLocomotionSpeed->setValue(speed);
+        mLocomotionPhase->setValue(phase);
+        mLocomotionAllowAO->set(allow_ao);
+        mLocomotionEditorMember = member_id;
+        mLocomotionEditorRole = role;
+        mLocomotionEditorAnim = anim;
+        mLocomotionEditorSpeed = speed;
+        mLocomotionEditorPhase = phase;
+        mLocomotionEditorAllowAO = allow_ao;
+        mLocomotionEditorLoaded = true;
+    }
+
+    const bool have_member = member != nullptr;
+    mLocomotionRoleCombo->setEnabled(have_member);
+    mLocomotionSpeed->setEnabled(have_member);
+    mLocomotionPhase->setEnabled(have_member);
+    mLocomotionAllowAO->setEnabled(have_member);
+
+    std::string status = "Select a cast member";
+    if (member && !configured)
+    {
+        status = std::string(locomotion_role_label(role)) +
+            (entry ? ": fallback; metadata draft" : ": fallback");
+    }
+    else if (configured)
+    {
+        status = std::string(locomotion_role_label(role)) +
+            (cast.resolve(member_id) ? ": not loaded; starts on ACTION"
+                                     : ": configured; actor away");
+        if (LLVOAvatar* av = cast.resolve(member_id))
+        {
+            if (LLKeyframeMotion* motion = dynamic_cast<LLKeyframeMotion*>(
+                    av->findMotion(entry->mAnim)))
+            {
+                if (!motion->isLoaded())
+                {
+                    status = std::string(locomotion_role_label(role)) +
+                        ": loading";
+                }
+                else if (entry->mManualLeftPlantPhase >= 0.f)
+                {
+                    status = std::string(locomotion_role_label(role)) +
+                        ": manual phase";
+                }
+                else
+                {
+                    const auto& info = motion->getGenericLocomotionPhaseInfo();
+                    switch (info.mStatus)
+                    {
+                        case LLKeyframeMotion::LocomotionPhaseInfo::VALID:
+                            status = llformat("%s: auto phase %.0f%%",
+                                locomotion_role_label(role),
+                                info.mConfidence * 100.f);
+                            break;
+                        case LLKeyframeMotion::LocomotionPhaseInfo::MISSING_ANKLES:
+                            status = std::string(locomotion_role_label(role)) +
+                                ": no ankle curves; loop-in fallback";
+                            break;
+                        case LLKeyframeMotion::LocomotionPhaseInfo::NO_ALTERNATING_PLANTS:
+                            status = std::string(locomotion_role_label(role)) +
+                                ": phase unclear; loop-in fallback";
+                            break;
+                        default:
+                            status = std::string(locomotion_role_label(role)) +
+                                ": non-looping; loop-in fallback";
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    if (mLocoText->getText() != status)
+    {
+        mLocoText->setText(status);
     }
 }
 
@@ -1872,8 +2735,7 @@ void LLFloaterDirector::refreshAnimateTab()
     mAnimSetLocoBtn->setEnabled(have_row && sel.notNull());
     setToolTipIfChanged(mAnimSetLocoBtn, !have_row ? no_row_tip
         : sel.isNull() ? std::string("Select a cast member first")
-        : "Use this animation as " + member_name
-          + "'s walk while the mover drives them (overrides the shared custom anim)");
+        : "Use this animation for " + member_name + "'s selected locomotion role");
     const std::string not_in_world_tip = sel.isNull()
         ? std::string("Select a cast member first")
         : member_name + " is not in world";
@@ -1904,26 +2766,19 @@ void LLFloaterDirector::refreshAnimateTab()
     mPasteSetLocoBtn->setEnabled(pasted.notNull() && sel.notNull());
     setToolTipIfChanged(mPasteSetLocoBtn, pasted.isNull() ? bad_uuid_tip
         : sel.isNull() ? std::string("Select a cast member first")
-        : "Use the pasted animation as " + member_name + "'s walk while the mover drives them");
+        : "Use the pasted animation for " + member_name + "'s selected locomotion role");
 
-    // loco-anim affordance: current override + Clear
+    // Sparse locomotion-role authoring and live analysis status.
     const LLDirectorCast::CastMember* m = cast.getMember(sel);
-    std::string loco = "Loco anim: \xE2\x80\x94";
-    if (m)
-    {
-        loco = m->mLocoAnim.notNull() ? "Loco anim: " + m->mLocoAnim.asString()
-                                      : std::string("Loco anim: default walk");
-    }
-    if (mLocoText->getText() != loco)
-    {
-        mLocoText->setText(loco);
-    }
-    const bool have_loco = m && m->mLocoAnim.notNull();
+    refreshLocomotionRoleEditor(sel);
+    const S32 selected_role = selectedLocomotionRole();
+    const bool have_loco = m && m->mLocomotionSet.mRoles.find(selected_role) !=
+        m->mLocomotionSet.mRoles.end();
     mClearLocoBtn->setEnabled(have_loco);
     setToolTipIfChanged(mClearLocoBtn, !m
         ? std::string("Select a cast member first")
-        : have_loco ? member_name + " returns to the default walk (or the shared custom anim when enabled)"
-                    : std::string("No loco anim override set"));
+        : have_loco ? std::string("Clear this role and restore its deterministic fallback")
+                    : std::string("This role already uses its fallback"));
 
     // feed the shared preview panel: the selected row (else the pasted UUID) on
     // loop, with its Stop / Revoke / Blacklist pointed at whatever object is
@@ -2001,13 +2856,11 @@ void LLFloaterDirector::onClickClearSubject(S32 subject)
     clear_subject(LLDirectorCast::instance(), subject);
 }
 
-void LLFloaterDirector::onClickSetLookAtCamera(bool selected)
+void LLFloaterDirector::onOpenActorGaze()
 {
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    for (const LLUUID& id : selectedCastIds())
-    {
-        cast.setLookAtCamera(id, selected);
-    }
+    ALFloaterActorGaze::showForSelection(
+        ALFloaterActorGaze::ESelectionSource::DIRECTOR,
+        selectedCastIds());
 }
 
 void LLFloaterDirector::onClickManagePrism()
@@ -2015,8 +2868,70 @@ void LLFloaterDirector::onClickManagePrism()
     LLFloaterReg::showInstance("prism_manager");
 }
 
+void LLFloaterDirector::onClickBuildOtsPair()
+{
+    std::string reason;
+    if (!LLPrismLens::buildOtsPairFromSubjects(nullptr, nullptr, &reason))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert",
+            LLSD().with("MESSAGE", reason.empty()
+                ? "Unable to build the OTS camera pair." : reason));
+        return;
+    }
+    mHavePrismSummary = false;
+}
+
+void LLFloaterDirector::onClickZolly()
+{
+    std::string reason;
+    if (!can_start_manual_subject_shot(&reason))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert", LLSD().with("MESSAGE", reason));
+        return;
+    }
+
+    const F32 first = gSavedSettings.getF32("CinematicCamVertigoStartDist");
+    const F32 second = gSavedSettings.getF32("CinematicCamVertigoEndDist");
+    const F32 near_distance = llmin(first, second);
+    const F32 far_distance = llmax(first, second);
+    const bool dolly_in =
+        gSavedSettings.getS32("CinematicCamVertigoDirection") != 0;
+    gSavedSettings.setF32("CinematicCamVertigoStartDist",
+                          dolly_in ? far_distance : near_distance);
+    gSavedSettings.setF32("CinematicCamVertigoEndDist",
+                          dolly_in ? near_distance : far_distance);
+    gSavedSettings.setS32("CinematicCamVertigoEndMode", 0);
+    LLCinematicCamera::instance().triggerMode(
+        LLCinematicCamera::MODE_DOLLY_ZOOM, true);
+}
+
+void LLFloaterDirector::onClickHeroArc()
+{
+    std::string reason;
+    if (!can_start_manual_subject_shot(&reason))
+    {
+        LLNotificationsUtil::add(
+            "GenericAlert", LLSD().with("MESSAGE", reason));
+        return;
+    }
+
+    const F32 angle = llclamp(
+        gSavedSettings.getF32("CinematicCamArcGeneratorAngle"), 30.f, 180.f);
+    gSavedSettings.setF32("CinematicCamArcFrom", -0.5f * angle);
+    gSavedSettings.setF32("CinematicCamArcTo", 0.5f * angle);
+    gSavedSettings.setS32("CinematicCamArcEndMode", 0);
+    LLCinematicCamera::instance().triggerMode(
+        LLCinematicCamera::MODE_ARC, true);
+}
+
 void LLFloaterDirector::refreshCameraTab()
 {
+    ALFloaterActorGaze::updateSelection(
+        ALFloaterActorGaze::ESelectionSource::DIRECTOR,
+        selectedCastIds());
+
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID a = cast.getSubjectA();
     const LLUUID b = cast.getSubjectB();
@@ -2062,38 +2977,112 @@ void LLFloaterDirector::refreshCameraTab()
         ? std::string("Clear Subject D")
         : std::string("Subject D is not set"));
 
-    const bool have_cast_selection = !selectedCastIds().empty();
-    mLookAtSetBtn->setEnabled(have_cast_selection);
-    mLookAtClearBtn->setEnabled(have_cast_selection);
-    const std::string look_tip = have_cast_selection
-        ? std::string("Change the camera-gaze flag for the selected cast row(s); only real resident avatars are rendered with the override")
-        : std::string("Select one or more cast rows first");
-    setToolTipIfChanged(mLookAtSetBtn, look_tip);
-    setToolTipIfChanged(mLookAtClearBtn, look_tip);
+    // The Director refreshes all tab models while it is open. Avoid taking
+    // Prism registry/gate snapshots every frame unless Camera is the visible
+    // tab; the controls will refresh immediately when their visible chain is
+    // restored.
+    if (!mOtsPairBtn->isInVisibleChain())
+    {
+        return;
+    }
 
-    const U64 prism_configuration_revision = LLPrismLens::configurationRevision();
-    const U64 prism_runtime_revision = LLPrismLens::runtimeRevision();
+    LLVOAvatar* live_a = cast.resolveSubjectA();
+    LLVOAvatar* live_b = cast.resolveSubjectB();
+    const bool distinct_live_pair = live_a && live_b &&
+        live_a->getID() != live_b->getID();
+    if (!distinct_live_pair)
+    {
+        mOtsPairBtn->setEnabled(false);
+        setToolTipIfChanged(mOtsPairBtn,
+            !live_a || !live_b
+                ? std::string("Set live Director Subjects A and B first")
+                : std::string("Subjects A and B must be different avatars"));
+    }
+
+    std::string subject_shot_reason;
+    const bool can_trigger_subject_shot =
+        can_start_manual_subject_shot(&subject_shot_reason);
+    mZollyBtn->setEnabled(can_trigger_subject_shot);
+    mHeroArcBtn->setEnabled(can_trigger_subject_shot);
+    const std::string subject_shot_tip = can_trigger_subject_shot
+        ? std::string("Start this one-shot move locked to Subject A's head")
+        : subject_shot_reason;
+    setToolTipIfChanged(mZollyBtn, subject_shot_tip);
+    setToolTipIfChanged(mHeroArcBtn, subject_shot_tip);
+
+    if (mHavePrismSummary &&
+        mPrismRefreshTimer.getElapsedTimeF32() < PRISM_SNAPSHOT_POLL_SECONDS)
+    {
+        return;
+    }
+    mPrismRefreshTimer.reset();
+
+    const LLPrismLens::RegistrySnapshot ots_registry =
+        LLPrismLens::registrySnapshot();
+    const LLPrismLens::GateSnapshot ots_gate = LLPrismLens::gateSnapshot();
+    std::set<LLUUID> replaceable_ots_captures;
+    std::size_t replaceable_ots_arms = 0;
+    for (const LLPrismLens::GateArmedCamera& armed :
+         ots_gate.mSettings.mArmed)
+    {
+        if (LLPrismLens::isOtsPairArmLabel(armed.mLabel))
+        {
+            ++replaceable_ots_arms;
+            replaceable_ots_captures.insert(armed.mCaptureId);
+        }
+    }
+    U32 replaceable_ots_capture_count = 0;
+    for (U32 index = 0; index < ots_registry.mCaptureCount; ++index)
+    {
+        if (replaceable_ots_captures.count(
+                ots_registry.mCaptures[index].mHandle.mId) != 0)
+        {
+            ++replaceable_ots_capture_count;
+        }
+    }
+    const bool ots_capacity =
+        ots_registry.mCaptureCount - replaceable_ots_capture_count <=
+            LLPrismLens::MAX_CAPTURES - 2 &&
+        ots_gate.mSettings.mArmed.size() - replaceable_ots_arms <=
+            LLPrismLens::MAX_CAPTURES - 2;
+    mOtsPairBtn->setEnabled(distinct_live_pair && ots_capacity);
+    setToolTipIfChanged(mOtsPairBtn,
+        !live_a || !live_b
+            ? std::string("Set live Director Subjects A and B first")
+            : !distinct_live_pair
+                ? std::string("Subjects A and B must be different avatars")
+                : !ots_capacity
+                    ? std::string("Two free VCam capture and Gate arm slots are required")
+                    : std::string("Create reciprocal matched-lens OTS A/B virtual cameras and arm both in the Gate"));
+
+    const U64 prism_configuration_revision =
+        ots_registry.mConfigurationRevision;
+    const U64 prism_runtime_revision = ots_registry.mRuntimeRevision;
     if (!mHavePrismSummary ||
         prism_configuration_revision != mPrismConfigurationRevision ||
         prism_runtime_revision != mPrismRuntimeRevision)
     {
-        const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+        const LLPrismLens::RegistrySnapshot& snapshot = ots_registry;
         U32 capture_attention = 0;
         U32 display_attention = 0;
         U32 updating = 0;
         for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
         {
-            const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
-            capture_attention += capture.mRuntime.mHealth != LLPrismLens::ECaptureHealth::READY;
-            updating += capture.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE ||
-                        capture.mRuntime.mActivity == LLPrismLens::EActivityState::THROTTLED;
+            const LLPrismLens::CaptureDefinition& capture =
+                snapshot.mCaptures[index];
+            capture_attention += capture.mRuntime.mHealth !=
+                LLPrismLens::ECaptureHealth::READY;
+            updating +=
+                capture.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE ||
+                capture.mRuntime.mActivity == LLPrismLens::EActivityState::THROTTLED;
         }
         for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
         {
             display_attention += snapshot.mDisplays[index].mRuntime.mHealth !=
                 LLPrismLens::EDisplayHealth::READY;
         }
-        const bool needs_attention = capture_attention != 0 || display_attention != 0;
+        const bool needs_attention =
+            capture_attention != 0 || display_attention != 0;
 
         mPrismSummaryText->setText(llformat(
             "Prism %u/%u captures | %u/%u faces | %u live%s",
@@ -2101,7 +3090,7 @@ void LLFloaterDirector::refreshCameraTab()
             snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
             updating, needs_attention ? " | attention" : ""));
         setToolTipIfChanged(mPrismSummaryText, llformat(
-            "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Prism Manager for sources, faces, optics, picture FPS, and adaptive performance.",
+            "%u captures and %u display bindings; attention: %u capture%s, %u display%s. Open Virtual Cam Manager for sources, faces, optics, picture FPS, and adaptive performance.",
             snapshot.mCaptureCount, snapshot.mDisplayCount,
             capture_attention, capture_attention == 1 ? "" : "s",
             display_attention, display_attention == 1 ? "" : "s"));

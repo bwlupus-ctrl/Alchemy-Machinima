@@ -73,12 +73,14 @@ LLComboBox::Params::Params()
     allow_new_values("allow_new_values", false),
     show_text_as_tentative("show_text_as_tentative", true),
     max_chars("max_chars", 20),
+    list_min_width("list_min_width", 0),
     list_position("list_position", BELOW),
     items("item"),
     combo_button("combo_button"),
     combo_list("combo_list"),
     combo_editor("combo_editor"),
-    drop_down_button("drop_down_button")
+    drop_down_button("drop_down_button"),
+    wheel_select("wheel_select", true)
 {
     addSynonym(items, "combo_item");
 }
@@ -92,12 +94,14 @@ LLComboBox::LLComboBox(const LLComboBox::Params& p)
     mAllowTextEntry(p.allow_text_entry),
     mAllowNewValues(p.allow_new_values),
     mMaxChars(p.max_chars),
+    mListMinWidth(llmax(p.list_min_width(), 0)),
     mPrearrangeCallback(p.prearrange_callback()),
     mTextEntryCallback(p.text_entry_callback()),
     mTextChangedCallback(p.text_changed_callback()),
     mListPosition(p.list_position),
     mLastSelectedIndex(-1),
-    mLabel(p.label)
+    mLabel(p.label),
+    mWheelSelect(p.wheel_select)
 {
     // Text label button
 
@@ -683,7 +687,9 @@ void LLComboBox::showList()
 
     LLRect rect = mList->getRect();
 
-    S32 min_width = getRect().getWidth();
+    // Most combos should track the closed control width. Image-rich pickers may
+    // request a wider popup without widening or rearranging their owning panel.
+    S32 min_width = llmax(getRect().getWidth(), mListMinWidth);
     S32 max_width = llmax(min_width, MAX_COMBO_WIDTH);
     // make sure we have up to date content width metrics
     S32 list_width = llclamp(mList->calcMaxContentWidth(), min_width, max_width);
@@ -956,6 +962,16 @@ bool LLComboBox::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     if (mList->getVisible())
     {
         return mList->handleScrollWheel(x, y, delta);
+    }
+
+    // [AL] wheel_select opt-out: below this point a hovered wheel over a
+    // CLOSED combo changes the selection and commits. For combos where that
+    // is a semantic hazard rather than a harmless scrub (mode/preset jumps --
+    // see floater_ultimate_diopter.xml), refuse the event so it can bubble to
+    // an ancestor (e.g. a scroll container) instead.
+    if (!mWheelSelect)
+    {
+        return false;
     }
 
     if (mAllowTextEntry) // We might be editable

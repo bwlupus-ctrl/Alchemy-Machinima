@@ -105,6 +105,8 @@ private:
     void renderRiggedEmissives(std::vector<LLDrawInfo*>& emissives);
     void renderPbrEmissives(std::vector<LLDrawInfo*>& emissives);
     void renderRiggedPbrEmissives(std::vector<LLDrawInfo*>& emissives);
+    void renderActorFxEmissives(std::vector<LLDrawInfo*>& emissives,
+                                bool pbr, bool rigged);
     bool TexSetup(LLDrawInfo* draw, bool use_material);
     void RestoreTexSetup(bool tex_setup);
 

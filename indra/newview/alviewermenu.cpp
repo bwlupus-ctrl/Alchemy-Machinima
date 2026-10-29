@@ -29,6 +29,8 @@
 
 // newview
 #include "alavataractions.h"
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "llcontrolavatar.h"        // [AvatarLightResponse] worn-animesh target
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
 #include "llactormover.h"       // [ActorMover] ghost locomotion subject
 #include "alobjectpathmover.h"  // [ObjectPath] prop-on-a-spline roster
@@ -762,6 +764,7 @@ namespace
     {
         LLPipeline::VolumetricShaftOverride ov;
         ov.multiplier   = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+        ov.maxDistance  = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxDistance");
         ov.feather      = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
         ov.anisotropy   = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
         ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
@@ -998,6 +1001,37 @@ namespace
         return avatarp && LLActorMover::isTarget(avatarp->getID());
     }
 
+// [AvatarLightResponse] right-click avatar (or animesh, resolved to its control avatar) > Director >
+// "Light Response...": open the per-avatar light-response floater on that target.
+    void handle_avatar_light_response(const LLSD&)
+    {
+        // A worn animesh must target its OWN control avatar: find_avatar_from_object() walks an
+        // attachment up to the wearer (same resolution order as the skeleton-reset handlers).
+        LLViewerObject* primary = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        LLVOAvatar* avatarp = nullptr;
+        if (primary && !primary->isAvatar())
+        {
+            LLControlAvatar* cav = primary->getControlAvatar();
+            if (cav && !cav->isDead())
+            {
+                avatarp = cav;
+            }
+        }
+        if (!avatarp)
+        {
+            avatarp = find_avatar_from_object(primary);
+        }
+        if (!avatarp)
+        {
+            return;
+        }
+        const LLUUID key = ALAvatarLightResponse::keyForAvatar(avatarp, nullptr);
+        if (key.notNull())
+        {
+            LLFloaterReg::showInstance("avatar_light_response", LLSD(key));
+        }
+    }
+
 // [ObjectPath] right-click any object > Director > "Path Object": toggle the
 // clicked linkset's ROOT into the client-side object path mover roster (drive
 // a prop along a spline, sim never told). The clicked prim resolves to its
@@ -1044,7 +1078,7 @@ namespace
         return avatarp && LLDirectorCast::instance().contains(avatarp->getID());
     }
 
-// [Director] right-click avatar (or animesh) > designate as Subject A / B.
+// [Director] right-click avatar (or animesh) > designate as Subject A-D.
 // Subjects must be cast members -- LLDirectorCast clears a subject the moment
 // it leaves the cast -- so resolve the clicked avatar the same way Add to Cast
 // does, ensure membership (add() no-ops when already in), then set the subject.
@@ -1080,6 +1114,40 @@ namespace
     {
         LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
         return avatarp && LLDirectorCast::instance().getSubjectB() == avatarp->getID();
+    }
+
+    void handle_avatar_set_subject_c(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            cast.add(avatarp->getID());
+            cast.setSubjectC(avatarp->getID());
+        }
+    }
+
+    bool check_avatar_set_subject_c(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLDirectorCast::instance().getSubjectC() == avatarp->getID();
+    }
+
+    void handle_avatar_set_subject_d(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        if (avatarp && avatarp->getID().notNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            cast.add(avatarp->getID());
+            cast.setSubjectD(avatarp->getID());
+        }
+    }
+
+    bool check_avatar_set_subject_d(const LLSD&)
+    {
+        LLVOAvatar* avatarp = find_avatar_from_object(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+        return avatarp && LLDirectorCast::instance().getSubjectD() == avatarp->getID();
     }
 
 // [Director] right-click avatar (or animesh) > Set Mark Here / Reset to Mark.
@@ -1197,18 +1265,24 @@ void ALViewerMenu::initialize_menus()
     // [ActorMover] ghost-locomotion subject
     commit.add("Avatar.ActorMoverTarget", boost::bind(&handle_avatar_actor_mover_target, _2));
     enable.add("Avatar.CheckActorMoverTarget", boost::bind(&check_avatar_actor_mover_target, _2));
+    // [AvatarLightResponse]
+    commit.add("Avatar.LightResponse", boost::bind(&handle_avatar_light_response, _2));
     // [ObjectPath] client-side object path mover roster (props on splines)
     commit.add("Object.PathTarget", boost::bind(&handle_object_path_target, _2));
     enable.add("Object.CheckPathTarget", boost::bind(&check_object_path_target, _2));
     // [Director] cast membership (alias of the Actor Mover roster)
     commit.add("Avatar.AddToCast", boost::bind(&handle_avatar_add_to_cast, _2));
     enable.add("Avatar.CheckAddToCast", boost::bind(&check_avatar_add_to_cast, _2));
-    // [Director] Subjects A/B (setters add to the cast when absent; subjects
+    // [Director] Subjects A-D (setters add to the cast when absent; subjects
     // must be cast members) + per-actor marks (Set Mark Here / Reset to Mark)
     commit.add("Avatar.SetSubjectA", boost::bind(&handle_avatar_set_subject_a, _2));
     enable.add("Avatar.CheckSubjectA", boost::bind(&check_avatar_set_subject_a, _2));
     commit.add("Avatar.SetSubjectB", boost::bind(&handle_avatar_set_subject_b, _2));
     enable.add("Avatar.CheckSubjectB", boost::bind(&check_avatar_set_subject_b, _2));
+    commit.add("Avatar.SetSubjectC", boost::bind(&handle_avatar_set_subject_c, _2));
+    enable.add("Avatar.CheckSubjectC", boost::bind(&check_avatar_set_subject_c, _2));
+    commit.add("Avatar.SetSubjectD", boost::bind(&handle_avatar_set_subject_d, _2));
+    enable.add("Avatar.CheckSubjectD", boost::bind(&check_avatar_set_subject_d, _2));
     commit.add("Avatar.SetMark", boost::bind(&handle_avatar_set_mark, _2));
     commit.add("Avatar.ResetToMark", boost::bind(&handle_avatar_reset_to_mark, _2));
     enable.add("Avatar.EnableResetToMark", boost::bind(&enable_avatar_reset_to_mark, _2));

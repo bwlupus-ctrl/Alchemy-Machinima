@@ -42,6 +42,19 @@ uniform float sun_moon_glow_factor;
 uniform float sky_sunlight_scale;
 uniform float sky_ambient_scale;
 uniform int classic_mode;
+// [EnvIntensity] viewer-side Light Intensity EV factors (2^EV), kept separate
+// from the pre-PBR compatibility scales above so those keep their stock
+// semantics. All exactly 1.0 at 0 EV and 1.0 in classic mode.
+// [EnvIntensity v2] sky_amb_scale (sky ambient) replaces sky_gi_scale here
+// (sky_gi_scale now scales probe irradiance only; both equal the old GI factor
+// at the v2 defaults). sky_amb_scale is 1.0 during every probe capture. The
+// tints are luminance-normalised (Y == 1) multipliers, exactly vec3(1) when
+// off, and are applied in uniform-gated branches so the off path is the
+// unmodified expression.
+uniform float sky_sun_ev_scale;
+uniform float sky_amb_scale;
+uniform vec3  sky_sun_tint;
+uniform vec3  sky_amb_tint;
 
 float getAmbientClamp() { return 1.0f; }
 
@@ -130,6 +143,47 @@ void calcAtmosphericVars(vec3 inPositionEye, vec3 light_dir, float ambFactor, ou
     additive = min(additive, vec3(10));
 }
 
+// [Cine Haze] WindLight far-field haze colour: the `additive` term of
+// calcAtmosphericVars() in the limit rel_pos_len -> infinity (combined_haze -> 0,
+// so its (1 - combined_haze) factor is exactly 1) for a unit eye-space view
+// direction.  This is the colour the WindLight aerial perspective converges to,
+// i.e. the sky colour at the horizon in that direction, which lets the cinematic
+// haze layer fade geometry into the sky without a seam.  Same sRGB-ish space as
+// `additive`; callers convert with srgb_to_linear(x * 2.0) * sky_hdr_scale like
+// hazeF.glsl / atmosFragLighting().  The eye-vs-lightnorm space mix in haze_glow
+// is reproduced on purpose (it is what the existing haze and SL-13539/SL-15861
+// notes describe); the max_y altitude rescale is a no-op for a unit direction.
+// KEEP IN SYNC with calcAtmosphericVars() above -- deliberately not refactored
+// into a shared helper so the existing function's codegen stays byte-identical.
+vec3 calcAtmosphericFarHazeColor(vec3 view_dir_eye, vec3 light_dir)
+{
+    vec3 sunlight = (sun_up_factor == 1) ? sunlight_color : moonlight_color;
+
+    vec3 light_atten = (blue_density + vec3(haze_density * 0.25)) * (density_multiplier * max_y);
+
+    vec3 combined_haze = max(blue_density + vec3(haze_density), vec3(1e-6));
+    vec3 blue_weight   = blue_density / combined_haze;
+    vec3 haze_weight   = vec3(haze_density) / combined_haze;
+
+    float above_horizon_factor = 1.0 / max(1e-6, lightnorm.y);
+    sunlight *= exp(-light_atten * above_horizon_factor);
+
+    float haze_glow = dot(view_dir_eye, lightnorm.xyz);
+    haze_glow *= max(0.0f, dot(light_dir, view_dir_eye));
+    haze_glow = 1. - haze_glow;
+    haze_glow = max(haze_glow, .001);
+    haze_glow *= glow.x;
+    haze_glow = clamp(pow(haze_glow, glow.z), -100000, 100000);
+    haze_glow += .25;
+    haze_glow *= sun_moon_glow_factor;
+
+    vec3 tmpAmbient = ambient_color + (vec3(1.) - ambient_color) * cloud_shadow * 0.5;
+    vec3 cs = sunlight.rgb * (1. - cloud_shadow);
+    vec3 additive = (blue_horizon.rgb * blue_weight.rgb) * (cs + tmpAmbient.rgb) + (haze_horizon * haze_weight.rgb) * (cs * haze_glow + tmpAmbient.rgb);
+
+    return min(additive, vec3(10));
+}
+
 vec3 srgb_to_linear(vec3 col);
 
 // provide a touch of lighting in the opposite direction of the sun light
@@ -162,4 +216,27 @@ void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, ou
     // (allows for mixing of light sources other than sunlight e.g. reflection probes)
     sunlit *= sky_sunlight_scale;
     amblit *= sky_ambient_scale;
+
+    // [EnvIntensity] Light Intensity EV factors act on LINEAR light, which is
+    // what sunlit/amblit are at this point on the PBR path. Classic mode keeps
+    // them sRGB-encoded and its consumers sum sun and ambient in encoded space
+    // before decoding, so no linear factor can be applied correctly here or
+    // there: the factors are INACTIVE in classic mode (the C++ side uploads
+    // 1.0 then as well). exp2(0) == 1.0, so 0 EV stays bit-identical.
+    if (classic_mode < 1)
+    {
+        sunlit *= sky_sun_ev_scale;
+        // [EnvIntensity v2] sunlit is the sun OR the moon (sun_up_factor); the
+        // C++ side chose the matching EV and tint. amblit is grey luminance
+        // here, so the ambient tint colours it fully.
+        if (sky_sun_tint != vec3(1.0))
+        {
+            sunlit *= sky_sun_tint;
+        }
+        amblit *= sky_amb_scale;
+        if (sky_amb_tint != vec3(1.0))
+        {
+            amblit *= sky_amb_tint;
+        }
+    }
 }

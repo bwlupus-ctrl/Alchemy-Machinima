@@ -28,6 +28,8 @@
 #define LL_LLGHOSTAVATAR_H
 
 #include "llvoavatar.h"
+#include "alghostautoanimmodel.h" // [AutoAnimate]
+#include <memory> // [AutoAnimate]
 
 #include <set>
 
@@ -115,6 +117,7 @@ public:
     void setEntityScale(F32 scale);
     F32 getUniformScale() const override { return mEntityScale; }
     void setEntityPhysicsEnabled(bool enabled);
+    void setEntityEyeMotionEnabled(bool enabled);
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     void setEntityLoopMode(S32 mode);
     // Retime the clone AND each animesh attachment's control avatar. Each animesh
@@ -123,6 +126,35 @@ public:
     void setEntityAnimTimeFactor(F32 factor);
     void restartEntityAnimation();
     void setEntityLook(S32 look, F32 alpha);
+
+    // [AutoAnimate] Actions are consumed by idleUpdate, never by UI callbacks.
+    void setEntityAutoAnimate(const ALGhostAutoAnim::Config& config);
+    void requestAutoAnimAction(ALGhostAutoAnim::Action action, bool cold = false);
+    F32 getAutoAnimWindow() const; // [AutoAnimate] Compare before re-sending default-window config.
+    void restartEntityAnimationAudited(); // [AutoAnimate] Wrap the protected restart path.
+    bool takeAutoAnimPublishedPool(std::shared_ptr<const ALGhostAutoAnim::Pool>& pool);
+    std::shared_ptr<const ALGhostAutoAnim::Pool> exportAutoAnimProgress();
+    void getAutoAnimStatus(ALGhostAutoAnim::LearnStatus& status) const;
+    static void logAutoAnimCost(U32 learners, U32 players);
+    void countAutoAnimActivity(U32& learners, U32& players) const; // [AutoAnimate] No status-string allocation.
+
+    // [TrueMirror] DRIVE_TRUE_MIRROR support.
+    //
+    // applyTrueMirrorStamp() copies the source avatar's FINAL evaluated local
+    // joint state (rotation + position for every skeleton joint, root
+    // rotation optionally) and its animated face morphs (expression / blink /
+    // lipsync, physics-driven when the clone's physics is on) onto this clone.
+    // It is called ONCE per frame by ALGhostStudio::updatePostObjectList(),
+    // AFTER gObjectList.update() -- i.e. after the source's updateCharacter()
+    // (motions -> Pose Polish -> gaze/IK) -- so it reads the post-gaze pose
+    // with no frame lag, and it is the LAST joint writer of the frame. The
+    // clone's world position is never touched: it mirrors the pose in place.
+    // Self-gates on the drive mode; a missing/dead/unbuilt source HOLDS the
+    // last stamped pose (the paused controller keeps it).
+    void applyTrueMirrorStamp();
+    // True while this clone is in DRIVE_TRUE_MIRROR. Used by LLActorMover to
+    // skip its root override and gaze layer (the stamp owns the pose).
+    bool isTrueMirrorDriven() const;
 
     virtual bool isImpostor() { return false; }
     virtual bool isBuddy() const { return false; }
@@ -173,12 +205,17 @@ private:
     // so culling / pixel-area LOD / picking follow the walk. Never touches the
     // stored authored foot (mDesiredGhostFoot*).
     void syncGhostObjectToMovingRoot();
+    void neutralizeEntityEyeParams();
     void neutralizeEntityPhysicsParams();
     void updateEntityOuterTransform();
     void stampEntityOuterTransform(LLViewerObject* object);
     void clearClonedObjectAnimations();
     void synchronizeCloneAnimations(
         const std::map<LLUUID, S32>& desired_animations);
+    // [TrueMirror] helpers for applyTrueMirrorStamp().
+    void stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing);
+    void stampTrueMirrorFace(LLVOAvatar* source);
+    void buildTrueMirrorParamSets();
 
     bool mMarkedForDeath;
     bool mEntityCloneVisible;
@@ -187,6 +224,7 @@ private:
     bool mDesiredGhostFootValid = false;
     F32 mEntityScale = 1.f;
     bool mEntityPhysicsEnabled = true;
+    bool mEntityEyeMotionEnabled = false;
     S32 mEntityDriveMode = 0; // ALGhostStudio::DRIVE_MIRROR (avoid header cycle)
     S32 mEntityLoopMode = 0;  // ALGhostStudio::LOOP_RETRIGGER
     F32 mEntityAnimTimeFactor = 1.f; // clone anim-speed; re-applied to animesh control avatars
@@ -200,6 +238,14 @@ private:
     // automatically unpausing on the next visible frame.
     LLAnimPauseRequest mEntityPauseRequest;
     std::vector<LLAnimPauseRequest> mEntityControlPauseRequests;
+    // [TrueMirror] per-frame idempotency + one-shot source-loss logging, and
+    // the visual-param id sets copied from the source (built lazily from this
+    // clone's own param table; ids are global to avatar_lad.xml).
+    U32 mTrueMirrorLastStampFrame = 0;
+    bool mTrueMirrorSourceValid = false;
+    bool mTrueMirrorParamSetsBuilt = false;
+    std::vector<S32> mTrueMirrorFaceParamIds;    // Express_* / Blink_* / Lipsync_*
+    std::vector<S32> mTrueMirrorPhysicsParamIds; // *_Physics_*_Driven (1200..1207)
     // Live avatar whose simulator-driven animation state this client-only
     // entity mirrors. The UUID is resolved through gObjectList each frame so
     // the ghost never owns or extends the source avatar's lifetime.
@@ -219,6 +265,10 @@ private:
     // still report PASS on a degraded clone.
     struct ClonedLinkset
     {
+        // [AutoAnimate] Persistent attachment identity and per-channel latch.
+        S32 mAttachPoint = 0;
+        LLUUID mSourceItemId;
+        U8 mAutonomy = 0;
         LLUUID              mRoot;
         std::vector<LLUUID> mChildren;
         // Simulator-known source ids corresponding one-for-one to the clone
@@ -226,9 +276,52 @@ private:
         // extending the source objects' lifetimes.
         LLUUID              mSourceRoot;
         std::vector<LLUUID> mSourceChildren;
+        // [AnimeshRepeat] Held-animesh replay bookkeeping, consumed by
+        // repeatHeldAnimesh(). Written by idleUpdate()'s ledger loop each
+        // frame: mAnimeshHeld == at least one clone prim's ledger entry was
+        // LATCHED (kept, not mirrored) under GhostMirrorHoldOnSourceChange;
+        // mAnimeshLatchedPrims names those prims (the rest are LIVE and take
+        // precedence). The replay records are keyed by this record (i.e. the
+        // original source binding: a fresh-UUID reattach never matches, so
+        // Refresh is the reacquisition path), by the control avatar they were
+        // observed on (mRepeatControlAvatarId -- a re-created control avatar
+        // has new motion instances), and by animation id. Cleared on the
+        // held->live edge, in releaseClonedAttachments(),
+        // clearClonedObjectAnimations() and setEntityDriveMode().
+        struct RepeatState
+        {
+            bool mSeenActive = false; // observed active since the last replay
+            bool mPending    = false; // a replay was issued; activation not yet observed
+            U32  mFailures   = 0;     // replays that never activated (bounded)
+        };
+        bool                mAnimeshHeld = false;
+        std::vector<LLUUID> mAnimeshLatchedPrims;
+        LLUUID              mRepeatControlAvatarId;
+        std::map<LLUUID, RepeatState> mRepeatStates;
     };
     std::vector<ClonedLinkset> mClonedLinksets;
+    // [AutoAnimate] Allocated only while the instance toggle is on.
+    struct AutoAnimRuntime;
+    std::unique_ptr<AutoAnimRuntime> mAutoAnim;
+    void autoAnimRecordTick();
+    void autoAnimBodyPresence(LLVOAvatar* source);
+    void autoAnimBodyStep();
+    bool autoAnimLinksetStep(ClonedLinkset& linkset);
+    void autoAnimOnDriveModeChanged(S32 old_mode, S32 mode);
+    void autoAnimRebindLinksets();
+    void autoAnimSyncBody(const ALGhostAutoAnim::AnimMap& desired);
+    void autoAnimAuditBodyStop(const LLUUID& id);
+    void autoAnimAuditLinksetSync(const ClonedLinkset& linkset, bool clearing = false);
+    void applyAnimeshDesired(const ClonedLinkset& linkset, const ALGhostAutoAnim::AnimMap& desired);
     std::set<LLUUID> mRigHealedLogged;
+
+    // [AnimeshRepeat] Opt-in (GhostMirrorRepeatHeldAnimesh) replay of a HELD
+    // linkset's finished one-shot animesh animations on its own control
+    // avatar. Runs from idleUpdate() after the ledger loop and the anim-speed
+    // re-assert; never touches the ledger or a live-mirrored linkset.
+    void repeatHeldAnimesh();
+    // Drop every linkset's replay records (see ClonedLinkset::RepeatState).
+    void resetHeldAnimeshRepeat();
 
     // Re-run the structural checks at VERIFY time. A member (not a free
     // helper) because it takes the private ClonedLinkset type.

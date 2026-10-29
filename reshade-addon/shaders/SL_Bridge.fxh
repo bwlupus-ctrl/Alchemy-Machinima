@@ -53,7 +53,24 @@ texture SLSurfaceCoverageTex : SL_SURFACE_COVERAGE;  // R: G-buffer coverage, G:
 // layers. K = 1 with black RGB is a metal: LEGAL DATA, not "missing".
 texture SLVisibleDiffuseTex  : SL_VISIBLE_DIFFUSE;   // RGB: linear diffuse, A: exactness K
 
-sampler SL_sNormals  { Texture = SLNormalsTex;  };
+// POINT: SLNormalsTex.xy is OCTAHEDRAL-encoded (see SL_DecodeNormal below).
+// An unqualified `sampler` declaration defaults to LINEAR min/mag/mip filtering
+// (ReShadeFX default, same reason SL_GBufferProvider.fx's own SL_sNormalsPoint
+// and iMMERSE's sNormalsTexV3 both declare POINT explicitly) -- LINEAR here
+// would blend two encoded normals across every geometry edge into a decoded
+// direction that is neither one, the exact "manufactures values that are
+// neither valid nor invalid" failure the masks below are already guarded
+// against. SL_NormalRaw/SL_NormalView (below) read through this sampler, and
+// SL_BridgeDebug.fx's "Normals (decoded)" view calls SL_NormalView directly,
+// so this was a live blur bug for that view even though SL_GBufferProvider.fx
+// never hit it (it always uses its own already-POINT SL_sNormalsPoint instead
+// of these shared helpers).
+sampler SL_sNormals
+{
+    Texture = SLNormalsTex;
+    MinFilter = POINT; MagFilter = POINT; MipFilter = POINT;
+    AddressU = CLAMP; AddressV = CLAMP;
+};
 sampler SL_sMotion   { Texture = SLMotionTex;   };
 sampler SL_sAlbedo   { Texture = SLAlbedoTex;   };
 sampler SL_sOrm      { Texture = SLOrmTex;      };
@@ -140,6 +157,10 @@ uniform uint SL_TailValid      < source = "sl_tail_valid"; >;        // 1 = v1.1
 #define SL_CONFIG_SNAPSHOT            0x04u
 #define SL_CONFIG_FORCE_10BIT         0x08u
 #define SL_CONFIG_PROVIDER_OWNED      0x10u
+// [TronA0] normals .w uses G-buffer flag ENCODING 2: odd 1/6 codes are avatar
+// pixels (see SLRESHADE_GBUFFER_FLAG_ENCODING_* in llreshadebridgeabi.h).
+// Decoders MUST untag before bucket compares; sl_flag_untag() does that.
+#define SL_CONFIG_AVATAR_TAG          0x20u
 
 bool SL_SemValid(uint bit)   { return (SL_SemanticValid & bit) != 0u; }
 bool SL_HistoryResetAny()    { return SL_ResetFlags != 0u; }

@@ -337,7 +337,20 @@ Transition reduce(const State& state, const Event& event, const Config& config)
         if (isActive(state))
         {
             transition.mCommands.mConsume = true;
-            if (validPlacement(state))
+            // FOLLOW_CURSOR must gate on the SAME "is the current hover
+            // valid" check EVENT_LEFT_CLICK uses to pin. Previously Enter
+            // only checked validPlacement(), which stays true across a
+            // hover miss (the last-valid anchor is deliberately preserved
+            // for display -- see EVENT_HOVER_HIT/samePoint above). That let
+            // Enter commit a STALE previous anchor at the exact moment a
+            // click could not even pin one: inconsistent, and effectively a
+            // silent teleport to wherever the cursor used to be. PINNED/
+            // HEIGHT_DRAG already locked in a valid anchor at click time, so
+            // they are unaffected.
+            const bool committable = state.mMode == MODE_FOLLOW_CURSOR
+                ? (state.mCurrentHoverValid && validPlacement(state))
+                : validPlacement(state);
+            if (committable)
             {
                 finish(transition, true, true);
             }

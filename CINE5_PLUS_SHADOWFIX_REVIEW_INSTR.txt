@@ -1,0 +1,64 @@
+Adversarially review the uncommitted working-tree diff. It contains, layered on the already-reviewed
+multi-instance refactor (do NOT re-review multi-instance; only flag NEW regressions it introduces):
+(1) five new Cinematic Light Rig features, and (2) a shadow-slot priority fix. Normative specs:
+CINE_LIGHT_RIG_CINEMA5_CODEX_BRIEF.txt (the five features) and doc/CINE_LIGHT_RIG_MULTIINSTANCE_DESIGN
+.md (the finals the features must not disturb). Be skeptical and concrete; cite file:line. Prioritize,
+most severe first:
+
+1. PER-LIGHT SHADOW SOFTNESS — WORLD-SHADOW BYTE-IDENTITY (HIGHEST; touches shaders/pipeline/
+   llshadermgr). Files: app_settings/shaders/class1/deferred/shadowUtil.glsl, pipeline.cpp/.h,
+   indra/llrender/llshadermgr.cpp, + rig/blob/settings/XUI. Prove or DISPROVE: a non-rig / world
+   projector, and a rig projector with softness==0, produce BYTE-IDENTICAL shadows to before this diff.
+   Check: the per-projector softness registry resolves to the 6 shadow slots; the shader uniform array
+   is zero-initialized; a missing/zero entry selects the ORIGINAL global soft-shadow gate AND the
+   original hard 5-tap path unchanged (both branches). Look for: uninitialized/garbage array uploads,
+   off-by-one slot mapping, the new uniform perturbing the global-softness path when all zero, any
+   shader math that changes output at softness 0, and whether world projectors can ever get a nonzero
+   entry. A regression here breaks ALL shadows in the scene — verify hard.
+
+2. SHADOW-SLOT PRIORITY FIX (renderer-touching). Files: llvovolume.cpp updateSpotLightPriority (new
+   isCineRigEmitter() branch: mSpotLightPriority = 1e9 + r^3), alcinelightrig.cpp applyFrame (new
+   projector->updateSpotLightPriority() call when state.mOn). Verify: (a) the branch is gated on
+   isCineRigEmitter() so NON-rig projectors are byte-identical (the else-if stable_spots path and the
+   default pixel-area path unchanged); (b) the 1e9 base reliably exceeds world pixel-area priorities so
+   rig lights win, and r^3 orders rig lights among themselves; (c) no overflow/precision problem with
+   1e9+r^3 in F32; (d) the applyFrame call is safe (drawable non-null, light on) and doesn't crash on a
+   dead/partial emitter. INTENDED BEHAVIOUR (not a bug): rig projectors now deterministically win the 6
+   spot-shadow slots over incidental world projectors — confirm that is what the code does and that it
+   cannot exceed 6 (the pipeline still caps). Flag only real defects, not the intent.
+
+3. THE 14 NEW KEYS — CROSS-INSTANCE LEAK. Every new per-light/per-rig key (RatioLock, Ratio, 4x Gel,
+   Catchlight on/EV/size/angle/color, 4x ShadowSoft) MUST be in the ParamBlob: fromSettingsStore/
+   toSettingsStore, toLLSD/fromLLSD, blobMapWellFormed TYPE checks, and captureRigState/applyRigState
+   if session-state. Confirm each new key round-trips and that a NON-selected rig sources these from its
+   blob, never gSavedSettings (a stray global read = the selected rig's value bleeds across instances).
+   List any key missing from any serializer.
+
+4. KEY:FILL RATIO composes with the EV chain correctly. Ratio-lock ON => fill EV = key EV - log2(ratio)
+   in the PURE model; ratio-lock OFF => fill EV untouched (byte-identical). Verify it does NOT perturb
+   SA-9 (distance_ev reads nominal radius; mSubjectScale geometry-only) and that the derivation is in
+   the model (TUT-tested), not just the UI.
+
+5. GEL composition. Gel index 0 is a BITWISE no-op (verify the apply branch is skipped, not "multiply
+   by 1.0"). CT gels reuse the existing masterTempGain Planckian path (not a fork). Party gels are
+   linear-sRGB multipliers applied AFTER profile colour + master-temp gain. Confirm gel != profile
+   replacement and that it doesn't double-apply the temp.
+
+6. CATCHLIGHT emitter. A SEPARATE optional emitter (not a 5th logical light; LIGHT_COUNT unchanged).
+   Verify lifecycle: created on enable, destroyed on disable/power-off/shutdown, PER INSTANCE (its own
+   LLPointer, its own state in the blob); it must NOT consume a shadow slot or enter the shadow/shaft
+   system; placement uses the finalized scaledPoint/getUniformScale (clone-scale) and the eye/head
+   joint; no NaN if the joint is missing.
+
+7. ONE-RIG BYTE-IDENTICAL. With ratio-lock off, catchlight off, all gels 0, all softness 0, no genre
+   preset selected, a single enabled rig must render byte-identically to before this diff. Verify no new
+   code path executes (or all are inert) in that default state.
+
+8. GENRE PRESETS + REFLOW + TESTS. Genre/mood presets load/apply/round-trip like existing masters (data
+   only). Panel reflow (if height grew): panel AND both wrapper heights moved together (M1). The new
+   TUT tests assert INDEPENDENT expected values and FAIL on regression — flag any tautological/self-
+   comparison test.
+
+Report each finding: file:line, severity (must-fix / should-fix / nit), concrete failure scenario,
+suggested fix. Explicitly state a verdict on item 1 (world-shadow byte-identity at softness 0):
+CONFIRMED identical, or a regression. Do not modify code.

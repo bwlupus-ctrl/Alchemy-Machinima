@@ -1,0 +1,114 @@
+IMPLEMENTATION TASK — Cinematic Light Rig: multi-anchor (group-as-unit) lighting.
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds; an
+adversarial Opus review reviews before any build.
+
+=============================================================================
+READ FIRST — the design is NORMATIVE
+=============================================================================
+1. doc/CINE_LIGHT_RIG_MULTIANCHOR_DESIGN.md  <-- THE SPEC. Read ALL 803 lines. Sections A-F are the
+   design; §5 the TUT tests; §6 the file/function checklist; §7 risks; §9 OFF-LIMITS. Follow exactly.
+   Design WINS over this brief (except "do not build").
+2. doc/CINE_LIGHT_RIG_MULTIANCHOR_SEED.md — the brief it answers (the fixed user decision).
+3. doc/CINE_LIGHT_RIG_MASTER_PRESETS_DESIGN.md — the scale-aware/exposure finals this must not disturb.
+
+USER DECISION (fixed): light the GROUP as one unit — the rig anchors to a SET of cast subjects and
+centres on the group. NOT per-light anchoring, NOT anchor-to-VCam (both deferred, §8).
+
+=============================================================================
+WHAT IT IS (from the design)
+=============================================================================
+- The group is a subset of the 5 subject SLOTS {You, Subject A, B, C, D}: session state `mGroupEnabled`
+  + a 5-bit `mGroupSlots` mask, beside the existing single `mAnchor`. Slots not UUIDs (recasting a
+  subject re-lights the group; cap = 5 by construction).
+- Group CENTRE = axis-aligned BOUNDS MIDPOINT of the resolved members' per-member points. Each member's
+  point is its track-mode point (chest for TrackMode 0, render-pos+1.2 for TrackMode 1) through the
+  UNCHANGED scaledPoint with THAT member's own getUniformScale(). Track-mode stays GLOBAL, composes per
+  member. Lost members drop from the aggregate; zero resolved = today's dark path verbatim.
+- Group SCALE = s_grp = max_i(s_i) + R_spread / r_nom, fed into the UNCHANGED Globals::mSubjectScale
+  path (so effective_radius = clamp(r_nom*s_max + R_spread, floor, ceil); spread adds metres to the
+  orbit; the existing 20 m cap applies for free). SA-9 preserved: mSubjectScale enters ONLY geometry,
+  never the intensity/EV chain (verified: distance_ev reads NOMINAL safe_radius at
+  alcinelightrigmodel.cpp:630; total_ev uses distance_ev not effective_radius at :656).
+- Group FACING (for Mirror) = the PRIMARY resolved member (fixed slot order You->A->B->C->D). Single
+  member = today's per-avatar facing exactly.
+
+=============================================================================
+FILES — create/modify EXACTLY per §6 (no new sources, no new settings, no version bump)
+=============================================================================
+  alcinelightrigmodel.h    GROUP_MAX_MEMBERS; declare groupBoundsCentre, groupSubjectScale,
+                           sanitizeSubjectScale; the one-sentence mSubjectScale doc note (MA-15)
+  alcinelightrigmodel.cpp  the three functions; sanitizeGlobals RE-EXPRESSED over sanitizeSubjectScale
+                           — must be BIT-IDENTICAL (F.2.2; §5.1 is the tripwire test)
+  alcinelightrig.h         GROUP_SLOT_* enum; set/get GroupEnabled/GroupSlots + lastResolvedGroupSlots;
+                           fields mGroupEnabled, mGroupSlots, mLastResolvedGroupSlots
+  alcinelightrig.cpp       gatherGroupMembers (MA-3); memberTrackPoint (MA-8 move); the tick GROUP
+                           branch + the SINGLE-anchor FAST PATH (MA-4, F.2.3); setter resets (MA-1);
+                           scene keys anchor_group/anchor_group_slots (MA-5/6, additive reads)
+  alpanelcinelightrig.h/.cpp  group widgets + syncGroupControls + status text + enable logic + Reset
+                           All addition (MA-7); cached display state
+  panel_cine_light_rig.xml  Rows A/B (§E.1); +52 px shift of everything below; panel height -> 1364
+  floater_cine_light_rig.xml  wrapper heights 1374/1364 (§E.3)
+  floater_director.xml      wrapper heights 1374/1364 (§E.3)
+  tests/alcinelightrigmodel_test.cpp  the §5 cluster (10 tests incl. single-member==legacy + group
+                           exposure invariance with an OUTPUTS-based coverage pin — not tautological)
+
+NOT touched: settings.xml (ZERO new keys — group is session state), scene/preset VERSION numbers (both
+stay 1), notifications, CMake (no new sources), lldirectorcast.*, llfloaterdirector.cpp, all
+render/pipeline/shader files.
+
+=============================================================================
+THE TRAPS — get these right (§7 risks + §9 off-limits)
+=============================================================================
+1. R1 — EVERY-SHOT PATH, SINGLE-ANCHOR MUST BE BITWISE-TODAY. The tick centre/facing/scale refactor
+   sits on every shot, including plain single-anchor shots with the feature OFF. The single-anchor path
+   MUST be a STRUCTURAL fast path that executes TODAY'S STATEMENTS verbatim (like the s==1 / ratio==1
+   fast paths), NOT "equivalent" math. Group-off default = today's behaviour. This is the delivery's
+   only risk to shipped behaviour — a reviewer will demand statement-identity, not equivalence.
+
+2. SA-9 EXPOSURE INVARIANCE (§5.9 tripwire). The group enters the model ONLY through mSubjectScale,
+   which feeds effective_radius (geometry) and NEVER the intensity/EV chain. distance_ev, total_ev,
+   raw_intensity, intensityFromEV (alcinelightrigmodel.cpp:630, :656-678, :709-714) are BYTE-FROZEN —
+   do not touch them. A group's spatial extent must NOT drift exposure.
+
+3. sanitizeGlobals RE-EXPRESSION BIT-IDENTICAL (§5.1 tripwire). Factoring the scale clamp into
+   sanitizeSubjectScale must produce byte-identical sanitizeGlobals output. Do not change its semantics.
+
+4. SCALEDPOINT / MIRROR LINE UNCHANGED. Call scaledPoint per member (alcinelightrig.cpp:84-108) —
+   change NOTHING in its body. The mirror reflection line (alcinelightrigmodel.cpp:521-527) is frozen;
+   only the mFacingAzimuthDeg INPUT changes (primary member for a group).
+
+5. SCENE CROSS-VERSION (§7 R7). anchor_group / anchor_group_slots are ADDITIVE keys read AFTER the
+   frozen applySceneData three-way split (alcinelightrig.cpp:1671-1697). data["anchor"] keeps being
+   written. Old scene -> new binary (keys absent -> group off -> single anchor). New scene -> old
+   binary (keys ignored -> single anchor). NO version bump. Load-test all four combinations incl. a
+   group-enabled scene with mask 0.
+
+6. DEDUPE / SELF (§7 R8). Self selected via "You" AND as Subject A must count ONCE in the aggregate and
+   the status text.
+
+7. REFLOW — M1 LESSON. Five heights move together: panel 1364, both hosts' wrapper heights 1374/1364.
+   Verify by rect arithmetic that nothing clips in EITHER host (Director tab + standalone floater).
+
+8. POSITIONAL / TEST QUALITY. The §5 tests must actually FAIL on regression (the single-member==legacy
+   memcmp; the group exposure-invariance pinned on OUTPUTS not the sanitiser). No tautological tests.
+
+=============================================================================
+OFF-LIMITS (design §9 — verbatim)
+=============================================================================
+Everything not named in §6. Explicitly: pipeline.cpp, all GLSL, indra/llprimitive/* (the 20 m / [0,1]
+clamps are design inputs); scaledPoint's body; the intensity/EV chain + distance_ev (byte-frozen); the
+mirror line; sanitizeGlobals semantics (bit-identical extraction only); the applySceneData three-way
+split (additive reads after it); lldirectorcast.* (consumed read-only — do NOT add rig state to it);
+llfloaterdirector.cpp; llvoavatar/llghostavatar/llactormover/llcinematiccamera/llprismlens (read-only
+precedents); scene + preset versions (stay 1); settings.xml (ZERO new keys); the FX/gobo/colour-temp/
+preset/shadow/track-mode code (unchanged consumers); llcombobox.*.
+
+=============================================================================
+REPORT
+=============================================================================
+Every file created/modified with what changed. Confirm: single-anchor is a STRUCTURAL fast path
+(statement-identical to today); SA-9 chain byte-frozen; sanitizeGlobals bit-identical; scaledPoint +
+mirror line untouched; scene keys additive + no version bump + all 4 cross-version cases load; dedupe
+counts self once; reflow bumped all 5 heights (list them); the §5 tests fail on regression. Anything in
+the design you think is wrong. Do not build.

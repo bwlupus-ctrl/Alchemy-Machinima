@@ -81,11 +81,11 @@ void LLPathCamera::updateCamera()
                                                           pos_global, rot, fov);
     }
 
-    if (!have)
+    if (!have || !pos_global.isFinite() || !rot.isFinite() ||
+        !std::isfinite(fov))
     {
-        // Defensive: never write a garbage pose. Ownership is released next
-        // frame through isActive(); holding last frame's camera for one frame
-        // is preferable to a pop.
+        // Defensive: never write a garbage pose. Keep the last valid camera
+        // frame rather than poisoning the render camera.
         return;
     }
 
@@ -94,12 +94,22 @@ void LLPathCamera::updateCamera()
                                       : cam->getDefaultFOV();
     const LLVector3 out_pos = gAgent.getPosAgentFromGlobal(pos_global);
     const LLMatrix3 axes(rot);
+    const LLVector3 out_x(axes.mMatrix[0]);
+    const LLVector3 out_y(axes.mMatrix[1]);
+    const LLVector3 out_z(axes.mMatrix[2]);
+    if (!out_pos.isFinite() || !out_x.isFinite() || !out_y.isFinite() ||
+        !out_z.isFinite())
+    {
+        // A finite global pose can still overflow during global-to-agent or
+        // quaternion-to-basis conversion. Never pass that through to camera.
+        return;
+    }
 
     cam->setView(out_fov);
     cam->setOrigin(out_pos);
-    cam->mXAxis = LLVector3(axes.mMatrix[0]);
-    cam->mYAxis = LLVector3(axes.mMatrix[1]);
-    cam->mZAxis = LLVector3(axes.mMatrix[2]);
+    cam->mXAxis = out_x;
+    cam->mYAxis = out_y;
+    cam->mZAxis = out_z;
 }
 
 // ---------------------------------------------------------------------------

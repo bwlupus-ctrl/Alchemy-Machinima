@@ -111,6 +111,12 @@ public:
     LLMatrix4* mLastModelMatrix = nullptr;
 
     LLPointer<LLVOAvatar> mAvatar = nullptr;
+    // Stable Director Actor-FX owner for this native draw. Animated objects use
+    // their persistent linkset-root UUID, never a regenerated control-avatar
+    // UUID. Uncast worn animesh inherits mActorFxFallbackOwner (the wearer).
+    // Null means "not an actor draw" and must reset Actor FX before drawing.
+    LLUUID mActorFxOwner;
+    LLUUID mActorFxFallbackOwner;
     // Owning, like mAvatar above: the mesh repo culls skins whose only
     // remaining reference is its own map (and a local-mesh reload drops the
     // unit/volume references mid-frame), so the draw call must hold its skin
@@ -141,6 +147,13 @@ public:
     // single-material path (which uses mGLTFMaterial above).
     std::vector<LLPointer<LLFetchedGLTFMaterial> > mGLTFMaterialList;
 
+    // Effective per-slot PBR alpha cutoffs, parallel to mGLTFMaterialList.
+    // MASK slots contain [0..1]; OPAQUE slots contain -1. BLEND is never
+    // indexed. Keeping this state on the draw avoids mutating shared material
+    // assets when two objects use the same PBR material with different client
+    // overrides.
+    std::vector<F32> mGLTFAlphaMaskCutoffList;
+
     // Indexed (multi-material) legacy Blinn-Phong batching: one entry per material
     // slot (the texture_index attribute), parallel to the GLTF list above but for
     // the POOL_MATERIALS path. Empty unless this is a multi-material legacy batch.
@@ -165,6 +178,7 @@ public:
     U32 mShaderMask = 0;
     F32  mEnvIntensity = 0.f;
     F32  mAlphaMaskCutoff = 0.5f;
+    U8   mEffectiveAlphaMode = 0; // LLPipeline::EEffectiveAlphaMode numeric value
 
     LLRender::eBlendFactor mBlendFuncSrc = LLRender::BF_SOURCE_ALPHA;
     LLRender::eBlendFactor  mBlendFuncDst = LLRender::BF_ONE_MINUS_SOURCE_ALPHA;

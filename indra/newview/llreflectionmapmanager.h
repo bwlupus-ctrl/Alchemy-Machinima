@@ -26,10 +26,14 @@
 
 #pragma once
 
+#include "alcineliveproberefresh.h" // [LiveProbeRefresh]
+#include "alprobedirty.h"           // [ProbeOnDemand]
+#include "alprobeschedule.h"        // [ProbeOnDemand]
 #include "llreflectionmap.h"
 #include "llrendertarget.h"
 #include "llcubemaparray.h"
 #include "llcubemap.h"
+#include "lluuid.h"
 
 class LLSpatialGroup;
 class LLViewerObject;
@@ -127,6 +131,46 @@ public:
     // Guaranteed to not return null
     LLReflectionMap* registerViewerObject(LLViewerObject* vobj);
 
+    // Designate the one client-only cinematic probe that receives the
+    // six-face realtime update slot. Its capture remains environment-only;
+    // ignored_light_ids prevents synthetic rig fill/catchlight from being
+    // baked back into the probe.
+    void setCinematicLiveProbe(
+        LLReflectionMap* probe,
+        const std::vector<LLUUID>& ignored_light_ids = {},
+        const std::vector<LLUUID>& pinned_light_ids = {});
+    bool isCinematicLiveProbeCapture() const
+    {
+        return mCinematicLiveProbeCapture;
+    }
+    bool isCinematicLiveProbeIgnoredLight(const LLUUID& id) const;
+    bool isCinematicLiveProbePinnedLight(const LLUUID& id) const;
+    U32 getCinematicLiveProbePinnedLightCount() const
+    {
+        return static_cast<U32>(mCinematicPinnedLightIds.size());
+    }
+
+    // [LiveProbeRefresh] Snapshot of the live probe refresh scheduler for the
+    // rig panel's status line. mStepping is false whenever the scheduler is not
+    // driving the probe (Every frame mode, fallback probe, paused, no probe).
+    struct CinematicRefreshStatus
+    {
+        ALCineLiveProbeRefresh::Mode mMode =
+            ALCineLiveProbeRefresh::Mode::EVERY_FRAME;
+        ALCineLiveProbeRefresh::Path mPath =
+            ALCineLiveProbeRefresh::Path::IDLE;
+        ALCineLiveProbeRefresh::Reason mReason =
+            ALCineLiveProbeRefresh::Reason::NONE;
+        F32 mSecondsSinceReason = -1.f;
+        S32 mPassFace = -1;        // 0-5 while a budget pass is running, else -1
+        bool mPassIsRadiance = false;
+        bool mConverged = false;
+        bool mStepping = false;
+    };
+    // Ask the On change scheduler for one full irradiance + radiance pair.
+    void requestCinematicLiveProbeRefresh();
+    CinematicRefreshStatus getCinematicRefreshStatus() const;
+
     // reset all state on the next update
     void reset();
 
@@ -160,6 +204,32 @@ public:
 
     U32 probeCount();
     U32 probeMemory();
+
+    // [ProbeOnDemand] On-demand scheduling (RenderProbeOnDemand). Pipeline,
+    // display and floater code call these, so they are public.
+    // True while on-demand updating is active (setting ON and probes enabled).
+    bool isOnDemandActive() const { return mOnDemandActive; }
+    // True while an ordinary / default / sliced probe face is being captured with
+    // the probe-centric light list (on-demand ON only).
+    bool isProbeCentricLightCapture() const { return mProbeCentricLights; }
+
+    // Who is capturing right now (tiny-group cull context). NONE outside
+    // updateProbeFace; Hero and Prism never enter it.
+    enum class ProbeCaptureKind : U8
+    {
+        NONE,
+        ORDINARY,
+        LIVE,
+        REALTIME
+    };
+    static ProbeCaptureKind getCaptureKind() { return sCaptureKind; }
+
+    // Re-capture every relevant allocated probe now (and the Live pair). Only
+    // acts while on-demand updating is ON.
+    void requestRefreshAllProbes();
+    // The Lightbox readout of the refresh-all barrier ("" when nothing to say).
+    // A terminal text is held for 10 s.
+    std::string getRefreshAllStatus() const;
 
 private:
     friend class LLPipeline;
@@ -209,7 +279,62 @@ private:
     void doProbeUpdate();
 
     // update the specified face of the specified probe
-    void updateProbeFace(LLReflectionMap* probe, U32 face);
+    void updateProbeFace(LLReflectionMap* probe, U32 face,
+                         bool force_dynamic = false);
+
+    // [LiveProbeRefresh] The shipped six-faces-every-frame realtime capture
+    // (body moved verbatim out of update()) and the budgeted variants.
+    void updateRealtimeProbeAllFaces(LLReflectionMap* realtime_probe,
+                                     LLReflectionMap* cinematicLive);
+    void updateCinematicBudget(LLReflectionMap* probe, S32 faces);
+    U64 sampleCinematicH(LLReflectionMap* probe);
+    void resetCinematicRefresh();
+    void logCinematicRefresh(F64 now);
+
+    // ---- [ProbeOnDemand] -------------------------------------------------
+    // Per-frame schedule flush (collect events, hit probes, env / light diff,
+    // barrier). See doc/PROBE_UPDATE_ON_DEMAND_BRIEF_V6.md section 4.6.
+    void flushProbeSchedule();
+    void flushLightDiff(F64 now, U64 serial, F32 dt, F32 rcap,
+                        std::vector<ALProbeSched::Event>& events);
+    // disabled: the barrier (if any) is reported "cancelled (disabled)" instead of
+    // "cancelled (reset)".
+    void resetProbeSchedule(bool disabled = false);
+    // A manager early return while on-demand is active / a barrier is armed.
+    void noteScheduleEarlyReturn();
+    // Gathers exactly the getters of the Live probe H (environment sections).
+    static ALProbeSched::EnvSample gatherEnvSample();
+    // The Live probe's H with lights taken from the debounced light diff.
+    U64 sampleCinematicHOnDemand(LLReflectionMap* probe);
+    // Ordinary probe environment generation (builder + fixed tail).
+    U64 sampleOrdinaryEnvH();
+    // Closest-dynamic probe: N faces per frame through the secondary scratch.
+    void updateRealtimeSliced(LLReflectionMap* probe, S32 faces);
+    void logProbeSchedule(F64 now);
+    // The record of a probe; ids are assigned lazily.
+    U32 schedId(LLReflectionMap* probe);
+    LLReflectionMap* findProbeById(U32 id) const;
+    // Live pass accounting for the refresh-all barrier (identity-bound).
+    void noteLivePassForBarrier(bool radiance, U64 start_op);
+
+    // RAII around each probe->update() in updateProbeFace: the capture kind (tiny
+    // cull context) and, under on-demand, the probe-centric light list. Restores
+    // both on every exit, including the early return in LLReflectionMap::update.
+    class ProbeCaptureScope
+    {
+    public:
+        ProbeCaptureScope(LLReflectionMapManager& manager, bool active, bool probe_centric,
+                          ProbeCaptureKind kind);
+        ~ProbeCaptureScope();
+        ProbeCaptureScope(const ProbeCaptureScope&) = delete;
+        ProbeCaptureScope& operator=(const ProbeCaptureScope&) = delete;
+
+    private:
+        LLReflectionMapManager& mManager;
+        bool mActive;
+        bool mCentric;
+        bool mSavedLights;
+    };
 
     // list of active reflection maps
     std::vector<LLPointer<LLReflectionMap> > mProbes;
@@ -228,6 +353,11 @@ private:
 
     LLReflectionMap* mUpdatingProbe = nullptr;
     U32 mUpdatingFace = 0;
+    // [ProbeManualRate] frame counter for RenderProbeUpdateEveryNFrames (only
+    // advanced while N > 1; an ordinary-probe tick is counter % N == 0)
+    U32 mOrdThrottleCounter = 0;
+    // [ProbeManualRate] start op of a pass a Manual burst began after ending one
+    U64 mCineContStartOp = 0;
 
     // if true, we're generating the radiance map for the current probe, otherwise we're generating the irradiance map.
     // Update sequence should be to generate the irradiance map from render of the world that has no irradiance,
@@ -240,7 +370,139 @@ private:
     // radiance map on "even" frames.
     bool mRealtimeRadiancePass = false;
 
-    LLPointer<LLReflectionMap> mDefaultProbe;  // default reflection probe to fall back to for pixels with no probe influences (should always be at cube index 0)
+    // The cinematic probe owns the realtime slot while present. It is updated
+    // live without enabling the dynamic-content mask, so the followed avatar
+    // and particles cannot photograph themselves from inside the probe.
+    LLPointer<LLReflectionMap> mCinematicLiveProbe;
+    std::vector<LLUUID> mCinematicIgnoredLightIds;
+    std::vector<LLUUID> mCinematicPinnedLightIds;
+    bool mCinematicLiveProbeCapture = false;
+    bool mCinematicIrradianceReady = false;
+    bool mCinematicRadianceReady = false;
+
+    // [LiveProbeRefresh] Scheduler state for the Balanced / Economy / On change
+    // modes (see alcineliveproberefresh.h). Every frame mode never touches it.
+    struct CineRefreshStats
+    {
+        U32 mSteps = 0;
+        U32 mFaces = 0;
+        U32 mFullFrames = 0;
+        U32 mBudgetFrames = 0;
+        U32 mIdleFrames = 0;
+        U32 mIrrPub = 0;
+        U32 mRadPub = 0;
+        U32 mCleanPasses = 0;
+        U32 mDirtyPasses = 0;
+        U32 mBlocked = 0;
+        U32 mResets = 0;
+        U32 mHashSamples = 0;
+        F64 mHashUsSum = 0.0;
+        F64 mHashUsMax = 0.0;
+        F64 mWindowStart = -1.0;
+        F64 mLastStep = -1.0;
+    };
+    ALCineLiveProbeRefresh::State mCineRefresh;
+    ALCineLiveProbeRefresh::StickyHash mCineSticky;
+    ALCineLiveProbeRefresh::Signature mCineSig;
+    LLVector4a mCineFrozenOrigin;
+    U64 mCineLastH = 0;
+    ALCineLiveProbeRefresh::Path mCineLastPath =
+        ALCineLiveProbeRefresh::Path::IDLE;
+    CineRefreshStats mCineStats;
+
+    // ---- [ProbeOnDemand] scheduler state ---------------------------------
+    // One [ProbeSched] log window (5 s of manager frames; on and off paths).
+    struct SchedWindow
+    {
+        F64 mStart = -1.0;
+        F64 mLastFrame = -1.0;
+        U32 mFrames = 0;
+        U32 mEarlyFrames = 0;
+        U32 mPausedFrames = 0;
+        U32 mStarts = 0;
+        U32 mDone = 0;
+        U32 mNack = 0;
+        U32 mStartReason[12] = {};
+        U32 mOrdFaces = 0;
+        U32 mRtFaces = 0;
+        U32 mEvRaw = 0;
+        U32 mEvLights = 0;
+        U32 mEvMotion = 0;
+        U32 mEvSettles = 0;
+        U32 mEvEarly = 0;
+        U32 mEvBulk = 0;
+        U32 mEvBulkDeadline = 0;
+        U32 mDeb = 0;
+        U32 mRecountPairs = 0;
+        U32 mRecountDue = 0;
+        U32 mDropped[ALProbeDirty::TAG_COUNT] = {};
+        U32 mDropDyn = 0;
+        U32 mNoopMove = 0;
+        U32 mRebal = 0;
+        U32 mOverflow = 0;
+        U32 mDirty = 0;
+        U32 mDeferred = 0;
+        U32 mWait = 0;
+        F64 mMaxLag = 0.0;
+        U32 mRtBlocked = 0;
+        U32 mEnvChanges = 0;
+        F64 mFlushUsSum = 0.0;
+        F64 mFlushUsMax = 0.0;
+        U32 mFlushSamples = 0;
+        U32 mLightsProcessed = 0;
+        U32 mLightsTotal = 0;
+        bool mOverBudget = false;
+        // UNSETTLED / STARVED bookkeeping (cleared every window)
+        bool mUnsettled = false;
+        U32 mUnsettledId = 0;
+        U16 mUnsettledReasons = 0;
+        U32 mStarved = 0;
+        F64 mStarvedWorst = 0.0;
+        S32 mProbes = 0;
+    };
+
+    U64 mSchedSerial = 0;
+    U32 mSchedEpoch = 1;
+    U32 mSchedNextId = 1;
+    U32 mSchedWindowIndex = 1;
+    bool mSchedWasOn = false;
+    bool mOnDemandActive = false;
+    bool mSchedStats = false; // window / frame bookkeeping runs (on-demand ON or log enabled)
+    bool mProbeCentricLights = false;
+    U64 mLiveSceneSerial = 0;
+    U64 mLiveLastFaceOp = 0;
+    U32 mRtSliceLastRanId = 0; // the record id the sliced path ran for last frame
+    U32 mRtSliceRanThisFrame = 0;
+    // Environment generation of the ordinary probes.
+    ALCineLiveProbeRefresh::Signature mOrdEnvSig;
+    ALCineLiveProbeRefresh::StickyHash mOrdEnvSticky;
+    U64 mOrdEnvH = 0;
+    bool mOrdEnvValid = false;
+    // Camera-independent light diff.
+    std::unordered_map<const void*, ALProbeSched::LightEntry> mLightSnap;
+    std::vector<const ALProbeSched::LightEntry*> mLightsBySeq; // ascending mSeq
+    U64 mLightNextSeq = 1;
+    ALProbeSched::Recount mRecount;
+    // Closest-dynamic probe slicing.
+    ALProbeSched::SliceCursor mRtSlice;
+    LLVector4a mRtSliceFrozenOrigin;
+    // Refresh-all barrier.
+    ALProbeSched::Barrier mBarrier;
+    bool mRefreshAllRequested = false;
+    // Live Probe ON-path H.
+    ALCineLiveProbeRefresh::Signature mCineSigOn;
+    ALCineLiveProbeRefresh::StickyHash mCineStickyOn;
+    // Reused buffers.
+    ALProbeDirty::Drain mDirtyDrain;
+    std::vector<ALProbeSched::Event> mSchedEvents;
+    ALProbeSched::DebounceConfig mLightDebounceConfig;
+    ALProbeSched::Policy mSchedPolicy;
+    // Per-frame / per-window statistics.
+    ALProbeSched::SchedFrame mSchedFrame;
+    SchedWindow mSchedWindow;
+    static ProbeCaptureKind sCaptureKind;
+
+    LLPointer<LLReflectionMap> mDefaultProbe; // default reflection probe to fall back to for pixels with no probe influences (should always be at cube index 0)
 
     // number of reflection probes to use for rendering
     U32 mReflectionProbeCount;
@@ -277,4 +539,3 @@ private:
 
     ReflectionProbeData mProbeData;
 };
-

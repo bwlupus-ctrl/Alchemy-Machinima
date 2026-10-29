@@ -29,6 +29,9 @@ uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec3 normal;
 in vec4 diffuse_color;
 in vec2 texcoord0;
@@ -40,6 +43,9 @@ out vec3 vary_position;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     //transform vertex
     vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);

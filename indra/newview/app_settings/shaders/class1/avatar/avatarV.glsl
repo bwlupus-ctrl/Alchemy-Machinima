@@ -26,6 +26,11 @@
 uniform mat4 projection_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+out vec3 vary_actor_fx_normal;
+out vec3 vary_actor_fx_eye_position;
+#endif
 in vec3 normal;
 in vec2 texcoord0;
 
@@ -58,6 +63,12 @@ void main()
     norm.z = dot(trans[2].xyz, normal);
     norm = normalize(norm);
 
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+    vary_actor_fx_normal = norm;
+    vary_actor_fx_eye_position = pos.xyz;
+#endif
+
     gl_Position = projection_matrix * pos;
 
     calcAtmospherics(pos.xyz);
@@ -66,5 +77,4 @@ void main()
     vertex_color = col;
 
 }
-
 

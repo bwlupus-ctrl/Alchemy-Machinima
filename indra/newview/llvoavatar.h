@@ -55,6 +55,7 @@
 #include "llvovolume.h"
 #include "llavatarrendernotifier.h"
 #include "llmodel.h"
+#include "alposepolish.h"       // [Machinima] post-blend Pose Polish stage
 
 extern const LLUUID ANIM_AGENT_BODY_NOISE;
 extern const LLUUID ANIM_AGENT_BREATHE_ROT;
@@ -520,6 +521,14 @@ public:
     U32         renderImpostor(LLColor4U color = LLColor4U(255,255,255,255), S32 diffuse_channel = 0);
     bool        isVisuallyMuted();
     bool        isInMuteList() const;
+    // Hard user/privacy suppression is stronger than cinematic Actor FX. The
+    // effective-style helper deliberately excludes performance jelly/impostor
+    // state so a styled actor can remain live without reviving hidden actors.
+    bool        isHardVisualMute() const;
+    // Canonical resident/linkset key used by render hot paths. Unlike the
+    // Director mutation boundary, this never consults gObjectList.
+    LLUUID      getActorFxOwnerId() const;
+    bool        hasEffectiveActorFx() const;
 // [RLVa:KB] - Checked: RLVa-2.2 (@setcam_avdist)
     bool        isRlvSilhouette() const;
 // [/RLVa:KB]
@@ -578,6 +587,13 @@ public:
 
     U32         renderRigid();
     U32         renderSkinned();
+    // Upload the classic 45-matrix system-avatar palette to the currently
+    // bound replay shader.  Shared Actor FX alpha can be interleaved long after
+    // the opaque sweep, so it cannot rely on that sweep's program uniforms.
+    void        uploadActorGhostPalette();
+    // Conservative same-frame proof that every classic/system mesh the native
+    // avatar would submit can also be consumed by the shared replay.
+    bool        isActorGhostSystemReplayReady();
     F32         getLastSkinTime() { return mLastSkinTime; }
     U32         renderTransparent(bool first_pass);
     void        renderCollisionVolumes();
@@ -1092,6 +1108,10 @@ private:
 public:
     bool            mInAir;
     LLFrameTimer    mTimeInAir;
+    void setMoverContactHints(const ALPosePolish::ContactHints& hints)
+    {
+        mPosePolish.setContactHints(hints);
+    }
 
 /**                    Actions
  **                                                                            **
@@ -1106,6 +1126,9 @@ private:
     F32         mSpeedAccum; // measures speed (for diagnostics mostly).
     bool        mTurning; // controls hysteresis on avatar rotation
     F32         mSpeed; // misc. animation repeated state
+    // [Machinima] Post-blend Pose Polish stage (continuity/grounding/secondary).
+    // Session-only, disabled by default; see alposepolish.h.
+    ALPosePolish mPosePolish;
 
     //--------------------------------------------------------------------
     // Dimensions

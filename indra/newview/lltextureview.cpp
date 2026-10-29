@@ -601,9 +601,9 @@ void LLGLTexMemBar::draw()
    F64 raw_image_bytes_MB = raw_image_bytes / (1024.0 * 1024.0);
    F64 saved_raw_image_bytes_MB = saved_raw_image_bytes / (1024.0 * 1024.0);
    F64 aux_raw_image_bytes_MB = aux_raw_image_bytes / (1024.0 * 1024.0);
-   F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 1024.0;
-   F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
-   F64 render_bytes_alloc = LLRenderTarget::sBytesAllocated / 1024.0 / 1024.0;
+   F64 texture_bytes_alloc = LLViewerTexture::sTextureVRAMMegabytes;
+   F64 vertex_bytes_alloc = LLViewerTexture::sVertexVRAMMegabytes;
+   F64 render_bytes_alloc = LLViewerTexture::sRenderTargetVRAMMegabytes;
 
     //----------------------------------------------------------------------------
     LLGLSUIDefault gls_ui;
@@ -632,14 +632,32 @@ void LLGLTexMemBar::draw()
     U32 texFetchLatMax = U32(recording.getMax(LLTextureFetch::sTexFetchLatency).value() * 1000.0f);
 
     // Parent LLContainerView already paints the full-rect background; this bar's
-    // required height (see getRequiredRect) covers all eight lines of text below.
-    text = llformat("Est. Free: %d MB Sys Free: %d MB FBO: %d MB Probe#: %d Probe Mem: %d MB Bias: %.2f Cache: %.1f/%.1f MB",
-                    (S32)LLViewerTexture::sFreeVRAMMegabytes,
+    // required height (see getRequiredRect) covers all nine lines of text below.
+    const std::string driver_free = LLViewerTexture::sDriverAvailableVRAMMegabytes >= 0.f
+        ? llformat("%.0f", LLViewerTexture::sDriverAvailableVRAMMegabytes)
+        : "n/a";
+    const std::string eviction_count = LLViewerTexture::sVRAMEvictionDataAvailable
+        ? llformat("%u", LLViewerTexture::sVRAMEvictionCount)
+        : "n/a";
+    text = llformat("VRAM %s Cap: %.0f/%.0f MB Tracked: %.0f Free: %.0f Driver: %s State: %s Bias: %.2f",
+                    LLViewerTexture::sVRAMBudgetIsCustom ? "Custom" : "Auto",
+                    LLViewerTexture::sVRAMBudgetMegabytes,
+                    LLViewerTexture::sEffectiveVRAMBudgetMegabytes,
+                    LLViewerTexture::sTrackedVRAMMegabytes,
+                    LLViewerTexture::sFreeVRAMMegabytes,
+                    driver_free.c_str(),
+                    LLViewerTexture::getVRAMPressureStatus(),
+                    discard_bias);
+    widest = llmax(widest, font_mono->getWidth(text));
+    font_mono->renderUTF8(text, 0, 0, v_offset + line_height*9,
+                          text_color, LLFontGL::LEFT, LLFontGL::TOP);
+
+    text = llformat("Sys Free: %d MB FBO: %d MB Probe#: %d Probe Mem: %d MB Evictions: %s Cache: %.1f/%.1f MB",
                     LLMemory::getAvailableMemKB()/1024,
                     LLRenderTarget::sBytesAllocated/(1024*1024),
                     gPipeline.mReflectionMapManager.probeCount(),
                     gPipeline.mReflectionMapManager.probeMemory(),
-                    discard_bias,
+                    eviction_count.c_str(),
                     cache_usage,
                     cache_max_usage);
     widest = llmax(widest, font_mono->getWidth(text));
@@ -653,11 +671,13 @@ void LLGLTexMemBar::draw()
     font_mono->renderUTF8(text, 0, 0, v_offset + line_height * 7,
         text_color, LLFontGL::LEFT, LLFontGL::TOP);
 
-    text = llformat("Textures: %.2f MB  Vertex: %.2f MB  Render: %.2f MB  Total: %.2f MB",
+    text = llformat("Textures: %.2f MB (reducible %.2f/fixed %.2f) Vertex: %.2f MB Render(subset): %.2f MB Total: %.2f MB",
                     texture_bytes_alloc,
+                    LLViewerTexture::sReducibleTextureVRAMMegabytes,
+                    LLViewerTexture::sFixedVRAMMegabytes,
                     vertex_bytes_alloc,
                     render_bytes_alloc,
-        texture_bytes_alloc+vertex_bytes_alloc);
+                    LLViewerTexture::sTrackedVRAMMegabytes);
     widest = llmax(widest, font_mono->getWidth(text));
     font_mono->renderUTF8(text, 0, 0, v_offset + line_height * 6,
         text_color, LLFontGL::LEFT, LLFontGL::TOP);
@@ -771,8 +791,8 @@ bool LLGLTexMemBar::handleMouseDown(S32 x, S32 y, MASK mask)
 LLRect LLGLTexMemBar::getRequiredRect()
 {
     LLRect rect;
-    // draw() renders eight lines of text at v_offset + line_height * (1..8).
-    rect.mTop = LLFontGL::getFontMonospace()->getLineHeight() * 8;
+    // draw() renders nine lines of text at v_offset + line_height * (1..9).
+    rect.mTop = LLFontGL::getFontMonospace()->getLineHeight() * 9;
     return rect;
 }
 
@@ -1157,5 +1177,3 @@ bool LLTextureView::handleKey(KEY key, MASK mask, bool called_from_parent)
 {
     return false;
 }
-
-

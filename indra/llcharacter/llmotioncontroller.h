@@ -145,6 +145,13 @@ public:
 
     void clearBlenders() { mPoseBlender.clearBlenders(); }
 
+    // [Machinima] Narrow gaze-yield observer: true only when `joint` received a
+    // non-additive rotation contribution in the most recent real blend pass.
+    // Never reports the additive channel. False => caller must ALLOW (the safe
+    // compatibility default). Reads only mPoseBlender; exposes no motion state.
+    bool getLastAppliedRegularRotationPriority(const LLJoint* joint, S32& priority) const
+    { return mPoseBlender.getLastRegularRotationPriority(joint, priority); }
+
     // flush motions
     // releases all motion instances
     void flushAllMotions();

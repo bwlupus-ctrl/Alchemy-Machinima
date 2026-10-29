@@ -42,6 +42,7 @@
 #include "llviewertexturelist.h"
 #include "llviewerregion.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llspatialpartition.h"
 #include "llworld.h"
 #include "lldir.h"
@@ -367,6 +368,9 @@ bool LLVOGrass::updateLOD()
     num_blades = llmax(1, num_blades);
     if (num_blades >= (mNumBlades << 1))
     {
+        // [ProbeOnDemand] LG: a camera-distance blade-count change is LOD churn
+        // (the render-stopped toggle above stays an event).
+        ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_LOD_GRASS);
         while (mNumBlades < num_blades)
         {
             mNumBlades <<= 1;
@@ -379,6 +383,8 @@ bool LLVOGrass::updateLOD()
     }
     else if (num_blades <= (mNumBlades >> 1))
     {
+        // [ProbeOnDemand] LG: see above.
+        ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_LOD_GRASS);
         while (mNumBlades > num_blades)
         {
             mNumBlades >>=1;

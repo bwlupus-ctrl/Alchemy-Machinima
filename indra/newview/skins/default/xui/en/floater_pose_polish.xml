@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater
+ can_close="true"
+ can_resize="true"
+ height="540"
+ layout="topleft"
+ min_height="480"
+ min_width="360"
+ name="pose_polish"
+ save_rect="true"
+ single_instance="true"
+ title="POSE POLISH"
+ width="360">
+
+  <!-- Every control below binds directly to its ALPolish* setting via
+       control_name=, so it stays in sync with Debug Settings automatically
+       and needs no per-control C++. -->
+
+  <check_box
+   control_name="ALPolishEnabled"
+   follows="left|top"
+   height="20"
+   label="Enable Pose Polish (master)"
+   layout="topleft"
+   left="15"
+   name="polish_master_check"
+   tool_tip="Master gate for the post-blend Pose Polish stage (inertialization, contact stabilization, secondary motion). Off = no-op, displayed pose unchanged."
+   top="26"
+   width="330" />
+  <text
+   follows="left|top|right"
+   height="26"
+   layout="topleft"
+   left="15"
+   name="polish_master_note"
+   text_color="LtGray_50"
+   top="54"
+   width="330"
+   word_wrap="true">All sub-toggles below require the master switch above to be ON to take effect.</text>
+
+  <text
+   font="SansSerifSmallBold"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="15"
+   name="polish_section_transition"
+   top="88"
+   width="330">Transition smoothing (M1)</text>
+  <check_box
+   control_name="ALPolishInertiaEnabled"
+   follows="left|top"
+   height="18"
+   label="Transition inertialization (stops AO/gesture snapping)"
+   layout="topleft"
+   left="15"
+   name="polish_inertia_check"
+   tool_tip="Velocity-preserving transition inertialization (kills AO/gesture snap). Off = no-op. Requires the master switch above."
+   top="106"
+   width="330" />
+  <slider
+   control_name="ALPolishInertiaHalfLifeSpine"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.01"
+   label="Spine settle (s)"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="0.40"
+   min_val="0.02"
+   name="polish_inertia_spine_slider"
+   tool_tip="Inertialization half-life (sec) for pelvis/spine/chest joints."
+   top="128"
+   width="330" />
+  <slider
+   control_name="ALPolishInertiaHalfLifeArm"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.01"
+   label="Arm settle (s)"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="0.40"
+   min_val="0.02"
+   name="polish_inertia_arm_slider"
+   tool_tip="Inertialization half-life (sec) for arm joints."
+   top="150"
+   width="330" />
+  <slider
+   control_name="ALPolishInertiaHalfLifeLeg"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.01"
+   label="Leg settle (s)"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="0.40"
+   min_val="0.02"
+   name="polish_inertia_leg_slider"
+   tool_tip="Inertialization half-life (sec) for leg joints."
+   top="172"
+   width="330" />
+  <slider
+   control_name="ALPolishInertiaHalfLifeHead"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.01"
+   label="Head settle (s)"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="0.40"
+   min_val="0.02"
+   name="polish_inertia_head_slider"
+   tool_tip="Inertialization half-life (sec) for neck/head joints."
+   top="194"
+   width="330" />
+
+  <text
+   font="SansSerifSmallBold"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="15"
+   name="polish_section_contact"
+   top="220"
+   width="330">Foot grounding (M2)</text>
+  <check_box
+   control_name="ALPolishContactEnabled"
+   follows="left|top"
+   height="18"
+   label="Foot contact stabilizer (IK)"
+   layout="topleft"
+   left="15"
+   name="polish_contact_check"
+   tool_tip="Leg IK holds planted feet in world space (anti-footskate). Grounded biped locomotion only; off while sitting/flying. Off = no-op. Requires the master switch above."
+   top="238"
+   width="330" />
+  <slider
+   control_name="ALPolishContactWeight"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.05"
+   label="Contact strength"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="1.0"
+   min_val="0.0"
+   name="polish_contact_weight_slider"
+   tool_tip="Maximum IK correction blend (0-1) applied to hip/knee/ankle rotations while a foot is planted. The correction ramps in/out toward this cap."
+   top="260"
+   width="330" />
+
+  <text
+   font="SansSerifSmallBold"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="15"
+   name="polish_section_locomotion"
+   top="286"
+   width="330">Locomotion (M3)</text>
+  <check_box
+   control_name="ALPolishPhaseMatchEnabled"
+   follows="left|top"
+   height="18"
+   label="Phase-matched walk/run starts"
+   layout="topleft"
+   left="15"
+   name="polish_phasematch_check"
+   tool_tip="Phase-aware locomotion: start a new walk/run clip near a compatible foot-plant phase. Off = stock cadence behavior. Requires the master switch above."
+   top="304"
+   width="330" />
+
+  <text
+   font="SansSerifSmallBold"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="15"
+   name="polish_section_loop"
+   top="330"
+   width="330">Looping anims (M4)</text>
+  <check_box
+   control_name="ALPolishLoopSeamEnabled"
+   follows="left|top"
+   height="18"
+   label="Loop-seam repair"
+   layout="topleft"
+   left="15"
+   name="polish_loopseam_check"
+   tool_tip="Repairs the one-frame hitch at a looping animation's seam by pulsing the inertializer across the wrap. Off = no-op. Requires the master switch above and Transition inertialization."
+   top="348"
+   width="330" />
+
+  <text
+   font="SansSerifSmallBold"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="15"
+   name="polish_section_secondary"
+   top="374"
+   width="330">Ambient life (M6)</text>
+  <check_box
+   control_name="ALPolishSecondaryEnabled"
+   follows="left|top"
+   height="18"
+   label="Secondary motion (breath + idle sway)"
+   layout="topleft"
+   left="15"
+   name="polish_secondary_check"
+   tool_tip="Procedural secondary motion (subtle breath + idle weight-shift sway). Off = no-op. Requires the master switch above."
+   top="392"
+   width="330" />
+  <slider
+   control_name="ALPolishSecondaryBreathAmp"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.05"
+   label="Breath amount"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="2.0"
+   min_val="0.0"
+   name="polish_secondary_breath_slider"
+   tool_tip="Breath amplitude scale (0 disables breath)."
+   top="414"
+   width="330" />
+  <slider
+   control_name="ALPolishSecondarySwayAmp"
+   decimal_digits="2"
+   follows="left|top|right"
+   height="18"
+   increment="0.05"
+   label="Sway amount"
+   label_width="130"
+   layout="topleft"
+   left="15"
+   max_val="2.0"
+   min_val="0.0"
+   name="polish_secondary_sway_slider"
+   tool_tip="Idle weight-shift sway amplitude scale (0 disables sway)."
+   top="436"
+   width="330" />
+
+  <text
+   font="SansSerifSmallBold"
+   follows="left|top"
+   height="14"
+   layout="topleft"
+   left="15"
+   name="polish_section_diagnostic"
+   top="462"
+   width="330">Diagnostics (M5)</text>
+  <check_box
+   control_name="ALPolishLayerDiagnostic"
+   follows="left|top"
+   height="18"
+   label="Layer diagnostic overlay"
+   layout="topleft"
+   left="15"
+   name="polish_diagnostic_check"
+   tool_tip="Per-joint layer &quot;current owner&quot; diagnostic overlay for Director tools. Off = no overlay."
+   top="480"
+   width="330" />
+
+</floater>

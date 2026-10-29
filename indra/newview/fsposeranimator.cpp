@@ -32,8 +32,19 @@
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "fsposingmotion.h"
+#include "lldir.h"
+#include "llfile.h"
+#include "llsdserialize.h"
+#include "llviewercontrol.h"
 
 #include <boost/algorithm/string.hpp>
+#include <utility>
+
+namespace
+{
+constexpr char POSE_INTERNAL_FORMAT_FILE_EXT[] = ".xml";
+constexpr char POSE_SAVE_SUBDIRECTORY[]        = "poses";
+}
 
 std::map<LLUUID, LLAssetID> FSPoserAnimator::sAvatarIdToRegisteredAnimationId;
 
@@ -1295,6 +1306,157 @@ bool FSPoserAnimator::tryGetJointSaveVectors(LLVOAvatar* avatar, const FSPoserJo
     *userSetBaseRotZero = jointPose->userHasSetBaseRotationToZero();
 
     return true;
+}
+
+bool FSPoserAnimator::loadPoseFileOntoAvatar(LLVOAvatar* avatar, const std::string& poseFileBaseName, E_LoadPoseMethods loadMethod)
+{
+    bool        loadSuccess = false;
+    std::string pathname = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, POSE_SAVE_SUBDIRECTORY);
+    if (!gDirUtilp->fileExists(pathname))
+        return loadSuccess;
+
+    if (!this->isPosingAvatar(avatar))
+        return loadSuccess;
+
+    std::string fullPath = gDirUtilp->getExpandedFilename(
+        LL_PATH_USER_SETTINGS, POSE_SAVE_SUBDIRECTORY, poseFileBaseName + POSE_INTERNAL_FORMAT_FILE_EXT);
+
+    bool loadRotations = loadMethod == ROTATIONS || loadMethod == ROTATIONS_AND_POSITIONS || loadMethod == ROTATIONS_AND_SCALES ||
+                         loadMethod == ROT_POS_AND_SCALES || loadMethod == SELECTIVE || loadMethod == SELECTIVE_ROT;
+    bool loadPositions = loadMethod == POSITIONS || loadMethod == ROTATIONS_AND_POSITIONS || loadMethod == POSITIONS_AND_SCALES ||
+                         loadMethod == ROT_POS_AND_SCALES || loadMethod == SELECTIVE;
+    bool loadScales    = loadMethod == SCALES || loadMethod == POSITIONS_AND_SCALES || loadMethod == ROTATIONS_AND_SCALES ||
+                         loadMethod == ROT_POS_AND_SCALES || loadMethod == SELECTIVE;
+    bool loadSelective = loadMethod == SELECTIVE || loadMethod == SELECTIVE_ROT;
+
+    // Optional Black Dragon import: BD saves bone rotations as Euler [roll, yaw, pitch]
+    // (VX, VZ, VY) while Firestorm expects [roll, pitch, yaw] (VX, VY, VZ). When enabled,
+    // swap Y/Z on each rotation as it loads. Off by default -> FS load is byte-identical.
+    const bool load_as_black_dragon = gSavedSettings.getBOOL("FSPoserLoadBlackDragonFormat");
+
+    try
+    {
+        LLSD         pose;
+        llifstream   infile;
+        LLVector3    vec3;
+        LLQuaternion quat;
+        bool         enabled;
+        bool         setJointBaseRotationToZero;
+        bool         userSetBaseRotationToZero;
+        bool         worldLocked;
+        bool         mirroredJoint;
+        S32          version = 0;
+        bool startFromZeroRot = true;
+
+        infile.open(fullPath);
+        if (!infile.is_open())
+            return loadSuccess;
+
+        loadSuccess = true;
+        while (!infile.eof())
+        {
+            S32 lineCount = LLSDSerialize::fromXML(pose, infile);
+            if (lineCount == LLSDParser::PARSE_FAILURE)
+            {
+                LL_WARNS("Posing") << "Failed to parse file: " << poseFileBaseName << LL_ENDL;
+                return loadSuccess;
+            }
+
+            for (LLSD::map_const_iterator itr = pose.beginMap(); itr != pose.endMap(); ++itr)
+            {
+                std::string const& name        = itr->first;
+                LLSD const&        control_map = itr->second;
+
+                if (name == "startFromTeePose")
+                    startFromZeroRot = control_map["value"].asBoolean();
+
+                if (name == "version")
+                    version = (S32)control_map["value"].asInteger();
+            }
+
+            if (version > 5 && startFromZeroRot)
+                this->setAllAvatarStartingRotationsToZero(avatar);
+
+            bool loadPositionsAndScalesAsDeltas = false;
+            if (version > 3)
+                loadPositionsAndScalesAsDeltas = true;
+
+            for (LLSD::map_const_iterator itr = pose.beginMap(); itr != pose.endMap(); ++itr)
+            {
+                std::string const& name        = itr->first;
+                LLSD const&        control_map = itr->second;
+
+                const FSPoserJoint* poserJoint = this->getPoserJointByName(name);
+                if (!poserJoint)
+                    continue;
+
+                if (loadSelective && this->isPosingAvatarJoint(avatar, *poserJoint))
+                    continue;
+
+                if (control_map.has("enabled"))
+                {
+                    enabled = control_map["enabled"].asBoolean();
+                    this->setPosingAvatarJoint(avatar, *poserJoint, enabled || loadSelective);
+                }
+
+                if (control_map.has("jointBaseRotationIsZero"))
+                    setJointBaseRotationToZero = control_map["jointBaseRotationIsZero"].asBoolean();
+                else
+                    setJointBaseRotationToZero = startFromZeroRot;
+
+                if (control_map.has("userSetBaseRotationToZero"))
+                    userSetBaseRotationToZero = control_map["userSetBaseRotationToZero"].asBoolean();
+                else
+                    userSetBaseRotationToZero = startFromZeroRot;
+
+                if (loadPositions && control_map.has("position"))
+                    vec3.setValue(control_map["position"]);
+                else
+                    vec3.clear();
+
+                this->loadJointPosition(avatar, poserJoint, loadPositionsAndScalesAsDeltas, vec3);
+
+                if (loadRotations && control_map.has("rotation"))
+                {
+                    vec3.setValue(control_map["rotation"]);
+                    if (load_as_black_dragon)
+                    {
+                        // BD Euler [roll, yaw, pitch] (VX, VZ, VY) -> FS [roll, pitch, yaw]
+                        // (VX, VY, VZ). Rotation only; positions/scales are unswizzled and
+                        // already load correctly on the version<=3 non-delta path.
+                        std::swap(vec3.mV[VY], vec3.mV[VZ]);
+                    }
+                }
+                else
+                    vec3.clear();
+
+                this->loadJointRotation(avatar, poserJoint, setJointBaseRotationToZero, userSetBaseRotationToZero, vec3);
+
+                if (loadScales && control_map.has("scale"))
+                    vec3.setValue(control_map["scale"]);
+                else
+                    vec3.clear();
+
+                this->loadJointScale(avatar, poserJoint, loadPositionsAndScalesAsDeltas, vec3);
+
+                worldLocked = control_map.has("worldLocked") ? control_map["worldLocked"].asBoolean() : false;
+                this->setRotationIsWorldLocked(avatar, *poserJoint, worldLocked);
+
+                mirroredJoint = control_map.has("mirrored") ? control_map["mirrored"].asBoolean() : false;
+                this->setRotationIsMirrored(avatar, *poserJoint, mirroredJoint);
+            }
+
+            if (version > 6 && !startFromZeroRot && !loadSelective)
+                loadSuccess = this->loadPosingState(avatar, true, pose);
+        }
+    }
+    catch ( const std::exception & e )
+    {
+        loadSuccess = false;
+        LL_WARNS("Posing") << "Everything caught fire trying to load the pose: " << poseFileBaseName << " exception: " << e.what() << LL_ENDL;
+    }
+
+    return loadSuccess;
 }
 
 void FSPoserAnimator::loadJointRotation(LLVOAvatar* avatar, const FSPoserJoint* joint, bool setBaseToZero, bool userSetBaseToZero, LLVector3 rotation)

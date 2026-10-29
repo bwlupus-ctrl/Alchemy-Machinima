@@ -90,6 +90,13 @@
          parameter="cinematic_camera" />
       </menu_item_call>
       <menu_item_call
+       label="Cinematic Light Rig..."
+       name="cine_light_rig_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="cine_light_rig" />
+      </menu_item_call>
+      <menu_item_call
        label="Flycam Recorder..."
        name="flycam_recorder_item_call">
         <menu_item_call.on_click
@@ -139,6 +146,13 @@
          parameter="ghost_studio" />
       </menu_item_call>
       <menu_item_call
+       label="Avatar Light Response..."
+       name="avatar_light_response_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="avatar_light_response" />
+      </menu_item_call>
+      <menu_item_call
        label="Prop Mover..."
        name="prop_mover_item_call">
         <menu_item_call.on_click
@@ -151,6 +165,13 @@
         <menu_item_call.on_click
          function="Floater.Toggle"
          parameter="phototools" />
+      </menu_item_call>
+      <menu_item_call
+       label="Ultimate Diopter..."
+       name="ultimate_diopter_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="ultimate_diopter" />
       </menu_item_call>
       <menu_item_check
        label="Depth of Field Focus lock"
@@ -1270,6 +1291,32 @@
                 <menu_item_check.on_check
                  function="World.EnableEnvSettings" 
                  parameter="midnight" />
+                <menu_item_check.on_enable
+                 function="RLV.EnableIfNot"
+                 parameter="setenv" />
+            </menu_item_check>
+            <menu_item_check
+             label="Studio Neutral (Day)"
+             name="StudioNeutralDay">
+                <menu_item_check.on_click
+                 function="World.EnvSettings"
+                 parameter="studio_day" />
+                <menu_item_check.on_check
+                 function="World.EnableEnvSettings"
+                 parameter="studio_day" />
+                <menu_item_check.on_enable
+                 function="RLV.EnableIfNot"
+                 parameter="setenv" />
+            </menu_item_check>
+            <menu_item_check
+             label="Studio Neutral (Night)"
+             name="StudioNeutralNight">
+                <menu_item_check.on_click
+                 function="World.EnvSettings"
+                 parameter="studio_night" />
+                <menu_item_check.on_check
+                 function="World.EnableEnvSettings"
+                 parameter="studio_night" />
                 <menu_item_check.on_enable
                  function="RLV.EnableIfNot"
                  parameter="setenv" />

@@ -36,6 +36,11 @@ uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projecti
 uniform mat4 last_modelview_matrix;         // previous frame camera modelview
 uniform mat4 last_object_matrix;            // previous frame object matrix
 uniform mat4 texture_matrix0;
+#ifdef PBR_ALPHA_MASK
+uniform vec4[2] texture_base_color_transform;
+vec2 texture_transform(vec2 vertex_texcoord, vec4[2] khr_gltf_transform,
+                       mat4 sl_animation_transform);
+#endif
 
 in vec3 position;
 in vec4 diffuse_color;
@@ -45,6 +50,7 @@ out vec2 vary_texcoord0;
 out vec4 vertex_color;
 out vec4 vary_cur_clip;
 out vec4 vary_last_clip;
+out vec3 vary_actor_fx_position;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -53,8 +59,14 @@ mat4 getLastObjectSkinnedTransform();
 
 void main()
 {
+#ifdef PBR_ALPHA_MASK
+    vary_texcoord0 = texture_transform(texcoord0, texture_base_color_transform,
+                                      texture_matrix0);
+#else
     vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0, 1)).xy;
+#endif
     vertex_color = diffuse_color;
+    vary_actor_fx_position = position;
 
 #ifdef HAS_SKIN
     // [BDMerge A5.4-1b] Skinned/rigged path (see velocityV.glsl note).

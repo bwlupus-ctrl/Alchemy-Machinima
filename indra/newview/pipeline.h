@@ -47,10 +47,13 @@
 #include "llprismlens.h"
 #include "lluuid.h"                 // [GhostDeferred] coverage-map key
 #include "llghostcoverage.h"        // [GhostDeferred] per-category coverage mask
+#include "aldiopterpresetbank.h"    // [Ultimate Diopter] ALDiopterBankKind, §6.3
+#include "aldiopterrelevance.h"     // [Ultimate Diopter] ALDiopterFocusProvenance, wave 2
 
 #include <stack>
 #include <set>
 #include <map>                      // [GhostDeferred] per-frame instance->coverage map
+#include <unordered_map>            // [ShadowDist P1] per-program shadow-uniform stamps
 
 class LLViewerTexture;
 class LLFace;
@@ -87,6 +90,23 @@ static const U32 SL_COVERAGE_ATTACHMENT = 2;
 class LLPipeline
 {
 public:
+    // Effective client-side alpha policy. Material assets are immutable and may
+    // be shared by unrelated objects, so overrides are resolved per face and
+    // baked into LLDrawInfo instead of modifying LLMaterial/LLGLTFMaterial.
+    enum EEffectiveAlphaMode : U8
+    {
+        ALPHA_MODE_OPAQUE = 0,
+        ALPHA_MODE_MASK   = 1,
+        ALPHA_MODE_BLEND  = 2
+    };
+
+    struct AlphaPolicy
+    {
+        EEffectiveAlphaMode mMode = ALPHA_MODE_OPAQUE;
+        F32 mCutoff = -1.f; // valid for MASK; -1 disables alpha discard
+        bool mOverridden = false;
+    };
+
     static constexpr U32 BLOOM_MAX_MIPS = 7;
 
     LLPipeline();
@@ -174,12 +194,161 @@ public:
     void generateLuminance(LLRenderTarget* src, LLRenderTarget* dst);
     void generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history = true);
     void colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool tonemap, bool colorgrade);
+    // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
+    // before bloom/flare generation, so those optics respect the filtered scene.
+    void applyOnLensFilters(LLRenderTarget* screen);
     void generateGlow(LLRenderTarget* src);
     void generateBloomHDR(LLRenderTarget* src);
     void compositeBloomHDR(LLRenderTarget* scene);
     void applyCAS(LLRenderTarget* src, LLRenderTarget* dst);
+    void renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Ultimate Diopter] two-pass lens-front diopter/halo: MRT gather into
+    // mDiopterMap, then composite src -> dst (caller swaps either way).
+    // Returns true only when the diopter actually rendered — false on the
+    // internal copy-through early-outs, where the warp map is stale and the
+    // present depth re-warp must stay off.
+    bool renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Ultimate Diopter] write the given preset's resolved style/motion look
+    // into the CineDiopter* sliders (skipping edited_control, which holds the
+    // user's fresh edit) so flipping to Custom preserves the on-screen look.
+    // Guarded by ALScopedPresetMaterializing (aldiopterpresetbank.h) against
+    // re-entering the auto-Custom listener while the write-back runs. The
+    // guard/reason-flag state machine that used to live here as
+    // sDiopterPresetMaterializing / ALPresetExit / ScopedPresetMaterializing
+    // moved to aldiopterpresetbank.h/.cpp (Codex review finding F6) so
+    // aldiopterpresetbank.cpp's alDiopterHandlePresetTransition -- and its
+    // unit test -- have no rendering-pipeline dependency.
+    static void materializeDiopterPreset(U32 preset_id, const std::string& edited_control);
+
+    // [Ultimate Diopter] §5.3 / wave-2 floater state -- the base-focus
+    // resolver's last result (call-swap 6, alDiopterResolveBaseFocus() at
+    // file scope in pipeline.cpp), published every frame so
+    // ALFloaterUltimateDiopter can read provenance without re-deriving it --
+    // its refresh runs outside renderUltimateDiopter.
+    static ALDiopterFocusProvenance sDiopterBaseFocusProvenance;
+    static F32 sDiopterBaseFocusResolvedM;
+
+    // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post pass:
+    // single full-screen MRT pass into mDiopterMap (color + unused + warp
+    // uv), then attachment 0 copied src -> dst (caller swaps either way).
+    // Returns true only when the kaleidoscope actually rendered — false on
+    // the internal copy-through early-outs, where the warp map is stale and
+    // the present depth re-warp must stay off.
+    bool renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget* dst);
+    // [Ultimate Kaleidoscope] write the given preset's resolved style/motion
+    // look into the CineDiopterKal* sliders (skipping edited_control, which
+    // holds the user's fresh edit) so flipping to Custom preserves the
+    // on-screen look. Guarded by the same ALScopedPresetMaterializing as
+    // materializeDiopterPreset -- the diopter and kaleidoscope tool modes
+    // never materialize concurrently.
+    static void materializeKaleidoPreset(U32 preset_id, const std::string& edited_control);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
+    // [RotoInk] Rotoscope Ink: read-scratch (mWaterDis) / write-all-pixels
+    // deferred ink-line pass (successor of the Cine Outline Phase-1 additive
+    // Sobel pass). Blend is OFF -- the shader reads a copy of dst (rotoScene)
+    // and writes every pixel back, so fixed/match-light ink colour, the
+    // three blend modes and the legacy alpha glow feed are all resolved
+    // in-shader. Off (CineOutlineEnabled false) is a true no-op: no copy, no
+    // draw. See LLPipeline::renderCineOutline for the mWaterDis scratch
+    // idiom and the CPU subject-isolation resolve (mRotoInkSubject).
+    //
+    // [RotoInk Round-4, Codex+Opus P1] camera_modelview/camera_projection:
+    // the 16-F32 GL matrix arrays the subject re-projection (mRotoInkSubject)
+    // should use, e.g. gGLModelView/gGLProjection or gGLLastModelView/
+    // gGLLastProjection. Default nullptr means "use gGLLast{ModelView,
+    // Projection}" (the renderFinalize call sites: gGLLast* already holds
+    // THIS frame's just-finished camera by the time renderFinalize runs).
+    // ROTOINK_LAYER_SCENE is the one call site that must NOT default this way
+    // -- it runs from inside renderGeomPostDeferred, which is BEFORE the
+    // end-of-3D-scene snapshot that copies gGLModelView/gGLProjection into
+    // gGLLast{ModelView,Projection} (renderFinalize's caller does that
+    // snapshot, not renderGeomPostDeferred itself) -- so gGLLast* there still
+    // holds the PREVIOUS frame's camera. That call site passes the live
+    // gGLModelView/gGLProjection explicitly instead (the pool loop reloads
+    // gGLModelView as the current camera's view matrix before every pass, so
+    // it is reliably THIS frame's matrix at that point). This never changes
+    // WHEN or HOW gGLLast{ModelView,Projection} themselves get updated --
+    // velocity rendering depends on that timing untouched.
+    void renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview = nullptr, const F32* camera_projection = nullptr);
+    // [RotoInk] CineOutlineLayer: which point in the HDR post chain the ink
+    // pass runs at. Exactly one of these fires per frame (see
+    // shouldRunRotoInkAt). The non-HDR pipeline has no such chain to place a
+    // layer within -- it always runs its own single post-colorCorrect ink
+    // call (at the same buffer position as ROTOINK_LAYER_OVERLAY) regardless
+    // of this setting; see the non-HDR branch in renderFinalize.
+    enum ERotoInkLayer : S32
+    {
+        ROTOINK_LAYER_SCENE      = 0, // renderGeomPostDeferred, before water/haze/atmospherics/glass
+        ROTOINK_LAYER_CAMERA     = 1, // after generateExposure, before applyOnLensFilters (default)
+        ROTOINK_LAYER_ATMOSPHERE = 2, // after feedProjectorVolumetricBloom, before actor-path guides
+        ROTOINK_LAYER_OVERLAY    = 3, // post-colorCorrect, HDR path only (mirrors the non-HDR call)
+    };
+    // Resolves CineOutlineLayer (clamped 0..3), with the S-Log3 override:
+    // Overlay draws flat, display-referred lines directly into the working
+    // buffer, which would corrupt a log-encoded (AlchemyRenderTonemapType==8)
+    // image, so it silently degrades to Camera whenever that tonemapper is
+    // active.
+    S32 resolveRotoInkLayer() const;
+    // True exactly when Rotoscope Ink should draw at the given ERotoInkLayer
+    // site THIS frame -- the single dispatch point that keeps exactly one
+    // HDR-path call site active. Folds in CineOutlineEnabled, gCubeSnapshot,
+    // gSnapshotNoPost, and whether the HDR post chain is even running this
+    // frame (mirrors renderFinalize's own `hdr` predicate); callers still add
+    // any render-context gates specific to their call site (see the
+    // ROTOINK_LAYER_SCENE call in renderGeomPostDeferred).
+    bool shouldRunRotoInkAt(S32 layer) const;
+    // [RotoInk Round-3, Codex P1] Shared with colorCorrect() so the two can
+    // never drift on whether the colorCorrect shader variant that will
+    // actually run this frame applies RenderExposure / the active tonemap
+    // operator at all (colorCorrectF.glsl's TONEMAP permutation guard).
+    // `apply_tonemap` must be the same value the matching colorCorrect() call
+    // this frame will use (renderFinalize's `hdr` local). Returns false
+    // whenever a legacy-gamma sky without the [TonemapLegacySky] opt-in,
+    // RenderDisablePostProcessing with Build open, or a "no post" snapshot forces
+    // colorCorrect onto its gamma-only (non-TONEMAP) shader variant regardless
+    // of apply_tonemap.
+    // Optionally reports the legacy-gamma and no-post sub-conditions for
+    // callers (like colorCorrect itself) that also need them for shader
+    // selection.
+    bool colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma = nullptr, bool* out_no_post = nullptr) const;
+    // [TronT0] Pure-move refactor: the signed EXPOSURE selector renderCineOutline
+    // used to compute inline (RenderExposure / -(RenderExposure * SLog3 EV
+    // scale) / 0, see the call site for the full contract), now shared so the
+    // Tron World pass (T1) can reuse the identical derivation. `is_scene_layer`
+    // is ROTOINK_LAYER_SCENE's `camera_modelview != nullptr` test; `hdr_path`
+    // is `dst == &mRT->screen`. Returns byte-identical values to the block it
+    // replaced -- verified by diffing the moved code.
+    F32 inkExposureSelector(bool is_scene_layer, bool hdr_path) const;
+    // [TronT1] Tron World: dark grade + world-space neon grid with travelling
+    // pulses, composited in place exactly like Rotoscope Ink (read a copy of
+    // `dst` into mWaterDis, draw every pixel back, blit colour-only back into
+    // `dst`). See LLPipeline::renderTronWorld's .cpp header comment and
+    // scratchpad/tron_t1_contract.md section 3 for the full contract.
+    // [TronT3] Also draws the light-cycle trail ribbons (ALTron::renderTrails)
+    // into the same mWaterDis round-trip -- see scratchpad/tron_t3_contract.md
+    // section 4 for the mode-driven world/trails split.
+    // [TronT3] All three modes are live: WORLD_AND_TRAILS draws the fullscreen
+    // grade/grid/trace/rim pass AND the light-cycle trail ribbons in the same
+    // mWaterDis scratch round-trip; WORLD_ONLY / TRAILS_ONLY draw just the one
+    // (see the T3 contract section 4 for the mode -> world_wanted/
+    // trails_wanted derivation).
+    enum ETronDraw : S32
+    {
+        TRON_DRAW_WORLD_AND_TRAILS = 0,
+        TRON_DRAW_WORLD_ONLY       = 1,
+        TRON_DRAW_TRAILS_ONLY      = 2,
+    };
+    // is_scene_layer selects the Scene-layer exposure/water-detection rules
+    // (see inkExposureSelector) and forces the camera/anchor/lattice re-
+    // derivation to use the LIVE mv/proj rather than gGLLast*; mv/proj are
+    // the pass's OWN camera matrices (gGLLastModelView/Projection at the
+    // Camera layer, the live gGLModelView/gGLProjection at the Scene layer),
+    // used to derive a fresh anchor/cam_rel/lattice every call -- see the
+    // T1 contract section 3.3 (never mixed with the idle()-latched
+    // ALTron::anchor()).
+    void renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_scene_layer,
+                          const F32* mv, const F32* proj);
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture
@@ -265,6 +434,7 @@ public:
     static F32   getAlphaMaskCutoffOverride(const LLUUID& id); // -1 if unset
     // Object override wins if present (>=0); else avatar override; else -1 (none).
     static F32   resolveAlphaMaskCutoff(const LLUUID& objRootId, const LLUUID& avatarId);
+    static AlphaPolicy resolveAlphaPolicy(const LLFace* facep);
 
     void applyFXAA(LLRenderTarget* src, LLRenderTarget* dst);
     void generateSMAABuffers(LLRenderTarget* src);
@@ -467,6 +637,25 @@ public:
     void clearPrismLensDirtyScreenShaderTracking();
     void bindDeferredShaderFast(LLGLSLShader& shader);
     void bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target = nullptr, LLRenderTarget* depth_target = nullptr);
+    // [ShadowDist P1] Meta-derived sun-shadow uniform upload (design v6 s1.2).
+    // Called from BOTH bind paths right after the shadow maps are bound. The
+    // interpretation of the sampled pack's four maps (split blend; later units /
+    // subject / coefficients) comes ONLY from that pack's ShadowMeta, never from
+    // live settings, so maps and shader can never disagree. When the controls
+    // are all at default (mShadowEngaged == false) it uploads nothing beyond a
+    // one-time stock scalar per program -> the OFF path is unchanged.
+    void uploadShadowUniforms(LLGLSLShader& shader);
+    // Re-evaluates mShadowEngaged from the main pack's meta + the A settings;
+    // on the engaged -> disengaged edge it forces one slow bind everywhere so
+    // the stock shadow_matrix / shadow_clip uploads resume for programs that
+    // were fast-bound while engaged.
+    void updateShadowEngaged();
+    // Forget every per-program stamp (programs are being relinked / unloaded).
+    void clearShadowUniformStamps();
+    // Effective Control A split blend: RenderShadowSplitBlend clamped to its
+    // range, snapped to exactly 0.25 when within float noise of the default so
+    // the stock frusta / shader arithmetic stay bit-identical.
+    static F32 effectiveShadowSplitBlend();
     void setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
     // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
@@ -482,6 +671,15 @@ public:
     void unbindReflectionProbes(LLGLSLShader& shader);
 
     void renderDeferredLighting();
+
+    // Blit deferredScreen's albedo (attachment 0) and normals (attachment 2)
+    // into mReShadeAlbedoRaw / mReShadeNormalsRaw for the ReShade bridge,
+    // while they are still guaranteed valid (see the members' declaration
+    // comment for why gatherFrame() can't safely read deferredScreen live).
+    // Called from the top of renderDeferredLighting(); self-gates to a no-op
+    // for aux/probe/impostor/HUD/Prism-aux render passes (mRT != &mMainRT) and
+    // when RenderReShadeGBufferPublish is off.
+    void preserveReShadeGBuffer();
 
     // apply atmospheric haze based on contents of color and depth buffer
     // should be called just before rendering water when camera is under water
@@ -555,6 +753,27 @@ public:
     void setPrismAuxiliaryWaterHeight(const LLVector3& eye);
     F32 getRenderWaterHeight() const;
     void endPrismAuxiliaryState();
+    // Preserve the main-eye nearby-light set while a cinematic reflection
+    // probe builds a probe-local set for all six cubemap faces.
+    bool beginCinematicProbeCapture();
+    void endCinematicProbeCapture();
+    // [LiveProbeRefresh] Appends a signature of the non-rig local lights (world
+    // prims + attachment lights) a cinematic probe capture at `origin` could
+    // use: every light passing the cinematic calcNearbyLights filters, with no
+    // nearest-N or per-face frustum truncation. Every shader-consumed light
+    // input (incl. gobo overrides) is hashed. Read-only.
+    void appendCinematicProbeLightSignature(
+        ALCineLiveProbeRefresh::Signature& sig, const LLVector3& origin,
+        F32 probe_radius, F32 move_m);
+    // True when the last appendCinematicProbeLightSignature saw an animated
+    // (time-driven) non-rig projector gobo.
+    bool isCinematicProbeLightAnimating() const { return mCineProbeLightsAnimating; }
+    bool mCineProbeLightsAnimating = false;
+    // [ProbeOnDemand] Read-only view of every light drawable (the camera-
+    // independent probe light diff iterates it) and the capture's light-class
+    // toggle test (bdmerge_should_render_light, file-static).
+    const LLDrawable::ordered_drawable_set_t& getLights() const { return mLights; }
+    static bool probeShouldRenderLight(bool is_attachment, bool is_own_avatar);
     void setupAvatarLights(bool for_edit = false);
     void enableLights(U32 mask);
     void enableLightsDynamic();
@@ -975,6 +1194,45 @@ public:
         //sun shadow map
         LLRenderTarget          shadow[4];
 
+        // [ShadowDist P1] Interpretation of the four sun maps above (design v6
+        // s1.1). INVARIANT: every statement that writes, clears, fits or
+        // (re)allocates any shadow[j] of this pack writes this meta in the same
+        // block and bumps `serial`. uploadShadowUniforms() derives everything
+        // the sun-shadow shaders need to read THESE maps from here at bind time
+        // -- settings only change what the NEXT generation writes.
+        // Fields marked [P2]/[P3] are laid out now for Controls C (world units)
+        // and B (subject cascade); phase 1 writes their defaults.
+        struct ShadowMeta
+        {
+            bool       legacy   = true;     // generated with every control at default -> stock shader path
+            bool       subject  = false;    // [P3] shadow[0] holds the subject column
+            S32        units    = 0;        // [P2] 0 legacy / 1 world units, as REQUIRED by these maps
+            S32        scope    = 0;        // [P2] RenderShadowUnitsScope captured at generation
+            F32        blend    = 0.25f;    // split blend the frusta were built with
+            F32        subjectFeather = 0.12f; // [P3] column edge feather (fraction of the column, uv and depth)
+            U32        validCascades = 0;   // cascades this generation ITERATED (2 for probe renders, 4 main); 0 = never generated
+            // [ShadowDist P2] per-cascade: shadow[j] holds a fitted depth map whose sunVP[j] / coef[j]
+            // describe it. false = cleared (no receivers, j > RenderShadowSplits, sun black) or never
+            // fitted -> identity sunVP, default coef; consumers must not upload/interpret those.
+            bool       fitted[4] = { false, false, false, false };
+            LLVector4  clip     = LLVector4(1.f, 64.f, 128.f, 256.f);   // mSunClipPlanes these maps were built from
+            glm::dmat4 sunVP[4] = { glm::dmat4(1.0), glm::dmat4(1.0), glm::dmat4(1.0), glm::dmat4(1.0) }; // trans*proj*view per cascade (no inverse view), double
+            glm::dmat4 columnVP = glm::dmat4(1.0);                      // [P3] trans*proj0*view0 (no inverse view), valid iff subject
+            LLVector4  coef[4]  = { LLVector4(1.f, 1.f, 1.f, 0.f), LLVector4(1.f, 1.f, 1.f, 0.f),
+                                    LLVector4(1.f, 1.f, 1.f, 0.f), LLVector4(1.f, 1.f, 1.f, 0.f) }; // [P2] (k_depth, texel_x, texel_y, is_persp)
+            U32        serial   = 0;        // bumped at every write site of THIS pack
+
+            // Back to "never generated" defaults; the serial keeps counting so
+            // every program's stamp mismatches on its next bind.
+            void reset()
+            {
+                const U32 s = serial;
+                *this = ShadowMeta();
+                serial = s + 1;
+            }
+        };
+        ShadowMeta              shadowMeta;
+
         // HDR bloom pyramid (RGB = bloom, A = halation intensity).
         // mBloomMip[0] is full-res extract; subsequent levels are halved.
         LLRenderTarget              bloomMip[BLOOM_MAX_MIPS];
@@ -1025,10 +1283,83 @@ public:
     // currently used render target pack
     RenderTargetPack* mRT;
 
+    // [ShadowDist P1] Per-program record of which pack / meta serial the
+    // shadow interpretation scalars were last uploaded for (design v6 s1.3).
+    // Keyed per pack so probe-pack writes never invalidate main-view stamps.
+    // {nullptr, 0} = never uploaded -> always mismatches on a first bind.
+    struct ShadowUniformStamp
+    {
+        const RenderTargetPack* pack   = nullptr;
+        U32                     serial = 0;
+    };
+    std::unordered_map<const LLGLSLShader*, ShadowUniformStamp> mShadowStampByShader;
+    // true while the main maps were generated with a non-default control or
+    // any A control is non-default (design v6 s1.4). false = byte-identical
+    // OFF path (no per-bind matrix / clip uploads from the meta).
+    bool mShadowEngaged = false;
+    // [ShadowDist P2 fix4] Sun shadow maps are TFO_ANISOTROPIC stock; anisotropic
+    // depth compares can read beyond the 4 bilinear neighbours, which would void the
+    // one-texel receiver-plane allowance of the world-units kernel. While units are
+    // on for the MAIN pack the maps are bound TFO_BILINEAR (MAX_ANISOTROPY 1) and
+    // restored to TFO_ANISOTROPIC when units go off. -1 = not applied yet (no maps),
+    // else the last state applied (0 stock / 1 bilinear) so we only rebind on change.
+    S32  mShadowUnitsFilterApplied = -1;
+    void applyShadowUnitsFiltering();
+
+    // [ShadowDist P3] Control B -- subject-fitted cascade 0 ("Follow subject").
+    // Per-frame state that must persist across generations for stability:
+    bool      mShadowSubjectWasActive   = false;   // MaxDistance hysteresis (x1.0 engage / x1.1 release)
+    bool      mShadowSubjectUpX         = false;   // light-basis up: world Z (false) or world X (true); |L.Z| 0.80 / 0.70 hysteresis
+    LLUUID    mShadowSubjectLastId;                // size hysteresis is reset only when the target id changes
+    LLVector2 mShadowSubjectHq          = LLVector2(0.f, 0.f);   // quantised light-space half extents in force
+    F32       mShadowSubjectShrinkStart = -1.f;    // wall time since a smaller size has sufficed; < 0 = not shrinking
+    // [ShadowDist P3 fix, Opus P2-1] light-basis anchor: a subject-near point on a coarse 32 m
+    // cell grid, re-anchored with hysteresis, so light-space coordinates stay small at any
+    // altitude (F32 exact) and sun motion rotates the basis about a nearby origin (no crawl).
+    LLVector3 mShadowSubjectAnchor;
+    bool      mShadowSubjectAnchorValid  = false;
+    // [ShadowDist P3 fix, Codex P1] EFFECTIVE world-units requirement of the resident main
+    // maps: units mode, Follow subject, or retained maps generated in units mode.
+    bool shadowUnitsFilterWanted() const;
+    // Resolve the Follow-subject target (0 Self, 1-4 Director Subject A-D, 5 = CineOutlineSubjectTarget
+    // clamped 0-4) to a normally-drawn avatar and its FRESH spatial extents (+ margin); false = inactive.
+    bool resolveShadowSubject(S32 target, LLVOAvatar*& av, LLVector3& center, LLVector3& half);
+    // [ShadowDist P3] alpha fix: shadow-pass alpha policy for the currently bound shadow program
+    // (blended_pass = 1 for renderAlphaObjects, 0 for the alpha-mask passes of renderShadow).
+    void uploadShadowAlphaMode(S32 blended_pass);
+    // [ShadowDist P3] Prism aux re-expression of the sun cascades: saved / restored around the aux scope
+    glm::mat4 mPrismSavedSunCascadeMatrix[4];
+
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
-    static constexpr U32    MAX_SPOT_SHADOWS = 6;
+    static constexpr U32    MAX_SPOT_SHADOWS = 10;
+    static_assert(MAX_SPOT_SHADOWS == 10u,
+                  "shadowUtil.glsl's two 10-case spot dispatches must match MAX_SPOT_SHADOWS");
     static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;
+    // Keep the legacy six-slot runtime path on constrained hardware, admit an
+    // eight-slot intermediate tier, and reserve the ten-slot ceiling for
+    // desktop-class 32-unit hardware.
+    static constexpr U32 maxSpotShadowsForTextureUnits(U32 texture_units)
+    {
+        const U32 hardware_max = texture_units >= 32u ? 10u
+            : texture_units >= 28u ? 8u : 6u;
+        return hardware_max < MAX_SPOT_SHADOWS
+            ? hardware_max : MAX_SPOT_SHADOWS;
+    }
+    static constexpr U32 clampSpotShadowCount(U32 requested,
+                                               U32 texture_units)
+    {
+        const U32 hardware_max =
+            maxSpotShadowsForTextureUnits(texture_units);
+        return requested < 2u ? 2u
+            : requested > hardware_max ? hardware_max : requested;
+    }
+    static constexpr U32 spotShadowMapIndex(U32 spot_slot)
+    {
+        // SINGLE SOURCE OF TRUTH for the C++ spot-slot -> shadowMap index.
+        // Both dispatches in deferred/shadowUtil.glsl MUST mirror this mapping.
+        return 4u + spot_slot;
+    }
     LLRenderTarget          mSpotShadow[MAX_SPOT_SHADOWS];
     // [Prism spot shadows Stage 2] Dedicated projector shadow maps for the Prism
     // auxiliary capture. mSpotShadow[] content is consumed by the MAIN view
@@ -1209,6 +1540,227 @@ public:
     //water distortion texture (refraction)
     LLRenderTarget              mWaterDis;
 
+    // RAW (pre-on-lens-filter) HDR scene snapshot for the ReShade bridge.
+    // applyOnLensFilters blits mRT->screen here BEFORE the Graduated ND /
+    // Polarizer modify it (gated on RenderReShadeDecoupleOnLens), so RTGI-style
+    // effects see the unfiltered scene — a lens filter must not change
+    // surface-to-surface bounce. HDR-path-only (released in the non-HDR path).
+    // Public for the same reason as mVelocityMap: llreshadebridge.cpp reads it
+    // via gPipeline. mReShadeRawSceneValid is reset every renderFinalize and
+    // only set when a capture actually happened this frame; when false the
+    // bridge publishes mRT->screen exactly as before.
+    LLRenderTarget              mReShadeSceneRaw;
+    bool                        mReShadeRawSceneValid = false;
+
+    // Deferred G-buffer preserve-copies for the ReShade bridge. deferredScreen
+    // attachment 0 (albedo) and attachment 2 (normals) are only known-good
+    // between the deferred geometry pass and the point renderDeferredLighting
+    // finishes consuming them for lighting; gatherFrame() runs much later
+    // (after renderFinalize()'s whole post chain), so rather than have the
+    // bridge read gPipeline.mRT->deferredScreen directly at that late point,
+    // renderDeferredLighting() blits its own copies here immediately after
+    // the G-buffer is complete for the main view. Same lifetime pattern as
+    // mReShadeSceneRaw above, and same reasoning: preserve a copy at the
+    // last-known-good moment rather than trust a live buffer at capture time.
+    // Formats mirror deferredScreen's own attachments: albedo is
+    // GL_SRGB8_ALPHA8 (matches deferredScreen attachment 0, allocated in
+    // allocateScreenBufferInternal); normals is GL_RGBA16 under HDR /
+    // GL_RGB10_A2 non-HDR (matches addDeferredAttachments()). Gated on
+    // RenderReShadeGBufferPublish so the two extra per-frame blits cost
+    // nothing when the setting is off. mReShadeGBufferRawValid is reset every
+    // renderDeferredLighting call and only set true when a capture actually
+    // happened for the main view this frame; when false the bridge falls back
+    // to reading gPipeline.mRT->deferredScreen directly, exactly as before.
+    LLRenderTarget              mReShadeAlbedoRaw;
+    LLRenderTarget              mReShadeNormalsRaw;
+    bool                        mReShadeGBufferRawValid = false;
+
+    // [Ultimate Diopter] pass-1 MRT target: attachment 0 = clear gather +
+    // mask, attachment 1 = diopter gather + rim. RGBA16F, full-res.
+    // Allocated ONLY while CineDiopterEnabled is set (settings listener
+    // triggers realloc) so the effect holds zero VRAM when off.
+    LLRenderTarget              mDiopterMap;
+
+    // [RotoInk] CPU-resolved subject isolation for Rotoscope Ink: metric
+    // depth slab + optional screen-space ellipse around the resolved
+    // subject's projected animated AABB. Smoothed with its own independent
+    // state, exponentially smoothed exactly like
+    // NightMaskFrameState::mSmoothedPosAgent (updateNightMaskAnchor()); reset
+    // (snap) on target change/teleport/region change/time reversal,
+    // identically to Night Mask.
+    //
+    // [Round-1 review fix] The smoother stores the subject's AABB centre and
+    // half-extents in AGENT (world) space, NOT view space / screen UV. Only
+    // the subject's own motion is smoothed here; every render re-projects
+    // the smoothed world-space box with THAT render's own current camera
+    // (gGLLastModelView/Projection) to get focus depth and the screen
+    // ellipse. This makes a camera cut, a paused-time camera move, or a
+    // multi-direction capture (360/cubemap) exact by construction -- there
+    // is no stale camera-space history to interpolate from or reuse, since
+    // no camera-derived value is ever stored across frames.
+    // See LLPipeline::renderCineOutline.
+    struct RotoInkSubjectState
+    {
+        bool      mHaveSmoothed = false;
+        LLVector3 mCenter{0.f, 0.f, 0.f};        // agent-space AABB centre, smoothed
+        LLVector3 mHalfExtents{0.5f, 0.5f, 1.f}; // agent-space AABB half-extents, smoothed
+        LLUUID    mLastTargetId;
+        U64       mLastRegionHandle = 0;
+        F64       mLastTime = -1.0;
+        U64       mLastCutSerial = 0;            // ALDirectorSwitcher::cutSerial() at last resolve
+    };
+    RotoInkSubjectState         mRotoInkSubject;
+
+    // [RotoInk Speed] Accumulated Rotoscope Ink animation clock (seconds),
+    // driving ROTO_MOTION2.y instead of the raw presentation-time clock so
+    // CineOutlineAnimSpeed / CineOutlineAnimPause / CineOutlineAnimFollow-
+    // Director can change the rate live without ever causing a visual jump.
+    // Advances by dt * rate each renderCineOutline call, where rate is 0
+    // while CineOutlineAnimPause is set, else clamp(CineOutlineAnimSpeed, 0,
+    // 8) optionally further multiplied by clamp(FlycamOperatorTimeSpeed, 0,
+    // 8) when CineOutlineAnimFollowDirector is on, and dt is the
+    // presentation-time delta since the last call, clamped to [0, 1] s (0 on
+    // time reversal or a long stall, and naturally 0 on a second call within
+    // the same frame, e.g. a capture view). See LLPipeline::renderCineOutline.
+    F64                         mRotoAnimClock = 0.0;
+    F64                         mRotoAnimLastTime = 0.0;
+    bool                        mRotoAnimClockValid = false;
+
+    // [RotoInk Anim] Per-target world-space smoother for subject mode 3
+    // (target set), keyed by target UUID (avatar id or object id -- both are
+    // LLUUID, no collision risk). Same critically-damped exponential as
+    // RotoInkSubjectState (0.15 s), but keyed PER target instead of a single
+    // active target: an entry snaps on first sight / region change / time
+    // reversal exactly like RotoInkSubjectState, and is pruned (erased)
+    // once mLastSeenTime falls more than 1 s behind the current gather --
+    // see LLPipeline::gatherRotoInkTargets.
+    struct RotoInkTargetSmoothState
+    {
+        bool      mHaveSmoothed = false;
+        LLVector3 mCenter{0.f, 0.f, 0.f};
+        LLVector3 mHalfExtents{0.5f, 0.5f, 1.f};
+        U64       mLastRegionHandle = 0;
+        F64       mLastTime = -1.0;       // last smoothing update (drives the damping dt)
+        F64       mLastSeenTime = -1.0;   // last time this target appeared in a gather (pruning)
+        // [RotoInk Anim Round-A review fix, P2 both] ALDirectorSwitcher::
+        // cutSerial() at the last smoothing update -- a hard program cut
+        // also snaps every retained target (same rule as RotoInkSubjectState
+        // mLastCutSerial), so a scene cut never carries a target's in-flight
+        // motion smoothing across the edit.
+        U64       mLastCutSerial = 0;
+    };
+    std::map<LLUUID, RotoInkTargetSmoothState> mRotoInkTargetSmoothers;
+
+    // [TronT0] Pure-move refactor: was a function-local struct inside
+    // gatherRotoInkTargets, hoisted here so collectRotoInkCandidates() (below)
+    // can be called from outside that function too (Tron trail sampling, T3).
+    // Same three fields, same meaning, unchanged: agent-space AABB centre /
+    // half-extents plus the target's stable ROTO_PALETTE index.
+    struct RotoInkCandidate
+    {
+        LLUUID    mId;
+        LLVector3 mCenter;      // agent-space AABB centre
+        LLVector3 mHalfExtents; // agent-space AABB half-extents
+        S32       mPaletteIdx;
+    };
+
+    // [TronT0] Pure-move refactor: the target_set switch that used to open
+    // gatherRotoInkTargets() (the `Candidate` collection, now
+    // RotoInkCandidate), split out verbatim so it can be reused without the
+    // frustum-cull / smoothing / re-projection that follows it in
+    // gatherRotoInkTargets. `subject_target_setting` is target_set==0's
+    // single-subject selector (CineOutlineSubjectTarget's value for the Roto
+    // Ink caller); passed in rather than read from gSavedSettings internally
+    // so a future caller (Tron, T3) can pass its own equivalent setting
+    // without this function needing to know which setting name it is.
+    void collectRotoInkCandidates(S32 target_set, S32 subject_target_setting,
+                                   std::vector<RotoInkCandidate>& out_candidates);
+
+    // [RotoInk Anim] Subject mode 3 (target set) gather: builds up to 16
+    // world-space targets per CineOutlineSubjectTargetSet (see A.7 of the
+    // contract), smooths each via mRotoInkTargetSmoothers, frustum-culls,
+    // sorts by view depth and caps at max_targets (<=16). Re-projects with
+    // the SAME camera matrices the caller resolved for the single-subject
+    // path (mv/proj -- gGLLast{ModelView,Projection} normally, the live
+    // gGLModelView/gGLProjection for ROTOINK_LAYER_SCENE), so target
+    // isolation stays correct for whichever call site is active this frame.
+    // Writes up to 16 entries into out_targets (LLShaderMgr::ROTO_TARGETS
+    // packing: xy centre uv, zw half-extents uv * ellipse_scale) and
+    // out_targets2 (LLShaderMgr::ROTO_TARGETS2 packing: x view depth m, y
+    // slab half depth m, z palette index 0..7, w 1 valid) and returns the
+    // count actually written (0..16, 0 on no candidates/all culled).
+    // [TronT1 P1 fix] `subject_target_setting` is target_set==0's
+    // single-subject selector, forwarded verbatim to
+    // collectRotoInkCandidates() -- the caller passes its OWN cached control
+    // (CineOutlineSubjectTarget for Roto Ink, TronSubjectTarget for Tron)
+    // instead of this function reading CineOutlineSubjectTarget internally,
+    // so a Tron call no longer silently follows Roto's single-subject
+    // selection.
+    S32 gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
+                              F32 depth_range, S32 subject_target_setting,
+                              const F32* mv, const F32* proj,
+                              LLVector4* out_targets, LLVector4* out_targets2);
+
+    // Night Mask: per-frame resolved state, shared verbatim between
+    // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()
+    // (the actual darkening pass) so both consume the SAME single enable
+    // resolve/anchor-smoothing update instead of each re-deriving it (which
+    // would double-step the exponential smoothing). Populated once per frame
+    // by updateNightMaskAnchor(), called from renderFinalize() before either
+    // consumer runs. See alcinelightrigmanager.cpp renderNightMaskGizmo() for
+    // the read-only UI-3D consumer.
+    struct NightMaskFrameState
+    {
+        // True only when Enabled, the on-lens program is complete, the frame
+        // isn't a "no post-processing" snapshot, HDR is active, the target
+        // resolved this frame, AND the parameters aren't a no-op (darkness<1
+        // or desaturation>0 or a non-identity tint at nonzero strength) — the
+        // FINAL will-render decision (Codex review B1a), not merely "would
+        // render if applyOnLensFilters's own later gates allow it". A missing
+        // target or an inert/blocked state is NOT active — never garbage,
+        // just inert (mirrors applyGradND's density<=0 early-out).
+        bool      mActive = false;
+        S32       mShape = 1;
+        F32       mDistance = 4.f;
+        F32       mFeather = 3.f;
+        F32       mDarkness = 0.15f;
+        F32       mTintStrength = 0.f;
+        F32       mDesaturation = 0.f;
+        LLColor3  mTintLinear;       // sRGB setting already converted to linear
+        glm::vec3 mAnchorView{0.f, 0.f, 0.f}; // smoothed anchor in THIS frame's view space
+        glm::mat3 mBoxBasis{1.f};    // cube-only: view-space delta -> yaw-local axes
+
+        // Cross-frame smoothing state (independent of the Live Probe rig —
+        // see M3 in the Night Mask design review).
+        bool      mHaveSmoothed = false;
+        bool      mWasEnabled = false;
+        LLVector3 mSmoothedPosAgent;
+        LLVector3 mSmoothedForward{1.f, 0.f, 0.f}; // 2D (x,y) subject facing, z unused
+        F64       mLastTime = -1.0;
+        LLUUID    mLastTargetId;
+        U64       mLastRegionHandle = 0;
+
+        // B1(b): exponentially ramped toward (mActive ? 0.f : 1.f) rather
+        // than snapped, so generateLuminance()'s bloom-metering scale (see
+        // B1) doesn't pump exposure in the single frame a Night Mask toggle
+        // lands. Shares the same presentation-time base as the smoothing
+        // above; mBloomScaleTime<0 or a detected time reversal snaps instead
+        // of ramping.
+        F32       mBloomScale = 1.f;
+        F64       mBloomScaleTime = -1.0;
+    } mNightMaskFrame;
+
+    // Resolves the Night Mask target avatar, advances the anchor
+    // position/yaw smoothing, and fills mNightMaskFrame for this frame.
+    // Called once from renderFinalize(), before generateLuminance() and
+    // applyOnLensFilters() so both read one coherent resolve (B1).
+    void updateNightMaskAnchor();
+
+    // Read-only accessor for the UI-3D gizmo pass (renderNightMaskGizmo in
+    // alcinelightrigmanager.cpp), which draws after renderFinalize has
+    // already resolved this frame's anchor.
+    const NightMaskFrameState& getNightMaskFrameState() const { return mNightMaskFrame; }
+
     static const U32 MAX_PREVIEW_WIDTH;
 
     //texture for making the glow
@@ -1234,6 +1786,27 @@ public:
     LLVector4           mTransformedMoonDir;
 
     F32                 mLensFlareSunVisibility = 0.f;
+
+    // Per-source temporal visibility smoothing for the cine-rig lens flare,
+    // mirroring mLensFlareSunVisibility above but one scalar per rig
+    // projector SLOT (not per packed upload index — a packed index can be
+    // reused by a different light next frame when a source drops out, which
+    // would otherwise hand its smoothed visibility to the wrong light).
+    // Sized ALCineLightRigManager::SLOT_COUNT(5) * ALCineLightRigModel::
+    // LIGHT_COUNT(4) = 20, indexed by stable_idx = slot*LIGHT_COUNT + light.
+    // Kept as a literal here so pipeline.h doesn't need to pull in
+    // alcinelightrigmanager.h/alcinelightrigmodel.h; colorCorrect()
+    // static_asserts the two stay in sync. This is unrelated to
+    // AL_CINE_FLARE_MAX(8, llviewershadermgr.h), which caps how many of
+    // these 20 possible sources get uploaded to the shader in a given frame.
+    // SourceState stores the last valid (uv.x, uv.y, deviceDepth,
+    // modeledReleaseEnergy), allowing a light that has just switched off to
+    // leave a sensor-space optical tail instead of disappearing in one frame.
+    // Live sources always take upload priority over these releasing tails.
+    F32                 mCineFlareVisibility[20] = {};
+    LLVector4           mCineFlareSourceState[20] = {};
+    LLColor3            mCineFlareSourceColor[20] = {};
+    bool                mCineFlareSourceValid[20] = {};
 
     bool                    mInitialized;
     bool                    mShadersLoaded;
@@ -1285,6 +1858,9 @@ protected:
     LLDrawable::ordered_drawable_set_t  mLights;
     light_set_t                     mNearbyLights; // lights near camera
     LLColor4                        mHWLightColors[8];
+
+    bool                            mCinematicProbeCaptureActive = false;
+    light_set_t                     mCinematicSavedNearbyLights;
 
     // Main-view state retained while the one scheduled Prism capture owns the
     // shared renderer. The nearby set owns LLPointer references, which keeps
@@ -1550,6 +2126,31 @@ public:
     static F32 RenderHighlightFadeTime;
     static F32 RenderFarClip;
     static LLVector3 RenderShadowSplitExponent;
+    // [ShadowDist P1] Control A (sharp-shadow range) + Control D (soften split)
+    static F32 RenderShadowNearSplitMeters;
+    static F32 RenderShadowSplitBlend;
+    static S32 RenderShadowSoftenMode;
+    static F32 RenderShadowSoftenPx;
+    static F32 RenderShadowSoftenMM;
+    // [ShadowDist P2] Control C (world-unit bias / offset / soft kernel)
+    static S32 RenderShadowUnitsMode;
+    static S32 RenderShadowUnitsScope;
+    static F32 RenderShadowBiasMM;
+    static F32 RenderShadowOffsetTexels;
+    static F32 RenderShadowSoftWorldMM;
+    static F32 RenderShadowSlopeScale;
+    // [ShadowDist P3] Control B (Follow subject) + alpha fix + Prism sun re-expression
+    static bool RenderShadowSubjectCascade;
+    static S32  RenderShadowSubjectTarget;
+    static F32  RenderShadowSubjectMargin;
+    static F32  RenderShadowSubjectReach;
+    static F32  RenderShadowSubjectReachMax;
+    static F32  RenderShadowSubjectMaxDistance;
+    static F32  RenderShadowSubjectFeather;
+    static bool RenderShadowSubjectSnap;
+    static S32  RenderShadowAlphaMode;
+    static F32  RenderShadowAlphaCutoff;
+    static bool PrismSunCascadeReexpress;
     static F32 RenderShadowErrorCutoff;
     static F32 RenderShadowFOVCutoff;
     static bool CameraOffset;
@@ -1566,6 +2167,7 @@ public:
     static bool BDMergeProjectorVolumetrics;
     static U32 BDMergeProjectorVolumetricsResolution;
     static F32 BDMergeProjectorVolumetricsMultiplier;
+    static F32 BDMergeProjectorVolumetricsMaxDistance;  // axial airborne-beam cap; 0 = full range
     static F32 BDMergeProjectorVolumetricsAnisotropy;
     // [BDMerge G3.3 Phase 1] cinema levers
     static U32 BDMergeProjectorVolumetricsDither;
@@ -1692,6 +2294,7 @@ public:
     struct VolumetricShaftOverride
     {
         F32      multiplier   = 1.f;
+        F32      maxDistance  = 0.f;
         F32      feather      = 0.15f;
         F32      anisotropy   = 0.72f;
         F32      density      = 1.f;
@@ -1710,6 +2313,32 @@ public:
     static bool  getVolumetricShaftOverride(const LLUUID& id, VolumetricShaftOverride& out);
     static bool  hasVolumetricShaftOverride(const LLUUID& id);
     static std::map<LLUUID, VolumetricShaftOverride> sVolumetricShaftOverrides;
+
+    // Additive per-projector surface-shadow penumbra override. Missing/zero
+    // entries retain the existing global hard/soft-shadow behavior exactly.
+    static void setProjectorShadowSoftness(const LLUUID& id, F32 softness);
+    static void clearProjectorShadowSoftness(const LLUUID& id);
+    static bool getProjectorShadowSoftness(const LLUUID& id, F32& out);
+    static std::map<LLUUID, F32> sProjectorShadowSoftness;
+
+    // Client-only procedural cookie assignment. The simulator's projection
+    // parameters and texture asset are never changed by these overrides.
+    struct GoboOverride
+    {
+        S32 mPattern = -1;
+        S32 mAnimMode = 0;
+        F32 mSpeed = 1.f;
+        F32 mZoom = 1.f;
+        F32 mDispersion = 0.f;
+        // [Gobo v2] colored gel (white = no change) + per-pattern variation.
+        LLColor3  mTint = LLColor3(1.f, 1.f, 1.f);
+        LLVector4 mPatternParams = LLVector4(0.f, 0.f, 0.f, 0.f);
+    };
+    static void setGoboOverride(const LLUUID& id, const GoboOverride& ov);
+    static GoboOverride getGoboOverride(const LLUUID& id);
+    static bool hasGoboOverride(const LLUUID& id);
+    static void clearGoboOverride(const LLUUID& id);
+    static std::map<LLUUID, GoboOverride> sGoboOverrides;
     static S32 RenderScreenSpaceReflectionIterations;
     static F32 RenderScreenSpaceReflectionRayStep;
     static F32 RenderScreenSpaceReflectionDistanceBias;
@@ -1725,6 +2354,24 @@ public:
 
 void render_bbox(const LLVector3 &min, const LLVector3 &max);
 void render_hud_elements();
+
+// [Ultimate Diopter] §6.3 piece 2f's write-back revert failure path --
+// alDiopterAbortPresetSelection -- and the guard/reason state machine it
+// runs under now live in aldiopterpresetbank.h (Codex review finding F6),
+// not here; this header only includes that one for ALDiopterBankKind.
+
+// [Ultimate Diopter] §5.3 / wave-1 handoff call-swap 6 -- the base-focus
+// resolver, extracted verbatim from renderUltimateDiopter's inline branch
+// structure so the UI (ALFloaterUltimateDiopter) and the renderer can never
+// disagree about which state produced base_focus_m. `slider_m` is the raw
+// CineDiopterBaseFocusM value (not yet clamped); `focus_mode` is
+// CineDiopterFocusMode (0 manual, 1 camera); `dof_focus_live` mirrors the
+// renderer's own gate (RenderDepthOfField && ... &&
+// !sLastFocusPoint.isExactlyZero()). A branch that does NOT replace out_m
+// leaves out_prov MANUAL -- the "dead-via-fallback" state design doc row 38
+// keys on.
+void alDiopterResolveBaseFocus(F32 slider_m, U32 focus_mode, bool dof_focus_live,
+                                F32& out_m, ALDiopterFocusProvenance& out_prov);
 
 extern LLPipeline gPipeline;
 extern bool gDebugPipeline;

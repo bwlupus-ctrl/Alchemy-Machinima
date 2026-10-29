@@ -67,13 +67,29 @@ uniform vec4 light_position[8];
 uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
+uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
 
 void waterClip(vec3 pos);
 
 vec3 srgb_to_linear(vec3 c);
 vec3 linear_to_srgb(vec3 c);
 
+// [RigRim] shared rim helper (deferredUtil.glsl)
+int rigRimMode();
+vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+
 vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoLinear(vec3 c);
+bool alrDebug();
+#endif
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, out vec3 sunlit, out vec3 amblit, out vec3 atten, out vec3 additive);
 
 #ifdef HAS_SUN_SHADOW
@@ -84,10 +100,14 @@ float getAmbientClamp();
 
 void mirrorClip(vec3 pos);
 
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
+
 void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout vec3 legacyenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, float ambiance)
+// [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
+// for non-rig lights.  NOTE: `v` is the eye-space POSITION here (legacy naming).
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, float ambiance, vec4 rim)
 {
     // SL-14895 inverted attenuation work-around
     // This routine is tweaked to match deferred lighting, but previously used an inverted la value. To reconstruct
@@ -166,6 +186,20 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
         //col.rgb += amb_da * light_col * diffuse;
 
         // no spec for alpha shader...
+
+        // [RigRim] additive rim (cone + attenuation weighted, no shadow).  No
+        // glossiness on this path, so roughness = 1 (softest).  Independent of
+        // `da` so wrap can reach past the terminator.  Mode 0 never enters.
+        if (rigRimMode() != 0)
+        {
+            vec3 rim_v   = normalize(-v);
+            vec3 rim_col = rigRimTerm(n, rim_v, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0, rim);
+            if (rigRimMode() == 2)
+            {
+                col = vec3(0.0); // debug: rim only
+            }
+            col += rim_col;
+        }
     }
     float final_scale = 1.0;
     if (classic_mode > 0)
@@ -176,6 +210,9 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     vec2 frag = vary_fragcoord.xy/vary_fragcoord.z*0.5+0.5;
@@ -199,6 +236,33 @@ void main()
 
 #ifdef USE_INDEXED_TEX
     vec4 diffuse_tap = diffuseLookup(vary_texcoord0.xy);
+#endif
+
+#ifdef HAS_ACTOR_FX
+    vec2 fx_uv = vary_texcoord0.xy;
+    bool fx_uv_transform = actorFxUvTransformEnabled();
+    bool fx_rgb_split = actorFxRgbSplitEnabled();
+    if (fx_uv_transform)
+    {
+        fx_uv = actorFxUv(fx_uv, vary_position);
+#ifdef USE_DIFFUSE_TEX
+        diffuse_tap.rgb = texture(diffuseMap, fx_uv).rgb;
+#endif
+#ifdef USE_INDEXED_TEX
+        diffuse_tap.rgb = diffuseLookup(fx_uv).rgb;
+#endif
+    }
+    if (fx_rgb_split)
+    {
+#ifdef USE_DIFFUSE_TEX
+        diffuse_tap.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        diffuse_tap.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+#ifdef USE_INDEXED_TEX
+        diffuse_tap.r = diffuseLookup(actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        diffuse_tap.b = diffuseLookup(actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+    }
 #endif
 
     vec4 diffuse_srgb = diffuse_tap;
@@ -249,6 +313,16 @@ void main()
     diffuse_linear.rgb = srgb_to_linear(diffuse_srgb.rgb);
 #endif // USE_VERTEX_COLOR
 
+#ifdef HAS_ACTOR_FX
+    diffuse_linear.rgb = actorFxApply(diffuse_linear.rgb, norm, vary_position,
+                                      vary_texcoord0.xy);
+    // Transparent legacy surfaces have no GBuffer emissive attachment.  Add
+    // the styled emission to their forward beauty result; the separate glow
+    // sub-pass only publishes bloom metadata and never changes coverage.
+    vec3 actor_fx_emissive = actorFxEmissive(vec3(0.0), diffuse_linear.rgb);
+    diffuse_linear.rgb = alrAlbedoLinear(diffuse_linear.rgb); // [AvatarLightResponse] presented surface
+#endif
+
     vec3 sunlit;
     vec3 amblit;
     vec3 additive;
@@ -264,7 +338,7 @@ void main()
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
     sampleReflectionProbesLegacy(irradiance, glossenv, legacyenv, frag, pos.xyz, norm.xyz, 0.0, 0.0, true, amblit_linear);
-
+    irradiance = applyShadowLift(irradiance, norm.xyz, light_dir, shadow); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     float da = dot(norm.xyz, light_dir.xyz);
           da = clamp(da, -1.0, 1.0);
@@ -295,7 +369,8 @@ void main()
 
     vec4 light = vec4(0,0,0,0);
 
-   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w);
+   // [RigRim] trailing rig_rim_lights[i] argument
+   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i]);
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
@@ -307,6 +382,9 @@ void main()
 
     // sum local light contrib in linear colorspace
     color.rgb += light.rgb;
+#ifdef HAS_ACTOR_FX
+    color.rgb += actor_fx_emissive;
+#endif
 
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, color).rgb;
 
@@ -320,6 +398,9 @@ void main()
 #endif
 
     color.rgb *= final_scale;
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(color, vec4(0));
 #ifdef HAS_VISIBLE_DIFFUSE
 #ifdef FOR_IMPOSTOR

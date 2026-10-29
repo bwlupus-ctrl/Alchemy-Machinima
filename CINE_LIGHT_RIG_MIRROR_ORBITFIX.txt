@@ -1,0 +1,46 @@
+FIX — Mirror interacts wrong with Orbit Yaw. Do NOT build, do NOT run cmake/viewer.
+
+A verification pass found a real defect (confirmed): Mirror reflects the BASE yaw across facing and
+then adds Orbit Yaw AFTERWARD, so with a nonzero Orbit Yaw the reflection plane is wrong and a front
+cheek light can move front-to-back instead of swapping cheeks. At OrbitYaw=90 it is 180 degrees off.
+
+ROOT CAUSE (this was a spec error in the original brief, not a Codex mistake):
+computeLive (alcinelightrigmodel.cpp ~460-464) currently does:
+    const F32 yaw = safe_transforms.mMirror
+        ? wrap180(2.f * safe_transforms.mFacingAzimuthDeg - base.mYawDeg)
+        : base.mYawDeg;
+    out[i].mYawDeg = wrap180(yaw + safe_transforms.mYawDeg);     // orbit added AFTER reflect
+Mirrored final = (2*facing - base) + orbit. A correct cheek-swap of the ACTUAL (post-orbit) light
+position is 2*facing - (base + orbit). The two differ by 2*orbit.
+
+THE FIX: apply Orbit Yaw FIRST, then reflect the ORIENTED yaw across facing. Replace the block with:
+    const F32 oriented = base.mYawDeg + safe_transforms.mYawDeg;   // orbit first
+    out[i].mYawDeg = safe_transforms.mMirror
+        ? wrap180(2.f * safe_transforms.mFacingAzimuthDeg - oriented)
+        : wrap180(oriented);
+
+Properties to preserve (verify each):
+- OrbitYaw == 0: reduces to wrap180(2*facing - base) / wrap180(base) — IDENTICAL to current behaviour,
+  so every existing test and the in-world orbit-0 behaviour are unchanged.
+- Mirror twice == identity for ANY orbit and facing: 2f - (2f - oriented) = oriented.
+- Correct cheek swap for nonzero orbit: the reflection now acts on the light's actual post-orbit
+  world azimuth, so it always negates the lateral component about facing.
+- Pitch, profile, EV, beam, on lines are unchanged.
+
+TESTS (alcinelightrigmodel_test.cpp) — ADD (do not weaken existing ones):
+The existing mirror tests all use OrbitYaw = 0, so they pass with BOTH the old and new formula and
+did not catch this. Add discriminating cases with NONZERO orbit:
+- facing = 0, orbit = 90, base_yaw = 45, mirror on  -> expect wrap180(2*0 - (45+90)) = -135.
+  (The OLD buggy formula gives (2*0 - 45) + 90 = +45, so this assertion FAILS on the old code.)
+- facing = 90, orbit = 45, base_yaw = 30, mirror on  -> expect wrap180(2*90 - (30+45)) = 105.
+  (OLD gives (180-30)+45 = 195 -> wrap -165; different, so it discriminates.)
+- mirror-twice identity with facing = 37 AND orbit = 60 (nonzero both): computeLive twice == original.
+- orbit = 0 back-compat: facing = 90, base 45, mirror -> still 135 (unchanged from the current tests).
+State explicitly that each new nonzero-orbit assertion FAILS if the code reverts to adding orbit after
+the reflect.
+
+OFF-LIMITS: unchanged. Only the computeLive mirror/orbit block in alcinelightrigmodel.cpp and the new
+tests. Do NOT touch the controller facing computation (it is correct), the presets, or anything else.
+
+REPORT: the exact new block; confirmation orbit==0 is bitwise-identical to current; the new tests and
+that each fails on the old formula. Do not build.

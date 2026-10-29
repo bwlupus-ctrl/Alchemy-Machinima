@@ -1,0 +1,43 @@
+Adversarially review the uncommitted diff, but ONLY these two new pieces (everything else — light rig,
+shadows, ceiling, panel reorder — is already reviewed; ignore it). Cite file:line. Most severe first.
+
+=== PIECE A: Vcam bone-attach (spec: doc/VCAM_BONE_POV_DESIGN.md incl. its "Review corrections" block) ===
+Files: alvcambonepov.{cpp,h}, alvcambonepovmath.h, tests/alvcambonepov_test.cpp, llprismlens.{cpp,h},
+llfloaterprismmanager.{cpp,h}, floater_prism_manager.xml, llappviewer.cpp, CMakeLists.txt.
+1. RENDER BYTE-IDENTITY (highest). The two per-frame render consumers of mVirtualPos/mVirtualRot
+   (llprismlens.cpp ~5569 aux, ~5227 guide) and the FOV read must be UNCHANGED when bone-POV is OFF.
+   A capture with no bone_pov must render exactly as before. Verify the new setters are write-side only
+   and the consume path is untouched.
+2. BASIS REMAP SIGNS. fwd=(1,0,0)*R_joint, up=(0,0,1)*R_joint, mVirtualRot=LLQuaternion(right,up,-fwd)
+   so (0,0,-1)*mVirtualRot==fwd. Verify signs and that it matches Snap-to-view. A sign error tilts/
+   mirrors every shot.
+3. HOOK ORDERING & STALENESS. Driver ticks in llappviewer idle right AFTER the light-rig tick and
+   BEFORE display(); uses getWorldPosition/getWorldRotation (lazy), NOT getLast* (stale). Confirm the
+   joints are posed before the tick (no one-frame lag).
+4. CUSTOM JOINT default = Stabilized (position-only); head/eye/neck get full-follow. FOV writes
+   mFixedVerticalFovRad (not effective). Horizon-lock holds-last-good-up on degeneracy. Stabilized
+   never writes mVirtualRot. Anchor/joint loss holds last (no NaN); reacquire snaps.
+5. CLONE SCALE reuses scaledPoint()/getUniformScale() (not re-derived). Persistence is an additive
+   bone_pov sub-map, no settings key, no version bump. Confirm old scene / new binary and vice-versa.
+6. UI: unique control names, rect arithmetic fits the floater, mini resets wired. Tests non-tautological.
+
+=== PIECE B: Actor-mover drift fix (core avatar) ===
+Files: llvoavatar.cpp (updateOrientation ~4756), llactormover.cpp (isDriving ~2005, stop ~1721),
+llactormover.h (~392).
+1. NON-DRIVEN TURNING BYTE-IDENTICAL (highest). In updateOrientation, when isDriving(getID())==FALSE,
+   the mTurning latch AND the AGENT_CONTROL_TURN_RIGHT/LEFT logic must be EXACTLY today's code (diff it
+   line-for-line). A regression here breaks normal avatar turning for everyone. Confirm the gate only
+   adds a driven-branch that forces mTurning=false + skips TURN flags, and changes nothing else.
+2. isDriving correctness: mMoves.find(id) with the SAME key scheme used at insertion (getID()); returns
+   true only for a present, NON-suspended Move. No false positives (which would wrongly disable normal
+   turning) and no false negatives (which would leave the drift). Check the suspended-flag check matches
+   how applyOverride/updateSuspendState define "live".
+3. stop() erase-by-key: now erases mMoves regardless of resolve_actor result, guarding avatar-side anim
+   cleanup behind a null av. Verify it can't crash on a null av and that stopAll()/Stop-Everyone is
+   unchanged.
+4. Any interaction with the existing ALObjectPathMover::isDriving path (llvoavatar.cpp:2860) — no double
+   gate / conflict.
+
+Report each finding: file:line, severity (must-fix/should-fix/nit), concrete failure, fix. Explicit
+verdicts on: (A1) vcam render byte-identity when off, (B1) non-driven turning byte-identity. Do not
+modify code.

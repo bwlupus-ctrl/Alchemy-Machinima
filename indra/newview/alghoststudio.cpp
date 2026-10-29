@@ -12,6 +12,11 @@
 
 #include "alghoststudio.h"
 
+// [AutoAnimate] Bounded LLSD XML persistence.
+#include "llsdserialize.h"
+#include "llfile.h"
+#include <sstream>
+
 #include "alghostnameplates.h"
 #include "alghostspawnengine.h"
 #include "alworldoverlayviz.h"
@@ -24,6 +29,8 @@
 #include "lldrawable.h"          // FORCE_INVISIBLE (entity-clone show/hide)
 #include "llspatialpartition.h"     // LLDrawInfo (freeze reads each batch's avatar+skin)
 #include "llvoavatar.h"
+#include "llsurface.h"
+#include "llsurfacepatch.h"
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
 #include "llworld.h"
@@ -50,6 +57,23 @@ ALGhostStudio& ALGhostStudio::instance()
 namespace
 {
 constexpr S32 ENTITY_PHYSICS_CROWD_THRESHOLD = 20;
+
+// [AutoAnimate] Zero is an instance sentinel, never a runtime window.
+F32 autoanim_window(const ALGhostStudio::Instance& inst)
+{
+    static LLCachedControl<F32> default_window(gSavedSettings, "GhostAutoAnimateWindow", 120.f);
+    const F32 window = inst.mAutoAnimWindow == 0.f ? static_cast<F32>(default_window) : inst.mAutoAnimWindow;
+    return std::isfinite(window) ? llclamp(window, 15.f, 600.f) : 120.f;
+}
+ALGhostAutoAnim::Config autoanim_config(const ALGhostStudio::Instance& inst)
+{
+    ALGhostAutoAnim::Config config;
+    config.mEnabled = inst.mAutoAnimate; config.mInstanceId = inst.mId;
+    config.mSeedSalt = inst.mAutoAnimSeedSalt; config.mPool = inst.mAutoAnimPool; config.mManual = inst.mAutoAnimManual;
+    // No settings lookup/cache initialization on the disabled runtime path.
+    if (inst.mAutoAnimate) config.mWindowSeconds = autoanim_window(inst);
+    return config;
+}
 
 S32 entity_clone_count(const std::vector<ALGhostStudio::Instance>& instances)
 {
@@ -399,6 +423,8 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
         ghost->setEntityDriveMode(inst.mDriveMode, inst.mDirectedAnim);
         inst.mPendingFreezeFrames = 0;
     }
+    // [AutoAnimate] The disabled path does not allocate runtime state.
+    ghost->setEntityAutoAnimate(autoanim_config(inst));
 }
 
 void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
@@ -412,6 +438,15 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
     const LLUUID stable_id = inst.mId;
     const std::string stable_name = inst.mName;
     const LLUUID old_runtime = inst.mEntityId;
+    // [AutoAnimate] Transfer the old runtime's latest progress before applying the new one.
+    if (inst.mAutoAnimate)
+    {
+        if (LLGhostAvatar* old = resolveEntityClone(stable_id))
+        {
+            auto progress = old->exportAutoAnimProgress();
+            if (progress) inst.mAutoAnimPool = std::move(progress);
+        }
+    }
     if (new_ghost)
     {
         applyEntityRuntimeState(inst, new_ghost);
@@ -440,6 +475,159 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
             member->mLastName = stable_name;
         }
     }
+}
+
+// [AutoAnimate] Studio owns published pools; runtime owns all active decisions.
+const ALGhostStudio::Instance* ALGhostStudio::findInstanceByRuntime(const LLUUID& runtime) const
+{
+    if (runtime.isNull()) return nullptr;
+    for (const Instance& inst : mInstances)
+        if (inst.mKind == BACKING_ENTITY_CLONE && inst.mEntityId == runtime) return &inst;
+    return nullptr;
+}
+bool ALGhostStudio::setInstanceAutoAnimate(const LLUUID& id, bool enabled)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    // Preserve a just-published seal even if OFF arrives before the next Studio frame.
+    if (!enabled)
+        if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->takeAutoAnimPublishedPool(inst->mAutoAnimPool);
+    inst->mAutoAnimate = enabled;
+    if (!enabled) inst->mAutoAnimManual = false;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setEntityAutoAnimate(autoanim_config(*inst));
+    return true;
+}
+bool ALGhostStudio::setInstanceAutoAnimWindow(const LLUUID& id, F32 seconds)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || !std::isfinite(seconds)) return false;
+    inst->mAutoAnimWindow = seconds == 0.f ? 0.f : llclamp(seconds, 15.f, 600.f);
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setEntityAutoAnimate(autoanim_config(*inst));
+    return true;
+}
+bool ALGhostStudio::autoAnimateAction(const LLUUID& id, ALGhostAutoAnim::Action action)
+{
+    using ALGhostAutoAnim::Action;
+    bool cold = false; // [AutoAnimate] Only an explicit manual TRUE_MIRROR handoff is COLD.
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    if (action == Action::GoAutonomous)
+    {
+        ALGhostAutoAnim::LearnStatus status; getAutoAnimateStatus(id, status);
+        bool entries = status.mLiveEntries != 0;
+        if (inst->mAutoAnimPool)
+        {
+            entries = entries || !inst->mAutoAnimPool->mBody.entries.empty();
+            for (const auto& channel : inst->mAutoAnimPool->mAnimesh) entries = entries || !channel.second.entries.empty();
+        }
+        if (!inst->mAutoAnimate || !entries || (inst->mDriveMode != DRIVE_MIRROR && inst->mDriveMode != DRIVE_TRUE_MIRROR)) return false;
+        if (inst->mDriveMode == DRIVE_TRUE_MIRROR)
+        {
+            cold = true;
+            setInstanceDriveMode(id, DRIVE_MIRROR);
+            inst = getInstance(id); if (!inst) return false;
+        }
+        inst->mAutoAnimManual = true;
+    }
+    else if (action == Action::FollowSource || action == Action::Relearn) inst->mAutoAnimManual = false;
+    if (action == Action::Relearn) { inst->mAutoAnimPool.reset(); inst->mAutoAnimate = true; }
+    if (action == Action::Reseed) ++inst->mAutoAnimSeedSalt;
+    if (!inst->mAutoAnimate) return false;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+    {
+        ghost->setEntityAutoAnimate(autoanim_config(*inst));
+        ghost->requestAutoAnimAction(action, cold);
+    }
+    return true;
+}
+bool ALGhostStudio::saveAutoAnimate(const LLUUID& id, const std::string& path)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+    {
+        auto progress = ghost->exportAutoAnimProgress();
+        if (progress) inst->mAutoAnimPool = std::move(progress);
+    }
+    if (!inst->mAutoAnimPool) return false;
+    std::ostringstream encoded;
+    LLSDSerialize::toPrettyXML(ALGhostAutoAnim::toLLSD(*inst->mAutoAnimPool), encoded);
+    const std::string bytes = encoded.str();
+    if (bytes.size() > 1024U * 1024U)
+    {
+        LL_WARNS("GhostStudio") << "AUTOANIM-SAVE reject reason=pool exceeds 1 MB file limit" << LL_ENDL;
+        return false;
+    }
+    llofstream output(path.c_str());
+    if (!output.is_open()) return false;
+    output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    output.close(); return !output.fail();
+}
+bool ALGhostStudio::loadAutoAnimate(const LLUUID& id, const std::string& path)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    llifstream input(path.c_str(), std::ios::binary | std::ios::ate);
+    const auto size = input.is_open() ? input.tellg() : std::streampos(-1);
+    std::string reason;
+    ALGhostAutoAnim::Pool candidate;
+    bool valid = false;
+    if (size <= std::streampos(0) || size > std::streampos(1024 * 1024)) reason = "file missing/empty or exceeds 1 MB";
+    else
+    {
+        input.seekg(0, std::ios::beg);
+        // Read only the measured bytes, even if another process grows the file.
+        std::string bytes(static_cast<size_t>(static_cast<std::streamoff>(size)), '\0');
+        input.read(&bytes[0], static_cast<std::streamsize>(bytes.size()));
+        std::istringstream bounded(bytes); LLSD data;
+        if (input.fail() || LLSDSerialize::fromXML(data, bounded) == LLSDParser::PARSE_FAILURE) reason = "invalid XML";
+        else valid = ALGhostAutoAnim::fromLLSD(data, candidate, reason);
+    }
+    if (!valid)
+    {
+        LL_WARNS("GhostStudio") << "AUTOANIM-LOAD reject reason=" << reason << LL_ENDL; return false;
+    }
+    inst->mAutoAnimPool = std::make_shared<const ALGhostAutoAnim::Pool>(std::move(candidate));
+    inst->mAutoAnimate = true;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setEntityAutoAnimate(autoanim_config(*inst));
+    LL_INFOS("GhostStudio") << "AUTOANIM-LOAD ok inst=" << id << LL_ENDL; return true;
+}
+void ALGhostStudio::getAutoAnimateStatus(const LLUUID& id, ALGhostAutoAnim::LearnStatus& status) const
+{
+    status = ALGhostAutoAnim::LearnStatus();
+    const Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->getAutoAnimStatus(status);
+    status.mOn = inst->mAutoAnimate;
+    status.mWindow = autoanim_window(*inst);
+    if (!status.mLearning && inst->mAutoAnimPool)
+    {
+        status.mObserved = inst->mAutoAnimPool->mObservedSeconds;
+        status.mBodyStates = 0; status.mBodyOneShots = 0;
+        for (const auto& entry : inst->mAutoAnimPool->mBody.entries)
+            if (entry.state) ++status.mBodyStates; else ++status.mBodyOneShots;
+        status.mAnimeshChannels = static_cast<U32>(inst->mAutoAnimPool->mAnimesh.size());
+    }
+}
+void ALGhostStudio::updateAutoAnimate()
+{
+    U32 learners = 0, players = 0;
+    bool active = false;
+    for (Instance& inst : mInstances)
+    {
+        if (!inst.mAutoAnimate || inst.mKind != BACKING_ENTITY_CLONE) continue;
+        active = true;
+        if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+        {
+            ghost->takeAutoAnimPublishedPool(inst.mAutoAnimPool);
+            // [AutoAnimate] For an enabled instance using the default window, this also self-heals
+            // a missing AutoAnimate runtime: getAutoAnimWindow() returns 0 and the setter recreates it.
+            if (inst.mAutoAnimWindow == 0.f && ghost->getAutoAnimWindow() != autoanim_window(inst))
+                ghost->setEntityAutoAnimate(autoanim_config(inst)); // [AutoAnimate] Only propagate a changed default.
+            ghost->countAutoAnimActivity(learners, players);
+        }
+    }
+    if (active) LLGhostAvatar::logAutoAnimCost(learners, players);
 }
 
 void ALGhostStudio::finishPendingRuntimeFreezes()
@@ -792,6 +980,8 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy->mWasCinematicFollow = false;
     copy->setTransform(proto.mFootGlobal, proto.mRotation);
     copy->setScale(proto.mScale);
+    // [AutoAnimate] Copies share only sealed pools, before any runtime configuration.
+    if (copy->mAutoAnimPool && !copy->mAutoAnimPool->mSealed) copy->mAutoAnimPool.reset();
     if (LLGhostAvatar* ghost = resolveEntityClone(copy->mId))
     {
         applyEntityRuntimeState(*copy, ghost);
@@ -1207,7 +1397,7 @@ bool ALGhostStudio::restartInstanceAnimation(const LLUUID& id)
     {
         return false;
     }
-    ghost->restartEntityAnimation();
+    ghost->restartEntityAnimationAudited(); // [AutoAnimate] Audit stops without changing restart semantics.
     return true;
 }
 
@@ -1399,8 +1589,11 @@ bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
         // Re-arm if the clone has MOVED since it settled: the bearing to the
         // target is then different and the old facing is stale. Detected here
         // rather than in the setters because formation motion, chaos and the
-        // overlay duplication paths all write mFootGlobal directly.
-        if (inst->mFootGlobal == inst->mTurnSettledFoot)
+        // overlay duplication paths all write mFootGlobal directly. Epsilon
+        // (not bit-exact) compare: sub-millimetre floating-point jitter from
+        // an unrelated system must not spuriously re-arm the turn.
+        if ((inst->mFootGlobal - inst->mTurnSettledFoot).lengthSquared() <=
+            1.0e-6)
         {
             return false;
         }
@@ -1482,7 +1675,8 @@ void ALGhostStudio::updateLookAt()
         // Turn owns the body when it is armed. Both write mRotation, so running
         // keep-facing as well would just be overwritten by stepTurn a moment
         // later -- worse, it would fight it every frame.
-        if (inst.mKeepFacing && inst.mTurnMode == TURN_MODE_OFF)
+        if (inst.mKeepFacing && inst.mTurnMode == TURN_MODE_OFF &&
+            !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !tracking_groups.insert(inst.mGroupId).second) continue;
@@ -1720,11 +1914,17 @@ void ALGhostStudio::updatePerFrame()
     assert_main_thread();
     refreshLifecycleStates();
     finishPendingRuntimeFreezes();
+    updateAutoAnimate(); // [AutoAnimate]
     updateNameplates();
     const F64 facing_now = LLTimer::getTotalSeconds();
     std::set<LLUUID> dynamic_facing_groups;
     for (Instance& inst : mInstances)
     {
+        // [TrueMirror] the stamped source root owns this clone's facing.
+        if (trueMirrorOwnsFacing(inst))
+        {
+            continue;
+        }
         if (inst.mCrowdFacing == FACING_TRACK_SUBJECT)
         {
             LLVector3d target;
@@ -1735,8 +1935,13 @@ void ALGhostStudio::updatePerFrame()
                 if (delta.mdV[VX] * delta.mdV[VX] +
                     delta.mdV[VY] * delta.mdV[VY] >= 0.000001)
                 {
+                    // The authored facing-offset bias must survive every
+                    // live update, not just the preview -- otherwise the
+                    // first runtime tick snapped the member away from the
+                    // heading the user actually authored.
                     LLQuaternion rotation(
-                        atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]),
+                        atan2f((F32)delta.mdV[VY], (F32)delta.mdV[VX]) +
+                            inst.mCrowdFacingYawOffset,
                         LLVector3::z_axis);
                     if (inst.mGroupId.notNull())
                     {
@@ -1758,7 +1963,8 @@ void ALGhostStudio::updatePerFrame()
             const F32 phase = (F32)(facing_now - inst.mCrowdFacingStart) *
                               2.5f - (F32)inst.mCrowdSlot * 0.65f;
             inst.mRotation = LLQuaternion(
-                inst.mCrowdBaseYaw + sinf(phase) * (35.f * DEG_TO_RAD),
+                inst.mCrowdBaseYaw + inst.mCrowdFacingYawOffset +
+                    sinf(phase) * (35.f * DEG_TO_RAD),
                 LLVector3::z_axis);
             inst.mRotation.normalize();
             ++inst.mTransformRevision;
@@ -1792,7 +1998,8 @@ void ALGhostStudio::updatePerFrame()
     for (const Instance& inst : mInstances)
     {
         if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN
-            && inst.mTurnMode == TURN_MODE_OFF)
+            && inst.mTurnMode == TURN_MODE_OFF
+            && !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !tracking_groups.insert(inst.mGroupId).second) continue;
@@ -1804,6 +2011,46 @@ void ALGhostStudio::updatePerFrame()
         faceInstance(id);
     }
     stepAllTurns();
+}
+
+bool ALGhostStudio::trueMirrorOwnsFacing(const Instance& inst) const
+{
+    static LLCachedControl<bool> copy_facing(
+        gSavedSettings, "GhostTrueMirrorCopyFacing", true);
+    return inst.mKind == BACKING_ENTITY_CLONE &&
+           inst.mDriveMode == DRIVE_TRUE_MIRROR && copy_facing;
+}
+
+void ALGhostStudio::updatePostObjectList()
+{
+    assert_main_thread();
+    // Hook point: called from LLAppViewer::idle() immediately after
+    // gObjectList.update(gAgent). By then every avatar -- source and clone
+    // alike -- has run LLVOAvatar::updateCharacter() for this frame
+    // (updateMotions -> Pose Polish -> Director/ActorMover gaze), so the
+    // source's joints hold its FINAL pose and nothing else writes the clone's
+    // joints before the render passes consume them (system-mesh reskin,
+    // rigged matrix palettes and attachment drawable moves all read the joint
+    // state later in the frame). mActiveObjects is swap-removed on
+    // deactivation, so a same-frame copy from inside the clone's own
+    // idleUpdate() could not guarantee source-before-clone ordering; this
+    // post-pass does, with zero frame lag.
+    //
+    // The ghost self-gates on ITS OWN drive mode, not the instance's: the
+    // Director anim switcher can temporarily re-drive a ghost (DIRECTED /
+    // FROZEN) without touching the Studio model, and must not be stamped over.
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mKind != BACKING_ENTITY_CLONE ||
+            inst.mDriveMode != DRIVE_TRUE_MIRROR)
+        {
+            continue;
+        }
+        if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+        {
+            ghost->applyTrueMirrorStamp();
+        }
+    }
 }
 
 void ALGhostStudio::stepAllTurns()
@@ -1825,7 +2072,8 @@ void ALGhostStudio::stepAllTurns()
     std::set<LLUUID> turning_groups;
     for (const Instance& inst : mInstances)
     {
-        if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN)
+        if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN
+            && !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
                 !turning_groups.insert(inst.mGroupId).second) continue;
@@ -2342,6 +2590,16 @@ S32 ALGhostStudio::ungroup(const LLUUID& id)
         {
             inst->mGroupId.setNull();
             inst->mLockMode = LOCK_OFF;
+            // Dynamic crowd-facing drivers (Wave/Track subject) only run
+            // once mGroupId is null (see updatePerFrame()) and rotate the
+            // instance every frame. Left dangling after ungroup, that
+            // perpetual rotation keeps bumping mTransformRevision on what
+            // may become a NEW crowd's prototype, which used to trip
+            // crowdPlacementSourceUnchanged()'s staleness check on the very
+            // next frame -- making placement effectively impossible.
+            inst->mCrowdFacing = FACING_AUTHOR;
+            inst->mCrowdSlot = 0;
+            inst->mCrowdBaseYaw = 0.f;
         }
     if (selected_header)
     {
@@ -3319,6 +3577,12 @@ void ALGhostStudio::updateFreezeStrips(F64 now)
             continue;
         }
         const LLUUID snap_id = snap->mId;
+        // [AutoAnimate] Strips retain HEAD's live-source snapshot semantics.
+        snap->mAutoAnimManual = false;
+        snap->mAutoAnimPool.reset();
+        setInstanceAutoAnimate(snap_id, false);
+        snap = getInstance(snap_id);
+        if (!snap) { ++it; continue; }
         snap->setFootGlobal(formationSlot(proto, job.mCaptured, job.mCount,
             job.mSpacing, job.mFormation, job.mParameter));
         renameInstance(snap_id, llformat("Strip %u \xC2\xB7 %d/%d",
@@ -3559,7 +3823,7 @@ bool ALGhostStudio::beginCrowdPlacement(
     next.mSessionId.generate();
     next.mSpec = spec;
     next.mAnchor = anchor;
-    next.mYaw = yaw;
+    next.mPatternYaw = yaw;
     next.mHeight = height;
     next.mRevision = mNextCrowdDraftRevision++;
     next.mSource.mInstanceId = source->mId;
@@ -3612,10 +3876,39 @@ bool ALGhostStudio::updateCrowdPlacementTransform(
         return false;
     }
     mCrowdDraft.mAnchor = anchor;
-    mCrowdDraft.mYaw = yaw;
+    mCrowdDraft.mPatternYaw = yaw;
     mCrowdDraft.mHeight = height;
     mCrowdDraft.mRevision = mNextCrowdDraftRevision++;
     return resolveCrowdPlacement();
+}
+
+bool ALGhostStudio::setCrowdPlacementFacingOffset(
+    const LLUUID& owner_id, F32 offset_rad)
+{
+    if (mCrowdCommitInProgress || !mCrowdDraft.mActive ||
+        owner_id != mCrowdDraft.mOwnerId || !llfinite(offset_rad))
+    {
+        return false;
+    }
+    mCrowdDraft.mFacingYawOffset = offset_rad;
+    mCrowdDraft.mRevision = mNextCrowdDraftRevision++;
+    return resolveCrowdPlacement();
+}
+
+bool ALGhostStudio::setCrowdPlacementAnchorInfo(
+    const LLUUID& owner_id,
+    ALGhostPlacementResolver::EGhostPlacementBasis basis,
+    bool valid,
+    const std::string& warning)
+{
+    if (!mCrowdDraft.mActive || owner_id != mCrowdDraft.mOwnerId)
+    {
+        return false;
+    }
+    mCrowdDraft.mAnchorBasis = basis;
+    mCrowdDraft.mAnchorValid = valid;
+    mCrowdDraft.mAnchorWarning = warning;
+    return true;
 }
 
 bool ALGhostStudio::setCrowdPlacementPinned(
@@ -3691,8 +3984,16 @@ bool ALGhostStudio::crowdPlacementSourceUnchanged(std::string* reason) const
     const bool same_rotation =
         current_rotation.isFinite() && captured_rotation.isFinite() &&
         fabsf(dot(current_rotation, captured_rotation)) >= 0.999999f;
-    if (source->mTransformRevision != snap.mTransformRevision ||
-        delta.lengthSquared() > 1.0e-10 ||
+    // Position/rotation/scale are the real gate, via epsilon compares -- a
+    // dynamic crowd-facing driver (Wave/Track subject) left running on this
+    // instance (e.g. right after ungrouping it, before that path was fixed to
+    // clear the driver) would genuinely rotate it every frame and correctly
+    // still fail here. A BARE mTransformRevision bump with no material
+    // position/rotation/scale change is advisory only during preview: it
+    // used to be a hard blocker on its own, which made an otherwise
+    // perfectly placeable prototype "stale" the instant anything (even an
+    // unrelated system) re-authored an identical-looking transform.
+    if (delta.lengthSquared() > 1.0e-10 ||
         !same_rotation || fabsf(source->mScale - snap.mScale) > 0.00001f)
     {
         return reject("The prototype moved or changed scale; stage it again.");
@@ -3700,6 +4001,16 @@ bool ALGhostStudio::crowdPlacementSourceUnchanged(std::string* reason) const
     if (snap.mGroupId.notNull())
     {
         return reject("Ungroup the prototype before building a crowd.");
+    }
+    if (source->mTransformRevision != snap.mTransformRevision)
+    {
+        if (reason)
+        {
+            *reason =
+                "The prototype's transform revision changed since staging; "
+                "re-stage before committing if this crowd looks wrong.";
+        }
+        return true;
     }
     if (reason) reason->clear();
     return true;
@@ -3784,17 +4095,11 @@ bool ALGhostStudio::resolveCrowdPlacement()
         draft.mValidation.mMessage = "The selected group mode is invalid.";
         return false;
     }
-    if ((draft.mSpec.mFacing == FACING_WORLD_POINT ||
-         draft.mSpec.mFacing == FACING_TARGET_ACTOR ||
-         draft.mSpec.mFacing == FACING_TRACK_SUBJECT) &&
-        (!draft.mSpec.mHasFacingPoint ||
-         !draft.mSpec.mFacingPointGlobal.isFinite()))
-    {
-        draft.mValidation.mSolverStatus = Status::InvalidInput;
-        draft.mValidation.mMessage =
-            "Pick a valid facing point before placing this crowd.";
-        return false;
-    }
+    // A missing/invalid facing target for these modes used to hard-fail the
+    // entire placement. It now falls back to the formation heading (see the
+    // per-slot switch below) with a warning instead -- a "Blocked" failure
+    // should mean a genuine blocker (missing prototype, invalid spec,
+    // legality, clone allocation), not "you have not picked a point yet".
     if (draft.mSpec.mFacing == FACING_PATH_HEADING)
     {
         draft.mValidation.mSolverStatus = Status::UnsupportedShape;
@@ -3822,7 +4127,7 @@ bool ALGhostStudio::resolveCrowdPlacement()
     request.mCenterSpacingMeters = draft.mSpec.mCenterSpacing;
     request.mEdgeGapMeters = draft.mSpec.mEdgeGap;
     request.mJitterMeters = draft.mSpec.mJitter;
-    request.mYawRadians = draft.mYaw;
+    request.mYawRadians = draft.mPatternYaw;
     request.mGridColumns = draft.mSpec.mGridColumns;
     request.mGridRows = draft.mSpec.mGridRows;
     request.mColumnSpacingMeters = draft.mSpec.mFileSpacing;
@@ -3843,7 +4148,12 @@ bool ALGhostStudio::resolveCrowdPlacement()
     {
         Member member;
         member.mId = (U64)i + 1;
-        member.mFootprintRadiusMeters = 0.0;
+        // A zero footprint let the edge-gap setting protect nothing: any
+        // positive gap value still let members overlap because the solver
+        // saw every member as a mathematical point. Estimate a real
+        // avatar-sized clearance radius instead, scaled with the prototype.
+        member.mFootprintRadiusMeters =
+            (F64)llmax(0.30f, 0.30f * draft.mSource.mScale);
         request.mMembers.push_back(member);
     }
 
@@ -3882,7 +4192,7 @@ bool ALGhostStudio::resolveCrowdPlacement()
         return false;
     }
     if (!draft.mAnchor.isFinite() || !llfinite(draft.mHeight) ||
-        !llfinite(draft.mYaw))
+        !llfinite(draft.mPatternYaw) || !llfinite(draft.mFacingYawOffset))
     {
         validation.mMessage = "The placement anchor is not finite.";
         return false;
@@ -3902,7 +4212,11 @@ bool ALGhostStudio::resolveCrowdPlacement()
     // to rotate off-axis / wobble as the heading changed. FACING_SOURCE
     // (handled below) remains the explicit opt-in that reproduces the
     // prototype's full pitch/roll.
-    LLQuaternion authored(draft.mYaw, LLVector3::z_axis);
+    // FACING_AUTHOR ("Rotate with formation"): body facing = pattern yaw +
+    // the independent facing-offset bias. Zero offset reproduces the
+    // pre-split behaviour exactly (body facing tracks the pattern 1:1).
+    LLQuaternion authored(
+        draft.mPatternYaw + draft.mFacingYawOffset, LLVector3::z_axis);
     authored.normalize();
 
     auto yaw_to = [this](const LLVector3d& from, const LLVector3d& to,
@@ -3930,37 +4244,85 @@ bool ALGhostStudio::resolveCrowdPlacement()
         if (draft.mSpec.mTerrainConform)
         {
             LLVector3 agent = gAgent.getPosAgentFromGlobal(slot.mFoot);
-            if (!LLWorld::getInstance()->getRegionFromPosAgent(agent))
+            LLViewerRegion* region =
+                LLWorld::getInstance()->getRegionFromPosAgent(agent);
+            // A region existing is not proof its terrain data has actually
+            // arrived -- LLSurface's height array starts at Z=0 everywhere
+            // until real patch data streams in, so without checking
+            // getHasReceivedData() an unloaded patch silently placed the
+            // slot at sea level instead of falling back to the formation
+            // plane.
+            LLSurfacePatch* patch = region
+                ? region->getLand().resolvePatchRegion(
+                    region->getPosRegionFromGlobal(slot.mFoot))
+                : nullptr;
+            if (region && patch && patch->getHasReceivedData())
             {
-                draft.mSlots.clear();
-                validation.mCanCommit = false;
-                validation.mMessage =
-                    "Terrain data is unavailable for one or more slots.";
-                return false;
+                agent.mV[VZ] =
+                    LLWorld::getInstance()->resolveLandHeightAgent(agent) +
+                    draft.mHeight;
+                slot.mFoot = gAgent.getPosGlobalFromAgent(agent);
             }
-            agent.mV[VZ] =
-                LLWorld::getInstance()->resolveLandHeightAgent(agent) +
-                draft.mHeight;
-            slot.mFoot = gAgent.getPosGlobalFromAgent(agent);
+            else
+            {
+                // Best-effort: one region with no loaded terrain data must
+                // not invalidate the ENTIRE crowd. Leave this single slot on
+                // the flat formation plane (already computed above) and
+                // surface a warning instead of failing the whole placement.
+                validation.mPartial = true;
+                if (validation.mMessage.empty())
+                {
+                    validation.mMessage =
+                        "Terrain data is unavailable for one or more slots; "
+                        "they were kept on the formation plane.";
+                }
+            }
         }
 
-        F32 facing_yaw = draft.mYaw;
+        F32 facing_yaw = draft.mPatternYaw;
         bool pure_yaw = false;
+        bool full_quaternion_set = false;
         switch (draft.mSpec.mFacing)
         {
         case FACING_SOURCE:
-            slot.mRotation = draft.mSource.mRotation;
+            if (draft.mSpec.mPreserveSourceTilt)
+            {
+                // Explicit opt-in: reproduce the prototype's FULL
+                // pitched/rolled quaternion, with the independent
+                // facing-offset bias composed on top as an ADDITIONAL
+                // world-Z yaw (applied after/on top of the preserved tilt,
+                // in the v*q convention this codebase uses -- same-axis
+                // yaw-only composition would be ambiguous once real
+                // pitch/roll is involved, so this is a genuine rotation
+                // composition, not just adding two yaw scalars). Without
+                // this the offset spinner was silently a no-op whenever
+                // preserve-tilt was checked.
+                slot.mRotation = draft.mSource.mRotation *
+                    LLQuaternion(draft.mFacingYawOffset, LLVector3::z_axis);
+                full_quaternion_set = true;
+            }
+            else
+            {
+                // "Source yaw" now means what its label says: a pure
+                // world-Z yaw extraction (same formula as
+                // Instance::getYaw()), never a smuggled-in pitch/roll.
+                const LLVector3 source_forward =
+                    LLVector3::x_axis * draft.mSource.mRotation;
+                facing_yaw =
+                    atan2f(source_forward.mV[VY], source_forward.mV[VX]);
+                pure_yaw = true;
+            }
             break;
         case FACING_CAMERA:
-            facing_yaw = yaw_to(slot.mFoot, camera_global, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, camera_global, draft.mPatternYaw);
             pure_yaw = true;
             break;
         case FACING_CENTROID_IN:
-            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mPatternYaw);
             pure_yaw = true;
             break;
         case FACING_OUTWARD:
-            facing_yaw = yaw_to(draft.mAnchor, slot.mFoot, draft.mYaw);
+            facing_yaw = yaw_to(draft.mAnchor, slot.mFoot, draft.mPatternYaw);
             pure_yaw = true;
             break;
         case FACING_WORLD_POINT:
@@ -3970,19 +4332,33 @@ bool ALGhostStudio::resolveCrowdPlacement()
             {
                 facing_yaw = yaw_to(slot.mFoot,
                                     draft.mSpec.mFacingPointGlobal,
-                                    draft.mYaw);
+                                    draft.mPatternYaw);
                 pure_yaw = true;
+            }
+            else
+            {
+                // Missing facing target: fall back to the formation heading
+                // (facing_yaw/pure_yaw already default to that) instead of
+                // failing the whole placement -- surfaced as a warning.
+                validation.mPartial = true;
+                if (validation.mMessage.empty())
+                {
+                    validation.mMessage =
+                        "No facing target is set; using the formation "
+                        "heading instead.";
+                }
             }
             break;
         case FACING_AISLE:
         case FACING_FACE_ACROSS:
         {
-            const LLVector3d axis(cosf(draft.mYaw), sinf(draft.mYaw), 0.0);
+            const LLVector3d axis(
+                cosf(draft.mPatternYaw), sinf(draft.mPatternYaw), 0.0);
             const LLVector3d relative = slot.mFoot - draft.mAnchor;
             const LLVector3d nearest = draft.mAnchor +
                 axis * (relative.mdV[VX] * axis.mdV[VX] +
                         relative.mdV[VY] * axis.mdV[VY]);
-            facing_yaw = yaw_to(slot.mFoot, nearest, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, nearest, draft.mPatternYaw);
             pure_yaw = true;
             break;
         }
@@ -3998,12 +4374,12 @@ bool ALGhostStudio::resolveCrowdPlacement()
                     solved.mSlots[member].mLocalY, 0.0);
             }
             centroid /= (F64)(last - first);
-            facing_yaw = yaw_to(slot.mFoot, centroid, draft.mYaw);
+            facing_yaw = yaw_to(slot.mFoot, centroid, draft.mPatternYaw);
             pure_yaw = true;
             break;
         }
         case FACING_LOOSE:
-            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mYaw) +
+            facing_yaw = yaw_to(slot.mFoot, draft.mAnchor, draft.mPatternYaw) +
                 (seeded_unit(draft.mSource.mInstanceId,
                     draft.mSpec.mSeed + 1300u + source_slot.mInputIndex) -
                  0.5f) * (30.f * DEG_TO_RAD);
@@ -4017,18 +4393,18 @@ bool ALGhostStudio::resolveCrowdPlacement()
                 facing_yaw = yaw_to(slot.mFoot,
                     draft.mAnchor + LLVector3d(previous.mLocalX,
                                               previous.mLocalY, 0.0),
-                    draft.mYaw);
+                    draft.mPatternYaw);
                 pure_yaw = true;
             }
             break;
         case FACING_WAVE:
-            facing_yaw = draft.mYaw +
+            facing_yaw = draft.mPatternYaw +
                 sinf((F32)source_slot.mInputIndex * 0.65f) *
                 (35.f * DEG_TO_RAD);
             pure_yaw = true;
             break;
         case FACING_MIRROR_SOURCE:
-            facing_yaw = draft.mYaw + F_PI;
+            facing_yaw = draft.mPatternYaw + F_PI;
             pure_yaw = true;
             break;
         case FACING_RANDOM:
@@ -4042,10 +4418,16 @@ bool ALGhostStudio::resolveCrowdPlacement()
         default:
             break;
         }
-        if (draft.mSpec.mFacing != FACING_SOURCE)
+        if (!full_quaternion_set)
         {
+            // The independent facing-offset bias applies on top of every
+            // yaw-based resolution (including the formation-heading
+            // fallback carried by `authored`), never to a preserved full
+            // source quaternion.
             slot.mRotation = pure_yaw
-                ? LLQuaternion(facing_yaw, LLVector3::z_axis) : authored;
+                ? LLQuaternion(facing_yaw + draft.mFacingYawOffset,
+                              LLVector3::z_axis)
+                : authored;
         }
         slot.mRotation.normalize();
         const F32 slot_rotation_norm =
@@ -4077,10 +4459,21 @@ bool ALGhostStudio::resolveCrowdPlacement()
     }
     else
     {
+        // A per-slot best-effort warning (terrain data unavailable / no
+        // facing target set) accumulated in validation.mMessage above must
+        // survive here -- overwriting it unconditionally with the generic
+        // success stats discarded the ONLY place that explained which slots
+        // fell back and why, even though mPartial correctly stayed set.
+        const std::string partial_warning =
+            validation.mPartial ? validation.mMessage : std::string();
         validation.mMessage = llformat(
             "%u previewed · fitted radius %.2f m · edge gap %.2f m",
             validation.mPlacedCount, validation.mPlacedRadius,
             validation.mActualMinEdgeGap);
+        if (!partial_warning.empty())
+        {
+            validation.mMessage += " \xC2\xB7 " + partial_warning;
+        }
     }
     return validation.mCanCommit;
 }
@@ -4284,11 +4677,17 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
     LLQuaternion expected_rotation = source_slot.mRotation;
     const F32 placed_rotation_magnitude = placed_rotation.normalize();
     const F32 expected_rotation_magnitude = expected_rotation.normalize();
+    // Epsilon transform comparison only -- NOT a bit-exact revision-arithmetic
+    // gate. apply_slot(0) bumps the revision by exactly 1, but so does any
+    // other setYaw()/setFootGlobal()/setTransform()/setScale() call a runtime
+    // consumer happens to make with the SAME resulting values (harmless: the
+    // epsilon checks below already say "still exactly where we put it"). The
+    // old `mTransformRevision == draft.mSource.mTransformRevision + 1` hard
+    // requirement failed in exactly that harmless case and rolled back a
+    // successful placement over nothing.
     const bool source_still_exact =
         placed_source &&
         placed_source->mGroupId.isNull() &&
-        placed_source->mTransformRevision ==
-            draft.mSource.mTransformRevision + 1 &&
         (placed_source->mFootGlobal - source_slot.mFoot).lengthSquared() <=
             1.0e-10 &&
         llfinite(placed_rotation_magnitude) &&
@@ -4302,23 +4701,41 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
     {
         // A runtime consumer edited or replaced the prototype after our
         // stored transform was applied. Preserve that newer external state;
-        // only the copies belong to this failed transaction.
-        rollback(false);
+        // only the copies belong to this failed transaction. apply_slot(0)
+        // above already succeeded and moved the prototype (source_was_changed
+        // is true), so THIS rollback must also restore the prototype's
+        // original pre-commit transform -- passing a hardcoded false here
+        // used to leave the prototype moved even though every copy was
+        // removed.
+        rollback(source_was_changed);
         result.mMessage =
             "The prototype changed during crowd creation; copies were removed.";
         return result;
     }
 
-    if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT ||
-        draft.mSpec.mFacing == FACING_WAVE)
+    for (size_t i = 0; i < ids.size(); ++i)
     {
-        for (size_t i = 0; i < ids.size(); ++i)
+        Instance* member = getInstance(ids[i]);
+        if (!member) continue;
+        // Always clear whatever crowd-facing driver this member may have
+        // INHERITED (e.g. duplicated from a prototype that itself used to be
+        // a Wave/Track-subject crowd member) before applying this crowd's
+        // own facing policy. Without this, a member silently kept animating
+        // under the old formation's driver even though the new formation
+        // never asked for it.
+        member->mCrowdFacing = FACING_AUTHOR;
+        member->mCrowdSlot = (U32)i;
+        member->mCrowdBaseYaw = draft.mPatternYaw;
+        // Persist the independent facing-offset bias onto the runtime
+        // driver too -- the preview already composed it in (see the
+        // resolveCrowdPlacement() facing switch), but only mCrowdBaseYaw was
+        // being stored here, so a live Track/Wave update on first tick threw
+        // the authored offset away.
+        member->mCrowdFacingYawOffset = draft.mFacingYawOffset;
+        if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT ||
+            draft.mSpec.mFacing == FACING_WAVE)
         {
-            Instance* member = getInstance(ids[i]);
-            if (!member) continue;
             member->mCrowdFacing = draft.mSpec.mFacing;
-            member->mCrowdSlot = (U32)i;
-            member->mCrowdBaseYaw = draft.mYaw;
             member->mCrowdFacingStart = LLTimer::getTotalSeconds();
             if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT)
             {
@@ -4459,7 +4876,7 @@ void ALGhostStudio::renderFormationPreview()
         case GUIDE_SQUARE:
         {
             const LLQuaternion guide_rotation(
-                mCrowdDraft.mYaw, LLVector3::z_axis);
+                mCrowdDraft.mPatternYaw, LLVector3::z_axis);
             const LLVector3 x =
                 LLVector3(guide_size, 0.f, 0.f) * guide_rotation;
             const LLVector3 y =

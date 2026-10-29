@@ -37,6 +37,9 @@ uniform vec4 origin;
 
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 void passTextureIndex();
 in vec3 normal;
 in vec4 diffuse_color;
@@ -54,6 +57,9 @@ uniform mat4 projection_matrix;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     //transform vertex
     vec4 vert = vec4(position.xyz,1.0);
     passTextureIndex();

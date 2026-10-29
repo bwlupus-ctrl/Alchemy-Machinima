@@ -62,6 +62,7 @@
 #include "lltrans.h"
 #include "llurldispatcher.h"
 #include "llviewerobjectlist.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llviewerparceloverlay.h"
 #include "llviewerstatsrecorder.h"
 #include "llvlmanager.h"
@@ -1825,6 +1826,8 @@ void LLViewerRegion::killInvisibleObjects(F32 max_time)
     if(!delete_list.empty())
     {
         mInvisibilityCheckHistory |= 1;
+        // [ProbeOnDemand] cache culling (the camera turned) is not a scene change
+        ALProbeDirty::ScopedTag probe_cull_tag(ALProbeDirty::TAG_VOCACHE);
         for (auto drawable : delete_list)
         {
             gObjectList.killObject(drawable->getVObj());
@@ -2795,7 +2798,7 @@ void LLViewerRegion::decodeBoundingInfo(LLVOCacheEntry* entry)
     return ;
 }
 
-LLViewerRegion::eCacheUpdateResult LLViewerRegion::cacheFullUpdate(LLDataPackerBinaryBuffer &dp, U32 flags)
+LLViewerRegion::eCacheUpdateResult LLViewerRegion::cacheFullUpdate(LLDataPackerBinaryBuffer &dp, U32 flags, const LLUUID* probe_id)
 {
     eCacheUpdateResult result;
     U32 crc;
@@ -2812,6 +2815,12 @@ LLViewerRegion::eCacheUpdateResult LLViewerRegion::cacheFullUpdate(LLDataPackerB
         // If the entry isn't currently valid then we shouldn't just assume everything's in perfect working order
         bool fUpdateObj = (!entry->isValid()) || (entry->getCRC() != crc);
 // [/SL:KB]
+        if (fUpdateObj && probe_id && ALProbeDirty::recording())
+        {
+            // [ProbeOnDemand] changed / replaced / revalidated cache entry: the data is
+            // authoritative, so a culled-then-re-created object is not "unchanged".
+            ALProbeDirty::noteServerUpdate(*probe_id);
+        }
         entry->setValid();
 
         // we've seen this object before
@@ -2846,6 +2855,10 @@ LLViewerRegion::eCacheUpdateResult LLViewerRegion::cacheFullUpdate(LLDataPackerB
 
         // we haven't seen this object before
         // Create new entry and add to map
+        if (probe_id && ALProbeDirty::recording())
+        {
+            ALProbeDirty::noteServerUpdate(*probe_id); // [ProbeOnDemand] cache miss + full update
+        }
         result = CACHE_UPDATE_ADDED;
         entry = new LLVOCacheEntry(local_id, crc, dp);
         record(LLStatViewer::OBJECT_CACHE_HIT_RATE, LLUnits::Ratio::fromValue(0));

@@ -1,0 +1,52 @@
+VERIFICATION ONLY — do NOT modify any file, do NOT build. Reason about the code and report.
+
+The user is about to test the Cinematic Light Rig Mirror behaviour in-world and wants an independent
+verification of the mirror logic FIRST. You implemented this; now verify it as if you did not, and
+try to find anything that would make Mirror behave wrong in-world.
+
+WHAT MIRROR SHOULD DO: if the key light is on the LEFT side of the avatar's face, toggling Mirror
+must move it to the RIGHT side of the face — a side-to-side (cheek-to-cheek) swap — for ANY direction
+the avatar is facing. It must NOT move the light front-to-back (behind the avatar). That front-to-back
+behaviour was the bug being fixed.
+
+THE CODE UNDER TEST:
+- Model: indra/newview/alcinelightrigmodel.cpp, computeLive() — the mirror line is now
+  `yaw = mMirror ? wrap180(2 * mFacingAzimuthDeg - base.mYawDeg) : base.mYawDeg;`
+  then `out.mYawDeg = wrap180(yaw + orbitYaw)`.
+- Controller: indra/newview/alcinelightrig.cpp, ~line 912-925 — per tick, after resolving the anchor
+  avatar, it computes:
+  `forward = LLVector3(1,0,0) * root->getWorldRotation();`
+  `facing = atan2f(forward.mV[VY], forward.mV[VX]) * RAD_TO_DEG;` (guarded non-finite -> 0),
+  and sets transforms.mFacingAzimuthDeg = facing. root = avatar->getRootJoint().
+- Geometry the yaw feeds: off_x = r*cos(yaw), off_y = r*sin(yaw) (alcinelightrigmodel.cpp ~538),
+  added to the emitter's GLOBAL position X/Y (region axes: X=east, Y=north).
+
+VERIFY, and state PROVED (traced/worked) vs INFERRED for each:
+
+1. Is `2*facing - base_yaw` a reflection that swaps LEFT<->RIGHT (negates the lateral component,
+   preserves front/back), and NOT front<->back? Work at least one concrete case with numbers.
+
+2. FRAME MATCH (the highest-risk item): is `facing = atan2(forward.Y, forward.X)` from
+   `<1,0,0> * root->getWorldRotation()` in the SAME azimuth frame as the light yaw (off_x=cos,
+   off_y=sin into region/global X=east/Y=north)? Confirm the axis convention (VX/VY indices) and that
+   the global offset add is a pure translation (no extra rotation) so the frames coincide.
+
+3. Is `root->getWorldRotation()` applied to <1,0,0> actually the avatar's BODY FACING in region axes
+   (not the pelvis with a bind-pose/animation offset, not identity in some state)? Is it the right
+   source vs avatar->getRotation() specifically when the avatar is SITTING (object-sit) or moved by
+   Actor Mover?
+
+4. IN-WORLD WALKTHROUGH the user will actually do — give the expected result for each, with numbers:
+   (a) avatar facing world-east (facing=0), a left-cheek key at some yaw, Mirror on -> which side?
+   (b) avatar facing world-north (facing=90), same key, Mirror on -> must be the OTHER cheek, front,
+       not behind. Show the azimuth before/after and confirm it's a cheek swap.
+   (c) Mirror twice -> back to the original (identity)?
+   (d) avatar sitting on an object, facing some direction, Mirror on -> still a correct cheek swap?
+
+5. Any EDGE CASE that would make it look wrong in-world: avatar mid-turn (does the light lag/swing?),
+   a preset light authored dead-front or dead-behind (yaw 0 or 180), no root joint, an
+   attachment/HUD-style anchor, a scaled clone (does facing still resolve?).
+
+REPORT: for each of 1-5, your finding and PROVED/INFERRED. End with a single explicit verdict:
+"SAFE TO TEST IN-WORLD" or "DO NOT TEST — <the specific problem>". If you find a real defect, name
+the file:line and the exact wrong-looking in-world result; do not fix it (verification only).

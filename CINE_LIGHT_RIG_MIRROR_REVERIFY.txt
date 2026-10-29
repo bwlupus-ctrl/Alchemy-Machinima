@@ -1,0 +1,41 @@
+VERIFICATION ONLY — do NOT modify any file, do NOT build. Reason and report.
+
+You just fixed the Mirror/Orbit-Yaw interaction. Re-verify the FIXED code as if you did not write it,
+focused on the case that was broken. The user will test in-world immediately after, so give a clear
+final verdict.
+
+THE FIXED CODE (alcinelightrigmodel.cpp, computeLive ~460):
+    const F32 oriented = base.mYawDeg + safe_transforms.mYawDeg;   // orbit first
+    out[i].mYawDeg = safe_transforms.mMirror
+        ? wrap180(2.f * safe_transforms.mFacingAzimuthDeg - oriented)
+        : wrap180(oriented);
+Facing comes from the controller: facing = atan2(fwd.Y, fwd.X) of <1,0,0>*root->getWorldRotation(),
+region frame (already verified correct in the prior pass — not under review here).
+
+VERIFY, PROVED vs INFERRED for each, with worked numbers:
+
+1. NONZERO ORBIT now swaps cheeks (the bug that existed before this fix). For facing F, base B, orbit O:
+   the light's actual pre-mirror world azimuth is (B+O); the mirrored azimuth is 2F-(B+O). Confirm the
+   mirrored light's angle RELATIVE TO FACING is the exact negation of the non-mirrored light's relative
+   angle, for a nonzero O — i.e. the lateral component flips and front/back is preserved, at any orbit.
+   Work a concrete case: F=0, O=90, B=45 (non-mirror final 135 = back-left rel to east; mirror final ?)
+   and confirm it is the same front/back, opposite side.
+
+2. ORBIT ZERO is unchanged from the previously-working behaviour (2F - B). Confirm bitwise/at the
+   ±180 boundary the outer wrap is idempotent so nothing shifted.
+
+3. MIRROR TWICE = identity for NONZERO orbit AND nonzero facing (e.g. F=37, O=60): 2F-(2F-oriented) =
+   oriented; confirm the double-wrap returns the canonical original.
+
+4. IN-WORLD WALKTHROUGH the user will do, WITH the rig orbited (this is the new part):
+   (a) avatar facing any direction, OrbitYaw = 0, Mirror on a side key -> cheek swap (regression check).
+   (b) avatar facing north, OrbitYaw = 90, Mirror on a side key -> must STILL be a cheek swap (front
+       stays front), NOT front-to-back. Give the numbers.
+   (c) avatar sitting, OrbitYaw nonzero, Mirror on -> still a correct cheek swap.
+
+5. Any REMAINING interaction that could still make Mirror look wrong in-world: Orbit Yaw + Mirror +
+   avatar mid-turn; Orbit Yaw combined with the per-frame facing; a light authored dead-front/behind
+   with orbit applied; extreme orbit (e.g. 179). Anything that is NOT a clean cheek swap.
+
+END WITH ONE VERDICT: "SAFE TO TEST IN-WORLD" or "DO NOT TEST — <the specific problem, file:line, and
+the wrong in-world result>". Verification only; do not fix anything.

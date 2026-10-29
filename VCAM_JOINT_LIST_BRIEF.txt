@@ -1,0 +1,57 @@
+IMPLEMENTATION TASK — the Skeleton-POV "POV joint" dropdown should list ALL avatar joints (pick, never
+type). Repo: I:\alchemy-machinima. You IMPLEMENT the vcam bone-POV UI/model you just wrote. Do NOT build/
+cmake/run. Locate by symbol/context.
+
+=============================================================================
+CURRENT STATE (your recent work)
+=============================================================================
+The vcam bone-POV joint is stored as CameraSettings/BonePovSettings: `U8 mJointSelection` (0 Head, 1 Eye,
+2 Neck, 3 Custom) + `std::string mCustomJoint` (a TEXT field the user must TYPE for Custom). The editor
+(llfloaterprismmanager.*, floater_prism_manager.xml) shows a 4-item POV-joint combo + a custom-name text
+field. Driver: alvcambonepov.cpp resolves the joint (Head=mHead, Eye=avg mEyeLeft+mEyeRight, Neck=mNeck,
+Custom=getJoint(mCustomJoint)); off-spine/custom joints default to STABILIZED aim (review S1).
+
+USER COMPLAINT: having to type a joint name is bad — the dropdown must offer EVERY joint so the user
+just picks one.
+
+=============================================================================
+CHANGE — one dropdown listing every joint of the anchor avatar
+=============================================================================
+1. POPULATE the POV-joint combo from the RESOLVED ANCHOR AVATAR'S SKELETON: enumerate its joints
+   (walk getRootJoint()'s child tree, or the avatar's joint list) and add each by name, in skeleton /
+   hierarchy order, with a readable label (strip/clean the "m" prefix for display, keep the real joint
+   name as the combo value). Include bento/extra bones the avatar actually has. Put the synthetic
+   **"Eye (eyeline)"** entry FIRST (it is the cinematic default; it is an average of the two eye joints,
+   not a single getJoint). REMOVE the free-text custom field — no typing.
+   - Repopulate whenever the anchor subject changes (and on first resolve). If NO avatar resolves yet,
+     fall back to a STATIC standard SL joint list (mPelvis, mSpine1-4, mChest, mNeck, mHead, mSkull,
+     mCollar/Shoulder/Elbow/Wrist L+R, mHip/Knee/Ankle/Foot/Toe L+R, mEyeLeft/Right, plus mHead/mNeck)
+     so the combo is never empty; re-fill from the real skeleton once the avatar loads.
+   - Preserve the user's current selection across a repopulate if that joint name still exists.
+2. STORAGE: store the selected joint by NAME. Simplest clean scheme keeping back-compat: keep
+   mJointSelection as a small tag { EYELINE, NAMED } (or reuse: 1 == Eye/eyeline special; anything else
+   == NAMED with the name in mCustomJoint). Rename mCustomJoint's ROLE to "selected joint name" (it now
+   holds the picked joint's name for any NAMED joint, not just typed customs). Do NOT churn the scene
+   key layout beyond what's needed; the additive bone_pov sub-map must still round-trip.
+3. BACK-COMPAT (old bone_pov written by the current build): map on read — old mJointSelection 0 (Head) ->
+   NAMED "mHead"; 1 (Eye) -> EYELINE; 2 (Neck) -> NAMED "mNeck"; 3 (Custom) -> NAMED with the existing
+   mCustomJoint string. New scenes read cleanly; an old viewer reading a new scene degrades sanely
+   (unknown -> default eyeline/head, no crash).
+4. RESOLUTION + AIM DEFAULT: for a NAMED joint, resolve via getJoint(name) (existing path); EYELINE keeps
+   the eye-average path. Keep review S1: when the picked joint is NOT on the spine chain (head/neck/
+   chest/spine/pelvis), default the aim mode to STABILIZED unless the operator explicitly chose Full-
+   follow — determine spine-chain membership by joint name (a small allowlist), applied to the newly-
+   picked joint. Head/neck/chest/spine/pelvis + eyeline stay full-follow-capable.
+
+=============================================================================
+CONSTRAINTS / REPORT
+=============================================================================
+- Do NOT change the render consume path, the basis remap, clone-scale, FOV, smoothing, persistence
+  container, or anything else in the vcam beyond the joint SELECTION UI/model/resolution. Use lazy
+  getWorldPosition/getWorldRotation. No new settings key; keep the additive bone_pov sub-map.
+- The combo must have unique control/name and fit the floater rect (removing the text field frees space;
+  reflow the rows below if needed and keep the floater within bounds).
+- REPORT: how you enumerate the avatar joints + the fallback list; the storage/back-compat mapping (old
+  0/1/2/3 -> new); that EYELINE stays first + special; the spine-chain stabilized-default now keyed off
+  the picked joint name; and that nothing else in the vcam changed. Add/adjust any pure TUT (e.g. the
+  old->new selection mapping) non-tautologically. Do not build.

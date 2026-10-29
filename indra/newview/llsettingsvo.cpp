@@ -29,6 +29,7 @@
 #include "llviewercontrol.h"
 #include "llsettingsvo.h"
 
+#include "alenvintensity.h" // [EnvIntensity v2]
 #include "pipeline.h"
 
 #include <algorithm>
@@ -565,6 +566,110 @@ LLSettingsSky::ptr_t LLSettingsVOSky::buildDefaultSky()
     return skyp;
 }
 
+// Defined in indra/llinventory/llsettingssky.cpp with external linkage (used the
+// same way by indra/newview/rlvenvironment.cpp); there is no header declaration.
+LLQuaternion convert_azimuth_and_altitude_to_quat(F32 azimuth, F32 altitude);
+
+LLSettingsSky::ptr_t LLSettingsVOSky::buildStudioNeutralDay()
+{
+    // "Studio Neutral (Day)" -- flat, grey-balanced, PBR-aware neutral EEP sky
+    // meant for machinima capture / color grading, not a stylistic look.
+    // All values below are STARTING POINTS to be tuned in-world.
+    LLSD settings = LLSettingsSky::defaults();
+
+    settings[SETTING_NAME] = std::string("Studio Neutral (Day)");
+
+    // Neutral ~white key light at a flattering ~50 degree elevation.
+    settings[SETTING_SUNLIGHT_COLOR]  = LLColor3(1.0f, 1.0f, 1.0f).getValue();
+    settings[SETTING_SUN_ROTATION]    = convert_azimuth_and_altitude_to_quat(0.0f, 50.0f * DEG_TO_RAD).getValue();
+    settings[SETTING_MOON_ROTATION]   = convert_azimuth_and_altitude_to_quat(F_PI, -30.0f * DEG_TO_RAD).getValue();
+    settings[SETTING_MOON_BRIGHTNESS] = LLSD::Real(0.0f);
+    settings[SETTING_STAR_BRIGHTNESS] = LLSD::Real(0.0f);
+
+    // The key PBR fix: stock blue_density/blue_horizon tint the sky dome (and
+    // therefore the reflection-probe/ambient IBL it feeds) blue. Flatten them
+    // to grey and cut haze/density so the dome -- and its IBL contribution --
+    // reads neutral instead of tinting every PBR material blue.
+    settings[SETTING_AMBIENT]             = LLColor3(0.25f, 0.25f, 0.25f).getValue();
+    settings[SETTING_BLUE_DENSITY]        = LLColor3(0.20f, 0.20f, 0.20f).getValue();
+    settings[SETTING_BLUE_HORIZON]        = LLColor3(0.38f, 0.38f, 0.38f).getValue();
+    settings[SETTING_HAZE_DENSITY]        = LLSD::Real(0.35f);
+    settings[SETTING_HAZE_HORIZON]        = LLSD::Real(0.15f);
+    settings[SETTING_DENSITY_MULTIPLIER]  = LLSD::Real(0.00005f);
+    settings[SETTING_DISTANCE_MULTIPLIER] = LLSD::Real(0.4f);
+
+    // Non-zero reflection_probe_ambiance switches the sky onto the modern
+    // PBR/HDR ambient path (see LLSettingsVOSky::applySpecial(), which checks
+    // getReflectionProbeAmbiance() != 0.f) instead of the legacy windlight
+    // tonemap, and is the field that drives the reflection-probe/IBL ambient
+    // intensity. 1.0 matches DEFAULT_AUTO_ADJUST_PROBE_AMBIANCE.
+    settings[SETTING_REFLECTION_PROBE_AMBIANCE] = LLSD::Real(1.0f);
+
+    settings[SETTING_GAMMA] = LLSD::Real(1.0f);
+    settings[SETTING_GLOW]  = LLColor3(2.0f, 0.001f, -0.05f).getValue();
+
+    // Clouds off / near-zero coverage.
+    settings[SETTING_CLOUD_SHADOW]   = LLSD::Real(0.0f);
+    settings[SETTING_CLOUD_VARIANCE] = LLSD::Real(0.0f);
+
+    LLSettingsSky::validation_list_t validations = LLSettingsSky::validationList();
+    LLSD results = LLSettingsBase::settingValidation(settings, validations);
+    if (!results["success"].asBoolean())
+    {
+        LL_WARNS("SETTINGS") << "Studio Neutral (Day) sky setting validation failed!\n" << results << LL_ENDL;
+    }
+
+    return std::make_shared<LLSettingsVOSky>(settings);
+}
+
+LLSettingsSky::ptr_t LLSettingsVOSky::buildStudioNeutralNight()
+{
+    // "Studio Neutral (Night)" -- darker neutral counterpart to Studio Neutral
+    // (Day). Sun below horizon, dim NEUTRAL moon fill -- explicitly avoids the
+    // stock blue night cast so night grades like day. STARTING POINTS only.
+    LLSD settings = LLSettingsSky::defaults();
+
+    settings[SETTING_NAME] = std::string("Studio Neutral (Night)");
+
+    // Sun down. Moon and sun share the sunlight-color field at render time
+    // (see LLSettingsSky::getMoonlightColor(), which just returns
+    // getSunlightColor()), so keeping this neutral grey -- not blue -- is what
+    // keeps the moonlit fill neutral too.
+    settings[SETTING_SUNLIGHT_COLOR]  = LLColor3(0.35f, 0.35f, 0.35f).getValue();
+    settings[SETTING_SUN_ROTATION]    = convert_azimuth_and_altitude_to_quat(0.0f, -20.0f * DEG_TO_RAD).getValue();
+    settings[SETTING_MOON_ROTATION]   = convert_azimuth_and_altitude_to_quat(F_PI, 45.0f * DEG_TO_RAD).getValue();
+    settings[SETTING_MOON_BRIGHTNESS] = LLSD::Real(0.35f);
+    settings[SETTING_STAR_BRIGHTNESS] = LLSD::Real(40.0f);
+
+    // Same neutral grey ambient/haze treatment as the day preset -- kills the
+    // stock blue cast in the sky dome / reflection-probe IBL, just dimmer.
+    settings[SETTING_AMBIENT]             = LLColor3(0.12f, 0.12f, 0.12f).getValue();
+    settings[SETTING_BLUE_DENSITY]        = LLColor3(0.20f, 0.20f, 0.20f).getValue();
+    settings[SETTING_BLUE_HORIZON]        = LLColor3(0.38f, 0.38f, 0.38f).getValue();
+    settings[SETTING_HAZE_DENSITY]        = LLSD::Real(0.35f);
+    settings[SETTING_HAZE_HORIZON]        = LLSD::Real(0.15f);
+    settings[SETTING_DENSITY_MULTIPLIER]  = LLSD::Real(0.00005f);
+    settings[SETTING_DISTANCE_MULTIPLIER] = LLSD::Real(0.4f);
+
+    // See buildStudioNeutralDay() -- same PBR/HDR ambient-path + IBL field.
+    settings[SETTING_REFLECTION_PROBE_AMBIANCE] = LLSD::Real(1.0f);
+
+    settings[SETTING_GAMMA] = LLSD::Real(1.0f);
+    settings[SETTING_GLOW]  = LLColor3(2.0f, 0.001f, -0.05f).getValue();
+
+    settings[SETTING_CLOUD_SHADOW]   = LLSD::Real(0.0f);
+    settings[SETTING_CLOUD_VARIANCE] = LLSD::Real(0.0f);
+
+    LLSettingsSky::validation_list_t validations = LLSettingsSky::validationList();
+    LLSD results = LLSettingsBase::settingValidation(settings, validations);
+    if (!results["success"].asBoolean())
+    {
+        LL_WARNS("SETTINGS") << "Studio Neutral (Night) sky setting validation failed!\n" << results << LL_ENDL;
+    }
+
+    return std::make_shared<LLSettingsVOSky>(settings);
+}
+
 LLSettingsSky::ptr_t LLSettingsVOSky::buildClone()
 {
     LLSD settings = cloneSettings();
@@ -817,9 +922,11 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
     static LLCachedControl<F32> auto_adjust_blue_horizon_scale(gSavedSettings, "RenderSkyAutoAdjustBlueHorizonScale", 1.f);
     static LLCachedControl<F32> auto_adjust_blue_density_scale(gSavedSettings, "RenderSkyAutoAdjustBlueDensityScale", 1.f);
     static LLCachedControl<F32> auto_adjust_sun_color_scale(gSavedSettings, "RenderSkyAutoAdjustSunColorScale", 1.f);
-    static LLCachedControl<F32> sunlight_scale(gSavedSettings, "RenderSkySunlightScale", 1.5f);
-    static LLCachedControl<F32> sunlight_hdr_scale(gSavedSettings, "RenderHDRSkySunlightScale", 1.5f);
-    static LLCachedControl<F32> ambient_scale(gSavedSettings, "RenderSkyAmbientScale", 1.5f);
+    // [EnvIntensity] fallbacks aligned with settings.xml (all 1.0; the old 1.5
+    // fallbacks were unreachable but misleading).
+    static LLCachedControl<F32> sunlight_scale(gSavedSettings, "RenderSkySunlightScale", 1.0f);
+    static LLCachedControl<F32> sunlight_hdr_scale(gSavedSettings, "RenderHDRSkySunlightScale", 1.0f);
+    static LLCachedControl<F32> ambient_scale(gSavedSettings, "RenderSkyAmbientScale", 1.0f);
     static LLCachedControl<F32> tonemap_mix_setting(gSavedSettings, "RenderTonemapMix", 1.f);
 
     // sky is a "classic" sky following pre SL 7.0 shading
@@ -830,8 +937,46 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
         psky->setTonemapMix(tonemap_mix_setting);
     }
 
-    shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, hdr ? sunlight_hdr_scale : sunlight_scale);
-    shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, ambient_scale);
+    // [EnvIntensity v2] Personal Lighting exposure strip. The effective factors
+    // come from ALEnvIntensity::compute() (alenvintensity.cpp) and are uploaded
+    // as their OWN uniforms, applied in linear light by atmosphericsFuncs.glsl
+    // (calcAtmosphericVarsLinear), reflectionProbeF.glsl and deferredUtil.glsl,
+    // so the pre-PBR compatibility scales below keep their stock semantics.
+    // SUNLIGHT_COLOR is deliberately NOT scaled (sky dome / clouds / volumetrics
+    // keep stock levels and atmosphericsFuncs would otherwise apply it twice).
+    // Predicates:
+    //  - classic_mode: every sky-side factor identity (classic consumers sum
+    //    sun and ambient in encoded space before decoding; a linear factor
+    //    cannot be applied correctly there) -- the floater's note says so;
+    //  - legacy-gamma (probe ambiance == 0, no tonemapper): sun boost capped at
+    //    0 EV, tints normalised to a max channel of 1 (nothing new clips);
+    //  - capture (gCubeSnapshot that is NOT a hero mirror pass): the sampling-
+    //    time terms (amb/diff/spec scales, ambient tint, shadow lift) are
+    //    identity for EVERY probe pass -- the irradiance pass bakes amblit, the
+    //    radiance pass bakes GI-lit geometry that the irradiance pass re-samples
+    //    through reflective surfaces -- so display-time sampling applies them
+    //    exactly once. Source-light terms (sun/moon EV + tint, local lights)
+    //    stay active in captures: they scale the light once and the bounce is
+    //    what the probes hold. Hero mirror passes render the display look.
+    //  - sun_up: same predicate as SUN_UP_FACTOR below, so the shader's
+    //    sunlit (sun OR moon) meets the matching EV / tint.
+    // exp2f(0) == 1.0 exactly and the tints are exactly (1,1,1) at their
+    // defaults, so 0 EV / no tint is bit-identical to stock.
+    const bool env_legacy_gamma = (psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f);
+    const ALEnvIntensity::Factors env = ALEnvIntensity::compute(classic_mode,
+                                                                env_legacy_gamma,
+                                                                ALEnvIntensity::isSamplingCapture(),
+                                                                getIsSunUp());
+
+    shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, hdr ? sunlight_hdr_scale : sunlight_scale); // compat only (stock)
+    shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, ambient_scale);                                // compat only (stock)
+    shader->uniform1f(LLShaderMgr::SKY_SUN_EV_SCALE, env.mSunMul);                                   // [EnvIntensity v2] sun or moon
+    shader->uniform1f(LLShaderMgr::SKY_GI_SCALE, env.mDiffMul);                                      // [EnvIntensity v2] probe diffuse
+    shader->uniform1f(LLShaderMgr::SKY_AMB_SCALE, env.mAmbMul);                                      // [EnvIntensity v2] sky ambient
+    shader->uniform1f(LLShaderMgr::SKY_PROBE_RAD_SCALE, env.mSpecMul);                               // [EnvIntensity v2] probe reflections
+    shader->uniform3fv(LLShaderMgr::SKY_SUN_TINT, env.mSunTint.mV);                                  // [EnvIntensity v2]
+    shader->uniform3fv(LLShaderMgr::SKY_AMB_TINT, env.mAmbTint.mV);                                  // [EnvIntensity v2]
+    shader->uniform1f(LLShaderMgr::SHADOW_LIFT_GAIN, env.mLiftGain);                                 // [EnvIntensity v2]
     shader->uniform1i(LLShaderMgr::CLASSIC_MODE, classic_mode);
 
     LLRender::sClassicMode = classic_mode;

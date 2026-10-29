@@ -46,8 +46,12 @@ void main()
     // clear is glClearColor(1,0,1,1) (llviewerdisplay.cpp) so an UNWRITTEN
     // pixel carries .w = 1.0, colliding exactly with GBUFFER_FLAG_HAS_HDRI.
     // Only the two real-geometry buckets may be accepted.
-    bool has_atmos = abs(flag - 0.34) < 0.1;   // ordinary deferred geometry
-    bool has_pbr   = abs(flag - 0.67) < 0.1;   // PBR geometry
+    // [TronA0] GET_GBUFFER_FLAG is the preamble decoder: with the avatar tag
+    // on it folds the odd "avatar + flag" codes back onto their bucket, so
+    // tagged avatars keep seeding visible diffuse; with the tag off it is
+    // literally abs(flag - f) < 0.1, the compare this always was.
+    bool has_atmos = GET_GBUFFER_FLAG(flag, GBUFFER_FLAG_HAS_ATMOS);   // ordinary deferred geometry
+    bool has_pbr   = GET_GBUFFER_FLAG(flag, GBUFFER_FLAG_HAS_PBR);     // PBR geometry
 
     // A deferred SURFACE is one of those two buckets AND in front of the far
     // plane. GBUFFER_FLAG_SKIP_ATMOS (0.0) is sky/clouds/stars/aurora and is

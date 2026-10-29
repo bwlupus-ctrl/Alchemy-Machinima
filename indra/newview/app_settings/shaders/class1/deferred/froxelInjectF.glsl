@@ -69,6 +69,12 @@ uniform float falloff;              // LIGHT_FALLOFF
 uniform vec3  color;                // DIFFUSE_COLOR - light's linear diffuse (+tint lerp)
 uniform int   proj_shadow_idx;      // this projector's shadow slot (0..N-1)
 uniform float godray_multiplier;    // per-projector brightness (global or override multiplier)
+uniform float projvol_max_distance; // shaft length: metres along the projector axis;
+                                    // 0 = full range. This is the PROJECTOR's own
+                                    // artist lever (global or per-cone override), not
+                                    // a Voxel Air setting - it clips only this light's
+                                    // injected contribution so the slider stays live
+                                    // when cones are demoted to grid injection.
 uniform float projvol_g;            // Henyey-Greenstein anisotropy (forward scatter)
 uniform float projvol_feather;      // angular cone-edge softness (0 = hard)
 
@@ -178,6 +184,14 @@ void main()
     vec4  proj_tc;
     float dist, l_dist;
     if (clipProjectedLightVars(center, vpos, dist, l_dist, lv, proj_tc))
+    {
+        frag_color = vec4(0.0);
+        return;
+    }
+    // Shaft-length cap (projector lever, override-aware): drop this light's airborne
+    // contribution past the cap so the Shaft length slider works identically whether
+    // the beam marches per-cone or rides the froxel grid. Air froxels are untouched.
+    if (projvol_max_distance > 0.0 && l_dist > projvol_max_distance)
     {
         frag_color = vec4(0.0);
         return;

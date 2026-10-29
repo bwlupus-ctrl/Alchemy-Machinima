@@ -27,6 +27,19 @@
 #include "llviewerprecompiledheaders.h"
 #include "llghostavatar.h"
 
+// [AutoAnimate] Cache facts are copied; no cache-owned pointers survive a call.
+#include "llkeyframemotion.h"
+#include "llframetimer.h"
+#include "llcharacter.h"
+#include "llmotioncontroller.h"
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstddef> // [AutoAnimate]
+#include <ratio>
+#include <sstream>
+#include <utility>
+
 #include "alghoststudio.h"
 #include "alghostattachmentenumerator.h"
 #include "alghostmaterialresolver.h"
@@ -79,6 +92,878 @@ static std::vector<LLUUID> sPaletteTestHarnessGhostIds;
 // through, including the palette test harness). Entries are plain ids, so a
 // stale one simply fails to resolve and behaves exactly as a miss.
 static boost::unordered_map<LLUUID, LLUUID> sClonePrimToSourcePrim;
+
+// [AutoAnimate] Everything below is entered only for an enabled instance.
+namespace
+{
+using namespace ALGhostAutoAnim;
+F64 sAutoAnimRecordMicros = 0.0, sAutoAnimScheduleMicros = 0.0;
+struct AutoAnimCostScope
+{
+    explicit AutoAnimCostScope(F64& total) : mTotal(total), mStart(std::chrono::steady_clock::now()) {}
+    ~AutoAnimCostScope()
+    { mTotal += std::chrono::duration<F64, std::micro>(std::chrono::steady_clock::now() - mStart).count(); }
+    F64& mTotal;
+    std::chrono::steady_clock::time_point mStart;
+};
+bool facts_for(const LLUUID& id, AnimFacts& facts)
+{
+    const LLKeyframeMotion::JointMotionList* data = LLKeyframeDataCache::getKeyframeData(id);
+    if (!data) return false;
+    facts.loop_asset = data->mLoop; facts.dur = data->mDuration;
+    facts.ease_in = data->mEaseInDuration; facts.prio = static_cast<S32>(data->mBasePriority);
+    std::vector<std::string> joints;
+    joints.reserve(data->mJointMotionArray.size());
+    for (const auto* joint : data->mJointMotionArray) if (joint && joint->mUsage) joints.push_back(joint->mJointName);
+    facts.layer = classifyLayer(joints);
+    return true;
+}
+bool autoAnimExcluded(const LLUUID& id)
+{
+    if (!gAnimLibrary.animStateToString(id)) return false;
+    for (S32 i = 0; i < NUM_AGENT_STAND_ANIMS; ++i) if (id == AGENT_STAND_ANIMS[i]) return false;
+    return true;
+}
+const char* autoAnimGated(LLVOAvatar* source)
+{
+    if (!source || source->isDead()) return "";
+    const auto& signals = source->mSignaledAnimations;
+    if (source->isSitting()) return "sit";
+    for (const LLUUID& id : {ANIM_AGENT_SIT, ANIM_AGENT_SIT_FEMALE, ANIM_AGENT_SIT_GENERIC,
+         ANIM_AGENT_SIT_GROUND, ANIM_AGENT_SIT_GROUND_CONSTRAINED, ANIM_AGENT_SIT_TO_STAND, ANIM_AGENT_STANDUP})
+        if (signals.count(id)) return "sit";
+    if (source->getID() == gAgent.getID() && gAgent.getFlying()) return "flying";
+    for (const LLUUID& id : {ANIM_AGENT_FLY, ANIM_AGENT_FLYSLOW, ANIM_AGENT_HOVER, ANIM_AGENT_HOVER_UP,
+         ANIM_AGENT_HOVER_DOWN, ANIM_AGENT_PRE_JUMP, ANIM_AGENT_JUMP, ANIM_AGENT_LAND, ANIM_AGENT_MEDIUM_LAND, ANIM_AGENT_FALLDOWN})
+        if (signals.count(id)) return "air";
+    if (source->getVelocity().length() > 0.3f) return "speed";
+    // [AutoAnimate] AGENT_WALK_ANIMS also contains stationary turns.
+    for (S32 i = 0; i < NUM_AGENT_WALK_ANIMS; ++i)
+        if (AGENT_WALK_ANIMS[i] != ANIM_AGENT_TURNLEFT && AGENT_WALK_ANIMS[i] != ANIM_AGENT_TURNRIGHT &&
+            signals.count(AGENT_WALK_ANIMS[i])) return "loco";
+    return "";
+}
+void autoAnimPrefetch(const ChannelPool* pool, LLCharacter* character, const std::string& channel)
+{
+    if (!pool || !character) return;
+    // Process-wide, including crowds. Failed fetches can retry after 60 seconds.
+    static std::map<LLUUID, F64> requested;
+    const F64 now = LLFrameTimer::getTotalSeconds();
+    for (auto it = requested.begin(); it != requested.end();)
+    {
+        if (LLKeyframeDataCache::getKeyframeData(it->first) || now - it->second >= 60.0) it = requested.erase(it);
+        else ++it;
+    }
+    for (const Entry& entry : pool->entries)
+    {
+        if (LLKeyframeDataCache::getKeyframeData(entry.id) || requested.count(entry.id)) continue;
+        requested.emplace(entry.id, now);
+        character->createMotion(entry.id); // Created stopped: fetch without activation.
+        LL_INFOS("GhostStudio") << "AUTOANIM-FETCH id=" << entry.id << " ch=" << channel << LL_ENDL;
+    }
+}
+void autoAnimSkip(const LLUUID& id, const char* reason)
+{
+    static std::map<std::pair<LLUUID, std::string>, F64> logged;
+    const F64 now = LLFrameTimer::getTotalSeconds();
+    const auto key = std::make_pair(id, std::string(reason));
+    const auto found = logged.find(key);
+    if (found == logged.end() || now - found->second >= 60.0)
+    {
+        logged[key] = now;
+        LL_INFOS("GhostStudio") << "AUTOANIM-SKIP " << id << ' ' << reason << LL_ENDL;
+    }
+}
+bool autoAnimResident(const LLUUID& id)
+{
+    if (LLKeyframeDataCache::getKeyframeData(id)) return true;
+    autoAnimSkip(id, "unloaded");
+    return false;
+}
+F32 autoAnimLossGrace()
+{
+    static LLCachedControl<F32> grace(gSavedSettings, "GhostAutoAnimateLossGrace", 1.5f);
+    const F32 value = grace;
+    return std::isfinite(value) ? llclamp(value, 0.25f, 10.f) : 1.5f;
+}
+void autoAnimMerge(AnimMap& merged, const AnimMap& prim)
+{
+    for (const auto& animation : prim)
+    {
+        auto found = merged.find(animation.first);
+        if (found == merged.end()) merged.insert(animation);
+        else found->second = std::max(found->second, animation.second);
+    }
+}
+}
+
+struct LLGhostAvatar::AutoAnimRuntime
+{
+    struct Channel
+    {
+        LinksetKey key;
+        std::string name = "body";
+        std::unique_ptr<ChannelRecorder> recorder;
+        ChannelScheduler scheduler;
+        ChannelClock clock;
+        AnimMap last, merged;
+        std::map<LLUUID, U32> refcounts;
+        std::set<LLUUID> changedIds; // Keep the MSVC tree sentinel across frames.
+        std::vector<AnimMap> primLast;
+        std::vector<LLUUID> pending;
+        std::vector<LLUUID> removed;
+        std::vector<LLUUID> retired; // [AutoAnimate] One-shot retirements are excluded from the POP audit.
+        U8 autonomy = AUTONOMY_NONE;
+        F64 absentSince = -1.0, presentSince = -1.0;
+        F64 fetchDue = 0.0;
+        bool baseline = false, paused = false, bindPending = false, cold = false;
+        bool bound = false, noPoolLogged = false;
+        bool overflowLogged = false;
+        std::string kind = "manual", absent = "null";
+        const ChannelPool* pool = nullptr;
+        AnimMap adoption;
+        F64 handoffTime = 0.0; // [AutoAnimate] Real-time audit includes the following 2 s.
+        U32 oursStopped = 0;
+        U32 carried = 0;
+        bool auditHandoff = false;
+        std::string clockName;
+        mutable U8 detailAutonomy = 255; // [AutoAnimate] Cached tooltip inputs.
+        mutable bool detailThin = false;
+    };
+    Config config;
+    std::shared_ptr<const Pool> pool, published, incoming;
+    Channel body;
+    std::map<LLUUID, Channel> links;
+    std::vector<Action> actions;
+    bool learning = false, simloss = false, gated = false;
+    F32 observed = 0.f, checkpoint = 0.f;
+    F64 lastTick = 0.0, settleUntil = 0.0;
+    std::string gateReason;
+    mutable std::string statusDetail, statusGate;
+    mutable S32 statusMode = -1;
+    mutable size_t statusChannels = 0;
+
+    void startRecorder(Channel& channel)
+    {
+        channel.recorder.reset(new ChannelRecorder(static_cast<U32>(llclamp(gSavedSettings.getS32("GhostAutoAnimateMaxAnims"), 8, 64))));
+        if (channel.pool) channel.recorder->seedFrom(*channel.pool);
+        channel.last.clear(); channel.pending.clear(); channel.baseline = true; // [AutoAnimate] First starts are unknown.
+        channel.paused = false; channel.noPoolLogged = false; channel.overflowLogged = false;
+    }
+    void retryPending(Channel& channel, bool sealing)
+    {
+        for (auto it = channel.pending.begin(); it != channel.pending.end();)
+        {
+            AnimFacts facts;
+            if (facts_for(*it, facts))
+            {
+                channel.recorder->resolveFacts(*it, facts);
+                it = channel.pending.erase(it);
+            }
+            else if (sealing || !channel.recorder->hasPendingFacts(*it))
+            {
+                autoAnimSkip(*it, "uncached");
+                it = channel.pending.erase(it);
+            }
+            else ++it;
+        }
+    }
+    void record(Channel& channel, const AnimMap& signals, F64 now, F32 dt, bool present, bool baselineOnly)
+    {
+        if (!channel.recorder) return;
+        const bool pause = !present || gated || channel.autonomy != AUTONOMY_NONE;
+        if (pause)
+        {
+            if (!channel.paused) channel.recorder->onGateEnter(now);
+            channel.paused = true; channel.baseline = true; channel.pending.clear(); return;
+        }
+        if (channel.paused) { channel.recorder->onGateExit(); channel.paused = false; }
+        channel.recorder->addObserved(dt);
+        if (!channel.pending.empty()) retryPending(channel, false); // [AutoAnimate] Cache arrivals need no signal diff.
+        if (baselineOnly || channel.baseline)
+        {
+            if (!baselineOnly) for (const auto& signal : signals)
+            {
+                if (autoAnimExcluded(signal.first)) continue;
+                AnimFacts facts;
+                if (facts_for(signal.first, facts)) channel.recorder->onBaseline(signal.first, facts, now);
+                else if (channel.pending.size() < 16)
+                {
+                    channel.pending.push_back(signal.first);
+                    channel.recorder->onPending(signal.first, now, false, true);
+                }
+            }
+            if (channel.last != signals) channel.last = signals;
+            channel.baseline = baselineOnly; return;
+        }
+        if (channel.last != signals)
+        {
+            for (const auto& old : channel.last)
+                if (!signals.count(old.first) && !autoAnimExcluded(old.first)) channel.recorder->onStop(old.first, now);
+            for (const auto& signal : signals)
+            {
+                if (autoAnimExcluded(signal.first)) continue;
+                const auto old = channel.last.find(signal.first);
+                if (old != channel.last.end() && old->second == signal.second) continue;
+                AnimFacts facts;
+                const U8 kind = old == channel.last.end() ? U8(0) : U8(2);
+                if (facts_for(signal.first, facts))
+                {
+                    if (kind == 0) channel.recorder->onStart(signal.first, facts, now);
+                    else channel.recorder->onRetrigger(signal.first, facts, now);
+                }
+                else
+                {
+                    const bool pending = std::find(channel.pending.begin(), channel.pending.end(), signal.first) != channel.pending.end();
+                    if (pending || channel.pending.size() < 16)
+                    {
+                        if (!pending) channel.pending.push_back(signal.first);
+                        channel.recorder->onPending(signal.first, now, kind == 2);
+                    }
+                }
+            }
+            channel.last = signals;
+        }
+        channel.recorder->flush(now);
+        if (channel.recorder->takeOverflow() && !channel.overflowLogged)
+        {
+            channel.overflowLogged = true;
+            LL_WARNS("GhostStudio") << "AUTOANIM-GATE buffer overflow: oldest event folded early ch=" << channel.name << LL_ENDL;
+        }
+    }
+    std::shared_ptr<const Pool> snapshot(F64 now, bool seal, const char* reason, const LLUUID& runtime)
+    {
+        if (!learning) return pool;
+        auto result = std::make_shared<Pool>(); result->mObservedSeconds = observed; result->mSealed = seal;
+        auto capture = [&](Channel& channel)
+        {
+            retryPending(channel, seal);
+            channel.recorder->flush(now, seal);
+            ChannelPool saved = channel.recorder->snapshot(now);
+            if (seal) // [AutoAnimate] Verdicts describe a real seal, never a checkpoint.
+            {
+                U32 states = 0, oneshots = 0;
+                for (const Entry& entry : saved.entries) { if (entry.state) ++states; else ++oneshots; }
+                LL_INFOS("GhostStudio") << "AUTOANIM-SEAL ch=" << channel.name << " states=" << states
+                    << " oneshots=" << oneshots << " groups=" << saved.groups.size() << " switches=" << saved.switches
+                    << " observed=" << saved.observed_s << LL_ENDL;
+                if (saved.observed_s == 0.f) LL_INFOS("GhostStudio") << "AUTOANIM-NODATA ch=" << channel.name << LL_ENDL;
+                if (saved.thin) LL_INFOS("GhostStudio") << "AUTOANIM-POOL THIN ch=" << channel.name
+                    << " reason=too few replacements; AO timer probably longer than window" << LL_ENDL;
+            }
+            else LL_INFOS("GhostStudio") << "AUTOANIM-CHECKPOINT ch=" << channel.name
+                << " observed=" << saved.observed_s << " reason=" << reason << LL_ENDL;
+            return saved;
+        };
+        result->mBody = capture(body);
+        for (auto& pair : links) result->mAnimesh.emplace_back(pair.second.key, capture(pair.second));
+        pool = result; published = result;
+        // Repoint channel facts while retaining existing scheduler bindings until their handoff.
+        body.pool = &pool->mBody;
+        for (auto& pair : links) pair.second.pool = pool->findAnimesh(pair.second.key);
+        if (seal)
+        {
+            learning = false; body.recorder.reset();
+            for (auto& pair : links) pair.second.recorder.reset();
+            LL_INFOS("GhostStudio") << "AUTOANIM-LEARN seal inst=" << config.mInstanceId << " rt=" << runtime
+                << " window=" << config.mWindowSeconds << " observed=" << observed << " reason=" << reason << LL_ENDL;
+        }
+        return result;
+    }
+    void presence(Channel& channel, bool present, const char* absence, F64 now, const LLUUID& runtime)
+    {
+        static LLCachedControl<bool> recouple(gSavedSettings, "GhostAutoAnimateRecouple", true);
+        if (present)
+        {
+            if (channel.presentSince < 0.0) channel.presentSince = now;
+            if (channel.autonomy == AUTONOMY_AUTO_LOST && recouple &&
+                now - channel.presentSince >= RECOUPLE_DEBOUNCE)
+            {
+                LL_INFOS("GhostStudio") << "AUTOANIM-RECOUPLE ch=" << channel.name << " absent="
+                    << (channel.absentSince >= 0.0 ? now - channel.absentSince : 0.0) << LL_ENDL;
+                channel.autonomy = AUTONOMY_NONE; channel.bound = false; channel.bindPending = false;
+                channel.cold = false;
+                channel.auditHandoff = false; // [AutoAnimate] Recouple permits the ensuing mirror stops.
+                channel.scheduler.unbind();
+                channel.baseline = true; channel.noPoolLogged = false;
+                if (learning)
+                    LL_INFOS("GhostStudio") << "AUTOANIM-LEARN resume inst=" << config.mInstanceId << " rt=" << runtime
+                        << " window=" << config.mWindowSeconds << " observed=" << observed << " reason=window" << LL_ENDL;
+            }
+            if (channel.autonomy == AUTONOMY_NONE) { channel.absentSince = -1.0; channel.noPoolLogged = false; }
+            return;
+        }
+        channel.presentSince = -1.0;
+        if (channel.absentSince < 0.0) channel.absentSince = now;
+        channel.absent = absence;
+        if (channel.autonomy != AUTONOMY_NONE || channel.noPoolLogged ||
+            now - channel.absentSince < autoAnimLossGrace()) return;
+        snapshot(now, false, "loss", runtime);
+        if (!channel.pool || channel.pool->entries.empty())
+        {
+            channel.noPoolLogged = true;
+            LL_INFOS("GhostStudio") << "AUTOANIM-HANDOFF ch=" << channel.name
+                << " kind=auto verdict=NOPOOL carried=" << channel.carried << " ours_stopped=0 clock="
+                << (channel.name == "body" ? "body" : "cav") << " absent=" << absence << LL_ENDL;
+            return;
+        }
+        channel.autonomy = AUTONOMY_AUTO_LOST; channel.bindPending = true; channel.kind = "auto";
+    }
+    void bind(Channel& channel, const AnimMap& current, F64 now, LLCharacter* character, const std::string& clockName)
+    {
+        if (!channel.bindPending) return;
+        channel.bindPending = false;
+        channel.adoption.clear(); channel.handoffTime = LLFrameTimer::getTotalSeconds(); channel.oursStopped = 0;
+        // [AutoAnimate] Natural expiry is not evidence of a stop by our code.
+        // Snapshot only motions actually playing at handoff, then audit stop requests.
+        for (const auto& animation : current)
+            if (character->isMotionActive(animation.first)) channel.adoption.insert(animation);
+        channel.carried = static_cast<U32>(current.size());
+        channel.auditHandoff = true; channel.clockName = clockName;
+        const char* verdict = !channel.pool || channel.pool->entries.empty() ? "NOPOOL" :
+            channel.cold ? "COLD" : current.empty() ? "EMPTY-ADOPT" : "ok";
+        channel.bound = channel.pool && !channel.pool->entries.empty();
+        if (channel.bound)
+        {
+            const std::string seedKey = channel.name == "body" ? channel.name : channel.name + "/" + channel.key.item.asString();
+            channel.scheduler.bind(std::shared_ptr<const ChannelPool>(pool, channel.pool), config.mInstanceId, config.mSeedSalt, seedKey);
+            channel.scheduler.adopt(current, now, facts_for);
+            if (channel.cold) channel.scheduler.markCold();
+            autoAnimPrefetch(channel.pool, character, channel.name); channel.fetchDue = LLFrameTimer::getTotalSeconds() + 60.0;
+        }
+        LL_INFOS("GhostStudio") << "AUTOANIM-HANDOFF ch=" << channel.name << " kind=" << channel.kind
+            << " verdict=" << verdict << " carried=" << current.size() << " ours_stopped=0 clock=" << clockName
+            << " absent=" << channel.absent << LL_ENDL;
+        channel.cold = false;
+    }
+    void disarmAudit() // [AutoAnimate] User transitions permit stops on every channel.
+    {
+        body.auditHandoff = false;
+        for (auto& pair : links) pair.second.auditHandoff = false;
+    }
+    void auditStop(Channel& channel, const LLUUID& id, LLCharacter& character)
+    {
+        if (!channel.auditHandoff) return;
+        if (LLFrameTimer::getTotalSeconds() - channel.handoffTime > 2.0)
+        { channel.auditHandoff = false; channel.adoption.clear(); return; }
+        if (channel.adoption.count(id) && character.isMotionActive(id)) // [AutoAnimate] Check at the stop, not just adoption.
+        {
+            ++channel.oursStopped;
+            LL_WARNS("GhostStudio") << "AUTOANIM-HANDOFF ch=" << channel.name << " kind=" << channel.kind
+                << " verdict=POP carried=" << channel.carried << " ours_stopped=" << channel.oursStopped
+                << " clock=" << channel.clockName << " absent=" << channel.absent << LL_ENDL;
+        }
+    }
+};
+
+void LLGhostAvatar::setEntityAutoAnimate(const ALGhostAutoAnim::Config& config)
+{
+    if (!config.mEnabled)
+    {
+        if (!mAutoAnim) return;
+        mAutoAnim->disarmAudit(); // [AutoAnimate] Toggle-off permits the next mirror sync's stops.
+        for (ClonedLinkset& linkset : mClonedLinksets) linkset.mAutonomy = AUTONOMY_NONE;
+        mAutoAnim.reset(); return;
+    }
+    if (mAutoAnim)
+    {
+        if (config.mPool && config.mPool != mAutoAnim->config.mPool &&
+            config.mPool != mAutoAnim->pool && config.mPool != mAutoAnim->incoming)
+            mAutoAnim->incoming = config.mPool;
+        mAutoAnim->config = config; return;
+    }
+    mAutoAnim.reset(new AutoAnimRuntime);
+    AutoAnimRuntime& runtime = *mAutoAnim;
+    runtime.config = config; runtime.pool = config.mPool;
+    runtime.observed = runtime.pool ? runtime.pool->mObservedSeconds : 0.f;
+    runtime.checkpoint = runtime.observed; runtime.lastTick = LLFrameTimer::getTotalSeconds();
+    runtime.learning = !runtime.pool || !runtime.pool->mSealed;
+    runtime.body.pool = runtime.pool ? &runtime.pool->mBody : nullptr;
+    autoAnimRebindLinksets();
+    if (runtime.learning)
+    {
+        runtime.startRecorder(runtime.body);
+        LL_INFOS("GhostStudio") << "AUTOANIM-LEARN " << (runtime.pool ? "resume" : "start")
+            << " inst=" << config.mInstanceId << " rt=" << getID() << " window=" << config.mWindowSeconds
+            << " observed=" << runtime.observed << " reason=" << (runtime.pool ? "refresh" : "window") << LL_ENDL;
+    }
+    if (config.mManual)
+    {
+        runtime.actions.push_back(Action::GoAutonomous); runtime.body.cold = true;
+        for (auto& pair : runtime.links) pair.second.cold = true;
+    }
+}
+void LLGhostAvatar::autoAnimRebindLinksets()
+{
+    AutoAnimRuntime& runtime = *mAutoAnim;
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+        if (!root || !root->isAnimatedObject() || runtime.links.size() >= 32) continue;
+        auto& channel = runtime.links[linkset.mRoot];
+        channel.key.point = linkset.mAttachPoint; channel.key.item = linkset.mSourceItemId;
+        channel.key.prims = static_cast<U32>(1 + linkset.mChildren.size());
+        for (const ClonedLinkset& preceding : mClonedLinksets)
+        {
+            if (preceding.mRoot == linkset.mRoot) break;
+            if (preceding.mAttachPoint == linkset.mAttachPoint && preceding.mSourceItemId == linkset.mSourceItemId &&
+                preceding.mChildren.size() == linkset.mChildren.size()) ++channel.key.ordinal;
+        }
+        channel.name = channel.key.text(); channel.primLast.resize(1 + linkset.mSourceChildren.size());
+        bool weakMatch = false;
+        channel.pool = runtime.pool ? runtime.pool->findAnimesh(channel.key, &weakMatch) : nullptr;
+        if (weakMatch) LL_INFOS("GhostStudio") << "AUTOANIM-LOAD keyweak key=" << channel.name << LL_ENDL;
+        if (runtime.learning) runtime.startRecorder(channel);
+    }
+}
+F32 LLGhostAvatar::getAutoAnimWindow() const
+{
+    return mAutoAnim ? mAutoAnim->config.mWindowSeconds : 0.f;
+}
+void LLGhostAvatar::requestAutoAnimAction(ALGhostAutoAnim::Action action, bool cold)
+{
+    if (!mAutoAnim) return;
+    // [AutoAnimate] TRUE_MIRROR's manual transition belongs only to this pending action.
+    if (action == Action::GoAutonomous && cold) mAutoAnim->body.cold = true;
+    if (action == Action::Relearn) mAutoAnim->published.reset();
+    mAutoAnim->actions.push_back(action);
+}
+bool LLGhostAvatar::takeAutoAnimPublishedPool(std::shared_ptr<const ALGhostAutoAnim::Pool>& pool)
+{
+    if (!mAutoAnim || !mAutoAnim->published) return false;
+    pool = std::move(mAutoAnim->published); return true;
+}
+std::shared_ptr<const ALGhostAutoAnim::Pool> LLGhostAvatar::exportAutoAnimProgress()
+{
+    if (!mAutoAnim) return {};
+    if (std::find(mAutoAnim->actions.begin(), mAutoAnim->actions.end(), Action::Relearn) != mAutoAnim->actions.end()) return {};
+    return mAutoAnim->snapshot(LLFrameTimer::getTotalSeconds(), false, "refresh", getID());
+}
+void LLGhostAvatar::autoAnimRecordTick()
+{
+    AutoAnimRuntime& runtime = *mAutoAnim;
+    const F64 now = LLFrameTimer::getTotalSeconds();
+    const F32 dt = static_cast<F32>(std::max(0.0, now - runtime.lastTick)); runtime.lastTick = now;
+    auto expireAudit = [](AutoAnimRuntime::Channel& channel)
+    {
+        if (channel.auditHandoff && LLFrameTimer::getTotalSeconds() - channel.handoffTime > 2.0)
+        { channel.auditHandoff = false; channel.adoption.clear(); }
+    };
+    expireAudit(runtime.body); for (auto& pair : runtime.links) expireAudit(pair.second);
+    LLViewerObject* object = gObjectList.findObject(mAnimationSourceId);
+    LLVOAvatar* source = object ? object->asAvatar() : nullptr;
+    if (runtime.simloss) source = nullptr;
+    const std::string gate = autoAnimGated(source);
+    if (runtime.gated != !gate.empty())
+    {
+        U32 discarded = 0;
+        runtime.gated = !gate.empty();
+        if (runtime.gated)
+        {
+            runtime.gateReason = gate;
+            auto gateChannel = [&](AutoAnimRuntime::Channel& channel)
+            {
+                if (channel.recorder) discarded += channel.recorder->onGateEnter(now);
+                channel.pending.clear(); channel.paused = true; channel.baseline = true;
+            };
+            gateChannel(runtime.body); for (auto& pair : runtime.links) gateChannel(pair.second);
+        }
+        else runtime.settleUntil = now + 1.0;
+        LL_INFOS("GhostStudio") << "AUTOANIM-GATE " << (runtime.gated ? "on" : "off")
+            << " reason=" << runtime.gateReason << " discarded=" << discarded << LL_ENDL;
+    }
+    if (runtime.incoming)
+    {
+        runtime.pool = std::move(runtime.incoming); runtime.published = runtime.pool;
+        runtime.learning = false; runtime.observed = runtime.pool->mObservedSeconds;
+        auto load = [&](AutoAnimRuntime::Channel& channel, const ChannelPool* pool)
+        {
+            channel.recorder.reset(); channel.pending.clear(); channel.pool = pool;
+            if (channel.autonomy != AUTONOMY_NONE) { channel.bindPending = true; channel.kind = "load"; }
+        };
+        load(runtime.body, &runtime.pool->mBody);
+        for (auto& pair : runtime.links)
+        {
+            auto& channel = pair.second; bool weakMatch = false;
+            load(channel, runtime.pool->findAnimesh(channel.key, &weakMatch));
+            if (weakMatch) LL_INFOS("GhostStudio") << "AUTOANIM-LOAD keyweak key=" << channel.name << LL_ENDL;
+        }
+        for (const auto& saved : runtime.pool->mAnimesh)
+            if (std::none_of(runtime.links.begin(), runtime.links.end(), [&saved](const auto& pair) { return pair.second.key.matches(saved.first); }))
+                LL_INFOS("GhostStudio") << "AUTOANIM-LOAD skip key=" << saved.first.text() << LL_ENDL;
+    }
+    for (Action action : runtime.actions)
+    {
+        if (action == Action::SimLossToggle)
+        {
+            runtime.simloss = !runtime.simloss;
+            LL_INFOS("GhostStudio") << "AUTOANIM-SIMLOSS " << (runtime.simloss ? "on" : "off") << " rt=" << getID() << LL_ENDL;
+            continue;
+        }
+        if (action == Action::StopLearning || action == Action::GoAutonomous)
+            runtime.snapshot(now, true, action == Action::GoAutonomous ? "manual" : "stopnow", getID());
+        if (action == Action::Relearn)
+        {
+            runtime.pool.reset(); runtime.published.reset(); runtime.observed = 0.f; runtime.checkpoint = 0.f;
+            runtime.learning = true;
+            LL_INFOS("GhostStudio") << "AUTOANIM-LEARN start inst=" << runtime.config.mInstanceId << " rt=" << getID()
+                << " window=" << runtime.config.mWindowSeconds << " observed=0 reason=window" << LL_ENDL;
+        }
+        auto act = [&](AutoAnimRuntime::Channel& channel)
+        {
+            if (action == Action::FollowSource || action == Action::Relearn)
+            {
+                channel.autonomy = AUTONOMY_NONE; channel.bound = false; channel.bindPending = false;
+                channel.cold = false;
+                channel.auditHandoff = false; // [AutoAnimate] Follow/Relearn permit the ensuing mirror stops.
+                channel.scheduler.unbind();
+                channel.absentSince = -1.0; channel.presentSince = -1.0; channel.noPoolLogged = false;
+                if (action == Action::Relearn) { channel.pool = nullptr; runtime.startRecorder(channel); }
+            }
+            else if (action == Action::GoAutonomous)
+            { channel.autonomy = AUTONOMY_MANUAL; channel.bindPending = true; channel.kind = "manual"; }
+            else if (action == Action::Reseed && channel.autonomy != AUTONOMY_NONE)
+            { channel.bindPending = true; channel.kind = "manual"; }
+        };
+        act(runtime.body); for (auto& pair : runtime.links) act(pair.second);
+    }
+    runtime.actions.clear();
+    if (!runtime.learning) return;
+    AutoAnimCostScope cost(sAutoAnimRecordMicros);
+    const bool mirror = mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR || mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR;
+    const bool present = mirror && source && !source->isDead();
+    const bool settling = now < runtime.settleUntil;
+    if (present && !source->mSignaledAnimations.empty() && !runtime.gated && !settling && runtime.body.autonomy == AUTONOMY_NONE)
+        runtime.observed = std::min(3600.f, runtime.observed + dt);
+    static const AnimMap empty;
+    // Empty signals must still produce stop events during grace (gap-style AOs).
+    runtime.record(runtime.body, present ? source->mSignaledAnimations : empty, now,
+        settling || !present || source->mSignaledAnimations.empty() ? 0.f : dt, present, settling);
+    const auto& objects = LLObjectSignaledAnimationMap::instance().getMap();
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        auto found = runtime.links.find(linkset.mRoot); if (found == runtime.links.end()) continue;
+        auto& channel = found->second;
+        auto& changedIds = channel.changedIds;
+        auto read = [&](const LLUUID& id, size_t index)
+        {
+            const auto signal = objects.find(id);
+            const AnimMap& map = signal == objects.end() ? empty : signal->second;
+            AnimMap& previous = channel.primLast[index];
+            if (previous == map) return;
+            for (const auto& old : previous)
+            {
+                const auto current = map.find(old.first);
+                if (current == map.end())
+                {
+                    auto count = channel.refcounts.find(old.first);
+                    if (count != channel.refcounts.end() && count->second) --count->second;
+                    changedIds.insert(old.first);
+                }
+                else if (old.second != current->second) changedIds.insert(old.first);
+            }
+            for (const auto& current : map)
+                if (!previous.count(current.first)) { ++channel.refcounts[current.first]; changedIds.insert(current.first); }
+            previous = map;
+        };
+        read(linkset.mSourceRoot, 0);
+        for (size_t i = 0; i < linkset.mSourceChildren.size(); ++i) read(linkset.mSourceChildren[i], i + 1);
+        for (const LLUUID& id : changedIds)
+        {
+            const auto count = channel.refcounts.find(id);
+            if (count == channel.refcounts.end() || !count->second)
+            { channel.merged.erase(id); channel.refcounts.erase(id); continue; }
+            bool first = true;
+            S32 sequence = 0;
+            for (const AnimMap& prim : channel.primLast)
+            {
+                const auto signal = prim.find(id);
+                if (signal != prim.end()) { sequence = first ? signal->second : std::max(sequence, signal->second); first = false; }
+            }
+            channel.merged[id] = sequence;
+        }
+        changedIds.clear();
+        LLViewerObject* root = gObjectList.findObject(linkset.mSourceRoot);
+        runtime.record(channel, channel.merged, now, settling || channel.merged.empty() ? 0.f : dt,
+            present && root && !root->isDead(), settling);
+    }
+    if (runtime.observed >= runtime.config.mWindowSeconds) runtime.snapshot(now, true, "window", getID());
+    else if (runtime.observed - runtime.checkpoint >= 30.f)
+    {
+        runtime.snapshot(now, false, "checkpoint", getID()); runtime.checkpoint = runtime.observed;
+    }
+}
+void LLGhostAvatar::autoAnimBodyPresence(LLVOAvatar* source)
+{
+    bool nonempty = false;
+    if (source && !source->isDead())
+        for (const auto& signal : source->mSignaledAnimations)
+            if (signal.first != ANIM_AGENT_SIT_GROUND && signal.first != ANIM_AGENT_SIT_GROUND_CONSTRAINED) { nonempty = true; break; }
+    const bool present = source && !source->isDead() && (nonempty || *autoAnimGated(source));
+    const char* absence = !source ? "null" : source->isDead() ? "dead" : "empty";
+    mAutoAnim->body.carried = static_cast<U32>(mCloneDesiredAnimations.size());
+    mAutoAnim->presence(mAutoAnim->body, present, absence, LLFrameTimer::getTotalSeconds(), getID());
+}
+void LLGhostAvatar::autoAnimBodyStep()
+{
+    AutoAnimCostScope cost(sAutoAnimScheduleMicros);
+    auto& channel = mAutoAnim->body;
+    const F64 now = getMotionController().getAnimTime();
+    mAutoAnim->bind(channel, mCloneDesiredAnimations, now, this, "body");
+    if (!channel.bound) return;
+    if (LLFrameTimer::getTotalSeconds() >= channel.fetchDue)
+    { autoAnimPrefetch(channel.pool, this, channel.name); channel.fetchDue = LLFrameTimer::getTotalSeconds() + 60.0; }
+    const bool changed = channel.scheduler.tick(now, autoAnimResident, channel.removed, &channel.retired);
+    // [AutoAnimate] Retired shots leave the audit ledger before any explicit or implicit stop.
+    for (const LLUUID& id : channel.retired) channel.adoption.erase(id);
+    channel.cold = false;
+    if (changed)
+    {
+        for (const LLUUID& id : channel.removed)
+        {
+            if (channel.adoption.count(id)) mAutoAnim->auditStop(channel, id, *this); // [AutoAnimate] Excludes retirements.
+            LLCharacter::stopMotion(id, false);
+            mClonePlayingAnimations.erase(id); mCloneDesiredAnimations.erase(id);
+        }
+        AnimMap desired = channel.scheduler.desired();
+        // [AutoAnimate] HEAD clears the ledger on a COLD body exit. Animations
+        // running at handoff but absent from the pool are dropped at COLD;
+        // they cannot be reissued from a learned pick. Live foreign ids stay held.
+        for (auto it = desired.begin(); it != desired.end();)
+        {
+            if (!mCloneDesiredAnimations.count(it->first) &&
+                (!channel.scheduler.owns(it->first) || !LLKeyframeDataCache::getKeyframeData(it->first))) it = desired.erase(it);
+            else ++it;
+        }
+        autoAnimSyncBody(desired);
+    }
+}
+bool LLGhostAvatar::autoAnimLinksetStep(ClonedLinkset& linkset)
+{
+    auto found = mAutoAnim->links.find(linkset.mRoot);
+    if (found == mAutoAnim->links.end()) return false;
+    auto& channel = found->second;
+    const auto& objects = LLObjectSignaledAnimationMap::instance().getMap();
+    LLViewerObject* sourceRoot = gObjectList.findObject(linkset.mSourceRoot);
+    bool signal = false;
+    auto nonempty = [&](const LLUUID& id)
+    { const auto entry = objects.find(id); return entry != objects.end() && !entry->second.empty(); };
+    signal = nonempty(linkset.mSourceRoot);
+    for (const LLUUID& id : linkset.mSourceChildren) signal = signal || nonempty(id);
+    const bool gone = mAutoAnim->simloss || !sourceRoot || sourceRoot->isDead();
+    if ((gone || !signal) && channel.autonomy == AUTONOMY_NONE && !channel.noPoolLogged &&
+        channel.absentSince >= 0.0 && LLFrameTimer::getTotalSeconds() - channel.absentSince >=
+        autoAnimLossGrace())
+    {
+        AnimMap current;
+        auto count = [&](const LLUUID& id)
+        { const auto entry = objects.find(id); if (entry != objects.end()) autoAnimMerge(current, entry->second); };
+        count(linkset.mRoot); for (const LLUUID& id : linkset.mChildren) count(id);
+        channel.carried = static_cast<U32>(current.size());
+    }
+    mAutoAnim->presence(channel, !mAutoAnim->simloss && (mAutoAnim->gated || (!gone && signal)), gone ? "root" : "signal",
+        LLFrameTimer::getTotalSeconds(), getID());
+    linkset.mAutonomy = channel.autonomy;
+    if (channel.autonomy == AUTONOMY_NONE) return false;
+    AutoAnimCostScope cost(sAutoAnimScheduleMicros);
+    LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+    LLControlAvatar* control = root ? root->getControlAvatar() : nullptr;
+    if (!control || control->isDead()) return true;
+    if (channel.clock.sourceId() != control->getID())
+    {
+        LL_INFOS("GhostStudio") << "AUTOANIM-CLOCK rebase ch=" << channel.name << " cav=" << control->getID().asString().substr(0, 8) << LL_ENDL;
+        autoAnimPrefetch(channel.pool, control, channel.name);
+    }
+    const F64 now = channel.clock.sample(control->getMotionController().getAnimTime(), control->getID());
+    if (channel.bindPending)
+    {
+        AnimMap current;
+        auto read = [&](const LLUUID& id) { const auto entry = objects.find(id); if (entry != objects.end()) autoAnimMerge(current, entry->second); };
+        read(linkset.mRoot); for (const LLUUID& id : linkset.mChildren) read(id);
+        mAutoAnim->bind(channel, current, now, control, "cav:" + control->getID().asString().substr(0, 8));
+    }
+    if (!channel.bound) return true;
+    if (LLFrameTimer::getTotalSeconds() >= channel.fetchDue)
+    { autoAnimPrefetch(channel.pool, control, channel.name); channel.fetchDue = LLFrameTimer::getTotalSeconds() + 60.0; }
+    const bool changed = channel.scheduler.tick(now, autoAnimResident, channel.removed, &channel.retired);
+    // [AutoAnimate] Also excludes retirements from the later animesh loop's sync audit.
+    for (const LLUUID& id : channel.retired) channel.adoption.erase(id);
+    channel.cold = false;
+    if (changed)
+    {
+        applyAnimeshDesired(linkset, channel.scheduler.desired());
+    }
+    return true;
+}
+void LLGhostAvatar::applyAnimeshDesired(const ClonedLinkset& linkset, const ALGhostAutoAnim::AnimMap& desired)
+{
+    auto& objects = LLObjectSignaledAnimationMap::instance().getMap();
+    AnimMap current;
+    auto read = [&](const LLUUID& id) { const auto entry = objects.find(id); if (entry != objects.end()) autoAnimMerge(current, entry->second); };
+    read(linkset.mRoot); for (const LLUUID& id : linkset.mChildren) read(id);
+    bool changed = false;
+    auto erase = [&](const LLUUID& prim, const LLUUID& id)
+    { auto found = objects.find(prim); if (found != objects.end()) changed = found->second.erase(id) != 0 || changed; };
+    for (const auto& animation : current)
+        if (!desired.count(animation.first))
+        { erase(linkset.mRoot, animation.first); for (const LLUUID& child : linkset.mChildren) erase(child, animation.first); }
+    for (const auto& animation : desired)
+    {
+        auto old = current.find(animation.first);
+        if (old == current.end() || old->second != animation.second)
+        {
+            const auto channel = mAutoAnim->links.find(linkset.mRoot);
+            if (channel == mAutoAnim->links.end() || !channel->second.scheduler.owns(animation.first) ||
+                !LLKeyframeDataCache::getKeyframeData(animation.first)) continue;
+            for (const LLUUID& child : linkset.mChildren) erase(child, animation.first);
+            objects[linkset.mRoot][animation.first] = animation.second; changed = true;
+        }
+    }
+    LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+    if (changed && root && !root->isDead())
+    {
+        autoAnimAuditLinksetSync(linkset); // [AutoAnimate] Includes implicit stock sync stops.
+        root->updateControlAvatar();
+    }
+}
+// [AutoAnimate] Audit at callers so the protected ledger/sync implementations stay unchanged.
+void LLGhostAvatar::autoAnimSyncBody(const ALGhostAutoAnim::AnimMap& desired)
+{
+    if (mAutoAnim && mAutoAnim->body.auditHandoff)
+        for (const auto& playing : mClonePlayingAnimations)
+            if (!desired.count(playing.first) && mAutoAnim->body.adoption.count(playing.first))
+                mAutoAnim->auditStop(mAutoAnim->body, playing.first, *this); // [AutoAnimate]
+    synchronizeCloneAnimations(desired);
+}
+void LLGhostAvatar::autoAnimAuditBodyStop(const LLUUID& id)
+{
+    if (mAutoAnim) mAutoAnim->auditStop(mAutoAnim->body, id, *this); // [AutoAnimate]
+}
+void LLGhostAvatar::autoAnimAuditLinksetSync(const ClonedLinkset& linkset, bool clearing)
+{
+    if (!mAutoAnim) return;
+    const auto found = mAutoAnim->links.find(linkset.mRoot);
+    if (found == mAutoAnim->links.end() || !found->second.auditHandoff) return;
+    LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+    LLControlAvatar* control = root ? root->getControlAvatar() : nullptr;
+    if (!control || control->isDead()) return;
+    AnimMap desired;
+    if (!clearing)
+    {
+        const auto& objects = LLObjectSignaledAnimationMap::instance().getMap();
+        auto read = [&](const LLUUID& prim)
+        { const auto entry = objects.find(prim); if (entry != objects.end()) autoAnimMerge(desired, entry->second); };
+        read(linkset.mRoot); for (const LLUUID& child : linkset.mChildren) read(child);
+    }
+    // Stock processAnimationStateChanges stops exactly these playing ledger ids.
+    for (const auto& playing : control->mPlayingAnimations)
+        if (!desired.count(playing.first) && found->second.adoption.count(playing.first))
+            mAutoAnim->auditStop(found->second, playing.first, *control); // [AutoAnimate]
+}
+void LLGhostAvatar::restartEntityAnimationAudited()
+{
+    if (mAutoAnim)
+    {
+        if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED && mEntityDirectedAnim.notNull())
+            autoAnimAuditBodyStop(mEntityDirectedAnim);
+        else if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
+            for (const auto& playing : mClonePlayingAnimations)
+                if (mCloneDesiredAnimations.count(playing.first)) autoAnimAuditBodyStop(playing.first);
+    }
+    restartEntityAnimation();
+}
+void LLGhostAvatar::autoAnimOnDriveModeChanged(S32 old_mode, S32 mode)
+{
+    if (!mAutoAnim || old_mode == mode) return;
+    auto cold = [&](AutoAnimRuntime::Channel& channel, bool affected)
+    {
+        if (!affected) return;
+        // Dormant modes do not observe continuous presence/absence edges.
+        channel.absentSince = -1.0; channel.presentSince = -1.0;
+        if (channel.autonomy == AUTONOMY_NONE) return;
+        channel.scheduler.markCold(); channel.cold = true;
+        // Preserve the post-switch desired set, including any foreign ids.
+        channel.fetchDue = 0.0;
+        LL_INFOS("GhostStudio") << "AUTOANIM-HANDOFF ch=" << channel.name
+            << " kind=" << (channel.autonomy == AUTONOMY_MANUAL ? "manual" : "auto")
+            << " verdict=COLD carried=" << channel.scheduler.desired().size() << " ours_stopped=0 clock="
+            << (channel.name == "body" ? "body" : "cav") << " absent=mode" << LL_ENDL;
+    };
+    cold(mAutoAnim->body, old_mode == ALGhostStudio::DRIVE_MIRROR || mode == ALGhostStudio::DRIVE_MIRROR);
+    for (auto& pair : mAutoAnim->links) cold(pair.second,
+        mode == ALGhostStudio::DRIVE_DIRECTED || old_mode == ALGhostStudio::DRIVE_DIRECTED ||
+        mode == ALGhostStudio::DRIVE_FROZEN || old_mode == ALGhostStudio::DRIVE_FROZEN);
+}
+void LLGhostAvatar::getAutoAnimStatus(ALGhostAutoAnim::LearnStatus& status) const
+{
+    status = LearnStatus(); if (!mAutoAnim) return;
+    const auto& runtime = *mAutoAnim;
+    status.mOn = true; status.mLearning = runtime.learning; status.mGated = runtime.gated;
+    status.mObserved = runtime.observed; status.mWindow = runtime.config.mWindowSeconds;
+    status.mBodyAutonomous = runtime.body.autonomy != AUTONOMY_NONE;
+    status.mManual = runtime.body.autonomy == AUTONOMY_MANUAL;
+    // [AutoAnimate] Counting is cheap; format channel details only on a change.
+    static const std::string noGate;
+    const std::string& gate = runtime.gated ? runtime.gateReason : noGate;
+    bool detailChanged = runtime.statusMode != mEntityDriveMode || runtime.statusGate != gate ||
+        runtime.statusChannels != runtime.links.size();
+    auto count = [&](const AutoAnimRuntime::Channel& channel, bool body)
+    {
+        if (channel.recorder) status.mLiveEntries += channel.recorder->entryCount();
+        if (channel.pool)
+        {
+            status.mThin = status.mThin || channel.pool->thin;
+            if (body) for (const Entry& entry : channel.pool->entries) { if (entry.state) ++status.mBodyStates; else ++status.mBodyOneShots; }
+        }
+        const bool thin = channel.pool && channel.pool->thin;
+        detailChanged = detailChanged || channel.detailAutonomy != channel.autonomy || channel.detailThin != thin;
+        channel.detailAutonomy = channel.autonomy; channel.detailThin = thin;
+    };
+    count(runtime.body, true);
+    for (const auto& pair : runtime.links)
+    {
+        ++status.mAnimeshChannels;
+        if (pair.second.autonomy != AUTONOMY_NONE) ++status.mAnimeshAutonomous;
+        status.mManual = status.mManual || pair.second.autonomy == AUTONOMY_MANUAL;
+        count(pair.second, false);
+    }
+    if (detailChanged)
+    {
+        std::ostringstream detail;
+        auto append = [&](const AutoAnimRuntime::Channel& channel)
+        {
+            detail << channel.name << ": " << (channel.autonomy == AUTONOMY_MANUAL ? "manual" :
+                channel.autonomy == AUTONOMY_AUTO_LOST ? "automatic" : "source");
+            if (channel.detailThin) detail << " THIN: AO timer probably longer than window";
+            detail << '\n';
+        };
+        append(runtime.body); for (const auto& pair : runtime.links) append(pair.second);
+        if (runtime.gated) detail << "Paused: source " << runtime.gateReason << '\n';
+        if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED) detail << "(dormant: Directed)";
+        if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN) detail << "(dormant: Frozen)";
+        runtime.statusDetail = detail.str(); runtime.statusMode = mEntityDriveMode;
+        runtime.statusGate = gate; runtime.statusChannels = runtime.links.size();
+    }
+    status.mDetail = runtime.statusDetail;
+}
+void LLGhostAvatar::countAutoAnimActivity(U32& learners, U32& players) const
+{
+    if (!mAutoAnim) return;
+    if (mAutoAnim->learning) ++learners;
+    if (mAutoAnim->body.autonomy != AUTONOMY_NONE ||
+        std::any_of(mAutoAnim->links.begin(), mAutoAnim->links.end(), [](const auto& pair)
+            { return pair.second.autonomy != AUTONOMY_NONE; })) ++players;
+}
+void LLGhostAvatar::logAutoAnimCost(U32 learners, U32 players)
+{
+    static F64 last = LLFrameTimer::getTotalSeconds();
+    const F64 now = LLFrameTimer::getTotalSeconds();
+    if (now - last < 60.0) return;
+    if ((learners || players) && gSavedSettings.getBOOL("GhostAutoAnimateCostLog"))
+        LL_INFOS("GhostStudio") << "AUTOANIM-COST rec=" << sAutoAnimRecordMicros / (now - last)
+            << " sched=" << sAutoAnimScheduleMicros / (now - last) << " learners=" << learners << " players=" << players << LL_ENDL;
+    last = now; sAutoAnimRecordMicros = 0.0; sAutoAnimScheduleMicros = 0.0;
+}
 
 LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegion* regionp) :
     LLVOAvatar(id, pcode, regionp),
@@ -407,6 +1292,15 @@ void LLGhostAvatar::neutralizeEntityPhysicsParams()
     updateVisualParams();
 }
 
+void LLGhostAvatar::neutralizeEntityEyeParams()
+{
+    // LLEyeMotion::onDeactivate restores joints but not a blink caught between
+    // frames. Reopen both lids explicitly before relinquishing the motion.
+    setVisualParamWeight("Blink_Left", 0.f);
+    setVisualParamWeight("Blink_Right", 0.f);
+    updateVisualParams();
+}
+
 void LLGhostAvatar::setEntityCloneVisible(bool visible)
 {
     if (visible == mEntityCloneVisible)
@@ -422,11 +1316,44 @@ void LLGhostAvatar::setEntityCloneVisible(bool visible)
         {
             LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
         }
+        if (mEntityEyeMotionEnabled && !isMotionActive(ANIM_AGENT_EYE))
+        {
+            LLCharacter::startMotion(ANIM_AGENT_EYE);
+        }
     }
     else
     {
+        autoAnimAuditBodyStop(ANIM_AGENT_PHYSICS_MOTION); // [AutoAnimate]
         LLCharacter::stopMotion(ANIM_AGENT_PHYSICS_MOTION, true);
         neutralizeEntityPhysicsParams();
+        autoAnimAuditBodyStop(ANIM_AGENT_EYE); // [AutoAnimate]
+        LLCharacter::stopMotion(ANIM_AGENT_EYE, true);
+        neutralizeEntityEyeParams();
+    }
+}
+
+void LLGhostAvatar::setEntityEyeMotionEnabled(bool enabled)
+{
+    if (enabled == mEntityEyeMotionEnabled)
+    {
+        if (enabled && mEntityCloneVisible &&
+            !isMotionActive(ANIM_AGENT_EYE))
+        {
+            LLCharacter::startMotion(ANIM_AGENT_EYE);
+        }
+        return;
+    }
+
+    mEntityEyeMotionEnabled = enabled;
+    if (enabled && mEntityCloneVisible)
+    {
+        LLCharacter::startMotion(ANIM_AGENT_EYE);
+    }
+    else
+    {
+        autoAnimAuditBodyStop(ANIM_AGENT_EYE); // [AutoAnimate]
+        LLCharacter::stopMotion(ANIM_AGENT_EYE, true);
+        neutralizeEntityEyeParams();
     }
 }
 
@@ -453,6 +1380,7 @@ void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
     }
     else
     {
+        autoAnimAuditBodyStop(ANIM_AGENT_PHYSICS_MOTION); // [AutoAnimate]
         LLCharacter::stopMotion(ANIM_AGENT_PHYSICS_MOTION, true);
         if (!enabled)
         {
@@ -472,6 +1400,8 @@ void LLGhostAvatar::setEntityLook(S32 look, F32 alpha)
 
 void LLGhostAvatar::clearClonedObjectAnimations()
 {
+    // [AnimeshRepeat] Nothing latched survives an erase of every clone entry.
+    resetHeldAnimeshRepeat();
     object_signaled_animation_map_t& object_anims =
         LLObjectSignaledAnimationMap::instance().getMap();
     for (const ClonedLinkset& linkset : mClonedLinksets)
@@ -496,12 +1426,17 @@ void LLGhostAvatar::synchronizeCloneAnimations(
     // machinery: it performs a pure ledger diff and can only start/stop
     // motions in this synthetic avatar's own controller.  It has no agent,
     // simulator, sound, notification, sit, AO, or avatar-state branches.
+    // Start/stop semantics mirror LLVOAvatar::processAnimationStateChanges():
+    // an animation is stopped ONLY when the source stops signaling it.  A new
+    // sequence id for a still-signaled animation (AOs routinely re-assert their
+    // override every few seconds) must not stop it: stopMotion(immediate) then
+    // startMotion re-activates the motion at t=0, replaying a sit/lie intro
+    // forever ("stand, sit, stand...") while the source -- whose startMotion on
+    // an already-active motion keeps playing -- simply holds the pose.
     for (auto playing = mClonePlayingAnimations.begin();
          playing != mClonePlayingAnimations.end();)
     {
-        const auto desired = desired_animations.find(playing->first);
-        if (desired == desired_animations.end() ||
-            desired->second != playing->second)
+        if (desired_animations.find(playing->first) == desired_animations.end())
         {
             LLCharacter::stopMotion(playing->first, true);
             playing = mClonePlayingAnimations.erase(playing);
@@ -514,8 +1449,12 @@ void LLGhostAvatar::synchronizeCloneAnimations(
 
     for (const auto& desired : desired_animations)
     {
+        // Signaled but not playing, or a new sequence id: (re)request exactly
+        // like the stock path.  startMotion() does not rewind an active motion;
+        // on a finished one-shot it replays it -- the same thing the source does.
         const auto playing = mClonePlayingAnimations.find(desired.first);
-        if (playing == mClonePlayingAnimations.end())
+        if (playing == mClonePlayingAnimations.end() ||
+            playing->second != desired.second)
         {
             if (LLCharacter::startMotion(desired.first))
             {
@@ -529,13 +1468,26 @@ void LLGhostAvatar::synchronizeCloneAnimations(
 void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
 {
     mode = llclamp(mode, (S32)ALGhostStudio::DRIVE_MIRROR,
-                         (S32)ALGhostStudio::DRIVE_FROZEN);
+                         (S32)ALGhostStudio::DRIVE_TRUE_MIRROR);
     if (mode == mEntityDriveMode && directed_anim == mEntityDirectedAnim)
     {
         return;
     }
 
-    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN)
+    // [AutoAnimate] Disarm before this transition issues any body or linkset stops.
+    // Keep the existing post-transition COLD handling in autoAnimOnDriveModeChanged.
+    if (mAutoAnim) mAutoAnim->disarmAudit();
+
+    // [AnimeshRepeat] A drive-mode change re-derives every linkset's hold
+    // state from scratch on the next idleUpdate(); stale replay records must
+    // not carry a pending/seen flag across it.
+    resetHeldAnimeshRepeat();
+
+    // FROZEN and TRUE_MIRROR both hold the wearer's controller paused
+    // (TRUE_MIRROR never pauses the animesh control avatars, so that vector
+    // is simply empty for it).
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
     {
         mEntityPauseRequest = nullptr;
         mEntityControlPauseRequests.clear();
@@ -543,20 +1495,24 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED &&
         mEntityDirectedAnim.notNull())
     {
+        autoAnimAuditBodyStop(mEntityDirectedAnim); // [AutoAnimate]
         LLCharacter::stopMotion(mEntityDirectedAnim, true);
     }
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR &&
         mode != ALGhostStudio::DRIVE_MIRROR)
     {
-        synchronizeCloneAnimations(signaled_animation_map_t());
+        autoAnimSyncBody(signaled_animation_map_t()); // [AutoAnimate] Audit implicit stops.
     }
 
+    const S32 old_mode = mEntityDriveMode; // [AutoAnimate]
     mEntityDriveMode = mode;
     mEntityDirectedAnim = directed_anim;
     mEntityDirectedWasActive = false;
     if (mode == ALGhostStudio::DRIVE_DIRECTED)
     {
-        synchronizeCloneAnimations(signaled_animation_map_t());
+        autoAnimSyncBody(signaled_animation_map_t()); // [AutoAnimate] Audit implicit stops.
+        if (mAutoAnim) for (const ClonedLinkset& linkset : mClonedLinksets)
+            autoAnimAuditLinksetSync(linkset, true); // [AutoAnimate] Audit the clear before it syncs.
         clearClonedObjectAnimations();
     }
     if (mode == ALGhostStudio::DRIVE_DIRECTED && directed_anim.notNull())
@@ -577,6 +1533,224 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
                 mEntityControlPauseRequests.push_back(control->requestPause());
             }
         }
+    }
+    else if (mode == ALGhostStudio::DRIVE_TRUE_MIRROR)
+    {
+        // [TrueMirror] The post-object-list stamp must be the ONLY writer of
+        // this clone's pose. Suppress every competing driver on the clone:
+        //  - its own motion blend: pause the wearer controller (the ledger was
+        //    emptied above when leaving MIRROR; physics stays "active" but a
+        //    paused controller never runs it -- the source's physics-driven
+        //    morphs are stamped instead when clone physics is on);
+        //  - Pose Polish: LLVOAvatar::updateCharacter resets it while paused;
+        //  - its own eye/blink motion: stop it (blink lids come from the
+        //    source's Blink_* params, eye joints from the source skeleton);
+        //  - Actor Mover root override + gaze layer: LLActorMover checks
+        //    isTrueMirrorDriven() and returns early;
+        //  - Ghost Studio keep-facing / turn-to / crowd facing: skipped in
+        //    ALGhostStudio via trueMirrorOwnsFacing().
+        // Animesh attachments are NOT paused: they keep the ObjectAnimation
+        // ledger mirror (see idleUpdate), since their control avatars are
+        // separate skeletons the stamp does not cover.
+        setEntityEyeMotionEnabled(false);
+        mEntityPauseRequest = requestPause();
+        mTrueMirrorSourceValid = false;
+        mTrueMirrorLastStampFrame = 0;
+    }
+    autoAnimOnDriveModeChanged(old_mode, mode); // [AutoAnimate]
+}
+
+bool LLGhostAvatar::isTrueMirrorDriven() const
+{
+    return mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR;
+}
+
+void LLGhostAvatar::applyTrueMirrorStamp()
+{
+    if (mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR ||
+        isDead() || !isBuilt() || !mRoot)
+    {
+        return;
+    }
+    // Once per frame, whatever the caller.
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (mTrueMirrorLastStampFrame == frame)
+    {
+        return;
+    }
+    mTrueMirrorLastStampFrame = frame;
+
+    // Resolve the source through gObjectList every frame (never retained).
+    // A ghost source is allowed: its final pose is evaluated in the object
+    // list like any avatar (a TRUE_MIRROR ghost source is itself stamped in
+    // the same post-pass, in Studio instance order, so a chain may lag by one
+    // frame per link). Fallback for a missing / dead / unbuilt source or a
+    // self-reference is HOLD: nothing is written, and the paused controller
+    // keeps the last stamped pose until the source is back.
+    LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
+    LLVOAvatar* source = source_obj ? source_obj->asAvatar() : nullptr;
+    const bool source_ok = source && source != this && !source->isDead() &&
+                           source->isBuilt() && source->getRootJoint();
+    if (source_ok != mTrueMirrorSourceValid)
+    {
+        mTrueMirrorSourceValid = source_ok;
+        LL_INFOS("GhostStudio") << "TRUE mirror clone " << getID()
+            << (source_ok ? " stamping from source "
+                          : " holding last pose; source unavailable ")
+            << mAnimationSourceId << LL_ENDL;
+    }
+    if (!source_ok)
+    {
+        return;
+    }
+
+    static LLCachedControl<bool> copy_facing(
+        gSavedSettings, "GhostTrueMirrorCopyFacing", true);
+    static LLCachedControl<bool> copy_face(
+        gSavedSettings, "GhostTrueMirrorCopyFace", true);
+
+    stampTrueMirrorSkeleton(source, copy_facing);
+    if (copy_face)
+    {
+        stampTrueMirrorFace(source);
+    }
+
+    // Same trailing contract as updateCharacter(): re-propagate the world
+    // matrices now so everything downstream this frame (attachment drawable
+    // moves, rigged matrix palettes, system-mesh reskin via mNeedsSkin --
+    // already set by the clone's own updateCharacter this frame) reads the
+    // stamped pose rather than a dirty-flagged stale one.
+    mRoot->updateWorldMatrixChildren();
+}
+
+void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing)
+{
+    // Root: mRoot is NOT in mSkeleton (mSkeleton[0] is mPelvis, parented
+    // under mRoot -- LLAvatarAppearance::buildSkeleton). Its local rotation IS
+    // its world rotation (no parent), so copying it mirrors the source's body
+    // facing, including any procedural body turn written to the root. Its
+    // POSITION is deliberately left alone: the clone keeps its own placement
+    // (Studio foot lock) and mirrors the pose where it stands.
+    if (copy_facing)
+    {
+        const LLQuaternion root_rot = source->getRootJoint()->getRotation();
+        if (root_rot.isFinite())
+        {
+            mRoot->setRotation(root_rot);
+        }
+    }
+
+    // Skeleton joints: both avatars are built from the same avatar_skeleton.xml
+    // so the lists are index-parallel; the name check is a cheap guard against
+    // a mismatched/partial skeleton, with a by-name fallback. Rotation always;
+    // position too, so animated/overridden joint offsets (pelvis height from
+    // the anim, mesh joint position overrides, Bento translations) mirror as
+    // well. Scale is NOT copied: it is the clone's own shape/appearance.
+    // setPosition(pos, false) writes mXform directly, bypassing the clone's
+    // attachment overrides -- intended: the source's final (already
+    // override-resolved) position is what we want to reproduce.
+    const avatar_joint_list_t& src_skel = source->getSkeleton();
+    const avatar_joint_list_t& dst_skel = getSkeleton();
+    const size_t count = llmin(src_skel.size(), dst_skel.size());
+    for (size_t i = 0; i < count; ++i)
+    {
+        LLJoint* src = src_skel[i];
+        LLJoint* dst = dst_skel[i];
+        if (!src || !dst)
+        {
+            continue;
+        }
+        if (src->getName() != dst->getName())
+        {
+            dst = getJoint(src->getName());
+            if (!dst)
+            {
+                continue;
+            }
+        }
+        dst->setRotation(src->getRotation());
+        dst->setPosition(src->getPosition());
+    }
+}
+
+void LLGhostAvatar::buildTrueMirrorParamSets()
+{
+    // Scoped deliberately: VISUAL_PARAM_GROUP_ANIMATABLE (group 1) covers
+    // every driven shape sub-morph too (hundreds of params that are pure
+    // appearance), so copying the whole group would be both expensive and
+    // wrong if the clone's appearance snapshot ever diverges from the source.
+    // The ANIMATED face state is exactly: LLEmote expressions (Express_*),
+    // LLEyeMotion blink lids (Blink_*), voice lipsync (Lipsync_*), plus the
+    // eight LLPhysicsMotion driven morphs (ids 1200..1207, the same set
+    // neutralizeEntityPhysicsParams() resets).
+    mTrueMirrorFaceParamIds.clear();
+    mTrueMirrorPhysicsParamIds.clear();
+    for (LLVisualParam* param = getFirstVisualParam(); param;
+         param = getNextVisualParam())
+    {
+        if (!param->getInfo())
+        {
+            continue;
+        }
+        const S32 id = param->getID();
+        const std::string& name = param->getName();
+        if (name.rfind("Express_", 0) == 0 ||
+            name.rfind("Blink_", 0) == 0 ||
+            name.rfind("Lipsync_", 0) == 0)
+        {
+            mTrueMirrorFaceParamIds.push_back(id);
+        }
+        else if (id >= 1200 && id <= 1207)
+        {
+            mTrueMirrorPhysicsParamIds.push_back(id);
+        }
+    }
+    mTrueMirrorParamSetsBuilt = true;
+}
+
+void LLGhostAvatar::stampTrueMirrorFace(LLVOAvatar* source)
+{
+    if (!mTrueMirrorParamSetsBuilt)
+    {
+        buildTrueMirrorParamSets();
+    }
+
+    bool changed = false;
+    auto copy_param = [this, source, &changed](S32 id)
+    {
+        LLVisualParam* dst = getVisualParam(id);
+        LLVisualParam* src = source->getVisualParam(id);
+        // Never fight an in-flight appearance animation on the clone.
+        if (!dst || !src || dst->isAnimating())
+        {
+            return;
+        }
+        const F32 weight = src->getWeight();
+        if (weight != dst->getWeight())
+        {
+            setVisualParamWeight(dst, weight);
+            changed = true;
+        }
+    };
+    for (S32 id : mTrueMirrorFaceParamIds)
+    {
+        copy_param(id);
+    }
+    // Clone physics OFF keeps its neutralized morphs (setEntityPhysicsEnabled);
+    // ON mirrors the source's jiggle since the clone's own physics motion is
+    // paused under TRUE_MIRROR.
+    if (mEntityPhysicsEnabled)
+    {
+        for (S32 id : mTrueMirrorPhysicsParamIds)
+        {
+            copy_param(id);
+        }
+    }
+    if (changed)
+    {
+        // Same apply path LLEmote / LLEyeMotion use each frame: applies only
+        // the params whose effective weight changed, then dirtyMesh().
+        updateVisualParams();
     }
 }
 
@@ -1709,6 +2883,8 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             ClonedLinkset record;
             record.mRoot = dst_root->getID();
             record.mSourceRoot = src_root->getID();
+            record.mAttachPoint = ATTACHMENT_ID_FROM_STATE(attach_state); // [AutoAnimate]
+            record.mSourceItemId = src_root->getAttachmentItemID(); // [AutoAnimate]
             record.mChildren.reserve(dst_children.size());
             record.mSourceChildren.reserve(src_children.size());
             for (LLVOVolume* c : dst_children)
@@ -1759,6 +2935,10 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
 
 void LLGhostAvatar::releaseClonedAttachments()
 {
+    // [AnimeshRepeat] The records go away with mClonedLinksets below; clear
+    // explicitly so the teardown paths (Refresh, despawn, markDead) share
+    // one reset with the other lifecycle points.
+    resetHeldAnimeshRepeat();
     object_signaled_animation_map_t& object_anims =
         LLObjectSignaledAnimationMap::instance().getMap();
     for (const ClonedLinkset& linkset : mClonedLinksets)
@@ -1966,6 +3146,207 @@ void LLGhostAvatar::markDead()
     LLVOAvatar::markDead();
 }
 
+// [AnimeshRepeat] A latched ledger entry keeps a LOOPING asset running, but a
+// ONE-SHOT animesh animation (the usual script-retriggered tail/idle) plays
+// out once and freezes: the source's script was the thing restarting it every
+// cycle, and once the source is detached nothing does. With the opt-in
+// GhostMirrorRepeatHeldAnimesh on, stand in for that script on the clone's
+// OWN control avatar: when a held one-shot has finished, start it again.
+//
+// Lever: LLCharacter::startMotion(id) on the linkset root's control avatar
+// (one per root-edit linkset; children resolve to it). On an inactive, loaded
+// motion that is activateMotionInstance(), which samples onUpdate(0.f) --
+// no preceding stop, no LLMotion::activate() (bypasses controller
+// bookkeeping), no setLoop() (mutates the shared cached asset). The ledger
+// is never written, so LLVOAvatar::mPlayingAnimations keeps its sequence-id
+// provenance: a returning live signal or a later erase still starts/stops
+// the animation through processAnimationStateChanges() exactly as before.
+//
+// Eligibility: the id must be signaled only by LATCHED clone prims (a LIVE
+// prim's signal takes precedence and is the source's business), the motion
+// must be loaded (not in mLoadingMotions -- an unloaded LLKeyframeMotion
+// reports getLoop()==false and getDuration()==0), have positive duration and
+// getLoop()==false. A looping asset is never restarted.
+//
+// Transition logic (per id, ClonedLinkset::RepeatState): observe ACTIVE ->
+// mSeenActive; observe INACTIVE with mSeenActive -> replay once, clear
+// mSeenActive, set mPending; observe ACTIVE again -> clear mPending, set
+// mSeenActive (armed for the next completion). A replay that never becomes
+// active (mPending and still inactive/not loading) counts a failure and is
+// retried at most MAX_REPLAY_FAILURES times. Absent record == armed, so a
+// clip that had already finished when the hold began replays once.
+//
+// Honesty: each replay samples from frame 0 after the previous instance has
+// eased out to rest -- FUNCTIONAL repetition with a visible seam per cycle,
+// not seamless looping. Also a genuinely one-shot action (a mechanism
+// closing, a reaction) now repeats, which is why this is opt-in.
+void LLGhostAvatar::repeatHeldAnimesh()
+{
+    static LLCachedControl<bool> repeat_held_animesh(
+        gSavedSettings, "GhostMirrorRepeatHeldAnimesh", false);
+    static LLCachedControl<bool> hold_on_source_change(
+        gSavedSettings, "GhostMirrorHoldOnSourceChange", true);
+    constexpr U32 MAX_REPLAY_FAILURES = 3;
+
+    if (!repeat_held_animesh || !hold_on_source_change ||
+        (mEntityDriveMode != ALGhostStudio::DRIVE_MIRROR &&
+         mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR))
+    {
+        return;
+    }
+
+    const object_signaled_animation_map_t& object_anims =
+        LLObjectSignaledAnimationMap::instance().getMap();
+
+    for (ClonedLinkset& linkset : mClonedLinksets)
+    {
+        if (linkset.mAutonomy != 0) continue; // [AutoAnimate]
+        if (!linkset.mAnimeshHeld)
+        {
+            continue; // live mirror: the source's script retriggers
+        }
+        LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+        if (!root || root->isDead() || !root->isAnimatedObject())
+        {
+            continue;
+        }
+        LLControlAvatar* cav = root->getControlAvatar();
+        if (!cav || cav->isDead())
+        {
+            continue;
+        }
+        if (linkset.mRepeatControlAvatarId != cav->getID())
+        {
+            // First sight, or the control avatar was re-created (lazy skin
+            // arrival, ObjectAnimation-driven relink): its motion instances
+            // are new, so any pending/seen state is meaningless.
+            linkset.mRepeatControlAvatarId = cav->getID();
+            linkset.mRepeatStates.clear();
+        }
+        LLMotionController& controller = cav->getMotionController();
+        // The CONTROL AVATAR's own pause (Studio FROZEN, selection pause),
+        // not the wearer's: TRUE_MIRROR pauses the wearer but leaves the
+        // animesh path live. startMotion() while paused records nothing
+        // useful and the motion would stay stopped. Jellydolled control
+        // avatars shelve every animation; leave them alone too.
+        if (controller.isPaused() ||
+            cav->getOverallAppearance() != LLVOAvatar::AOA_NORMAL)
+        {
+            continue;
+        }
+
+        // Partition the linkset's signaled ids by contributor.
+        std::set<LLUUID> latched_ids;
+        std::set<LLUUID> live_ids;
+        auto collect = [&](const LLUUID& clone_id)
+        {
+            object_signaled_animation_map_t::const_iterator entry =
+                object_anims.find(clone_id);
+            if (entry == object_anims.end())
+            {
+                return;
+            }
+            const bool latched =
+                std::find(linkset.mAnimeshLatchedPrims.begin(),
+                          linkset.mAnimeshLatchedPrims.end(),
+                          clone_id) != linkset.mAnimeshLatchedPrims.end();
+            for (const auto& anim : entry->second)
+            {
+                (latched ? latched_ids : live_ids).insert(anim.first);
+            }
+        };
+        collect(linkset.mRoot);
+        for (const LLUUID& child_id : linkset.mChildren)
+        {
+            collect(child_id);
+        }
+
+        for (const LLUUID& anim_id : latched_ids)
+        {
+            if (live_ids.count(anim_id))
+            {
+                continue; // a live contributor owns this id
+            }
+            ClonedLinkset::RepeatState& state = linkset.mRepeatStates[anim_id];
+            if (state.mFailures >= MAX_REPLAY_FAILURES)
+            {
+                continue;
+            }
+            LLMotion* motion = cav->findMotion(anim_id);
+            if (!motion || controller.isMotionLoading(motion))
+            {
+                // Never instantiated, or still fetching (a replay may be
+                // pending on it): nothing observable yet.
+                continue;
+            }
+            if (cav->isMotionActive(anim_id))
+            {
+                state.mSeenActive = true;
+                state.mPending = false;
+                continue;
+            }
+            // Inactive and loaded: attributes are now trustworthy.
+            if (motion->getLoop() || motion->getDuration() <= 0.f)
+            {
+                continue; // looping assets keep going on their own
+            }
+            if (state.mPending)
+            {
+                // The replay we issued never activated. Count it; retry
+                // below while under the cap so a transient miss recovers
+                // without a per-frame storm.
+                state.mPending = false;
+                ++state.mFailures;
+                if (state.mFailures >= MAX_REPLAY_FAILURES)
+                {
+                    LL_WARNS("GhostStudio")
+                        << "AnimeshRepeat giving up on " << anim_id
+                        << " root=" << linkset.mRoot
+                        << " after " << state.mFailures
+                        << " replays that never activated" << LL_ENDL;
+                    continue;
+                }
+                // fall through: retry this frame, still under the cap
+            }
+            else if (!state.mSeenActive && state.mFailures > 0)
+            {
+                // Past failures but no replay in flight and no activation
+                // seen since: wait for the source-of-truth (an observed
+                // activation) rather than probing every frame.
+                continue;
+            }
+            // Consume this completion: one replay per ACTIVE -> INACTIVE
+            // edge (or one at hold entry for a clip that finished before the
+            // hold began -- a fresh record starts unarmed-but-absent, which
+            // the map insert above treats as armed).
+            state.mSeenActive = false;
+            if (cav->LLCharacter::startMotion(anim_id))
+            {
+                state.mPending = true;
+                LL_DEBUGS("GhostStudio")
+                    << "AnimeshRepeat replay " << anim_id
+                    << " root=" << linkset.mRoot
+                    << " cav=" << cav->getID() << LL_ENDL;
+            }
+            else
+            {
+                ++state.mFailures;
+            }
+        }
+    }
+}
+
+void LLGhostAvatar::resetHeldAnimeshRepeat()
+{
+    for (ClonedLinkset& linkset : mClonedLinksets)
+    {
+        linkset.mAnimeshHeld = false;
+        linkset.mAnimeshLatchedPrims.clear();
+        linkset.mRepeatControlAvatarId.setNull();
+        linkset.mRepeatStates.clear();
+    }
+}
+
 // virtual
 void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 {
@@ -1984,11 +3365,23 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // mirroring the momentary gap. Gates both the bento and animesh holds below.
     static LLCachedControl<bool> hold_on_source_change(
         gSavedSettings, "GhostMirrorHoldOnSourceChange", true);
+    const bool hold_eff = mAutoAnim != nullptr || hold_on_source_change; // [AutoAnimate]
+    if (mAutoAnim) autoAnimRecordTick(); // [AutoAnimate]
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
     {
         LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
         LLVOAvatar* source = source_obj ? source_obj->asAvatar() : nullptr;
-        if (source && !source->isDead())
+        // [AutoAnimate] Absence is evaluated even when the resolved pointer is null.
+        if (mAutoAnim)
+        {
+            if (mAutoAnim->simloss) source = nullptr;
+            autoAnimBodyPresence(source);
+        }
+        if (mAutoAnim && mAutoAnim->body.autonomy != AUTONOMY_NONE)
+        {
+            autoAnimBodyStep();
+        }
+        else if (source && !source->isDead())
         {
             // The clone-only synchronizer makes this filter unnecessary for
             // simulator safety.  Retain it solely as a behavioral choice:
@@ -2005,10 +3398,10 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             // source momentarily contributes nothing. A genuine switch to a different
             // animation is still non-empty and mirrors normally. Option off = faithful
             // live mirror (an empty source set stops the clone too).
-            if ((!hold_on_source_change || !mirrored_animations.empty()) &&
+            if ((!hold_eff || !mirrored_animations.empty()) &&
                 mCloneDesiredAnimations != mirrored_animations)
             {
-                synchronizeCloneAnimations(mirrored_animations);
+                autoAnimSyncBody(mirrored_animations); // [AutoAnimate] Audit recouple/follow sync too.
             }
         }
     }
@@ -2030,6 +3423,7 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
                 // A baked-loop asset cannot be mutated per instance because
                 // its keyframe data is shared. Stop this clone's canonical
                 // motion at one duration instead.
+                autoAnimAuditBodyStop(mEntityDirectedAnim); // [AutoAnimate]
                 LLCharacter::stopMotion(mEntityDirectedAnim, true);
                 active = false;
             }
@@ -2049,77 +3443,135 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // local prim before refreshing the linkset's LLControlAvatar.
     object_signaled_animation_map_t& object_anims =
         LLObjectSignaledAnimationMap::instance().getMap();
-    if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
+    // [TrueMirror] animesh control avatars are separate skeletons the joint
+    // stamp does not cover, so TRUE_MIRROR keeps the ledger mirror for them.
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
     {
-      for (const ClonedLinkset& linkset : mClonedLinksets)
+      for (ClonedLinkset& linkset : mClonedLinksets)
       {
+        if (mAutoAnim && autoAnimLinksetStep(linkset)) continue; // [AutoAnimate]
         LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
         if (!root || root->isDead() || !root->isAnimatedObject())
         {
             continue;
         }
 
+        bool changed = false;
+        // Clone prims whose ledger entry was LATCHED (kept, not mirrored)
+        // this frame. Non-empty == the linkset's animesh is HELD; recorded on
+        // the linkset for repeatHeldAnimesh() (runs after this loop).
+        std::vector<LLUUID> latched_prims;
+
         // Hold the clone's animesh when the SOURCE linkset is gone. A wearer's
         // outfit change re-rezzes its animesh with fresh UUIDs, so the source-id
         // lookups below would all miss and mirror_one would erase (stop) the
         // clone's animation - freezing the mesh on a transient source change.
-        // Skipping keeps the last performance playing; a still-present source
-        // that genuinely stopped its animesh still mirrors the stop normally.
-        // Gated by GhostMirrorHoldOnSourceChange (off = faithful live mirror).
-        if (hold_on_source_change)
+        // Skipping keeps the last performance playing. Gated by
+        // GhostMirrorHoldOnSourceChange (off = faithful live mirror).
+        bool source_gone = false;
+        if (hold_eff)
         {
             LLViewerObject* source_root =
                 gObjectList.findObject(linkset.mSourceRoot);
-            if (!source_root || source_root->isDead())
-            {
-                continue;
-            }
+            source_gone = !source_root || source_root->isDead();
+            if (mAutoAnim && mAutoAnim->simloss) source_gone = true; // [AutoAnimate]
         }
 
-        bool changed = false;
-        auto mirror_one = [&object_anims, &changed](const LLUUID& source_id,
-                                                    const LLUUID& clone_id)
+        if (source_gone)
         {
-            object_signaled_animation_map_t::const_iterator found =
-                object_anims.find(source_id);
-            if (found == object_anims.end() || found->second.empty())
+            // Every prim keeps its current entry.
+            latched_prims.push_back(linkset.mRoot);
+            latched_prims.insert(latched_prims.end(),
+                                 linkset.mChildren.begin(),
+                                 linkset.mChildren.end());
+        }
+        else
+        {
+            // [AutoAnimate] Capture the effective hold; the disabled value is
+            // exactly the existing GhostMirrorHoldOnSourceChange setting.
+            auto mirror_one = [&object_anims, &changed, &latched_prims, hold_eff](
+                                  const LLUUID& source_id,
+                                  const LLUUID& clone_id)
             {
-                // Missing and empty both mean "no requested animations"; do not
-                // leave an empty synthetic-prim entry in the process-wide map.
+                object_signaled_animation_map_t::const_iterator found =
+                    object_anims.find(source_id);
+                if (found == object_anims.end() || found->second.empty())
+                {
+                    // [AnimeshDetachHold] A detach empties the source prim's
+                    // signaled set (its script's attach(NULL_KEY) stop and/or
+                    // the sim's final ObjectAnimation) BEFORE the prim dies,
+                    // so this branch -- not the dead-source skip above -- is
+                    // what stopped the clone's tail on a source detach. Mirror
+                    // the bento hold (`!mirrored_animations.empty()` above):
+                    // with the hold on, an empty/missing source set is a
+                    // source change to ride out, so LATCH the clone's existing
+                    // entry instead of erasing it. The control avatar keeps a
+                    // looping asset running for as long as the entry stands;
+                    // a finished one-shot is replayed only by the opt-in
+                    // repeatHeldAnimesh(). A switch to a different set is
+                    // non-empty and still mirrors normally. Off = faithful
+                    // live mirror.
+                    if (hold_eff)
+                    {
+                        latched_prims.push_back(clone_id);
+                        return;
+                    }
+                    // Missing and empty both mean "no requested animations";
+                    // do not leave an empty synthetic-prim entry in the
+                    // process-wide map.
+                    object_signaled_animation_map_t::iterator clone =
+                        object_anims.find(clone_id);
+                    if (clone != object_anims.end())
+                    {
+                        // Erasing an already-empty entry changes no animation
+                        // state.
+                        changed = !clone->second.empty() || changed;
+                        object_anims.erase(clone);
+                    }
+                    return;
+                }
+
                 object_signaled_animation_map_t::iterator clone =
                     object_anims.find(clone_id);
-                if (clone != object_anims.end())
+                if (clone == object_anims.end())
                 {
-                    // Erasing an already-empty entry changes no animation state.
-                    changed = !clone->second.empty() || changed;
-                    object_anims.erase(clone);
+                    object_anims.emplace(clone_id, found->second);
+                    changed = true;
                 }
-                return;
-            }
+                else if (clone->second != found->second)
+                {
+                    clone->second = found->second;
+                    changed = true;
+                }
+            };
 
-            object_signaled_animation_map_t::iterator clone =
-                object_anims.find(clone_id);
-            if (clone == object_anims.end())
+            mirror_one(linkset.mSourceRoot, linkset.mRoot);
+            const size_t count = llmin(linkset.mChildren.size(),
+                                       linkset.mSourceChildren.size());
+            for (size_t i = 0; i < count; ++i)
             {
-                object_anims.emplace(clone_id, found->second);
-                changed = true;
+                mirror_one(linkset.mSourceChildren[i], linkset.mChildren[i]);
             }
-            else if (clone->second != found->second)
-            {
-                clone->second = found->second;
-                changed = true;
-            }
-        };
-
-        mirror_one(linkset.mSourceRoot, linkset.mRoot);
-        const size_t count = llmin(linkset.mChildren.size(),
-                                   linkset.mSourceChildren.size());
-        for (size_t i = 0; i < count; ++i)
-        {
-            mirror_one(linkset.mSourceChildren[i], linkset.mChildren[i]);
         }
+
+        // [AnimeshRepeat] Publish this frame's hold state for
+        // repeatHeldAnimesh(). On the held->live edge drop the replay
+        // records unconditionally (not tied to `changed`): the returning
+        // live signal owns the animation from here, and the ledger mirror
+        // above already handed it over through the normal sequence-id path.
+        const bool held = !latched_prims.empty();
+        if (held != linkset.mAnimeshHeld)
+        {
+            linkset.mAnimeshHeld = held;
+            linkset.mRepeatStates.clear();
+            linkset.mRepeatControlAvatarId.setNull();
+        }
+        linkset.mAnimeshLatchedPrims.swap(latched_prims);
+
         if (changed)
         {
+            if (mAutoAnim) autoAnimAuditLinksetSync(linkset); // [AutoAnimate] Live mirror sync stops.
             root->updateControlAvatar();
         }
       }
@@ -2149,6 +3601,11 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             }
         }
     }
+
+    // [AnimeshRepeat] After the ledger loop (which published each linkset's
+    // hold state) and after the speed re-assert, so a replay starts on a
+    // control avatar already running at the Studio speed.
+    repeatHeldAnimesh();
 
     LLVOAvatar::idleUpdate(agent, time);
 

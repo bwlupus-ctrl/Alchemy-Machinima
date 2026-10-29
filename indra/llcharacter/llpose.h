@@ -88,9 +88,18 @@ protected:
     S32             mPriorities[JSB_NUM_JOINT_STATES];
     bool            mAdditiveBlends[JSB_NUM_JOINT_STATES];
 public:
+    // [Machinima] Gaze-yield observation of the last real blend: the highest
+    // NON-ADDITIVE rotation priority that actually contributed to this joint,
+    // stamped with the pose blender's blend serial so a superseded observation
+    // (the joint is no longer animated) reads as invalid instead of blocking
+    // gaze forever. See LLPoseBlender::getLastRegularRotationPriority.
+    S32  mLastRegularRotPriority = LLJoint::USE_MOTION_PRIORITY;
+    bool mLastRegularRotValid    = false;
+    U32  mLastRegularRotSerial   = 0;
+
     LLJointStateBlender();
     ~LLJointStateBlender();
-    void blendJointStates(bool apply_now = true);
+    void blendJointStates(bool apply_now = true, U32 serial = 0);
     bool addJointState(const LLPointer<LLJointState>& joint_state, S32 priority, bool additive_blend);
     void interpolate(F32 u);
     void clear();
@@ -112,6 +121,12 @@ protected:
 
     S32         mNextPoseSlot;
     LLPose      mBlendedPose;
+
+    // [Machinima] Increments once per real blend pass (blendAndApply /
+    // blendAndCache). A per-joint observation is only current if its stamped
+    // serial equals this; a stale stamp means the joint was not re-blended
+    // (its motion stopped), so gaze must be allowed on it again.
+    U32         mBlendSerial = 0;
 public:
     // Constructor
     LLPoseBlender();
@@ -132,6 +147,13 @@ public:
 
     // interpolate all joints towards cached values
     void interpolate(F32 u);
+
+    // [Machinima] Gaze-yield query. Returns true and sets priority_out only
+    // when `joint` received at least one non-additive rotation contribution in
+    // the MOST RECENT real blend pass (stamped serial == mBlendSerial). False
+    // means no data / stale / never animated -> the caller must ALLOW the gaze
+    // write (never suppress on a stale or missing observation).
+    bool getLastRegularRotationPriority(const LLJoint* joint, S32& priority_out) const;
 
     LLPose* getBlendedPose() { return &mBlendedPose; }
 };

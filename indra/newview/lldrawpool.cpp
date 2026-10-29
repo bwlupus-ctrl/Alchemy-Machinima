@@ -30,6 +30,12 @@
 #include "llrender.h"
 #include "llfasttimer.h"
 #include "llviewercontrol.h"
+#include "llagentdata.h"
+#include "llframetimer.h"
+#include "altron.h" // [TronT2] Actor FX "Tron Suit" (look 36) params
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
+
+#include <cmath> // [TronT2] std::isfinite for the Tron Suit uniform sanitisers
 
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
@@ -48,6 +54,7 @@
 #include "pipeline.h"
 #include "llspatialpartition.h"
 #include "llviewercamera.h"
+#include "llviewerwindow.h"
 #include "lldrawpoolwlsky.h"
 #include "llglslshader.h"
 #include "llglcommonfunc.h"
@@ -55,10 +62,17 @@
 #include "llviewershadermgr.h"
 #include "llfetchedgltfmaterial.h"
 #include "llviewertexture.h"
+#include "lldirectorcast.h"
+#include "llactormover.h"
 
 S32 LLDrawPool::sNumDrawPools = 0;
+extern bool gSnapshot;
+extern bool gCubeSnapshot;
 static const LLClientOuterTransform* sLastOuterTransform = nullptr;
 static U32 sLastOuterTransformRevision = 0;
+
+void setup_texture_matrix(LLDrawInfo& params);
+void teardown_texture_matrix(LLDrawInfo& params);
 
 //=============================
 // Draw Pool Implementation
@@ -417,6 +431,603 @@ static bool skip_rain_occlusion_attachment(const LLDrawInfo* params)
            params && params->mAttachedToAvatar;
 }
 
+namespace
+{
+const LLStaticHashedString sActorFxEnabled("actorFxEnabled");
+const LLStaticHashedString sActorFxLook("actorFxLook");
+const LLStaticHashedString sActorFxTime("actorFxTime");
+const LLStaticHashedString sActorFxTint("actorFxTint");
+const LLStaticHashedString sActorFxParams0("actorFxParams0");
+const LLStaticHashedString sActorFxParams1("actorFxParams1");
+const LLStaticHashedString sActorFxParams2("actorFxParams2");
+const LLStaticHashedString sActorFxScreenSize("actorFxScreenSize");
+const LLStaticHashedString sActorFxDissolveProgress("actorFxDissolveProgress");
+const LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
+// [TronT2] Look 36 "Tron Suit" -- actorFxF.glsl.
+const LLStaticHashedString sActorFxTronParams("actorFxTronParams");
+const LLStaticHashedString sActorFxTronParams2("actorFxTronParams2");
+const LLStaticHashedString sActorFxTronColor("actorFxTronColor");
+// [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl
+const LLStaticHashedString sAlrEnabled("alrEnabled");
+const LLStaticHashedString sAlrParams("alrParams");
+
+// Uploads one draw's response to `shader`, which MUST be the program that is
+// currently bound (uniform4fv resolves location/cache from the object it is
+// called on while glUniform* writes the bound program).
+void upload_alr(LLGLSLShader& shader, const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
+                LLRenderPass::EAlrSlot slot)
+{
+    static LLCachedControl<bool> debug_tint(gSavedSettings, "AvatarLightResponseDebugTint", false);
+    LLUUID hit;
+    const LLVector4* p = (LLPipeline::sImpostorRender || (k1.isNull() && k2.isNull() && k3.isNull()))
+        ? nullptr : ALAvatarLightResponse::instance().lookup(k1, k2, k3, &hit);
+    if (!p)
+    {
+        shader.uniform1i(sAlrEnabled, 0);
+        return;
+    }
+    LLVector4 v = *p;
+    if (slot == LLRenderPass::ALR_SLOT_GLOW)
+    {
+        v.mV[VZ] = v.mV[VW];
+    }
+    shader.uniform4fv(sAlrParams, 1, v.mV);
+    shader.uniform1i(sAlrEnabled, debug_tint() ? 3 : 1);
+    if (shader.getUniformLocation(sAlrParams) >= 0)   // count only real consumers
+    {
+        ALAvatarLightResponse::instance().noteUpload(hit);
+    }
+}
+
+LLGLSLShader* get_actor_fx_shader()
+{
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    return shader &&
+           (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow)
+        ? shader : nullptr;
+}
+}
+
+// static
+void LLRenderPass::uploadActorFxDisabled()
+{
+    if (LLGLSLShader* shader = get_actor_fx_shader())
+    {
+        // This assignment is deliberately made for every unowned native draw.
+        // Actor-FX uniforms are program state and otherwise leak from the last
+        // styled attachment into unrelated world geometry using that program.
+        shader->uniform1i(sActorFxEnabled, 0);
+    }
+    // [AvatarLightResponse] an unowned/disabled draw must also reset the response so it
+    // cannot leak from the last adjusted avatar drawn with this program.
+    uploadAvatarLightResponseDisabled();
+}
+
+// static
+void LLRenderPass::uploadAvatarLightResponse(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3)
+{
+    if (!ALAvatarLightResponse::sEverActive)
+    {
+        return;   // fresh session: zero added GL calls
+    }
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    if (shader && shader->mFeatures.hasActorFx)
+    {
+        upload_alr(*shader, k1, k2, k3, ALR_SLOT_BEAUTY);
+    }
+}
+
+// static
+void LLRenderPass::uploadAvatarLightResponseTo(LLGLSLShader& shader, const LLUUID& k1, const LLUUID& k2,
+                                               const LLUUID& k3, EAlrSlot slot)
+{
+    if (ALAvatarLightResponse::sEverActive)
+    {
+        upload_alr(shader, k1, k2, k3, slot);
+    }
+}
+
+// static
+void LLRenderPass::uploadAvatarLightResponseDisabled()
+{
+    if (!ALAvatarLightResponse::sEverActive)
+    {
+        return;
+    }
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    if (shader && shader->mFeatures.hasActorFx)
+    {
+        shader->uniform1i(sAlrEnabled, 0);
+    }
+}
+
+// static
+bool LLRenderPass::actorFxLookNeedsSyntheticBloom(S32 look)
+{
+    // actorFxEmissive() also provides restrained self-light for many looks so
+    // they remain legible after scene lighting; self-light does not imply a
+    // costly second bloom draw. Queue zero-authored-emissive alpha faces only
+    // for deliberate bloom-signature looks. Opaque and authored-emissive faces
+    // publish their glow in their normal paths.
+    switch (look)
+    {
+        case 2:  // Hologram
+        case 6:  // Neon outline
+        case 10: // Dissolve incandescent boundary
+        case 14: // Blueprint
+        case 15: // Ectoplasm
+        case 17: // Prism
+        case 19: // Wallhack / ESP
+        case 26: // Sonar reveal
+        case 27: // Hologram interference
+        case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
+        // [ActorFX33-35Fix] Seraph and Wraith now emit (rim/seam bloom on
+        // zero-authored-emissive alpha faces); Interrogation stays out, it
+        // is emission-free by design.
+        case LLDirectorCast::ACTOR_LOOK_SERAPH:
+        case LLDirectorCast::ACTOR_LOOK_WRAITH:
+        // [TronT2] Tron Suit: seams + rim core emit, so zero-authored-
+        // emissive alpha faces need the second glow draw too.
+        case LLDirectorCast::ACTOR_LOOK_TRON_SUIT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// static
+F32 LLRenderPass::actorFxFrameTime(F32 requested_fps)
+{
+    static bool sClockInitialized = false;
+    static F64 sClockEpoch = 0.0;
+    static U32 sClockFrame = U32_MAX;
+    static F64 sFrameClock = 0.0;
+    static F64 sSnapshotTime = 0.0;
+    static bool sWasSnapshot = false;
+
+    if (sClockFrame != gFrameCount)
+    {
+        sClockFrame = gFrameCount;
+        sFrameClock = LLFrameTimer::getElapsedSeconds();
+    }
+    if (!sClockInitialized)
+    {
+        sClockEpoch = sFrameClock;
+        sClockInitialized = true;
+    }
+
+    const F64 frame_time = llmax(sFrameClock - sClockEpoch, 0.0);
+    if (gSnapshot && !sWasSnapshot)
+    {
+        sSnapshotTime = frame_time;
+    }
+    const F64 real_time = gSnapshot ? sSnapshotTime : frame_time;
+    sWasSnapshot = gSnapshot;
+    const F64 effect_fps = static_cast<F64>(
+        llclamp(requested_fps, 0.f, 30.f));
+    return static_cast<F32>(effect_fps > 0.0
+        ? floor(real_time * effect_fps) / effect_fps : real_time);
+}
+
+// static
+LLVector2 LLRenderPass::actorFxFragOffset()
+{
+    LLVector2 offset;
+    const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+    if (gSnapshot && gViewerWindow && zoom > 1.f)
+    {
+        const S32 tiles = llceil(zoom);
+        const S32 sub = LLViewerCamera::getInstance()->getZoomSubRegion();
+        const S32 tile_y = sub / tiles;
+        const S32 tile_x = sub - tile_y * tiles;
+        offset.mV[VX] = static_cast<F32>(
+            tile_x * gViewerWindow->getWorldViewWidthRaw());
+        offset.mV[VY] = static_cast<F32>(
+            tile_y * gViewerWindow->getWorldViewHeightRaw());
+    }
+    return offset;
+}
+
+// static
+LLVector2 LLRenderPass::actorFxScreenSize()
+{
+    LLVector2 size(1.f, 1.f);
+    if (gViewerWindow)
+    {
+        const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+        const F32 snapshot_tiles = gSnapshot && zoom > 1.f
+            ? static_cast<F32>(llceil(zoom)) : 1.f;
+        size.mV[VX] = llmax(
+            static_cast<F32>(gViewerWindow->getWorldViewWidthRaw())
+                * snapshot_tiles,
+            1.f);
+        size.mV[VY] = llmax(
+            static_cast<F32>(gViewerWindow->getWorldViewHeightRaw())
+                * snapshot_tiles,
+            1.f);
+    }
+    return size;
+}
+
+bool upload_actor_fx_style(const LLUUID& style_id,
+                           const LLDirectorCast::ActorStyle& style,
+                           bool allow_native_wire)
+{
+    LLGLSLShader* shader = get_actor_fx_shader();
+    if (!shader)
+    {
+        return false;
+    }
+
+    // A zero-strength Layer has no visible contribution. Treat it as disabled
+    // so it takes the uniform fast path and agrees with the live-LOD/impostor
+    // policy used by the avatar pools. Replace deliberately remains effective
+    // regardless of its stored Layer alpha.
+    const bool effective = style.mEnabled &&
+        (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
+         style.mAlpha > 0.001f);
+    if (!effective)
+    {
+        shader->uniform1i(sActorFxEnabled, 0);
+        return false;
+    }
+
+    // Wire always keeps a native hidden-line backing under its dedicated live
+    // topology pass. Layer mixes authored material toward that backing by its
+    // strength; Cover owns it completely. Disabling native Wire for Layer left
+    // every legacy/PBR face fully authored, which read as material-shaped holes
+    // and mismatched patches between otherwise continuous topology lines.
+
+    // Null is Director's explicit identity for You. Use the runtime agent id
+    // only for stable tint/phase generation; the style lookup above must retain
+    // Director's null-is-self semantics.
+    const LLUUID& stable_id = style_id.isNull() && gAgentID.notNull()
+        ? gAgentID : style_id;
+
+    LLColor4 tint;
+    if (style.mUseActorHue)
+    {
+        tint = LLActorMover::actorPathColor(stable_id);
+    }
+    else
+    {
+        tint.setHSL(fmodf(llmax(style.mHue, 0.f), 360.f) / 360.f,
+                    0.9f, 0.6f);
+        tint.mV[VW] = 1.f;
+    }
+
+    const F32 effect_time = LLRenderPass::actorFxFrameTime(style.mEffectFps);
+    const F32 strength = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        ? 1.f : llclamp(style.mAlpha, 0.f, 1.f);
+    const F32 stable_phase =
+        static_cast<F32>(stable_id.mData[0] | (stable_id.mData[1] << 8))
+        * (F_TWO_PI / 65536.f);
+
+    const S32 look = llclamp(
+        style.mStyle,
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX));
+    shader->uniform1i(sActorFxLook, look);
+    shader->uniform1f(sActorFxTime, effect_time);
+    shader->uniform3f(sActorFxTint,
+                      tint.mV[VX], tint.mV[VY], tint.mV[VZ]);
+    shader->uniform4f(sActorFxParams0,
+                      strength,
+                      llmax(style.mPixelSize, 0.f),
+                      llclamp(style.mShimmerAmount, 0.f, 1.f),
+                      llclamp(style.mGlitch, 0.f, 1.f));
+    shader->uniform4f(sActorFxParams1,
+                      static_cast<F32>(llclamp(style.mDistortion, 0, 8)),
+                      llclamp(style.mDistortionAmount, 0.f, 1.f),
+                      llclamp(style.mBrightness, 0.05f, 1.5f),
+                      stable_phase);
+    // gl_FragCoord is local to each high-resolution snapshot tile. Supply the
+    // tile's whole-image pixel origin so procedural grain/scanlines/pixelation
+    // meet exactly at tile edges. Y is expressed in bottom-up GL coordinates.
+    const LLVector2 frag_offset = LLRenderPass::actorFxFragOffset();
+    const LLVector2 screen_size = LLRenderPass::actorFxScreenSize();
+    F32 render_semantics =
+        style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ? 1.f : 0.f;
+    if (style.mStyle == 3 && allow_native_wire)
+    {
+        render_semantics = 2.f; // exact topology line pass
+    }
+    shader->uniform4f(sActorFxParams2,
+                      llclamp(style.mShimmerSpeed, 0.f, 20.f),
+                      frag_offset.mV[VX], frag_offset.mV[VY],
+                      render_semantics);
+
+    // [TronT2] Actor FX "Tron Suit" (look 36): x = upload state (1 actor hue,
+    // 2 Tron palette) tells the shader the sliders are live; the pulse
+    // accumulator is latched every frame regardless of TronEnabled (design v3
+    // section 6.5), never gated on it.
+    // [TronT2 fix] Uploaded only when the effective look IS 36: actorFxF.glsl
+    // reads actorFxTronParams/2/Color exclusively inside its
+    // `actorFxLook == 36` branches, so the three hashed uniform lookups, the
+    // settings reads and the ALTron::palette() query are dead work for every
+    // other style. The look uniform above is written from the same clamped
+    // value, so the shader can never see look 36 without a fresh upload.
+    if (look == LLDirectorCast::ACTOR_LOOK_TRON_SUIT)
+    {
+        static LLCachedControl<bool> suit_use_palette(gSavedSettings, "TronSuitUsePalette", true);
+        static LLCachedControl<F32>  suit_seam_cell(gSavedSettings, "TronSuitSeamCell", 0.12f);
+        static LLCachedControl<F32>  suit_seam_width(gSavedSettings, "TronSuitSeamWidth", 0.012f);
+        static LLCachedControl<F32>  suit_seam_density(gSavedSettings, "TronSuitSeamDensity", 0.55f);
+        static LLCachedControl<F32>  suit_seam_gain(gSavedSettings, "TronSuitSeamGain", 1.0f);
+        static LLCachedControl<F32>  suit_rim_gain(gSavedSettings, "TronSuitRimGain", 1.0f);
+        static LLCachedControl<F32>  tron_pulse_amount(gSavedSettings, "TronPulseAmount", 0.35f);
+
+        const auto finite_or = [](F32 v, F32 fallback)
+        { return std::isfinite(v) ? v : fallback; };
+        const F32 tron_state = (ALTron::isEnabledMaster() && suit_use_palette()) ? 2.f : 1.f;
+        const ALTron::Palette tron_palette = ALTron::palette();
+
+        shader->uniform4f(sActorFxTronParams,
+                          tron_state,
+                          llclamp(finite_or((F32)suit_seam_cell(), 0.12f), 0.02f, 1.f),
+                          llclamp(finite_or((F32)suit_seam_width(), 0.012f), 0.002f, 0.1f),
+                          ALTron::pulse01());
+        shader->uniform4f(sActorFxTronParams2,
+                          llclamp(finite_or((F32)suit_seam_density(), 0.55f), 0.f, 1.f),
+                          llclamp(finite_or((F32)suit_seam_gain(), 1.f), 0.f, 4.f),
+                          llclamp(finite_or((F32)suit_rim_gain(), 1.f), 0.f, 4.f),
+                          llclamp(finite_or((F32)tron_pulse_amount(), 0.35f), 0.f, 1.f));
+        shader->uniform4f(sActorFxTronColor,
+                          tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1],
+                          tron_palette.mPrimary.mV[2], ALTron::clock().mPulsePhase01);
+    }
+
+    shader->uniform2fv(sActorFxScreenSize, 1, screen_size.mV);
+    shader->uniform1f(sActorFxDissolveProgress,
+                      llclamp(style.mDissolveProgress, 0.f, 1.f));
+    shader->uniform1i(sActorFxEnabled, 1);
+    return LLRenderPass::actorFxLookNeedsSyntheticBloom(style.mStyle);
+}
+
+// Defined below the public upload entry points with the suppression policy.
+// Anonymous-namespace declarations keep this shared-replay decision local to
+// native draw dispatch.
+namespace
+{
+bool shared_actor_fx_beauty_context();
+bool shared_actor_fx_replay_active(const LLUUID& actor_id);
+}
+
+// static
+bool LLRenderPass::uploadActorFx(const LLUUID& actor_id,
+                                  bool allow_native_wire,
+                                  bool force_native)
+{
+    const bool result = uploadActorFxStyleOnly(actor_id, allow_native_wire, force_native);
+    // [AvatarLightResponse] uploaded LAST so an internal "disabled" reset above cannot clobber it.
+    // Director identity rules: a null actor id means You.
+    uploadAvatarLightResponse(actor_id.isNull() ? gAgentID : actor_id);
+    return result;
+}
+
+// static
+bool LLRenderPass::uploadActorFxStyleOnly(const LLUUID& actor_id,
+                                           bool allow_native_wire,
+                                           bool force_native)
+{
+    if (!force_native && shared_actor_fx_replay_active(actor_id))
+    {
+        // Layer keeps the authored material as its base, but the treatment is
+        // supplied exactly once by the shared forward-alpha replay. Cover is
+        // normally skipped before reaching here; disabling is its safe fallback.
+        uploadActorFxDisabled();
+        return false;
+    }
+
+    // UUID callers and LLDrawInfo owners are canonicalized at their mutation /
+    // geometry-build boundaries; keep this per-draw path free of object lookup.
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(actor_id);
+    return upload_actor_fx_style(actor_id, style, allow_native_wire);
+}
+
+// static
+bool LLRenderPass::uploadActorFx(const LLDrawInfo& params, bool force_native)
+{
+    bool result = false;
+    // Draw-info null is intentionally *not* Director's null-is-You identity.
+    // It denotes world geometry with no stable actor owner.
+    if (params.mActorFxOwner.isNull())
+    {
+        uploadActorFxDisabled();
+    }
+    else
+    {
+        LLUUID owner;
+        const LLDirectorCast::ActorStyle& style =
+            LLDirectorCast::instance().resolveStoredActorStyle(
+                params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
+        if (!force_native && shared_actor_fx_replay_active(owner))
+        {
+            uploadActorFxDisabled();
+        }
+        else
+        {
+            result = upload_actor_fx_style(owner, style, false);
+        }
+    }
+    // [AvatarLightResponse] uploaded LAST (null owners => identity reset).
+    uploadAvatarLightResponse(params.mActorFxOwner, params.mActorFxFallbackOwner);
+    return result;
+}
+
+namespace
+{
+bool shared_actor_fx_beauty_context()
+{
+    // Suppression belongs solely to the main world beauty render.  Shadow and
+    // velocity retain native geometry/coverage, while selection, impostors,
+    // reflection probes, mirrors, HUD previews and Prism auxiliary cameras must
+    // continue to see the authoritative source actor.  Replaying the shared
+    // proxy must never recursively suppress itself.
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    return shader &&
+           (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow) &&
+           LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD &&
+           !LLPipeline::sShadowRender &&
+           !LLPipeline::sVelocityRender &&
+           !LLPipeline::sReflectionRender &&
+           !LLPipeline::sImpostorRender &&
+           !LLPipeline::sRenderingHUDs &&
+           !LLPipeline::sPrismLensRender &&
+           !gCubeSnapshot &&
+           !gPipeline.mHeroProbeManager.isMirrorPass() &&
+           !LLActorMover::instance().isRenderingSharedActorStyle();
+}
+
+bool shared_actor_fx_zero_cover_context()
+{
+    // A zero-opacity Cover means "the actor is absent", so its native
+    // geometry must not leak into image-producing auxiliary passes either.
+    // Keep editor/UI-only paths (HUD previews and impostors) native so the
+    // actor remains selectable and usable. Prism is a retained camera feed,
+    // so an intentionally absent actor must be suppressed there too. Nonzero
+    // Cover deliberately stays fail-open in every unsupported auxiliary view.
+    if (LLPipeline::sRenderingHUDs ||
+        LLPipeline::sImpostorRender ||
+        LLActorMover::instance().isRenderingSharedActorStyle())
+    {
+        return false;
+    }
+
+    return shared_actor_fx_beauty_context() ||
+           LLPipeline::sShadowRender ||
+           LLPipeline::sVelocityRender ||
+           LLPipeline::sReflectionRender ||
+           LLPipeline::sPrismLensRender ||
+           gCubeSnapshot ||
+           gPipeline.mHeroProbeManager.isMirrorPass();
+}
+
+bool shared_actor_fx_zero_cover(
+    const LLDirectorCast::ActorStyle& style)
+{
+    return style.mEnabled &&
+           style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE &&
+           style.mAlpha <= 0.f;
+}
+
+bool shared_actor_fx_replay_active(const LLUUID& actor_id)
+{
+    return shared_actor_fx_beauty_context() &&
+           LLActorMover::instance().isSharedActorStyleActive(actor_id);
+}
+
+bool shared_actor_fx_style_suppresses(
+    const LLUUID& actor_id,
+    const LLDirectorCast::ActorStyle& style)
+{
+    // Ordinary Layer preserves the authored actor below the treatment. Dissolve
+    // is coverage-changing, so Layer must own native beauty/glow for that one
+    // look or native colour remains visible through its holes. In either mode,
+    // suppress only after the actor-wide proxy preflight succeeds this frame.
+    const bool owns_native_beauty =
+        style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        || (style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+            && style.mStyle == 10); // GHOST_STYLE_DISSOLVE
+    return style.mEnabled &&
+           owns_native_beauty &&
+           LLActorMover::instance().isSharedActorStyleReady(actor_id);
+}
+}
+
+// static
+bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
+{
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(actor_id);
+    if (shared_actor_fx_zero_cover_context() &&
+        shared_actor_fx_zero_cover(style))
+    {
+        // No replacement draw is needed at this exact endpoint, so this path
+        // is intentionally independent of shared-proxy shader readiness.
+        return true;
+    }
+    if (!shared_actor_fx_beauty_context())
+    {
+        return false;
+    }
+
+    return shared_actor_fx_style_suppresses(actor_id, style);
+}
+
+// static
+bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
+                                                bool depth_only)
+{
+    if (params.mActorFxOwner.isNull())
+    {
+        return false;
+    }
+
+    LLUUID owner;
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().resolveStoredActorStyle(
+            params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
+    if (shared_actor_fx_zero_cover_context() &&
+        shared_actor_fx_zero_cover(style))
+    {
+        return true;
+    }
+    if (!shared_actor_fx_beauty_context())
+    {
+        return false;
+    }
+    // A nonzero Cover keeps native depth for DoF/coverage fidelity. At the
+    // fully invisible endpoint, however, retaining native alpha depth would
+    // still occlude or blur the background even though neither native colour
+    // nor the shared proxy emits a pixel.
+    if (depth_only && style.mAlpha > 0.f)
+    {
+        return false;
+    }
+    return shared_actor_fx_style_suppresses(owner, style);
+}
+
+// static
+bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
+                                                   bool depth_only)
+{
+    if (params.mActorFxOwner.isNull())
+    {
+        return false;
+    }
+
+    LLUUID owner;
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().resolveStoredActorStyle(
+            params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
+    if (shared_actor_fx_zero_cover_context() &&
+        shared_actor_fx_zero_cover(style))
+    {
+        return true;
+    }
+    if (!shared_actor_fx_beauty_context())
+    {
+        return false;
+    }
+    if (!style.mEnabled ||
+        !LLActorMover::instance().isSharedActorStylePBRReady(owner))
+    {
+        return false;
+    }
+
+    // Transparent DoF/depth-only coverage remains native for every visible
+    // endpoint.  Opaque/masked coverage is supplied by the exact shared PBR
+    // prime before alpha draining.  Cover zero is intentionally absent from
+    // both paths and must never leave an invisible depth silhouette.
+    if (depth_only && style.mAlpha > 0.f)
+    {
+        return false;
+    }
+    return true;
+}
+
 LLRenderPass::LLRenderPass(const U32 type)
 : LLDrawPool(type)
 {
@@ -631,6 +1242,10 @@ void LLRenderPass::pushMaskBatchesIndexed(U32 type, bool rigged)
         {
             continue;
         }
+        if (shouldSuppressSharedActorFx(params))
+        {
+            continue;
+        }
 
         if (rigged)
         {
@@ -661,6 +1276,7 @@ void LLRenderPass::pushMaskBatchesIndexed(U32 type, bool rigged)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
@@ -672,6 +1288,16 @@ void LLRenderPass::pushEmissiveBatchesScalar(U32 type, bool rigged)
     const LLVOAvatar* lastAvatar = nullptr;
     U64 lastMeshId = 0;
     bool skipLastSkin = false;
+
+    // PASS_GLOW is an opaque authored sidecar. Synthetic Actor FX on this
+    // path covers the surface rather than an alpha card; explicitly reset the
+    // program uniform because the same shader family is also used by the alpha
+    // pool with coverage enabled.
+    if (LLGLSLShader::sCurBoundShaderPtr)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->uniform1i(
+            sActorFxUseCoverageAlpha, 0);
+    }
 
     auto* begin = gPipeline.beginRenderMap(type);
     auto* end = gPipeline.endRenderMap(type);
@@ -704,6 +1330,12 @@ void LLRenderPass::pushEmissiveBatchesIndexed(U32 type, bool rigged)
     U64 lastMeshId = 0;
     bool skipLastSkin = false;
 
+    if (LLGLSLShader::sCurBoundShaderPtr)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->uniform1i(
+            sActorFxUseCoverageAlpha, 0);
+    }
+
     auto* begin = gPipeline.beginRenderMap(type);
     auto* end = gPipeline.endRenderMap(type);
     for (LLCullResult::drawinfo_iterator i = begin; i != end; )
@@ -712,6 +1344,10 @@ void LLRenderPass::pushEmissiveBatchesIndexed(U32 type, bool rigged)
         LLCullResult::increment_iterator(i, end);
 
         if (params.mMaterialSlotList.size() < 2)
+        {
+            continue;
+        }
+        if (shouldSuppressSharedActorFx(params))
         {
             continue;
         }
@@ -740,6 +1376,7 @@ void LLRenderPass::pushEmissiveBatchesIndexed(U32 type, bool rigged)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
@@ -837,9 +1474,25 @@ void LLRenderPass::pushVelocityBatches(U32 type)
             continue;
         }
 
+        if (shouldSuppressSharedActorFx(params))
+        {
+            // Keep rigid previous-transform history current while the actor is
+            // intentionally absent, avoiding a one-frame velocity spike when
+            // Cover opacity is raised again.
+            if (params.mLastModelMatrix)
+            {
+                const LLMatrix4* current_mat = params.mModelMatrix
+                    ? params.mModelMatrix : &identity;
+                *params.mLastModelMatrix = *current_mat;
+            }
+            continue;
+        }
+
         LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
 
         applyModelMatrix(params);
+
+        uploadActorFx(params);
 
         const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
         LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
@@ -856,7 +1509,7 @@ void LLRenderPass::pushVelocityBatches(U32 type)
     }
 }
 
-void LLRenderPass::pushVelocityBatchesTextured(U32 type)
+void LLRenderPass::pushVelocityBatchesTextured(U32 type, bool legacy_material)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     static const LLMatrix4 identity;
@@ -874,20 +1527,61 @@ void LLRenderPass::pushVelocityBatchesTextured(U32 type)
             continue;
         }
 
+        if (params.mMaterialSlotList.size() > 1 || params.mGLTFMaterialList.size() > 1)
+        { // indexed multi-material geometry is emitted by the indexed helper
+            continue;
+        }
+
+        if (shouldSuppressSharedActorFx(params))
+        {
+            if (params.mLastModelMatrix)
+            {
+                const LLMatrix4* current_mat = params.mModelMatrix
+                    ? params.mModelMatrix : &identity;
+                *params.mLastModelMatrix = *current_mat;
+            }
+            continue;
+        }
+
         LLGLDisable cull_face(params.mGLTFMaterial && params.mGLTFMaterial->mDoubleSided ? GL_CULL_FACE : 0);
 
         applyModelMatrix(params);
 
-        if (params.mTexture.notNull())
+        uploadActorFx(params);
+
+        LLFetchedGLTFMaterial* gltf = params.mGLTFMaterial.get();
+        if (gltf)
         {
-            gGL.getTexUnit(0)->bindFast(params.mTexture);
+            LLViewerTexture* base = params.mTexture.notNull()
+                ? params.mTexture.get()
+                : gltf->mBaseColorTexture.get();
+            gGL.getTexUnit(0)->bindFast(base ? base : LLViewerFetchedTexture::sWhiteImagep.get());
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff);
+            LLGLTFMaterial::TextureTransform::Pack packed;
+            gltf->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+            LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
+                LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM, 2, packed);
         }
+        else
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture.notNull()
+                ? params.mTexture.get()
+                : LLViewerFetchedTexture::sWhiteImagep.get());
+            const F32 bias = legacy_material ? 0.001953125f : 0.f;
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff - bias);
+        }
+
+        setup_texture_matrix(params);
 
         const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
         LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
 
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+
+        teardown_texture_matrix(params);
 
         if (params.mLastModelMatrix)
         {
@@ -978,6 +1672,11 @@ void LLRenderPass::pushRiggedVelocityBatches(U32 type)
             continue;
         }
 
+        if (shouldSuppressSharedActorFx(params))
+        {
+            continue;
+        }
+
         if (!uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
         {
             continue;
@@ -987,12 +1686,14 @@ void LLRenderPass::pushRiggedVelocityBatches(U32 type)
 
         applyModelMatrix(params);
 
+        uploadActorFx(params);
+
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
 }
 
-void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
+void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type, bool legacy_material)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
@@ -1013,6 +1714,16 @@ void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
             continue;
         }
 
+        if (params.mMaterialSlotList.size() > 1 || params.mGLTFMaterialList.size() > 1)
+        {
+            continue;
+        }
+
+        if (shouldSuppressSharedActorFx(params))
+        {
+            continue;
+        }
+
         if (!uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
         {
             continue;
@@ -1022,13 +1733,145 @@ void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type)
 
         applyModelMatrix(params);
 
-        if (params.mTexture.notNull())
+        uploadActorFx(params);
+
+        LLFetchedGLTFMaterial* gltf = params.mGLTFMaterial.get();
+        if (gltf)
         {
-            gGL.getTexUnit(0)->bindFast(params.mTexture);
+            LLViewerTexture* base = params.mTexture.notNull()
+                ? params.mTexture.get()
+                : gltf->mBaseColorTexture.get();
+            gGL.getTexUnit(0)->bindFast(base ? base : LLViewerFetchedTexture::sWhiteImagep.get());
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff);
+            LLGLTFMaterial::TextureTransform::Pack packed;
+            gltf->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+            LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
+                LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM, 2, packed);
         }
+        else
+        {
+            gGL.getTexUnit(0)->bindFast(params.mTexture.notNull()
+                ? params.mTexture.get()
+                : LLViewerFetchedTexture::sWhiteImagep.get());
+            const F32 bias = legacy_material ? 0.001953125f : 0.f;
+            LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+                params.mAlphaMaskCutoff - bias);
+        }
+
+        setup_texture_matrix(params);
 
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
+        teardown_texture_matrix(params);
+    }
+}
+
+void LLRenderPass::pushVelocityAlphaBatchesIndexed(U32 type, bool gltf, bool rigged)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    static const LLMatrix4 identity;
+    const LLVOAvatar* last_avatar = nullptr;
+    U64 last_mesh_id = 0;
+    bool skip_last_skin = false;
+
+    auto* begin = gPipeline.beginRenderMap(type);
+    auto* end = gPipeline.endRenderMap(type);
+    for (LLCullResult::drawinfo_iterator i = begin; i != end; )
+    {
+        LLDrawInfo& params = **i;
+        LLCullResult::increment_iterator(i, end);
+
+        const S32 list_size = gltf ? (S32)params.mGLTFMaterialList.size()
+                                   : (S32)params.mMaterialSlotList.size();
+        if (params.mVertexBuffer.isNull() || list_size < 2)
+        {
+            continue;
+        }
+        if (shouldSuppressSharedActorFx(params))
+        {
+            if (!rigged && params.mLastModelMatrix)
+            {
+                const LLMatrix4* current_mat = params.mModelMatrix
+                    ? params.mModelMatrix : &identity;
+                *params.mLastModelMatrix = *current_mat;
+            }
+            continue;
+        }
+        if (rigged && (!params.mAvatar || !params.mSkinInfo ||
+            !uploadVelocityMatrixPalettes(params.mAvatar, params.mSkinInfo,
+                                          last_avatar, last_mesh_id, skip_last_skin)))
+        {
+            continue;
+        }
+
+        const S32 n = llmin(list_size, LLGLSLShader::sIndexedGLTFChannels);
+        F32 min_alpha[8] = { 0.f };
+        F32 bc_xform[8 * 8] = { 0.f };
+        bool double_sided = false;
+        for (S32 s = 0; s < n; ++s)
+        {
+            if (gltf)
+            {
+                LLFetchedGLTFMaterial* mat = params.mGLTFMaterialList[s].get();
+                if (!mat)
+                {
+                    min_alpha[s] = -1.f;
+                    continue;
+                }
+                double_sided = double_sided || mat->mDoubleSided;
+                LLViewerTexture* base = mat->mBaseColorTexture.notNull()
+                    ? mat->mBaseColorTexture.get()
+                    : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(s)->bindFast(base);
+                min_alpha[s] =
+                    s < (S32)params.mGLTFAlphaMaskCutoffList.size()
+                        ? params.mGLTFAlphaMaskCutoffList[s]
+                        : mat->mAlphaCutoff;
+                LLGLTFMaterial::TextureTransform::Pack packed;
+                mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+                memcpy(&bc_xform[8 * s], packed, sizeof(packed));
+            }
+            else
+            {
+                const LLDrawInfo::MaterialSlot& slot = params.mMaterialSlotList[s];
+                LLViewerTexture* diffuse = slot.mDiffuse.notNull()
+                    ? slot.mDiffuse.get()
+                    : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(s)->bindFast(diffuse);
+                min_alpha[s] = slot.mAlphaMaskCutoff - 0.001953125f;
+            }
+        }
+
+        LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+        static const LLStaticHashedString sVelocityMinAlpha("velocity_minimum_alpha");
+        shader->uniform1fv(sVelocityMinAlpha, n, min_alpha);
+        if (gltf)
+        {
+            static const LLStaticHashedString sBaseXform("gltf_basecolor_transform");
+            shader->uniform4fv(sBaseXform, 2 * n, bc_xform);
+        }
+
+        LLGLDisable cull_face(double_sided ? GL_CULL_FACE : 0);
+        applyModelMatrix(params);
+        uploadActorFx(params);
+        if (!rigged)
+        {
+            const LLMatrix4* last_mat = params.mLastModelMatrix
+                ? params.mLastModelMatrix : &identity;
+            shader->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE,
+                                     (GLfloat*)last_mat->mMatrix);
+        }
+
+        params.mVertexBuffer->setBuffer();
+        params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                        params.mEnd, params.mCount, params.mOffset);
+        if (!rigged && params.mLastModelMatrix)
+        {
+            const LLMatrix4* current_mat = params.mModelMatrix
+                ? params.mModelMatrix : &identity;
+            *params.mLastModelMatrix = *current_mat;
+        }
     }
 }
 
@@ -1037,7 +1880,7 @@ void LLRenderPass::pushBatch(LLDrawInfo& params, bool texture, bool batch_textur
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     llassert(texture);
 
-    if (!params.mCount)
+    if (!params.mCount || shouldSuppressSharedActorFx(params))
     {
         return;
     }
@@ -1077,6 +1920,7 @@ void LLRenderPass::pushBatch(LLDrawInfo& params, bool texture, bool batch_textur
         }
     }
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 
@@ -1092,12 +1936,13 @@ void LLRenderPass::pushUntexturedBatch(LLDrawInfo& params)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
-    if (!params.mCount)
+    if (!params.mCount || shouldSuppressSharedActorFx(params))
     {
         return;
     }
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 }
@@ -1209,25 +2054,37 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
     return !skipLastSkin;
 }
 
-void setup_texture_matrix(LLDrawInfo& params)
+// static
+void LLRenderPass::setupGLTFTextureMatrix(const LLMatrix4* texture_matrix)
 {
-    if (params.mTextureMatrix)
+    if (texture_matrix)
     { //special case implementation of texture animation here because of special handling of textures for PBR batches
         gGL.getTexUnit(0)->activate();
         gGL.matrixMode(LLRender::MM_TEXTURE);
-        gGL.loadMatrix((GLfloat*)params.mTextureMatrix->mMatrix);
+        gGL.loadMatrix((GLfloat*)texture_matrix->mMatrix);
         gPipeline.mTextureMatrixOps++;
     }
 }
 
-void teardown_texture_matrix(LLDrawInfo& params)
+// static
+void LLRenderPass::teardownGLTFTextureMatrix(const LLMatrix4* texture_matrix)
 {
-    if (params.mTextureMatrix)
+    if (texture_matrix)
     {
         gGL.matrixMode(LLRender::MM_TEXTURE0);
         gGL.loadIdentity();
         gGL.matrixMode(LLRender::MM_MODELVIEW);
     }
+}
+
+void setup_texture_matrix(LLDrawInfo& params)
+{
+    LLRenderPass::setupGLTFTextureMatrix(params.mTextureMatrix);
+}
+
+void teardown_texture_matrix(LLDrawInfo& params)
+{
+    LLRenderPass::teardownGLTFTextureMatrix(params.mTextureMatrix);
 }
 
 void LLRenderPass::pushGLTFBatches(U32 type, bool textured)
@@ -1338,19 +2195,29 @@ void LLRenderPass::pushGLTFBatchesIndexed(U32 type, eGLTFIndexedMaps maps)
 // static
 // Bind one draw call's worth of indexed materials and emit it. Each material slot
 // s binds its maps to texture units [s, N+s, 2N+s, 3N+s] (N == shader's
-// sIndexedGLTFChannels) and contributes one element to the per-slot scalar/transform
+// active shader material stride) and contributes one element to the per-slot scalar/transform
 // uniform arrays. Mirrors LLFetchedGLTFMaterial::bind for the default-texture and
 // factor handling. maps trims the bound/uploaded set: GLTF_MAPS_BASE_COLOR (shadow
 // alpha-mask) binds only base color; GLTF_MAPS_GLOW (glow pass) adds emissive but
 // skips normal/ORM; GLTF_MAPS_FULL (GBuffer write) binds everything.
-void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps maps)
+void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params,
+                                        eGLTFIndexedMaps maps,
+                                        bool shared_replay)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
+    if (!shared_replay && shouldSuppressSharedActorFxPBR(params))
+    {
+        return;
+    }
+
+    const bool want_base     = (maps != GLTF_MAPS_NONE);
     const bool want_emissive = (maps == GLTF_MAPS_FULL || maps == GLTF_MAPS_GLOW);
     const bool want_full     = (maps == GLTF_MAPS_FULL); // normal + ORM
 
-    const S32 N = LLGLSLShader::sIndexedGLTFChannels; // shader sampler-array stride
+    const S32 N = shared_replay
+        ? LLGLSLShader::sSharedPBRIndexedGLTFChannels
+        : LLGLSLShader::sIndexedGLTFChannels; // shader sampler-array stride
     // Slot count is capped at N (<= 8) by genDrawInfo; clamp defensively so a stale
     // or over-long list can never overrun the fixed 8-slot arrays / N sampler units.
     llassert((S32)params.mGLTFMaterialList.size() <= N);
@@ -1382,10 +2249,20 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps map
 
         double_sided = double_sided || mat->mDoubleSided;
 
+        if (!want_base)
+        {
+            continue;
+        }
+
         LLViewerTexture* base = mat->mBaseColorTexture.notNull() ? mat->mBaseColorTexture.get() : LLViewerFetchedTexture::sWhiteImagep.get();
         gGL.getTexUnit(s)->bindFast(base);
 
-        min_alpha[s] = (mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK) ? mat->mAlphaCutoff : -1.f;
+        min_alpha[s] =
+            s < (S32)params.mGLTFAlphaMaskCutoffList.size()
+                ? params.mGLTFAlphaMaskCutoffList[s]
+                : ((mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                       ? mat->mAlphaCutoff
+                       : -1.f);
 
         // getPacked() takes F32(&)[8]; copy each transform into its slot stride.
         LLGLTFMaterial::TextureTransform::Pack packed;
@@ -1431,8 +2308,11 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps map
     static const LLStaticHashedString sMinAlpha("gltf_minimum_alpha");
     static const LLStaticHashedString sBcXform("gltf_basecolor_transform");
 
-    shader->uniform1fv(sMinAlpha, n, min_alpha);
-    shader->uniform4fv(sBcXform, 2 * n, bc_xform);
+    if (want_base)
+    {
+        shader->uniform1fv(sMinAlpha, n, min_alpha);
+        shader->uniform4fv(sBcXform, 2 * n, bc_xform);
+    }
 
     if (want_emissive)
     {
@@ -1460,6 +2340,13 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps map
 
     applyModelMatrix(params);
 
+    // Shared replay uploads the proxy's authoritative style immediately before
+    // entering this helper (including the topology-wire bit).  Do not resolve
+    // and overwrite it from the source DrawInfo a second time.
+    if (!shared_replay)
+    {
+        uploadActorFx(params);
+    }
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 }
@@ -1467,6 +2354,11 @@ void LLRenderPass::pushGLTFBatchIndexed(LLDrawInfo& params, eGLTFIndexedMaps map
 // static
 void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& lastMat, LLViewerTexture*& lastTex)
 {
+    if (shouldSuppressSharedActorFxPBR(params))
+    {
+        return;
+    }
+
     LLFetchedGLTFMaterial* mat = params.mGLTFMaterial.get();
 
     if (mat)
@@ -1477,10 +2369,18 @@ void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& las
         LLViewerTexture* tex = params.mTexture.get();
         if (mat != lastMat || tex != lastTex)
         {
-            mat->bind(params.mTexture);
+            mat->bind(params.mTexture, params.mAlphaMaskCutoff);
             lastMat = mat;
             lastTex = tex;
         }
+    }
+
+    // Material/texture caching must not cache the per-draw cutoff. Two objects
+    // may share one PBR asset while carrying different client overrides.
+    if (!LLPipeline::sShadowRender || params.mAlphaMaskCutoff >= 0.f)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+            params.mAlphaMaskCutoff);
     }
 
     LLGLDisable cull_face(mat && mat->mDoubleSided ? GL_CULL_FACE : 0);
@@ -1489,6 +2389,7 @@ void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& las
 
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 
@@ -1498,12 +2399,24 @@ void LLRenderPass::pushGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& las
 // static
 void LLRenderPass::pushUntexturedGLTFBatch(LLDrawInfo& params)
 {
+    if (shouldSuppressSharedActorFxPBR(params))
+    {
+        return;
+    }
+
     auto& mat = params.mGLTFMaterial;
 
     LLGLDisable cull_face(mat->mDoubleSided ? GL_CULL_FACE : 0);
 
+    if (!LLPipeline::sShadowRender || params.mAlphaMaskCutoff >= 0.f)
+    {
+        LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(
+            params.mAlphaMaskCutoff);
+    }
+
     applyModelMatrix(params);
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 }

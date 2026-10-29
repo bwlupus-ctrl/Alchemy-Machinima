@@ -29,6 +29,7 @@
 
 #include "llviewertexture.h"
 
+#include "bdmergememorybudget.h"
 #include "bdmergetexspike.h"
 
 // Library includes
@@ -49,6 +50,7 @@
 
 // viewer includes
 #include "llimagegl.h"
+#include "llrendertarget.h"
 #include "lldrawpool.h"
 #include "lltexturefetch.h"
 #include "llviewertexturelist.h"
@@ -61,6 +63,7 @@
 #include "lltexturemanagerbridge.h"
 #include "llmediaentry.h"
 #include "llvovolume.h"
+#include "alprobedirty.h"          // [ProbeOnDemand]
 // [BDMerge] capture-mode auto-arming reads these "am I filming?" signals
 #include "llviewerjoystick.h"      // flycam override camera
 #include "llcinematiccamera.h"     // cinematic camera active
@@ -92,7 +95,7 @@ S32 LLViewerTexture::sImageCount = 0;
 S32 LLViewerTexture::sRawCount = 0;
 S32 LLViewerTexture::sAuxCount = 0;
 LLFrameTimer LLViewerTexture::sEvaluationTimer;
-F32 LLViewerTexture::sDesiredDiscardBias = 0.f;
+F32 LLViewerTexture::sDesiredDiscardBias = 1.f;
 U32 LLViewerTexture::sBiasTexturesUpdated = 0;
 
 S32 LLViewerTexture::sMaxSculptRez = 128; //max sculpt image size
@@ -109,6 +112,20 @@ F32 LLViewerTexture::sCurrentTime = 0.0f;
 constexpr F32 MEMORY_CHECK_WAIT_TIME = 1.0f;
 constexpr F32 MIN_VRAM_BUDGET = 768.f;
 F32 LLViewerTexture::sFreeVRAMMegabytes = MIN_VRAM_BUDGET;
+F32 LLViewerTexture::sVRAMBudgetMegabytes = MIN_VRAM_BUDGET;
+F32 LLViewerTexture::sEffectiveVRAMBudgetMegabytes = MIN_VRAM_BUDGET;
+F32 LLViewerTexture::sTrackedVRAMMegabytes = 0.f;
+F32 LLViewerTexture::sTextureVRAMMegabytes = 0.f;
+F32 LLViewerTexture::sReducibleTextureVRAMMegabytes = 0.f;
+F32 LLViewerTexture::sFixedVRAMMegabytes = 0.f;
+F32 LLViewerTexture::sVertexVRAMMegabytes = 0.f;
+F32 LLViewerTexture::sRenderTargetVRAMMegabytes = 0.f;
+F32 LLViewerTexture::sDriverAvailableVRAMMegabytes = -1.f;
+U32 LLViewerTexture::sVRAMEvictionCount = 0;
+bool LLViewerTexture::sVRAMEvictionDataAvailable = false;
+bool LLViewerTexture::sVRAMBudgetIsCustom = false;
+bool LLViewerTexture::sVRAMCapAdjustedForFixedAllocations = false;
+LLViewerTexture::EVRAMPressureState LLViewerTexture::sVRAMPressureState = LLViewerTexture::VRAM_PRESSURE_NORMAL;
 
 LLViewerTexture::EDebugTexels LLViewerTexture::sDebugTexelsMode = LLViewerTexture::DEBUG_TEXELS_OFF;
 
@@ -480,7 +497,8 @@ void LLViewerTexture::initClass()
 //
 // Evaluated here rather than at the per-texture sites because those run for
 // every texture every frame -- polling four subsystems per texture would be
-// pure waste. The two full-res checks just read sCaptureModeActive.
+// pure waste. Memory-heavy effects use isCaptureQualityPinActive(), which
+// temporarily yields to either VRAM pressure or critical system memory.
 //
 // HYSTERESIS is the important part. Arming upgrades every visible texture to
 // full resolution (a fetch burst); disarming lets them downrez again. A mode
@@ -494,12 +512,28 @@ static F32   sCaptureModeReleaseAt = 0.f;
 //static
 bool LLViewerTexture::isCaptureModeActive()
 {
-    return sCaptureModeActive;
+    // Keep the operator's pin armed, but never let a creative preference
+    // override critical system/process memory pressure. It resumes
+    // automatically after the governor recovers.
+    return sCaptureModeActive && !BDMergeMemoryBudget::isCritical();
+}
+
+//static
+bool LLViewerTexture::isCaptureQualityPinActive()
+{
+    return isCaptureModeActive() && !isVRAMPressureActive();
+}
+
+//static
+bool LLViewerTexture::isVRAMPressureActive()
+{
+    return sVRAMPressureState != VRAM_PRESSURE_NORMAL;
 }
 
 static void update_capture_mode()
 {
-    // Manual pin always wins and is instantaneous in both directions.
+    // The preference remains armed during critical pressure, while the public
+    // quality helper temporarily suppresses its memory-heavy effects.
     static LLCachedControl<bool> manual_pin(gSavedSettings, "BDMergeCaptureModePin", false);
     if (manual_pin)
     {
@@ -566,104 +600,470 @@ static void update_capture_mode()
     }
 }
 
+const char* LLViewerTexture::getVRAMPressureStatus()
+{
+    switch (sVRAMPressureState)
+    {
+        case VRAM_PRESSURE_ELEVATED:
+            return "Pressure";
+        case VRAM_PRESSURE_CRITICAL:
+            return "Critical";
+        case VRAM_PRESSURE_NORMAL:
+        default:
+            return "Normal";
+    }
+}
+
 void LLViewerTexture::updateClass()
 {
+    BDMergeMemoryBudget::refresh();
     update_capture_mode();
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
     sCurrentTime = gFrameTimeSeconds;
 
     LLViewerMediaTexture::updateClass();
-    // This is a divisor used to determine how much VRAM from our overall VRAM budget to use.
-    // This is **cumulative** on whatever the detected or manually set VRAM budget is.
-    // If we detect 2048MB of VRAM, this will, by default, only use 1024.
-    // If you set 1024MB of VRAM, this will, by default, use 512.
-    // -Geenz 2025-03-03
-    static LLCachedControl<U32> tex_vram_divisor(gSavedSettings, "RenderTextureVRAMDivisor", 2);
-    static LLCachedControl<U32> max_vram_budget(gSavedSettings, "RenderMaxVRAMBudget", 0);
 
-    F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 1024.0;
-    F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
+    // Master toggle: when off (default), the viewer behaves exactly as it did
+    // before the VRAM budget governor existed -- see the else branch below.
+    static LLCachedControl<bool> vram_governor_enabled(gSavedSettings, "RenderVRAMGovernorEnabled", false);
+    static LLCachedControl<U32> tex_vram_divisor(gSavedSettings, "RenderTextureVRAMDivisor", 1);
+    // LLSliderCtrl is floating-point internally. Read this U32 setting directly
+    // so a live preference edit cannot leave a typed LLCachedControl holding the
+    // previous Auto value until restart.
+    const U32 max_vram_budget = gSavedSettings.getU32("RenderMaxVRAMBudget");
 
-    // get an estimate of how much video memory we're using
-    // NOTE: our metrics miss about half the vram we use, so this biases high but turns out to typically be within 5% of the real number
-    F32 used = (F32)ll_round(texture_bytes_alloc + vertex_bytes_alloc);
+    constexpr F64 BYTES_PER_MEGABYTE = 1024.0 * 1024.0;
+    constexpr F32 SOFT_CAP_PERCENTAGE = 0.85f;
+    constexpr F32 CRITICAL_CAP_PERCENTAGE = 0.95f;
+    constexpr F32 RECOVERY_CAP_PERCENTAGE = 0.80f;
+    constexpr F32 QUALITY_RECOVERY_CAP_PERCENTAGE = 0.78f;
+    constexpr F32 CRITICAL_RECOVERY_CAP_PERCENTAGE = 0.90f;
+    constexpr F32 MIN_REDUCIBLE_TEXTURE_BUDGET_MB = 256.f;
+    constexpr F32 MIN_DRIVER_RESERVE_MB = 256.f;
+    constexpr F32 MAX_DRIVER_RESERVE_MB = 1024.f;
+    constexpr F32 DRIVER_RESERVE_PERCENTAGE = 0.10f;
+    constexpr F32 DRIVER_RECOVERY_RESERVE_SCALE = 1.25f;
+    constexpr F32 CRITICAL_RECOVERY_RESERVE_SCALE = 0.75f;
+    constexpr F32 PRESSURE_RECOVERY_SECONDS = 5.f;
+    constexpr F32 QUALITY_RECOVERY_HOLD_SECONDS = 3.f;
+    constexpr F32 MAX_PRESSURE_BIAS_ATTACK_PER_SECOND = 0.75f;
+    constexpr F32 MAX_QUALITY_RECOVERY_BIAS_PER_SECOND = 0.10f;
+    constexpr F32 BIAS_SWEEP_RESET_STEP = 0.25f;
 
-    // For debugging purposes, it's useful to be able to set the VRAM budget manually.
-    // But when manual control is not enabled, use the VRAM divisor.
-    // While we're at it, assume we have 1024 to play with at minimum when the divisor is in use.  Works more elegantly with the logic below this.
-    // -Geenz 2025-03-21
-    F32 budget = max_vram_budget == 0 ? llmax(1024, (F32)gGLManager.mVRAM / tex_vram_divisor) : (F32)max_vram_budget;
+    // Texture accounting includes render-target textures, so the render-target
+    // value is diagnostic and is not added to the total a second time.
+    sTextureVRAMMegabytes =
+        (F32)(LLImageGL::getTextureBytesAllocatedEstimate() / BYTES_PER_MEGABYTE);
+    sReducibleTextureVRAMMegabytes =
+        (F32)(LLImageGL::getMipmappedTextureBytesAllocatedEstimate() / BYTES_PER_MEGABYTE);
+    sVertexVRAMMegabytes = (F32)(LLVertexBuffer::getBytesAllocated() / BYTES_PER_MEGABYTE);
+    sRenderTargetVRAMMegabytes = (F32)(LLRenderTarget::sBytesAllocated / BYTES_PER_MEGABYTE);
+    sTrackedVRAMMegabytes = sTextureVRAMMegabytes + sVertexVRAMMegabytes;
+    sFixedVRAMMegabytes = llmax(sTrackedVRAMMegabytes - sReducibleTextureVRAMMegabytes, 0.f);
 
-    // Try to leave at least half a GB for everyone else and for bias,
-    // but keep at least 768MB for ourselves
-    // Viewer can 'overshoot' target when scene changes, if viewer goes over budget it
-    // can negatively impact performance, so leave 20% of a breathing room for
-    // 'bias' calculation to kick in.
-    F32 target = llmax(llmin(budget - 512.f, budget * 0.8f), MIN_VRAM_BUDGET);
-    sFreeVRAMMegabytes = target - used;
+    const F32 detected_vram = llmax((F32)gGLManager.mVRAM, MIN_VRAM_BUDGET);
+    const F32 automatic_budget = detected_vram / llmax((F32)tex_vram_divisor(), 1.f);
+    sVRAMBudgetIsCustom = max_vram_budget > 0;
+    const F32 requested_budget = sVRAMBudgetIsCustom
+        ? (F32)max_vram_budget
+        : automatic_budget;
+    sVRAMBudgetMegabytes = llclamp(requested_budget, MIN_VRAM_BUDGET, detected_vram);
 
-    F32 over_pct = (used - target) / target;
+    // Fixed allocations cannot be reclaimed by texture discard. Raise an
+    // impossible cap enough to retain a small elastic texture pool, and expose
+    // both values so the UI makes the adjustment explicit.
+    sEffectiveVRAMBudgetMegabytes =
+        llmax(sVRAMBudgetMegabytes, sFixedVRAMMegabytes + MIN_REDUCIBLE_TEXTURE_BUDGET_MB);
+    sVRAMCapAdjustedForFixedAllocations =
+        sEffectiveVRAMBudgetMegabytes > sVRAMBudgetMegabytes + 0.5f;
+    sFreeVRAMMegabytes = llmax(sEffectiveVRAMBudgetMegabytes - sTrackedVRAMMegabytes, 0.f);
 
-    bool is_sys_low = isSystemMemoryLow();
-    bool is_low = is_sys_low || over_pct > 0.f;
-
-    static bool was_low = false;
-
-    if (is_low && !was_low)
+    static bool was_cap_adjusted = false;
+    if (sVRAMCapAdjustedForFixedAllocations && !was_cap_adjusted)
     {
-        if (is_sys_low)
+        LL_WARNS("VRAMGovernor")
+            << "Configured VRAM cap is below the current fixed-allocation floor; "
+            << "using an effective cap of " << ll_round(sEffectiveVRAMBudgetMegabytes)
+            << " MB (configured=" << ll_round(sVRAMBudgetMegabytes)
+            << " MB, fixed=" << ll_round(sFixedVRAMMegabytes) << " MB)."
+            << LL_ENDL;
+    }
+    was_cap_adjusted = sVRAMCapAdjustedForFixedAllocations;
+
+    // Cap pressure is handled by the normal time-sliced texture scheduler.
+    // Only genuine system/driver emergencies retain the synchronous safety
+    // purge. Recovery has an additional hold so texture upgrades cannot refill
+    // the budget immediately after a pressure episode.
+    static bool was_system_memory_low = false;
+    static bool legacy_was_low = false;
+    static LLFrameTimer quality_recovery_hold_timer;
+    static bool quality_recovery_hold_active = false;
+
+    if (vram_governor_enabled)
+    {
+        // A later live switch back to the legacy path must observe its current
+        // low-memory condition as a fresh edge.
+        legacy_was_low = false;
+
+        // Driver queries can synchronize the GL stream, so sample at most once per
+        // second. NVX supplies headroom and eviction events; ATI supplies headroom.
+        static LLFrameTimer driver_memory_timer;
+        static bool first_driver_memory_sample = true;
+        static S32 last_eviction_count = -1;
+        static bool driver_query_warning_logged = false;
+        bool eviction_detected = false;
+        if (first_driver_memory_sample || driver_memory_timer.getElapsedTimeF32() >= MEMORY_CHECK_WAIT_TIME)
         {
-            // Not having system memory is more serious, so discard harder
-            sDesiredDiscardBias = llmax(sDesiredDiscardBias, 1.5f * getSystemMemoryBudgetFactor());
+            first_driver_memory_sample = false;
+            driver_memory_timer.reset();
+            sDriverAvailableVRAMMegabytes = -1.f;
+            sVRAMEvictionDataAvailable = false;
+            bool driver_query_failed = false;
+
+            if (gGLManager.mInited && gGLManager.mHasNVXGpuMemoryInfo)
+            {
+                GLint available_kb = -1;
+                GLint eviction_count = -1;
+
+                clear_glerror();
+                glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &available_kb);
+                const GLenum available_error = glGetError();
+
+                clear_glerror();
+                glGetIntegerv(GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX, &eviction_count);
+                const GLenum eviction_error = glGetError();
+
+                if (available_error == GL_NO_ERROR && available_kb >= 0)
+                {
+                    sDriverAvailableVRAMMegabytes = available_kb / 1024.f;
+                }
+                else
+                {
+                    driver_query_failed = true;
+                }
+                if (eviction_error == GL_NO_ERROR && eviction_count >= 0)
+                {
+                    eviction_detected = last_eviction_count >= 0 && eviction_count > last_eviction_count;
+                    last_eviction_count = eviction_count;
+                    sVRAMEvictionCount = (U32)eviction_count;
+                    sVRAMEvictionDataAvailable = true;
+                }
+                else
+                {
+                    driver_query_failed = true;
+                }
+            }
+            else if (gGLManager.mInited && gGLManager.mHasATIMemInfo)
+            {
+                GLint meminfo_kb[4] = { -1, -1, -1, -1 };
+                clear_glerror();
+                glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, meminfo_kb);
+                const GLenum meminfo_error = glGetError();
+                if (meminfo_error == GL_NO_ERROR && meminfo_kb[0] >= 0)
+                {
+                    sDriverAvailableVRAMMegabytes = meminfo_kb[0] / 1024.f;
+                }
+                else
+                {
+                    driver_query_failed = true;
+                }
+            }
+
+            if (driver_query_failed && !driver_query_warning_logged)
+            {
+                LL_WARNS("VRAMGovernor")
+                    << "Driver VRAM telemetry query failed; continuing with viewer-side accounting."
+                    << LL_ENDL;
+            }
+            driver_query_warning_logged = driver_query_failed;
+        }
+
+        const F32 driver_reserve = llclamp(detected_vram * DRIVER_RESERVE_PERCENTAGE,
+                                           MIN_DRIVER_RESERVE_MB,
+                                           MAX_DRIVER_RESERVE_MB);
+        const F32 reducible_budget =
+            llmax(sEffectiveVRAMBudgetMegabytes - sFixedVRAMMegabytes, 1.f);
+        const F32 cap_usage = sReducibleTextureVRAMMegabytes / reducible_budget;
+        const bool has_driver_headroom = sDriverAvailableVRAMMegabytes >= 0.f;
+        const bool driver_pressure = has_driver_headroom && sDriverAvailableVRAMMegabytes < driver_reserve;
+        const bool driver_critical = has_driver_headroom && sDriverAvailableVRAMMegabytes < driver_reserve * 0.5f;
+        const bool is_sys_low = isSystemMemoryLow();
+        const bool emergency_pressure = is_sys_low || eviction_detected;
+
+        EVRAMPressureState observed_pressure = VRAM_PRESSURE_NORMAL;
+        if (is_sys_low || eviction_detected || cap_usage >= CRITICAL_CAP_PERCENTAGE || driver_critical)
+        {
+            observed_pressure = VRAM_PRESSURE_CRITICAL;
+        }
+        else if (cap_usage >= SOFT_CAP_PERCENTAGE || driver_pressure)
+        {
+            observed_pressure = VRAM_PRESSURE_ELEVATED;
+        }
+
+        // Escalate immediately. Recover one rung at a time only after five seconds
+        // of sustained headroom, preventing fetch/eviction oscillation.
+        static LLFrameTimer pressure_recovery_timer;
+        static bool recovery_pending = false;
+        static EVRAMPressureState pending_recovery_target = VRAM_PRESSURE_NORMAL;
+        const EVRAMPressureState previous_pressure = sVRAMPressureState;
+        if (observed_pressure > sVRAMPressureState)
+        {
+            sVRAMPressureState = observed_pressure;
+            recovery_pending = false;
+        }
+        else if (observed_pressure < sVRAMPressureState)
+        {
+            const EVRAMPressureState step_target =
+                (EVRAMPressureState)((S32)sVRAMPressureState - 1);
+            const bool recovering_to_elevated = step_target == VRAM_PRESSURE_ELEVATED;
+            const F32 recovery_cap =
+                recovering_to_elevated ? CRITICAL_RECOVERY_CAP_PERCENTAGE : RECOVERY_CAP_PERCENTAGE;
+            const F32 recovery_driver_scale =
+                recovering_to_elevated ? CRITICAL_RECOVERY_RESERVE_SCALE : DRIVER_RECOVERY_RESERVE_SCALE;
+            const bool recovery_headroom =
+                cap_usage < recovery_cap &&
+                (!has_driver_headroom || sDriverAvailableVRAMMegabytes > driver_reserve * recovery_driver_scale) &&
+                !is_sys_low;
+            if (recovery_headroom)
+            {
+                if (!recovery_pending || pending_recovery_target != step_target)
+                {
+                    pressure_recovery_timer.reset();
+                    recovery_pending = true;
+                    pending_recovery_target = step_target;
+                }
+                else if (pressure_recovery_timer.getElapsedTimeF32() >= PRESSURE_RECOVERY_SECONDS)
+                {
+                    sVRAMPressureState = step_target;
+                    recovery_pending = false;
+                }
+            }
+            else
+            {
+                recovery_pending = false;
+            }
         }
         else
         {
-            // Slam to 1.5 bias the moment we hit low memory (discards off screen textures immediately)
-            sDesiredDiscardBias = llmax(sDesiredDiscardBias, 1.5f);
+            recovery_pending = false;
         }
 
-        if (is_sys_low || over_pct > 2.f)
-        { // if we're low on system memory, emergency purge off screen textures to avoid a death spiral
-            LL_WARNS() << "Low system memory detected, emergency downrezzing off screen textures" << LL_ENDL;
+        if (sVRAMPressureState != previous_pressure)
+        {
+            if (sVRAMPressureState == VRAM_PRESSURE_NORMAL)
+            {
+                quality_recovery_hold_timer.reset();
+                quality_recovery_hold_active = true;
+            }
+            else
+            {
+                quality_recovery_hold_active = false;
+            }
+
+            LL_INFOS("VRAMGovernor")
+                << "VRAM pressure is now " << getVRAMPressureStatus()
+                << ": tracked=" << ll_round(sTrackedVRAMMegabytes) << " MB"
+                << ", reducible=" << ll_round(sReducibleTextureVRAMMegabytes) << " MB"
+                << ", fixed=" << ll_round(sFixedVRAMMegabytes) << " MB"
+                << ", configured_cap=" << ll_round(sVRAMBudgetMegabytes) << " MB"
+                << ", effective_cap=" << ll_round(sEffectiveVRAMBudgetMegabytes) << " MB"
+                << ", driver_available=" << ll_round(sDriverAvailableVRAMMegabytes) << " MB"
+                << ", discard_bias=" << sDesiredDiscardBias
+                << LL_ENDL;
+        }
+
+        const bool observed_is_low = observed_pressure != VRAM_PRESSURE_NORMAL;
+        if (sVRAMPressureState != VRAM_PRESSURE_NORMAL && sVRAMPressureState != previous_pressure)
+        {
+            // Enter cap pressure at the off-screen-only bias. Critical cap
+            // pressure then slews toward stronger bias rather than producing a
+            // single-frame full-list rescan. Emergencies still jump immediately.
+            F32 minimum_bias = 1.5f;
+            if (emergency_pressure && sVRAMPressureState == VRAM_PRESSURE_CRITICAL)
+            {
+                minimum_bias = 2.5f;
+            }
+            sDesiredDiscardBias = llmax(sDesiredDiscardBias,
+                                        is_sys_low ? minimum_bias * getSystemMemoryBudgetFactor() : minimum_bias);
+
+            if (sVRAMPressureState == VRAM_PRESSURE_CRITICAL && !emergency_pressure)
+            {
+                LL_WARNS("VRAMGovernor")
+                    << "Critical VRAM cap pressure; queuing a paced texture downrez sweep."
+                    << LL_ENDL;
+            }
+        }
+
+        const bool system_low_started = is_sys_low && !was_system_memory_low;
+        if (system_low_started || eviction_detected)
+        {
+            const F32 emergency_bias = 2.5f * (is_sys_low ? getSystemMemoryBudgetFactor() : 1.f);
+            sDesiredDiscardBias = llmax(sDesiredDiscardBias, emergency_bias);
+            LL_WARNS("VRAMGovernor")
+                << "Emergency "
+                << (system_low_started && eviction_detected
+                        ? "system-memory and driver-eviction"
+                        : (system_low_started ? "system-memory" : "driver-eviction"))
+                << " pressure; immediately rescanning textures for safety."
+                << LL_ENDL;
             for (auto& image : gTextureList)
             {
                 gTextureList.updateImageDecodePriority(image, false /*will modify gTextureList otherwise!*/);
             }
         }
-    }
+        was_system_memory_low = is_sys_low;
 
-    was_low = is_low;
-
-    if (is_low)
-    {
-        // ramp up discard bias over time to free memory
-        if (sEvaluationTimer.getElapsedTimeF32() > MEMORY_CHECK_WAIT_TIME)
+        // The latched state owns the safety floor, while only pressure currently
+        // being observed may continue increasing discard bias.
+        if (observed_is_low)
         {
-            static LLCachedControl<F32> low_mem_min_discard_increment(gSavedSettings, "RenderLowMemMinDiscardIncrement", .1f);
+            quality_recovery_hold_active = false;
+            if (sEvaluationTimer.getElapsedTimeF32() > MEMORY_CHECK_WAIT_TIME)
+            {
+                static LLCachedControl<F32> low_mem_min_discard_increment(gSavedSettings, "RenderLowMemMinDiscardIncrement", .1f);
+                const F32 normalized_cap_pressure =
+                    llmax((cap_usage - SOFT_CAP_PERCENTAGE) / (1.f - SOFT_CAP_PERCENTAGE), 0.f);
+                const F32 critical_increment = observed_pressure == VRAM_PRESSURE_CRITICAL ? 0.25f : 0.f;
+                const F32 increment = low_mem_min_discard_increment + normalized_cap_pressure + critical_increment;
+                const F32 paced_increment = emergency_pressure
+                    ? increment
+                    : llmin(increment, MAX_PRESSURE_BIAS_ATTACK_PER_SECOND);
+                sDesiredDiscardBias += paced_increment * gFrameIntervalSeconds;
+            }
+        }
+        else
+        {
+            sEvaluationTimer.reset();
 
-            F32 increment = low_mem_min_discard_increment + llmax(over_pct, 0.f);
-            sDesiredDiscardBias += increment * gFrameIntervalSeconds;
+            if (quality_recovery_hold_active &&
+                quality_recovery_hold_timer.getElapsedTimeF32() >= QUALITY_RECOVERY_HOLD_SECONDS)
+            {
+                quality_recovery_hold_active = false;
+            }
+
+            constexpr U32 FREE_SYS_MEM_THRESHOLD = 100;
+            static LLCachedControl<U32> min_free_main_memory(gSavedSettings, "RenderMinFreeMainMemoryThreshold", 512);
+            const S32Megabytes MIN_FREE_MAIN_MEMORY(min_free_main_memory() + FREE_SYS_MEM_THRESHOLD);
+            const bool enough_driver_headroom =
+                !has_driver_headroom || sDriverAvailableVRAMMegabytes > driver_reserve * DRIVER_RECOVERY_RESERVE_SCALE;
+            if (sVRAMPressureState == VRAM_PRESSURE_NORMAL
+                && !quality_recovery_hold_active
+                && sDesiredDiscardBias > 1.f
+                && cap_usage < QUALITY_RECOVERY_CAP_PERCENTAGE
+                && enough_driver_headroom
+                && getFreeSystemMemory() > MIN_FREE_MAIN_MEMORY)
+            {
+                static LLCachedControl<F32> high_mem_discard_decrement(gSavedSettings, "RenderHighMemMinDiscardDecrement", .1f);
+                const F32 decrement = llclamp((F32)high_mem_discard_decrement,
+                                              0.025f,
+                                              MAX_QUALITY_RECOVERY_BIAS_PER_SECOND);
+                sDesiredDiscardBias -= decrement * gFrameIntervalSeconds;
+            }
         }
     }
     else
     {
-        // don't execute above until the slam to 1.5 has a chance to take effect
-        sEvaluationTimer.reset();
+        // Master toggle is OFF: reproduce the ORIGINAL pre-governor discard-bias
+        // management byte-faithful to indra/newview/llviewertexture.cpp as of
+        // commit 6fbc0fc0efa^ (before the VRAM budget governor existed). Driver
+        // telemetry and the pressure state machine do not run in this mode.
+        sDriverAvailableVRAMMegabytes = -1.f;
+        sVRAMEvictionDataAvailable = false;
+        sVRAMPressureState = VRAM_PRESSURE_NORMAL;
+        was_system_memory_low = false;
+        quality_recovery_hold_active = false;
 
-        // lower discard bias over time when at least 10% of budget is free
-        constexpr F32 FREE_PERCENTAGE_TRESHOLD = -0.1f;
-        constexpr U32 FREE_SYS_MEM_TRESHOLD = 100;
-        static LLCachedControl<U32> min_free_main_memory(gSavedSettings, "RenderMinFreeMainMemoryThreshold", 512);
-        const S32Megabytes MIN_FREE_MAIN_MEMORY(min_free_main_memory() + FREE_SYS_MEM_TRESHOLD);
-        if (sDesiredDiscardBias > 1.f
-            && over_pct < FREE_PERCENTAGE_TRESHOLD
-            && getFreeSystemMemory() > MIN_FREE_MAIN_MEMORY)
+        // Bound to the same "RenderTextureVRAMDivisor" setting as the
+        // tex_vram_divisor control declared above, but using the original
+        // pre-governor fallback default (2) and a distinct name so it does not
+        // shadow that outer-scope declaration.
+        static LLCachedControl<U32> legacy_tex_vram_divisor(gSavedSettings, "RenderTextureVRAMDivisor", 2);
+
+        F64 texture_bytes_alloc = LLImageGL::getTextureBytesAllocated() / 1024.0 / 1024.0;
+        F64 vertex_bytes_alloc = LLVertexBuffer::getBytesAllocated() / 1024.0 / 512.0;
+
+        // get an estimate of how much video memory we're using
+        // NOTE: our metrics miss about half the vram we use, so this biases high but turns out to typically be within 5% of the real number
+        F32 used = (F32)ll_round(texture_bytes_alloc + vertex_bytes_alloc);
+
+        // For debugging purposes, it's useful to be able to set the VRAM budget manually.
+        // But when manual control is not enabled, use the VRAM divisor.
+        // While we're at it, assume we have 1024 to play with at minimum when the divisor is in use.  Works more elegantly with the logic below this.
+        // -Geenz 2025-03-21
+        F32 budget = max_vram_budget == 0 ? llmax(1024, (F32)gGLManager.mVRAM / legacy_tex_vram_divisor) : (F32)max_vram_budget;
+
+        // Try to leave at least half a GB for everyone else and for bias,
+        // but keep at least 768MB for ourselves
+        // Viewer can 'overshoot' target when scene changes, if viewer goes over budget it
+        // can negatively impact performance, so leave 20% of a breathing room for
+        // 'bias' calculation to kick in.
+        F32 target = llmax(llmin(budget - 512.f, budget * 0.8f), MIN_VRAM_BUDGET);
+        // NOTE: sFreeVRAMMegabytes is intentionally left to the effective-cap
+        // accounting above (kept active in both modes) rather than being
+        // reassigned here, so the preferences UI reads consistently regardless
+        // of governor state.
+
+        F32 over_pct = (used - target) / target;
+
+        bool is_sys_low = isSystemMemoryLow();
+        bool is_low = is_sys_low || over_pct > 0.f;
+
+        if (is_low && !legacy_was_low)
         {
-            static LLCachedControl<F32> high_mem_discard_decrement(gSavedSettings, "RenderHighMemMinDiscardDecrement", .1f);
+            if (is_sys_low)
+            {
+                // Not having system memory is more serious, so discard harder
+                sDesiredDiscardBias = llmax(sDesiredDiscardBias, 1.5f * getSystemMemoryBudgetFactor());
+            }
+            else
+            {
+                // Slam to 1.5 bias the moment we hit low memory (discards off screen textures immediately)
+                sDesiredDiscardBias = llmax(sDesiredDiscardBias, 1.5f);
+            }
 
-            F32 decrement = high_mem_discard_decrement - llmin(over_pct - FREE_PERCENTAGE_TRESHOLD, 0.f);
-            sDesiredDiscardBias -= decrement * gFrameIntervalSeconds;
+            if (is_sys_low || over_pct > 2.f)
+            { // if we're low on system memory, emergency purge off screen textures to avoid a death spiral
+                LL_WARNS() << "Low system memory detected, emergency downrezzing off screen textures" << LL_ENDL;
+                for (auto& image : gTextureList)
+                {
+                    gTextureList.updateImageDecodePriority(image, false /*will modify gTextureList otherwise!*/);
+                }
+            }
+        }
+
+        legacy_was_low = is_low;
+
+        if (is_low)
+        {
+            // ramp up discard bias over time to free memory
+            if (sEvaluationTimer.getElapsedTimeF32() > MEMORY_CHECK_WAIT_TIME)
+            {
+                static LLCachedControl<F32> low_mem_min_discard_increment(gSavedSettings, "RenderLowMemMinDiscardIncrement", .1f);
+
+                F32 increment = low_mem_min_discard_increment + llmax(over_pct, 0.f);
+                sDesiredDiscardBias += increment * gFrameIntervalSeconds;
+            }
+        }
+        else
+        {
+            // don't execute above until the slam to 1.5 has a chance to take effect
+            sEvaluationTimer.reset();
+
+            // lower discard bias over time when at least 10% of budget is free
+            constexpr F32 FREE_PERCENTAGE_TRESHOLD = -0.1f;
+            constexpr U32 FREE_SYS_MEM_TRESHOLD = 100;
+            static LLCachedControl<U32> min_free_main_memory(gSavedSettings, "RenderMinFreeMainMemoryThreshold", 512);
+            const S32Megabytes MIN_FREE_MAIN_MEMORY(min_free_main_memory() + FREE_SYS_MEM_TRESHOLD);
+            if (sDesiredDiscardBias > 1.f
+                && over_pct < FREE_PERCENTAGE_TRESHOLD
+                && getFreeSystemMemory() > MIN_FREE_MAIN_MEMORY)
+            {
+                static LLCachedControl<F32> high_mem_discard_decrement(gSavedSettings, "RenderHighMemMinDiscardDecrement", .1f);
+
+                F32 decrement = high_mem_discard_decrement - llmin(over_pct - FREE_PERCENTAGE_TRESHOLD, 0.f);
+                sDesiredDiscardBias -= decrement * gFrameIntervalSeconds;
+            }
         }
     }
 
@@ -704,23 +1104,45 @@ void LLViewerTexture::updateClass()
         }
     }
 
-    // [BDMerge G5.2] capture-mode pin: while on, hold the discard bias at its
-    // floor so no bias-driven downrez/unload can touch scene textures during
-    // a take (also neutralizes the backgrounded-viewer dump above and the
-    // bias>2 draw-distance shrink in llviewerdisplay.cpp). The G5.0 VRAM
-    // budget (full detected VRAM, 20% headroom) and the G5.1 decoded RAM
-    // pool absorb the larger working set. This disables a memory safety
-    // valve by design - it is a capture tool, default off.
-    if (sCaptureModeActive)
+    if (vram_governor_enabled)
+    {
+        // Background restoration must not defeat an active pressure response.
+        F32 pressure_bias_floor = 1.f;
+        if (sVRAMPressureState != VRAM_PRESSURE_NORMAL)
+        {
+            // The cap-only path starts with off-screen textures and lets the
+            // paced attack above cross the on-screen threshold gradually.
+            pressure_bias_floor = 1.5f;
+        }
+        const bool pressure_floor_sys_low = isSystemMemoryLow();
+        if (pressure_floor_sys_low)
+        {
+            pressure_bias_floor *= getSystemMemoryBudgetFactor();
+        }
+        sDesiredDiscardBias = llmax(sDesiredDiscardBias, pressure_bias_floor);
+    }
+
+    // [BDMerge G5.2] Capture quality normally wins so a take is not downrezzed,
+    // but an explicit VRAM cap must remain meaningful. At Pressure or Critical
+    // the governor owns the bias. The pin remains armed and resumes only after
+    // hysteretic recovery returns the state to Normal.
+    if (LLViewerTexture::isCaptureQualityPinActive())
     {
         sDesiredDiscardBias = 1.f;
     }
 
     sDesiredDiscardBias = llclamp(sDesiredDiscardBias, 1.f, 4.f);
-    if (last_texture_update_count_bias < sDesiredDiscardBias)
+    if (vram_governor_enabled &&
+        last_texture_update_count_bias + BIAS_SWEEP_RESET_STEP <= sDesiredDiscardBias)
     {
-        // bias increased, reset texture update counter to
-        // let updates happen at an increased rate.
+        // Restart the accelerated pass only for a meaningful bias step. The old
+        // every-frame reset prevented a pass from ever settling while bias rose.
+        last_texture_update_count_bias = sDesiredDiscardBias;
+        sBiasTexturesUpdated = 0;
+    }
+    else if (!vram_governor_enabled && last_texture_update_count_bias < sDesiredDiscardBias)
+    {
+        // Governor Off preserves the original texture scheduling behavior.
         last_texture_update_count_bias = sDesiredDiscardBias;
         sBiasTexturesUpdated = 0;
     }
@@ -757,8 +1179,12 @@ U32Megabytes LLViewerTexture::getFreeSystemMemory()
 S32Megabytes get_render_free_main_memory_treshold()
 {
     static LLCachedControl<U32> min_free_main_memory(gSavedSettings, "RenderMinFreeMainMemoryThreshold", 512);
-    const U32Megabytes MIN_FREE_MAIN_MEMORY(min_free_main_memory);
-    return MIN_FREE_MAIN_MEMORY;
+    // 512 MB was far too late on a machine whose cache could grow by roughly
+    // 1 GB/s. Scale the emergency texture valve with installed RAM while
+    // keeping reasonable bounds for both small and very large systems.
+    const U32 installed_mb = LLMemory::getMaxMemKB().value() / 1024u;
+    const U32 automatic_mb = llclamp(installed_mb / 20u, 1024u, 8192u); // 5%
+    return S32Megabytes(llmax((U32)min_free_main_memory, automatic_mb));
 }
 
 //static
@@ -782,7 +1208,8 @@ F32 LLViewerTexture::getSystemMemoryBudgetFactor()
         // Leave some padding, otherwise we will crash out of memory before hitting factor 2.
         const S32Megabytes PAD_BUFFER(32);
         // Result should range from 1 at 0 free budget to 2 at -224 free budget, 2.14 at -256MB
-        return 1.f - free_budget / (MIN_FREE_MAIN_MEMORY - PAD_BUFFER);
+        const F32 budget_range = llmax((F32)(MIN_FREE_MAIN_MEMORY - PAD_BUFFER), 1.f);
+        return llclamp(1.f - (F32)free_budget / budget_range, 1.f, 4.f);
     }
     return 1.f;
 }
@@ -1712,8 +2139,21 @@ void LLViewerFetchedTexture::postCreateTexture()
         if (volume)
         {
             volume->mSculptChanged = true;
+            // [ProbeOnDemand] MS: a refinement of an already-built sculpt is LOD
+            // churn (tagged, dropped); a first arrival or a swapped asset stays a
+            // real geometry event.
+            const bool probe_lod_arrival = ALProbeDirty::recording() && volume->probeNoteAssetArrival();
+            ALProbeDirty::ScopedTag probe_tag(probe_lod_arrival ? ALProbeDirty::TAG_LOD_MESH
+                                                                : ALProbeDirty::currentTag());
             gPipeline.markRebuild(volume->mDrawable);
         }
+    }
+
+    // [ProbeOnDemand] H6: a new / refined / re-sharpened texture dirties the
+    // probes that show it (quantised by what a probe can resolve).
+    if (ALProbeDirty::recording())
+    {
+        ALProbeDirty::noteTextureArrival(this);
     }
 
     if (!needsToSaveRawImage())
@@ -1864,10 +2304,12 @@ void LLViewerFetchedTexture::processTextureStats()
     {
         updateVirtualSize();
 
-        // [BDMerge] Capture mode implies full resolution -- see the matching
-        // comment in LLViewerLODTexture::processTextureStats().
+        // Full-resolution overrides yield to an active VRAM cap response.
+        // Capture remains armed and automatically resumes at Normal.
         static LLCachedControl<bool> textures_fullres(gSavedSettings,"TextureLoadFullRes", false);
-        const bool want_fullres = textures_fullres || LLViewerTexture::isCaptureModeActive();
+        const bool want_fullres =
+            (textures_fullres || LLViewerTexture::isCaptureModeActive()) &&
+            !LLViewerTexture::isVRAMPressureActive();
 
         U32 max_tex_res = MAX_IMAGE_SIZE_DEFAULT;
         if (mBoostLevel < LLGLTexture::BOOST_HIGH)
@@ -3175,19 +3617,15 @@ void LLViewerLODTexture::processTextureStats()
 
     bool did_downscale = false;
 
-    // [BDMerge] Capture mode implies full resolution. The G5.2 pin holds the
-    // MEMORY-PRESSURE discard bias at its floor, but the screen-space downrez
-    // below is derived from on-screen pixel area and ignores bias entirely --
-    // so without this a texture that is small in frame still gets scaleDown()'d
-    // mid-take, and must be re-fetched, re-decoded and re-uploaded the moment
-    // the camera pushes in. That is a hitch the pin alone does not close.
-    //
-    // Folding it into the capture pin rather than leaving TextureLoadFullRes as
-    // a separate switch is deliberate: full-res on a crowded region is genuinely
-    // expensive, so it should be armed with a take and released with it, not
-    // left on while browsing. TextureLoadFullRes still works standalone.
+    // [BDMerge] Capture mode implies full resolution while the governor is
+    // Normal. At Pressure or Critical the user-selected cap takes ownership and
+    // permits the screen-space path below to downrez. The pin remains armed and
+    // full resolution resumes after hysteretic recovery. TextureLoadFullRes is
+    // also treated as a quality override, not permission to defeat the cap.
     static LLCachedControl<bool> textures_fullres(gSavedSettings,"TextureLoadFullRes", false);
-    const bool want_fullres = textures_fullres || LLViewerTexture::isCaptureModeActive();
+    const bool want_fullres =
+        (textures_fullres || LLViewerTexture::isCaptureModeActive()) &&
+        !LLViewerTexture::isVRAMPressureActive();
 
     F32 max_tex_res = MAX_IMAGE_SIZE_DEFAULT;
     if (mBoostLevel < LLGLTexture::BOOST_HIGH)

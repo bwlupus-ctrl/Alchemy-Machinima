@@ -37,6 +37,12 @@ class LLShaderFeatures
 {
 public:
     S32 mIndexedTextureChannels = 0;
+    // Multi-material programs declare explicit sampler families such as
+    // basecolor0/normalmap0/... or diffuse0/bump0/spec0.  The value is the
+    // material-slot stride used to bind those samplers to fixed texture units.
+    // It is separate from mIndexedTextureChannels, which injects tex0..texN
+    // and diffuseLookup() into ordinary indexed-texture shaders.
+    S32 mIndexedMaterialChannels = 0;
     bool calculatesLighting = false;
     bool calculatesAtmospherics = false;
     bool hasLighting = false; // implies no transport (it's possible to have neither though)
@@ -62,6 +68,13 @@ public:
     bool hasTonemap = false;
     bool hasColorGrade = false;
     bool hasPostEffects = false;
+    // Native per-draw cinematic Actor FX. The fragment utility transforms the
+    // actor's original material result while leaving authored coverage intact.
+    bool hasActorFx = false;
+    // Lightweight shadow-only Actor FX coverage. This deliberately does not
+    // link the beauty utility: shadow programs only need Dissolve's coverage
+    // test, and every other look must remain on a cheap identity path.
+    bool hasActorFxShadow = false;
 };
 
 // ============= Structure for caching shader uniforms ===============
@@ -167,6 +180,7 @@ public:
         GLenum type = (GLenum)-1;
         GLint size = -1;
         U32 texunit_priority = UINT_MAX; // lower value gets an earlier texture-unit index
+        S32 forced_texunit = -1;         // explicit multi-material sampler unit
     };
 
 
@@ -186,6 +200,12 @@ public:
     // so this is roughly (available fragment texture units) / 4. See
     // PASS_GLTF_PBR_INDEXED and LLVolumeGeometryManager::genDrawInfo.
     static S32 sIndexedGLTFChannels;
+
+    // Shared Actor FX replays indexed rigged PBR through a forward-lighting
+    // shader, which needs additional shadow/reflection samplers beyond the
+    // native GBuffer pass.  Keep its material stride separate so static/native
+    // indexed PBR and indexed legacy materials retain their full batch width.
+    static S32 sSharedPBRIndexedGLTFChannels;
 
     // True once the indexed legacy (Blinn-Phong) material programs have loaded.
     // Gates indexed POOL_MATERIALS batching (shares sIndexedGLTFChannels for the

@@ -21,9 +21,11 @@
 #define AL_ALDIRECTORANIMSWITCHER_H
 
 #include "aldirectorswitchermodel.h"   // REUSED scheduler; no new model
+#include "fsposeranimator.h"
 #include "lluuid.h"
 #include "stdtypes.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -46,10 +48,19 @@ public:
         TARGET_GHOSTS = 2,
     };
 
+    enum EKind : S32
+    {
+        KIND_ANIM = 0,
+        KIND_POSE = 1,
+    };
+
     struct Slot
     {
         bool        mEnabled   = true;   // auto eligibility; manual punch ignores it
+        S32         mKind      = KIND_ANIM;
         LLUUID      mAnimID;             // animation asset UUID
+        std::string mPoseName;            // local pose basename, without .xml
+        S32         mPoseLoadMethod = ROT_POS_AND_SCALES;
         std::string mLabel;
         S32         mTarget    = TARGET_CAST; // who this slot punches
         S32         mPriority  = -1;     // -1 = asset default; 0..7 = LLJoint priority (self only)
@@ -81,10 +92,13 @@ private:
     static std::vector<Slot> defaultBank();
     static void              sanitizeSlot(Slot& slot);
     static S32               sanitizeTarget(S32 target);
+    static bool              slotHasPose(const Slot& slot);
     static ALDirectorSwitcherModel::Config readConfig(
         const std::vector<Slot>& bank);
 
     std::vector<LLVOAvatar*> getTargetAvatars(S32 target) const; // per ETarget
+    bool canPoseAvatar(LLVOAvatar* av) const;
+    void releasePoseFromAvatar(LLVOAvatar* av);
     void applySlotToAvatar(LLVOAvatar* av, const Slot& slot, const Slot& prev);
     bool applySlot(S32 slot, F64 now, const std::vector<Slot>& bank, bool manual);
 
@@ -92,6 +106,8 @@ private:
     bool mWasArmed = false;
     S32  mActiveSlot = -1;
     Slot mActiveSlotConfig;
+    FSPoserAnimator mPoseAnimator;
+    std::set<LLUUID> mPosedAvatars;
 };
 
 #endif // AL_ALDIRECTORANIMSWITCHER_H

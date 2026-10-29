@@ -57,7 +57,7 @@ namespace tut
             return reduce(follow, event(EVENT_LEFT_CLICK)).mState;
         }
 
-        bool near(double lhs, double rhs)
+        bool nearlyEqual(double lhs, double rhs)
         {
             return std::fabs(lhs - rhs) <= EPSILON;
         }
@@ -95,8 +95,8 @@ namespace tut
         ensure("start publishes yaw", first.mCommands.mUpdateYaw);
         ensure("start publishes height", first.mCommands.mUpdateHeight);
         ensure("start anchor stored", samePoint(first.mState.mAnchor, start.mWorldHit));
-        ensure("start yaw normalized", near(first.mState.mYaw, 0.25));
-        ensure("start height stored", near(first.mState.mHeight, 2.5));
+        ensure("start yaw normalized", nearlyEqual(first.mState.mYaw, 0.25));
+        ensure("start height stored", nearlyEqual(first.mState.mHeight, 2.5));
 
         Transition replay = reduce(first.mState, start);
         ensure("replayed start keeps mode", replay.mState.mMode == MODE_FOLLOW_CURSOR);
@@ -224,7 +224,7 @@ namespace tut
         Transition precise = reduce(state, wheel, config);
         ensure("wheel consumed over preview", precise.mCommands.mConsume);
         ensure("wheel publishes yaw", precise.mCommands.mUpdateYaw);
-        ensure("precise wins over discrete", near(precise.mState.mYaw, 0.05));
+        ensure("precise wins over discrete", nearlyEqual(precise.mState.mYaw, 0.05));
 
         Event duplicate = wheel;
         duplicate.mHasPreciseWheel = false;
@@ -232,14 +232,14 @@ namespace tut
         Transition replay = reduce(precise.mState, duplicate, config);
         ensure("duplicate callback remains consumed", replay.mCommands.mConsume);
         ensure("duplicate callback does not update yaw", !replay.mCommands.mUpdateYaw);
-        ensure("duplicate callback does not rotate", near(replay.mState.mYaw, 0.05));
+        ensure("duplicate callback does not rotate", nearlyEqual(replay.mState.mYaw, 0.05));
 
         Event fine = wheel;
         fine.mWheelSequence = 72;
         fine.mPreciseWheelSteps = 1.0;
         fine.mContext.mFineModifier = true;
         Transition adjusted = reduce(replay.mState, fine, config);
-        ensure("fine wheel scales once", near(adjusted.mState.mYaw, 0.07));
+        ensure("fine wheel scales once", nearlyEqual(adjusted.mState.mYaw, 0.07));
 
         Event unsequenced = wheel;
         unsequenced.mWheelSequence = 0;
@@ -247,13 +247,13 @@ namespace tut
         Transition without_sequence =
             reduce(adjusted.mState, unsequenced, config);
         ensure("unsequenced wheel still applies",
-               near(without_sequence.mState.mYaw, 0.12));
+               nearlyEqual(without_sequence.mState.mYaw, 0.12));
         Transition late_duplicate =
             reduce(without_sequence.mState, fine, config);
         ensure("unsequenced wheel does not erase dedupe history",
                !late_duplicate.mCommands.mUpdateYaw);
         ensure("late duplicate cannot rotate",
-               near(late_duplicate.mState.mYaw, 0.12));
+               nearlyEqual(late_duplicate.mState.mYaw, 0.12));
 
         Event away = wheel;
         away.mWheelSequence = 73;
@@ -300,7 +300,7 @@ namespace tut
         Transition raised = reduce(captured.mState, move, config);
         ensure("captured move remains consumed", raised.mCommands.mConsume);
         ensure("Alt cannot steal existing capture", raised.mCommands.mUpdateHeight);
-        ensure("drag raises absolutely", near(raised.mState.mHeight, 1.0));
+        ensure("drag raises absolutely", nearlyEqual(raised.mState.mHeight, 1.0));
 
         Config changed_config = config;
         changed_config.mHeightUnitsPerPixel = 10.0;
@@ -309,14 +309,14 @@ namespace tut
         ensure("same move remains consumed", duplicate_move.mCommands.mConsume);
         ensure("same move is idempotent", !duplicate_move.mCommands.mUpdateHeight);
         ensure("mid-drag config cannot change scale",
-               near(duplicate_move.mState.mHeight, 1.0));
+               nearlyEqual(duplicate_move.mState.mHeight, 1.0));
 
         Event end = event(EVENT_MIDDLE_END);
         end.mContext.mAltDown = true;
         Transition released = reduce(duplicate_move.mState, end, config);
         ensure("end releases mouse", released.mCommands.mReleaseMouse);
         ensure("end resumes follow", released.mState.mMode == MODE_FOLLOW_CURSOR);
-        ensure("end preserves height", near(released.mState.mHeight, 1.0));
+        ensure("end preserves height", nearlyEqual(released.mState.mHeight, 1.0));
 
         Transition replay_end = reduce(released.mState, end, config);
         ensure("replayed end does not release twice", !replay_end.mCommands.mReleaseMouse);
@@ -419,8 +419,8 @@ namespace tut
         start.mHasWorldHit = true;
         start.mWorldHit = point(1.0, nan, 3.0);
         Transition sanitized = reduce(State(), start);
-        ensure("invalid start yaw is sanitized", near(sanitized.mState.mYaw, 0.0));
-        ensure("invalid start height is sanitized", near(sanitized.mState.mHeight, 0.0));
+        ensure("invalid start yaw is sanitized", nearlyEqual(sanitized.mState.mYaw, 0.0));
+        ensure("invalid start height is sanitized", nearlyEqual(sanitized.mState.mHeight, 0.0));
         ensure("invalid start hit is rejected", !sanitized.mState.mHasAnchor);
 
         Event hover = event(EVENT_HOVER_HIT);
@@ -462,7 +462,7 @@ namespace tut
         ensure("captured drag uses snapshotted valid scale",
                bad_move.mCommands.mUpdateHeight);
         ensure("later invalid config cannot poison height",
-               near(bad_move.mState.mHeight, 1.0));
+               nearlyEqual(bad_move.mState.mHeight, 1.0));
     }
 
     // UI-handled terminal input is not stolen, while lifecycle loss still
@@ -489,5 +489,50 @@ namespace tut
         ensure("tool loss bypasses UI handling", authoritative.mCommands.mCancel);
         ensure("tool loss returns inactive",
                authoritative.mState.mMode == MODE_INACTIVE);
+    }
+
+    // Enter and click must agree on whether the CURRENT hover can commit.
+    // A hover miss preserves the last-valid anchor for display (so the
+    // preview does not vanish), but neither click-to-pin nor Enter may use
+    // that stale anchor to commit while the live hover is invalid -- doing
+    // so used to let Enter silently commit wherever the cursor last was.
+    template<> template<>
+    void interaction_object::test<12>()
+    {
+        State state = followState();
+        Event miss = event(EVENT_HOVER_HIT);
+        Transition missed = reduce(state, miss);
+        ensure("miss keeps the last anchor for display",
+               missed.mState.mHasAnchor);
+        ensure("miss invalidates the current hover",
+               !missed.mState.mCurrentHoverValid);
+
+        Transition stale_click = reduce(missed.mState, event(EVENT_LEFT_CLICK));
+        ensure("stale click cannot pin", stale_click.mState.mMode == MODE_FOLLOW_CURSOR);
+        ensure("stale click does not commit", !stale_click.mCommands.mCommit);
+
+        Transition stale_enter = reduce(missed.mState, event(EVENT_ENTER));
+        ensure("stale Enter agrees with click: no commit",
+               !stale_enter.mCommands.mCommit);
+        ensure("stale Enter stays active, not silently committed",
+               stale_enter.mState.mMode == MODE_FOLLOW_CURSOR);
+
+        // A restored valid hover lets both click and Enter commit again,
+        // using the SAME resolved anchor.
+        Event hit = event(EVENT_HOVER_HIT);
+        hit.mHasWorldHit = true;
+        hit.mWorldHit = point(50.0, 60.0, 70.0);
+        Transition restored = reduce(missed.mState, hit);
+        ensure("restored hover is valid", restored.mState.mCurrentHoverValid);
+        Transition enter_commit = reduce(restored.mState, event(EVENT_ENTER));
+        ensure("Enter commits once the hover is valid again",
+               enter_commit.mCommands.mCommit);
+
+        // PINNED already locked in a valid anchor at click time; a later
+        // hover miss (which cannot even reach PINNED -- HOVER_HIT is only
+        // handled in FOLLOW_CURSOR) never applies here, so Enter from PINNED
+        // is unaffected by this fix.
+        Transition pinned_enter = reduce(pinnedState(), event(EVENT_ENTER));
+        ensure("pinned Enter still commits", pinned_enter.mCommands.mCommit);
     }
 }

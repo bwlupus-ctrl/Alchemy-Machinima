@@ -32,12 +32,15 @@
 #ifndef LL_LLDIRECTORCAST_H
 #define LL_LLDIRECTORCAST_H
 
+#include "algazemath.h"
+#include "llactormover.h"
 #include "llsd.h"
 #include "lluuid.h"
 #include "v3math.h"
 
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class LLVOAvatar;
@@ -46,23 +49,226 @@ class LLEventTimer;
 class LLDirectorCast
 {
 public:
+    enum EGazeCueStyle : S32
+    {
+        GAZE_CUE_STYLE_DEFAULT = 0,
+        GAZE_CUE_STYLE_SNAP,
+        GAZE_CUE_STYLE_DRIFT,
+        GAZE_CUE_STYLE_CASUAL
+    };
+
+    struct GazeCue
+    {
+        F64 mStartSec = 0.0;
+        F64 mDurationSec = 0.0; // zero = until the next cue / hold
+        LLActorMover::GazeTarget mTarget;
+        EGazeCueStyle mAcquireStyle = GAZE_CUE_STYLE_DEFAULT;
+        EGazeCueStyle mReleaseStyle = GAZE_CUE_STYLE_DEFAULT;
+        ALGazeMath::EGazeCueMacro mMacro = ALGazeMath::GAZE_MACRO_NONE;
+        F32 mMacroGapSec = 0.35f;
+        F32 mMacroDwellSec = 0.60f;
+        S32 mHoldFramesPast = 2;
+        bool mThoughtResidue = false;
+    };
+    using GazeCueList = std::vector<GazeCue>;
+
+    // [Machinima] Keyframable gaze influence: a stateless presentation-time lane
+    // parallel to GazeCueList. Its evaluated value multiplies the FINAL gaze
+    // write envelope (never the owned target), so influence 0 performs NO write
+    // and the animation shows through, while the aim/motor state stays warm. An
+    // empty list evaluates to exactly 1 and the caller keeps its current formula
+    // branch (byte-identical). Interpolation is the OUTGOING segment's mode.
+    enum EGazeKeyInterpolation : S32
+    {
+        GAZE_KEY_STEP       = 0,
+        GAZE_KEY_LINEAR     = 1,
+        GAZE_KEY_SMOOTHSTEP = 2
+    };
+
+    struct GazeInfluenceKey
+    {
+        F64 mTimeSec = 0.0;
+        F32 mValue = 1.f;                                   // clamped [0,1]
+        EGazeKeyInterpolation mInterpolation = GAZE_KEY_SMOOTHSTEP;
+    };
+    using GazeInfluenceKeyList = std::vector<GazeInfluenceKey>;
+
+    // Pure, scrub-stable evaluation. Empty list -> 1. Before the first key hold
+    // its value; after the last hold its value. Between keys use the PREVIOUS
+    // key's interpolation. Duplicate-time keys resolve to the last at that time.
+    // Non-finite times/values are sanitized; result is clamped [0,1].
+    static F32 evaluateGazeInfluence(const GazeInfluenceKeyList& keys,
+                                     F64 presentation_time);
+
+    struct GazeCueEvaluation
+    {
+        // A target mode cannot encode a crossfade by itself, so the effective
+        // result carries its from/to targets plus the pure direction blend.
+        // mEffectiveTarget is the cue target whose persona/config is active.
+        bool mHasOverride = false;
+        bool mHasFromTarget = false;
+        bool mHasFromBaseTarget = false;
+        S32 mCueIndex = -1;
+        LLActorMover::GazeTarget mFromBaseTarget;
+        LLActorMover::GazeTarget mFromTarget;
+        LLActorMover::GazeTarget mToTarget;
+        LLActorMover::GazeTarget mEffectiveTarget;
+        F32 mFromTargetBlend = 1.f;
+        F32 mTargetBlend = 0.f;
+        F32 mEyeWeight = 1.f;
+        F32 mHeadWeight = 1.f;
+        F32 mBodyWeight = 1.f;
+        F32 mLidWiden = 0.f;
+        F32 mHeadRecoilPitch = 0.f;
+        F32 mAcquireSec = 0.25f;
+        F32 mReleaseSec = 0.60f;
+        ALGazeMath::EGazeCuePhase mPhase = ALGazeMath::GAZE_CUE_BEFORE;
+    };
+
+    // Client-only presentation styling for a live Director actor. IDs 0..27
+    // are the shared Actor Mover / Ghost Studio look prefix. IDs above that
+    // boundary are intentionally exclusive to live Actor Styling.
+    enum EActorStyleMode : S32
+    {
+        ACTOR_STYLE_LAYER = 0,
+        ACTOR_STYLE_REPLACE
+    };
+
+    enum EActorStyleLook : S32
+    {
+        ACTOR_LOOK_DEFAULT          = 0,
+        ACTOR_LOOK_FORWARD_FALLBACK = 1,  // authored Clone for older viewers
+        ACTOR_LOOK_SHARED_MAX       = 27,
+        ACTOR_LOOK_RIM_NOIR         = 28,
+        ACTOR_LOOK_GEL_SPLIT        = 29,
+        ACTOR_LOOK_BASS_SWEEP       = 30,
+        ACTOR_LOOK_MOONLIT          = 31,
+        ACTOR_LOOK_POSSESSED        = 32,
+        ACTOR_LOOK_SERAPH           = 33,
+        ACTOR_LOOK_INTERROGATION    = 34,
+        ACTOR_LOOK_WRAITH           = 35,
+        // [TronT2] Actor FX "Tron Suit" -- Layer keeps authored/lit material
+        // and adds neon rim + bind-space seams; Cover shows the near-black
+        // suit body plus rim + seams (design v2 section 6.2).
+        ACTOR_LOOK_TRON_SUIT        = 36,
+        ACTOR_LOOK_MAX              = ACTOR_LOOK_TRON_SUIT
+    };
+
+    static bool isActorStyleLook(S32 look)
+    {
+        return look >= ACTOR_LOOK_DEFAULT && look <= ACTOR_LOOK_MAX;
+    }
+
+    static bool isLiveActorStyleLook(S32 look)
+    {
+        return look > ACTOR_LOOK_SHARED_MAX && look <= ACTOR_LOOK_MAX;
+    }
+
+    struct ActorStyle
+    {
+        bool            mEnabled = false;
+        EActorStyleMode mMode = ACTOR_STYLE_LAYER;
+        S32             mStyle = ACTOR_LOOK_DEFAULT;
+        bool            mUseActorHue = true;
+        F32             mHue = 200.f;
+        F32             mAlpha = 0.6f;
+        F32             mDissolveProgress = 0.5f;
+        F32             mPixelSize = 0.f;
+        F32             mShimmerSpeed = 1.f;
+        F32             mShimmerAmount = 0.f;
+        F32             mGlitch = 0.f;
+        S32             mDistortion = 0;
+        F32             mDistortionAmount = 0.5f;
+        F32             mBrightness = 1.f;
+        F32             mEffectFps = 0.f;
+    };
+
+    enum ELocomotionRole : S32
+    {
+        LOCO_NONE = 0,
+        LOCO_IDLE,
+        LOCO_WALK_FORWARD,
+        LOCO_RUN_FORWARD,
+        LOCO_TURN_LEFT,
+        LOCO_TURN_RIGHT,
+        LOCO_WALK_BACKWARD,
+        LOCO_STRAFE_LEFT,
+        LOCO_STRAFE_RIGHT,
+        LOCO_FLY,
+        LOCO_HOVER,
+        LOCO_TAKEOFF,
+        LOCO_LAND,
+        LOCO_ROLE_COUNT
+    };
+
+    struct LocomotionRoleEntry
+    {
+        LLUUID mAnim;
+        F32    mNominalSpeed = 3.f;
+        F32    mManualLeftPlantPhase = -1.f; // -1 = infer/loop-in fallback
+        bool   mAllowAO = false;
+    };
+
+    struct LocomotionSet
+    {
+        std::unordered_map<S32, LocomotionRoleEntry> mRoles;
+
+        const LocomotionRoleEntry* get(ELocomotionRole role) const
+        {
+            auto found = mRoles.find(static_cast<S32>(role));
+            return found == mRoles.end() ? nullptr : &found->second;
+        }
+        LocomotionRoleEntry& edit(ELocomotionRole role)
+        {
+            return mRoles[static_cast<S32>(role)];
+        }
+        bool empty() const { return mRoles.empty(); }
+    };
+
     struct CastMember
     {
-        LLUUID      mId;             // avatar or control-avatar id
-        std::string mLastName;       // cached display name (survives region exit)
-        LLVector3   mMark = LLVector3::zero;    // region coords; unset unless mHasMark
-        bool        mHasMark = false;
-        LLUUID      mLocoAnim;       // per-actor locomotion override (null = stock walk)
-        std::string mGroup;          // production group tag ("" = ungrouped; session-only)
+        CastMember()
+        {
+            // Director gaze means camera-facing unless a scene or operator
+            // explicitly authors another target. Actor Mover's standalone
+            // GazeTarget default remains MOTION.
+            mGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+        }
+
+        LLUUID                  mId;             // avatar or control-avatar id
+        std::string             mLastName;       // cached display name (survives region exit)
+        LLVector3               mMark = LLVector3::zero;    // region coords; unset unless mHasMark
+        bool                    mHasMark = false;
+        LLUUID                  mLocoAnim;       // per-actor locomotion override (null = stock walk)
+        LocomotionSet           mLocomotionSet;  // sparse V2 role set with deterministic fallbacks
+        std::string             mGroup;          // production group tag ("" = ungrouped; session-only)
+        LLActorMover::GazeTarget mGazeTarget;    // per-cast authored gaze target config
+        bool                    mEyeGazeTargetEnabled = false;
+        LLActorMover::GazeTarget mEyeGazeTarget; // optional eyes-only target
+        GazeCueList             mGazeCues;        // ordered presentation-time performance track
+        GazeInfluenceKeyList    mGazeInfluenceKeys; // parallel influence lane (empty = influence 1)
+        ActorStyle              mActorStyle;      // client-only live actor presentation
     };
 
     static LLDirectorCast& instance();
+    // Residents use their avatar UUID; animated objects use their persistent
+    // linkset-root UUID rather than the regenerated LLControlAvatar UUID.
+    static LLUUID canonicalActorId(const LLUUID& id);
 
     // ---- membership (ordered, session-only) ----
     void add(const LLUUID& id);
     void remove(const LLUUID& id);
     void toggle(const LLUUID& id);
     bool contains(const LLUUID& id) const;
+    // Direct lookup for renderer-owned IDs that are already canonical. This is
+    // the hot-path variant and deliberately never touches gObjectList.
+    bool containsStored(const LLUUID& id) const;
+    // Resolve a canonical renderer owner and its wearer fallback together.
+    // The primary member-index probe supplies the style directly when it hits,
+    // avoiding the former containsStored()+getActorStyle() double lookup.
+    const ActorStyle& resolveStoredActorStyle(const LLUUID& primary,
+                                              const LLUUID& fallback,
+                                              LLUUID& resolved_id) const;
     const std::vector<CastMember>& getCast() const { return mCast; }
     // parallel id list, kept in membership order; this is what
     // LLActorMover::getRoster() hands out (empty = "my avatar")
@@ -70,12 +276,36 @@ public:
     CastMember*       getMember(const LLUUID& id);
     const CastMember* getMember(const LLUUID& id) const;
 
+    // ---- per-actor presentation style ----
+    // LLUUID::null (and the agent avatar's runtime id) address You. Invalid or
+    // non-cast ids read as the disabled default and ignore writes.
+    const ActorStyle& getActorStyle(const LLUUID& id) const;
+    void              setActorStyle(const LLUUID& id, const ActorStyle& style);
+
     // ---- render-only real-avatar camera gaze selection ----
     // A subset of the cast, shared by the Camera-tab multi-select widget and
     // the post-animation render hook. Session/scene data only; it is never
     // copied to an avatar, animation message, or simulator update.
     void setLookAtCamera(const LLUUID& id, bool selected);
     bool isLookAtCamera(const LLUUID& id) const;
+
+    // ---- per-cast / slot gaze targeting ----
+    void                     setGazeTarget(const LLUUID& id, const LLActorMover::GazeTarget& target);
+    LLActorMover::GazeTarget getGazeTarget(const LLUUID& id) const;
+    void                     setEyeGazeTarget(const LLUUID& id, const LLActorMover::GazeTarget& target);
+    void                     clearEyeGazeTarget(const LLUUID& id);
+    bool                     hasEyeGazeTarget(const LLUUID& id) const;
+    LLActorMover::GazeTarget getEyeGazeTarget(const LLUUID& id) const;
+    void                     setGazeCues(const LLUUID& id, const GazeCueList& cues);
+    const GazeCueList&       getGazeCues(const LLUUID& id) const;
+    void                     setGazeInfluenceKeys(const LLUUID& id, const GazeInfluenceKeyList& keys);
+    const GazeInfluenceKeyList& getGazeInfluenceKeys(const LLUUID& id) const;
+    U64                      getGazeCueRevision() const { return mGazeCueRevision; }
+
+    // Pure track evaluation. Empty lists (and times before the first cue)
+    // return mHasOverride=false; callers then retain their live-target path.
+    static GazeCueEvaluation evaluateGazeCues(
+        const GazeCueList& cues, U64 persona_seed, F64 presentation_time);
 
     // ---- resolution ----
     // null id = my avatar; a stale id (actor left the region) resolves to
@@ -89,10 +319,10 @@ public:
     // legacy Two-Shot/OTS. C/D are additional switcher-addressable marks.
     // resolveSubject*() returns nullptr when unset or dead, which every
     // consumer treats as "fall back to stock behavior".
-    void setSubjectA(const LLUUID& id) { mSubjectA = id; }
-    void setSubjectB(const LLUUID& id) { mSubjectB = id; }
-    void setSubjectC(const LLUUID& id) { mSubjectC = id; }
-    void setSubjectD(const LLUUID& id) { mSubjectD = id; }
+    void setSubjectA(const LLUUID& id);
+    void setSubjectB(const LLUUID& id);
+    void setSubjectC(const LLUUID& id);
+    void setSubjectD(const LLUUID& id);
     const LLUUID& getSubjectA() const { return mSubjectA; }
     const LLUUID& getSubjectB() const { return mSubjectB; }
     const LLUUID& getSubjectC() const { return mSubjectC; }
@@ -194,10 +424,11 @@ public:
     F32  countdownRemaining() const;    // seconds; 0 when not counting down
 
 private:
-    LLDirectorCast() = default;
+    LLDirectorCast();
 
     void fireAction();
     void cancelCountdown();
+    void rebuildMemberIndex();
 
     // staggered starts: fire every queued start that has come due, then prune
     // dead (already-fired, self-deleted) timer pointers from mStaggerTimers
@@ -208,12 +439,21 @@ private:
 
     std::vector<CastMember> mCast;
     uuid_vec_t              mIds;       // mirrors mCast order
+    std::unordered_map<LLUUID, std::size_t> mMemberIndex;
     std::set<LLUUID>        mLookAtCameraIds;
+    bool                    mSelfLookAtCamera = false;
 
     LLUUID mSubjectA;
     LLUUID mSubjectB;
     LLUUID mSubjectC;
     LLUUID mSubjectD;
+    LLActorMover::GazeTarget mSelfGazeTarget;
+    bool mSelfEyeGazeTargetEnabled = false;
+    LLActorMover::GazeTarget mSelfEyeGazeTarget;
+    GazeCueList mSelfGazeCues;
+    GazeInfluenceKeyList mSelfGazeInfluenceKeys;
+    ActorStyle mSelfActorStyle;
+    U64 mGazeCueRevision = 0;
 
     // transport state: what THIS action() run started, so cut() undoes
     // only that

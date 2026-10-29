@@ -99,6 +99,7 @@
 #include "llworld.h"
 #include "llui.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llviewernetwork.h"
 #include "llvowlsky.h"
 #include "llmanip.h"
@@ -5449,6 +5450,11 @@ void LLViewerObject::updateTEMaterialTextures(U8 te)
                     LLViewerObject* obj = gObjectList.findObject(id);
                     if (obj)
                     {
+                        // [ProbeOnDemand] H7: an async PBR material finished loading.
+                        if (ALProbeDirty::recording() && obj->mDrawable.notNull())
+                        {
+                            ALProbeDirty::noteDrawable(obj->mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);
+                        }
                         obj->markForUpdate();
                     }
                 });
@@ -7793,6 +7799,11 @@ void LLViewerObject::setRenderMaterialID(S32 te_in, const LLUUID& id, bool updat
             {
                 LLViewerObject* obj = gObjectList.findObject(obj_id);
                 if (!obj) { return; }
+                // [ProbeOnDemand] H7: an async PBR material finished loading.
+                if (ALProbeDirty::recording() && obj->mDrawable.notNull())
+                {
+                    ALProbeDirty::noteDrawable(obj->mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);
+                }
                 if (obj->hasGhostResolvedMaterialBinding(te))
                 {
                     obj->initRenderMaterial(te);
@@ -7818,6 +7829,11 @@ void LLViewerObject::setRenderMaterialID(S32 te_in, const LLUUID& id, bool updat
                 LLViewerObject* obj = gObjectList.findObject(obj_id);
                 if (obj)
                 {
+                    // [ProbeOnDemand] H7: an async PBR material finished loading.
+                    if (ALProbeDirty::recording() && obj->mDrawable.notNull())
+                    {
+                        ALProbeDirty::noteDrawable(obj->mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);
+                    }
                     obj->rebuildMaterial();
                 }
             });

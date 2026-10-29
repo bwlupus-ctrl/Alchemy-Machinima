@@ -1,0 +1,154 @@
+IMPLEMENTATION TASK — Cinematic Light Rig (client-side prim-free cinematic lights)
+
+Repo: I:\alchemy-machinima (Alchemy-Machinima viewer fork, C++/OpenGL, Second Life viewer).
+You are IMPLEMENTING. Write the code. Do NOT build, do NOT run cmake, do NOT run the viewer.
+Claude does the build; a separate adversarial reviewer reviews your code before any build happens.
+
+=============================================================================
+READ THESE FIRST (all repo-relative, all readable in your workspace)
+=============================================================================
+
+1. doc/CINEMATIC_LIGHT_RIG_DEEP_DESIGN.md   <-- THE SPEC. This is normative.
+                                                 Follow it. 880 lines. Read all of it.
+2. doc/CINE_LIGHT_RIG_DESIGN_SEED.md        <-- the brief the spec answers
+3. doc/reference/cinematic_studio_render_engine_v20.lsl  <-- LSL rig being ported
+4. doc/reference/cinematic_studio_fx_pack1.lsl           <-- LSL FX (33 effects)
+5. CLAUDE.md                                <-- project working agreement
+
+The design doc is the source of truth. Where this brief and the design doc differ,
+the DESIGN DOC WINS — except for the "do not build" rule above, which is absolute.
+
+=============================================================================
+WHAT THE FEATURE IS
+=============================================================================
+
+The in-world LSL "Cinematic Studio" light rig, re-implemented as a client-side viewer
+feature: local, prim-free cinematic lights orbiting a subject. 4 logical lights
+(KEY/FILL/RIM/BG), each with yaw/pitch/colour-profile/EV/beam/on, driven from a pristine
+base setup through mirror/orbit/pitch transforms, with 0.9s eased transitions and 33
+animated FX effects. No in-world prims, no script, no rez rights, works on no-rez parcels.
+
+Anchors to the user's own avatar OR any Director cast member.
+Controls live in BOTH a new Director Console "Lights" tab AND a standalone floater,
+in lockstep (settings-backed controls, per the design doc §3.5).
+
+=============================================================================
+SCOPE — SHIP WHOLE (CLAUDE.md rule)
+=============================================================================
+
+Delivery 1 = ALL of: pure model + TUT tests + controller + emitter objects + settings keys
++ BOTH UI hosts + Director scene round-trip + display gizmo + registration.
+
+A feature the user cannot reach, select, or see is NOT delivered. Do not stop at "engine
+now, UI later". Implement the complete surface named in design doc §3.1.
+
+DEFERRED — do NOT implement these (design doc §8, already decided):
+  1. Per-light gobo patterns (single default cookie only)
+  2. N>4 lights (keep LIGHT_COUNT clean, but ship 4)
+  3. New hotkeys
+  4. Renderer-side >1.0 intensity headroom
+  5. Gizmo drag-editing (v1 gizmo is DISPLAY ONLY)
+  6. The projvol/shadow decoupling fix (pre-existing, tracked separately)
+
+=============================================================================
+FILES YOU MAY CREATE (design doc §3.1)
+=============================================================================
+
+  indra/newview/alcinelightrigmodel.h / .cpp        pure model (design doc §4)
+  indra/newview/alcinelightrig.h / .cpp             ALCineLightRig controller (§3.3)
+  indra/newview/alpanelcinelightrig.h / .cpp        ALPanelCineLightRig shared panel
+  indra/newview/tests/alcinelightrigmodel_test.cpp  TUT tests (§4.3 lists the asserts)
+  indra/newview/skins/default/xui/en/panel_cine_light_rig.xml
+  indra/newview/skins/default/xui/en/floater_cine_light_rig.xml
+
+=============================================================================
+FILES YOU MAY MODIFY — and ONLY the named change in each (design doc §3.1)
+=============================================================================
+
+  indra/newview/llviewerobject.h        add LOCAL_OBJECT_CINE_RIG_EMITTER to the enum;
+                                        add isCineRigEmitter() beside isGhostManipProxy()
+  indra/newview/pipeline.cpp            rig exemption at the SIX world-light gate CALL
+                                        sites only (design doc §6.5.3, N2).
+                                        THE ONLY RENDER-PATH EDITS IN THIS FEATURE.
+  indra/newview/llappviewer.cpp         tick after the ALLocalFogManager tick;
+                                        teardown in disconnectViewer
+  indra/newview/llviewerfloaterreg.cpp  register "cine_light_rig"
+  indra/newview/skins/default/xui/en/floater_director.xml
+                                        new tab label="Lights" in director_tabs,
+                                        between Shafts and Weather
+  indra/newview/skins/default/xui/en/menu_viewer.xml   menu entry
+  indra/newview/llfloaterdirector.cpp   scene save/load round-trip + sceneSettingsList()
+  indra/newview/app_settings/settings.xml   the new CineLightRig* keys (design doc §3.4)
+  indra/newview/CMakeLists.txt          new sources + the unit-test registration,
+                                        mirroring how alweathermodel_test.cpp is registered
+
+=============================================================================
+OFF-LIMITS — do not touch, even where adjacent (design doc §9)
+=============================================================================
+
+  indra/llprimitive/*        The [0,1] intensity clamp and 20m radius clamp are a DESIGN
+                             INPUT, not a bug. Do NOT "fix" them. The design's EV re-base
+                             exists precisely because of them.
+  all GLSL shaders
+  llpresentationtime.* / lltemporalframecontext.*
+  alweathermodel.* and its test
+  the BODIES of bdmerge_should_render_light / bdmerge_should_render_projector
+                             (pipeline.cpp:9018-9051) -- the exemption goes at the CALL
+                             sites, NEVER inside the gate
+  setupSpotLight / setupSpotLightVolumetric / renderDeferredLighting
+                             beyond the one named line at pipeline.cpp:16641
+  llselectmgr.*
+  lldirectorcast.*           consumed, not modified
+  alghostmanipproxy.* / lllocalmesh.*   these are TEMPLATES to copy from, not hosts to edit
+
+Anything not named in the create/modify lists above is off-limits.
+
+=============================================================================
+THE THINGS MOST LIKELY TO GO WRONG — get these right
+=============================================================================
+
+1. DETERMINISM. Every one of the 33 FX must be a PURE FUNCTION of
+   (effect, seed, presentation_time). No wall clock. No frame counters. No llFrand
+   equivalent with hidden state. This fork renders takes at non-realtime rates via
+   Temporal Capture, so a re-render of the same take must produce bit-identical light.
+   Use the counter-based hash the design doc specifies. Design doc §5.
+   The "latch" effects (Stage Debut, Explosion, Supernova) are the highest
+   silent-divergence risk -- design doc §5.3 tells you how to handle them.
+
+2. THE DERIVED-STATE INVARIANTS. The whole point of the LSL v20 architecture:
+   live state is RECOMPUTED from base x transforms, never accumulated in place.
+     - mirror twice           == bitwise identity
+     - orbit +15 then Reset   == exactly the loaded setup
+     - switching setups       == keeps current aim
+   These are testable invariants and the TUT test must assert them (design doc §4.3).
+
+3. THE OFF PATH MUST BE PROVABLY INERT (CLAUDE.md rule 1). The six pipeline.cpp gate
+   edits must be no-ops when the feature is off. Teardown must remove every emitter
+   object AND every light-set entry -- on logout, teleport, region change, and shutdown.
+   Handle LLApp::isExiting(). A dead emitter left in mLights is a crash.
+
+4. POSITIONAL DATA. settings.xml keys, the profile table (24 entries), the beam table
+   (3 entries), and the FX tables are positional. After writing them, VERIFY BY COUNTING
+   and cross-check the values against the LSL reference. "It compiles" proves nothing
+   about positional data (CLAUDE.md rule 6). Note the design doc flags a latent LSL bug:
+   beam index 3 is out of range and yields fov 0 -- do NOT copy that bug.
+
+5. Emitter setup differs from the ghost-proxy template in specific ways
+   (mbCanSelect = FALSE, fixed 0.25m scale, FORCE_INVISIBLE re-asserted per tick,
+   setPositionGlobal). Design doc §3.2. Follow it exactly -- scale participates in
+   projector optics.
+
+=============================================================================
+STYLE
+=============================================================================
+
+- Match surrounding code: fork conventions are al* filenames, AL* class names.
+- Follow .clang-format and .editorconfig.
+- Comment density and idiom to match neighbouring fork files (alweathermodel, llprismlens).
+- The pure model must be renderer-independent and unit-testable -- no LLPipeline, no
+  gGL, no viewer singletons inside alcinelightrigmodel.*. That separation is the reason
+  the TUT test can exist.
+
+When you are done, report: every file created, every file modified with what changed in
+each, anything in the design doc you could NOT implement and why, and anything in the
+design doc you believe is WRONG (say so plainly -- it was written without compiling).

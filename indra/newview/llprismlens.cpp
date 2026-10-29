@@ -6,14 +6,20 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llprismlens.h"
+#include "llprismgate.h"
+
+#include "aldirectorswitchermodel.h"
+#include "lldirectorcast.h"
 
 #include "llappviewer.h"
+#include "llbbox.h"
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
 #include "llenvironment.h"
 #include "llface.h"
 #include "llgl.h"
 #include "llglslshader.h"
+#include "lljoint.h"
 #include "llnotificationsutil.h"
 #include "llplane.h"
 #include "llrender.h"
@@ -22,6 +28,7 @@
 #include "lltimer.h"
 #include "llviewercontrol.h"
 #include "llviewercamera.h"
+#include "llvoavatar.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
@@ -79,6 +86,64 @@ constexpr U32 MIN_TARGET_EXTENT = 64;
 constexpr U32 MAX_TARGET_EXTENT = 1024;
 constexpr F64 SURFACE_CACHE_REVALIDATE_SECONDS = 4.0;
 constexpr F64 SURFACE_CACHE_REVALIDATE_JITTER_SECONDS = 1.0;
+
+LLVector3 otsSubjectBase(LLVOAvatar* avatar)
+{
+    if (LLJoint* root = avatar->getRootJoint())
+    {
+        LLVector3 foot = root->getWorldPosition();
+        foot.mV[VZ] -= avatar->getPelvisToFoot();
+        return foot;
+    }
+    return avatar->getPositionAgent();
+}
+
+bool otsHeadPoint(LLVOAvatar* avatar, LLVector3& point)
+{
+    if (LLJoint* head = avatar->getJoint("mHead"))
+    {
+        point = head->getWorldPosition();
+        const F32 scale = avatar->getUniformScale();
+        if (std::isfinite(scale) && scale > 0.f && scale != 1.f)
+        {
+            const LLVector3 base = otsSubjectBase(avatar);
+            point = base + (point - base) * scale;
+        }
+        if (point.isFinite())
+        {
+            return true;
+        }
+    }
+
+    point = avatar->getBoundingBoxAgent().getCenterAgent();
+    return point.isFinite();
+}
+
+bool otsLookAt(const LLVector3& eye, const LLVector3& target,
+               LLQuaternion& rotation)
+{
+    LLVector3 forward = target - eye;
+    if (!forward.isFinite() || forward.magVecSquared() < 1e-8f)
+    {
+        return false;
+    }
+    forward.normVec();
+    const LLVector3 world_up(0.f, 0.f, 1.f);
+    LLVector3 right = forward % world_up;
+    if (right.magVecSquared() < 1e-8f)
+    {
+        return false;
+    }
+    right.normVec();
+    LLVector3 up = right % forward;
+    up.normVec();
+
+    LLMatrix3 axes;
+    axes.setRows(right, up, -forward); // local -Z forward, local +Y up
+    rotation = LLQuaternion(axes);
+    rotation.normalize();
+    return rotation.isFinite();
+}
 
 struct PrismRect
 {
@@ -1596,6 +1661,9 @@ struct PrismInstance
     PrismFrame mFrame;
     U32 mDisplayCount = 0;
     bool mAnyDisplayVisible = false;
+    U32 mGateWatchFrames = 0;
+    U32 mGateWatchW = 0;
+    U32 mGateWatchH = 0;
     bool mHasOutput = false;
     U32 mOutputWidth = 0;
     U32 mOutputHeight = 0;
@@ -1619,12 +1687,26 @@ struct PrismDisplay
     LLPrismLens::DisplayHandle mHandle;
     U32 mCaptureSlot = LLPrismLens::MAX_CAPTURES;
     U64 mCaptureGeneration = 0;
+    bool mGateSubscribed = false;
     LLUUID mObjectId;
     S32 mTE = -1;
     LLPrismLens::DisplaySettings mSettings;
     LLPrismLens::DisplayRuntimeState mRuntime;
     PrismFrame mFrame;
     SurfaceGeometryCache mSurfaceCache;
+};
+
+struct PrismGateRuntime
+{
+    ALDirectorSwitcherModel::Controller mController;
+    S32 mOnAirArmIndex = -1;
+    S32 mWarmArmIndex = -1;
+    F64 mNextCutTime = 0.0;
+    U64 mCutSerial = 0;
+    U64 mGateRevision = 1;
+    U32 mManualWarmFramesRemaining = 0;
+    bool mPendingTake = false;
+    std::string mReason;
 };
 
 class PrismLensRegistry
@@ -1643,7 +1725,7 @@ public:
         if (!replacing && count() >= LLPrismLens::MAX_CAPTURES)
         {
             status.mResult = LLPrismLens::ERegistryResult::AT_CAPACITY;
-            status.mReason = "Maximum of 3 Prism captures reached.";
+            status.mReason = llformat("Maximum of %u Prism captures reached.", LLPrismLens::MAX_CAPTURES);
             return status;
         }
         if (replacing && findCapture(*replacing) < 0)
@@ -1701,7 +1783,7 @@ public:
         if (count() >= LLPrismLens::MAX_CAPTURES)
         {
             status.mResult = LLPrismLens::ERegistryResult::AT_CAPACITY;
-            status.mReason = "Maximum of 3 Prism captures reached.";
+            status.mReason = llformat("Maximum of %u Prism captures reached.", LLPrismLens::MAX_CAPTURES);
             return status;
         }
         if (displayCount() >= LLPrismLens::MAX_DISPLAY_BINDINGS)
@@ -1842,7 +1924,7 @@ public:
     {
         if (count() >= LLPrismLens::MAX_CAPTURES)
         {
-            if (reason) *reason = "Maximum of 3 Prism captures reached.";
+            if (reason) *reason = llformat("Maximum of %u Prism captures reached.", LLPrismLens::MAX_CAPTURES);
             return LLPrismLens::ERegistryResult::AT_CAPACITY;
         }
         LLPrismLens::CameraSettings camera; // defaults (FIXED fov, etc.)
@@ -2102,6 +2184,8 @@ public:
         {
             display = PrismDisplay();
         }
+        mGateSettings = LLPrismLens::GateSettings();
+        mGate = PrismGateRuntime();
         gPipeline.releasePrismLensBuffers();
         resetRuntimeHistory();
     }
@@ -2789,6 +2873,13 @@ public:
         capture.mRuntime.mEffectiveFarClip = llmin(capture.mCamera.mFarClip,
                                                    main_camera.getFar());
 
+        if (!capture.mAnyDisplayVisible && capture.mGateWatchFrames > 0 &&
+            capture.mGateWatchW > 0 && capture.mGateWatchH > 0)
+        {
+            capture.mAnyDisplayVisible = true;
+            required_width = llmax(required_width, capture.mGateWatchW);
+            required_height = llmax(required_height, capture.mGateWatchH);
+        }
         if (!capture.mAnyDisplayVisible)
         {
             return false;
@@ -2968,9 +3059,9 @@ public:
         }
         capacity = llclamp(capacity, 0.f, frame_opportunities);
 
-        bool active[LLPrismLens::MAX_CAPTURES] = { false, false, false };
-        F32 demand[LLPrismLens::MAX_CAPTURES] = { 0.f, 0.f, 0.f };
-        F32 entitlement[LLPrismLens::MAX_CAPTURES] = { 0.f, 0.f, 0.f };
+        bool active[LLPrismLens::MAX_CAPTURES] = {};
+        F32 demand[LLPrismLens::MAX_CAPTURES] = {};
+        F32 entitlement[LLPrismLens::MAX_CAPTURES] = {};
         U32 active_count = 0;
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
@@ -3006,7 +3097,7 @@ public:
         // the remainder is shared fairly by producers that can still use it.
         F32 remaining = capacity;
         U32 remaining_count = active_count;
-        bool assigned[LLPrismLens::MAX_CAPTURES] = { false, false, false };
+        bool assigned[LLPrismLens::MAX_CAPTURES] = {};
         while (remaining_count > 0 && remaining > 0.f)
         {
             const F32 share = remaining / static_cast<F32>(remaining_count);
@@ -3300,6 +3391,32 @@ public:
             if (reason) *reason = "Only Camera Feed captures have a source camera.";
             return false;
         }
+        // If this capture is armed to the Gate, rebinding its source to a
+        // gate-subscribed monitor object would let the gate route that monitor
+        // to itself (feedback). Reject it, mirroring the arm-time guard.
+        bool capture_armed = false;
+        for (const LLPrismLens::GateArmedCamera& armed : mGateSettings.mArmed)
+        {
+            if (armed.mCaptureId == capture.mHandle.mId)
+            {
+                capture_armed = true;
+                break;
+            }
+        }
+        if (capture_armed)
+        {
+            for (const PrismDisplay& display : mDisplays)
+            {
+                if (LLPrismLens::gateFeedbackResult(
+                        object_id, display.mObjectId,
+                        display.mOccupied && display.mGateSubscribed) !=
+                    LLPrismLens::ERegistryResult::OK)
+                {
+                    if (reason) *reason = "That object is a Gate-subscribed monitor; an armed camera cannot use it as its source (feedback).";
+                    return false;
+                }
+            }
+        }
         capture.mCameraObjectId = object_id;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
@@ -3336,12 +3453,31 @@ public:
             settings.mOptics.mCRTScanlines >= 0.f && settings.mOptics.mCRTScanlines <= 1.f &&
             std::isfinite(settings.mOptics.mExposureBias) &&
             settings.mOptics.mExposureBias >= -4.f && settings.mOptics.mExposureBias <= 4.f;
-        if (!finite_offset || !valid_fov || !valid_near || !valid_far || !valid_aspect || !valid_optics)
+        const LLPrismLens::BonePovSettings& bone = settings.mBonePov;
+        const bool valid_bone_pov =
+            bone.mAnchorSlot <= LLPrismLens::BONE_ANCHOR_D &&
+            (bone.mJointSelection == LLPrismLens::BONE_JOINT_EYELINE ||
+             bone.mJointSelection == LLPrismLens::BONE_JOINT_NAMED) &&
+            bone.mAimMode <= LLPrismLens::BONE_AIM_STABILIZED &&
+            bone.mRollMode <= LLPrismLens::BONE_ROLL_INHERIT &&
+            bone.mOffset.isFinite() &&
+            std::isfinite(bone.mTrimPitchDeg) &&
+            bone.mTrimPitchDeg >= -180.f && bone.mTrimPitchDeg <= 180.f &&
+            std::isfinite(bone.mTrimYawDeg) &&
+            bone.mTrimYawDeg >= -180.f && bone.mTrimYawDeg <= 180.f &&
+            std::isfinite(bone.mFovDeg) &&
+            bone.mFovDeg >= 10.f && bone.mFovDeg <= 150.f &&
+            std::isfinite(bone.mSmoothingSec) &&
+            bone.mSmoothingSec >= 0.f && bone.mSmoothingSec <= 10.f &&
+            bone.mCustomJoint.size() <= 128;
+        if (!finite_offset || !valid_fov || !valid_near || !valid_far ||
+            !valid_aspect || !valid_optics || !valid_bone_pov)
         {
             if (reason)
             {
                 *reason = "Camera settings require finite FOV 5-175 degrees, near 0.01-10 m, "
-                          "far 0.2-512 m (at least near+0.1), finite offset, aspect 0.25-4, and valid optics.";
+                          "far 0.2-512 m (at least near+0.1), finite offset, aspect 0.25-4, valid optics, "
+                          "and valid bone POV values (FOV 10-150, trim +/-180, smoothing 0-10).";
             }
             return false;
         }
@@ -3416,6 +3552,88 @@ public:
         capture.mCamera = corrected;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    bool setVirtualCameraTransform(
+        const LLPrismLens::CaptureHandle& handle, const LLVector3& pos,
+        const LLQuaternion& rot, F32 vertical_fov_rad, std::string* reason)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That capture handle is stale.";
+            return false;
+        }
+        PrismInstance& capture = mLenses[slot];
+        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+            !capture.mCamera.mVirtual)
+        {
+            if (reason) *reason = "Bone POV runtime transforms require a virtual Camera Feed.";
+            return false;
+        }
+        if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+        {
+            if (reason) *reason = "A virtual camera must use fixed vertical FOV.";
+            return false;
+        }
+
+        LLPrismLens::CameraSettings candidate = capture.mCamera;
+        candidate.mVirtualPos = pos;
+        candidate.mVirtualRot = rot;
+        candidate.mFixedVerticalFovRad = vertical_fov_rad;
+        if (!validCameraSettings(candidate, reason))
+        {
+            return false;
+        }
+
+        // Runtime-only: do not suppress retained output and do not bump the
+        // configuration revision. Capture prep republishes the fixed FOV into
+        // mEffectiveVerticalFovRad every frame.
+        capture.mCamera.mVirtualPos = pos;
+        capture.mCamera.mVirtualRot = rot;
+        capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+        ++mRuntimeRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    bool setVirtualCameraPosition(
+        const LLPrismLens::CaptureHandle& handle, const LLVector3& pos,
+        F32 vertical_fov_rad, std::string* reason)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That capture handle is stale.";
+            return false;
+        }
+        PrismInstance& capture = mLenses[slot];
+        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
+            !capture.mCamera.mVirtual)
+        {
+            if (reason) *reason = "Bone POV runtime positions require a virtual Camera Feed.";
+            return false;
+        }
+        if (capture.mCamera.mFovMode != LLPrismLens::EFovMode::FIXED)
+        {
+            if (reason) *reason = "A virtual camera must use fixed vertical FOV.";
+            return false;
+        }
+
+        LLPrismLens::CameraSettings candidate = capture.mCamera;
+        candidate.mVirtualPos = pos;
+        candidate.mFixedVerticalFovRad = vertical_fov_rad;
+        if (!validCameraSettings(candidate, reason))
+        {
+            return false;
+        }
+
+        // Deliberately omit mVirtualRot: stabilized aim is operator-owned.
+        capture.mCamera.mVirtualPos = pos;
+        capture.mCamera.mFixedVerticalFovRad = vertical_fov_rad;
+        ++mRuntimeRevision;
         if (reason) reason->clear();
         return true;
     }
@@ -3528,6 +3746,707 @@ public:
         return true;
     }
 
+    bool setGateSettings(const LLPrismLens::GateSettings& settings,
+                         std::string* reason)
+    {
+        LLPrismLens::GateSettings candidate = settings;
+        if (candidate.mGateId.isNull()) candidate.mGateId.generate();
+        if (candidate.mMode != LLPrismLens::EGateMode::MANUAL &&
+            candidate.mMode != LLPrismLens::EGateMode::AUTO_CYCLE)
+        {
+            if (reason) *reason = "Unknown Prism Gate mode.";
+            return false;
+        }
+        if (!std::isfinite(candidate.mIntervalSeconds) ||
+            candidate.mIntervalSeconds < 0.5 || candidate.mIntervalSeconds > 120.0)
+        {
+            if (reason) *reason = "Gate interval must be between 0.5 and 120 seconds.";
+            return false;
+        }
+        if (candidate.mPrewarmFrames > 5 ||
+            candidate.mArmed.size() > LLPrismLens::MAX_CAPTURES)
+        {
+            if (reason) *reason = "A Gate supports at most 8 capture references and 0-5 pre-warm frames.";
+            return false;
+        }
+        std::set<LLUUID> arm_ids;
+        std::set<LLUUID> capture_ids;
+        for (const LLPrismLens::GateArmedCamera& armed : candidate.mArmed)
+        {
+            if (armed.mArmId.isNull() || !arm_ids.insert(armed.mArmId).second ||
+                armed.mCaptureId.isNull() ||
+                !capture_ids.insert(armed.mCaptureId).second ||
+                armed.mLabel.size() > 128)
+            {
+                if (reason)
+                    *reason = "Gate arms require unique arm and capture IDs plus short labels.";
+                return false;
+            }
+            const S32 capture_slot = findCaptureById(armed.mCaptureId);
+            if (capture_slot >= 0 && mLenses[capture_slot].mMode !=
+                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+            {
+                if (reason) *reason = "Only Camera Feed captures can be armed.";
+                return false;
+            }
+        }
+        if (candidate.mProgramArmIndex < 0 ||
+            candidate.mProgramArmIndex >= static_cast<S32>(candidate.mArmed.size()))
+        {
+            candidate.mProgramArmIndex = candidate.mArmed.empty() ? -1 : 0;
+        }
+        if (candidate.mPreviewArmIndex < 0 ||
+            candidate.mPreviewArmIndex >= static_cast<S32>(candidate.mArmed.size()))
+        {
+            candidate.mPreviewArmIndex = -1;
+        }
+        if (candidate.mActive && candidate.mArmed.empty())
+        {
+            if (reason) *reason = "Arm at least one camera before activating the Gate.";
+            return false;
+        }
+
+        const bool was_active = mGateSettings.mActive;
+        const S32 old_preview = mGateSettings.mPreviewArmIndex;
+        const LLPrismLens::EGateMode old_mode = mGateSettings.mMode;
+        const F64 old_interval = mGateSettings.mIntervalSeconds;
+        const std::vector<LLPrismLens::GateArmedCamera> old_arms =
+            mGateSettings.mArmed;
+        if (was_active)
+        {
+            if (mGate.mOnAirArmIndex >= 0 &&
+                mGate.mOnAirArmIndex < static_cast<S32>(candidate.mArmed.size()))
+            {
+                candidate.mProgramArmIndex = mGate.mOnAirArmIndex;
+            }
+        }
+        mGateSettings = candidate;
+
+        if (!was_active && candidate.mActive)
+        {
+            mGateSettings.mActive = false;
+            if (!activateGate(LLTimer::getTotalSeconds(), reason))
+            {
+                ++mRevision;
+                ++mGate.mGateRevision;
+                return false;
+            }
+        }
+        else if (was_active && !candidate.mActive)
+        {
+            deactivateGate();
+        }
+        else if (candidate.mActive)
+        {
+            S32 preferred = mGate.mOnAirArmIndex;
+            if (preferred < 0 ||
+                preferred >= static_cast<S32>(candidate.mArmed.size()))
+                preferred = candidate.mProgramArmIndex;
+            if (candidate.mMode == LLPrismLens::EGateMode::AUTO_CYCLE)
+                preferred = LLPrismLens::gateClampEnabledIndex(
+                    candidate.mArmed, preferred);
+            const S32 on_air = resolveGateArmIndex(preferred);
+            const bool schedule_changed = old_mode != candidate.mMode ||
+                old_interval != candidate.mIntervalSeconds ||
+                old_arms.size() != candidate.mArmed.size() ||
+                !std::equal(old_arms.begin(), old_arms.end(),
+                    candidate.mArmed.begin(),
+                    [](const LLPrismLens::GateArmedCamera& left,
+                       const LLPrismLens::GateArmedCamera& right)
+                    {
+                        return left.mArmId == right.mArmId &&
+                            left.mEnabled == right.mEnabled &&
+                            left.mCaptureId == right.mCaptureId;
+                    });
+            const F64 now = LLTimer::getTotalSeconds();
+            if (on_air < 0)
+            {
+                mGate.mOnAirArmIndex = -1;
+                mGateSettings.mProgramArmIndex = -1;
+                cancelGateWatches();
+                mGate.mReason = "Gate dark: no armed camera is available.";
+            }
+            else if (on_air != mGate.mOnAirArmIndex)
+            {
+                mGate.mOnAirArmIndex = on_air;
+                mGateSettings.mProgramArmIndex = on_air;
+                ++mGate.mCutSerial;
+                mGate.mReason.clear();
+            }
+            if (schedule_changed && on_air >= 0)
+            {
+                mGate.mController.manualPunch(on_air, now);
+                mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+            }
+            if (old_mode != candidate.mMode)
+            {
+                mGate.mPendingTake = false;
+                mGate.mManualWarmFramesRemaining = 0;
+                cancelGateWatches();
+            }
+            else if (old_preview != candidate.mPreviewArmIndex)
+            {
+                mGate.mPendingTake = false;
+                cancelGateWatches();
+                mGate.mManualWarmFramesRemaining = candidate.mPrewarmFrames;
+            }
+            if (mGateSettings.mActive) routeGateDisplays();
+        }
+        else
+        {
+            mGate.mOnAirArmIndex = resolveGateArmIndex(
+                mGateSettings.mProgramArmIndex);
+            mGateSettings.mProgramArmIndex = mGate.mOnAirArmIndex;
+            routeGateDisplays();
+        }
+
+        ++mRevision;
+        ++mGate.mGateRevision;
+        if (reason) *reason = mGate.mReason;
+        return true;
+    }
+
+    LLPrismLens::ERegistryResult gateArm(
+        const LLPrismLens::CaptureHandle& handle, const std::string& label,
+        LLUUID* arm_id, std::string* reason)
+    {
+        const S32 slot = findCapture(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That capture handle is stale.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        const PrismInstance& capture = mLenses[slot];
+        if (capture.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+        {
+            if (reason) *reason = "Only a Camera Feed capture can be armed.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        LLViewerObject* source_object =
+            gObjectList.findObject(capture.mCameraObjectId);
+        if (source_object &&
+            (source_object->isAvatar() || source_object->isAttachment()))
+        {
+            if (reason) *reason = "Avatar and attachment camera sources cannot be armed.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        for (const PrismDisplay& display : mDisplays)
+        {
+            const LLPrismLens::ERegistryResult feedback =
+                LLPrismLens::gateFeedbackResult(
+                    capture.mCameraObjectId, display.mObjectId,
+                    display.mOccupied && display.mGateSubscribed);
+            if (feedback != LLPrismLens::ERegistryResult::OK)
+            {
+                if (reason) *reason = "That camera source is a Gate-subscribed monitor; arming it would create feedback.";
+                return feedback;
+            }
+        }
+        for (const LLPrismLens::GateArmedCamera& existing :
+             mGateSettings.mArmed)
+        {
+            if (existing.mCaptureId == capture.mHandle.mId)
+            {
+                if (reason) *reason = "That capture is already armed.";
+                return LLPrismLens::ERegistryResult::DUPLICATE;
+            }
+        }
+        if (mGateSettings.mArmed.size() >= LLPrismLens::MAX_CAPTURES)
+        {
+            if (reason) *reason = "A Gate can arm at most 8 existing captures.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        if (mGateSettings.mGateId.isNull()) mGateSettings.mGateId.generate();
+        LLPrismLens::GateArmedCamera armed;
+        armed.mArmId.generate();
+        armed.mLabel = label.empty()
+            ? llformat("VCam %u", static_cast<U32>(mGateSettings.mArmed.size() + 1))
+            : label.substr(0, 128);
+        armed.mCaptureId = capture.mHandle.mId;
+        mGateSettings.mArmed.push_back(armed);
+        if (mGateSettings.mProgramArmIndex < 0 || mGate.mOnAirArmIndex < 0)
+        {
+            // No established program arm yet. The freshly appended arm is the
+            // user's latest intent; prefer it, but clamp to an enabled row so an
+            // Auto gate resolves to a live source rather than a disabled leftover.
+            // Never hard-code 0 - disabled leftover rows can precede the new arm.
+            const S32 appended_index =
+                static_cast<S32>(mGateSettings.mArmed.size()) - 1;
+            S32 program_index = LLPrismLens::gateClampEnabledIndex(
+                mGateSettings.mArmed, appended_index);
+            if (program_index < 0) program_index = appended_index;
+            mGateSettings.mProgramArmIndex = program_index;
+            mGate.mOnAirArmIndex = program_index;
+            routeGateDisplays();
+        }
+        if (arm_id) *arm_id = armed.mArmId;
+        if (mGateSettings.mActive && mGate.mOnAirArmIndex >= 0)
+        {
+            const F64 now = LLTimer::getTotalSeconds();
+            mGate.mController.manualPunch(mGate.mOnAirArmIndex, now);
+            mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+        }
+        ++mRevision;
+        ++mGate.mGateRevision;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    LLPrismLens::ERegistryResult gateDisarm(const LLUUID& arm_id,
+                                             std::string* reason)
+    {
+        S32 remove_index = -1;
+        for (S32 index = 0; index < static_cast<S32>(mGateSettings.mArmed.size()); ++index)
+        {
+            if (mGateSettings.mArmed[static_cast<std::size_t>(index)].mArmId == arm_id)
+            {
+                remove_index = index;
+                break;
+            }
+        }
+        if (remove_index < 0)
+        {
+            if (reason) *reason = "That Gate arm no longer exists.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        const bool removed_on_air = remove_index == mGate.mOnAirArmIndex;
+        mGateSettings.mArmed.erase(mGateSettings.mArmed.begin() + remove_index);
+        if (mGateSettings.mPreviewArmIndex == remove_index)
+            mGateSettings.mPreviewArmIndex = -1;
+        else if (mGateSettings.mPreviewArmIndex > remove_index)
+            --mGateSettings.mPreviewArmIndex;
+        if (mGate.mOnAirArmIndex > remove_index) --mGate.mOnAirArmIndex;
+
+        if (mGateSettings.mArmed.empty())
+        {
+            mGateSettings.mActive = false;
+            mGate.mOnAirArmIndex = -1;
+            mGateSettings.mProgramArmIndex = -1;
+            mGate.mController.reset();
+            mGate.mReason = "Gate dark: no armed camera is available.";
+        }
+        else if (removed_on_air)
+        {
+            const S32 preferred =
+                llmin(remove_index,
+                      static_cast<S32>(mGateSettings.mArmed.size()) - 1);
+            // Auto cycle must skip disabled arms (respect the enabled mask); if
+            // none remain enabled the gate goes dark. Manual may land on any
+            // resolvable arm the operator can then TAKE.
+            const S32 clamped =
+                mGateSettings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE
+                    ? LLPrismLens::gateClampEnabledIndex(
+                          mGateSettings.mArmed, preferred)
+                    : preferred;
+            const S32 replacement =
+                clamped < 0 ? -1 : resolveGateArmIndex(clamped);
+            if (replacement < 0)
+            {
+                mGate.mOnAirArmIndex = -1;
+                mGateSettings.mProgramArmIndex = -1;
+                mGate.mReason = "Gate dark: no armed camera is available.";
+            }
+            else
+            {
+                mGate.mOnAirArmIndex = replacement;
+                mGateSettings.mProgramArmIndex = replacement;
+                if (mGateSettings.mActive)
+                {
+                    const F64 now = LLTimer::getTotalSeconds();
+                    mGate.mController.manualPunch(replacement, now);
+                    mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+                }
+                ++mGate.mCutSerial;
+                mGate.mReason.clear();
+            }
+        }
+        else
+        {
+            mGateSettings.mProgramArmIndex = mGate.mOnAirArmIndex;
+            if (mGateSettings.mActive && mGate.mOnAirArmIndex >= 0)
+            {
+                const F64 now = LLTimer::getTotalSeconds();
+                mGate.mController.manualPunch(mGate.mOnAirArmIndex, now);
+                mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+            }
+        }
+        mGate.mPendingTake = false;
+        mGate.mManualWarmFramesRemaining = 0;
+        cancelGateWatches();
+        routeGateDisplays();
+        ++mRevision;
+        ++mRuntimeRevision;
+        ++mGate.mGateRevision;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    LLPrismLens::ERegistryResult gateTake(std::string* reason)
+    {
+        if (!mGateSettings.mActive)
+        {
+            if (reason) *reason = "Activate the Gate before taking a preview.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        if (mGateSettings.mMode != LLPrismLens::EGateMode::MANUAL)
+        {
+            if (reason) *reason = "TAKE is available in Manual mode; Auto follows the armed order.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        const S32 preview = mGateSettings.mPreviewArmIndex;
+        if (preview < 0 || preview >= static_cast<S32>(mGateSettings.mArmed.size()))
+        {
+            if (reason) *reason = "Select an armed preview camera first.";
+            return LLPrismLens::ERegistryResult::INVALID_SELECTION;
+        }
+        if (!LLPrismLens::gateIsRealCut(mGate.mOnAirArmIndex, preview))
+        {
+            if (reason) *reason = "The selected preview is already on-air.";
+            return LLPrismLens::ERegistryResult::DUPLICATE;
+        }
+        const F64 now = LLTimer::getTotalSeconds();
+        const S32 preview_slot = captureSlotForArm(preview);
+        if (preview_slot < 0)
+        {
+            if (reason) *reason = "The selected camera capture was deleted.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        // Preview staging removed: TAKE cuts straight to the selected armed row.
+        mGate.mController.manualPunch(preview, now);
+        mGate.mOnAirArmIndex = preview;
+        mGateSettings.mProgramArmIndex = preview;
+        mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+        mGate.mPendingTake = false;
+        cancelGateWatches();
+        ++mGate.mCutSerial;
+        ++mGate.mGateRevision;
+        ++mRuntimeRevision;
+        mGate.mReason.clear();
+        routeGateDisplays();
+        if (reason) *reason = mGate.mReason;
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    LLPrismLens::ERegistryResult setDisplayGateSubscribed(
+        const LLPrismLens::DisplayHandle& handle, bool subscribed,
+        const LLPrismLens::CaptureHandle* fixed_capture, std::string* reason)
+    {
+        const S32 slot = findDisplay(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That display handle is stale.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        PrismDisplay& display = mDisplays[slot];
+        if (subscribed && isSurfaceLensAperture(display))
+        {
+            if (reason)
+                *reason = "A Surface Lens aperture must remain bound to its lens capture and cannot follow the Gate.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        if (subscribed)
+        {
+            for (const LLPrismLens::GateArmedCamera& armed :
+                 mGateSettings.mArmed)
+            {
+                const S32 capture_slot = findCaptureById(armed.mCaptureId);
+                if (capture_slot >= 0 &&
+                    LLPrismLens::gateFeedbackResult(
+                        mLenses[capture_slot].mCameraObjectId,
+                        display.mObjectId, true) !=
+                        LLPrismLens::ERegistryResult::OK)
+                {
+                    if (reason) *reason = "This monitor is an armed camera's source; subscribing it would create feedback.";
+                    return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+                }
+            }
+        }
+        if (!subscribed && display.mGateSubscribed)
+        {
+            S32 fixed_slot = -1;
+            if (fixed_capture)
+            {
+                const S32 requested_slot = findCapture(*fixed_capture);
+                if (requested_slot >= 0 &&
+                    mLenses[requested_slot].mMode ==
+                        LLPrismLens::ECaptureMode::CAMERA_FEED)
+                {
+                    fixed_slot = requested_slot;
+                }
+            }
+            if (fixed_slot < 0 &&
+                display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[display.mCaptureSlot].mOccupied &&
+                mLenses[display.mCaptureSlot].mMode ==
+                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+            {
+                fixed_slot = static_cast<S32>(display.mCaptureSlot);
+            }
+            if (fixed_slot < 0)
+            {
+                for (U32 capture_slot = 0;
+                     capture_slot < LLPrismLens::MAX_CAPTURES; ++capture_slot)
+                {
+                    if (mLenses[capture_slot].mOccupied &&
+                        mLenses[capture_slot].mMode ==
+                            LLPrismLens::ECaptureMode::CAMERA_FEED)
+                    {
+                        fixed_slot = static_cast<S32>(capture_slot);
+                        break;
+                    }
+                }
+            }
+            if (fixed_slot < 0)
+            {
+                if (reason) *reason = "No ordinary Camera Feed is available for this monitor's fixed source.";
+                return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+            }
+            if (display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[display.mCaptureSlot].mOccupied &&
+                mLenses[display.mCaptureSlot].mDisplayCount > 0)
+            {
+                --mLenses[display.mCaptureSlot].mDisplayCount;
+            }
+            display.mCaptureSlot = static_cast<U32>(fixed_slot);
+            display.mCaptureGeneration =
+                mLenses[fixed_slot].mHandle.mGeneration;
+            ++mLenses[fixed_slot].mDisplayCount;
+        }
+        display.mGateSubscribed = subscribed;
+        if (subscribed) routeGateDisplays();
+        ++mRevision;
+        ++mGate.mGateRevision;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    LLPrismLens::GateSnapshot gateSnapshot() const
+    {
+        LLPrismLens::GateSnapshot result;
+        result.mRevision = mGate.mGateRevision;
+        result.mSettings = mGateSettings;
+        result.mOnAirArmIndex = mGate.mOnAirArmIndex;
+        result.mWarmArmIndex = mGate.mWarmArmIndex;
+        result.mCutSerial = mGate.mCutSerial;
+        result.mReason = mGate.mReason;
+        return result;
+    }
+
+    bool gateOnAirCameraEye(LLVector3& out_agent, U64* out_cut_serial,
+                            LLQuaternion* out_rotation) const
+    {
+        if (out_cut_serial)
+        {
+            *out_cut_serial = mGate.mCutSerial;
+        }
+
+        // Gaze can query once per selected avatar. Resolve the registry-owned
+        // capture directly and retain the answer for this immutable render
+        // frame/revision instead of copying GateSnapshot + RegistrySnapshot.
+        if (mGateEyeCacheFrame == gFrameCount &&
+            mGateEyeCacheRevision == mRevision &&
+            mGateEyeCacheRuntimeRevision == mRuntimeRevision &&
+            mGateEyeCacheGateRevision == mGate.mGateRevision)
+        {
+            if (mGateEyeCacheValid)
+            {
+                out_agent = mGateEyeCache;
+                if (out_rotation)
+                {
+                    *out_rotation = mGateRotationCache;
+                }
+            }
+            return mGateEyeCacheValid;
+        }
+
+        mGateEyeCacheFrame = gFrameCount;
+        mGateEyeCacheRevision = mRevision;
+        mGateEyeCacheRuntimeRevision = mRuntimeRevision;
+        mGateEyeCacheGateRevision = mGate.mGateRevision;
+        mGateEyeCacheValid = false;
+
+        if (!mGateSettings.mActive)
+        {
+            return false;
+        }
+        const S32 slot = captureSlotForArm(mGate.mOnAirArmIndex);
+        if (slot < 0)
+        {
+            return false;
+        }
+
+        const PrismInstance& capture = mLenses[slot];
+        if (capture.mCamera.mVirtual)
+        {
+            mGateEyeCache = capture.mCamera.mVirtualPos;
+            mGateRotationCache = capture.mCamera.mVirtualRot;
+        }
+        else
+        {
+            LLViewerObject* obj = gObjectList.findObject(capture.mCameraObjectId);
+            if (!obj || obj->isDead())
+            {
+                return false;
+            }
+            mGateRotationCache = obj->getRenderRotation();
+            mGateEyeCache = obj->getRenderPosition() +
+                capture.mCamera.mLocalEyeOffset * mGateRotationCache;
+        }
+        mGateEyeCacheValid = mGateEyeCache.isFinite();
+        if (mGateEyeCacheValid)
+        {
+            out_agent = mGateEyeCache;
+            if (out_rotation)
+            {
+                *out_rotation = mGateRotationCache;
+            }
+        }
+        return mGateEyeCacheValid;
+    }
+
+    void updateGate(F64 now)
+    {
+        ageGateWatches();
+        if (!mGateSettings.mActive)
+        {
+            return;
+        }
+        if (mGateSettings.mArmed.empty())
+        {
+            mGate.mOnAirArmIndex = -1;
+            mGateSettings.mProgramArmIndex = -1;
+            mGate.mReason = "Gate dark: no armed camera is available.";
+            routeGateDisplays();
+            return;
+        }
+
+        ALDirectorSwitcherModel::Config config;
+        config.mAuto = mGateSettings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE;
+        config.mSequence = true;
+        config.mIntervalSeconds = mGateSettings.mIntervalSeconds;
+        config.mJitterSeconds = 0.0;
+        for (std::size_t index = 0;
+             index < mGateSettings.mArmed.size() && index < config.mEnabled.size(); ++index)
+        {
+            config.mEnabled[index] = mGateSettings.mArmed[index].mEnabled;
+        }
+
+        if (mGate.mController.activeSlot() < 0 && mGate.mOnAirArmIndex >= 0)
+        {
+            mGate.mController.manualPunch(mGate.mOnAirArmIndex, now);
+            mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+        }
+        const ALDirectorSwitcherModel::Frame frame =
+            mGate.mController.update(now, config);
+        if (frame.mCut)
+        {
+            mGate.mNextCutTime = LLPrismLens::gateNextCutTime(
+                frame.mBoundary, mGateSettings.mIntervalSeconds);
+        }
+
+        S32 requested = mGate.mController.activeSlot();
+        if (requested < 0) requested = mGate.mOnAirArmIndex;
+        const S32 resolved = resolveGateArmIndex(requested);
+        if (resolved < 0)
+        {
+            if (mGate.mOnAirArmIndex >= 0) ++mGate.mGateRevision;
+            mGate.mOnAirArmIndex = -1;
+            mGateSettings.mProgramArmIndex = -1;
+            cancelGateWatches();
+            mGate.mReason = "Gate dark: no armed camera is available.";
+        }
+        else
+        {
+            if (resolved != requested)
+            {
+                mGate.mController.manualPunch(resolved, now);
+                mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+            }
+            if (resolved != mGate.mOnAirArmIndex)
+            {
+                mGate.mOnAirArmIndex = resolved;
+                mGateSettings.mProgramArmIndex = resolved;
+                cancelGateWatches();
+                ++mGate.mCutSerial;
+                ++mGate.mGateRevision;
+                ++mRuntimeRevision;
+            }
+            else
+            {
+                mGateSettings.mProgramArmIndex = resolved;
+            }
+            mGate.mReason.clear();
+        }
+
+        if (mGateSettings.mMode == LLPrismLens::EGateMode::MANUAL)
+        {
+            if (mGate.mPendingTake && mGate.mManualWarmFramesRemaining == 0)
+            {
+                const S32 preview = mGateSettings.mPreviewArmIndex;
+                const S32 preview_slot = captureSlotForArm(preview);
+                // The preview was watched across the warm burst; accept ANY
+                // produced frame (CURRENT this frame, or HELD from earlier in
+                // the burst). Requiring CURRENT on the final frame wrongly
+                // cancels a preview that published earlier and is now HELD.
+                const bool preview_ready = preview_slot >= 0 &&
+                    mLenses[preview_slot].mHasOutput;
+                if (preview_ready)
+                {
+                    mGate.mController.manualPunch(preview, now);
+                    mGate.mOnAirArmIndex = preview;
+                    mGateSettings.mProgramArmIndex = preview;
+                    mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+                    cancelGateWatches();
+                    ++mGate.mCutSerial;
+                    ++mGate.mGateRevision;
+                    ++mRuntimeRevision;
+                    mGate.mReason.clear();
+                }
+                else
+                {
+                    cancelGateWatches();
+                    mGate.mReason = "TAKE was held: the preview camera has not produced a frame yet.";
+                    ++mGate.mGateRevision;
+                }
+                mGate.mPendingTake = false;
+            }
+            if (mGate.mManualWarmFramesRemaining > 0)
+            {
+                const S32 preview = mGateSettings.mPreviewArmIndex;
+                if (preview >= 0 &&
+                    preview < static_cast<S32>(mGateSettings.mArmed.size()) &&
+                    preview != mGate.mOnAirArmIndex &&
+                    captureSlotForArm(preview) >= 0)
+                {
+                    if (mGate.mWarmArmIndex != preview)
+                        watchGateArm(preview, mGateSettings.mPrewarmFrames);
+                    LLPrismLens::gateConsumePreviewWarmFrame(
+                        mGate.mManualWarmFramesRemaining);
+                }
+                else
+                {
+                    mGate.mManualWarmFramesRemaining = 0;
+                }
+            }
+        }
+        else
+        {
+            const F64 frame_dt = std::isfinite(gFPSClamped) && gFPSClamped > 0.f
+                ? 1.0 / static_cast<F64>(gFPSClamped) : 1.0 / 60.0;
+            const S32 next = LLPrismLens::gateNextEnabledIndex(
+                mGateSettings.mArmed, mGate.mOnAirArmIndex);
+            if (next >= 0 && next != mGate.mOnAirArmIndex &&
+                LLPrismLens::gateWarmActive(
+                    now, mGate.mNextCutTime,
+                    mGateSettings.mPrewarmFrames, frame_dt))
+            {
+                if (mGate.mWarmArmIndex != next)
+                    watchGateArm(next, mGateSettings.mPrewarmFrames);
+            }
+        }
+        routeGateDisplays();
+    }
+
     bool removeDisplay(const LLPrismLens::DisplayHandle& handle, std::string* reason)
     {
         const S32 slot = findDisplay(handle);
@@ -3540,6 +4459,13 @@ public:
         if (display.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
             !mLenses[display.mCaptureSlot].mOccupied)
         {
+            if (display.mGateSubscribed)
+            {
+                display = PrismDisplay();
+                ++mRevision;
+                if (reason) reason->clear();
+                return true;
+            }
             if (reason) *reason = "The display's capture is no longer valid.";
             return false;
         }
@@ -3602,6 +4528,7 @@ public:
         LLPrismLens::RegistrySnapshot result;
         result.mConfigurationRevision = mRevision;
         result.mRuntimeRevision = mRuntimeRevision;
+        result.mGateRevision = mGate.mGateRevision;
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             const PrismInstance& capture = mLenses[slot];
@@ -3618,18 +4545,25 @@ public:
         }
         for (const PrismDisplay& display : mDisplays)
         {
-            if (!display.mOccupied || display.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
-                !mLenses[display.mCaptureSlot].mOccupied)
+            if (!display.mOccupied)
             {
                 continue;
             }
+            const bool capture_valid =
+                display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[display.mCaptureSlot].mOccupied &&
+                display.mCaptureGeneration ==
+                    mLenses[display.mCaptureSlot].mHandle.mGeneration;
+            if (!capture_valid && !display.mGateSubscribed) continue;
             LLPrismLens::DisplayDefinition& out = result.mDisplays[result.mDisplayCount++];
             out.mHandle = display.mHandle;
-            out.mCapture = mLenses[display.mCaptureSlot].mHandle;
+            if (capture_valid)
+                out.mCapture = mLenses[display.mCaptureSlot].mHandle;
             out.mDisplayObjectId = display.mObjectId;
             out.mDisplayTextureEntry = display.mTE;
             out.mSettings = display.mSettings;
             out.mRuntime = display.mRuntime;
+            out.mGateSubscribed = display.mGateSubscribed;
         }
         return result;
     }
@@ -3753,8 +4687,10 @@ public:
         LLSD result = LLSD::emptyMap();
         result["prism_captures"] = LLSD::emptyArray();
         result["prism_displays"] = LLSD::emptyArray();
-        for (const PrismInstance& capture : mLenses)
+        result["prism_gates"] = LLSD::emptyArray();
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
+            const PrismInstance& capture = mLenses[slot];
             if (!capture.mOccupied) continue;
             LLSD item = LLSD::emptyMap();
             item["capture_id"] = capture.mHandle.mId;
@@ -3806,19 +4742,73 @@ public:
                 virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VZ]);
                 virtual_rot.append(capture.mCamera.mVirtualRot.mQ[VS]);
                 item["virtual_rot"] = virtual_rot;
+
+                // Optional skeleton attachment. This additive sub-map rides the
+                // existing prism_captures Director scene round-trip; there is no
+                // scene-version or global-setting dependency.
+                const LLPrismLens::BonePovSettings& bone_settings =
+                    capture.mCamera.mBonePov;
+                LLSD bone = LLSD::emptyMap();
+                bone["enabled"] = bone_settings.mEnabled;
+                switch (bone_settings.mAnchorSlot)
+                {
+                    case LLPrismLens::BONE_ANCHOR_A: bone["anchor"] = "a"; break;
+                    case LLPrismLens::BONE_ANCHOR_B: bone["anchor"] = "b"; break;
+                    case LLPrismLens::BONE_ANCHOR_C: bone["anchor"] = "c"; break;
+                    case LLPrismLens::BONE_ANCHOR_D: bone["anchor"] = "d"; break;
+                    default: bone["anchor"] = "me"; break;
+                }
+                const LLPrismLens::NormalizedBonePovJointSelection joint =
+                    LLPrismLens::normalizeBonePovJointSelection(
+                        bone_settings.mJointSelection,
+                        bone_settings.mCustomJoint);
+                // Keep the original field vocabulary for reverse compatibility:
+                // old viewers treat every new named pick as their Custom mode.
+                bone["joint"] = joint.mTag == LLPrismLens::BONE_JOINT_EYELINE
+                    ? "eye" : "custom";
+                bone["custom_joint"] = joint.mName;
+                bone["aim"] = bone_settings.mAimMode == LLPrismLens::BONE_AIM_STABILIZED
+                    ? "stabilized" : "full_follow";
+                bone["roll"] = bone_settings.mRollMode == LLPrismLens::BONE_ROLL_INHERIT
+                    ? "inherit" : "horizon_lock";
+                LLSD bone_offset = LLSD::emptyArray();
+                bone_offset.append(bone_settings.mOffset.mV[VX]);
+                bone_offset.append(bone_settings.mOffset.mV[VY]);
+                bone_offset.append(bone_settings.mOffset.mV[VZ]);
+                bone["offset"] = bone_offset;
+                bone["trim_pitch_degrees"] = bone_settings.mTrimPitchDeg;
+                bone["trim_yaw_degrees"] = bone_settings.mTrimYawDeg;
+                bone["fov_degrees"] = bone_settings.mFovDeg;
+                bone["smoothing_seconds"] = bone_settings.mSmoothingSec;
+                bone["scale_aware"] = bone_settings.mScaleAware;
+                item["bone_pov"] = bone;
             }
             result["prism_captures"].append(item);
         }
+        const S32 gate_hint_slot = captureSlotForArm(
+            resolveGateArmIndex(mGate.mOnAirArmIndex));
         for (const PrismDisplay& display : mDisplays)
         {
-            if (!display.mOccupied || display.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
-                !mLenses[display.mCaptureSlot].mOccupied)
+            if (!display.mOccupied)
             {
                 continue;
             }
+            const bool fixed_capture_valid =
+                display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[display.mCaptureSlot].mOccupied &&
+                display.mCaptureGeneration ==
+                    mLenses[display.mCaptureSlot].mHandle.mGeneration;
+            if (!display.mGateSubscribed && !fixed_capture_valid) continue;
             LLSD item = LLSD::emptyMap();
             item["binding_id"] = display.mHandle.mId;
-            item["capture_id"] = mLenses[display.mCaptureSlot].mHandle.mId;
+            // gate_source is authoritative to this loader. capture_id is only a
+            // resolvable old-viewer hint so older builds show the last on-air
+            // camera as a static feed.
+            item["capture_id"] = display.mGateSubscribed
+                ? (gate_hint_slot >= 0
+                    ? mLenses[gate_hint_slot].mHandle.mId : LLUUID::null)
+                : mLenses[display.mCaptureSlot].mHandle.mId;
+            item["gate_source"] = display.mGateSubscribed;
             item["display_id"] = display.mObjectId;
             item["display_te"] = display.mTE;
             switch (display.mSettings.mFitMode)
@@ -3886,6 +4876,18 @@ public:
             }
             result["prism_displays"].append(item);
         }
+        LLPrismLens::GateSettings persisted_gate = mGateSettings;
+        if (mGate.mOnAirArmIndex >= 0 &&
+            mGate.mOnAirArmIndex <
+                static_cast<S32>(persisted_gate.mArmed.size()))
+        {
+            persisted_gate.mProgramArmIndex = mGate.mOnAirArmIndex;
+        }
+        if (persisted_gate.mGateId.notNull() || !persisted_gate.mArmed.empty())
+        {
+            result["prism_gates"].append(
+                LLPrismLens::gateSettingsToLLSD(persisted_gate));
+        }
         return result;
     }
 
@@ -3906,6 +4908,7 @@ public:
             LLUUID mObjectId;
             S32 mTE = -1;
             LLPrismLens::DisplaySettings mSettings;
+            bool mGateSubscribed = false;
         };
         const auto fail = [reason](const std::string& message)
         {
@@ -3931,18 +4934,31 @@ public:
             }
             return true;
         };
+        LLPrismLens::GateSettings parsed_gate;
+        bool have_parsed_gate = false;
+        std::string gate_scene_reason;
+        if (!LLPrismLens::gateSettingsFromScene(
+                data, parsed_gate, have_parsed_gate, &gate_scene_reason))
+        {
+            // prism_gates is optional/additive. A malformed Gate block must not
+            // make otherwise-valid fixed captures and displays fail atomically.
+            parsed_gate = LLPrismLens::GateSettings();
+            have_parsed_gate = false;
+        }
         if (!data.isMap() || !data.has("prism_captures") ||
             !data.has("prism_displays") || !data["prism_captures"].isArray() ||
             !data["prism_displays"].isArray())
         {
-            return fail("Version-3 Prism scene data requires capture and display arrays.");
+            return fail("Prism scene data requires capture and display arrays.");
         }
         const LLSD& captures_data = data["prism_captures"];
         const LLSD& displays_data = data["prism_displays"];
         if (captures_data.size() > LLPrismLens::MAX_CAPTURES ||
             displays_data.size() > LLPrismLens::MAX_DISPLAY_BINDINGS)
         {
-            return fail("Prism scene exceeds the 3-capture or 16-display resource limit.");
+            return fail(llformat(
+                "Prism scene exceeds the %u-capture or %u-display resource limit.",
+                LLPrismLens::MAX_CAPTURES, LLPrismLens::MAX_DISPLAY_BINDINGS));
         }
 
         std::vector<ParsedCapture> parsed_captures;
@@ -3957,7 +4973,7 @@ public:
             if (!item.isMap() || !item.has("capture_id") || !item.has("mode") ||
                 !item.has("output_rate_mode") || !item.has("target_output_fps"))
             {
-                return fail("A Prism capture is missing required version-3 fields.");
+                return fail("A Prism capture is missing required fields.");
             }
             ParsedCapture parsed;
             parsed.mId = item["capture_id"].asUUID();
@@ -4091,6 +5107,130 @@ public:
                     parsed.mCamera.mVirtualRot.mQ[VZ] = static_cast<F32>(item["virtual_rot"][2].asReal());
                     parsed.mCamera.mVirtualRot.mQ[VS] = static_cast<F32>(item["virtual_rot"][3].asReal());
                 }
+
+                // Bone POV is additive and optional. Absent sub-map/fields keep
+                // the default-disabled, pointer-free struct so old scenes load
+                // unchanged. Present malformed fields are rejected rather than
+                // silently producing an invalid per-frame transform.
+                if (item.has("bone_pov"))
+                {
+                    const LLSD& bone = item["bone_pov"];
+                    if (!bone.isMap())
+                    {
+                        return fail("Prism bone_pov must be a map.");
+                    }
+                    LLPrismLens::BonePovSettings& settings =
+                        parsed.mCamera.mBonePov;
+                    if (bone.has("enabled"))
+                    {
+                        if (!bone["enabled"].isBoolean())
+                            return fail("Prism bone_pov enabled must be boolean.");
+                        settings.mEnabled = bone["enabled"].asBoolean();
+                    }
+                    if (bone.has("anchor"))
+                    {
+                        if (!bone["anchor"].isString())
+                            return fail("Prism bone_pov anchor must be a string.");
+                        const std::string anchor = bone["anchor"].asString();
+                        if (anchor == "me") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_ME;
+                        else if (anchor == "a") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_A;
+                        else if (anchor == "b") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_B;
+                        else if (anchor == "c") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_C;
+                        else if (anchor == "d") settings.mAnchorSlot = LLPrismLens::BONE_ANCHOR_D;
+                        else return fail("Unknown Prism bone_pov anchor.");
+                    }
+                    if (bone.has("custom_joint"))
+                    {
+                        if (!bone["custom_joint"].isString())
+                            return fail("Prism bone_pov custom_joint must be a string.");
+                        settings.mCustomJoint = bone["custom_joint"].asString();
+                    }
+                    if (bone.has("joint"))
+                    {
+                        if (!bone["joint"].isString())
+                            return fail("Prism bone_pov joint must be a string.");
+                        const std::string joint = bone["joint"].asString();
+                        U8 stored_selection = LLPrismLens::BONE_JOINT_EYELINE;
+                        if (joint == "head") stored_selection = LLPrismLens::BONE_JOINT_LEGACY_HEAD;
+                        else if (joint == "eye") stored_selection = LLPrismLens::BONE_JOINT_EYELINE;
+                        else if (joint == "neck") stored_selection = LLPrismLens::BONE_JOINT_LEGACY_NECK;
+                        else if (joint == "custom" || joint == "named")
+                            stored_selection = LLPrismLens::BONE_JOINT_NAMED;
+                        else return fail("Unknown Prism bone_pov joint.");
+
+                        const LLPrismLens::NormalizedBonePovJointSelection normalized =
+                            LLPrismLens::normalizeBonePovJointSelection(
+                                stored_selection, settings.mCustomJoint);
+                        settings.mJointSelection = normalized.mTag;
+                        settings.mCustomJoint = normalized.mName;
+                    }
+                    if (bone.has("aim"))
+                    {
+                        if (!bone["aim"].isString())
+                            return fail("Prism bone_pov aim must be a string.");
+                        const std::string aim = bone["aim"].asString();
+                        if (aim == "full_follow") settings.mAimMode = LLPrismLens::BONE_AIM_FULL_FOLLOW;
+                        else if (aim == "stabilized") settings.mAimMode = LLPrismLens::BONE_AIM_STABILIZED;
+                        else return fail("Unknown Prism bone_pov aim mode.");
+                    }
+                    else if (settings.mJointSelection ==
+                             LLPrismLens::BONE_JOINT_NAMED &&
+                             !LLPrismLens::isBonePovSpineJoint(
+                                 settings.mCustomJoint))
+                    {
+                        // An off-spine joint has no proven X-forward/Z-up frame.
+                        // Only an explicit persisted full_follow value opts in.
+                        settings.mAimMode = LLPrismLens::BONE_AIM_STABILIZED;
+                    }
+                    if (bone.has("roll"))
+                    {
+                        if (!bone["roll"].isString())
+                            return fail("Prism bone_pov roll must be a string.");
+                        const std::string roll = bone["roll"].asString();
+                        if (roll == "horizon_lock") settings.mRollMode = LLPrismLens::BONE_ROLL_HORIZON_LOCK;
+                        else if (roll == "inherit") settings.mRollMode = LLPrismLens::BONE_ROLL_INHERIT;
+                        else return fail("Unknown Prism bone_pov roll mode.");
+                    }
+                    if (bone.has("offset"))
+                    {
+                        if (!is_numeric_array(bone["offset"], 3))
+                            return fail("Prism bone_pov offset must be a numeric 3-array.");
+                        settings.mOffset.setVec(
+                            static_cast<F32>(bone["offset"][0].asReal()),
+                            static_cast<F32>(bone["offset"][1].asReal()),
+                            static_cast<F32>(bone["offset"][2].asReal()));
+                    }
+                    if (bone.has("trim_pitch_degrees"))
+                    {
+                        if (!is_numeric(bone["trim_pitch_degrees"]))
+                            return fail("Prism bone_pov pitch trim must be numeric.");
+                        settings.mTrimPitchDeg = static_cast<F32>(bone["trim_pitch_degrees"].asReal());
+                    }
+                    if (bone.has("trim_yaw_degrees"))
+                    {
+                        if (!is_numeric(bone["trim_yaw_degrees"]))
+                            return fail("Prism bone_pov yaw trim must be numeric.");
+                        settings.mTrimYawDeg = static_cast<F32>(bone["trim_yaw_degrees"].asReal());
+                    }
+                    if (bone.has("fov_degrees"))
+                    {
+                        if (!is_numeric(bone["fov_degrees"]))
+                            return fail("Prism bone_pov FOV must be numeric.");
+                        settings.mFovDeg = static_cast<F32>(bone["fov_degrees"].asReal());
+                    }
+                    if (bone.has("smoothing_seconds"))
+                    {
+                        if (!is_numeric(bone["smoothing_seconds"]))
+                            return fail("Prism bone_pov smoothing must be numeric.");
+                        settings.mSmoothingSec = static_cast<F32>(bone["smoothing_seconds"].asReal());
+                    }
+                    if (bone.has("scale_aware"))
+                    {
+                        if (!bone["scale_aware"].isBoolean())
+                            return fail("Prism bone_pov scale_aware must be boolean.");
+                        settings.mScaleAware = bone["scale_aware"].asBoolean();
+                    }
+                }
                 // A virtual camera cannot follow a projector; soft-correct a
                 // stale mode to FIXED so the scene loads instead of failing.
                 if (parsed.mCamera.mVirtual)
@@ -4110,22 +5250,25 @@ public:
             // instead of an object/TE identity, so the object-identity fields are
             // required ONLY for a real (face-bound) display. Everything else is
             // common to both.
+            const bool gate_source = item.isMap() && item.has("gate_source") &&
+                                     item["gate_source"].asBoolean();
             const bool is_virtual = item.isMap() && item.has("virtual") &&
                                     item["virtual"].asBoolean();
-            if (!item.isMap() || !item.has("binding_id") || !item.has("capture_id") ||
+            if (!item.isMap() || !item.has("binding_id") ||
+                (!gate_source && !item.has("capture_id")) ||
                 !item.has("fit") || !item.has("anchor") ||
                 !item.has("bar_color_linear") ||
                 !item["anchor"].isArray() || item["anchor"].size() != 2 ||
                 !item["bar_color_linear"].isArray() ||
                 item["bar_color_linear"].size() != 3)
             {
-                return fail("A Prism display is missing required version-3 fields.");
+                return fail("A Prism display is missing required fields.");
             }
             if (!is_virtual &&
                 (!item.has("display_id") || !item.has("display_te") ||
                  !item["display_te"].isInteger()))
             {
-                return fail("A Prism display is missing required version-3 fields.");
+                return fail("A Prism display is missing required fields.");
             }
             if (!is_numeric_array(item["anchor"], 2) ||
                 !is_numeric_array(item["bar_color_linear"], 3))
@@ -4134,10 +5277,15 @@ public:
             }
             ParsedDisplay parsed;
             parsed.mId = item["binding_id"].asUUID();
-            parsed.mCaptureId = item["capture_id"].asUUID();
+            parsed.mCaptureId = item.has("capture_id")
+                ? item["capture_id"].asUUID() : LLUUID::null;
+            parsed.mGateSubscribed = gate_source;
             if (parsed.mId.isNull() || !binding_ids.insert(parsed.mId).second)
                 return fail("Prism binding IDs must be nonnull and unique.");
-            if (parsed.mCaptureId.isNull() || !capture_ids.count(parsed.mCaptureId))
+            const bool capture_resolves = parsed.mCaptureId.notNull() &&
+                capture_ids.count(parsed.mCaptureId) != 0;
+            if (!LLPrismLens::gateDisplayCaptureReferenceAccepted(
+                    parsed.mGateSubscribed, capture_resolves))
                 return fail("A Prism display references an unknown capture.");
             if (is_virtual)
             {
@@ -4257,11 +5405,48 @@ public:
             parsed_displays.push_back(parsed);
         }
 
+        std::vector<LLUUID> gate_capture_ids;
+        gate_capture_ids.reserve(parsed_captures.size());
+        for (const ParsedCapture& capture : parsed_captures)
+        {
+            if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+                gate_capture_ids.push_back(capture.mId);
+        }
+        if (have_parsed_gate)
+        {
+            LLPrismLens::gateFilterResolvableArms(
+                parsed_gate, gate_capture_ids);
+        }
+        std::string gate_fallback_reason;
+        if (have_parsed_gate && parsed_gate.mArmed.empty())
+        {
+            parsed_gate.mActive = false;
+            gate_fallback_reason =
+                "Gate loaded inactive because no armed capture reference resolved.";
+        }
+        if (have_parsed_gate && parsed_gate.mActive &&
+            parsed_gate.mMode == LLPrismLens::EGateMode::AUTO_CYCLE)
+        {
+            const S32 enabled_program = LLPrismLens::gateClampEnabledIndex(
+                parsed_gate.mArmed, parsed_gate.mProgramArmIndex);
+            if (enabled_program < 0)
+            {
+                parsed_gate.mActive = false;
+                gate_fallback_reason =
+                    "Gate loaded inactive because no Auto arm is enabled.";
+            }
+            else
+            {
+                parsed_gate.mProgramArmIndex = enabled_program;
+            }
+        }
+
         for (const ParsedCapture& capture : parsed_captures)
         {
             U32 references = 0;
             for (const ParsedDisplay& display : parsed_displays)
             {
+                if (display.mGateSubscribed) continue;
                 if (display.mCaptureId != capture.mId) continue;
                 ++references;
                 if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
@@ -4275,8 +5460,33 @@ public:
                 return fail("A Surface Lens must have exactly one display binding.");
             }
         }
+        if (have_parsed_gate)
+        {
+            for (const ParsedDisplay& display : parsed_displays)
+            {
+                if (!display.mGateSubscribed) continue;
+                for (const LLPrismLens::GateArmedCamera& armed :
+                     parsed_gate.mArmed)
+                {
+                    const auto capture = std::find_if(
+                        parsed_captures.begin(), parsed_captures.end(),
+                        [&armed](const ParsedCapture& candidate)
+                        {
+                            return candidate.mId == armed.mCaptureId;
+                        });
+                    if (capture != parsed_captures.end() &&
+                        LLPrismLens::gateFeedbackResult(
+                            capture->mCameraId, display.mObjectId, true) !=
+                            LLPrismLens::ERegistryResult::OK)
+                    {
+                        return fail("A Gate-subscribed display cannot be an armed camera source.");
+                    }
+                }
+            }
+        }
 
-        const U64 generations_needed = parsed_captures.size() + parsed_displays.size();
+        const U64 generations_needed = parsed_captures.size() +
+            parsed_displays.size();
         if (mNextGeneration == 0 || generations_needed >
             std::numeric_limits<U64>::max() - mNextGeneration)
         {
@@ -4288,6 +5498,8 @@ public:
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
             gPipeline.releasePrismLensOutput(slot);
         gPipeline.releasePrismLensBuffers();
+        mGateSettings = LLPrismLens::GateSettings();
+        mGate = PrismGateRuntime();
         for (PrismInstance& capture : mLenses) capture = PrismInstance();
         for (PrismDisplay& display : mDisplays) display = PrismDisplay();
 
@@ -4307,26 +5519,51 @@ public:
         U32 display_slot = 0;
         for (const ParsedDisplay& parsed : parsed_displays)
         {
-            U32 capture_slot = 0;
-            while (capture_slot < parsed_captures.size() &&
-                   parsed_captures[capture_slot].mId != parsed.mCaptureId)
-                ++capture_slot;
-            PrismInstance& capture = mLenses[capture_slot];
             PrismDisplay& display = mDisplays[display_slot++];
             display.mOccupied = true;
             display.mHandle.mId = parsed.mId;
             allocateGeneration(display.mHandle.mGeneration);
-            display.mCaptureSlot = capture_slot;
-            display.mCaptureGeneration = capture.mHandle.mGeneration;
             display.mObjectId = parsed.mObjectId;
             display.mTE = parsed.mTE;
             display.mSettings = parsed.mSettings;
-            ++capture.mDisplayCount;
-            if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+            display.mGateSubscribed = parsed.mGateSubscribed;
+            if (!parsed.mGateSubscribed)
             {
-                capture.mObjectId = parsed.mObjectId;
-                capture.mTE = parsed.mTE;
+                U32 capture_slot = 0;
+                while (capture_slot < parsed_captures.size() &&
+                       parsed_captures[capture_slot].mId != parsed.mCaptureId)
+                    ++capture_slot;
+                PrismInstance& capture = mLenses[capture_slot];
+                display.mCaptureSlot = capture_slot;
+                display.mCaptureGeneration = capture.mHandle.mGeneration;
+                ++capture.mDisplayCount;
+                if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+                {
+                    capture.mObjectId = parsed.mObjectId;
+                    capture.mTE = parsed.mTE;
+                }
             }
+        }
+
+        if (have_parsed_gate)
+        {
+            mGateSettings = parsed_gate;
+            mGate.mOnAirArmIndex = resolveGateArmIndex(
+                mGateSettings.mProgramArmIndex);
+            mGateSettings.mProgramArmIndex = mGate.mOnAirArmIndex;
+            if (!gate_fallback_reason.empty())
+            {
+                mGate.mReason = gate_fallback_reason;
+            }
+            if (mGate.mOnAirArmIndex >= 0)
+            {
+                const F64 now = LLTimer::getTotalSeconds();
+                mGate.mController.reset();
+                mGate.mController.manualPunch(mGate.mOnAirArmIndex, now);
+                mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+            }
+            routeGateDisplays();
+            ++mGate.mGateRevision;
         }
         mActiveSlot = -1;
         mLastRenderedSlot = -1;
@@ -4338,6 +5575,213 @@ public:
     }
 
 private:
+    S32 findCaptureById(const LLUUID& id) const
+    {
+        if (id.isNull()) return -1;
+        for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        {
+            if (mLenses[slot].mOccupied && mLenses[slot].mHandle.mId == id)
+                return static_cast<S32>(slot);
+        }
+        return -1;
+    }
+
+    std::vector<LLUUID> liveGateCaptureIds() const
+    {
+        std::vector<LLUUID> result;
+        result.reserve(LLPrismLens::MAX_CAPTURES);
+        for (const PrismInstance& capture : mLenses)
+        {
+            if (capture.mOccupied && capture.mMode ==
+                    LLPrismLens::ECaptureMode::CAMERA_FEED)
+                result.push_back(capture.mHandle.mId);
+        }
+        return result;
+    }
+
+    S32 captureSlotForArm(S32 arm_index) const
+    {
+        if (arm_index < 0 ||
+            arm_index >= static_cast<S32>(mGateSettings.mArmed.size()))
+            return -1;
+        const S32 slot = findCaptureById(
+            mGateSettings.mArmed[static_cast<std::size_t>(arm_index)].mCaptureId);
+        return slot >= 0 && mLenses[slot].mMode ==
+                LLPrismLens::ECaptureMode::CAMERA_FEED
+            ? slot : -1;
+    }
+
+    S32 resolveGateArmIndex(S32 preferred) const
+    {
+        return LLPrismLens::gateResolveArmIndex(
+            mGateSettings.mArmed, preferred, liveGateCaptureIds());
+    }
+
+    void ageGateWatches()
+    {
+        for (PrismInstance& capture : mLenses)
+        {
+            if (capture.mGateWatchFrames == 0) continue;
+            --capture.mGateWatchFrames;
+            if (capture.mGateWatchFrames == 0)
+            {
+                capture.mGateWatchW = 0;
+                capture.mGateWatchH = 0;
+            }
+        }
+    }
+
+    void cancelGateWatches()
+    {
+        for (PrismInstance& capture : mLenses)
+        {
+            capture.mGateWatchFrames = 0;
+            capture.mGateWatchW = 0;
+            capture.mGateWatchH = 0;
+        }
+        mGate.mWarmArmIndex = -1;
+    }
+
+    void watchGateArm(S32 arm_index, U32 frames)
+    {
+        cancelGateWatches();
+        const S32 watch_slot = captureSlotForArm(arm_index);
+        const S32 on_air_slot = captureSlotForArm(mGate.mOnAirArmIndex);
+        if (frames == 0 || watch_slot < 0 || on_air_slot < 0 ||
+            watch_slot == on_air_slot ||
+            !LLPrismLens::gateWarmSeedValid(
+                mLenses[on_air_slot].mOutputWidth,
+                mLenses[on_air_slot].mOutputHeight))
+        {
+            return;
+        }
+        PrismInstance& capture = mLenses[watch_slot];
+        capture.mGateWatchFrames = frames;
+        capture.mGateWatchW = mLenses[on_air_slot].mOutputWidth;
+        capture.mGateWatchH = mLenses[on_air_slot].mOutputHeight;
+        mGate.mWarmArmIndex = arm_index;
+    }
+
+    bool activateGate(F64 now, std::string* reason)
+    {
+        if (mGateSettings.mArmed.empty())
+        {
+            if (reason) *reason = "Arm at least one camera before activating the Gate.";
+            return false;
+        }
+        S32 on_air = mGateSettings.mProgramArmIndex;
+        if (mGateSettings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE)
+        {
+            on_air = LLPrismLens::gateClampEnabledIndex(
+                mGateSettings.mArmed, on_air);
+            if (on_air < 0)
+            {
+                mGateSettings.mActive = false;
+                mGate.mReason =
+                    "Gate inactive; enable at least one Auto arm before activating it.";
+                if (reason) *reason = mGate.mReason;
+                return false;
+            }
+        }
+        else if (on_air < 0 ||
+                 on_air >= static_cast<S32>(mGateSettings.mArmed.size()))
+            on_air = 0;
+        on_air = resolveGateArmIndex(on_air);
+        if (on_air < 0)
+        {
+            mGateSettings.mActive = false;
+            mGate.mReason = "Gate dark: no armed camera is available.";
+            if (reason) *reason = mGate.mReason;
+            return false;
+        }
+
+        mGate.mOnAirArmIndex = on_air;
+        mGateSettings.mProgramArmIndex = on_air;
+        mGateSettings.mActive = true;
+        mGate.mController.reset();
+        mGate.mController.manualPunch(on_air, now);
+        mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+        mGate.mPendingTake = false;
+        mGate.mManualWarmFramesRemaining = 0;
+        mGate.mReason.clear();
+        routeGateDisplays();
+        ++mRuntimeRevision;
+        ++mGate.mGateRevision;
+        if (reason) *reason = mGate.mReason;
+        return true;
+    }
+
+    void deactivateGate()
+    {
+        cancelGateWatches();
+        mGateSettings.mActive = false;
+        mGate.mController.reset();
+        mGate.mNextCutTime = 0.0;
+        mGate.mPendingTake = false;
+        mGate.mManualWarmFramesRemaining = 0;
+        mGate.mReason = mGate.mOnAirArmIndex >= 0
+            ? "Gate inactive; subscribed monitors retain the last on-air camera."
+            : "Gate inactive; subscribed monitors are dark.";
+        routeGateDisplays();
+        ++mGate.mGateRevision;
+    }
+
+    bool isSurfaceLensAperture(const PrismDisplay& display) const
+    {
+        if (!display.mOccupied || display.mSettings.mVirtual)
+        {
+            return false;
+        }
+        for (const PrismInstance& capture : mLenses)
+        {
+            if (capture.mOccupied &&
+                capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
+                capture.mObjectId == display.mObjectId &&
+                capture.mTE == display.mTE)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void routeGateDisplays()
+    {
+        const S32 target_slot = captureSlotForArm(mGate.mOnAirArmIndex);
+        const U64 target_generation = target_slot >= 0
+            ? mLenses[target_slot].mHandle.mGeneration : 0;
+        for (PrismDisplay& display : mDisplays)
+        {
+            if (!display.mOccupied || !display.mGateSubscribed) continue;
+            if (isSurfaceLensAperture(display))
+            {
+                display.mGateSubscribed = false;
+                ++mRevision;
+                continue;
+            }
+            if ((target_slot >= 0 &&
+                 display.mCaptureSlot == static_cast<U32>(target_slot) &&
+                 display.mCaptureGeneration == target_generation) ||
+                (target_slot < 0 &&
+                 display.mCaptureSlot == LLPrismLens::MAX_CAPTURES))
+            {
+                continue;
+            }
+            if (display.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[display.mCaptureSlot].mOccupied &&
+                display.mCaptureGeneration ==
+                    mLenses[display.mCaptureSlot].mHandle.mGeneration &&
+                mLenses[display.mCaptureSlot].mDisplayCount > 0)
+            {
+                --mLenses[display.mCaptureSlot].mDisplayCount;
+            }
+            LLPrismLens::gateRouteDisplayBinding(
+                target_slot, target_generation,
+                display.mCaptureSlot, display.mCaptureGeneration);
+            if (target_slot >= 0) ++mLenses[target_slot].mDisplayCount;
+        }
+    }
+
     static void hashRuntimeValue(U64& hash, U64 value)
     {
         // FNV-1a over a fixed-width value keeps this allocation-free and stable
@@ -4562,6 +6006,7 @@ private:
         {
             return;
         }
+        const LLUUID removed_capture_id = mLenses[slot].mHandle.mId;
         if (mActiveSlot == static_cast<S32>(slot))
         {
             mActiveSlot = -1;
@@ -4578,10 +6023,31 @@ private:
         {
             if (display.mOccupied && display.mCaptureSlot == slot)
             {
-                display = PrismDisplay();
+                if (display.mGateSubscribed)
+                {
+                    display.mCaptureSlot = LLPrismLens::MAX_CAPTURES;
+                    display.mCaptureGeneration = 0;
+                }
+                else
+                {
+                    display = PrismDisplay();
+                }
             }
         }
         mLenses[slot] = PrismInstance();
+        // A deleted camera must LEAVE the Gate's armed list entirely rather than
+        // linger as a "(deleted)" row. Disarm the arm that referenced it,
+        // reusing gateDisarm's full index/preview/on-air/Controller fixup. A
+        // capture can be armed at most once, so a single match is disarmed.
+        for (const LLPrismLens::GateArmedCamera& armed : mGateSettings.mArmed)
+        {
+            if (armed.mCaptureId == removed_capture_id)
+            {
+                gateDisarm(armed.mArmId, nullptr);
+                break;
+            }
+        }
+        ++mGate.mGateRevision;
         if (count() == 0)
         {
             resetRuntimeHistory();
@@ -4685,6 +6151,8 @@ private:
 
     PrismInstance mLenses[LLPrismLens::MAX_LENSES];
     PrismDisplay mDisplays[LLPrismLens::MAX_DISPLAY_BINDINGS];
+    LLPrismLens::GateSettings mGateSettings;
+    PrismGateRuntime mGate;
     mutable SurfaceGeometryCache mSelectionSurfaceCache;
     U64 mRevision = 1;
     mutable U64 mRuntimeRevision = 1;
@@ -4692,6 +6160,13 @@ private:
     mutable bool mRuntimeSignatureInitialized = false;
     U64 mPerformanceRevision = 1;
     U64 mNextGeneration = 1;
+    mutable U32 mGateEyeCacheFrame = 0xFFFFFFFF;
+    mutable U64 mGateEyeCacheRevision = 0;
+    mutable U64 mGateEyeCacheRuntimeRevision = 0;
+    mutable U64 mGateEyeCacheGateRevision = 0;
+    mutable bool mGateEyeCacheValid = false;
+    mutable LLVector3 mGateEyeCache;
+    mutable LLQuaternion mGateRotationCache;
     F32 mObservedAttemptHz = 0.f;
     U32 mAttemptSamples = 0;
     F64 mAttemptWindowStart = 0.0;
@@ -5092,6 +6567,182 @@ ERegistryResult addVirtualCamera(CaptureHandle* capture, const LLVector3& pos,
     return PrismLensRegistry::instance().addVirtualCamera(capture, pos, rot, reason);
 }
 
+bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
+                              std::string* reason)
+{
+    LLVOAvatar* subject_a = LLDirectorCast::instance().resolveSubjectA();
+    LLVOAvatar* subject_b = LLDirectorCast::instance().resolveSubjectB();
+    if (!subject_a || !subject_b)
+    {
+        if (reason) *reason = "Set live Director Subjects A and B first.";
+        return false;
+    }
+    if (subject_a == subject_b || subject_a->getID() == subject_b->getID())
+    {
+        if (reason) *reason = "Subjects A and B must be different avatars.";
+        return false;
+    }
+
+    const RegistrySnapshot registry = registrySnapshot();
+    const GateSnapshot gate = gateSnapshot();
+    std::set<LLUUID> old_ots_capture_ids;
+    std::vector<LLUUID> old_ots_arm_ids;
+    for (const GateArmedCamera& armed : gate.mSettings.mArmed)
+    {
+        if (isOtsPairArmLabel(armed.mLabel))
+        {
+            old_ots_arm_ids.push_back(armed.mArmId);
+            old_ots_capture_ids.insert(armed.mCaptureId);
+        }
+    }
+    std::vector<CaptureHandle> old_ots_captures;
+    for (U32 index = 0; index < registry.mCaptureCount; ++index)
+    {
+        const CaptureDefinition& capture = registry.mCaptures[index];
+        if (old_ots_capture_ids.count(capture.mHandle.mId) != 0)
+        {
+            old_ots_captures.push_back(capture.mHandle);
+        }
+    }
+
+    const U32 retained_capture_count = registry.mCaptureCount -
+        static_cast<U32>(old_ots_captures.size());
+    const std::size_t retained_arm_count = gate.mSettings.mArmed.size() -
+        old_ots_arm_ids.size();
+    if (retained_capture_count > MAX_CAPTURES - 2)
+    {
+        if (reason) *reason = "Two free Prism capture slots are required for an OTS pair.";
+        return false;
+    }
+    if (retained_arm_count > MAX_CAPTURES - 2)
+    {
+        if (reason) *reason = "Two free Gate arm slots are required for an OTS pair.";
+        return false;
+    }
+
+    LLVector3 head_a;
+    LLVector3 head_b;
+    if (!otsHeadPoint(subject_a, head_a) || !otsHeadPoint(subject_b, head_b))
+    {
+        if (reason) *reason = "Subject head transforms are not ready.";
+        return false;
+    }
+
+    LLVector3 action_axis = head_a - head_b;
+    action_axis.mV[VZ] = 0.f;
+    if (!action_axis.isFinite() || action_axis.magVecSquared() < 0.01f)
+    {
+        if (reason) *reason = "Subjects A and B need a distinct horizontal action axis.";
+        return false;
+    }
+    action_axis.normVec();
+    LLVector3 action_side = action_axis % LLVector3(0.f, 0.f, 1.f);
+    action_side.normVec();
+
+    static LLCachedControl<F32> shoulder_offset(
+        gSavedSettings, "PrismOtsShoulderOffset", 0.45f);
+    static LLCachedControl<F32> camera_distance(
+        gSavedSettings, "PrismOtsCameraDistance", 1.1f);
+    static LLCachedControl<F32> fov_degrees(
+        gSavedSettings, "PrismOtsVerticalFovDeg", 45.f);
+    static LLCachedControl<F32> height_bias(
+        gSavedSettings, "PrismOtsHeightBias", 0.05f);
+
+    const F32 lateral = llclamp((F32)shoulder_offset, 0.05f, 2.f);
+    const F32 distance = llclamp((F32)camera_distance, 0.25f, 8.f);
+    const F32 shared_height =
+        0.5f * (head_a.mV[VZ] + head_b.mV[VZ]) +
+        llclamp((F32)height_bias, -1.f, 1.f);
+
+    // A-favoring eye sits behind B; B-favoring eye sits behind A. The same
+    // signed action_side offset keeps both eyes on one side of the 180 line.
+    LLVector3 eye_a = head_b - action_axis * distance + action_side * lateral;
+    LLVector3 eye_b = head_a + action_axis * distance + action_side * lateral;
+    eye_a.mV[VZ] = shared_height;
+    eye_b.mV[VZ] = shared_height;
+
+    LLQuaternion rot_a;
+    LLQuaternion rot_b;
+    if (!otsLookAt(eye_a, head_a, rot_a) || !otsLookAt(eye_b, head_b, rot_b))
+    {
+        if (reason) *reason = "Could not derive stable OTS camera orientations.";
+        return false;
+    }
+
+    CameraSettings camera_a;
+    camera_a.mVirtual = true;
+    camera_a.mVirtualPos = eye_a;
+    camera_a.mVirtualRot = rot_a;
+    camera_a.mFovMode = EFovMode::FIXED;
+    camera_a.mFixedVerticalFovRad =
+        llclamp((F32)fov_degrees, 5.f, 175.f) * DEG_TO_RAD;
+    CameraSettings camera_b = camera_a;
+    camera_b.mVirtualPos = eye_b;
+    camera_b.mVirtualRot = rot_b;
+
+    // The arm labels are the builder's ownership marker. Snapshot the complete
+    // Prism configuration before replacing those captures so any failure while
+    // creating the fresh pair restores the prior pair and all Gate routing.
+    const LLSD rollback_scene = sceneData();
+    for (const LLUUID& arm_id : old_ots_arm_ids)
+    {
+        gateDisarm(arm_id, nullptr);
+    }
+    for (const CaptureHandle& capture : old_ots_captures)
+    {
+        removeCapture(capture);
+    }
+
+    const auto fail_and_rollback = [&](const std::string& failure)
+    {
+        std::string rollback_failure;
+        const bool restored = applySceneData(rollback_scene, &rollback_failure);
+        if (reason)
+        {
+            *reason = failure;
+            if (!restored)
+            {
+                *reason += " Rollback failed: " + rollback_failure;
+            }
+        }
+        return false;
+    };
+
+    CaptureHandle handle_a;
+    CaptureHandle handle_b;
+    LLUUID arm_a;
+    std::string failure;
+    if (addVirtualCamera(&handle_a, eye_a, rot_a, &failure) != ERegistryResult::OK)
+    {
+        return fail_and_rollback(failure);
+    }
+    if (!setCameraSettings(handle_a, camera_a, &failure))
+    {
+        return fail_and_rollback(failure);
+    }
+    if (addVirtualCamera(&handle_b, eye_b, rot_b, &failure) != ERegistryResult::OK)
+    {
+        return fail_and_rollback(failure);
+    }
+    if (!setCameraSettings(handle_b, camera_b, &failure))
+    {
+        return fail_and_rollback(failure);
+    }
+    if (gateArm(handle_a, "OTS A", &arm_a, &failure) != ERegistryResult::OK)
+    {
+        return fail_and_rollback(failure);
+    }
+    if (gateArm(handle_b, "OTS B", nullptr, &failure) != ERegistryResult::OK)
+    {
+        return fail_and_rollback(failure);
+    }
+
+    if (ots_a) *ots_a = handle_a;
+    if (ots_b) *ots_b = handle_b;
+    if (reason) reason->clear();
+    return true;
+}
+
 ERegistryResult addSurfaceLensFromSelectedFace(CaptureHandle* capture,
                                                 std::string* reason)
 {
@@ -5124,6 +6775,23 @@ bool setCameraSettings(const CaptureHandle& capture,
     return PrismLensRegistry::instance().setCameraSettings(capture, settings, reason);
 }
 
+bool setVirtualCameraTransform(const CaptureHandle& capture,
+                               const LLVector3& pos,
+                               const LLQuaternion& rot,
+                               F32 vertical_fov_rad, std::string* reason)
+{
+    return PrismLensRegistry::instance().setVirtualCameraTransform(
+        capture, pos, rot, vertical_fov_rad, reason);
+}
+
+bool setVirtualCameraPosition(const CaptureHandle& capture,
+                              const LLVector3& pos,
+                              F32 vertical_fov_rad, std::string* reason)
+{
+    return PrismLensRegistry::instance().setVirtualCameraPosition(
+        capture, pos, vertical_fov_rad, reason);
+}
+
 bool setCaptureRateSettings(const CaptureHandle& capture,
                             const CaptureRateSettings& settings,
                             std::string* reason)
@@ -5135,6 +6803,48 @@ bool setDisplaySettings(const DisplayHandle& binding,
                         const DisplaySettings& settings, std::string* reason)
 {
     return PrismLensRegistry::instance().setDisplaySettings(binding, settings, reason);
+}
+
+bool setGateSettings(const GateSettings& settings, std::string* reason)
+{
+    return PrismLensRegistry::instance().setGateSettings(settings, reason);
+}
+
+ERegistryResult gateArm(const CaptureHandle& capture, const std::string& label,
+                        LLUUID* arm_id, std::string* reason)
+{
+    return PrismLensRegistry::instance().gateArm(capture, label, arm_id, reason);
+}
+
+ERegistryResult gateDisarm(const LLUUID& arm_id, std::string* reason)
+{
+    return PrismLensRegistry::instance().gateDisarm(arm_id, reason);
+}
+
+ERegistryResult gateTake(std::string* reason)
+{
+    return PrismLensRegistry::instance().gateTake(reason);
+}
+
+ERegistryResult setDisplayGateSubscribed(const DisplayHandle& binding,
+                                         bool subscribed,
+                                         const CaptureHandle* fixed_capture,
+                                         std::string* reason)
+{
+    return PrismLensRegistry::instance().setDisplayGateSubscribed(
+        binding, subscribed, fixed_capture, reason);
+}
+
+GateSnapshot gateSnapshot()
+{
+    return PrismLensRegistry::instance().gateSnapshot();
+}
+
+bool gateOnAirCameraEye(LLVector3& out_agent, U64* out_cut_serial,
+                        LLQuaternion* out_rotation)
+{
+    return PrismLensRegistry::instance().gateOnAirCameraEye(
+        out_agent, out_cut_serial, out_rotation);
 }
 
 bool removeDisplay(const DisplayHandle& binding, std::string* reason)
@@ -5481,6 +7191,8 @@ void renderAuxiliaryView()
         return;
     }
 
+    registry.updateGate(LLTimer::getTotalSeconds());
+
     S32 main_viewport[4];
     std::memcpy(main_viewport, gGLViewport, sizeof(main_viewport));
     const glm::mat4 main_projection = get_current_projection();
@@ -5769,6 +7481,34 @@ void renderAuxiliaryView()
         // saved by beginPrismAuxiliaryState (via ScopedPrismRenderState) and is
         // restored by endPrismAuxiliaryState before the frame's main stateSort,
         // keeping the main view byte-identical.
+        // [ShadowDist P3] Sun cascades exist from RenderShadowDetail >= 1 (not only with
+        // projector shadows), so their aux re-expression sits OUTSIDE the projector gate
+        // (design v3 s3 / Codex P1-3). Same idea as Stage 1 below: the map content is
+        // camera-independent, only the eye's inverse view in the sampling matrix is not.
+        // Saved / restored by begin/endPrismAuxiliaryState (mPrismSavedSunCascadeMatrix).
+        // Precedence: while any shadow control is engaged, LLPipeline::uploadShadowUniforms
+        // re-composes cascades 0-3 from the main pack's meta with the current inverse view
+        // on every bind and supersedes this; this block is the standalone fix for the
+        // controls-OFF path and is bisectable through PrismSunCascadeReexpress.
+        // [ShadowDist P3 fix, Opus P2-2] the switch defaults OFF (default aux feed byte-identical)
+        // and the block is skipped while the controls are engaged (superseded there). Note: the
+        // LEGACY shader path has no uv-bounds guard, so with this switch forced on, aux pixels
+        // beyond the main-fitted cascades sample clamp-to-edge; the units path guards them.
+        if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 0 &&
+            LLPipeline::PrismSunCascadeReexpress && !gPipeline.mShadowEngaged)
+        {
+            const glm::mat4 inv_view_aux_sun = glm::inverse(get_current_modelview());
+            const glm::mat4 shadow_bias_sun(0.5f, 0.0f, 0.0f, 0.0f,
+                                            0.0f, 0.5f, 0.0f, 0.0f,
+                                            0.0f, 0.0f, 0.5f, 0.0f,
+                                            0.5f, 0.5f, 0.5f, 1.0f);
+            for (U32 i = 0; i < 4; ++i)
+            {
+                gPipeline.mSunShadowMatrix[i] =
+                    shadow_bias_sun * gPipeline.mShadowProjection[i] *
+                    gPipeline.mShadowModelview[i] * inv_view_aux_sun;
+            }
+        }
         if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 1)
         {
             // --- [Prism spot shadows Stage 1] re-express resident MAIN-view
@@ -5791,8 +7531,9 @@ void renderAuxiliaryView()
                 // bdmergeMaxSpotShadows, which is file-local there)
                 static LLCachedControl<U32> max_spot_shadows(
                     gSavedSettings, "BDMergeMaxSpotShadows", 2);
-                const U32 num_spots = llclamp(
-                    (U32)max_spot_shadows, 2u, LLPipeline::MAX_SPOT_SHADOWS);
+                const U32 num_spots = LLPipeline::clampSpotShadowCount(
+                    static_cast<U32>(max_spot_shadows),
+                    gGLManager.mNumTextureImageUnits);
                 for (U32 i = 0; i < num_spots; ++i)
                 {
                     if (gPipeline.mShadowSpotLight[i].notNull() &&

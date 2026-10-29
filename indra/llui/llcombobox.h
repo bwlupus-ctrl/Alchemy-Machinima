@@ -72,7 +72,8 @@ public:
         Optional<bool>                      allow_text_entry,
                                             show_text_as_tentative,
                                             allow_new_values;
-        Optional<S32>                       max_chars;
+        Optional<S32>                       max_chars,
+                                            list_min_width;
         Optional<commit_callback_t>         prearrange_callback,
                                             text_entry_callback,
                                             text_changed_callback;
@@ -87,6 +88,13 @@ public:
         Optional<LLButton::Params>          drop_down_button;
 
         Multiple<ItemParams>                items;
+
+        // [AL] Opt-out: a hovered wheel over a CLOSED combo normally changes
+        // the selection and commits (llcombobox.cpp:958-1000). Default true
+        // preserves that behavior everywhere; set false per-combo where a
+        // stray wheel click is a semantic hazard rather than a harmless
+        // scrub (e.g. mode/preset combos -- see floater_ultimate_diopter.xml).
+        Optional<bool>                      wheel_select;
 
         Params();
     };
@@ -252,6 +260,7 @@ private:
     bool                mAllowTextEntry;
     bool                mAllowNewValues;
     S32                 mMaxChars;
+    S32                 mListMinWidth;
     bool                mTextEntryTentative;
     commit_callback_t   mPrearrangeCallback;
     commit_callback_t   mTextEntryCallback;
@@ -261,6 +270,7 @@ private:
     boost::signals2::connection mImageLoadedConnection;
     commit_signal_t     mOnReturnSignal;
     S32                 mLastSelectedIndex;
+    bool                mWheelSelect; // [AL] wheel_select opt-out; see Params::wheel_select
 };
 
 // A combo box with icons for the list of items.

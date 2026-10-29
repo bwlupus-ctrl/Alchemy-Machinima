@@ -52,6 +52,9 @@ uniform vec4[2] texture_emissive_transform;
 out vec3 vary_fragcoord;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec4 diffuse_color;
 in vec3 normal;
 in vec4 tangent;
@@ -74,6 +77,9 @@ vec4 tangent_space_transform(vec4 vertex_tangent, vec3 vertex_normal, vec4[2] kh
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
 #ifdef HAS_SKIN
     mat4 mat = getObjectSkinnedTransform();
     mat = modelview_matrix * mat;

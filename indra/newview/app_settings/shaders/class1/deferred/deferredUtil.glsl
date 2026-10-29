@@ -71,6 +71,16 @@ uniform int classic_mode;
 // Only the surface projector programs upload this (setupSpotLight); it stays 0
 // for every other consumer, keeping their sampling byte-identical.
 uniform int gobo_aniso;
+uniform float gobo_time;
+uniform int gobo_pattern;
+// x = animation mode, y = speed, z = zoom, w = surface-only dispersion.
+uniform vec4 gobo_anim_params;
+// [Gobo v2] Per-projector cookie color multiply. Default (1,1,1) = no change.
+uniform vec3 gobo_tint;
+// [Gobo v2] Per-pattern variation. Each component 0 = the pattern's built-in
+// default (so an override with zero params reproduces the v1 look exactly):
+// x = detail/count, y = thickness/tilt, z = softness, w = invert (>=0.5).
+uniform vec4 gobo_pattern_params;
 
 // light params
 uniform vec3 color; // light_color
@@ -95,6 +105,231 @@ float goboLod(vec2 tc, float base_lod)
     }
 #endif
     return base_lod;
+}
+
+float goboHash(vec2 p)
+{
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float goboValueNoise(vec2 p)
+{
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(goboHash(i), goboHash(i + vec2(1.0, 0.0)), f.x),
+               mix(goboHash(i + vec2(0.0, 1.0)),
+                   goboHash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// Analytic library. `pp` = gobo_pattern_params (x detail/count, y thickness/tilt,
+// z softness, w invert). EVERY component 0 reproduces the pattern's v1 constants
+// exactly, so a default override renders byte-identically to the pre-v2 build.
+// Pattern ids 100+ stay reserved for a future PNG library (loader modeled on
+// loadProjVolDustMap(), shipped via viewer_manifest.py) with no caller change.
+vec4 proceduralGobo(int id, vec2 uv, vec4 pp)
+{
+    float pattern = 1.0;
+    float detail = exp2(pp.x);   // 1.0 at default; scales count/frequency
+    if (id == 0)
+    {
+        // Venetian blinds: soft horizontal slats.
+        float band = abs(fract(uv.y * 12.0 * detail) - 0.5);
+        float t = pp.y * 0.12;
+        float soft = pp.z * 0.15;
+        pattern = 1.0 - smoothstep(0.30 - t - soft, 0.40 - t + soft, band);
+    }
+    else if (id == 1)
+    {
+        // Multi-pane window with a frame and central mullions.
+        vec2 p = abs(fract(uv * 2.0 * detail) - 0.5);
+        float th = 0.43 - pp.y * 0.15;
+        float bars = max(step(th, p.x), step(th, p.y));
+        pattern = 1.0 - bars;
+    }
+    else if (id == 2)
+    {
+        // Crosshatched grate.
+        vec2 bars = abs(fract(uv * 10.0 * detail) - 0.5);
+        float th = 0.34 + pp.y * 0.10;
+        pattern = 1.0 - max(step(th, bars.x), step(th, bars.y));
+    }
+    else if (id == 3)
+    {
+        // Ceiling-fan blades around the hub (blade count via detail).
+        vec2 p = uv - vec2(0.5);
+        float radius = length(p);
+        float blade = abs(fract((atan(p.y, p.x) / 6.2831853) * 5.0 * detail) - 0.5);
+        pattern = (1.0 - smoothstep(0.13, 0.23, blade)) *
+                  smoothstep(0.06, 0.12, radius) * (1.0 - smoothstep(0.46, 0.50, radius));
+    }
+    else if (id == 4)
+    {
+        // Softbox square-cell grid.
+        vec2 cell = abs(fract(uv * 8.0 * detail) - 0.5);
+        float seam = max(cell.x, cell.y);
+        float soft = pp.z * 0.10;
+        pattern = 1.0 - smoothstep(0.38 - soft, 0.47 + soft, seam);
+    }
+    else if (id == 5)
+    {
+        // Organic foliage/dapple breakup from two value-noise octaves.
+        float sc = 8.0 * detail;
+        float n = goboValueNoise(uv * sc) * 0.65 +
+                  goboValueNoise(uv * sc * 2.125 + vec2(3.7, 9.2)) * 0.35;
+        float lo = 0.42 - pp.y * 0.2;
+        pattern = smoothstep(lo, lo + 0.20, n);
+    }
+    else if (id == 6)
+    {
+        // Cheap caustic-like interference field; UV motion supplies the scroll.
+        vec2 p = (uv - vec2(0.5)) * 9.0 * detail;
+        float a = sin(p.x + sin(p.y * 1.7));
+        float b = sin(p.y * 1.3 - sin(p.x * 1.9));
+        pattern = smoothstep(0.25, 0.82, abs(a + b) * 0.5);
+    }
+    else if (id == 7)
+    {
+        // Prison / warehouse heavy vertical bars.
+        float bar = abs(fract(uv.x * 6.0 * detail) - 0.5);
+        float soft = pp.z * 0.10;
+        pattern = 1.0 - smoothstep(0.24 - soft, 0.32 + soft, bar);
+    }
+    else if (id == 8)
+    {
+        // Cathedral arched window: rounded-top aperture with mullions.
+        float body = step(0.20, uv.x) * step(uv.x, 0.80) *
+                     step(0.10, uv.y) * step(uv.y, 0.65);
+        float arch = step(length((uv - vec2(0.5, 0.65)) / vec2(0.30, 0.35)), 1.0) *
+                     step(0.65, uv.y);
+        float shape = clamp(body + arch, 0.0, 1.0);
+        vec2 m = abs(fract(uv * vec2(3.0, 4.0) * detail) - 0.5);
+        float bars = max(step(0.42, m.x), step(0.42, m.y));
+        pattern = shape * (1.0 - bars);
+    }
+    else if (id == 9)
+    {
+        // Iris / vignette framing aperture (oval via thickness, soft edge).
+        float rad = 0.45 * exp2(-pp.x * 0.5);
+        float soft = 0.04 + pp.z * 0.40;
+        vec2 d = (uv - vec2(0.5)) * vec2(1.0 + pp.y, 1.0);
+        pattern = 1.0 - smoothstep(rad - soft, rad, length(d));
+    }
+    else if (id == 10)
+    {
+        // Dot-matrix / disco grid.
+        float count = 8.0 * detail;
+        vec2 cell = fract(uv * count) - 0.5;
+        float rad = 0.30 + pp.y * 0.15;
+        float soft = 0.05 + pp.z * 0.20;
+        pattern = 1.0 - smoothstep(rad, rad + soft, length(cell));
+    }
+    else if (id == 11)
+    {
+        // Concentric rings blending to radial starburst (blend via thickness).
+        float count = 8.0 * detail;
+        float rings = abs(fract(length(uv - vec2(0.5)) * count) - 0.5);
+        float ringp = 1.0 - smoothstep(0.22, 0.32, rings);
+        float ang = atan(uv.y - 0.5, uv.x - 0.5);
+        float sp = abs(fract(ang / 6.2831853 * max(count, 1.0)) - 0.5);
+        float spokep = 1.0 - smoothstep(0.22, 0.32, sp);
+        pattern = mix(ringp, spokep, clamp(pp.y, 0.0, 1.0));
+    }
+    else if (id == 12)
+    {
+        // Soft cloud / god-ray breakup (softer threshold than foliage).
+        float sc = 4.0 * detail;
+        float n = goboValueNoise(uv * sc) * 0.6 +
+                  goboValueNoise(uv * sc * 2.25 + vec2(5.0, 2.0)) * 0.4;
+        float lo = 0.35 - pp.y * 0.2;
+        pattern = smoothstep(lo, lo + 0.40, n);
+    }
+    pattern = clamp(pattern, 0.0, 1.0);
+    if (pp.w >= 0.5)
+    {
+        pattern = 1.0 - pattern; // negative cookie
+    }
+    return vec4(vec3(pattern), 1.0);
+}
+
+// UV-space animation modes: 1 rotate, 2 wind-sway, 3 pan, 4 pulse (osc zoom).
+// Modes 0/5/6 leave the UV unchanged (5/6 are intensity-only, see below).
+vec2 animatedGoboUV(vec2 uv)
+{
+    int mode = int(gobo_anim_params.x + 0.5);
+    float speed = gobo_anim_params.y;
+    float zoom = max(gobo_anim_params.z, 0.001);
+    if (mode == 4) // pulse/breathe oscillates the zoom about its base
+    {
+        zoom = max(zoom * (1.0 + 0.25 * sin(speed * gobo_time)), 0.001);
+    }
+    // Preserve the legacy texture coordinates bit-for-bit when nothing moves
+    // the UV (mode 0/5/6 with default zoom).
+    if (mode != 1 && mode != 2 && mode != 3 && zoom == 1.0)
+    {
+        return uv;
+    }
+    uv = (uv - vec2(0.5)) / zoom + vec2(0.5);
+    if (mode == 1) // continuous rotation
+    {
+        float angle = speed * gobo_time;
+        float c = cos(angle);
+        float s = sin(angle);
+        mat2 rotation = mat2(c, s, -s, c);
+        uv = rotation * (uv - vec2(0.5)) + vec2(0.5);
+    }
+    else if (mode == 2) // wind sway domain warp
+    {
+        vec2 phase = uv.yx * vec2(9.0, 7.0) +
+                     gobo_time * speed * vec2(1.0, 1.31);
+        uv += 0.018 * sin(phase);
+    }
+    else if (mode == 3) // pan / scroll along a fixed diagonal
+    {
+        uv += normalize(vec2(1.0, 0.35)) * speed * gobo_time * 0.1;
+    }
+    return uv;
+}
+
+// Intensity-space animation modes: 5 flicker (candle/fire), 6 strobe. Every
+// other mode returns 1.0, so this is a no-op unless flicker/strobe is chosen.
+float goboAnimIntensity()
+{
+    int mode = int(gobo_anim_params.x + 0.5);
+    float speed = max(abs(gobo_anim_params.y), 0.001);
+    if (mode == 5)
+    {
+        float n = goboValueNoise(vec2(gobo_time * speed * 3.0, 0.0));
+        return mix(0.6, 1.0, n);
+    }
+    if (mode == 6)
+    {
+        return step(fract(gobo_time * speed), 0.5);
+    }
+    return 1.0;
+}
+
+// Shared by surface lighting, froxel injection and the volumetric march. Tint
+// (default white) and intensity (default 1.0) keep the off-path byte-identical.
+vec4 sampleGobo(vec2 uv, float lod)
+{
+    vec2 animated_uv = animatedGoboUV(uv);
+    vec4 col;
+    if (gobo_pattern >= 0)
+    {
+        col = proceduralGobo(gobo_pattern, animated_uv, gobo_pattern_params);
+    }
+    else
+    {
+#ifndef FXAA_GLSL_120
+        col = textureLod(projectionMap, animated_uv, goboLod(animated_uv, lod));
+#else
+        col = texture(projectionMap, animated_uv);
+#endif
+    }
+    col.rgb *= gobo_tint;
+    col.rgb *= goboAnimIntensity();
+    return col;
 }
 
 uniform mat4 inv_proj;
@@ -222,11 +457,7 @@ float getDepth(vec2 pos_screen)
 
 vec4 getTexture2DLodAmbient(vec2 tc, float lod)
 {
-#ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
-#else
-    vec4 ret = texture(projectionMap, tc);
-#endif
+    vec4 ret = sampleGobo(tc, lod);
     ret.rgb = srgb_to_linear(ret.rgb);
 
     vec2 dist = tc-vec2(0.5);
@@ -238,11 +469,7 @@ vec4 getTexture2DLodAmbient(vec2 tc, float lod)
 
 vec4 getTexture2DLodDiffuse(vec2 tc, float lod)
 {
-#ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
-#else
-    vec4 ret = texture(projectionMap, tc);
-#endif
+    vec4 ret = sampleGobo(tc, lod);
     ret.rgb = srgb_to_linear(ret.rgb);
 
     vec2 dist = vec2(0.5) - abs(tc-vec2(0.5));
@@ -279,17 +506,23 @@ vec3 getProjectedLightDiffuseColor(float light_distance, vec2 projected_uv)
     float diff = clamp((light_distance - proj_focus)/proj_range, 0.0, 1.0);
     float lod = diff * proj_lod;
     vec4 plcol = getTexture2DLodDiffuse(projected_uv.xy, lod);
+    // Surface-only chromatic split. Volumetric consumers call the single-tap
+    // getTexture2DLodDiffuse funnel directly and never enter this branch.
+    float dispersion = max(gobo_anim_params.w, 0.0);
+    if (dispersion > 0.0)
+    {
+        vec2 radial = projected_uv - vec2(0.5);
+        vec4 red_sample = getTexture2DLodDiffuse(projected_uv + radial * dispersion, lod);
+        vec4 blue_sample = getTexture2DLodDiffuse(projected_uv - radial * dispersion, lod);
+        plcol.rgb = vec3(red_sample.r, plcol.g, blue_sample.b);
+    }
 
     return color.rgb * plcol.rgb * plcol.a;
 }
 
 vec4 texture2DLodSpecular(vec2 tc, float lod)
 {
-#ifndef FXAA_GLSL_120
-    vec4 ret = textureLod(projectionMap, tc, goboLod(tc, lod));
-#else
-    vec4 ret = texture(projectionMap, tc);
-#endif
+    vec4 ret = sampleGobo(tc, lod);
     ret.rgb = srgb_to_linear(ret.rgb);
 
     vec2 dist = vec2(0.5) - abs(tc-vec2(0.5));
@@ -554,7 +787,147 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
     spec = specContrib;
 }
 
-vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
+// [RigRim] ------------------------------------------------------------------
+// Rig Rim Light (Cine Light Rig, Phase A).  A per-pixel rim LIGHTING term that
+// is evaluated inside every local-light path a rig fixture can reach:
+//   * deferred projector / spot        class3/deferred/spotLightF.glsl
+//   * deferred omni box + fullscreen   class3/deferred/pointLightF.glsl,
+//                                      class3/deferred/multiPointLightF.glsl
+//   * forward alpha (PBR + legacy)     pbrCalcPointLightOrSpotLightRim() below,
+//                                      class2/deferred/alphaF.glsl,
+//                                      class3/deferred/materialF.glsl,
+//                                      class2/deferred/sharedActorFxPbrF.glsl
+// Because it is a lighting term (no neighbour taps, no edge mask, no history)
+// it can never draw an outline - it only brightens grazing, back-lit pixels the
+// light already reaches.  This is the "fix by construction" for the screen-space
+// rim-glow outline complaint. (The old Phase-1 screen-space Rim Glow post
+// pass was a separate feature and has been removed.)
+//
+// Math (all vectors eye space, unit length; v = surface->camera, l = surface->light):
+//   NoV   = |n.v|
+//   k_eff = mix(k, min(k, 1), roughness * soften)      grazing exponent, softened
+//   g     = (1 - NoV)^k_eff                            grazing width / sharpness
+//   w_l   = saturate((n.l + wrap) / (1 + wrap))        wrap lighting
+//   b     = smoothstep(b0, b0 + backSoft, -(v.l))      back-light-ness
+//   rim   = masterGain * gain * c_l * g * w_l * b * mix(1, diffuseColor, tint)
+// c_l is the light's colour x distance attenuation x cone/gobo x shadow EXACTLY
+// as the calling path already computed it, but WITHOUT the 3.25 / 3.0 legacy
+// balance magic, so gain = 1 means "rim peak ~ this light's own diffuse peak".
+//
+// Energy / balance: the RIM fixture already lights the subject through the
+// normal diffuse+specular path; the rim term is purely ADDITIVE on top of it.
+// Balance is therefore per-light gain x master gain, and the result is clamped
+// to the same [0,10] range the punctual lights use.
+//
+// Off path: rig_rim_mode == 0 is the bit-exact no-op.  Every caller wraps its
+// rim block in `if (rigRimMode() != 0)` so no extra texture taps / ALU run and
+// nothing is added to the existing result; the helper additionally early-outs
+// when the effective gain is zero, so an individual light with gain 0 costs
+// nothing beyond the uniform branch even while the feature is on.
+//
+// Packing (uploaded by C++, see rigrim_contract.md):
+//   rig_rim_mode      int   0 off | 1 on | 2 debug "rim only" (local lights' base
+//                           contribution suppressed; sun/sky untouched)
+//   rig_rim_globals   vec4  x master gain, y roughness softening 0..1,
+//                           z back-light softness (width of b in -(v.l)),
+//                           w surface tint amount 0..1
+//   per-light vec4    x gain, y grazing exponent k, z wrap 0..1, w back bias b0
+//                     (single light: rig_rim_light; batched: rig_rim_lights[])
+//   [TronT1] rig_rim_tron        vec4  x mode (0 off | 1 palette tint | 2 tint + pulse),
+//                                      y tint mix 0..1, z CPU pulse multiplier (>= 0,
+//                                      1 + amount * (pulse01 - 0.5) * 2), w reserved
+//            rig_rim_tron_color  vec4  rgb Tron palette colour (linear), w reserved
+//            Uploaded by ALCineRigRim::bindGlobals() (slow bind) AND
+//            ALCineRigRim::bindAnimated() (bindDeferredShaderFast fast path,
+//            so the per-frame pulse reaches programs that stay fast-bound).
+//            Off path: rig_rim_tron.x == 0 (also the GL default for a
+//            never-uploaded uniform) -> the branch in rigRimTerm() is not
+//            taken and c_l is untouched: bit-exact no-op.
+uniform int  rig_rim_mode;
+uniform vec4 rig_rim_globals;
+uniform vec4 rig_rim_tron;
+uniform vec4 rig_rim_tron_color;
+
+int rigRimMode()
+{
+    return rig_rim_mode;
+}
+
+// [TronT1] Recolour a rim light's colour toward the Tron palette: keep the
+// light's own luminance (attenuation / cone / gobo / shadow weighting stays
+// physical) and swap the hue by `mix`; mode 2 additionally scales by the CPU
+// pulse multiplier from the shared Tron clock.
+vec3 tronRimTint(vec3 c_l)
+{
+    float cl = dot(c_l, vec3(0.2126, 0.7152, 0.0722));
+    // [TronT1 P2-6 fix] rig_rim_tron_color is the raw palette colour (e.g.
+    // Ares Red ~= (1.00, 0.08, 0.06), luminance ~0.27), not a hue-only unit
+    // vector -- multiplying cl by it unnormalised made the result's
+    // luminance cl * lum(tint) instead of cl, silently darkening the tint
+    // (Ares Red down to ~27% of the light's real brightness) even though
+    // this function's whole contract is "keep the light's own luminance,
+    // swap the hue". Normalise by the tint's own luminance (guarded against
+    // a black/near-black palette colour) so cl * tint_norm has luminance
+    // cl again, matching the documented behaviour.
+    vec3  tint     = max(rig_rim_tron_color.rgb, vec3(0.0));
+    float tint_lum = max(dot(tint, vec3(0.2126, 0.7152, 0.0722)), 1.0e-4);
+    // [TronT1 P2] Pure luminance normalisation over-drives saturated palettes
+    // (pure blue x14); pure peak normalisation darkens them. Use the geometric
+    // mean of luminance and peak: blue x3.7, Ares red keeps ~52% luminance.
+    float tint_max = max(max(tint.r, tint.g), max(tint.b, 1.0e-4));
+    float tint_den = sqrt(tint_lum * tint_max);
+    c_l = mix(c_l, cl * (tint / tint_den), clamp(rig_rim_tron.y, 0.0, 1.0));
+    if (rig_rim_tron.x > 1.5)
+    {
+        c_l *= max(rig_rim_tron.z, 0.0);
+    }
+    return c_l;
+}
+
+vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
+                vec3 v,            // surface -> camera, normalized
+                vec3 l,            // surface -> light, normalized
+                vec3 c_l,          // light colour x atten x cone/gobo x shadow
+                vec3 diffuseColor, // for the optional surface tint
+                float roughness,   // perceptual roughness (legacy: 1 - glossiness)
+                vec4 rim)          // x gain, y k, z wrap, w back bias
+{
+    float gain = rim.x * rig_rim_globals.x;
+    if (gain <= 0.0)
+    {
+        return vec3(0.0);
+    }
+
+    // [TronT1] Tron palette tint of the rim light colour only (mode 0 = untaken).
+    if (rig_rim_tron.x > 0.5)
+    {
+        c_l = tronRimTint(c_l);
+    }
+
+    float NoV    = abs(dot(n, v));
+    float soften = clamp(roughness, 0.0, 1.0) * clamp(rig_rim_globals.y, 0.0, 1.0);
+    float k      = max(rim.y, 0.05);
+    float k_eff  = mix(k, min(k, 1.0), soften); // rough surfaces get a wider, softer rim
+    float g      = pow(clamp(1.0 - NoV, 0.0, 1.0), k_eff);
+
+    float wrap   = clamp(rim.z, 0.0, 1.0);
+    float w_l    = clamp((dot(n, l) + wrap) / (1.0 + wrap), 0.0, 1.0);
+
+    float b0     = rim.w;
+    float b1     = b0 + max(rig_rim_globals.z, 1.0e-4);
+    float b      = smoothstep(b0, b1, -dot(v, l));
+
+    vec3  tint   = mix(vec3(1.0), diffuseColor, clamp(rig_rim_globals.w, 0.0, 1.0));
+
+    return clamp(gain * c_l * (g * w_l * b) * tint, vec3(0.0), vec3(10.0));
+}
+
+// [RigRim] Forward-alpha punctual light WITH the rim term.  The rim-less
+// pbrCalcPointLightOrSpotLight() below forwards here with rim = 0, which the
+// helper early-outs on, so every existing caller keeps its exact result.
+// [AvatarLightResponse] spec_keep scales ONLY the evaluated specular term
+// (specPunc) after the BRDF; the old name forwards 1.0 (x * 1.0 is exact).
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
                     vec3 n, // normal
@@ -563,7 +936,9 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
                     vec3 lp, // light position
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
-                    float lightSize, float falloff, float is_pointlight, float ambiance)
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep) // [AvatarLightResponse] 1.0 = untouched
 {
     vec3 color = vec3(0,0,0);
 
@@ -590,12 +965,62 @@ vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
         vec3 specPunc = vec3(0);
 
         pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
+        specPunc *= spec_keep; // [AvatarLightResponse]
         color = intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
+
+        // [RigRim] additive rim from this forward light (cone + attenuation
+        // weighted; forward lights carry no per-light shadow).
+        if (rig_rim_mode != 0)
+        {
+            vec3 rim_col = rigRimTerm(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
+                                      diffuseColor, perceptualRoughness, rim);
+            if (rig_rim_mode == 2)
+            {
+                color = vec3(0.0); // debug: rim only
+            }
+            color += rim_col;
+        }
     }
     float final_scale = 1.0;
     if (classic_mode > 0)
         final_scale = 0.9;
     return color * final_scale;
+}
+
+// [AvatarLightResponse] old name: forwards spec_keep = 1.0.
+vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim) // [RigRim] per-light rim params (rig_rim_lights[i])
+{
+    return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic,
+                                               n, p, v, lp, ld, lightColor, lightSize, falloff,
+                                               is_pointlight, ambiance, rim, 1.0);
+}
+
+vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance)
+{
+    // [RigRim] rim = 0 -> rigRimTerm() early-outs -> result identical to the
+    // pre-RigRim body of this function.
+    return pbrCalcPointLightOrSpotLightRim(diffuseColor, specularColor, perceptualRoughness, metallic,
+                                           n, p, v, lp, ld, lightColor, lightSize, falloff,
+                                           is_pointlight, ambiance, vec4(0.0));
 }
 
 void calcDiffuseSpecular(vec3 baseColor, float metallic, inout vec3 diffuseColor, inout vec3 specularColor)
@@ -606,7 +1031,33 @@ void calcDiffuseSpecular(vec3 baseColor, float metallic, inout vec3 diffuseColor
     specularColor = mix(f0, baseColor, metallic);
 }
 
-vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten)
+// [EnvIntensity v2] Shadow lift: raises the diffuse ambient / irradiance term
+// where the sun (or moon) does not reach. shadow_lift_gain = 2^EV - 1 (0 = off;
+// 0 in classic mode and in every probe capture; uploaded via SG_ANY from
+// LLSettingsVOSky::applySpecial). Weight has a knee: any pixel with
+// NdotL * scol >= SHADOW_LIFT_KNEE is EXACTLY unchanged, full shadow (scol 0
+// or NdotL <= 0) gets the full gain, the terminator ramps over 0..knee.
+// Callers apply it AFTER adjustIrradiance (SSAO ceiling) and BEFORE the sun
+// term / pbrBaseLight, so material AO still multiplies the lifted value and
+// occluded corners lift by the same relative factor as open shadow.
+uniform float shadow_lift_gain;
+const float SHADOW_LIFT_KNEE = 0.25;
+
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol)
+{
+    if (shadow_lift_gain <= 0.0)
+    {
+        return irradiance; // off path untouched
+    }
+    float sun_vis = clamp(dot(norm, light_dir), 0.0, 1.0) * scol; // 1 = fully lit
+    float w = 1.0 - smoothstep(0.0, SHADOW_LIFT_KNEE, sun_vis);   // 0 for sun_vis >= knee
+    return irradiance * (1.0 + shadow_lift_gain * w);
+}
+
+// [AvatarLightResponse] spec_keep scales ONLY the evaluated specular terms after the BRDF
+// (IBL specular and the sun's punctual specular); F0, specularColor, radiance and every
+// diffuse term are untouched. The old name below forwards 1.0 (x * 1.0 is exact).
+vec3 pbrBaseLightKeep(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten, float spec_keep)
 {
     perceptualRoughness = max(perceptualRoughness, MIN_PBR_ROUGHNESS);
     vec3 color = vec3(0);
@@ -615,6 +1066,7 @@ vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v,
     vec3 iblDiff = vec3(0);
     vec3 iblSpec = vec3(0);
     pbrIbl(diffuseColor, specularColor, radiance, irradiance, ao, NdotV, perceptualRoughness, iblDiff, iblSpec);
+    iblSpec *= spec_keep; // [AvatarLightResponse]
 
     color += iblDiff;
 
@@ -623,6 +1075,7 @@ vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v,
     vec3 diffPunc = vec3(0);
     vec3 specPunc = vec3(0);
     pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, norm, v, normalize(light_dir), nl, diffPunc, specPunc);
+    specPunc *= spec_keep; // [AvatarLightResponse]
 
     // Depending on the sky, we combine these differently.
     if (classic_mode > 0)
@@ -659,6 +1112,12 @@ vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v,
     return color;
 }
 
+// [AvatarLightResponse] old name: forwards spec_keep = 1.0.
+vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten)
+{
+    return pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, norm, perceptualRoughness, light_dir, sunlit, scol, radiance, irradiance, colorEmissive, ao, additive, atten, 1.0);
+}
+
 uniform vec4 waterPlane;
 uniform float waterSign;
 
@@ -682,4 +1141,3 @@ void waterClip(vec3 pos)
     }
 
 }
-

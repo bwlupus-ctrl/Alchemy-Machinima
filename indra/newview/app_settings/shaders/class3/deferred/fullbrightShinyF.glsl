@@ -52,16 +52,58 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity);
+void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep); // [AvatarLightResponse]
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+float actorFxAuthoredMaterialResponse();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrPresentedLinear(vec3 c);
+float alrSpecKeep();
+bool alrDebug();
+#endif
 
 void mirrorClip(vec3 pos);
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    vec2 fx_uv = vary_texcoord0.xy;
+    if (actor_fx_active && actorFxUvTransformEnabled())
+    {
+        fx_uv = actorFxUv(fx_uv, vary_position);
+    }
+#ifdef HAS_DIFFUSE_LOOKUP
+    vec4 color = diffuseLookup(fx_uv);
+#else
+    vec4 color = texture(diffuseMap, fx_uv);
+#endif
+    if (actor_fx_active && actorFxRgbSplitEnabled())
+    {
+#ifdef HAS_DIFFUSE_LOOKUP
+        color.r = diffuseLookup(actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        color.b = diffuseLookup(actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#else
+        color.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+        color.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+    }
+#else
 #ifdef HAS_DIFFUSE_LOOKUP
     vec4 color = diffuseLookup(vary_texcoord0.xy);
 #else
     vec4 color = texture(diffuseMap, vary_texcoord0.xy);
+#endif
 #endif
 
     color.rgb *= vertex_color.rgb;
@@ -77,21 +119,55 @@ void main()
     calcAtmosphericVars(pos.xyz, vec3(0), 1.0, sunlit, amblit, additive, atten);
 
     float env_intensity = vertex_color.a;
+#ifdef HAS_ACTOR_FX
+    env_intensity *= actorFxAuthoredMaterialResponse();
+#endif
 
     vec3 ambenv = vec3(1.0);
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
     vec3 norm = normalize(vary_texcoord1.xyz);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        color.rgb = linear_to_srgb(actorFxApply(srgb_to_linear(color.rgb),
+                                                norm, vary_position,
+                                                vary_texcoord0.xy));
+    }
+#endif
     vec4 spec = vec4(0,0,0,0);
     sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, vec2(0), pos.xyz, norm.xyz, spec.a, env_intensity, false, amblit);
 
     color.rgb = srgb_to_linear(color.rgb);
+#ifdef HAS_ACTOR_FX
+    // Capture the styled, unlit surface colour before reflection-probe energy
+    // is added. Actor FX emission is a material property, not reflected light.
+    vec3 actor_fx_emissive = actor_fx_active
+        ? actorFxEmissive(vec3(0.0), color.rgb) : vec3(0.0);
+#endif
 
-    applyLegacyEnv(color.rgb, legacyenv, spec, pos, norm, env_intensity);
+    float alr_keep = 1.0; // [AvatarLightResponse] Tame: reflection addend only, mixing weight untouched
+#ifdef HAS_ACTOR_FX
+    color.rgb = alrPresentedLinear(color.rgb); // presented (unlit) colour
+    alr_keep = alrSpecKeep();
+#endif
+    applyLegacyEnvKeep(color.rgb, legacyenv, spec, pos, norm, env_intensity, alr_keep);
 #endif
 
     color.a = 1.0;
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        // This is an unblended world pass, so destination alpha is glow
+        // metadata rather than material coverage.  Publish synthetic Actor FX
+        // emission without changing the beauty colour or authored alpha path.
+        color.a += max(max(actor_fx_emissive.r, actor_fx_emissive.g),
+                       actor_fx_emissive.b);
+    }
+#endif
 
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(color, vec4(0));
 }
-

@@ -26,8 +26,10 @@
 #include "v3dmath.h"
 
 #include <vector>
+#include <utility>
 
 class LLButton;
+class LLAccordionCtrl;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
@@ -70,8 +72,7 @@ private:
     void refreshEditButtons();              // P3 QOL: undo/redo/reverse/mirror/loop/walk enable
     void refreshCopyCombo();                // P3 QOL: cast picker for "copy path to"
     void refreshChoreography();             // P3 sync-to-take + follow-the-leader row
-    void refreshGaze();                     // P3 look-at while walking
-    void refreshGazeCastCombo();            // cast picker for gaze target = cast member
+    void refreshResetButtons();             // mini reset enable state follows its control
     void syncListSelectionFromEngine();     // engine edit node -> list row
 
     S32  listSelectedNode() const;          // selected row -> node index (-1 none)
@@ -94,7 +95,10 @@ private:
     void onClickMirror();
     void onClickLoopClose();
     void onClickCopyTo();
+    void onClickPlayPath();
+    void onClickStopPath();
     void onClickWalkHere();     // arms a single ground click via ALToolPathEdit
+    void onClickCenterPrimitive();
 
     // TP-away suspend banner actions (resume where it left off / translate the
     // path to the actor's current spot and resume / drop the suspended walk)
@@ -111,17 +115,6 @@ private:
     void onFollowOffsetCommit();
     void onStopFollow();
 
-    // P3 look-at while walking: enable, target mode, cast-member pick, capture a
-    // fixed point from the camera, and the head/eyes-blend / intensity / smoothing
-    // knobs. Each writes the LLActorMover gaze config for the target actor.
-    void onGazeEnableToggle();
-    void onGazeTargetCommit();
-    void onGazeCastCommit();
-    void onGazeSetPoint();
-    void onGazeBlendCommit();
-    void onGazeIntensityCommit();
-    void onGazeSmoothingCommit();
-
     // P3 per-node camera authoring: capture the live render camera into the
     // selected node, clear it, flip cut/ease, and static-preview its framing
     void onClickSetCam();
@@ -133,16 +126,24 @@ private:
     void onNodeHeightCommit();
     void onNodeDwellCommit();
     void onNodeSpeedCommit();
+    void onNodeCornerRadiusCommit();
     void onNodeAnimCommit();
 
     // path-wide commits (drive the Path struct directly; defaults = engine defaults)
     void onPathSpeedCommit();
+    void onPathCadenceCommit();
     void onPathTensionCommit();
     void onPathEaseInCommit();
     void onPathEaseOutCommit();
     void onPathGroundFollowCommit();
     void onPathPitchCommit();
+    void onPathAirborneCommit();
     void onPathEndCommit();
+    void onPathShapeCommit();
+    void onPrimitiveCommit();
+    void onClickFitHalfArc();
+    void onClickFitSine();
+    void onResetControl(const std::string& key);
 
     // cached name for the header
     static std::string actorName(const LLUUID& id);
@@ -150,15 +151,24 @@ private:
     LLUUID mActor;              // current target (raw cast/roster id; null = none)
     bool   mEditMode = false;   // our transient tool is armed
     bool   mSuspendShown = false;   // banner visibility last set (avoid churn)
+    S32    mAccordionNormalHeight = 0;
 
     // change-diffing snapshot so the list only rebuilds when the geometry/
     // summary of a node actually changed
-    struct NodeSnap { LLVector3d mPos; F32 mDwell = 0.f; F32 mSpeed = 0.f; bool mHasCam = false; };
+    struct NodeSnap
+    {
+        LLVector3d mPos;
+        F32 mDwell = 0.f;
+        F32 mSpeed = 0.f;
+        F32 mCornerRadius = 0.f;
+        bool mHasCam = false;
+    };
     std::vector<NodeSnap> mSnap;
     S32    mSnapEndMode = -999;    // end mode the current rows were built for
     S32    mLastEngineNode = -2;   // last edit-node we mirrored into the list
 
     // widgets
+    LLAccordionCtrl*   mAccordion = nullptr;
     LLTextBox*         mHeader = nullptr;
     LLCheckBoxCtrl*    mEditModeCheck = nullptr;
     LLScrollListCtrl*  mList = nullptr;
@@ -175,21 +185,38 @@ private:
     LLButton*          mMirrorBtn = nullptr;
     LLButton*          mLoopCloseBtn = nullptr;
     LLButton*          mWalkHereBtn = nullptr;
+    LLButton*          mPlayPathBtn = nullptr;
+    LLButton*          mStopPathBtn = nullptr;
     LLComboBox*        mCopyToCombo = nullptr;
     LLButton*          mCopyBtn = nullptr;
     std::string        mCopySig;   // cast+target signature so the combo rebuilds only on change
     LLSpinCtrl*        mNodeHeight = nullptr;
     LLSpinCtrl*        mNodeDwell = nullptr;
     LLSpinCtrl*        mNodeSpeed = nullptr;
+    LLSpinCtrl*        mNodeCornerRadius = nullptr;
     LLLineEditor*      mNodeAnim = nullptr;
     LLSpinCtrl*        mPathSpeed = nullptr;
+    LLSliderCtrl*      mCadence = nullptr;
     LLSliderCtrl*      mTension = nullptr;
     LLSpinCtrl*        mEaseIn = nullptr;
     LLSpinCtrl*        mEaseOut = nullptr;
     LLCheckBoxCtrl*    mGroundFollow = nullptr;
     LLCheckBoxCtrl*    mPitch = nullptr;
+    LLCheckBoxCtrl*    mAirborne = nullptr;
     LLComboBox*        mEndCombo = nullptr;
     LLPanel*           mColorSwatch = nullptr;
+    LLComboBox*        mShapeCombo = nullptr;
+    LLButton*          mCenterPrimitiveBtn = nullptr;
+    LLButton*          mFitHalfArcBtn = nullptr;
+    LLButton*          mFitSineBtn = nullptr;
+    LLSpinCtrl*        mPrimitiveRadiusX = nullptr;
+    LLSpinCtrl*        mPrimitiveRadiusY = nullptr;
+    LLSpinCtrl*        mPrimitiveStart = nullptr;
+    LLSpinCtrl*        mPrimitiveSweep = nullptr;
+    LLSpinCtrl*        mPrimitiveYaw = nullptr;
+    LLSpinCtrl*        mPrimitivePitch = nullptr;
+    LLSpinCtrl*        mPrimitiveRoll = nullptr;
+    LLSpinCtrl*        mPrimitiveRise = nullptr;
 
     // P3 per-node camera row
     LLButton*          mSetCamBtn = nullptr;
@@ -208,16 +235,9 @@ private:
     LLTextBox*         mFollowStatus = nullptr;
     std::string        mFollowSig;   // cast+target+cycle signature (rebuild on change)
 
-    // P3 look-at while walking (gaze)
-    LLCheckBoxCtrl*    mGazeEnable = nullptr;
-    LLComboBox*        mGazeTarget = nullptr;
-    LLComboBox*        mGazeCast = nullptr;
-    LLButton*          mGazeSetPoint = nullptr;
-    LLSliderCtrl*      mGazeBlend = nullptr;
-    LLSliderCtrl*      mGazeIntensity = nullptr;
-    LLSliderCtrl*      mGazeSmoothing = nullptr;
-    LLTextBox*         mGazeStatus = nullptr;
-    std::string        mGazeCastSig;   // cast+target signature (rebuild the picker on change)
+    // Icon-only reset buttons mirror their paired editor control. Pointers are
+    // non-owning; XUI owns every child for the panel lifetime.
+    std::vector<std::pair<LLButton*, LLUICtrl*>> mResetBindings;
 
     // in-world placement hint (hidden while the suspend banner is up)
     LLTextBox*         mHint = nullptr;

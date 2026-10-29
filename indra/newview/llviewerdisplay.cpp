@@ -29,11 +29,11 @@
 #include "llviewerdisplay.h"
 
 #include "alfloaterprogressview.h"
+#include "alcinelightrigmanager.h"
 #include "fsyspath.h"
 #include "llactormover.h"
 #include "alghoststudio.h"   // [ActorMover] heading preview lines
-#include "altoolpathedit.h"  // [ActorMover] path-edit tool owns the live edit overlay
-#include "lltoolmgr.h"       // current-tool check for the path-edit overlay
+#include "allocalfogmanager.h"
 #include "llclonefidelityaudit.h"   // [CloneFidelity] late source-vs-clone audit hook
 #include "llghostdeferreddiagnostics.h"  // [GhostDeferred] render-state invariant check
 
@@ -858,7 +858,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 // save-restored around this block). No-op with zero cost unless
                 // the ghost toggle + impostor mode are on and a mover/Director
                 // floater is open. The billboards themselves are drawn later in
-                // render_ui_3d() by renderHeadingPreview().
+                // the scene-depth guide pass by renderHeadingPreview().
                 LLActorMover::instance().updateGhostImpostors();
 
                 set_current_projection(proj);
@@ -1289,6 +1289,25 @@ void display_cube_face()
 
     display_update_camera();
 
+    // [LiveProbeFaceLights] The cinematic live probe empties mNearbyLights in
+    // beginCinematicProbeCapture(), and the only other calcNearbyLights() call
+    // (renderGeomPostDeferred) runs at the TAIL of renderDeferredLighting(),
+    // after the deferred local-light loop has already consumed the list. Without
+    // this, the first face after begin (every face under a 1-face budget) is lit
+    // with an empty list. The camera now sits at the probe origin with this
+    // face's orientation and frustum (cubeSnapshot lookDir + setup3DRender), so
+    // build the transient probe-centric list here. Gate is identical to the one
+    // calcNearbyLights uses for its transient cube-eye branch; ordinary probes
+    // and the main eye never enter it.
+    // [ProbeOnDemand] ...and ON-path probe-centric captures (ordinary, default
+    // and sliced faces under RenderProbeOnDemand), which empty the list the
+    // same way. Both terms are false with on-demand OFF and for the main eye.
+    if (gCubeSnapshot && (gPipeline.mReflectionMapManager.isCinematicLiveProbeCapture() ||
+                          gPipeline.mReflectionMapManager.isProbeCentricLightCapture()))
+    {
+        gPipeline.calcNearbyLights(*LLViewerCamera::getInstance());
+    }
+
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Env Update");
         // update all the sky/atmospheric/water settings
@@ -1304,16 +1323,23 @@ void display_cube_face()
     static LLCullResult result;
     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
     LLPipeline::sUnderWaterRender = LLViewerCamera::getInstance()->cameraUnderWater();
-    gPipeline.updateCull(*LLViewerCamera::getInstance(), result);
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face cull"); // [ProbeOnDemand] C0
+        gPipeline.updateCull(*LLViewerCamera::getInstance(), result);
+    }
 
     gGL.setColorMask(true, true);
 
     glClearColor(0.f, 0.f, 0.f, 0.f);
-    gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face shadow"); // [ProbeOnDemand] C0
+        gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+    }
 
     glClear(GL_DEPTH_BUFFER_BIT); // | GL_STENCIL_BUFFER_BIT);
 
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face sort"); // [ProbeOnDemand] C0
         LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
         gPipeline.stateSort(*LLViewerCamera::getInstance(), result);
 
@@ -1350,11 +1376,17 @@ void display_cube_face()
 
     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
 
-    gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance());
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face geom"); // [ProbeOnDemand] C0
+        gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance());
+    }
 
     gPipeline.mRT->deferredScreen.flush();
 
-    gPipeline.renderDeferredLighting();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face light"); // [ProbeOnDemand] C0
+        gPipeline.renderDeferredLighting();
+    }
 
     LLPipeline::sUnderWaterRender = false;
 
@@ -1626,6 +1658,11 @@ void render_ui(F32 zoom_factor, int subfield)
             gPipeline.disableLights();
         }
 
+        // [ActorStyle/GhostStudio] Actor FX is applied by native material
+        // shaders. Topology-accurate live Wireframe is submitted earlier from
+        // renderDeferredLighting(), while the main world depth target is still
+        // bound, so foreground geometry occludes its mesh/Animesh lines.
+
         // [GhostStudio] studio ghost instances are SCENE DRESSING, not an
         // editing indicator. They draw HERE -- before (and independent of) the
         // RENDER_DEBUG_FEATURE_UI gate below -- because the previous home at
@@ -1801,29 +1838,18 @@ void render_ui_3d()
         gObjectList.renderObjectBeacons();
         gObjectList.resetObjectBeacons();
         gSky.addSunMoonBeacons();
-        // [ActorMover] in-world heading preview lines (client-side only;
-        // no-op unless ActorMoverShowHeading is on and the floater is open)
-        LLActorMover::instance().renderHeadingPreview();
+        // Actor path guides moved to the pre-finalize scene-depth pass in
+        // display(); do not redraw them here on this cleared depth buffer.
         // [Prism] render-only camera frustum guides (client-side only; cheap
         // early-out unless PrismCameraGuideEnable is on AND some camera feed has
         // its per-camera guide toggled). Under the same UI-visibility gate so it
         // hides while filming.
         LLPrismLens::renderCameraGuides();
-        // [ActorMover] While the path-edit tool is active, ALWAYS draw the edit
-        // actor's path overlay -- ribbon + every node from the first one, plus
-        // hover/selection highlight -- independent of the Show-path toggle, roster
-        // membership, and node count, so you always see what you are marking. Still
-        // under the UI-visibility gate above, so it hides when filming (UI hidden).
-        if (LLToolMgr::getInstance()->getCurrentTool() ==
-            (LLTool*)ALToolPathEdit::getInstance())
-        {
-            LLActorMover& am = LLActorMover::instance();
-            am.renderActorPathOverlay(am.getEditActor(), true,
-                                      ALToolPathEdit::getInstance()->getHoverNode());
-        }
+        ALCineLightRigManager::instance().renderGizmo();
         // Formation placement preview -- same UI pass, same gating discipline
         // (returns immediately unless a formation is actually staged).
         ALGhostStudio::instance().renderFormationPreview();
+        ALLocalFogManager::instance().renderOverlay();
     }
     else
     {

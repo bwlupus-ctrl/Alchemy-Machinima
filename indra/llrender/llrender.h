@@ -261,6 +261,7 @@ public:
     void setSunPrimary(bool v);
     void setSize(F32 size);
     void setFalloff(F32 falloff);
+    void setRigRim(const LLVector4& rim); // [RigRim]
 
 protected:
     friend class LLRender;
@@ -283,6 +284,7 @@ protected:
     F32 mSpotCutoff;
     F32 mSize = 0.f;
     F32 mFalloff = 0.f;
+    LLVector4 mRigRim = LLVector4(0.f, 0.f, 0.f, 0.f); // [RigRim]
 };
 
 class LLRender
@@ -409,6 +411,13 @@ public:
 
     void syncMatrices();
     void syncLightState();
+    // [RigRim] Round-2 P2 fix: cheap per-frame gate set by ALCineRigRim
+    // (indra/newview) from its own isEnabled() check, so syncLightState()
+    // can skip building/uploading the 8-vec4 rig-rim array on every sync
+    // while Rig Rim Light is off. Forces the light-state dirty hash on a
+    // false->true transition so the very next sync always re-uploads real
+    // values instead of leaving the shader's cached rim state stale.
+    void setRigRimActive(bool active);
 
     void translateUI(F32 x, F32 y, F32 z);
     void scaleUI(F32 x, F32 y, F32 z);
@@ -570,6 +579,7 @@ private:
     U32 mCurMatHash[NUM_MATRIX_MODES];
     U32 mLightHash;
     LLColor4 mAmbientLightColor;
+    bool mRigRimActive = false; // [RigRim] Round-2 P2 fix, see setRigRimActive()
 
     bool            mDirty;
     U32             mCount;
