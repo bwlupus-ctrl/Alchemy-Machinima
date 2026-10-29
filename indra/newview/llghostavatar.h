@@ -75,6 +75,20 @@ public:
     void setGhostFloorPosition(const LLVector3& root_agent, const LLVector3& foot_agent);
     bool hasFloorRootHold() const { return mGhostFloorPosition && mReflectFloorRootHold.valid; }
     void setGhostRotation(const LLQuaternion& rotation);
+    // [GhostMotionModes] Full rotation (pitch/roll/tumble) for a procedural
+    // motion. The root takes it; the viewer object takes only its heading, so
+    // updateCharacter()'s upright orientation pass never sees a near-vertical
+    // forward. reassertTiltRotation() puts the full rotation back on the root
+    // after that pass (ALGhostStudio::updatePostObjectList).
+    void setGhostTiltRotation(const LLQuaternion& rotation);
+    void reassertTiltRotation();
+    void clearGhostTiltRotation() { mTiltRotationValid = false; }
+    // [GhostMotionModes] Built-in cues (hover, jump, land, ...) a motion mode
+    // wants on this clone's OWN controller. Only while the drive keeps the
+    // controller live (Mirror/Directed); an empty list releases them. Starts
+    // a cue only when it newly appears, so a finished one-shot is not
+    // replayed every frame.
+    void setFormationAnimations(const std::vector<LLUUID>& anims);
 
     // [ClientHeight] The stable Ghost Studio instance id (Instance::mId), stamped by
     // Studio BEFORE applyEntityRuntimeState() so the very first foot lock already
@@ -295,6 +309,11 @@ private:
     // LLCharacter motion-controller API on this clone.
     std::map<LLUUID, S32> mCloneDesiredAnimations;
     std::map<LLUUID, S32> mClonePlayingAnimations;
+    // [GhostMotionModes] motion-cue animations this clone started itself.
+    std::set<LLUUID> mFormationAnims;
+    LLQuaternion mTiltRotation;
+    bool mTiltRotationValid = false;
+    F32 mTiltHeadingYaw = 0.f;
 
     // The client-only linksets we attached.
     //

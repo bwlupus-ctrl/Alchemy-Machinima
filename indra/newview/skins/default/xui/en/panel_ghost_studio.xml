@@ -503,19 +503,27 @@
            tool_tip="Stop this panel's active strip and keep snapshots already captured" width="64" />
           <text follows="left|top|right" height="18" layout="topleft" left="8" name="strip_status" right="-8" text_color="LtGray_50" top="56">No strip capture</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="formation_motion_combo" top="82" width="128"
-           tool_tip="Continuous transform motion for the current multi-selection; Off restores authored placement">
+           tool_tip="Continuous transform motion for the current multi-selection: orbit, spin, breathe, ripple, march actor path, hover, jump, space walk, float, ascend, vortex, pendulum or bounce; Off restores authored placement. All formation modes follow Temporal ANIMATION time, including world wind-down slow/freeze; frame advance is capped at 0.25 seconds">
             <combo_box.item label="Off" name="motion_off" value="0" />
             <combo_box.item label="Orbit" name="motion_orbit" value="1" />
             <combo_box.item label="Spin" name="motion_spin" value="2" />
             <combo_box.item label="Breathe" name="motion_breathe" value="3" />
             <combo_box.item label="Ripple" name="motion_ripple" value="4" />
             <combo_box.item label="March actor path" name="motion_path" value="5" />
+            <combo_box.item label="Hover" name="motion_hover" value="6" />
+            <combo_box.item label="Jump" name="motion_jump" value="7" />
+            <combo_box.item label="Space walk" name="motion_space_walk" value="8" />
+            <combo_box.item label="Float in space" name="motion_float" value="9" />
+            <combo_box.item label="Ascend &amp; hold" name="motion_ascend" value="10" />
+            <combo_box.item label="Vortex" name="motion_vortex" value="11" />
+            <combo_box.item label="Pendulum" name="motion_pendulum" value="12" />
+            <combo_box.item label="Bounce" name="motion_bounce" value="13" />
           </combo_box>
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.2" label="Speed" label_width="40" layout="topleft" left="144" max_val="10" min_val="0" name="formation_motion_speed" top="84"
-           tool_tip="Cycles per second" width="96" />
+           tool_tip="Cycles per second (Jump/Bounce/Space walk: hops per second; Ascend: 1 / rise time in seconds)" width="96" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="244" name="reset_motion_speed" top="84" tool_tip="Reset motion speed to default" width="22" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1" label="Amp" label_width="34" layout="topleft" left="274" max_val="100" min_val="0" name="formation_motion_amplitude" top="84"
-           tool_tip="Orbit multiplier, breathe radial fraction, or ripple height in metres" width="104" />
+           tool_tip="Orbit multiplier, breathe radial fraction, ripple height in metres; Hover/Float lift (Float at least 1.2 m), Jump/Bounce/Space walk/Ascend/Vortex height in metres; Pendulum rope length in metres" width="104" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="382" name="reset_motion_amplitude" top="84" tool_tip="Reset motion amplitude to default" width="22" />
           <button follows="left|top" height="22" label="Apply selection" layout="topleft" left="8" name="btn_formation_motion_apply" top="112"
            tool_tip="Snapshot the selected clones' authored transforms and enable this group motion; choose Off to restore them" width="116" />
@@ -525,7 +533,9 @@
            tool_tip="Explicitly unlock the selected unit" width="62" />
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Pose fps" label_width="58" layout="topleft" left="8" max_val="30" min_val="0" name="pose_rate_spinner" top="142"
            tool_tip="Per clone or group: 2-29 Hz holds poses for stop motion; 0 or 30 is smooth every frame" width="110" />
-          <text follows="left|top|right" height="40" layout="topleft" left="8" name="motion_precedence_help" right="-8" text_color="LtGray_50" top="166" word_wrap="true">Motion owns position. Keep-facing owns yaw except Spin. Chaos remains a stable additive variation.</text>
+          <check_box control_name="GhostMotionAnimations" follows="left|top" height="18" label="Motion animations" layout="topleft" left="140" name="motion_animations_check" top="142"
+           tool_tip="Play built-in hover and jump cues on moving clones in Mirror or Directed mode. A Directed play-once animation sharing a motion cue ID loops while the mode owns that cue; expiry resumes when released" width="264" />
+          <text follows="left|top|right" height="40" layout="topleft" left="8" name="motion_precedence_help" right="-8" text_color="LtGray_50" top="166" word_wrap="true">Motion owns position; rotating modes (Spin, Hover, Space walk, Float, Vortex, Pendulum) also own facing. Chaos adds a stable variation.</text>
         </panel>
               </panel>
             </scroll_container>

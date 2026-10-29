@@ -341,8 +341,18 @@ public:
     enum EMotion : S32
     {
         MOTION_OFF = 0, MOTION_ORBIT, MOTION_SPIN, MOTION_BREATHE, MOTION_RIPPLE,
-        MOTION_PATH
+        MOTION_PATH,
+        // [GhostMotionModes] Appended LAST so the combo values above are
+        // unchanged. Evaluated by ALGhostMotionMath (alghostmotionmath.h).
+        MOTION_HOVER, MOTION_JUMP, MOTION_SPACE_WALK, MOTION_FLOAT,
+        MOTION_ASCEND, MOTION_VORTEX, MOTION_PENDULUM, MOTION_BOUNCE,
+        MOTION_COUNT
     };
+    // [GhostMotionModes] Motion modes that write the clone's rotation (so
+    // keep-facing and body-turn must not), and the subset that writes pitch,
+    // roll or tumble (which must be re-asserted after the avatar update).
+    static bool motionOwnsRotation(EMotion motion);
+    static bool motionOwnsTilt(EMotion motion);
 
     // Frozen matrix palettes, keyed by (DRAWING avatar id, skin hash). The
     // drawing avatar is each batch's own mAvatar -- the wearer for body mesh,
@@ -879,6 +889,12 @@ private:
     bool stampOwnsFacing(const Instance& inst) const;
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
+    bool canApplyMotionTilt(const Instance& inst, const LLGhostAvatar* ghost) const;
+    // [GhostMotionModes] Advance mMotionClock once per presentation frame:
+    // by the scaled presentation delta while Temporal Capture drives
+    // ANIMATION, else by the unscaled wall delta. Both have the body-turn
+    // 0.25s hitch cap; normal frames stay in step with skeletons and cues.
+    void advanceMotionClock();
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);
     void applyEntityRuntimeState(Instance& inst, LLGhostAvatar* ghost);
     void onEntityRuntimeReplaced(Instance& inst, const LLUUID& new_runtime,
@@ -917,6 +933,12 @@ private:
     U32 mNextStripId = 1;
     std::string mLastStripStatus;
     bool mHasMotion = false;
+    // [GhostMotionModes] Formation-motion clock (seconds). Only runs forward.
+    // It advances only on frames where updatePerFrame() runs, so it pauses
+    // while LLAppViewer::idle() skips the Studio (teleport screen,
+    // disconnected): motion resumes where it left off rather than jumping.
+    F64 mMotionClock = 0.0;
+    U64 mMotionClockGeneration = ~0ull;
 };
 
 #endif // AL_ALGHOSTSTUDIO_H
