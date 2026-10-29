@@ -203315,11 +203315,11 @@
    "suspect": false,
    "hazards": [],
    "exercise": "set_value",
-   "test_value": 1,
+   "test_value": 3,
    "expect": {
     "setting": "RenderAreaShadowCubeLights",
     "type": "S32",
-    "value": 1
+    "value": 3
    },
    "restore": {
     "setting": "RenderAreaShadowCubeLights",
@@ -203330,7 +203330,7 @@
    "setting_type": "S32",
    "default": 2,
    "min": 1.0,
-   "max": 2.0,
+   "max": 4.0,
    "increment": 1.0,
    "combo_items": [],
    "binding": "setting",
