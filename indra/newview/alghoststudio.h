@@ -338,8 +338,18 @@ public:
     enum EMotion : S32
     {
         MOTION_OFF = 0, MOTION_ORBIT, MOTION_SPIN, MOTION_BREATHE, MOTION_RIPPLE,
-        MOTION_PATH
+        MOTION_PATH,
+        // [GhostMotionModes] Appended LAST so the combo values above are
+        // unchanged. Evaluated by ALGhostMotionMath (alghostmotionmath.h).
+        MOTION_HOVER, MOTION_JUMP, MOTION_SPACE_WALK, MOTION_FLOAT,
+        MOTION_ASCEND, MOTION_VORTEX, MOTION_PENDULUM, MOTION_BOUNCE,
+        MOTION_COUNT
     };
+    // [GhostMotionModes] Motion modes that write the clone's rotation (so
+    // keep-facing and body-turn must not), and the subset that writes pitch,
+    // roll or tumble (which must be re-asserted after the avatar update).
+    static bool motionOwnsRotation(EMotion motion);
+    static bool motionOwnsTilt(EMotion motion);
 
     // Frozen matrix palettes, keyed by (DRAWING avatar id, skin hash). The
     // drawing avatar is each batch's own mAvatar -- the wearer for body mesh,
@@ -806,6 +816,11 @@ private:
     bool trueMirrorOwnsFacing(const Instance& inst) const;
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
+    // [GhostMotionModes] Advance mMotionClock once per presentation frame:
+    // by the scaled presentation delta while Temporal Capture drives
+    // ANIMATION, else by the unscaled wall delta -- so motion stays in step
+    // with the skeletons and cues it accompanies, whatever the drive gate.
+    void advanceMotionClock();
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);
     void applyEntityRuntimeState(Instance& inst, LLGhostAvatar* ghost);
     void onEntityRuntimeReplaced(Instance& inst, const LLUUID& new_runtime,
@@ -837,6 +852,12 @@ private:
     U32 mNextStripId = 1;
     std::string mLastStripStatus;
     bool mHasMotion = false;
+    // [GhostMotionModes] Formation-motion clock (seconds). Only runs forward.
+    // It advances only on frames where updatePerFrame() runs, so it pauses
+    // while LLAppViewer::idle() skips the Studio (teleport screen,
+    // disconnected): motion resumes where it left off rather than jumping.
+    F64 mMotionClock = 0.0;
+    U64 mMotionClockGeneration = ~0ull;
 };
 
 #endif // AL_ALGHOSTSTUDIO_H

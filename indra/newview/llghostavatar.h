@@ -72,6 +72,19 @@ public:
     // foot remains authoritative while a newly loaded skeleton settles.
     void setGhostFootPosition(const LLVector3& foot_agent);
     void setGhostRotation(const LLQuaternion& rotation);
+    // [GhostMotionModes] Full rotation (pitch/roll/tumble) for a procedural
+    // motion. The root takes it; the viewer object takes only its heading, so
+    // updateCharacter()'s upright orientation pass never sees a near-vertical
+    // forward. reassertTiltRotation() puts the full rotation back on the root
+    // after that pass (ALGhostStudio::updatePostObjectList).
+    void setGhostTiltRotation(const LLQuaternion& rotation);
+    void reassertTiltRotation();
+    // [GhostMotionModes] Built-in cues (hover, jump, land, ...) a motion mode
+    // wants on this clone's OWN controller. Only while the drive keeps the
+    // controller live (Mirror/Directed); an empty list releases them. Starts
+    // a cue only when it newly appears, so a finished one-shot is not
+    // replayed every frame.
+    void setFormationAnimations(const std::vector<LLUUID>& anims);
 
     // LLVOAvatar::slamPosition() MINUS its opening gAgent.setPositionAgent()
     // (llvoavatar.cpp:4038), which would teleport the real agent onto the ghost.
@@ -255,6 +268,11 @@ private:
     // LLCharacter motion-controller API on this clone.
     std::map<LLUUID, S32> mCloneDesiredAnimations;
     std::map<LLUUID, S32> mClonePlayingAnimations;
+    // [GhostMotionModes] motion-cue animations this clone started itself.
+    std::set<LLUUID> mFormationAnims;
+    LLQuaternion mTiltRotation;
+    bool mTiltRotationValid = false;
+    F32 mTiltHeadingYaw = 0.f;
 
     // The client-only linksets we attached.
     //

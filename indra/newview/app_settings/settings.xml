@@ -7284,6 +7284,17 @@
       <key>Value</key>
       <integer>2</integer>
     </map>
+    <key>GhostMotionAnimations</key>
+  <map>
+    <key>Comment</key>
+    <string>[GhostMotionModes] Ghost Studio formation motion: let Hover, Jump, Space walk, Float, Ascend and Vortex play SL's built-in hover / jump / land animations on entity clones whose drive is Mirror or Directed. Off = motion moves the clone only.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
     <key>GhostStudioTurnRate</key>
   <map>
     <key>Comment</key>

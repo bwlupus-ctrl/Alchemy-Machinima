@@ -1164,6 +1164,7 @@ void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
         return;
     }
     // Viewer-local synthetic avatar: do not use any object-update helper.
+    mTiltRotationValid = false; // [GhostMotionModes] an ordinary placement ends any tilt
     setRotation(rotation, false);
     mRoot->setWorldRotation(rotation);
     mRoot->updateWorldMatrixChildren();
@@ -1171,6 +1172,113 @@ void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
     if (mDrawable.notNull())
     {
         gPipeline.updateMoveNormalAsync(mDrawable);
+    }
+}
+
+void LLGhostAvatar::setGhostTiltRotation(const LLQuaternion& rotation)
+{
+    if (!mRoot || !rotation.isFinite())
+    {
+        return;
+    }
+    // Heading for the viewer object. A tumbling body's forward can point
+    // straight up or down; then keep the last good heading (or, the first
+    // time, the object's current one) instead of an undefined yaw.
+    LLVector3 fwd = LLVector3::x_axis * rotation;
+    fwd.mV[VZ] = 0.f;
+    if (fwd.length() >= 0.2f)
+    {
+        mTiltHeadingYaw = atan2f(fwd.mV[VY], fwd.mV[VX]);
+    }
+    else if (!mTiltRotationValid)
+    {
+        const LLVector3 obj_fwd = LLVector3::x_axis * getRotation();
+        mTiltHeadingYaw = atan2f(obj_fwd.mV[VY], obj_fwd.mV[VX]);
+    }
+    setRotation(LLQuaternion(mTiltHeadingYaw, LLVector3::z_axis), false);
+    mRoot->setWorldRotation(rotation);
+    mRoot->updateWorldMatrixChildren();
+    mTiltRotation = rotation;
+    mTiltRotationValid = true;
+    setChanged(ROTATED);
+    if (mDrawable.notNull())
+    {
+        gPipeline.updateMoveNormalAsync(mDrawable);
+    }
+}
+
+void LLGhostAvatar::reassertTiltRotation()
+{
+    if (!mTiltRotationValid || !mRoot || isDead())
+    {
+        return;
+    }
+    // Same trailing contract as applyTrueMirrorStamp(): re-propagate world
+    // matrices so rigged palettes and attachment moves later this frame read
+    // the tilted root.
+    mRoot->setWorldRotation(mTiltRotation);
+    mRoot->updateWorldMatrixChildren();
+}
+
+void LLGhostAvatar::setFormationAnimations(const std::vector<LLUUID>& anims)
+{
+    // A paused controller (Frozen / True Mirror) never evaluates motions, and
+    // its pose belongs to the freeze or the stamp: release the cues instead.
+    const bool controller_live =
+        mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED;
+    std::set<LLUUID> desired;
+    if (controller_live)
+    {
+        for (const LLUUID& id : anims)
+        {
+            if (id.notNull())
+            {
+                desired.insert(id);
+            }
+        }
+    }
+    if (desired.empty() && mFormationAnims.empty())
+    {
+        return;
+    }
+    for (auto it = mFormationAnims.begin(); it != mFormationAnims.end();)
+    {
+        if (desired.count(*it))
+        {
+            ++it;
+            continue;
+        }
+        // Never stop an animation the drive itself is playing (the source
+        // hovering in Mirror, or the Directed animation being the same id).
+        const bool drive_plays =
+            mClonePlayingAnimations.count(*it) != 0 ||
+            (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED &&
+             mEntityDirectedAnim == *it);
+        if (!drive_plays)
+        {
+            LLCharacter::stopMotion(*it);
+        }
+        it = mFormationAnims.erase(it);
+    }
+    for (const LLUUID& id : desired)
+    {
+        if (mFormationAnims.insert(id).second)
+        {
+            LLCharacter::startMotion(id);
+        }
+        else if (!LLCharacter::isMotionActive(id))
+        {
+            // Something else stopped a still-wanted cue (AutoAnimate
+            // retiring an adopted id, a Directed stop or restart). Bring a
+            // LOOPING cue back; a finished one-shot (pre-jump, land) stays
+            // finished until its phase comes round again.
+            LLMotion* motion = LLCharacter::findMotion(id);
+            if (motion && motion->getLoop())
+            {
+                LLCharacter::startMotion(id);
+            }
+        }
     }
 }
 
@@ -1438,7 +1546,12 @@ void LLGhostAvatar::synchronizeCloneAnimations(
     {
         if (desired_animations.find(playing->first) == desired_animations.end())
         {
-            LLCharacter::stopMotion(playing->first, true);
+            // [GhostMotionModes] a motion cue still wants this animation:
+            // hand it over instead of stopping it under the motion.
+            if (!mFormationAnims.count(playing->first))
+            {
+                LLCharacter::stopMotion(playing->first, true);
+            }
             playing = mClonePlayingAnimations.erase(playing);
         }
         else

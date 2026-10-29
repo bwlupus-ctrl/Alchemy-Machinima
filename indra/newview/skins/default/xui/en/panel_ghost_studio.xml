@@ -481,12 +481,20 @@
             <combo_box.item label="Breathe" name="motion_breathe" value="3" />
             <combo_box.item label="Ripple" name="motion_ripple" value="4" />
             <combo_box.item label="March actor path" name="motion_path" value="5" />
+            <combo_box.item label="Hover" name="motion_hover" value="6" />
+            <combo_box.item label="Jump" name="motion_jump" value="7" />
+            <combo_box.item label="Space walk" name="motion_space_walk" value="8" />
+            <combo_box.item label="Float in space" name="motion_float" value="9" />
+            <combo_box.item label="Ascend &amp; hold" name="motion_ascend" value="10" />
+            <combo_box.item label="Vortex" name="motion_vortex" value="11" />
+            <combo_box.item label="Pendulum" name="motion_pendulum" value="12" />
+            <combo_box.item label="Bounce" name="motion_bounce" value="13" />
           </combo_box>
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.2" label="Speed" label_width="38" layout="topleft" left="126" max_val="10" min_val="0" name="formation_motion_speed" top="84"
-           tool_tip="Cycles per second" width="82" />
+           tool_tip="Cycles per second (Jump/Bounce/Space walk: hops per second; Ascend: 1 / rise time in seconds)" width="82" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="210" name="reset_motion_speed" top="84" tool_tip="Reset motion speed to default" width="18" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1" label="Amp" label_width="30" layout="topleft" left="234" max_val="100" min_val="0" name="formation_motion_amplitude" top="84"
-           tool_tip="Orbit multiplier, breathe radial fraction, or ripple height in metres" width="70" />
+           tool_tip="Orbit multiplier, breathe radial fraction, ripple height in metres; Hover/Float lift (Float at least 1.2 m), Jump/Bounce/Space walk/Ascend/Vortex height in metres; Pendulum rope length in metres" width="70" />
           <button follows="left|top" height="18" label="↺" layout="topleft" left="306" name="reset_motion_amplitude" top="84" tool_tip="Reset motion amplitude to default" width="18" />
           <button follows="left|top" height="22" label="Apply selection" layout="topleft" left="8" name="btn_formation_motion_apply" top="112"
            tool_tip="Snapshot the selected ghosts' authored transforms and enable this group motion; choose Off to restore them" width="116" />
@@ -496,7 +504,7 @@
            tool_tip="Explicitly unlock the selected unit" width="62" />
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Pose fps" label_width="48" layout="topleft" left="8" max_val="30" min_val="0" name="pose_rate_spinner" top="142"
            tool_tip="Per clone or group: 2-29 Hz holds poses for stop motion; 0 or 30 is smooth every frame" width="96" />
-          <text follows="left|top" height="40" layout="topleft" left="8" name="motion_precedence_help" text_color="LtGray_50" top="166" width="326" word_wrap="true">Motion owns position. Keep-facing owns yaw except Spin. Chaos remains a stable additive variation.</text>
+          <text follows="left|top" height="40" layout="topleft" left="8" name="motion_precedence_help" text_color="LtGray_50" top="166" width="326" word_wrap="true">Motion owns position; rotating modes (Spin, Hover, Space walk, Float, Vortex, Pendulum) also own facing. Chaos adds a stable variation.</text>
         </panel>
               </panel>
             </scroll_container>

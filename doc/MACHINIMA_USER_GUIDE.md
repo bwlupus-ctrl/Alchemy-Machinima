@@ -553,6 +553,36 @@ transform**.
 Silhouette, Toon-Ink, and more. Each clone also has an **animation-speed** spinner
 (0.05×–4×).
 
+**Motion modes (Pose tab → Freeze Strip & Formation Motion):** select one or more
+clones, pick a mode, set **Speed** and **Amp**, and click **Apply selection**. Pick
+**Off** to put them back where you placed them. Every mode eases in over half a second,
+so nothing jumps when you click Apply. A group moves as a wave: each clone is a little
+behind the one before.
+
+| Mode | What it does | Speed | Amp |
+|---|---|---|---|
+| Hover | Floats above the spot with a gentle bob and sway | bobs per second | lift height (m) |
+| Jump | Repeating hops: crouch, jump, land | hops per second | jump height (m) |
+| Space walk | Slow low-gravity bounds with a drifting lean | hops per second | bound height (m) |
+| Float in space | Zero-g: slow drift and a slow tumble (each clone its own axis) | drift/tumble rate | lift height (m; at least 1.2 so the tumble clears the ground) |
+| Ascend & hold | Rises once, then hovers | 1 ÷ rise time (s) | rise height (m) |
+| Vortex | Spirals around the group's centre, rising and spinning | turns per second | spiral height (m) |
+| Pendulum | Swings forward and back from a point above | swings per second | rope length (m) |
+| Bounce | Continuous trampoline bounces | bounces per second | bounce height (m) |
+
+- **Animations:** on clones driven by Mirror or Directed, Hover, Jump, Space walk,
+  Float, Ascend and Vortex also play SL's built-in hover / jump / land animations.
+  Turn `GhostMotionAnimations` off to move clones without them. Frozen and True
+  Mirror clones move but keep their own pose.
+- **Facing:** Hover, Space walk, Float, Vortex and Pendulum control the clone's
+  rotation, so keep-facing and body-turn pause on them while the mode runs (as with
+  Spin).
+- **Timing:** when Temporal Capture drives animation, motion slows and pauses with the
+  world time scale, in step with the clones' animations; otherwise it runs in real
+  time. Timing counts from when you clicked Apply (it doesn't rewind).
+- **Walking clones:** if Actor Mover is walking a clone, the walk keeps control of its
+  facing; tilting modes only move it.
+
 **Chat commands:**
 
 | Command | Does |
@@ -568,7 +598,7 @@ Silhouette, Toon-Ink, and more. Each clone also has an **animation-speed** spinn
 | `/ghostclear [all\|selected\|test]` | Remove clone(s) |
 | `/ghostverify [test]`, `/clonefidelity` | Diagnostics: check how faithfully a clone matches its source |
 
-Useful settings: `GhostStudioTurnRate`, `GhostStudioTurnEase`,
+Useful settings: `GhostStudioTurnRate`, `GhostStudioTurnEase`, `GhostMotionAnimations`,
 `GhostStudioNameplateMode`, `GhostStudioShowFormationPreview`, and
 `GhostDeferredEnable` (route entity clones through scene lighting).
 

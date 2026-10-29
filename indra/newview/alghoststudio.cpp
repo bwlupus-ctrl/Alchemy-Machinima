@@ -21,6 +21,9 @@
 #include "alghostspawnengine.h"
 #include "alworldoverlayviz.h"
 #include "llghostavatar.h"
+#include "alghostmotionmath.h"       // [GhostMotionModes] pure per-mode evaluator
+#include "llanimationstates.h"      // [GhostMotionModes] built-in hover/jump cues
+#include "llpresentationtime.h"     // [GhostMotionModes] scrub-safe motion clock
 #include "llactormover.h"           // GhostBatch access for the freeze snapshot
 #include "llagent.h"                // agent <-> global conversion
 #include "lldirectorcast.h"         // source resolution (cast id / null = self)
@@ -1909,9 +1912,26 @@ void ALGhostStudio::updateNameplates()
     mNameplates->update(labels, true);
 }
 
+void ALGhostStudio::advanceMotionClock()
+{
+    const LLTemporalFrameContext& frame = LLPresentationTime::currentFrame();
+    if (frame.generation == mMotionClockGeneration)
+    {
+        return;
+    }
+    mMotionClockGeneration = frame.generation;
+    const F64 delta = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
+        ? frame.presentation_delta : frame.wall_delta;
+    if (std::isfinite(delta) && delta > 0.0)
+    {
+        mMotionClock += delta;
+    }
+}
+
 void ALGhostStudio::updatePerFrame()
 {
     assert_main_thread();
+    advanceMotionClock(); // [GhostMotionModes] before any early return
     refreshLifecycleStates();
     finishPendingRuntimeFreezes();
     updateAutoAnimate(); // [AutoAnimate]
@@ -1987,7 +2007,10 @@ void ALGhostStudio::updatePerFrame()
     }
     if (mHasMotion)
     {
-        updateFormationMotion(now);
+        // [GhostMotionModes] Formation motion runs on mMotionClock: 1:1 with
+        // real time when live, scaled/paused with skeletons when Temporal
+        // Capture drives ANIMATION. Freeze strips stay on real time.
+        updateFormationMotion(mMotionClock);
     }
 
     // Precedence: procedural motion owns position. Spin owns yaw; otherwise
@@ -1998,6 +2021,7 @@ void ALGhostStudio::updatePerFrame()
     for (const Instance& inst : mInstances)
     {
         if (inst.mKeepFacing && inst.mMotion != MOTION_SPIN
+            && !motionOwnsRotation(inst.mMotion) // [GhostMotionModes]
             && inst.mTurnMode == TURN_MODE_OFF
             && !trueMirrorOwnsFacing(inst))
         {
@@ -2051,6 +2075,36 @@ void ALGhostStudio::updatePostObjectList()
             ghost->applyTrueMirrorStamp();
         }
     }
+
+    // [GhostMotionModes] LLVOAvatar::updateCharacter() -> updateOrientation()
+    // slerps every non-seated root toward an UPRIGHT pose built from the
+    // object's forward and world up, and it ran after this frame's motion
+    // write. Re-assert the motion's full rotation now, before any render-side
+    // consumer, so hover tilt, float tumble and pendulum swing survive.
+    // Known, accepted: gaze, avatar physics and attachment solves inside
+    // updateCharacter saw the root after that partial slerp (u = dt/lag, ~2.5%
+    // of the tilt at 60 fps) and are not re-solved -- the same contract as the
+    // True Mirror stamp above.
+    // Skipped when another owner holds the root: a True Mirror stamp with
+    // copy-facing (gated on the GHOST's own drive, like the stamp itself), or
+    // Actor Mover walking the clone (it wrote the root inside updateCharacter).
+    static LLCachedControl<bool> copy_facing(
+        gSavedSettings, "GhostTrueMirrorCopyFacing", true);
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mKind != BACKING_ENTITY_CLONE || !inst.mMotionHasBase ||
+            !motionOwnsTilt(inst.mMotion))
+        {
+            continue;
+        }
+        LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+        if (!ghost || (ghost->isTrueMirrorDriven() && copy_facing) ||
+            LLActorMover::instance().isDriving(ghost->getID()))
+        {
+            continue;
+        }
+        ghost->reassertTiltRotation();
+    }
 }
 
 void ALGhostStudio::stepAllTurns()
@@ -2073,6 +2127,7 @@ void ALGhostStudio::stepAllTurns()
     for (const Instance& inst : mInstances)
     {
         if (inst.mTurnMode != TURN_MODE_OFF && inst.mMotion != MOTION_SPIN
+            && !motionOwnsRotation(inst.mMotion) // [GhostMotionModes]
             && !trueMirrorOwnsFacing(inst))
         {
             if (inst.mGroupId.notNull() &&
@@ -2086,10 +2141,65 @@ void ALGhostStudio::stepAllTurns()
     }
 }
 
+// [GhostMotionModes]
+static_assert(ALGhostStudio::MOTION_BOUNCE - ALGhostStudio::MOTION_HOVER ==
+                  ALGhostMotionMath::KIND_BOUNCE,
+              "EMotion procedural modes must stay index-parallel with ALGhostMotionMath::Kind");
+static_assert(ALGhostStudio::MOTION_COUNT - ALGhostStudio::MOTION_HOVER ==
+                  ALGhostMotionMath::KIND_COUNT,
+              "EMotion procedural modes must stay index-parallel with ALGhostMotionMath::Kind");
+
+namespace
+{
+bool motion_math_kind(ALGhostStudio::EMotion motion, ALGhostMotionMath::Kind& kind)
+{
+    if (motion < ALGhostStudio::MOTION_HOVER || motion >= ALGhostStudio::MOTION_COUNT)
+    {
+        return false;
+    }
+    kind = static_cast<ALGhostMotionMath::Kind>(motion - ALGhostStudio::MOTION_HOVER);
+    return true;
+}
+
+// Built-in animation for a motion cue; null for CUE_NONE.
+const LLUUID* motion_cue_animation(ALGhostMotionMath::AnimCue cue)
+{
+    switch (cue)
+    {
+    case ALGhostMotionMath::CUE_HOVER:    return &ANIM_AGENT_HOVER;
+    case ALGhostMotionMath::CUE_HOVER_UP: return &ANIM_AGENT_HOVER_UP;
+    case ALGhostMotionMath::CUE_PRE_JUMP: return &ANIM_AGENT_PRE_JUMP;
+    case ALGhostMotionMath::CUE_JUMP:     return &ANIM_AGENT_JUMP;
+    case ALGhostMotionMath::CUE_LAND:     return &ANIM_AGENT_LAND;
+    default:                              return nullptr;
+    }
+}
+} // namespace
+
+// static
+bool ALGhostStudio::motionOwnsRotation(EMotion motion)
+{
+    ALGhostMotionMath::Kind kind;
+    return motion_math_kind(motion, kind) && ALGhostMotionMath::ownsRotation(kind);
+}
+
+// static
+bool ALGhostStudio::motionOwnsTilt(EMotion motion)
+{
+    ALGhostMotionMath::Kind kind;
+    return motion_math_kind(motion, kind) && ALGhostMotionMath::ownsTilt(kind);
+}
+
 S32 ALGhostStudio::setFormationMotion(const std::vector<LLUUID>& ids,
                                       EMotion motion, F32 speed, F32 amplitude)
 {
     assert_main_thread();
+    // [GhostMotionModes] An out-of-range value (a stale UI or a future combo
+    // entry) is treated as Off rather than reaching the per-frame switch.
+    if (motion < MOTION_OFF || motion >= MOTION_COUNT)
+    {
+        motion = MOTION_OFF;
+    }
     // A committed crowd has one authoritative hierarchical transform. The
     // legacy per-instance procedural writer predates that model and would make
     // members visibly diverge from their stored locals. Keep the operation
@@ -2121,7 +2231,9 @@ S32 ALGhostStudio::setFormationMotion(const std::vector<LLUUID>& ids,
     }
     if (!valid) return 0;
     centre /= (F64)valid;
-    const F64 now = LLTimer::getTotalSeconds();
+    // [GhostMotionModes] Same clock as updateFormationMotion().
+    advanceMotionClock();
+    const F64 now = mMotionClock;
     S32 slot = 0;
     for (const LLUUID& id : effective)
     {
@@ -2137,6 +2249,13 @@ S32 ALGhostStudio::setFormationMotion(const std::vector<LLUUID>& ids,
                 inst->mMotionHasBase = false;
                 inst->mMotion = MOTION_OFF;
                 ++inst->mTransformRevision;
+                // [GhostMotionModes] Release any hover/jump cue the motion
+                // started on the clone's own controller.
+                if (inst->mKind == BACKING_ENTITY_CLONE)
+                {
+                    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+                        ghost->setFormationAnimations(std::vector<LLUUID>());
+                }
                 if (inst->mChaosEnabled)
                 {
                     setInstanceChaos(id, inst->mChaosAmount);
@@ -2208,7 +2327,33 @@ void ALGhostStudio::updateFormationMotion(F64 now)
         inst.mFootGlobal = inst.mMotionBaseFoot;
         inst.mRotation = inst.mMotionBaseRotation;
         inst.mScale = inst.mMotionBaseScale;
-        if (inst.mMotion == MOTION_ORBIT)
+        ALGhostMotionMath::AnimCue cue = ALGhostMotionMath::CUE_NONE;
+        ALGhostMotionMath::Kind kind;
+        if (motion_math_kind(inst.mMotion, kind))
+        {
+            // [GhostMotionModes] Hover, jump, space walk, float, ascend,
+            // vortex, pendulum, bounce: one pure evaluator, see
+            // alghostmotionmath.h. Offsets are relative to the authored foot;
+            // the local rotation is applied in the clone's own frame first.
+            ALGhostMotionMath::Input in;
+            in.mKind = kind;
+            in.mElapsed = now - inst.mMotionStart;
+            in.mSpeed = inst.mMotionSpeed;
+            in.mAmplitude = inst.mMotionAmplitude;
+            in.mSlot = inst.mMotionSlot;
+            for (S32 i = 0; i < ALGhostMotionMath::SEED_COUNT; ++i)
+            {
+                in.mSeeds[i] = seeded_unit(inst.mId, 20u + (U32)i);
+            }
+            in.mRadial = LLVector3(radial);
+            in.mBaseForward = LLVector3::x_axis * inst.mMotionBaseRotation;
+            const ALGhostMotionMath::Output out = ALGhostMotionMath::evaluate(in);
+            inst.mFootGlobal = inst.mMotionBaseFoot + LLVector3d(out.mOffset);
+            inst.mRotation = out.mLocalRotation * inst.mMotionBaseRotation;
+            inst.mRotation.normalize();
+            cue = out.mCue;
+        }
+        else if (inst.mMotion == MOTION_ORBIT)
         {
             const F32 a = phase * inst.mMotionAmplitude;
             const F64 c = cosf(a), s = sinf(a);
@@ -2282,9 +2427,37 @@ void ALGhostStudio::updateFormationMotion(F64 now)
         }
         if (inst.mKind == BACKING_ENTITY_CLONE)
         {
-            if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+            LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+            if (ghost)
                 ghost->setEntityScale(inst.mScale);
-            applyEntityTransform(inst.mId);
+            if (ghost && motionOwnsTilt(inst.mMotion))
+            {
+                // [GhostMotionModes] Pitch/roll/tumble: the root takes the full
+                // rotation, the object a heading-only one, and the post-pass
+                // re-asserts the root after the avatar update (which otherwise
+                // slerps every root back toward upright). Always this path for
+                // tilt modes -- whatever the drive -- so the object's forward
+                // is never near-vertical for updateOrientation().
+                ghost->setGhostFootPosition(
+                    gAgent.getPosAgentFromGlobal(inst.mFootGlobal));
+                ghost->setGhostTiltRotation(inst.mRotation);
+            }
+            else
+            {
+                applyEntityTransform(inst.mId);
+            }
+            if (ghost)
+            {
+                static LLCachedControl<bool> motion_anims(
+                    gSavedSettings, "GhostMotionAnimations", true);
+                std::vector<LLUUID> anims;
+                if (motion_anims)
+                {
+                    if (const LLUUID* anim = motion_cue_animation(cue))
+                        anims.push_back(*anim);
+                }
+                ghost->setFormationAnimations(anims);
+            }
         }
     }
 }

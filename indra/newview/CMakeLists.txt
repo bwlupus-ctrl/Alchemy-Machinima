@@ -1212,6 +1212,7 @@ set(viewer_HEADER_FILES
     alprojectorshaftpresets.h
     alpanelcinecamparams.h
     algazemath.h
+    alghostmotionmath.h # [GhostMotionModes]
     alpathgeometry.h
     altrajectory.h
     algazerecruit.h
@@ -2724,6 +2725,14 @@ if (BUILD_TESTING)
   # Character Mover exact path primitives are header-only pure geometry so the
   # runtime, preview and tests share one evaluator.
   LL_ADD_INTEGRATION_TEST(alpathgeometry
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # [GhostMotionModes] Ghost Studio procedural motion (hover, jump, float, ...)
+  # is a header-only pure evaluator; TUT registered directly like ALGazeMath.
+  LL_ADD_INTEGRATION_TEST(alghostmotionmath
     ""
     "${test_libs}"
     "${test_project}"
