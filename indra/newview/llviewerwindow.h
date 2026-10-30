@@ -516,6 +516,7 @@ private:
     LLWindow*       mWindow;                        // graphical window object
     bool            mActive;
     bool            mUIVisible;
+    bool            mHideCursorWithUI = false;
 
     LLNotificationChannelPtr mSystemChannel;
     LLNotificationChannelPtr mCommunicationChannel;

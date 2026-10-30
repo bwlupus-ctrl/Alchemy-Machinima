@@ -79,6 +79,7 @@ public:
     void hideCursorUntilMouseMove() override;
     bool isCursorHidden() override;
     void updateCursor() override;
+    void setHideCursorWithUI(bool hidden) override;
     ECursorType getCursor() const override;
     void captureMouse() override;
     void releaseMouse() override;
@@ -173,6 +174,12 @@ public:
     unsigned getFrameFocusGeneration() const { return mFrameFocusGeneration.load(); }
 
 protected:
+    bool refreshUIHiddenCursor(bool focused = true); // window thread only
+    bool mHideCursorWithUI = false; // main thread
+    bool mHideCursorWithUIOnWindowThread = false;
+    bool mUIHiddenCursorApplied = false;
+    HCURSOR mToolCursor = nullptr; // window thread; preserved beneath the override
+
     LLWindowWin32(LLWindowCallbacks* callbacks,
         const std::string& title, const std::string& name, int x, int y, int width, int height, U32 flags,
         bool fullscreen, bool clearBg, bool enable_vsync, bool use_gl,

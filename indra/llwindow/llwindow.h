@@ -155,6 +155,8 @@ public:
     virtual ECursorType getCursor() const;
     virtual ECursorType getNextCursor() const { return mNextCursor; };
     virtual void updateCursor() = 0;
+    // Shape override only; must not change hide/show ownership or mouse input.
+    virtual void setHideCursorWithUI(bool /*hidden*/) {}
 
     virtual void captureMouse() = 0;
     virtual void releaseMouse() = 0;

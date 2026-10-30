@@ -33,6 +33,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "llviewerwindow.h"
 #include "alkithistory.h"
+#include "alhidecursor.h"
 
 #include <cmath>
 
@@ -4726,6 +4727,17 @@ void LLViewerWindow::updateLayout()
             gFloaterTools->setVisible(false);
         }
         //gMenuBarView->setItemVisible("BuildTools", gFloaterTools->getVisible());
+    }
+
+    // Arm once per frame after tools choose their cursor. Win32 checks live
+    // client bounds/focus on its window thread, including captured motion;
+    // cached viewer mouse/focus events could otherwise flash on client re-entry.
+    static LLCachedControl<bool> hide_cursor_with_ui(gSavedSettings, "HideCursorWithUI", false);
+    const bool hide_cursor = ALHideCursor::wantHidden(hide_cursor_with_ui, !getIndicatorsVisible(), true, true);
+    if (hide_cursor != mHideCursorWithUI)
+    {
+        mHideCursorWithUI = hide_cursor;
+        mWindow->setHideCursorWithUI(hide_cursor);
     }
 
     // Always update console

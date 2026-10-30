@@ -29050,6 +29050,18 @@
       </array>
     </map>
 
+    <key>HideCursorWithUI</key>
+    <map>
+      <key>Comment</key>
+      <string>Hide the cursor over the viewer client area while the interface is hidden. Global filming preference; not saved in Director scenes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
+
     <key>HideUIControls</key>
     <map>
       <key>Comment</key>

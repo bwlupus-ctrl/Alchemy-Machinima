@@ -1344,6 +1344,7 @@ set(viewer_HEADER_FILES
     alghostanimnames.h
     alprobereach.h
     alshadowslotmath.h
+    alhidecursor.h
     alshadowdepthmath.h
     alriggroupsubject.h
     alghostanimmirrormath.h
@@ -2958,6 +2959,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alghostanimnames "" "${test_libs};llcharacter" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alprobereach "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alshadowslotmath "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alhidecursor "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alshadowdepthmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alriggroupsubject "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(algazemath

@@ -2569,6 +2569,58 @@ void LLWindowWin32::initCursors()
 
 
 
+void LLWindowWin32::setHideCursorWithUI(bool hidden)
+{
+    ASSERT_MAIN_THREAD();
+    mHideCursorWithUI = hidden;
+    const auto tool_cursor = mCursor[mNextCursor == UI_CURSOR_ARROW && mBusyCount > 0
+        ? UI_CURSOR_WORKING : mNextCursor];
+    mWindowThread->post([this, hidden, tool_cursor]()
+        {
+            mToolCursor = tool_cursor;
+            mHideCursorWithUIOnWindowThread = hidden;
+            refreshUIHiddenCursor();
+        });
+}
+
+bool LLWindowWin32::refreshUIHiddenCursor(bool focused)
+{
+    // Never use ShowCursor here: tools own its counter and permanent-hide state.
+    if (!mHideCursorWithUIOnWindowThread && !mUIHiddenCursorApplied)
+    {
+        return false;
+    }
+
+    POINT screen_pos{};
+    RECT client{};
+    const bool have_position = GetCursorPos(&screen_pos) != FALSE;
+    POINT client_pos = screen_pos;
+    const bool in_client = have_position && WindowFromPoint(screen_pos) == mWindowHandle
+        && ScreenToClient(mWindowHandle, &client_pos) && GetClientRect(mWindowHandle, &client)
+        && PtInRect(&client, client_pos);
+    if (mHideCursorWithUIOnWindowThread && focused
+        && GetForegroundWindow() == mWindowHandle && GetFocus() == mWindowHandle && in_client)
+    {
+        SetCursor(nullptr);
+        mUIHiddenCursorApplied = true;
+    }
+    else if (mUIHiddenCursorApplied)
+    {
+        mUIHiddenCursorApplied = false;
+        SetCursor(in_client && mToolCursor ? mToolCursor : mCursor[UI_CURSOR_ARROW]);
+        // Captured moves do not send WM_SETCURSOR. Restore the OS nonclient
+        // shape ourselves when leaving the client with a button held down.
+        if (!in_client && have_position)
+        {
+            const LPARAM point = MAKELPARAM(screen_pos.x, screen_pos.y);
+            const LRESULT hit = SendMessage(mWindowHandle, WM_NCHITTEST, 0, point);
+            DefWindowProc(mWindowHandle, WM_SETCURSOR, (WPARAM)mWindowHandle,
+                MAKELPARAM(hit, WM_MOUSEMOVE));
+        }
+    }
+    return true;
+}
+
 void LLWindowWin32::updateCursor()
 {
     ASSERT_MAIN_THREAD();
@@ -2579,13 +2631,17 @@ void LLWindowWin32::updateCursor()
         mNextCursor = UI_CURSOR_WORKING;
     }
 
-    if( mCurrentCursor != mNextCursor )
+    if (mCurrentCursor != mNextCursor || mHideCursorWithUI)
     {
         mCurrentCursor = mNextCursor;
         auto nextCursor = mCursor[mNextCursor];
         mWindowThread->post([=]()
             {
-                SetCursor(nextCursor);
+                mToolCursor = nextCursor;
+                if (!refreshUIHiddenCursor())
+                {
+                    SetCursor(nextCursor);
+                }
             });
     }
 }
@@ -2786,9 +2842,14 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
             // This allows Windows(tm) to handle resize cursors, etc.
             if (LOWORD(l_param) == HTCLIENT)
             {
+                if (window_imp->refreshUIHiddenCursor())
+                {
+                    return TRUE;
+                }
                 SetCursor(window_imp->mCursor[window_imp->mCurrentCursor]);
                 return 0;
             }
+            window_imp->mUIHiddenCursorApplied = false;
             break;
         }
         case WM_ENTERMENULOOP:
@@ -3371,6 +3432,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_MOUSEMOVE:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_MOUSEMOVE");
+            window_imp->refreshUIHiddenCursor();
             // DO NOT use mouse event queue for move events to ensure cursor position is updated
             // when button events are handled
             WINDOW_IMP_POST(
@@ -3482,6 +3544,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_SETFOCUS:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_SETFOCUS");
+            window_imp->refreshUIHiddenCursor(true);
             window_imp->mFrameFocusGeneration.fetch_add(1); // [FrameLimiter] re-arm driver pacing
             WINDOW_IMP_POST(window_imp->mCallbacks->handleFocus(window_imp));
             return 0;
@@ -3490,6 +3553,7 @@ LRESULT CALLBACK LLWindowWin32::mainWindowProc(HWND h_wnd, UINT u_msg, WPARAM w_
         case WM_KILLFOCUS:
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("mwp - WM_KILLFOCUS");
+            window_imp->refreshUIHiddenCursor(false);
             window_imp->mFrameFocusGeneration.fetch_add(1); // [FrameLimiter] re-arm driver pacing
             WINDOW_IMP_POST(window_imp->mCallbacks->handleFocusLost(window_imp));
             return 0;
