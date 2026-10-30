@@ -22,6 +22,7 @@ uniform int area_world_debug;     // diagnostic (RenderAreaShadowWorldDebug), 0 
 // [Soft shadow look] upsample pass only; DEVIATIONS from identity so zero (a program never given it) = today's output: x = 1 - Shadow strength,
 // y = Shadow contrast - 1, z = 1 - World shadow amount (the world term of world-owned channels). KEEP IN SYNC with ALAreaShadow::lookUniform / lookApply (alareashadowmath.h).
 uniform vec3 area_look;
+uniform vec4 area_fade = vec4(1.0); // Per-plane slot ramp; identity also for secondary/offscreen callers.
 vec3 areaNormal(vec2 uv);
 vec2 areaTexelUV(vec2 uv);
 vec4 getPositionWithDepth(vec2 uv, float depth);
@@ -1072,4 +1073,8 @@ void main()
         if (area_look.y != 0.0) frag_color = pow(max(frag_color,vec4(0.0)),vec4(1.0+area_look.y));
         if (area_look.x != 0.0) frag_color = mix(vec4(1.0),frag_color,1.0-area_look.x);
     }
+    // After BOTH the cube combine and artistic look. Diagnostics remain raw; identity preserves today's bytes.
+    if (all(equal(area_axis,vec2(0))) && area_world_debug == 0)
+        for (int c = 0; c < 4; ++c)
+            if (area_fade[c] < 1.0) frag_color[c] = mix(1.0,frag_color[c],area_fade[c]);
 }

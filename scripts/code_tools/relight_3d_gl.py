@@ -420,6 +420,7 @@ class AreaRunner:
                 vec = np.array([1.0 - np.clip(lk['strength'], 0.0, 1.0), np.clip(lk['contrast'], 0.25, 4.0) - 1.0,
                                 1.0 - np.clip(lk['world_amount'], 0.0, 1.0)], np.float32)
                 gl.u3fv(gl.loc(fr, b'area_look'), 1, vec.ctypes.data_as(C.POINTER(gl.F)))
+            gl.uf[4](gl.loc(fr, b'area_fade'), 1.0, 1.0, 1.0, 1.0)
             gl.u4fv(gl.loc(fr, b'area_world'), 1, wflags.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_contact_fade'), 1, wfade.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_world_light'), 4, wlight.ctypes.data_as(C.POINTER(gl.F)))

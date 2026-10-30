@@ -116,12 +116,13 @@ struct Log { template<class T> Log& operator<<(const T&) { return *this; } } log
 #define LL_PROFILE_GPU_ZONE(x)
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE(x)
 struct Settings {} gSavedSettings;
-bool master=true,feedSetting=true,thinSetting=false; int budgetSetting=1500;
+bool master=true,feedSetting=true,thinSetting=false,slotSetting=true; int budgetSetting=1500;
 template<class T> struct LLCachedControl {
     std::string key; T value;
     LLCachedControl(Settings&,const char* k,T v):key(k),value(v) {}
     operator T() const { return operator()(); }
     T operator()() const {
+        if(key=="RenderShadowSlotHysteresis") return T(slotSetting);
         if(key=="RenderAreaShadows") return T(master);
         if(key=="RenderAreaShadowsVCam") return T(feedSetting);
         if(key=="RenderAreaShadowLights") return T(8);
@@ -155,9 +156,11 @@ struct LLUUID {
     bool operator!=(const LLUUID& b) const { return mData[0]!=b.mData[0]; }
     bool operator==(const LLUUID& b) const { return mData[0]==b.mData[0]; }
     bool operator<(const LLUUID& b) const { return mData[0]<b.mData[0]; }
+    bool isNull() const { return *this == LLUUID{}; }
 };
 const LLUUID LLUUID::null{};
-struct LLVector4 { float mV[4]={}; void clear() { for(auto& v:mV) v=0; } void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
+struct LLTimer { static double getTotalSeconds() { return 0.0; } };
+struct LLVector4 { float mV[4]={}; LLVector4()=default; LLVector4(float x,float y,float z,float w):mV{x,y,z,w} {} void clear() { for(auto& v:mV) v=0; } void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
 namespace glm {
 struct mat4 {
     float m[4][4]={{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
@@ -228,7 +231,7 @@ struct LLRenderTarget {
     void flush() {}
 };
 struct VB { void setBuffer() {} void drawArrays(int,int,int) { cb(10,0,0,0,nullptr,nullptr); } } vb;
-struct Take { ALAreaShadow::Workload work{}; int authoredSteps=0; bool feed=false,segmentedRequested=false; bool planned=false; std::string status; unsigned width=0,height=0,frame=0; };
+struct Take { ALAreaShadow::Selection<LLUUID> selected; ALAreaShadow::Workload work{}; int authoredSteps=0; bool feed=false,segmentedRequested=false; bool planned=false; std::string status; unsigned width=0,height=0,frame=0; };
 struct LLPipeline {
     struct RenderTargetPack {
         LLRenderTarget areaGather[2],areaScratch[2],areaVisibility[2];
@@ -262,6 +265,10 @@ struct LLPipeline {
     // World Shadow pick: nothing is picked here (cube_main is false); these only let the pick branches compile. The ownership record is the
     // production struct (begin on a live main-view pass, commit at the end of the pass), so the dispatch below runs the real begin/commit.
     ALWorldShadow::PickedOwnership<LLUUID> mWorldPickedOwned; bool gSnapshot=false;
+    ALAreaShadow::ChannelMemory<LLUUID> mAreaShadowPrevious;
+    ALShadowSlot::ChannelRamps<LLUUID> mAreaShadowRamps;
+    ALWorldShadow::Residency<LLUUID> mWorldShadowResident;
+    ALWorldShadow::SlotReason mWorldShadowReason[ALWorldShadow::kMaxLights] = {};
     bool isLiveMainAreaShadowPass() const;   // the production body is compiled below
     static bool isWorldShadowPicked(const LLUUID&) { return false; }
     static F32 worldShadowLightNear(LLDrawable*,F32) { return 0.05f; } // world branch is OFF; real near is executed by world_gl_check
@@ -322,7 +329,14 @@ bool gCubeSnapshot=false;
     fixture += cube_control + '\nconst bool cube_main = cube_on() && !sPrismLensRender;\n'
     # The production ownership-record prologue (the shared live-main predicate, then begin) sits before the sliced dispatch body, which adds and commits.
     fixture += 'const bool pick_record_pass = isLiveMainAreaShadowPass();\nif (pick_record_pass) mWorldPickedOwned.begin(gFrameCount, mRT);\n'
+    # Compile the real live-main/secondary guards and ramp candidate storage. Collection
+    # remains the fixed scene fixture; all transition and budget code stays production.
+    ramp_start = render.index('    static LLCachedControl<bool> slot_hysteresis(')
+    ramp_end = render.index('    // Where the native spot map ends', ramp_start)
+    fixture += render[ramp_start:ramp_end]
+    fixture += 'const bool collected_incumbent = count && incumbent(drawables[0].volume.id);\n'
     fixture += state+dispatch
+    fixture += 'if (steady_main) cb(28,int(collected_incumbent),int(incumbent(drawables[0].volume.id)),0,nullptr,nullptr);\n'
     fixture += r'''
 }
 void LLPipeline::dispatch() {
@@ -388,6 +402,8 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     if(action==5) p.count=slot;
     if(action==15) liveFeedCount=slot;
     if(action==16) return int(liveFeedQueries);
+    if(action==17) slotSetting=slot!=0;
+    if(action==18) { p.mAreaShadowPrevious={}; p.mAreaShadowRamps={}; }
     if(action==14) {
         // Thin objects ON at a work budget (millions, = slot) that cannot cover every light at Thin quality.
         p.mRT=&p.mMainRT;p.sPrismLensRender=false;p.count=8;
@@ -560,6 +576,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
                     g['active'](0x84c0+a)
                     value=g['I']();get_int(0x8069,C.byref(value));return value.value
                 if event==27: dispatch_state[:]=observe_state()
+                if event==28: assert a==b,'ranking incumbency changed after current-frame publication'
                 return 1
             except Exception as error:
                 errors.append(error)
@@ -818,23 +835,38 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         assert len(marches)==2 and all(m[0]>=4 for m in marches),('both groups keep at least 4 rays',marches)
         assert min(channels[c][1] for c in rest_channels)>=8 and min(channels[c][1]-48 for c in thin_channels)>=8,'step floors'
         hybrid_marches=marches
-        # Lights dropped for want of budget: every admitted light fades (smooth group fade, smoothstep(1, 1.05, score / first
-        # dropped score)), uploaded per channel.
+        # R5: the existing main selection was warmed by the full eight-light pass.
+        # A retained incumbent now uses its ordering key for admission, avoiding a
+        # half-strength step when the budget begins dropping near-equal challengers.
         draws,channels=hybrid_dispatch(24)
-        admitted=len(channels)
-        assert 1<=admitted<8,('this budget drops lights',admitted)
-        expect=[]
-        last_plane=(admitted-1)//4        # the dispatch observation holds the LAST plane's upload
-        for i in range(last_plane*4,admitted):
-            ratio=(8.0-0.02*i)/(8.0-0.02*admitted)
-            t=min(max((ratio-1.0)/0.05,0.0),1.0)
-            # Lead decision 10/22 (tied lamps): an admitted light never fades below half strength.
-            expect.append(1.0-max(0.5,t*t*(3.0-2.0*t)))
-        got=seen.get('area_dropout')
-        assert got is not None and all(abs(got[i]-expect[i])<1.e-5 for i in range(len(expect))) and all(v==0.0 for v in got[len(expect):]),\
-            ('per-channel smooth group fade upload',got,expect)
-        assert all(0.45<v<=0.5 for v in got[:len(expect)]),\
-            'every admitted light within 5 percent of the first dropped one stays lit at half strength (the tied-lamps floor), never faded out'
+        assert 1<=len(channels)<8,('retained admission fixture drops lights',len(channels))
+        assert seen.get('area_dropout')==[0.0,0.0,0.0,0.0],('incumbent admission must stay full',seen.get('area_dropout'))
+        for enabled in (False,True):
+            run(17,int(enabled))
+            if enabled: run(18)  # A fresh ON selection has no prior incumbents.
+            # Lights dropped for want of budget: every admitted light fades (smooth group fade, smoothstep(1, 1.05, score / first
+            # dropped score)), uploaded per channel.
+            draws,channels=hybrid_dispatch(24)
+            admitted=len(channels)
+            assert 1<=admitted<8,('this budget drops lights',admitted)
+            if enabled:
+                first=list(seen.get('area_dropout',[]))
+                assert first==[0.0]*4,('first admission after history reset must be keyed',first)
+                hybrid_dispatch(24)
+                assert seen.get('area_dropout')==first,('admission must match N and N+1',first,seen.get('area_dropout'))
+            else:
+                expect=[]
+                last_plane=(admitted-1)//4        # the dispatch observation holds the LAST plane's upload
+                for i in range(last_plane*4,admitted):
+                    ratio=(8.0-0.02*i)/(8.0-0.02*admitted)
+                    t=min(max((ratio-1.0)/0.05,0.0),1.0)
+                    # Lead decision 10/22 (tied lamps): an admitted light never fades below half strength.
+                    expect.append(1.0-max(0.5,t*t*(3.0-2.0*t)))
+                got=seen.get('area_dropout')
+                assert got is not None and all(abs(got[i]-expect[i])<1.e-5 for i in range(len(expect))) and all(v==0.0 for v in got[len(expect):]),\
+                    ('per-channel smooth group fade upload',got,expect)
+                assert all(0.45<v<=0.5 for v in got[:len(expect)]),\
+                    'every admitted light within 5 percent of the first dropped one stays lit at half strength (the tied-lamps floor), never faded out'
         # Hybrid boundary (fix round 4): the Thin lights upload the share of rays that march the regular way,
         # 1 - max(0.5, smoothstep(1, 1.05, score / score of the first regular light)), per channel (the tied-lamps floor); the
         # regular march's step count follows.
@@ -871,6 +903,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     # Executable mutations: compile the same assertions against broken
     # production blocks without changing any worktree source.
     mutations = {
+        'secondary_fade_missing': fixture.replace('upsample && steady_main ? final_fade.mV : identity_fade.mV', 'final_fade.mV').replace('std::array<double,8> slot_fade{{1,1,1,1,1,1,1,1}};', 'std::array<double,8> slot_fade{{0,0,0,0,0,0,0,0}};'),
         'per_update_release': fixture.replace(end,end+'\nfor(auto& e:mPrismLensScratchPool) for(auto& t:e.rt.areaVisibility) t.release();'),
         'missing_dispatch': fixture.replace(production_call,'/* production call removed */'),
         'feed_early_return': fixture.replace('if (!allowed)\n','if (!allowed || sPrismLensRender)\n'),
@@ -893,19 +926,22 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         'filter_native_clip_dropped': fixture.replace('gAreaShadowFilterProgram.uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);',''),
         'filter_native_offset_dropped': fixture.replace('gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_native_offset"),native_offset);',''),
         'dropout_dropped': fixture.replace('gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_dropout"),1,dropout.mV);',''),
-        'dropout_not_per_channel': fixture.replace('            dropout.mV[i] = static_cast<F32>(1.0-admission[plane*4+i]);',
-            '            if (i+1==count) dropout.mV[i] = static_cast<F32>(1.0-admission[plane*4+i]);'),
+        'dropout_not_per_channel': fixture.replace('            dropout.mV[i] = static_cast<F32>(1.0-admission[channel]);',
+            '            if (i+1==count) dropout.mV[i] = static_cast<F32>(1.0-admission[channel]);'),
         'tie_floor_dropped': fixture.replace('ALAreaShadow::admittedStrength(','ALAreaShadow::admissionStrength('),
         'regular_mix_dropped': fixture.replace('gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_regular_mix"),1,regular.mV);',''),
-        'regular_mix_not_per_channel': fixture.replace('            regular.mV[i] = static_cast<F32>(regular_mix[plane*4+i]);',
-            '            if (i+1==count) regular.mV[i] = static_cast<F32>(regular_mix[plane*4+i]);'),
+        'regular_mix_not_per_channel': fixture.replace('            regular.mV[i] = static_cast<F32>(regular_mix[channel]);',
+            '            if (i+1==count) regular.mV[i] = static_cast<F32>(regular_mix[channel]);'),
         'regular_steps_dropped': fixture.replace('gAreaShadowProgram.uniform1i(LLStaticHashedString("area_rest_steps"),work.lead < work.admitted ? work.rest.steps : 0);',''),
-        'regular_mix_from_rank_not_score': fixture.replace('ALAreaShadow::regularShare(selected.lights[i].score,selected.lights[work.lead].score)','ALAreaShadow::regularShare(1.0,0.0)'),
-        'regular_share_floor_dropped': fixture.replace('ALAreaShadow::regularShare(selected.lights[i].score,selected.lights[work.lead].score)','1.0-ALAreaShadow::admissionStrength(selected.lights[i].score,selected.lights[work.lead].score)'),
+        'regular_mix_from_rank_not_score': fixture.replace('ALAreaShadow::regularShare(selected.lights[i].score,regular_score)','ALAreaShadow::regularShare(1.0,0.0)'),
+        'regular_share_floor_dropped': fixture.replace('ALAreaShadow::regularShare(selected.lights[i].score,regular_score)','1.0-ALAreaShadow::admissionStrength(selected.lights[i].score,regular_score)'),
         'filter_contact_fade_dropped': fixture.replace('gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_contact_fade"),1,contact_fade.mV);',''),
         'hybrid_rest_march_ignored': fixture.replace('{work.lead, 8, work.rest, work.restChannels}','{work.lead, 8, work.q, work.restChannels}'),
         'hybrid_lead_march_ignored': fixture.replace('{0, work.lead, work.q, work.channels}','{0, work.lead, work.rest, work.channels}'),
-        'spare_plane_churn': fixture.replace('const U32 kept = llmax(planes_wanted,static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u);','const U32 kept = planes_wanted;'),
+        'incumbent_admission_raw': fixture.replace('ALAreaShadow::incumbentAdmittedStrength(selected.lights[i].score,dropped_score,true,true)','ALAreaShadow::admittedStrength(selected.lights[i].score,dropped_score)'),
+        'admission_uses_last_frame': fixture.replace('incumbentAdmittedStrength(selected.lights[i].score,dropped_score,true,true)', 'incumbentAdmittedStrength(selected.lights[i].score,dropped_score,incumbent(selected.lights[i].id),true)'),
+        'incumbency_not_frozen': fixture.replace('return previous_channels.contains(id,gFrameCount,selection_time) || previous_ramps.contains(id,gFrameCount,selection_time);','return mAreaShadowPrevious.contains(id,gFrameCount,selection_time) || mAreaShadowRamps.contains(id,gFrameCount,selection_time);'),
+        'spare_plane_churn': fixture.replace('static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u','1u'),
     }
     for label,mutated in mutations.items():
         assert mutated!=fixture,label

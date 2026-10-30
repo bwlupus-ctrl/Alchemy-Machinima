@@ -1693,6 +1693,11 @@ public:
     LLVector4 deferredLightShape(const LLVOVolume* volume) const;
     void renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         bool actor_ready, bool actor_as_world, bool actor_excluded);
+    ALAreaShadow::ChannelMemory<LLUUID> mAreaShadowPrevious; // Live main view only; secondary views ignore it.
+    ALShadowSlot::ChannelRamps<LLUUID> mAreaShadowRamps;
+    void resetShadowSlotHistory(); // Hard cut/resize: next visible selection is already settled.
+    void resetShadowSlotTimers(); // Seamless region crossing: preserve every visible owner/fade.
+    bool mShadowSlotSeed = false; // First native frame follows the stock auction and fade.
     bool mAreaShadowValid = false;
     U32 mAreaShadowCount = 0;
     // Main view only, one pass: lights the ranking selected (Wanted), and lights that really got a visible soft-shadow
@@ -1710,6 +1715,8 @@ public:
     // that equals gFrameCount.
     LLRenderTarget mWorldShadowAtlas, mWorldShadowScratch;
     ALWorldShadow::Residency<LLUUID> mWorldShadowResident;
+    ALWorldShadow::NativeRelease<LLUUID> mWorldNativeRelease[ALWorldShadow::kMaxLights];
+    bool worldShadowResidentEligible(const LLUUID& id, bool native_sampled);
     U32 mWorldShadowFrame[ALWorldShadow::kMaxLights] = {};
     U32 mWorldShadowLiveFrame = 0;             // gFrameCount of the last NON-snapshot main frame generateWorldShadowCubes ran on: a snapshot samples the stamps of that frame
     U32 mWorldShadowAtlasLights = 0;           // lights the atlas was allocated for (0 = not allocated)
@@ -1923,6 +1930,19 @@ public:
     LLPointer<LLDrawable>   mShadowSpotLight[MAX_SPOT_SHADOWS];
     F32                     mSpotLightFade[MAX_SPOT_SHADOWS];
     LLPointer<LLDrawable>   mTargetShadowSpotLight[MAX_SPOT_SHADOWS];
+    LLPointer<LLDrawable>   mSpotAuctionEligible[MAX_SPOT_SHADOWS];
+    struct SpotAuctionEntry
+    {
+        LLPointer<LLDrawable> drawable;
+        ALShadowSlot::Light<LLUUID> light;
+    };
+    std::array<SpotAuctionEntry, MAX_SPOT_SHADOWS> mSpotAuctionMain{};
+    std::array<ALShadowSlot::Light<LLUUID>, MAX_SPOT_SHADOWS> mSpotAuctionOwnerScores{};
+    U32 mSpotAuctionFrame = 0;
+    void snapshotSpotShadowAuction();
+    std::array<ALShadowSlot::Challenge<LLUUID>, MAX_SPOT_SHADOWS> mSpotChallenge;
+    S32 spotShadowTier(LLVOVolume* volume) const;
+    void retainSpotShadowOwners();
 
     LLVector4               mSunClipPlanes;
     LLVector4               mSunOrthoClipPlanes;

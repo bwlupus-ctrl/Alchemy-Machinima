@@ -1,7 +1,7 @@
 /** @file alworldshadowmath.h
  * Pure, allocation-free maths of the world-space cube shadow maps (Relight P1-lite): the face table, the widened
  * field of view, the atlas grid, the receiver -> tile mapping, the depth linearisation, the contact hand-off band,
- * the resolve ledger, the pinned residency rule and the Director readout wording. No GL, no globals, no time input.
+ * the resolve ledger, the pinned residency rule and the Director readout wording. No GL or globals; debounce takes an explicit clock.
  * The GLSL copy of the face table (areaShadowFilterF.glsl) is text-pinned by relight_shader_check.py.
  *
  * Public references: PCF (Reeves 1987), PCSS (Fernando 2005), normal-offset shadows (Holbert 2011), slope-scaled
@@ -9,6 +9,7 @@
  */
 #ifndef AL_WORLD_SHADOW_MATH_H
 #define AL_WORLD_SHADOW_MATH_H
+#include "alshadowslotmath.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -410,6 +411,26 @@ inline unsigned updateResidency(Residency<ID>& r, unsigned lights, Eligible stil
 // fed by the auction either way (section 10); a picked projector whose cube was rendered this frame (cubeOwned) only stops using it for its soft-shadow channel and its
 // lighting-pass shadow term while its cube is rendered this frame.
 inline bool worldEligibleWithNative(bool nativeSampled, bool picked) { return picked || !nativeSampled; }
+// Existing residents alone get a grace period; admission still uses worldEligibleWithNative.
+// Call from both existing upkeep sites; repeated calls in one frame do not advance the clock.
+template<class ID> struct NativeRelease
+{
+    ID id{};
+    ALShadowSlot::ContinuousHold hold;
+    std::uint32_t sampledFrame = 0;
+    bool sampled = false;
+    bool eligible(const ID& resident, bool nativeSampled, bool picked, bool enabled,
+        double now, std::uint32_t frame)
+    {
+        if (id != resident) { *this = {}; id = resident; }
+        if (!enabled) { *this = {}; return worldEligibleWithNative(nativeSampled, picked); }
+        if (nativeSampled) { sampledFrame = frame; sampled = true; }
+        // Native maps normally render every main frame. One missed sample (including
+        // the other upkeep call in this frame) must not restart a full second's grace.
+        const bool recent = sampled && frame - sampledFrame <= 1u;
+        return !hold.reached(recent && !picked, now, frame, 1.0);
+    }
+};
 inline bool channelUsesNativeMap(bool nativeSampled, bool picked, bool cubeOwned) { return nativeSampled && !(picked && cubeOwned); }
 
 // The pick list as stored in a scene: sorted, de-duplicated, null ids dropped, at most kMaxPicks. Pure so a save -> load round trip

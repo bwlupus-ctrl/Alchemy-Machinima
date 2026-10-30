@@ -1,6 +1,7 @@
 /** Deterministic, allocation-free Phase 2 selection and view policy. */
 #ifndef AL_AREA_SHADOW_MATH_H
 #define AL_AREA_SHADOW_MATH_H
+#include "alshadowslotmath.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -20,7 +21,7 @@ inline bool allowed(const View& v, bool feeds = false)
 // Importance ranking (10/22). Every light that could receive a soft-shadow channel is
 // ranked by how much it matters on screen, whether or not it owns a native SL shadow
 // map (the older "unmapped first" rule let eight nearby practicals push out a bright
-// mapped projector). Inputs are this frame's only:
+// mapped projector). Base inputs are this frame's only:
 //   luminance    : Rec.709 luminance of the linear colour x light scale, BEFORE Local lights EV;
 //                 exposure changes radiance only, preserving channels and their quality/strength
 //                 even when rig lights are excluded from the exposure adjustment;
@@ -31,7 +32,7 @@ inline bool allowed(const View& v, bool feeds = false)
 // The camera term saturates at range / 2 instead of testing "inside the range", so a
 // lamp 5-10 m away is never worth 0 merely because the camera is outside its range and
 // dollying across a range boundary changes nothing. The score is continuous and
-// non-increasing in distance; there is no history, hysteresis or timing.
+// non-increasing in distance. Channel selection optionally boosts previous main-view owners below.
 // The bonus is bounded and CONTINUOUS in nativeWeight: the pipeline passes the slot fade
 // times the cutoff validity at the light, so acquiring or losing a slot (the fade runs
 // 0 -> 1) and a light crossing the native shadow distance move the score smoothly, never a
@@ -41,7 +42,7 @@ inline bool allowed(const View& v, bool feeds = false)
 // Preferences shadow detail lowered, the slot lost to the live limit, or a map not rendered
 // that frame) the light genuinely has no native shadow from that frame on, so its weight is 0
 // and the bonus returns in one frame. Holding the old fade through that flip would need the
-// previous frame (history, which the ranking forbids) and would rank a light by a shadow it no
+// previous frame and would rank a light by a shadow it no
 // longer has; it only happens on a user action or a lost slot, and is documented as such.
 constexpr double kUnmappedBonus = 0.25;
 inline double importance(double luminance, double range, double distance, double nativeWeight)
@@ -59,6 +60,33 @@ inline double pickedImportance(double luminance, double range, double distance)
 {
     return importance(luminance, range, distance, 0.0);
 }
+// Temporary key for ordering and incumbent admission only; never store in Candidate::score.
+// Off returns the original score without even a multiply, preserving the old tie-breaks.
+inline double incumbentScore(double score, bool incumbent, bool enabled)
+{
+    return enabled && incumbent ? score * 1.3 : score;
+}
+template<class ID> struct ChannelMemory
+{
+    std::array<ID, 8> ids{};
+    std::array<double, 8> strength{}; // Previous rendered admission times final fade.
+    unsigned count = 0;
+    std::uint32_t frame = 0;
+    double time = 0.0;
+    bool contains(const ID& id, std::uint32_t currentFrame, double now) const
+    {
+        if (ALShadowSlot::historyGap(now, time, currentFrame, frame)) return false;
+        for (unsigned i = 0; i < count; ++i) if (ids[i] == id) return true;
+        return false;
+    }
+    double effectiveStrength(const ID& id, std::uint32_t currentFrame, double now) const
+    {
+        if (!contains(id,currentFrame,now)) return 1.0;
+        for (unsigned i = 0; i < count; ++i) if (ids[i] == id) return strength[i];
+        return 1.0;
+    }
+};
+
 template<class ID> struct Candidate
 {
     ID id{};
@@ -78,6 +106,21 @@ template<class ID> inline bool before(const Candidate<ID>& a, const Candidate<ID
     // One candidate per emitting object; area channels do not rank faces.
     return a.id < b.id;
 }
+// Resident precedence is categorical. Only temporary comparison keys carry incumbency.
+template<class ID, class Incumbent> inline bool incumbentBefore(const Candidate<ID>& a,
+    const Candidate<ID>& b, Incumbent incumbent, bool enabled)
+{
+    if (!enabled) return before(a, b);
+    if (a.world != b.world) return a.world;
+    const double ak = incumbentScore(a.score, incumbent(a.id), true);
+    const double bk = incumbentScore(b.score, incumbent(b.id), true);
+    return ak != bk ? ak > bk : a.id < b.id;
+}
+inline double candidateRadius(double radius, bool incumbent, bool enabled)
+{
+    return enabled && incumbent ? radius * 2.0 : radius * 1.5;
+}
+
 template<class ID> struct Selection
 {
     std::array<Candidate<ID>, 8> lights{};
@@ -86,8 +129,14 @@ template<class ID> struct Selection
     {
         add(light, cap, [](const Candidate<ID>& a, const Candidate<ID>& b) { return before(a, b); });
     }
-    // The comparator parameter exists so tests can prove their fixtures reject a
-    // superseded ordering; production always uses before().
+    template<class Incumbent> void addIncumbent(const Candidate<ID>& light, unsigned cap,
+        Incumbent incumbent, bool enabled)
+    {
+        if (!enabled) { add(light, cap); return; }
+        add(light, cap, [&](const Candidate<ID>& a, const Candidate<ID>& b)
+        { return incumbentBefore(a, b, incumbent, true); });
+    }
+    // Custom comparisons must leave the stored radiometric score untouched.
     template<class Before> void add(const Candidate<ID>& light, unsigned cap, Before ranks_first)
     {
         cap = std::clamp(cap, 1u, 8u);
@@ -101,6 +150,34 @@ template<class ID> struct Selection
         size = std::min(size + 1, cap);
     }
 };
+// Admission compares against the first dropped light that is not already ramping out.
+template<class ID> inline double droppedScore(const Selection<ID>& ranked, unsigned admitted,
+    const typename ALShadowSlot::ChannelRamps<ID>::Output& ramps)
+{
+    if (!admitted) return 0.0;
+    for (unsigned i = admitted; i < ranked.size; ++i)
+    {
+        bool exiting = false;
+        for (unsigned j = 0; j < ramps.size; ++j)
+            if (ramps.ids[j] == ranked.lights[i].id && ramps.exiting[j]) { exiting = true; break; }
+        if (!exiting) return ranked.lights[i].score;
+    }
+    return 0.0;
+}
+// Desired order owns the Thin lead and regular boundary. Exits only use tail channels.
+template<class ID, class CandidateFor> inline Selection<ID> rampSelection(const Selection<ID>& desired,
+    unsigned count, const typename ALShadowSlot::ChannelRamps<ID>::Output& ramps, CandidateFor candidateFor)
+{
+    Selection<ID> out;
+    out.candidates = desired.candidates;
+    for (unsigned i = 0; i < std::min(count,desired.size); ++i)
+        for (unsigned j = 0; j < ramps.size; ++j)
+            if (desired.lights[i].id == ramps.ids[j] && !ramps.exiting[j])
+            { out.lights[out.size++] = desired.lights[i]; break; }
+    for (unsigned j = 0; j < ramps.size; ++j)
+        if (ramps.exiting[j]) out.lights[out.size++] = candidateFor(ramps.ids[j]);
+    return out;
+}
 // [World Shadow pick] The same ordering as Selection, but it keeps EVERY candidate up to N (Selection keeps the best 8): the picks are ranked
 // completely (up to the pick cap), so a pick outside the first 8 still has a rank and "not in the list" can only mean "not a candidate".
 template<class ID, unsigned N> struct Ranking
@@ -293,6 +370,31 @@ struct Workload
     Quality rest{};
     unsigned restChannels = 0;
 };
+inline bool sameQuality(const Quality& a, const Quality& b)
+{
+    return a.samples == b.samples && a.steps == b.steps && a.half == b.half &&
+        a.nearSteps == b.nearSteps && a.minFar == b.minFar && a.screenReach == b.screenReach;
+}
+inline bool rampPlanMatches(const Workload& base, const Workload& extra, unsigned lights)
+{
+    if (!extra.channels || extra.admitted < lights || !sameQuality(base.q,extra.q)) return false;
+    return base.lead < base.admitted ? extra.lead >= base.lead && sameQuality(base.rest,extra.rest) : extra.lead >= lights;
+}
+// Test the extra transition channel at EXACTLY the already planned quality. Never take a
+// ladder rung to make a ramp fit. `available` also excludes the original live feed reservation.
+inline bool rampWorkload(Workload& w, unsigned lights, std::uint64_t available)
+{
+    if (!w.channels || lights > 8) return false;
+    const bool hybrid = w.lead < w.admitted;
+    const unsigned lead = hybrid ? std::min(w.lead, lights) : lights;
+    const auto perLead = w.pixels * w.q.samples * (hybrid ? std::max(marchWork(w.q),marchWork(w.rest)) : marchWork(w.q));
+    const auto perRest = hybrid ? w.pixels * w.rest.samples * marchWork(w.rest) : 0;
+    const auto cost = lead * perLead + (lights - lead) * perRest;
+    if (cost > available || perLead > w.drawCap || (lights > lead && perRest > w.drawCap)) return false;
+    w.admitted = lights; w.lead = lead; w.iterations = cost;
+    return true;
+}
+
 // Capture-feed slots sharing the frame budget (LLPrismLens::MAX_CAPTURES; asserted in
 // pipeline.cpp).
 constexpr unsigned kFeedSlots = 8;
@@ -671,6 +773,13 @@ inline double admittedStrength(double score, double next)
 {
     const double raw = admissionStrength(score,next);
     return (score > 0.0 && next > 0.0) ? std::max(kAdmissionFloor,raw) : raw;
+}
+// An incumbent kept by its ordering key must not lose half its admission when
+// a near-equal challenger appears. Non-incumbents and OFF keep the raw old strength.
+inline double incumbentAdmittedStrength(double score, double next, bool incumbent, bool enabled)
+{
+    if (!enabled || !incumbent) return admittedStrength(score,next);
+    return admittedStrength(incumbentScore(score,true,true),next);
 }
 // Thin/regular boundary (fix rounds 3-4): in a hybrid plan the Thin light i marches the fraction w of its rays the Thin way,
 // w = max(0.5, smoothstep(1, 1.05, s_i / s_firstRegular)) (the floor mirrors the admission floor above: lead decision 10/23, round 4);

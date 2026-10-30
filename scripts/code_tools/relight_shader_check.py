@@ -51,6 +51,8 @@ def use(pr):
     # Mirror the shared production bind hook, including its default scale.
     uf[1](loc(pr,b'relight_highlight_scale'),1.0)
     uf[1](loc(pr,b'relight_legacy_exponent'),368.0)
+    # Independent fixtures share programs with live-dispatch tests: clear stale slot ramps.
+    if pr: uf[4](loc(pr,b'area_fade'),1.0,1.0,1.0,1.0)
 matrix=gl('glUniformMatrix4fv',None,I,I,U,C.POINTER(F));matrix3=gl('glUniformMatrix3fv',None,I,I,U,C.POINTER(F))
 genTex=gl('glGenTextures',None,I,C.POINTER(U));bindTex=gl('glBindTexture',None,U,U);teximage=gl('glTexImage2D',None,U,I,I,I,I,I,U,U,P);param=gl('glTexParameteri',None,U,U,I);active=gl('glActiveTexture',None,U)
 genfbo=gl('glGenFramebuffers',None,I,C.POINTER(U));bindfbo=gl('glBindFramebuffer',None,U,U);attachment=gl('glFramebufferTexture2D',None,U,U,U,U,I);status=gl('glCheckFramebufferStatus',U,U)

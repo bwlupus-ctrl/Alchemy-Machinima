@@ -343,9 +343,9 @@ def validate_data(data: dict) -> None:
     # Hidden system body: exactly one Soft shadows toggle, 2368 -> 2369 (10/28).
     # Ghost motion: exactly one built-in animation-cue toggle, 2369 -> 2370 (10/29).
     # Directed animation: exactly two Clones rows, Mirror and Source playing (10/29).
-    # Rig group menu: exactly one Add avatar command, 2372 -> 2373 (10/29).
-    if len(pages) != 38 or row_count != 2373:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2373")
+    # Steady shadow slots: one persistent renderer switch, 2373 -> 2374 (10/29).
+    if len(pages) != 38 or row_count != 2374:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2374")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2385,6 +2385,16 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        set(add_avatar_rows[0].get("keywords", "").split()) and
                        add_avatar_rows[0] in list(find_named(rig, "kc_rig_status").iter("kit_row")) and
                        b"cine_add_avatar_rig_group" in outputs[out_dir / "director_kit_index.xml"]))
+        steady_page = ET.fromstring(outputs[out_dir / "panel_dpage_light_rim.xml"], parser=parser())
+        steady = [row for row in steady_page.iter("kit_row")
+                  if row.get("setting") == "RenderShadowSlotHysteresis"]
+        checks.append(("Steady shadow slots is bound, searchable and fully readable",
+                       len(steady) == 1 and steady[0].get("label") == "Steady shadow slots" and
+                       steady[0].get("help") == "Lights keep their shadow slot while the camera moves, so shadows don't pop between lights. Off = old behaviour." and
+                       steady[0].get("label_wrap") == "true" and steady[0].get("row_height") == "40" and
+                       steady[0].get("bind") == "setting" and
+                       steady[0].find("kit_switch").get("control_name") == "RenderShadowSlotHysteresis" and
+                       b"shadow_slot_hysteresis" in outputs[out_dir / "director_kit_index.xml"]))
         rig_page = next(rig.iter("kit_page"))
         checks.append(("rig session status and All off declare persistent chrome with reachable roster",
                        rig_page.get("persistent_status_widget") == "cine_rig_group_status" and

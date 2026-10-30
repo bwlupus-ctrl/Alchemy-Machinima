@@ -1202,6 +1202,7 @@ void LLPipeline::resizeScreenTexture()
         if (gResizeScreenTexture || (scaledResX != mRT->screen.getWidth()) || (scaledResY != mRT->screen.getHeight()))
 // [/SL:KB]
         {
+            if (mRT == &mMainRT) resetShadowSlotHistory();
             releaseScreenBuffers();
             releaseSunShadowTargets();
             releaseSpotShadowTargets();
@@ -27065,6 +27066,8 @@ void LLPipeline::renderFinalizePresent(LLRenderTarget* sourceBuffer, bool diopte
         LLGLDepthTest depth(GL_FALSE, GL_FALSE);
         LLGLDisable blend(GL_BLEND);
         gAreaShadowFilterProgram.bind();
+        static const LLStaticHashedString area_fade("area_fade");
+        gAreaShadowFilterProgram.uniform4f(area_fade,1.f,1.f,1.f,1.f);
         const S32 unit = gAreaShadowFilterProgram.enableTexture(LLShaderMgr::AREA_SHADOW_SOURCE);
         mRT->areaVisibility[channel/4].bindTexture(0,unit,LLTexUnit::TFO_POINT);
         gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_debug_channel"),channel%4+1);
@@ -29249,6 +29252,35 @@ bool LLPipeline::spotShadowMapSampled(U32 slot) const
         map.isComplete(), stamp == gFrameCount);
 }
 
+void LLPipeline::resetShadowSlotHistory()
+{
+    mAreaShadowPrevious = {};
+    mAreaShadowRamps = {};
+    mShadowSlotSeed = true;
+    resetShadowSlotTimers();
+    for (auto& eligible : mSpotAuctionEligible) eligible = NULL;
+    mSpotAuctionMain = {};
+    mSpotAuctionOwnerScores = {};
+    mSpotAuctionFrame = 0;
+}
+
+void LLPipeline::resetShadowSlotTimers()
+{
+    mSpotChallenge = {};
+    for (auto& release : mWorldNativeRelease) release = {};
+}
+
+// Both existing residency upkeep sites share one per-resident timer. New admission is unchanged.
+bool LLPipeline::worldShadowResidentEligible(const LLUUID& id, bool native_sampled)
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "RenderShadowSlotHysteresis", true);
+    for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k)
+        if (mWorldShadowResident.held[k] && mWorldShadowResident.id[k] == id)
+            return mWorldNativeRelease[k].eligible(id, native_sampled, isWorldShadowPicked(id),
+                enabled(), LLTimer::getTotalSeconds(), gFrameCount);
+    return ALWorldShadow::worldEligibleWithNative(native_sampled, isWorldShadowPicked(id));
+}
+
 // [RelightQ] The shadow_clip the native spot sampler reads in this view (uploadShadowUniforms /
 // the stock upload), so the gather and sampleSpotShadow agree on where the native map ends.
 LLVector4 LLPipeline::nativeSpotShadowClip() const
@@ -29727,6 +29759,18 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // One predicate for begin, add, commit and the reader (isLiveMainAreaShadowPass); add() additionally rejects a call without this begin.
     const bool pick_record_pass = isLiveMainAreaShadowPass();
     if (pick_record_pass) mWorldPickedOwned.begin(gFrameCount, mRT);
+    static LLCachedControl<bool> slot_hysteresis(gSavedSettings, "RenderShadowSlotHysteresis", true);
+    // VCam/secondary views ignore the main-view memory and never write or clear it.
+    if (pick_record_pass && !slot_hysteresis()) { mAreaShadowPrevious = {}; mAreaShadowRamps = {}; }
+    const bool steady_main = pick_record_pass && slot_hysteresis();
+    // Freeze prior identity before update() admits newcomers or republishes memory.
+    const auto previous_channels = mAreaShadowPrevious;
+    const auto previous_ramps = mAreaShadowRamps;
+    const F64 selection_time = LLTimer::getTotalSeconds();
+    const auto incumbent = [&](const LLUUID& id)
+    { return previous_channels.contains(id,gFrameCount,selection_time) || previous_ramps.contains(id,gFrameCount,selection_time); };
+    std::array<ALAreaShadow::Candidate<LLUUID>, 8> ramp_candidates{};
+    U32 ramp_candidate_count = 0;
     // Where the native spot map ends (the shadow_clip the native sampler reads): ranking input.
     const LLVector4 selection_clip = nativeSpotShadowClip();
     for (LLDrawable* drawable : mLights)
@@ -29740,7 +29784,10 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         const LLColor3 color = local_light_selection_color(volume, light_scale);
         if (range <= .001f || color.magVecSquared() < .001f) continue;
         LLVector4a centre, extent;
-        centre.load3(drawable->getPositionAgent().mV); extent.splat(range);
+        centre.load3(drawable->getPositionAgent().mV);
+        extent.splat(range); // Verbatim old test on OFF and secondary paths.
+        if (steady_main && incumbent(volume->getID()))
+            extent.splat(static_cast<F32>(ALAreaShadow::candidateRadius(volume->getLightRadius(),true,true)));
         if (!camera.AABBInFrustumNoFarClip(centre,extent)) continue;
         const U8 bits = actor_only ? registry.actorOnlyBits(volume->getID()) : 0;
         if (!actually_drawn(drawable,bits)) continue;
@@ -29791,7 +29838,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             ALAreaShadow::nativeShadowStrength(view_depth,selection_clip.mV[2],selection_clip.mV[3]) : 0.0;
         // Importance ranking (ALAreaShadow::importance): luminance * range / max(distance,
         // range/2), bounded bonus for the part no native map covers; UUID breaks ties.
-        // This frame's inputs only.
+        // Base scores stay raw; the incumbency key is applied at selection and admission.
         ALAreaShadow::Candidate<LLUUID> candidate{volume->getID(), shadow_map,
             ALAreaShadow::importance(luminance,range,distance,native_weight)};
         // [P1-lite] A resident light orders first (it holds its channel by residency, never by score); false for every light
@@ -29799,7 +29846,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         // A projector that owns a native SL shadow map RIGHT NOW (shadow_map) keeps its SL map + contact path (section 10): never world-owned
         // and never chosen while it does; it ranks like any other light.
         candidate.world = cube_main && !shadow_map && mWorldShadowResident.contains(candidate.id);
-        selected.add(candidate, static_cast<unsigned>(llclamp(cap(),1,8)));
+        if (steady_main)
+        {
+            selected.addIncumbent(candidate, static_cast<unsigned>(llclamp(cap(),1,8)), incumbent, true);
+            if (mAreaShadowRamps.contains(candidate.id, gFrameCount, selection_time) && ramp_candidate_count < ramp_candidates.size())
+                ramp_candidates[ramp_candidate_count++] = candidate;
+        }
+        else selected.add(candidate, static_cast<unsigned>(llclamp(cap(),1,8)));
         if (cube_main && ALWorldShadow::worldEligibleWithNative(native_sampled,picked) && world_shadow_eligible(drawable))
         {
             candidate.world = false;
@@ -29835,11 +29888,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 if (drawable && drawable->getVObj() && drawable->getVObj()->getID() == id)
                 {
                     if (!world_shadow_eligible(drawable)) return false;
-                    // A projector that samples a native SL map keeps that path (the pin releases) unless it is picked.
+                    // Non-picked residents release only after a continuous native-map hold (immediate with the switch off).
                     bool native_sampled = false;
                     for (U32 slot=0; slot<MAX_SPOT_SHADOWS; ++slot)
                         if (mShadowSpotLight[slot] == drawable && spotShadowMapSampled(slot)) { native_sampled = true; break; }
-                    return ALWorldShadow::worldEligibleWithNative(native_sampled,isWorldShadowPicked(id));
+                    return worldShadowResidentEligible(id, native_sampled);
                 }
             return false;
         },[](const LLUUID& id) { return isWorldShadowPicked(id); },
@@ -29850,6 +29903,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             if (resident_before.held[k] != mWorldShadowResident.held[k] || resident_before.id[k] != mWorldShadowResident.id[k])
             {
                 mWorldShadowFrame[k] = 0; // a stamp belongs to the previous occupant of the slot
+                mWorldNativeRelease[k] = {};
                 LL_INFOS("RelightQ") << "[RelightQ] world-shadow residency slot " << k << (mWorldShadowResident.held[k] ?
                     " pinned " : " cleared ") << (mWorldShadowResident.held[k] ? mWorldShadowResident.id[k] : resident_before.id[k]) << LL_ENDL;
             }
@@ -29959,7 +30013,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         }
         live_feeds = mAreaLiveFeeds;
     }
-    const auto work = sPrismLensRender ? ALAreaShadow::feedWorkload(requested,uniform,
+    auto work = sPrismLensRender ? ALAreaShadow::feedWorkload(requested,uniform,
         mMainRT.deferredScreen.getWidth(),mMainRT.deferredScreen.getHeight(),width,height,
         selected.size,budget(),static_cast<unsigned>(llclamp(cap(),1,8)),live_feeds) :
         ALAreaShadow::workloadOrUniform(requested,uniform,width,height,
@@ -29973,14 +30027,102 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // P0.1: the planner ladder admits A <= K lights (from the requested cap, never from the visible
     // set). The lowest ranked lose their soft shadow; the Director status line reports the coverage.
     const U32 wanted_lights = selected.size;
-    // Smooth group fade (frame-pure: this frame's ranking scores only). While lights are dropped, every admitted light
-    // keeps strength max(0.5, smoothstep(1, 1.05, score / score of the first dropped light)), so lights that trade places at
-    // the coverage boundary fade instead of one popping (the 0.5 floor keeps a cluster of exactly tied lamps lit: lead
-    // decision 10/22); swapping two admitted lights changes no strength. 1 when nothing is dropped.
+    std::array<double,8> slot_fade{{1,1,1,1,1,1,1,1}};
+    // Keep the original ranking's raw boundary score, independent of temporary ordering keys
+    // and of an outgoing light that uses a spare channel.
+    double dropped_score = work.admitted && work.admitted < selected.size ? selected.lights[work.admitted].score : 0.0;
+    const double regular_score = work.channels && work.q.nearSteps > 0 && work.lead < work.admitted && work.lead < selected.size ?
+        selected.lights[work.lead].score : 0.0;
+    std::array<bool,8> slot_exiting{};
+    // Stock plane retention, computed before any temporary exit channel is appended.
+    const U32 kept = llmax((std::min<U32>(selected.size,work.admitted)+3)/4,
+        static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u);
+    if (steady_main && work.channels)
+    {
+        const auto desired_selection = selected;
+        const U32 authored_cap = static_cast<U32>(llclamp(cap(),1,8));
+        const U32 normal_limit = std::min(authored_cap, work.admitted);
+        std::array<LLUUID,8> desired{};
+        const U32 desired_count = std::min(selected.size, normal_limit);
+        for (U32 i = 0; i < desired_count; ++i) desired[i] = selected.lights[i].id;
+        const auto candidate_for = [&](const LLUUID& id) -> ALAreaShadow::Candidate<LLUUID>
+        {
+            for (U32 i = 0; i < desired_selection.size; ++i)
+                if (desired_selection.lights[i].id == id) return desired_selection.lights[i];
+            for (U32 i = 0; i < ramp_candidate_count; ++i)
+                if (ramp_candidates[i].id == id) return ramp_candidates[i];
+            return {};
+        };
+        // Preserve the feeds' original allowance. A ramp may spend only unreserved work,
+        // and must fit at the base plan's quality, including the hybrid per-draw ceiling.
+        const auto regular_plan = ALAreaShadow::workload(uniform,width,height,wanted_lights,budget(),authored_cap,live_feeds);
+        const auto reserved = ALAreaShadow::feedSpend(uniform,work.budget,regular_plan.iterations,authored_cap,live_feeds);
+        auto extra_work = work;
+        ALAreaShadow::Workload extra_plan;
+        // Default cap 4 with 4+ lights in view swaps symmetrically: rarer, not smoothed, by design.
+        const bool spare_channel = ALShadowSlot::spareChannel(desired_count,kept);
+        const U32 ramp_width = work.q.half ? (width+1)/2 : width;
+        const U32 ramp_height = work.q.half ? (height+1)/2 : height;
+        // A dormant stock-retained plane must already fit: a ramp never allocates VRAM.
+        const bool retained_ready = desired_count != 4 ||
+            (mRT->areaGather[1].isComplete() && mRT->areaGather[1].getWidth() == ramp_width && mRT->areaGather[1].getHeight() == ramp_height &&
+             mRT->areaScratch[1].isComplete() && mRT->areaScratch[1].getWidth() == ramp_width && mRT->areaScratch[1].getHeight() == ramp_height &&
+             mRT->areaVisibility[1].isComplete() && mRT->areaVisibility[1].getWidth() == width && mRT->areaVisibility[1].getHeight() == height);
+        if (spare_channel && retained_ready)
+            extra_plan = ALAreaShadow::workloadOrUniform(requested,uniform,width,height,desired_count+1,
+                budget(),std::max(authored_cap,desired_count+1),live_feeds);
+        const bool extra_allowed = spare_channel && retained_ready &&
+            ALAreaShadow::rampPlanMatches(work,extra_plan,desired_count+1) &&
+            ALAreaShadow::rampWorkload(extra_work,desired_count+1,work.budget-std::min(work.budget,reserved));
+        const auto ramps = mAreaShadowRamps.update(desired,desired_count,desired_count,extra_allowed,
+            true,selection_time,gFrameCount,[&](const LLUUID& id)
+            {
+                const auto candidate = candidate_for(id);
+                const bool live = candidate.id == id && !id.isNull();
+                // Pin identity survives readiness and native/contact fallback changes.
+                const bool resident = live && cube_main && mWorldShadowResident.contains(id);
+                U32 cube_slot = 0;
+                const bool ready = resident && worldShadowOwned(id,cube_slot);
+                bool rendering = false;
+                if (resident)
+                    for (U32 k = 0; k < ALWorldShadow::kMaxLights; ++k)
+                        if (mWorldShadowResident.held[k] && mWorldShadowResident.id[k] == id)
+                        { rendering = mWorldShadowReason[k] == ALWorldShadow::SlotReason::Rendered; break; }
+                return ALShadowSlot::RampStatus{live,resident && !ready,ready,rendering,
+                    previous_channels.effectiveStrength(id,gFrameCount,selection_time)};
+            },kept);
+        if (ramps.size > desired_count) work = extra_work;
+        dropped_score = ALAreaShadow::droppedScore(desired_selection,normal_limit,ramps);
+        selected = ALAreaShadow::rampSelection(desired_selection,desired_count,ramps,candidate_for);
+        for (U32 i = 0; i < selected.size; ++i)
+            for (U32 j = 0; j < ramps.size; ++j)
+                if (selected.lights[i].id == ramps.ids[j])
+                { slot_fade[i] = ramps.fade[j]; slot_exiting[i] = ramps.exiting[j]; break; }
+        mAreaShadowPrevious.count = selected.size;
+        mAreaShadowPrevious.frame = gFrameCount;
+        mAreaShadowPrevious.time = selection_time;
+        for (U32 i = 0; i < selected.size; ++i) mAreaShadowPrevious.ids[i] = selected.lights[i].id;
+        take.work = work;
+        take.selected = selected;
+    }
+    // Every selected non-exit uses the incumbency key from its first admitted frame,
+    // including after a reset. The dropped boundary stays raw; exits keep identity admission.
+    // Secondary/OFF passes keep the original raw score and 0.5 floor.
+    // Strength is 1 when nothing is dropped; regularShare below still uses raw scores.
     // See ALAreaShadow::admittedStrength(). Uploaded per channel (area_dropout = 1 - strength).
     std::array<double,8> admission;
     admission.fill(1.0);
-    if (work.channels && work.admitted && work.admitted < wanted_lights)
+    if (steady_main)
+    {
+        if (dropped_score > 0.0)
+            for (U32 i = 0; i < selected.size; ++i)
+                admission[i] = slot_exiting[i] ? 1.0 : ALAreaShadow::incumbentAdmittedStrength(selected.lights[i].score,dropped_score,true,true);
+        // Exit fades already contain the previous admission; never apply it twice.
+        if (work.channels)
+            for (U32 i = 0; i < selected.size; ++i)
+                mAreaShadowPrevious.strength[i] = admission[i] * slot_fade[i];
+    }
+    else if (work.channels && work.admitted && work.admitted < wanted_lights)
         for (U32 i=0; i<work.admitted; ++i)
             admission[i] = ALAreaShadow::admittedStrength(selected.lights[i].score,selected.lights[work.admitted].score);
     // Thin/regular boundary of a hybrid plan: the share of each Thin light's rays that march the regular way is
@@ -29990,9 +30132,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     // every other channel.
     std::array<double,8> regular_mix;
     regular_mix.fill(0.0);
-    if (work.channels && work.q.nearSteps > 0 && work.lead < work.admitted && work.lead < wanted_lights)
+    if (regular_score > 0.0)
         for (U32 i=0; i<work.lead; ++i)
-            regular_mix[i] = ALAreaShadow::regularShare(selected.lights[i].score,selected.lights[work.lead].score);
+            regular_mix[i] = ALAreaShadow::regularShare(selected.lights[i].score,regular_score);
     if (work.channels) selected.size = std::min<U32>(selected.size,work.admitted);
     if (!sPrismLensRender)
     {
@@ -30055,10 +30197,6 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     take.status = "allocation_failed";
     const U32 w = work.q.half ? (width+1)/2 : width, h = work.q.half ? (height+1)/2 : height;
     const U32 planes_wanted = (selected.size+3)/4;
-    // The spare plane stays allocated for as long as the requested cap can need it, so a fifth
-    // light crossing the frustum edge does not free and reallocate three RGBA8 targets (a
-    // hitch while recording). It is allocated at the first fifth light and drawn only when used.
-    const U32 kept = llmax(planes_wanted,static_cast<U32>(llclamp(cap(),1,8)) > 4 ? 2u : 1u);
     const auto ensure = [](LLRenderTarget& target, U32 x, U32 y)
     {
         return (target.isComplete() && target.getWidth()==x && target.getHeight()==y) ||
@@ -30091,6 +30229,13 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     }
     const U32 planes = ALAreaShadow::drawablePlanes(planes_wanted,plane_ok[0],plane_ok[1]);
     const U32 channels = ALAreaShadow::drawableChannels(selected.size,planes);
+    if (steady_main)
+    {
+        std::array<LLUUID,8> rendered{};
+        for (U32 i = 0; i < channels; ++i) rendered[i] = selected.lights[i].id;
+        mAreaShadowRamps.retainRendered(rendered,channels);
+        mAreaShadowPrevious.count = channels;
+    }
     // One log line per transition, per pack: logging state only, it never feeds rendering.
     const bool alloc_failed = planes < planes_wanted;
     if (alloc_failed != mRT->areaAllocFailed)
@@ -30149,6 +30294,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         world_flags.clear();
         bool world_any = false;
         LLVector4 contact, contact_fade, dropout;
+        LLVector4 final_fade(1.f,1.f,1.f,1.f);
         contact.clear();
         contact_fade.clear(); // zero preserves full visibility for unmapped lights
         dropout.clear();      // zero = full soft shadow; 1 - strength of this channel's light (smooth group fade)
@@ -30159,8 +30305,10 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         regular.clear(); // zero = every ray of a Thin light marches Thin
         for (U32 i=0; i<count; ++i)
         {
-            dropout.mV[i] = static_cast<F32>(1.0-admission[plane*4+i]);
-            regular.mV[i] = static_cast<F32>(regular_mix[plane*4+i]);
+            const U32 channel = plane*4+i;
+            dropout.mV[i] = static_cast<F32>(1.0-admission[channel]);
+            final_fade.mV[i] = static_cast<F32>(slot_fade[channel]);
+            regular.mV[i] = static_cast<F32>(regular_mix[channel]);
         }
         for (U32 i=0; i<count; ++i)
         {
@@ -30289,6 +30437,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
             // [P1-lite] The full-resolution world resolve lives in the upsample branch (axis 0,0) only.
             const bool upsample = x == 0.f && y == 0.f;
             if (upsample) gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_look"),1,look);
+            // Explicit on every bind: secondary/off/blur passes always get identity.
+            const LLVector4 identity_fade(1.f,1.f,1.f,1.f);
+            static const LLStaticHashedString area_fade("area_fade");
+            gAreaShadowFilterProgram.uniform4fv(area_fade,1,
+                upsample && steady_main ? final_fade.mV : identity_fade.mV);
             bool world_atlas = false;
             if (upsample && upload_world)
             {
@@ -30342,7 +30495,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     {
         U32 rendered = 0, thin_rendered = 0;
         for (U32 i=0; i<channels; ++i)
-            if (ALAreaShadow::admissionVisible(admission[i]))
+            if (ALAreaShadow::admissionVisible(steady_main ? admission[i]*slot_fade[i] : admission[i]))
             {
                 ++rendered;
                 if (work.q.nearSteps > 0 && i < work.lead && ALAreaShadow::thinQuality(regular_mix[i])) ++thin_rendered;
@@ -30367,6 +30520,17 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
 
 void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 {
+    if (isLiveMainAreaShadowPass())
+    {
+        for (auto& eligible : mSpotAuctionEligible) eligible = NULL;
+        mSpotAuctionMain = {};
+        mSpotAuctionOwnerScores = {};
+        mSpotAuctionFrame = gFrameCount; // Pure live-main view test above; independent of soft shadows being enabled.
+        static LLCachedControl<bool> slot_hysteresis(gSavedSettings, "RenderShadowSlotHysteresis", true);
+        static LLCachedControl<bool> stable_spots(gSavedSettings, "BDMergeStableSpotShadows", false);
+        if (slot_hysteresis() && !stable_spots())
+            for (auto& target : mTargetShadowSpotLight) target = NULL;
+    }
     // Coverage is produced later, immediately before this view's fog. Never
     // advertise a previous frame/view while deferred lighting is running.
     mSilCoverValid = false;
@@ -31605,6 +31769,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 }
             }
 
+            snapshotSpotShadowAuction(); // After every setupSpotLight loop; secondary auctions never publish.
+
             // Clear does not free internal vector storage, so this is more efficient than creating new vectors each frame
             fullscreen_lights.clear();
             local_light_sizes.clear();
@@ -32600,6 +32766,11 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
         LLDrawable* potential = drawablep;
         //determine if this light is higher priority than one of the existing spot shadows
         F32 m_pri = volume->getSpotLightPriority();
+        if (isLiveMainAreaShadowPass() && s_idx >= 0 && (m_pri > 0.f || volume->isCineRigEmitter()))
+        {
+            mSpotAuctionEligible[s_idx] = drawablep;
+            mSpotAuctionOwnerScores[s_idx] = {volume->getID(), m_pri, spotShadowTier(volume)};
+        }
 
         for (U32 i = 0; i < bdmergeMaxSpotShadows(); i++) // [BDMerge NSpot]
         {
@@ -32619,26 +32790,15 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
                 ? potential->getVOVolume() : nullptr;
             const bool potential_is_rig = potential_volume &&
                 potential_volume->isCineRigEmitter();
-            const bool incumbent_is_rig = incumbent_volume &&
-                incumbent_volume->isCineRigEmitter();
             // [ActorMask] F3 uses the baseline rig/world auction, so WP7 can
             // reject PARITY when F1 and F3 shadow assignments differ.
-            const bool actor_tiers = ALCineLightRigManager::anyActorOnly() &&
-                !(mActorMaskTestMode == ActorMaskTestMode::F3 &&
-                  mActorMaskView == ActorMaskView::MASK && mActorMaskValid &&
-                  mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender);
-            const auto tier = [actor_tiers](LLVOVolume* candidate, bool rig)
-            {
-                return rig ? (actor_tiers &&
-                    ALCineLightRigManager::instance().actorOnlyBits(candidate->getID()) ? 0 : 2) : 1;
-            };
-            const S32 potential_tier = tier(potential_volume, potential_is_rig);
+            const S32 potential_tier = spotShadowTier(potential_volume);
             // Null ranks below actors. Keep the rig/world comparison against
             // null verbatim; equal real tiers keep the baseline numeric tie-break.
             const bool outranks = !incumbent_volume
                 ? (potential_tier == 0 ? true : (potential_is_rig ? true : m_pri > 0))
-                : (potential_tier != tier(incumbent_volume, incumbent_is_rig)
-                    ? potential_tier > tier(incumbent_volume, incumbent_is_rig) : m_pri > pri);
+                : (potential_tier != spotShadowTier(incumbent_volume)
+                    ? potential_tier > spotShadowTier(incumbent_volume) : m_pri > pri);
             if (outranks)
             {
                 LLDrawable* temp = mTargetShadowSpotLight[i];
@@ -32662,6 +32822,80 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     if (light_shape_master_enabled() || areaShadowsActive())
         shader.uniform4fv(LLShaderMgr::LIGHT_SHAPE, 1, deferredLightShape(volume).mV);
     return lamp_power_scale;
+}
+
+S32 LLPipeline::spotShadowTier(LLVOVolume* volume) const
+{
+    const bool actor_tiers = ALCineLightRigManager::anyActorOnly() &&
+        !(mActorMaskTestMode == ActorMaskTestMode::F3 &&
+          mActorMaskView == ActorMaskView::MASK && mActorMaskValid &&
+          mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender);
+    return volume && volume->isCineRigEmitter() ? (actor_tiers &&
+        ALCineLightRigManager::instance().actorOnlyBits(volume->getID()) ? 0 : 2) : 1;
+}
+
+void LLPipeline::snapshotSpotShadowAuction()
+{
+    if (!isLiveMainAreaShadowPass()) return;
+    // Copy identities AND scores: reflection/water passes can also update volume priorities.
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        LLDrawable* target = mTargetShadowSpotLight[i];
+        LLVOVolume* volume = target ? target->getVOVolume() : nullptr;
+        mSpotAuctionMain[i] = {};
+        if (volume && !target->isDead())
+            mSpotAuctionMain[i] = {target, {volume->getID(), volume->getSpotLightPriority(), spotShadowTier(volume)}};
+    }
+}
+
+void LLPipeline::retainSpotShadowOwners()
+{
+    // Eligibility was recorded in the stock auction traversal, including owners below
+    // its winning set. Reconcile fixed-size arrays only: no scene walk or allocation.
+    const U32 count = bdmergeMaxSpotShadows();
+    std::array<ALShadowSlot::Light<LLUUID>, MAX_SPOT_SHADOWS> owners{}, ranked{};
+    const bool recent_auction = mSpotAuctionFrame == gFrameCount || mSpotAuctionFrame == gFrameCount - 1u;
+    if (!recent_auction) { mSpotChallenge = {}; return; } // Keep the stock targets/owners after skipped or secondary lighting.
+    for (U32 i = 0; i < count; ++i)
+    {
+        LLDrawable* target = mSpotAuctionMain[i].drawable;
+        LLVOVolume* volume = target ? target->getVOVolume() : nullptr;
+        if (volume && !target->isDead() && !isProjectorShadowSuppressed(volume))
+            ranked[i] = mSpotAuctionMain[i].light;
+        LLDrawable* owner = mShadowSpotLight[i];
+        volume = owner ? owner->getVOVolume() : nullptr;
+        // Immediate eviction of a live ineligible owner is intentionally stock behaviour.
+        if (volume && !owner->isDead() && mSpotAuctionEligible[i] == owner &&
+            !isProjectorShadowSuppressed(volume))
+            owners[i] = mSpotAuctionOwnerScores[i];
+        else if (owner && owner->isDead())
+        {
+            // Only deleted owners bypass the stock fade. A live ineligible owner
+            // loses its target here and fades out in the existing native path.
+            mShadowSpotLight[i] = NULL;
+            mSpotLightFade[i] = 0.f;
+        }
+    }
+    const auto chosen = ALShadowSlot::retainOwners(owners, ranked, count, mSpotChallenge, LLTimer::getTotalSeconds(), gFrameCount);
+    std::array<LLPointer<LLDrawable>, MAX_SPOT_SHADOWS> targets{};
+    for (U32 i = 0; i < count; ++i)
+    {
+        if (chosen[i].isNull()) continue;
+        for (U32 j = 0; j < count; ++j)
+        {
+            if (chosen[i] == owners[j].id) { targets[i] = mShadowSpotLight[j]; break; }
+            if (chosen[i] == ranked[j].id) { targets[i] = mSpotAuctionMain[j].drawable; break; }
+        }
+    }
+    for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+    {
+        mTargetShadowSpotLight[i] = targets[i];
+        if (i >= count)
+        {
+            mShadowSpotLight[i] = NULL;
+            mSpotLightFade[i] = 0.f;
+        }
+    }
 }
 
 // [BDMerge G3.3] Side-effect-free variant of setupSpotLight for the finalize-stage
@@ -35741,6 +35975,14 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
             F32 fade_amt = gFrameIntervalSeconds.value()
                 * (F32)llmax(LLTrace::get_frame_recording().getLastRecording().getSum(*velocity_stat) / LLTrace::get_frame_recording().getLastRecording().getDuration().value(), 1.0);
 
+            static LLCachedControl<bool> slot_hysteresis(gSavedSettings, "RenderShadowSlotHysteresis", true);
+            static LLCachedControl<bool> stable_spots(gSavedSettings, "BDMergeStableSpotShadows", false);
+            const bool retain_slots = ALShadowSlot::retainNativeFrame(slot_hysteresis(),stable_spots(),mShadowSlotSeed);
+            if (retain_slots) retainSpotShadowOwners();
+            else for (auto& challenge : mSpotChallenge) challenge = {};
+            if (retain_slots)
+                fade_amt = static_cast<F32>(ALShadowSlot::fadeStep(fade_amt, gFrameIntervalSeconds.value(), true));
+
             // should never happen
             llassert(mTargetShadowSpotLight[0] != mTargetShadowSpotLight[1] || mTargetShadowSpotLight[0].isNull());
 
@@ -36802,13 +37044,14 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         bool native_mapped = false; // a projector with a sampled native SL map keeps that path; its cube would be unused
         for (U32 slot = 0; slot < MAX_SPOT_SHADOWS; ++slot)
             if (mShadowSpotLight[slot] == found && spotShadowMapSampled(slot)) { native_mapped = true; break; }
-        // [World Shadow pick] a PICKED projector is world-owned even while it samples a native map (round 7's pin release does not apply).
-        if (native_mapped && !ALWorldShadow::worldEligibleWithNative(native_mapped, isWorldShadowPicked(mWorldShadowResident.id[k])))
+        // Picked lights keep their pins; other residents debounce a continuous native-map stint at both upkeep sites.
+        if (!worldShadowResidentEligible(mWorldShadowResident.id[k], native_mapped))
         {
             mWorldShadowReason[k] = ALWorldShadow::SlotReason::NativeMap;
             mWorldShadowResident.held[k] = false;
             mWorldShadowResident.byPick[k] = false;
             mWorldShadowResident.id[k] = LLUUID::null;
+            mWorldNativeRelease[k] = {};
             mWorldShadowFrame[k] = 0;
             continue; // renderAreaShadows can fill this slot from the unmapped ranking this frame
         }
@@ -36816,6 +37059,12 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         LLVector4a centre, extent;
         centre.load3(found->getPositionAgent().mV);
         extent.splat(radius * 1.5f);
+        // Match the main channel's incumbent fringe: otherwise its cube would stop rendering
+        // at the old edge while the channel is deliberately kept alive by the wider test.
+        static LLCachedControl<bool> slot_hysteresis(gSavedSettings, "RenderShadowSlotHysteresis", true);
+        const LLUUID& resident_id = mWorldShadowResident.id[k];
+        if (slot_hysteresis() && (mAreaShadowPrevious.contains(resident_id,gFrameCount,LLTimer::getTotalSeconds()) || mAreaShadowRamps.contains(resident_id,gFrameCount,LLTimer::getTotalSeconds())))
+            extent.splat(static_cast<F32>(ALAreaShadow::candidateRadius(radius,true,true)));
         if (!camera.AABBInFrustumNoFarClip(centre, extent)) { mWorldShadowReason[k] = ALWorldShadow::SlotReason::OutOfView; continue; }
         mWorldShadowReason[k] = ALWorldShadow::SlotReason::Rendered;   // provisional: confirmed when its six faces were drawn (end of the function)
         jobs[job_count++] = {k, found, found->getPositionAgent(), radius, worldShadowLightNear(found, radius)};

@@ -1086,6 +1086,7 @@ void LLAgent::setRegion(LLViewerRegion *regionp)
     llassert(regionp);
     if (mRegionp != regionp)
     {
+        gPipeline.resetShadowSlotTimers();
         if (!mRegionp || gDisconnected || getTeleportState() != TELEPORT_NONE)
             ALPanelWeatherSettings::suspendLibraryWeather();
         else
@@ -4325,6 +4326,7 @@ void LLAgent::startTeleportRequest()
 
 void LLAgent::handleTeleportFinished()
 {
+    gPipeline.resetShadowSlotHistory();
     LL_INFOS("Teleport") << "Agent handling teleport finished." << LL_ENDL;
     // [ReShadeReset] Covers local and cross-region teleports without treating
     // seamless region crossings as teleports.

@@ -22015,6 +22015,13 @@
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>0</integer>
     </map>
+    <key>RenderShadowSlotHysteresis</key>
+    <map>
+        <key>Comment</key><string>Keep shadow slots steady as the camera moves: native priority margin and hold, soft-shadow channel hysteresis, and World-shadow native-slot release debounce. At the default light cap of 4 with 4+ lights in view, swaps are symmetric (rarer, not smoothed) by design. Off restores the old slot behaviour.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
     <key>RenderAreaShadowLights</key>
     <map>
         <key>Comment</key><string>Number of shadowed lights (1-8). The most important lights (bright, large, close) get them, whether or not they have a native SL shadow map.</string>
