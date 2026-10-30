@@ -52,6 +52,7 @@
 #include "alcinelightrigmanager.h"
 #include "alrelightmath.h"
 #include "alareashadowmath.h"
+#include "alshadowdepthmath.h"
 #include "alrelighttakewriter.h"
 #include "workqueue.h"
 #include "lldir.h"
@@ -29615,6 +29616,34 @@ bool LLPipeline::worldShadowOwned(const LLUUID& id, U32& slot) const
     return false;
 }
 
+// Shadow-depth inputs are read-only: setupSpotLight also changes shared GL state.
+void LLPipeline::noteAreaDepthLight(U32 channel, LLDrawable*, LLVOVolume* volume,
+    const glm::vec3& centre, F32 light_scale)
+{
+    const LLColor3 color = volume->getLightLinearColor();
+    // 3.25: the local-light shaders' legacy balance, so E is on the same scale as the fill.
+    const F32 intensity = (color.mV[0]*.2126f+color.mV[1]*.7152f+color.mV[2]*.0722f)*3.25f*
+        light_scale*ALEnvIntensity::localLightEVScale(volume);
+    const F32 range = volume->getLightRadius()*1.5f;
+    mAreaDepthLight[channel].set(centre.x,centre.y,centre.z,
+        ALShadowDepth::finite(range) && range > 0.f ? range : 0.f);
+    mAreaDepthInfo[channel].set(ALShadowDepth::finite(intensity) ? llmax(intensity,0.f) : 0.f,
+        volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF),-2.f,0.f);
+    mAreaDepthAxis[channel].clear();
+    LLVector3 params;
+    if (LLPrismLens::projectorRenderParams(volume, params))
+    {
+        LLVector3 axis(0.f,0.f,-1.f);
+        axis *= volume->getRenderRotation();
+        const glm::vec3 view_axis = glm::mat3(get_current_modelview())*glm::make_vec3(axis.mV);
+        mAreaDepthAxis[channel].set(view_axis.x,view_axis.y,view_axis.z,0.f);
+        const F32 half_fov = params.mV[0]*.5f;
+        mAreaDepthInfo[channel].mV[2] = cosf(half_fov*1.15f);
+        mAreaDepthInfo[channel].mV[3] = cosf(half_fov*.85f);
+    }
+    mAreaDepthCount = llmax(mAreaDepthCount,channel+1);
+}
+
 void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     bool actor_ready, bool actor_as_world, bool actor_excluded)
 {
@@ -29622,6 +29651,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<bool> feeds(gSavedSettings, "RenderAreaShadowsVCam", false);
     mAreaShadowValid = false;
     mAreaShadowCount = 0;
+    mAreaDepthCount = 0;
+    for (U32 c=0; c<8; ++c) { mAreaDepthLight[c].clear(); mAreaDepthInfo[c].clear(); mAreaDepthAxis[c].clear(); } // holes: range 0 = skipped
     if (!enabled() || !feeds())
     {
         // Lazy OFF cleanup includes inactive size buckets and partial targets.
@@ -29695,6 +29726,8 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     static LLCachedControl<S32> samples(gSavedSettings, "RenderAreaShadowSamples", 8);
     static LLCachedControl<S32> steps(gSavedSettings, "RenderAreaShadowSteps", 12);
     static LLCachedControl<F32> max_dist(gSavedSettings, "RenderAreaShadowMaxDist", 8.f);
+    static LLCachedControl<bool> distance_reach(gSavedSettings, "RenderAreaShadowDistanceReach", true);
+    static LLCachedControl<F32> far_reach(gSavedSettings, "RenderAreaShadowFarReach", 24.f);
     static LLCachedControl<F32> mapped_contact(gSavedSettings, "RenderAreaShadowMappedContact", .15f);
     static LLCachedControl<F32> thickness(gSavedSettings, "RenderAreaShadowThickness", .35f);
     static LLCachedControl<bool> half(gSavedSettings, "RenderAreaShadowHalfRes", true);
@@ -30282,6 +30315,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
     float world_rot[9];
     ALWorldShadow::packViewRotation(view,world_rot);   // explicit packing: never a memcpy of a (possibly 16-byte-column) glm::mat3
     // [Soft shadow look] sanitized once per pass; every value at its default uploads exact zeros / the screen amount, and the shaders then run today's arithmetic.
+    const auto far_data = ALShadowDepth::farReachUniform(distance_reach(),far_reach(),max_dist());
     float look[3];
     ALAreaShadow::lookUniform(look_strength(),look_contrast(),look_world_amount(),look);
     const F32 look_reach_m = ALAreaShadow::lookReach(look_reach());
@@ -30333,6 +30367,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     contact_fade.mV[i] = fade;
                 }
                 const glm::vec3 centre = mul_mat4_vec3(view,glm::make_vec3(drawable->getPositionAgent().mV));
+                noteAreaDepthLight(plane*4+i,drawable,volume,centre,light_scale);
                 lights[i].set(centre.x,centre.y,centre.z,area_source_radius(volume));
                 U32 hash = 2166136261u;
                 for (U8 byte : id.mData) hash = (hash^byte)*16777619u;
@@ -30391,6 +30426,7 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
         gAreaShadowProgram.uniform2f(LLStaticHashedString("area_screen_reach"),world_any ? look_reach_m:0.f,look_screen);
         gAreaShadowProgram.uniform2f(LLStaticHashedString("area_trace_res"),
             (F32)mRT->areaGather[plane].getWidth(),(F32)mRT->areaGather[plane].getHeight());
+        gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_far_reach"),1,far_data.data());
         gAreaShadowProgram.uniform3f(LLStaticHashedString("area_params"),
             std::isfinite(distance) ? llclamp(distance,.1f,64.f):8.f,
             std::isfinite(thick) ? llclamp(thick,.001f,4.f):.35f,resolution_scale*(work.q.half ? .5f:1.f));
@@ -31067,6 +31103,24 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             }
         }
 
+        static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
+        static LLCachedControl<S32> probe_level(gSavedSettings, "RenderReflectionProbeLevel", 0);
+        const S32 effective_local_light_count = std::max(
+            (S32)local_light_count,
+            mReflectionMapManager.isCinematicLiveProbeCapture()
+                ? static_cast<S32>(mReflectionMapManager
+                    .getCinematicLiveProbePinnedLightCount())
+                : 0);
+
+        static LLCachedControl<F32> shadow_depth(gSavedSettings, "RenderAreaShadowDepth", .3f);
+        const F32 depth_amount = ALShadowDepth::amount(shadow_depth());
+        const bool area_early = depth_amount > 0.f;
+        if (area_early)
+        {
+            renderAreaShadows(debugLightingTerm() == 0 ? effective_local_light_count : 0,
+                light_scale, actor_only, actor_mask_ready, actor_as_world, actor_excluded);
+        }
+
         bindPrismLensTarget(*screen_target);
         static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
         // isComplete() is NOT optional. Without it a shader that fails to
@@ -31178,6 +31232,15 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderDeferredLighting - atmospherics");
             LL_PROFILE_GPU_ZONE("atmospherics");
             bindDeferredShader(soften_shader);
+            // Explicit on every bind: probes, mirrors and feed-OFF never inherit a prior view.
+            static const LLStaticHashedString depth_str("area_depth"), light_str("area_depth_light"),
+                info_str("area_depth_info"), axis_str("area_depth_axis");
+            const bool depth_active = area_early && areaShadowsActive();
+            soften_shader.uniform2f(depth_str,depth_active ? depth_amount : 0.f,
+                depth_active ? static_cast<F32>(llmin(mAreaDepthCount,mAreaShadowCount)) : 0.f);
+            soften_shader.uniform4fv(light_str,8,mAreaDepthLight[0].mV);
+            soften_shader.uniform4fv(info_str,8,mAreaDepthInfo[0].mV);
+            soften_shader.uniform4fv(axis_str,8,mAreaDepthAxis[0].mV);
 
             // [EnvIntensity] fallbacks aligned with settings.xml (0.6 / 0.18).
             static LLCachedControl<F32> ssao_scale(gSavedSettings, "RenderSSAOIrradianceScale", 0.6f);
@@ -31220,17 +31283,11 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             unbindDeferredShader(gDeferredSoftenProgram);
         }
 
-        static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
-        static LLCachedControl<S32> probe_level(gSavedSettings, "RenderReflectionProbeLevel", 0);
-        const S32 effective_local_light_count = std::max(
-            (S32)local_light_count,
-            mReflectionMapManager.isCinematicLiveProbeCapture()
-                ? static_cast<S32>(mReflectionMapManager
-                    .getCinematicLiveProbePinnedLightCount())
-                : 0);
-
-        renderAreaShadows(debugLightingTerm() == 0 ? effective_local_light_count : 0,
-            light_scale, actor_only, actor_mask_ready, actor_as_world, actor_excluded);
+        if (!area_early)
+        {
+            renderAreaShadows(debugLightingTerm() == 0 ? effective_local_light_count : 0,
+                light_scale, actor_only, actor_mask_ready, actor_as_world, actor_excluded);
+        }
 
         // The diagnostic replaces opaque lighting; do not add punctual lights
         // over its display-space result after the soften pass.

@@ -346,8 +346,9 @@ def validate_data(data: dict) -> None:
     # Probe reach: one persistent renderer switch, 2374 -> 2375 (10/30).
     # VRAM F1: exactly two Settings > Performance rows (purge switch and pin mirror).
     # + Keep breathing while paused: exactly one persisted Time toggle (10/30).
-    if len(pages) != 38 or row_count != 2378:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2378")
+    # Shadow depth + distance reach: exactly three Soft shadows rows, 2378 -> 2381 (10/30).
+    if len(pages) != 38 or row_count != 2381:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2381")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

@@ -1700,6 +1700,10 @@ public:
     bool mShadowSlotSeed = false; // First native frame follows the stock auction and fade.
     bool mAreaShadowValid = false;
     U32 mAreaShadowCount = 0;
+    void noteAreaDepthLight(U32 channel, LLDrawable* drawable, LLVOVolume* volume,
+        const glm::vec3& centre, F32 light_scale);
+    U32 mAreaDepthCount = 0;
+    LLVector4 mAreaDepthLight[8] = {}, mAreaDepthInfo[8] = {}, mAreaDepthAxis[8] = {};
     // Main view only, one pass: lights the ranking selected (Wanted), and lights that really got a visible soft-shadow
     // channel after planning, the fade, allocation and drawing (Admitted).
     // Cleared on entry of every pass. Read by the Director status line only (ALAreaShadow::coverageText).

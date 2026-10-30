@@ -479,7 +479,7 @@ class Rig:
             g['matrix'](self.loc(pr, name), 1, 0, value.ctypes.data_as(self.C.POINTER(self.F)))
 
     def chain(self, which, scene, light, plan, radius, screen_h, seed=12345, thickness=.35, light_bias=.25,
-              max_dist=8.0, upto=None, keep=8, programs=None, full=False, mix=0.0, rest_steps=0):
+              max_dist=8.0, upto=None, keep=8, programs=None, full=False, mix=0.0, rest_steps=0, contact=0.0):
         """Gather -> H -> V -> upsample with the production uniforms; returns uint8 (h, w) of channel 0."""
         g, np, loc, ui, uf = self.g, self.np, self.loc, self.ui, self.uf
         gather, filt = programs if programs else self.programs[which]
@@ -501,7 +501,7 @@ class Rig:
         uf[2](loc(gather, b'area_trace_res'), tw, th)
         uf[3](loc(gather, b'area_params'), max_dist, thickness, screen_h / 1080.0 * (.5 if half else 1.0))
         uf[1](loc(gather, b'area_light_bias'), light_bias)
-        uf[4](loc(gather, b'area_contact_dist'), 0, 0, 0, 0)
+        uf[4](loc(gather, b'area_contact_dist'), contact, contact, contact, contact)
         uf[4](loc(gather, b'area_contact_fade'), 0, 0, 0, 0)
         # Hybrid boundary (fix round 3): the share of this light's rays that march the regular way, and that march's steps.
         # The shader's defaults (0, 0) are what every other chain runs with; the pre-P0 programs have no such uniforms (-1).

@@ -147,6 +147,7 @@ def run(args):
             if key in self.cache:return self.cache[key]
             defs='#define REFMAP_LEVEL 1\n#define LIGHT_COUNT '+('16' if kind=='multi' else '4')+'\n'
             if kind=='soften':defs+='#define HAS_SSAO 1\n#define HAS_SUN_SHADOW 1\n'
+            if kind=='soften' and getattr(self,'emissive',False):defs+='#define HAS_EMISSIVE 1\n'
             if kind=='spot':defs+='#define SPOT_SHADOW 1\n'
             if kind=='alpha':defs+='#define USE_DIFFUSE_TEX 1\n#define USE_VERTEX_COLOR 1\n'
             if kind in ('material','pbr','actor'):defs+='#define DIFFUSE_ALPHA_MODE 1\n'
@@ -155,6 +156,7 @@ def run(args):
             mods=list(COMMON)
             if kind in FORWARD or kind=='soften': mods+=['deferred/reflectionProbeF.glsl','deferred/screenSpaceReflUtil.glsl']
             if kind=='actor':mods+=['alchemy/avatarLightResponseF.glsl','alchemy/actorFxDissolveF.glsl','alchemy/actorFxF.glsl']
+            if kind=='soften' and getattr(self,'emissive',False):mods+=['alchemy/avatarLightResponseF.glsl']
             if weather:mods+=['deferred/weatherMaterialF.glsl','deferred/weatherShelterF.glsl']
             pr=gl.program()
             for m in mods:gl.attach(pr,self.compile(self.source(m),defs,m))
@@ -195,7 +197,8 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
         ('head',BASE_REF,False,2),('head_tag',BASE_REF,True,2),('ev_base',EV_BASE_REF,True,2),('off','WORKTREE',True,2),('probes','WORKTREE',True,3))}
     programs={}
     for label,r in runners.items():
-        kinds=FILES if label!='probes' else ('soften','pbr','shiny')
+        if args.shadow_depth_only and label!='off':continue
+        kinds=('soften',) if args.shadow_depth_only else FILES if label!='probes' else ('soften','pbr','shiny')
         for kind in kinds:
             programs[label,kind]=r.program(kind)
             if label in ('head','off'):r.program(kind,True)
@@ -297,7 +300,7 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
         gl.matrix(gl.loc(p,b'weather_surface_cover_matrix'),1,0,cover.ctypes.data_as(C.POINTER(C.c_float)))
         r.bind(p,'weather_surface_cover_map',17,orm)
         # class2 fallback cube map must also be nonzero.
-        normal_texture(label in ('head_tag','ev_base','off','probes'),pbr)
+        normal_texture(r.tag,pbr)
         gl.active(0x84C0);gl.bind_fbo(0x8D40,fbo);gl.viewport(0,0,width,height)
         clearcolor(0,0,0,0);clear(0x4000)
         assert err()==0,('setup',label,kind,factor)
@@ -308,6 +311,11 @@ base_color_texcoord=normal_texcoord=metallic_roughness_texcoord=emissive_texcoor
         pixels=np.empty((height,width,4),np.float32);gl.read(0,0,width,height,0x1908,0x1406,pixels.ctypes.data)
         assert err()==0 and np.all(np.isfinite(pixels)),('read',a)
         return pixels
+
+    if args.shadow_depth_only:
+        from shadow_depth_gpu import check_depth
+        check_depth(dict(globals(),**locals()))
+        return 0
 
     results={}; fail=[]; positives=0
     def require(ok,name):
@@ -406,6 +414,8 @@ GET_GBUFFER_FLAG(f,GBUFFER_FLAG_HAS_PBR)?1:0,GET_GBUFFER_FLAG(f,GBUFFER_FLAG_HAS
     composite=np.empty((height,width,4),np.float32);gl.read(0,0,width,height,0x1908,0x1406,composite.ctypes.data);gl.disable(0x0BE2)
     expected=a0[...,:3]*a0[...,3:4]+wall1*(1-a0[...,3:4])
     require(np.allclose(composite[...,:3],expected,atol=.001,rtol=.01),'forward hair identity + adjusted wall-through production blend')
+    from shadow_depth_gpu import check_depth
+    check_depth(dict(globals(),**locals()))
     report=dict(renderer=gl.renderer,checks=results,failures=fail,startup={k:dict(programs=len(r.cache),link_ms=r.link_ms,source_hashes=r.hashes) for k,r in runners.items()})
     if args.cost:
         # Same linked production executables; 12 alpha draws represent a crowd.
@@ -483,6 +493,7 @@ GET_GBUFFER_FLAG(f,GBUFFER_FLAG_HAS_PBR)?1:0,GET_GBUFFER_FLAG(f,GBUFFER_FLAG_HAS
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     group=ap.add_mutually_exclusive_group(required=True);group.add_argument('--assemble-only',action='store_true');group.add_argument('--gpu',action='store_true')
+    ap.add_argument('--shadow-depth-only',action='store_true')
     ap.add_argument('--cost',action='store_true');ap.add_argument('--out',type=Path,default=OUT)
     ap.add_argument('--factor-source-ref',help='fail-before control for production CPU factors, e.g. HEAD')
     return run(ap.parse_args())

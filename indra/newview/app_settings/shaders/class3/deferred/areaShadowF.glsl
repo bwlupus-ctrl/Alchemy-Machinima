@@ -24,6 +24,8 @@ uniform float area_native_offset; // the native sampler's spot_shadow_offset (me
 // 0 (also the value of a program that was never given it) = off: the march below is exactly the contact band march of a build without it. y = Screen-space amount 0..1: scales
 // only the darkening of that extra trace (never the contact band). Kept in sync with ALAreaShadow::reachLimit / reachSteps / screenTerm (alareashadowmath.h).
 uniform vec2 area_screen_reach;
+uniform vec4 area_far_reach;
+uniform mat4 projection_matrix;
 vec4 getPositionWithDepth(vec2 uv, float depth);
 vec2 generateProjectedPosition(vec3 pos);
 float getLinearDepth(vec2 uv);
@@ -85,6 +87,18 @@ void main()
     vec3 pos = getPositionWithDepth(uv,depth).xyz;
     vec3 normal = areaNormal(uv);
     vec3 origin = pos+normal*areaReceiverBias(uv,pos);
+    float trace_dist = area_params.x;
+    float trace_thick = area_params.y;
+    if (area_far_reach.x > area_params.x)
+    {
+        float zeq = -pos.z*1.7320508/projection_matrix[1][1];
+        if (zeq > area_far_reach.y)
+        {
+            float t = smoothstep(area_far_reach.y,area_far_reach.z,zeq);
+            trace_dist = mix(area_params.x,area_far_reach.x,t);
+            trace_thick = area_params.y*mix(1.0,area_far_reach.w,t);
+        }
+    }
     float native_strength = areaNativeStrength(-(pos.z+normal.z*area_native_offset));
     // Spatial noise cells scale with render resolution (one cell per pixel below 1); no time/frame inputs.
     uvec2 pixel = uvec2(floor(gl_FragCoord.xy/max(area_params.z,1.0)));
@@ -109,7 +123,7 @@ void main()
         float extra_dark = 0.0; // rays whose first hit lies BEYOND the contact band (the reach march of a world channel; 0 without a reach)
         // World contact accepts a surface within 5 mm of the refined hit plane;
         // a camera-sized tolerance admits foreground silhouettes as contact.
-        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : area_params.y;
+        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : trace_thick;
         for (int sample_idx = 0; sample_idx < area_samples; ++sample_idx)
         {
             // Equal-area radial strata and fixed golden-angle azimuths.
@@ -166,10 +180,10 @@ void main()
                 }
             }
             else traced = regular_ray ?
-                areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,thickness,
+                areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,trace_dist,thickness,
                     clamp(area_rest_steps,1,64),0.25+0.5*jitter,area_contact_dist[light],false) :
                 areaTrace(origin,target,area_lights[light].xyz,end_gap,
-                    area_light_bias,area_params.x,thickness,area_steps,offset,area_contact_dist[light]);
+                    area_light_bias,trace_dist,thickness,area_steps,offset,area_contact_dist[light]);
             visibility += traced.x;
             contact_visibility += traced.y;
         }

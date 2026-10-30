@@ -23,7 +23,10 @@ def check_dispatch(g):
     end = method(nv / 'pipeline.cpp', 'void LLPipeline::endPrismAuxiliaryState()')
     end = end[end.index('    if (mPrismAreaStateSaved)'):end.index('    // Discard the temporary')]
     entry = render[:render.index('    const auto& registry =')]
-    call_start = lighting.index('        renderAreaShadows(debugLightingTerm()')
+    assert lighting.count('renderAreaShadows(debugLightingTerm()') == 2
+    assert 'if (area_early)\n        {\n            renderAreaShadows' in lighting
+    assert 'if (!area_early)\n        {\n            renderAreaShadows' in lighting
+    call_start = lighting.index('            renderAreaShadows(debugLightingTerm()')
     production_call = lighting[call_start:lighting.index(';', call_start)+1]
     dispatch = render[render.index('    const U32 width = mRT->deferredScreen.getWidth()'):render.index('    static LLFrameTimer summary;')]
     # The dispatch now consults cube_on directly for look reach. Its cached
@@ -42,6 +45,7 @@ def check_dispatch(g):
 
     fixture = r'''
 #include "alareashadowmath.h"
+#include "alshadowdepthmath.h"
 #include "alworldshadowmath.h"
 #include <array>
 #include <cstring>
@@ -116,12 +120,14 @@ struct Log { template<class T> Log& operator<<(const T&) { return *this; } } log
 #define LL_PROFILE_GPU_ZONE(x)
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE(x)
 struct Settings {} gSavedSettings;
+bool reachSetting=true;
 bool master=true,feedSetting=true,thinSetting=false,slotSetting=true; int budgetSetting=1500;
 template<class T> struct LLCachedControl {
     std::string key; T value;
     LLCachedControl(Settings&,const char* k,T v):key(k),value(v) {}
     operator T() const { return operator()(); }
     T operator()() const {
+        if(key=="RenderAreaShadowDistanceReach") return T(reachSetting);
         if(key=="RenderShadowSlotHysteresis") return T(slotSetting);
         if(key=="RenderAreaShadows") return T(master);
         if(key=="RenderAreaShadowsVCam") return T(feedSetting);
@@ -250,6 +256,9 @@ struct LLPipeline {
     bool routed=false;
     bool mAreaShadowValid=true,mPrismSavedAreaValid=false;
     unsigned mAreaShadowCount=2,mPrismSavedAreaCount=0,mAreaShadowWanted=0,mAreaShadowAdmitted=0,mAreaShadowThin=0;
+    unsigned mAreaDepthCount=0;
+    LLVector4 mAreaDepthLight[8],mAreaDepthInfo[8],mAreaDepthAxis[8];
+    void noteAreaDepthLight(U32 channel, LLDrawable*, LLVOVolume*, const glm::vec3&, F32) { mAreaDepthCount=std::max(mAreaDepthCount,channel+1); }
     bool mAreaShadowThinRequested=false,mAreaShadowLowMemory=false;
     std::array<LLUUID,8> mAreaShadowIDs{},mPrismSavedAreaIDs{};
     Take mRelightAreaTake,mRelightFeedAreaTake,mPrismSavedAreaTake;
@@ -353,6 +362,7 @@ void LLPipeline::dispatch() {
 '''
     fixture += r'''
 LLPipeline p;
+extern "C" __declspec(dllexport) void setReach(int on) { reachSetting=on!=0; }
 extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,int width,int height,int frame,const float* light) {
     cb=callback;
     if(action==0) {
@@ -462,7 +472,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
         (directory / (label+'.cpp')).write_text(source,encoding='utf-8')
         dll = directory / (label+'.dll')
         command = (f'@echo off\ncall "{vcvars}" >nul\n'
-                   f'cl /nologo /std:c++17 /EHsc /LD /I"{nv.resolve()}" '
+                   f'cl /nologo /std:c++20 /EHsc /LD /I"{nv.resolve()}" '
                    f'/Fo"{directory / (label+".obj")}" /Fe"{dll}" '
                    f'"{directory / (label+".cpp")}" /link /IMPLIB:"{directory / (label+".lib")}"\nexit /b %ERRORLEVEL%\n')
         (directory / 'compile.cmd').write_text(command,encoding='utf-8')
@@ -621,6 +631,14 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
 
         # Render and retain MAIN through the SAME production dispatch/owner.
         # Every feed receives this pack as well as its own pack.
+        lib.setReach(1)
+        assert run(6)==1
+        far=seen.get('area_far_reach',[])
+        assert len(far)==4 and far[:3]==[24.,12.,36.] and abs(far[3]-3**.5)<1.e-6,('far reach upload',far)
+        lib.setReach(0)
+        assert run(6)==1
+        assert seen.get('area_far_reach')==[0.,0.,0.,0.],('far reach OFF upload',seen.get('area_far_reach'))
+        lib.setReach(1)
         assert run(6)==1
         # The production dispatch uploads the native map's clip and receiver offset (housing is the global
         # light bias only: no per-light box is uploaded).
@@ -903,6 +921,7 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     # Executable mutations: compile the same assertions against broken
     # production blocks without changing any worktree source.
     mutations = {
+        'far_reach_dropped': fixture.replace('gAreaShadowProgram.uniform4fv(LLStaticHashedString("area_far_reach"),1,far_data.data());',''),
         'secondary_fade_missing': fixture.replace('upsample && steady_main ? final_fade.mV : identity_fade.mV', 'final_fade.mV').replace('std::array<double,8> slot_fade{{1,1,1,1,1,1,1,1}};', 'std::array<double,8> slot_fade{{0,0,0,0,0,0,0,0}};'),
         'per_update_release': fixture.replace(end,end+'\nfor(auto& e:mPrismLensScratchPool) for(auto& t:e.rt.areaVisibility) t.release();'),
         'missing_dispatch': fixture.replace(production_call,'/* production call removed */'),

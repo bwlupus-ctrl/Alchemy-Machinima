@@ -65,7 +65,8 @@ template<class T> struct LLCachedControl {
 template<class T> T llclamp(T v,T lo,T hi){return std::clamp(v,lo,hi);}
 template<class T> T llmin(T a,T b){return std::min(a,b);}
 struct {float mGLVersion=4.6f;} gGLManager;
-struct LLViewerObject {bool rig=false;bool isCineRigEmitter()const{return rig;}};
+// These exposure fixtures contain ordinary/rig lights, never a color chart.
+struct LLViewerObject {bool rig=false;bool isCineRigEmitter()const{return rig;} bool isColorChart()const{return false;}};
 struct LLRender {static bool sClassicMode;}; bool LLRender::sClassicMode=false;
 bool neutral=false,capture=false;
 namespace ALEnvIntensity {

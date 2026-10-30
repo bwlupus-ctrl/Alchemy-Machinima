@@ -58,6 +58,10 @@ area_inputs()
 # Thin-only uses the same production planner data as the complete suite.
 import runpy
 policy=runpy.run_path(str(Path(__file__).with_name('relight_area_policy_check.py')))['check_policy']()
+if '--reach-only' in sys.argv:
+    from shadow_depth_gpu import check_reach
+    check_reach(globals())
+    sys.exit(0)
 if '--thin-only' in sys.argv:
     from relight_thin_check import check_thin
     check_thin(globals())
@@ -73,6 +77,8 @@ if '--grain-only' in sys.argv:
 if '--cost-only' in sys.argv:
     from relight_cost_check import check_cost
     check_cost(globals())
+    from shadow_depth_gpu import check_reach
+    check_reach(globals())
     sys.exit(0)
 if '--rank-only' in sys.argv:
     from relight_rank_check import check_rank
@@ -555,3 +561,6 @@ check_rank(globals())
 
 from relight_grain_check import check_grain
 check_grain(globals())
+
+from shadow_depth_gpu import check_reach
+check_reach(globals())

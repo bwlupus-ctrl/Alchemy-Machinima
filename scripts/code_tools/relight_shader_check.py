@@ -90,7 +90,7 @@ files=['class1/deferred/deferredUtil.glsl','class3/deferred/multiPointLightF.gls
        'class2/deferred/alphaF.glsl','class3/deferred/materialF.glsl',
        'class2/deferred/pbralphaF.glsl','class2/deferred/sharedActorFxPbrF.glsl',
        'class1/deferred/screenSpaceRayUtil.glsl','class3/deferred/areaShadowF.glsl',
-       'class3/deferred/areaShadowFilterF.glsl']
+       'class3/deferred/areaShadowFilterF.glsl','class3/deferred/softenLightF.glsl']
 
 # Resolve shader classes exactly like loadShaderFile (highest available <= level).
 def production_file(name, level=3):
@@ -107,12 +107,12 @@ def link_production(file, defines, label, test_fragment=None, compile_only=False
     # Global basic-shader defines accompany the per-program permutations.
     if 'HAS_SUN_SHADOW' in defines: defines+='#define SUN_SHADOW 1\n'
     if name=='spotLightF.glsl': defines+='#define SPOT_SHADOW 1\n'
-    if forward: defines+='#define REFMAP_LEVEL 1\n'
+    if forward or name=='softenLightF.glsl': defines+='#define REFMAP_LEVEL 1\n'
     fragment=['deferred/globalF.glsl','environment/srgbF.glsl',
               'windlight/atmosphericsVarsF.glsl','windlight/gammaF.glsl',
               'windlight/atmosphericsFuncs.glsl','windlight/atmosphericsF.glsl',
               'deferred/deferredUtil.glsl','deferred/gbufferUtil.glsl']
-    if forward:
+    if forward or name=='softenLightF.glsl':
         fragment+=['windlight/atmosphericsHelpersF.glsl','windlight/cineHazeF.glsl',
                    'environment/waterFogF.glsl','deferred/shadowUtil.glsl']
         fragment+=['deferred/reflectionProbeF.glsl','deferred/screenSpaceReflUtil.glsl']
@@ -129,7 +129,7 @@ def link_production(file, defines, label, test_fragment=None, compile_only=False
     else: vertex='deferred/'+name.replace('F.glsl','V.glsl')
     if name in ('areaShadowF.glsl','areaShadowFilterF.glsl'): vertex='deferred/areaShadowV.glsl'
     vertices=[vertex,'deferred/textureUtilV.glsl']
-    if forward:
+    if forward or name=='softenLightF.glsl':
         vertices+=['environment/srgbF.glsl','windlight/atmosphericsVarsV.glsl',
                    'windlight/atmosphericsHelpersV.glsl','windlight/atmosphericsFuncs.glsl',
                    'windlight/atmosphericsV.glsl']
@@ -186,6 +186,8 @@ def production_variants(file):
     name=Path(file).name
     actor='#define HAS_ACTOR_FX 1\n'
     maps='#define HAS_NORMAL_MAP 1\n#define HAS_SPECULAR_MAP 1\n#define HAS_EMISSIVE_MAP 1\n#define USE_VERTEX_COLOR 1\n'
+    if name=='softenLightF.glsl':
+        return [''.join('#define '+key+' 1\n' for key,bit in zip(('HAS_SUN_SHADOW','HAS_SSAO','HAS_EMISSIVE'),(1,2,4)) if mask&bit) for mask in range(8)]
     if name=='alphaF.glsl':
         base=actor+'#define USE_INDEXED_TEX 1\n#define USE_VERTEX_COLOR 1\n#define HAS_ALPHA_MASK 1\n'
         return [base,base+'#define HAS_SUN_SHADOW 1\n',base+'#define HAS_SKIN 1\n#define HAS_SUN_SHADOW 1\n',
@@ -217,6 +219,12 @@ def production_variants(file):
             result+=[base,base+'#define SHARED_ACTOR_FX_SLOT_FILTER 1\n#define GLTF_INDEXED_CHANNELS 8\n#define HAS_SKIN 1\n#define HAS_SUN_SHADOW 1\n#define ALR_RIMSPLIT_PARITY 1\n']
         return result
     return None
+
+if '--soften-only' in sys.argv:
+    for permutation in production_variants('class3/deferred/softenLightF.glsl'):
+        link_production('class3/deferred/softenLightF.glsl',permutation,'soften production permutation')
+    print('[RelightQ] soften production compile/link PASS all eight SUN/SSAO/EMISSIVE permutations',flush=True)
+    sys.exit(0)
 
 count=0
 linked=0

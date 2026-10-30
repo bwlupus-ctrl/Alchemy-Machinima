@@ -4304,11 +4304,14 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "RenderAreaShadowCubeLights",
         "RenderAreaShadowMappedContact",
         "RenderAreaShadowMaxDist",
+        "RenderAreaShadowFarReach",
+        "RenderAreaShadowDistanceReach",
         "RenderAreaShadowThickness",
         "RenderAreaShadowLightBias",
         // Soft shadow LOOK controls: scene-saved like the settings above (Quality and Work budget stay global).
         "RenderAreaShadowStrength",
         "RenderAreaShadowContrast",
+        "RenderAreaShadowDepth",
         "RenderAreaShadowWorldScreenReach",
         "RenderAreaShadowWorldAmount",
         "RenderAreaShadowScreenAmount",
@@ -4976,6 +4979,10 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
                 ctrl->resetToDefault(true);
         }
     }
+
+    // The declared default is an authored new look; old scenes retain their original fill.
+    if (!scene["settings"].isMap() || !scene["settings"].has("RenderAreaShadowDepth"))
+        gSavedSettings.setF32("RenderAreaShadowDepth",0.f);
 
     // [RelightQ] Old scenes retain their radius in metres and the historical
     // highlight scale of one, even after a softer preset was used this session.

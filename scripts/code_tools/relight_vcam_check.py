@@ -49,6 +49,8 @@ template<class T> struct LLCachedControl {
     T operator()() const { return gSavedSettings.values[key]; }
 };
 struct LLVector4 { float mV[4]={0,0,1,-1}; };
+struct LLDrawable;
+namespace glm { struct vec3; }
 struct LLVOVolume { int id; int getID() const { return id; } };
 LLVector4 light_shape_for_volume(const LLVOVolume*) { return {}; }
 struct LLViewerCamera {

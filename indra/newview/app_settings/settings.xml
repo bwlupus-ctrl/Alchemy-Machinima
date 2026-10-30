@@ -22103,6 +22103,27 @@
         <key>Type</key><string>F32</string>
         <key>Value</key><real>0.25</real>
     </map>
+    <key>RenderAreaShadowDepth</key>
+    <map>
+      <key>Comment</key><string>Darken environment fill under local soft shadows. Look setting, saved with the Director scene.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>RenderAreaShadowDistanceReach</key>
+    <map>
+      <key>Comment</key><string>Extend non-world soft-shadow traces on distant receivers without adding march steps. Saved with the Director scene.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>RenderAreaShadowFarReach</key>
+    <map>
+      <key>Comment</key><string>Far soft-shadow trace distance in metres (8-48). Saved with the Director scene.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>24</real>
+    </map>
     <key>RenderAreaShadowStrength</key>
     <map>
         <key>Comment</key><string>Soft shadow strength (0-1, default 1). The final soft-shadow visibility becomes mix(1, visibility, strength): 1 is the full shadow, 0.6 a lighter, filmic one, 0 no soft shadow at all (the work still runs at 0). World shadows and the contact band are scaled with it. Look setting, saved with the Director scene.</string>

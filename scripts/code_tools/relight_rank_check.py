@@ -262,17 +262,21 @@ def check_rank_sources():
     # boundary's regular rays) pass that end gap and the global light bias.
     gather_now = glsl.replace('\r\n', '\n')
     assert '            float end_gap = max(source_radius,0.1)+area_light_bias;\n' in gather_now, 'gather end gap must be the pre-hybrid baseline\'s'
-    # P1-lite: the thickness argument is the per-light `thickness` variable, which is the user's area_params.y for EVERY channel except
-    # a world-owned one (a world channel only supplies the contact term and tightens it): OFF is the pre-hybrid argument byte for byte.
-    assert ('        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : area_params.y;\n') in gather_now, \
-        'the world thickness must default to the pre-hybrid area_params.y'
+    # Distance reach (10/30): non-world rays use the ramped operands; world contact
+    # retains the pre-hybrid operands. Pin the identity initialization AND both gates
+    # so OFF and near receivers retain the exact historical arguments.
+    assert '    float trace_dist = area_params.x;\n    float trace_thick = area_params.y;' in gather_now
+    assert 'if (area_far_reach.x > area_params.x)' in gather_now and 'if (zeq > area_far_reach.y)' in gather_now
+    assert 'float zeq = -pos.z*1.7320508/projection_matrix[1][1];' in gather_now
+    assert ('        float thickness = area_world[light] > 0.5 ? min(area_params.y,0.005) : trace_thick;\n') in gather_now, \
+        'world thickness must retain area_params.y; non-world thickness must use the gated ramp'
     assert 'area_light_bias,min(area_params.x,area_contact_dist[light]),thickness,' in gather_now and \
         'min(area_steps,12),0.25+0.5*jitter,area_contact_dist[light],false);' in gather_now, \
         'world contact must be bounded and independent of the Thin marcher'
     assert ('                areaTrace(origin,target,area_lights[light].xyz,end_gap,\n'
-            '                    area_light_bias,area_params.x,thickness,area_steps,offset,area_contact_dist[light]);\n') in gather_now, \
-        'the unchanged march must keep the pre-hybrid arguments (thickness = area_params.y unless world-owned)'
-    assert 'areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,area_params.x,thickness,' in gather_now, \
+            '                    area_light_bias,trace_dist,thickness,area_steps,offset,area_contact_dist[light]);\n') in gather_now, \
+        'non-world march must use gated distance/thickness with unchanged steps and offset'
+    assert 'areaTrace(origin,target,area_lights[light].xyz,end_gap,area_light_bias,trace_dist,thickness,' in gather_now, \
         'the regular boundary rays must keep the housing arithmetic'
     # The hand-over is evaluated at the native sampler's shifted receiver depth, from the same offset.
     assert 'areaNativeStrength(-(pos.z+normal.z*area_native_offset))' in glsl and 'uniform float area_native_offset;' in glsl

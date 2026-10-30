@@ -135,6 +135,40 @@ vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol);
 uniform vec3 sky_amb_tint;
 uniform float ssao_irradiance_max_stock;
 bool envOnlyIdentity();
+uniform sampler2D area_shadow_map0;
+uniform sampler2D area_shadow_map1;
+uniform vec2 area_depth; // amount, current view's channel count
+uniform vec4 area_depth_light[8]; // view centre, influence range
+uniform vec4 area_depth_info[8]; // luminance, falloff, outer/inner cone cosines (-2 = omni)
+uniform vec4 area_depth_axis[8];
+float calcLegacyDistanceAttenuation(float distance, float falloff);
+
+float areaDepthFill(vec2 tc, vec3 pos, vec3 normal, vec3 irradiance)
+{
+    float fill = max(dot(irradiance,vec3(0.2126,0.7152,0.0722)),0.0);
+    vec4 map0 = texture(area_shadow_map0,tc);
+    vec4 map1 = vec4(1.0);
+    if (area_depth.y > 4.0) map1 = texture(area_shadow_map1,tc);
+    float occ = 0.0;
+    for (int c = 0; c < min(int(area_depth.y),8); ++c)
+    {
+        float vis = c < 4 ? map0[c] : map1[c-4];
+        if (vis >= 1.0) continue;
+        vec3 delta = area_depth_light[c].xyz-pos;
+        float d = length(delta);
+        float range = area_depth_light[c].w;
+        if (range <= 0.0 || d >= range || d <= 0.0001) continue;
+        vec3 l = delta/d;
+        float cone = 1.0;
+        if (area_depth_info[c].z > -2.0)
+            cone = smoothstep(area_depth_info[c].z,area_depth_info[c].w,dot(-l,area_depth_axis[c].xyz));
+        float e = area_depth_info[c].x*calcLegacyDistanceAttenuation(d/range,area_depth_info[c].y)*
+            max(dot(normal,l),0.0)*cone;
+        float w = e/(e+fill+0.0001);
+        occ = max(occ,(1.0-vis)*w);
+    }
+    return 1.0-area_depth.x*occ;
+}
 
 void adjustIrradiance(inout vec3 irradiance, float ambocc)
 {
@@ -238,6 +272,7 @@ void main()
 
         adjustIrradiance(irradiance, ambocc);
         irradiance = applyShadowLift(irradiance, gb.normal, light_dir, scol); // [EnvIntensity v2] after the SSAO ceiling
+        if (area_depth.x > 0.0 && !envOnlyIdentity()) irradiance *= areaDepthFill(tc,pos.xyz,gb.normal,irradiance);
 
         vec3 diffuseColor = vec3(0.0);
         vec3 specularColor = vec3(0.0);
@@ -288,6 +323,7 @@ void main()
 
         adjustIrradiance(irradiance, ambocc);
         irradiance = applyShadowLift(irradiance, gb.normal, light_dir, scol); // [EnvIntensity v2] gain is 0 in classic mode
+        if (area_depth.x > 0.0 && !envOnlyIdentity()) irradiance *= areaDepthFill(tc,pos.xyz,gb.normal,irradiance);
 
         // apply lambertian IBL only (see pbrIbl)
         color.rgb = irradiance;

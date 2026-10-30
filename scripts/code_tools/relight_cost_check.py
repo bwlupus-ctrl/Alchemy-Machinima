@@ -120,6 +120,7 @@ class Frame:
             ui(loc(gather, name), value)
         uf[2](loc(gather, b'area_trace_res'), self.tw, self.th)
         uf[3](loc(gather, b'area_params'), 8.0, .35, h / 1080.0 * (.5 if plan['half'] else 1.0))
+        uf[4](loc(gather, b'area_far_reach'), *getattr(self, 'reach', (0., 0., 0., 0.)))
         uf[1](loc(gather, b'area_light_bias'), .25)
         uf[4](loc(gather, b'area_contact_dist'), 0, 0, 0, 0)
         uf[4](loc(gather, b'area_contact_fade'), 0, 0, 0, 0)
