@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "66dee3b86be678f0b64718d3b263b6129c48e6844f9864cf94b1884aa9b65039",
+  "csv_sha256": "bc5528f4fd386205f927cfedc5b747ff2c900938acbd8401868e32a1126bf0a3",
   "interactive_rows": 2052,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -48,7 +48,7 @@
   "entries": 4543,
   "pages": 38,
   "settings_declared": 3834,
-  "xui_files": 844,
+  "xui_files": 845,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
