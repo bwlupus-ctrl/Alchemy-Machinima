@@ -127,6 +127,13 @@ public:
     void               setSearchText(const std::string&);
     void               setChangedOnlyValue(bool);
     void               resetPage();
+    void               revealPersistentCard();
+    void setPersistentMenu(std::function<void(LLUICtrl*)> menu, const std::string& tooltip);
+    void setWhoUnavailable(std::function<std::string(const LLUUID&)> label,
+                           std::function<void(const LLUUID&)> action)
+         { mWhoUnavailableLabel = std::move(label); mWhoUnavailableAction = std::move(action); }
+    bool               activateWhoUnavailable();
+    void               refreshWhoUnavailable();
     bool               cycleChip(S32);
     S32                chipIndex() const { return mChipIndex; }
     bool               setChipIndex(S32);
@@ -218,6 +225,10 @@ private:
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
     std::string mPersistentStatusWidget, mPersistentActionWidget, mPersistentCard, mPersistentLabel;
     std::function<bool(ALKitRow*)> mRowRevealGuard;
+    std::function<void(LLUICtrl*)> mPersistentMenu;
+    std::function<std::string(const LLUUID&)> mWhoUnavailableLabel;
+    std::function<void(const LLUUID&)> mWhoUnavailableAction;
+    LLUUID mWhoUnavailableTarget;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;

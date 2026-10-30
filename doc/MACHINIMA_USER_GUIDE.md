@@ -245,6 +245,8 @@ floater.
 5. Set a **Delay** if you need to get into frame, then hit **ACTION** (F3). It flips to **CUT** (F4), which stops everything and restores what it changed.
 6. **Save** the setup as a **Scene** to reload later.
 
+On Director v2 **Light > Rig**, open **Rig group...** to create or leave a group, turn all rigs off, or show **Rig & target**. To give a friend their own rig, choose **Add avatar** and their nearby name (or an existing Subject A–D): a nearby friend takes the first free Subject slot, a group is created if needed, and their rig is selected and turned on. In solo mode, selecting a cast Subject offers **Create rig group to edit Subject X's rig**; click that chip to continue.
+
 > ACTION does nothing visible unless at least one **arm** box is ticked. If both Recorder-capture and Recorder-play are armed, **capture wins**.
 
 ### Director hotkeys

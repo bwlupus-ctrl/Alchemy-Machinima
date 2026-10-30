@@ -1574,6 +1574,8 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
                 LLButton* anchor = anchor_handle.get();
                 if (!shell || !page || !anchor || !page->whoCombo())
                     return;
+                if (page->activateWhoUnavailable())
+                    return;
                 if (ALKitPopover* old = popover_handle.get())
                 {
                     if (shell->consumeAnchorClose(old))

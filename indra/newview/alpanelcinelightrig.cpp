@@ -22,6 +22,10 @@
 #include "alkithistory.h"
 #include "alkitshell.h"
 #include "alkitpage.h"
+#include "alkitmenu.h"
+#include "alriggroupsubject.h"
+#include "llmenugl.h"
+#include "llviewermenu.h"
 #include "aluirefresh.h" // [UIPerfC1] widget-aware value compare
 #include "llbutton.h"
 #include "llagent.h"
@@ -475,6 +479,11 @@ ALPanelCineLightRig::ALPanelCineLightRig()
 
 ALPanelCineLightRig::~ALPanelCineLightRig()
 {
+    if (LLContextMenu* menu = mRigGroupMenu.get())
+    {
+        menu->hide();
+        delete menu;
+    }
     LIVE_PANELS.erase(
         std::remove(LIVE_PANELS.begin(), LIVE_PANELS.end(), this),
         LIVE_PANELS.end());
@@ -682,6 +691,28 @@ bool ALPanelCineLightRig::postBuild()
     mAllRigsOff = findChild<LLButton>("cine_all_rigs_off");
     mRigGroupStatus = findChild<LLTextBox>("cine_rig_group_status");
     mRigKitPage = findChild<ALKitPage>("cine_light_rig_kit");
+    if (mRigKitPage)
+    {
+        mRigKitPage->setPersistentMenu(
+            [this](LLUICtrl* anchor) { showRigGroupMenu(anchor, false); },
+            "Create a rig group, give a nearby avatar their own rig, leave the group or turn all rigs off.");
+        mRigKitPage->setWhoUnavailable(
+            [](const LLUUID& id)
+            {
+                const auto& cast = LLDirectorCast::instance();
+                const std::array<LLUUID, 4> subjects = {
+                    cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+                const auto found = std::find(subjects.begin(), subjects.end(), id);
+                if (ALCineLightRigManager::instance().isRigGroup() || id == gAgentID ||
+                    id.isNull() || found == subjects.end())
+                    return std::string();
+                return llformat("Create rig group to edit Subject %c's rig",
+                    'A' + static_cast<S32>(found - subjects.begin()));
+            },
+            [this](const LLUUID& id) { addAvatarToRigGroup(id); });
+        if (LLButton* add = findChild<LLButton>("cine_add_avatar_rig_group"))
+            add->setCommitCallback([this](LLUICtrl* anchor, const LLSD&) { showRigGroupMenu(anchor, true); });
+    }
     mRigEnabled = findChild<LLCheckBoxCtrl>("cine_enabled");
     mRigRoster[0] = findChild<LLTextBox>("cine_rig_roster_self");
     mRigRoster[1] = findChild<LLTextBox>("cine_rig_roster_a");
@@ -1743,6 +1774,130 @@ void ALPanelCineLightRig::updateAnchorList()
     syncAnchorSelection();
 }
 
+void ALPanelCineLightRig::showRigGroupMenu(LLUICtrl* anchor, bool add_only)
+{
+    if (!mRigKitPage || !anchor || !gMenuHolder)
+        return;
+    if (LLContextMenu* old = mRigGroupMenu.get())
+    {
+        old->hide();
+        delete old;
+    }
+    LLContextMenu::Params params;
+    params.name = "cine_rig_group_menu";
+    params.visible = false;
+    LLContextMenu* menu = LLUICtrlFactory::create<LLContextMenu>(params);
+    mRigGroupMenu = menu->getHandle();
+    gMenuHolder->addChild(menu);
+    auto add = [](LLContextMenu* target, const std::string& name, const std::string& label,
+                  bool enabled, std::function<void()> action)
+    {
+        LLMenuItemCallGL::Params item;
+        item.name = name;
+        item.label = label;
+        item.enabled = enabled;
+        item.on_click.function = [action](LLUICtrl*, const LLSD&) { if (action) action(); };
+        target->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+    };
+    const bool group = ALCineLightRigManager::instance().isRigGroup();
+    if (!add_only)
+        add(menu, "create_group", "Create group", !group, [this]() { onRigGroupAction(0); });
+    LLContextMenu* avatars = menu;
+    if (!add_only)
+    {
+        params.name = "add_avatar";
+        params.label = "Add avatar";
+        avatars = LLUICtrlFactory::create<LLContextMenu>(params);
+        menu->appendContextSubMenu(avatars);
+    }
+    const auto& cast = LLDirectorCast::instance();
+    const std::array<LLUUID, 4> subjects = {
+        cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+    for (S32 slot = 0; slot < 4; ++slot)
+    {
+        const LLUUID id = subjects[slot];
+        if (id.isNull() || id == gAgentID)
+            continue;
+        const auto* member = cast.getMember(id);
+        const std::string name = member && !member->mLastName.empty() ? member->mLastName : id.asString();
+        add(avatars, llformat("subject_%d", slot), llformat("Subject %c: ", 'A' + slot) + name,
+            true, [this, id, slot]() { addAvatarToRigGroup(id, slot); });
+    }
+    // Same live-avatar source/filters as Director's rebuildAnimSpeedAvatars(),
+    // minus local Ghost clones (they carry their source's name).
+    // Read only on menu open, never on the panel's refresh/draw path.
+    S32 nearby_count = 0;
+    for (LLCharacter* character : LLCharacter::sInstances)
+        if (auto* avatar = dynamic_cast<LLVOAvatar*>(character);
+            avatar && !avatar->isDead() && !avatar->isControlAvatar() && !avatar->mIsDummy &&
+            !avatar->isGhostAvatar())
+        {
+            const LLUUID id = avatar->getID();
+            if (id == gAgentID || std::find(subjects.begin(), subjects.end(), id) != subjects.end())
+                continue;
+            const bool available = alRigGroupSubject(subjects, gAgentID, id) >= 0;
+            add(avatars, "nearby_" + id.asString(), avatar->getFullname() +
+                (available ? "" : " - All 4 Subjects in use"), available,
+                [this, id]() { addAvatarToRigGroup(id); });
+            ++nearby_count;
+        }
+    if (!nearby_count)
+        add(avatars, "no_nearby", "No avatars nearby", false, {});
+    if (!add_only)
+    {
+        add(menu, "leave_group", "Leave group", group, [this]() { onRigGroupAction(1); });
+        add(menu, "all_off", "All rigs off", true, [this]() { onRigGroupAction(2); });
+        add(menu, "show_target", "Show Rig and target", true,
+            [this]() { mRigKitPage->revealPersistentCard(); });
+    }
+    avatars->buildDrawLabels();
+    menu->buildDrawLabels();
+    ALKitMenu::showContextMenu(anchor, menu, 0, 0);
+}
+
+void ALPanelCineLightRig::addAvatarToRigGroup(const LLUUID& id, S32 subject_slot)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const std::array<LLUUID, 4> subjects = {
+        cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+    // Revalidate after opening: a newly occupied slot must never be overwritten.
+    if (subject_slot >= 0 && (subject_slot >= 4 || subjects[subject_slot] != id))
+        return;
+    const S32 subject = subject_slot >= 0 ? subject_slot : alRigGroupSubject(subjects, gAgentID, id);
+    if (subject < 0 || id.isNull() || id == gAgentID || !mRigKitPage)
+        return;
+    ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+    {
+        ALKitHistory::ScopedSuspend suspend;
+        if (subjects[subject].isNull())
+        {
+            cast.add(id);
+            switch (subject)
+            {
+                case 0: cast.setSubjectA(id); break;
+                case 1: cast.setSubjectB(id); break;
+                case 2: cast.setSubjectC(id); break;
+                case 3: cast.setSubjectD(id); break;
+            }
+        }
+        if (!manager.isRigGroup())
+            manager.createRigGroup();
+        const auto slot = static_cast<ALCineLightRigManager::Slot>(subject + 1);
+        manager.setSelectedSlot(slot);
+        if (!manager.isSlotEnabled(slot))
+            gSavedSettings.setBOOL("CineLightRigEnabled", true);
+        mCastListInitialized = false;
+        updateAnchorList();
+        // Pin the explicit choice. Its combo commit must also stay inside the
+        // suspend so widget history cannot add an undo step after the barrier.
+        mRigKitPage->setWhoPin(LLSD(subject + 1));
+        syncObjectTargetControls(true);
+        syncGroupControls();
+    }
+    if (ALKitShell* shell = ALKitShell::find(this))
+        shell->history().barrier("rig group changed");
+}
+
 void ALPanelCineLightRig::onRigGroupAction(S32 action)
 {
     ALCineLightRigManager& manager = ALCineLightRigManager::instance();
@@ -1756,6 +1911,8 @@ void ALPanelCineLightRig::onRigGroupAction(S32 action)
     if (shell) shell->history().barrier("rig group changed");
     mCastListInitialized = false;
     updateAnchorList();
+    if (mRigKitPage)
+        mRigKitPage->refreshWhoUnavailable();
     syncObjectTargetControls(true);
     syncGroupControls();
 }

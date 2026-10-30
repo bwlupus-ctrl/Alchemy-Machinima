@@ -1088,24 +1088,58 @@ void ALKitPage::buildPersistentChrome()
             mPersistentManage = makeButton(prefix() + "_persistent_manage", mPersistentLabel);
             mPersistentManage->setCommitCallback([this](LLUICtrl*, const LLSD&)
             {
-                // The roster rows are not "changed" rows, so the Changed only
-                // filter would keep them hidden; clear it before revealing.
-                ALKitShell* shell = ALKitShell::find(this);
-                if (shell && shell->changedOnly())
-                {
-                    shell->setChangedOnly(false);
-                    if (mChangedOnly)
-                    {
-                        mChangedOnly->setValue(false);
-                    }
-                }
-                setSearchText("");
-                revealCard(findCard(mPersistentCard), true);
+                if (mPersistentMenu)
+                    mPersistentMenu(mPersistentManage);
+                else
+                    revealPersistentCard();
             });
             mPersistentBand->addChild(mPersistentManage);
         }
     }
 
+}
+
+void ALKitPage::setPersistentMenu(std::function<void(LLUICtrl*)> menu, const std::string& tooltip)
+{
+    mPersistentMenu = std::move(menu);
+    if (mPersistentManage)
+        mPersistentManage->setToolTip(tooltip);
+}
+
+void ALKitPage::revealPersistentCard()
+{
+    // Roster rows are not changed rows; clear both filters before revealing.
+    ALKitShell* shell = ALKitShell::find(this);
+    if (shell && shell->changedOnly())
+    {
+        shell->setChangedOnly(false);
+        if (mChangedOnly)
+            mChangedOnly->setValue(false);
+    }
+    setSearchText("");
+    revealCard(findCard(mPersistentCard), true);
+}
+
+void ALKitPage::refreshWhoUnavailable()
+{
+    if (mWhoUnavailableTarget.notNull() && mWhoUnavailableLabel &&
+        mWhoUnavailableLabel(mWhoUnavailableTarget).empty())
+    {
+        mWhoUnavailableTarget.setNull();
+        mWhoError = false;
+        setWhoChipLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast()));
+    }
+}
+
+bool ALKitPage::activateWhoUnavailable()
+{
+    if (mWhoUnavailableTarget.isNull() || !mWhoUnavailableLabel || !mWhoUnavailableAction ||
+        mWhoUnavailableLabel(mWhoUnavailableTarget).empty())
+        return false;
+    const LLUUID target = mWhoUnavailableTarget;
+    mWhoUnavailableTarget.setNull();
+    mWhoUnavailableAction(target);
+    return true;
 }
 
 void ALKitPage::updateMaster()
@@ -1795,6 +1829,7 @@ bool ALKitPage::selectWhoValue(const LLSD& value)
         if (item && item->getEnabled() && item->getValue().asString() == value.asString())
         {
             mWhoCombo->setValue(value);
+            mWhoUnavailableTarget.setNull();
             mWhoError = false;
             return mWhoCombo->getCurrentIndex() >= 0 &&
                 mWhoCombo->getValue().asString() == value.asString();
@@ -1804,6 +1839,7 @@ bool ALKitPage::selectWhoValue(const LLSD& value)
 
 void ALKitPage::applyCastSelection(const uuid_vec_t& ids)
 {
+    mWhoUnavailableTarget.setNull();
     if (mWhoPinned || !canFollowCast())
         return;
     if (mActorTargetPage && !mWhoCombo)
@@ -1845,6 +1881,16 @@ void ALKitPage::applyCastSelection(const uuid_vec_t& ids)
             }
         }
     mWhoError = true;
+    if (mWhoUnavailableLabel)
+    {
+        const std::string label = mWhoUnavailableLabel(ids.front());
+        if (!label.empty())
+        {
+            mWhoUnavailableTarget = ids.front();
+            setWhoChipLabel(label);
+            return;
+        }
+    }
     setWhoChipLabel("That subject isn't selectable here");
 }
 

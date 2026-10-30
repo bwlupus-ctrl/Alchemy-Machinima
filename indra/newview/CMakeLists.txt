@@ -1340,6 +1340,7 @@ set(viewer_HEADER_FILES
     alrelighttakerecord.h
     alrelighttakewriter.h
     alghostanimnames.h
+    alriggroupsubject.h
     alghostanimmirrormath.h
     alreflectmath.h
     alreflectanim.h
@@ -2948,6 +2949,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alreflectmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alghostanimmirror "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alghostanimnames "" "${test_libs};llcharacter" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alriggroupsubject "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(algazemath
     ""
     "${test_libs}"

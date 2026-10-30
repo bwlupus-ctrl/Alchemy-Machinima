@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+class LLContextMenu;
 class LLComboBox;
 class LLButton;
 class LLCheckBoxCtrl;
@@ -116,6 +117,8 @@ private:
 
     void onAnchorSelected();
     void onRigGroupAction(S32 action);
+    void showRigGroupMenu(LLUICtrl* anchor, bool add_only);
+    void addAvatarToRigGroup(const LLUUID& id, S32 subject_slot = -1);
     void onTargetObject();
     void onClearObjectTarget();
     void onGroupEnabledCommit();
@@ -152,6 +155,7 @@ private:
     LLButton* mAllRigsOff = nullptr;
     LLTextBox* mRigGroupStatus = nullptr;
     ALKitPage* mRigKitPage = nullptr;
+    LLHandle<LLContextMenu> mRigGroupMenu;
     LLCheckBoxCtrl* mRigEnabled = nullptr;
     LLTextBox* mRigRoster[5] = {};
     LLButton* mObjectTargetButton = nullptr;

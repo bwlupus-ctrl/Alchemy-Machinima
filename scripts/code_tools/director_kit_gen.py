@@ -343,8 +343,9 @@ def validate_data(data: dict) -> None:
     # Hidden system body: exactly one Soft shadows toggle, 2368 -> 2369 (10/28).
     # Ghost motion: exactly one built-in animation-cue toggle, 2369 -> 2370 (10/29).
     # Directed animation: exactly two Clones rows, Mirror and Source playing (10/29).
-    if len(pages) != 38 or row_count != 2372:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2372")
+    # Rig group menu: exactly one Add avatar command, 2372 -> 2373 (10/29).
+    if len(pages) != 38 or row_count != 2373:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2373")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2370,6 +2371,20 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            for node in session_rows) and
                        all(node in list(find_named(rig, "kc_rig_status").iter("kit_row"))
                            for node in session_rows)))
+        add_avatar_rows = [node for node in rig.iter("kit_row")
+                           if node.get("widget") == "cine_add_avatar_rig_group"]
+        checks.append(("Add avatar is a searchable command in Rig & target",
+                       len(add_avatar_rows) == 1 and
+                       add_avatar_rows[0].get("label") == "Add avatar to rig group" and
+                       add_avatar_rows[0].get("label_wrap") == "true" and
+                       add_avatar_rows[0].get("row_height") == "40" and
+                       add_avatar_rows[0].get("bind") == "code" and
+                       add_avatar_rows[0].get("kind") == "button" and
+                       add_avatar_rows[0].get("widget_history") == "false" and
+                       {"friend", "avatar", "give", "rig", "own", "group", "subject", "nearby", "add"} <=
+                       set(add_avatar_rows[0].get("keywords", "").split()) and
+                       add_avatar_rows[0] in list(find_named(rig, "kc_rig_status").iter("kit_row")) and
+                       b"cine_add_avatar_rig_group" in outputs[out_dir / "director_kit_index.xml"]))
         rig_page = next(rig.iter("kit_page"))
         checks.append(("rig session status and All off declare persistent chrome with reachable roster",
                        rig_page.get("persistent_status_widget") == "cine_rig_group_status" and
