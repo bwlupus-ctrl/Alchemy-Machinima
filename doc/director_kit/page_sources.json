@@ -1057,7 +1057,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 63,
+          "line": 66,
           "widget": "settings_emergency_purge_sliced",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -6164,7 +6164,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 66,
+          "line": 69,
           "widget": "settings_capture_quality_pin",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -19388,7 +19388,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 69,
+          "line": 66,
           "widget": "auto_frame_compose",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19427,7 +19427,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 74,
+          "line": 71,
           "widget": "auto_frame_distance_trim",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19466,7 +19466,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 64,
+          "line": 61,
           "widget": "auto_frame_fill",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19505,7 +19505,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 147,
+          "line": 144,
           "widget": "auto_frame_settle_bezier_x1",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19544,7 +19544,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 153,
+          "line": 150,
           "widget": "auto_frame_settle_bezier_x2",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19583,7 +19583,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 150,
+          "line": 147,
           "widget": "auto_frame_settle_bezier_y1",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19622,7 +19622,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 156,
+          "line": 153,
           "widget": "auto_frame_settle_bezier_y2",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19661,7 +19661,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 99,
+          "line": 96,
           "widget": "auto_frame_settle_curve",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19700,7 +19700,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 142,
+          "line": 139,
           "widget": "SettleFeather",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19739,7 +19739,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 139,
+          "line": 136,
           "widget": "auto_frame_settle_max_ratio",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19778,7 +19778,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 85,
+          "line": 82,
           "widget": "auto_frame_settle_mode",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -19817,7 +19817,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 94,
+          "line": 91,
           "widget": "auto_frame_settle_seconds",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -23698,7 +23698,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 77,
+          "line": 74,
           "widget": "auto_frame_vertical_trim",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -24089,7 +24089,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 161,
+          "line": 158,
           "widget": "fo_anchor_joint",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -30040,7 +30040,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 181,
+          "line": 178,
           "widget": "fo_use_selected",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -30660,7 +30660,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 59,
+          "line": 56,
           "widget": "frame_focal_length",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -30816,7 +30816,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 56,
+          "line": 53,
           "widget": "frame_lens_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35279,7 +35279,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 184,
+          "line": 181,
           "widget": "FlycamOrbitLevel",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35318,7 +35318,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 192,
+          "line": 189,
           "widget": "FlycamOrbitMaxRadius",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35357,7 +35357,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 203,
+          "line": 200,
           "widget": "FlycamOrbitMinRadius",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35396,7 +35396,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 206,
+          "line": 203,
           "widget": "FlycamOrbitOffsetLeft",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35435,7 +35435,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 200,
+          "line": 197,
           "widget": "FlycamOrbitOffsetUp",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35474,7 +35474,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 195,
+          "line": 192,
           "widget": "FlycamOrbitSmoothing",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -35513,7 +35513,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 187,
+          "line": 184,
           "widget": "FlycamOrbitZoom",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -36221,17 +36221,17 @@
     {
       "setting": "HideCursorWithUI",
       "pages": [
-        "frame_orbit_tab"
+        "director_settings_tab"
       ],
       "xui_writers": [
         {
-          "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-          "line": 53,
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+          "line": 50,
           "widget": "hide_cursor_with_ui",
           "root": {
-            "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
             "tag": "panel",
-            "name": "frame_orbit_tab_logic",
+            "name": "director_settings_tab_logic",
             "line": 3
           }
         }
@@ -41420,7 +41420,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 52,
+          "line": 55,
           "widget": "settings_rigged_lod_hysteresis",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -41815,7 +41815,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 57,
+          "line": 60,
           "widget": "settings_shadow_direct_transitions_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -43119,7 +43119,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 60,
+          "line": 63,
           "widget": "settings_vbo_pool_clean_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -98930,7 +98930,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 161,
+              "line": 158,
               "widget": "fo_anchor_joint",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -132915,7 +132915,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 77,
+              "line": 74,
               "widget": "auto_frame_vertical_trim",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -137409,7 +137409,7 @@
       "label": "Frame & Orbit",
       "group": "camera_group",
       "group_label": "Camera",
-      "row_count": 34,
+      "row_count": 33,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_cinecam_frame.xml",
@@ -137436,8 +137436,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 32,
-        "setting_coverage": 0.941176,
+        "setting_bound_rows": 31,
+        "setting_coverage": 0.939394,
         "cpp_referenced_rows": 1,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -137982,70 +137982,6 @@
           "option_index": null,
           "option_label": null,
           "index": 7,
-          "label": "Hide cursor with interface",
-          "kind": "toggle",
-          "widget": "hide_cursor_with_ui",
-          "matched_widget": "hide_cursor_with_ui",
-          "declared_setting": "HideCursorWithUI",
-          "resolved_setting": "HideCursorWithUI",
-          "setting_candidates": [
-            "HideCursorWithUI"
-          ],
-          "setting_declarations": [
-            {
-              "file": "indra/newview/app_settings/settings.xml",
-              "line": 29053,
-              "group": "Global",
-              "type": "Boolean"
-            }
-          ],
-          "items": [],
-          "xui": [],
-          "cpp": [],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 53,
-              "tag": "kit_switch",
-              "control_name": "HideCursorWithUI",
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-                "tag": "panel",
-                "name": "frame_orbit_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": [
-            {
-              "kind": "xui",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 53,
-              "widget": "hide_cursor_with_ui",
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-                "tag": "panel",
-                "name": "frame_orbit_tab_logic",
-                "line": 3
-              }
-            }
-          ]
-        },
-        {
-          "card": "frame_format",
-          "card_title": "Frame format",
-          "option_index": null,
-          "option_label": null,
-          "index": 8,
           "label": "Lens reframe",
           "kind": "toggle",
           "widget": "frame_lens_enabled",
@@ -138090,7 +138026,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 56,
+              "line": 53,
               "tag": "kit_switch",
               "control_name": "CinematicFrameLensEnabled",
               "callbacks": [],
@@ -138107,7 +138043,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 56,
+              "line": 53,
               "widget": "frame_lens_enabled",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138123,7 +138059,7 @@
           "card_title": "Frame format",
           "option_index": null,
           "option_label": null,
-          "index": 9,
+          "index": 8,
           "label": "Base lens",
           "kind": "number",
           "widget": "frame_focal_length",
@@ -138168,7 +138104,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 59,
+              "line": 56,
               "tag": "spinner",
               "control_name": "CinematicFrameFocalLengthMM",
               "callbacks": [],
@@ -138185,7 +138121,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 59,
+              "line": 56,
               "widget": "frame_focal_length",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138246,7 +138182,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 64,
+              "line": 61,
               "tag": "slider",
               "control_name": "CinematicAutoFrameFill",
               "callbacks": [],
@@ -138263,7 +138199,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 64,
+              "line": 61,
               "widget": "auto_frame_fill",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138324,7 +138260,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 69,
+              "line": 66,
               "tag": "slider",
               "control_name": "CinematicAutoFrameComposeLine",
               "callbacks": [],
@@ -138341,7 +138277,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 69,
+              "line": 66,
               "widget": "auto_frame_compose",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138402,7 +138338,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 74,
+              "line": 71,
               "tag": "spinner",
               "control_name": "CinematicAutoFrameDistanceTrim",
               "callbacks": [],
@@ -138419,7 +138355,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 74,
+              "line": 71,
               "widget": "auto_frame_distance_trim",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138480,7 +138416,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 77,
+              "line": 74,
               "tag": "spinner",
               "control_name": "CinematicCamFrameOffsetUp",
               "callbacks": [],
@@ -138513,7 +138449,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 77,
+              "line": 74,
               "widget": "auto_frame_vertical_trim",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138580,7 +138516,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 80,
+              "line": 77,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -138662,7 +138598,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 85,
+              "line": 82,
               "tag": "combo_box",
               "control_name": "CinematicAutoFrameSettleMode",
               "callbacks": [],
@@ -138679,7 +138615,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 85,
+              "line": 82,
               "widget": "auto_frame_settle_mode",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138740,7 +138676,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 94,
+              "line": 91,
               "tag": "slider",
               "control_name": "CinematicAutoFrameSettleSeconds",
               "callbacks": [],
@@ -138783,7 +138719,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 94,
+              "line": 91,
               "widget": "auto_frame_settle_seconds",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138879,7 +138815,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 99,
+              "line": 96,
               "tag": "combo_box",
               "control_name": "CinematicAutoFrameSettleCurve",
               "callbacks": [],
@@ -138896,7 +138832,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 99,
+              "line": 96,
               "widget": "auto_frame_settle_curve",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -138957,7 +138893,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 139,
+              "line": 136,
               "tag": "spinner",
               "control_name": "CinematicAutoFrameSettleMaxRatio",
               "callbacks": [],
@@ -138974,7 +138910,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 139,
+              "line": 136,
               "widget": "auto_frame_settle_max_ratio",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139035,7 +138971,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 142,
+              "line": 139,
               "tag": "slider",
               "control_name": "CinematicAutoFrameSettleFeather",
               "callbacks": [],
@@ -139052,7 +138988,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 142,
+              "line": 139,
               "widget": "SettleFeather",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139113,7 +139049,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 147,
+              "line": 144,
               "tag": "spinner",
               "control_name": "CinematicAutoFrameSettleBezierX1",
               "callbacks": [],
@@ -139156,7 +139092,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 147,
+              "line": 144,
               "widget": "auto_frame_settle_bezier_x1",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139217,7 +139153,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 150,
+              "line": 147,
               "tag": "spinner",
               "control_name": "CinematicAutoFrameSettleBezierY1",
               "callbacks": [],
@@ -139260,7 +139196,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 150,
+              "line": 147,
               "widget": "auto_frame_settle_bezier_y1",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139321,7 +139257,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 153,
+              "line": 150,
               "tag": "spinner",
               "control_name": "CinematicAutoFrameSettleBezierX2",
               "callbacks": [],
@@ -139364,7 +139300,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 153,
+              "line": 150,
               "widget": "auto_frame_settle_bezier_x2",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139425,7 +139361,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 156,
+              "line": 153,
               "tag": "spinner",
               "control_name": "CinematicAutoFrameSettleBezierY2",
               "callbacks": [],
@@ -139468,7 +139404,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 156,
+              "line": 153,
               "widget": "auto_frame_settle_bezier_y2",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139530,7 +139466,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 161,
+              "line": 158,
               "tag": "combo_box",
               "control_name": "CinematicCamJoint",
               "callbacks": [],
@@ -139563,7 +139499,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 161,
+              "line": 158,
               "widget": "fo_anchor_joint",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139634,7 +139570,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 181,
+              "line": 178,
               "tag": "kit_switch",
               "control_name": "CinematicCamUseSelected",
               "callbacks": [],
@@ -139663,7 +139599,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 181,
+              "line": 178,
               "widget": "fo_use_selected",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139736,7 +139672,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 184,
+              "line": 181,
               "tag": "kit_switch",
               "control_name": "FlycamOrbitLevel",
               "callbacks": [],
@@ -139766,7 +139702,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 184,
+              "line": 181,
               "widget": "FlycamOrbitLevel",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139827,7 +139763,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 187,
+              "line": 184,
               "tag": "slider",
               "control_name": "FlycamOrbitZoom",
               "callbacks": [],
@@ -139857,7 +139793,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 187,
+              "line": 184,
               "widget": "FlycamOrbitZoom",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -139918,7 +139854,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 192,
+              "line": 189,
               "tag": "spinner",
               "control_name": "FlycamOrbitMaxRadius",
               "callbacks": [],
@@ -139948,7 +139884,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 192,
+              "line": 189,
               "widget": "FlycamOrbitMaxRadius",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -140009,7 +139945,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 195,
+              "line": 192,
               "tag": "slider",
               "control_name": "FlycamOrbitSmoothing",
               "callbacks": [],
@@ -140039,7 +139975,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 195,
+              "line": 192,
               "widget": "FlycamOrbitSmoothing",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -140100,7 +140036,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 200,
+              "line": 197,
               "tag": "spinner",
               "control_name": "FlycamOrbitOffsetUp",
               "callbacks": [],
@@ -140130,7 +140066,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 200,
+              "line": 197,
               "widget": "FlycamOrbitOffsetUp",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -140191,7 +140127,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 203,
+              "line": 200,
               "tag": "spinner",
               "control_name": "FlycamOrbitMinRadius",
               "callbacks": [],
@@ -140221,7 +140157,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 203,
+              "line": 200,
               "widget": "FlycamOrbitMinRadius",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -140282,7 +140218,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 206,
+              "line": 203,
               "tag": "spinner",
               "control_name": "FlycamOrbitOffsetLeft",
               "callbacks": [],
@@ -140312,7 +140248,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 206,
+              "line": 203,
               "widget": "FlycamOrbitOffsetLeft",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -140364,7 +140300,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-              "line": 209,
+              "line": 206,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -233931,14 +233867,14 @@
       "label": "Settings",
       "group": "settings_group",
       "group_label": "Settings",
-      "row_count": 13,
+      "row_count": 14,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
           "tag": "panel",
           "name": "director_settings_tab_logic",
           "line": 3,
-          "matched_rows": 12,
+          "matched_rows": 13,
           "evidence": "row-widget match"
         }
       ],
@@ -233954,8 +233890,8 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 7,
-        "setting_coverage": 0.538462,
+        "setting_bound_rows": 8,
+        "setting_coverage": 0.571429,
         "cpp_referenced_rows": 5,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -234356,6 +234292,55 @@
           "other_writers": []
         },
         {
+          "card": "settings_appearance",
+          "card_title": "Appearance",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Hide cursor with interface",
+          "kind": "toggle",
+          "widget": "hide_cursor_with_ui",
+          "matched_widget": "hide_cursor_with_ui",
+          "declared_setting": "HideCursorWithUI",
+          "resolved_setting": "HideCursorWithUI",
+          "setting_candidates": [
+            "HideCursorWithUI"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 29053,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+              "line": 50,
+              "tag": "kit_switch",
+              "control_name": "HideCursorWithUI",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+                "tag": "panel",
+                "name": "director_settings_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
           "card": "settings_performance",
           "card_title": "Performance",
           "option_index": null,
@@ -234382,7 +234367,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 52,
+              "line": 55,
               "tag": "slider",
               "control_name": "RenderRiggedLODHysteresis",
               "callbacks": [],
@@ -234431,7 +234416,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 57,
+              "line": 60,
               "tag": "kit_switch",
               "control_name": "RenderShadowDirectTransitions",
               "callbacks": [],
@@ -234480,7 +234465,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 60,
+              "line": 63,
               "tag": "kit_switch",
               "control_name": "RenderVBOPoolCleanAtFrameEnd",
               "callbacks": [],
@@ -234529,7 +234514,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 63,
+              "line": 66,
               "tag": "kit_switch",
               "control_name": "AlchemyEmergencyPurgeSliced",
               "callbacks": [],
@@ -234578,7 +234563,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 66,
+              "line": 69,
               "tag": "kit_switch",
               "control_name": "BDMergeCaptureModePin",
               "callbacks": [],

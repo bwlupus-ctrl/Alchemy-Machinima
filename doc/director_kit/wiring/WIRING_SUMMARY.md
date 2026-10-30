@@ -32,7 +32,7 @@ Interactive controls: 2057 (of 2173 catalog rows; readout/text rows excluded fro
 | shot_tab (Shot) | Camera | 339 | 297 | 306 | 310 | 10 | 19 | 0 | 0 |
 | moves_tab (Moves) | Camera | 14 | 14 | 14 | 11 | 3 | 0 | 0 | 0 |
 | operator_tab (Operator) | Camera | 69 | 69 | 69 | 67 | 1 | 0 | 1 | 0 |
-| frame_orbit_tab (Frame & Orbit) | Camera | 33 | 30 | 30 | 31 | 0 | 2 | 0 | 2 |
+| frame_orbit_tab (Frame & Orbit) | Camera | 32 | 30 | 30 | 30 | 0 | 2 | 0 | 2 |
 | takes_tab (Takes) | Camera | 19 | 19 | 19 | 19 | 0 | 0 | 0 | 0 |
 | vcam_tab (VCam) | Camera | 2 | 2 | 2 | 1 | 0 | 0 | 1 | 1 |
 | focus_tab (Focus) | Lens | 14 | 14 | 14 | 13 | 0 | 1 | 0 | 1 |
@@ -56,7 +56,7 @@ Interactive controls: 2057 (of 2173 catalog rows; readout/text rows excluded fro
 | shadows_probes_tab (Shadows) | World | 40 | 37 | 37 | 38 | 0 | 2 | 0 | 0 |
 | temporal_tab (Time) | Capture | 25 | 13 | 22 | 25 | 0 | 0 | 0 | 0 |
 | scene_options_tab (Scene) | Capture | 2 | 1 | 1 | 2 | 0 | 0 | 0 | 0 |
-| director_settings_tab (Settings) | Settings | 12 | 0 | 0 | 7 | 4 | 1 | 0 | 0 |
+| director_settings_tab (Settings) | Settings | 13 | 0 | 0 | 8 | 4 | 1 | 0 | 0 |
 
 ## Reconciliation with page_sources.json
 
