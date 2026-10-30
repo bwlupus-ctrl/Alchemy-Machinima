@@ -1057,7 +1057,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 66,
+          "line": 74,
           "widget": "settings_emergency_purge_sliced",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -6164,7 +6164,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 69,
+          "line": 77,
           "widget": "settings_capture_quality_pin",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -36226,7 +36226,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 50,
+          "line": 58,
           "widget": "hide_cursor_with_ui",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -41420,7 +41420,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 55,
+          "line": 63,
           "widget": "settings_rigged_lod_hysteresis",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -41815,7 +41815,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 60,
+          "line": 68,
           "widget": "settings_shadow_direct_transitions_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -43119,7 +43119,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-          "line": 63,
+          "line": 71,
           "widget": "settings_vbo_pool_clean_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
@@ -234318,7 +234318,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 50,
+              "line": 58,
               "tag": "kit_switch",
               "control_name": "HideCursorWithUI",
               "callbacks": [],
@@ -234367,7 +234367,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 55,
+              "line": 63,
               "tag": "slider",
               "control_name": "RenderRiggedLODHysteresis",
               "callbacks": [],
@@ -234416,7 +234416,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 60,
+              "line": 68,
               "tag": "kit_switch",
               "control_name": "RenderShadowDirectTransitions",
               "callbacks": [],
@@ -234465,7 +234465,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 63,
+              "line": 71,
               "tag": "kit_switch",
               "control_name": "RenderVBOPoolCleanAtFrameEnd",
               "callbacks": [],
@@ -234514,7 +234514,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 66,
+              "line": 74,
               "tag": "kit_switch",
               "control_name": "AlchemyEmergencyPurgeSliced",
               "callbacks": [],
@@ -234563,7 +234563,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-              "line": 69,
+              "line": 77,
               "tag": "kit_switch",
               "control_name": "BDMergeCaptureModePin",
               "callbacks": [],
