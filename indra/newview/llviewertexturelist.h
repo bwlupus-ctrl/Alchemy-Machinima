@@ -28,6 +28,7 @@
 #define LL_LLVIEWERTEXTURELIST_H
 
 #include "lluuid.h"
+#include "alvramrecovery.h"
 //#include "message.h"
 #include "llgl.h"
 #include "llviewertexture.h"
@@ -131,6 +132,9 @@ public:
 
     void handleIRCallback(void **data, const S32 number);
 
+    void requestEmergencyPurge();
+    void continueEmergencyPurge();
+
     S32 getNumImages()                  { return static_cast<S32>(mImageList.size()); }
 
     // Local UI images
@@ -232,6 +236,7 @@ private:
     LLTextureKey mLastUpdateKey;
 
     image_list_t mImageList;
+    ALVRAMRecovery::Purge<LLTextureKey> mEmergencyPurge;
 
     // simply holds on to LLViewerFetchedTexture references to stop them from being purged too soon
     boost::unordered_set<LLPointer<LLViewerFetchedTexture>> mImagePreloads;

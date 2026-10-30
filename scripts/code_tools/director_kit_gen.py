@@ -344,8 +344,9 @@ def validate_data(data: dict) -> None:
     # Ghost motion: exactly one built-in animation-cue toggle, 2369 -> 2370 (10/29).
     # Directed animation: exactly two Clones rows, Mirror and Source playing (10/29).
     # Probe reach: one persistent renderer switch, 2374 -> 2375 (10/30).
-    if len(pages) != 38 or row_count != 2375:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2375")
+    # VRAM F1: exactly two Settings > Performance rows (purge switch and pin mirror).
+    if len(pages) != 38 or row_count != 2377:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2377")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2493,6 +2494,23 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("look Tron page is a generated kit page (no launcher)",
                        not launcher_cards and len(list(tron.iter("kit_row"))) > 100
                        and any(node.get("page") == "look_group/tron_tab" for node in tron.iter("kit_page"))))
+        settings_page = ET.fromstring(outputs[out_dir / "panel_dpage_settings_director_settings.xml"], parser=parser())
+        performance_card = find_named(settings_page, "kc_settings_performance")
+        purge_rows = [row for row in performance_card.iter("kit_row")
+                      if row.get("setting") == "AlchemyEmergencyPurgeSliced"]
+        pin_rows = [row for row in performance_card.iter("kit_row")
+                    if row.get("setting") == "BDMergeCaptureModePin"]
+        checks.append(("VRAM purge switch and capture pin mirror are bound and searchable on Settings Performance",
+                       len(purge_rows) == 1 and len(pin_rows) == 1 and
+                       purge_rows[0].get("label") == "Spread texture purges" and
+                       purge_rows[0].get("help") == "Under VRAM pressure, unused textures can be freed and the purge is spread over frames instead of one long hitch. Off = old behaviour." and
+                       pin_rows[0].get("label") == "Pin scene textures (no degrade during takes)" and
+                       purge_rows[0].get("label_wrap") == pin_rows[0].get("label_wrap") == "true" and
+                       purge_rows[0].get("row_height") == "40" and pin_rows[0].get("row_height") == "56" and
+                       all(row.get("bind") == "setting" and
+                           row.find("kit_switch").get("control_name") == row.get("setting") and
+                           row.get("setting").encode() in outputs[out_dir / "director_kit_index.xml"]
+                           for row in purge_rows + pin_rows)))
         checks.append(("39 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 39))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()

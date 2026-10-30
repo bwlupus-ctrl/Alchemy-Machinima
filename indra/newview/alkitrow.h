@@ -147,6 +147,7 @@ private:
     value_signal_t mValueSignal;
     LLFrameTimer   mFlashTimer;
     LLSD           mLastValue, mShownValue;
+    U64            mCaptureQualityRevision = 0;
     bool           mSubjectDisplay = false;
     S32            mSubjectSelfValue = 0;
     S32            mSubjectAValue = 1;

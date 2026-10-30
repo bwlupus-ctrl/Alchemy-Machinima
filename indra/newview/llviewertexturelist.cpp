@@ -293,8 +293,42 @@ LLViewerTextureList::~LLViewerTextureList()
 {
 }
 
+void LLViewerTextureList::requestEmergencyPurge()
+{
+    mEmergencyPurge.request(mImageList, [](const auto& image)
+    {
+        return LLTextureKey(image->getID(), (ETexListType)image.get()->getTextureListType());
+    });
+}
+
+void LLViewerTextureList::continueEmergencyPurge()
+{
+    static LLCachedControl<bool> sliced(gSavedSettings, "AlchemyEmergencyPurgeSliced", true);
+    if (!sliced)
+    {
+        mEmergencyPurge.keys.clear();
+        return;
+    }
+    if (mEmergencyPurge.keys.empty())
+    {
+        return;
+    }
+    LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("emergency purge");
+    mEmergencyPurge.advance([] { return LLTimer::getTotalSeconds(); }, [this](const LLTextureKey& key)
+    {
+        // Hold only the visited image: retaining the snapshot's images would
+        // artificially keep every texture referenced during the entire sweep.
+        LLPointer<LLViewerFetchedTexture> image = findImage(key);
+        if (image)
+        {
+            updateImageDecodePriority(image, false /* must not modify mImageList */);
+        }
+    });
+}
+
 void LLViewerTextureList::shutdown()
 {
+    mEmergencyPurge.keys.clear();
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
     // clear out preloads
     mImagePreloads.clear();
@@ -1051,9 +1085,11 @@ void LLViewerTextureList::updateImageDecodePriority(LLViewerFetchedTexture* imag
     // Flush formatted images using a lazy flush
     //
     S32 num_refs = imagep->getNumRefs();
-    if (num_refs <= min_refs && flush_images)
+    static LLCachedControl<bool> sliced(gSavedSettings, "AlchemyEmergencyPurgeSliced", true);
+    if (ALVRAMRecovery::lazyFlushUnreferenced(num_refs <= min_refs, flush_images, sliced))
     {
-        if (imagep->getLastReferencedTimer()->getElapsedTimeF32() > lazy_flush_timeout)
+        // The emergency visit must leave an unused texture's lazy-flush wait alone.
+        if (flush_images && imagep->getLastReferencedTimer()->getElapsedTimeF32() > lazy_flush_timeout)
         {
             // Remove the unused image from the image list
             deleteImage(imagep);

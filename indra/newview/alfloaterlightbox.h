@@ -113,6 +113,9 @@ public:
         LLCheckBoxCtrl*    gobo_invert = nullptr;
     } mSelLight;
     LLPanel* mSelLightPage = nullptr;
+    LLCheckBoxCtrl* mCaptureQualityPin = nullptr;
+    std::string mCaptureQualityToolTip;
+    U64 mCaptureQualityRevision = 0;
     // [UIPerfC1] identity of what the Selected Light mirror last showed. A change
     // (different object, or projector <-> non-projector) forces every mirror write
     // past the focus guard so a newly selected light can never show stale state.

@@ -28,6 +28,7 @@
 #include "llviewercontrol.h"
 #include "lluictrlfactory.h"
 #include "aluirefresh.h"
+#include "llviewertexture.h"
 #include "alcompassdial.h"
 #include "alkitswitch.h"
 #include "alkitqol.h"
@@ -1516,6 +1517,16 @@ void ALKitRow::styleValueEditor(bool active)
 void ALKitRow::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mMeta.setting == "BDMergeCaptureModePin" &&
+        mCaptureQualityRevision != LLViewerTexture::getCaptureQualityRevision())
+    {
+        mCaptureQualityRevision = LLViewerTexture::getCaptureQualityRevision();
+        const std::string tip = mMeta.help +
+            (LLViewerTexture::isCaptureQualitySuspended() ? " (suspended: VRAM)" : "");
+        setToolTipIfChanged(this, tip);
+        setToolTipIfChanged(mControl, tip);
+        setToolTipIfChanged(mLabel, tip);
+    }
     if (mMeta.kind == "dial" || mMeta.kind == "arc")
     {
         gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get(), true);

@@ -506,6 +506,9 @@ void LLViewerTexture::initClass()
 // blipped -- would thrash texture state continuously. So it arms instantly
 // (you want fidelity the moment you start filming) and releases only after a
 // quiet period.
+static ALVRAMRecovery::QualityLatch sCaptureQualityLatch;
+static bool sQualityOverrideAllowed = true;
+static U64 sCaptureQualityRevision = 1;
 static bool  sCaptureModeActive = false;
 static F32   sCaptureModeReleaseAt = 0.f;
 
@@ -521,7 +524,17 @@ bool LLViewerTexture::isCaptureModeActive()
 //static
 bool LLViewerTexture::isCaptureQualityPinActive()
 {
-    return isCaptureModeActive() && !isVRAMPressureActive();
+    return isCaptureModeActive() && sQualityOverrideAllowed;
+}
+
+bool LLViewerTexture::isCaptureQualitySuspended()
+{
+    return sCaptureQualityLatch.suspended;
+}
+
+U64 LLViewerTexture::getCaptureQualityRevision()
+{
+    return sCaptureQualityRevision;
 }
 
 //static
@@ -640,9 +653,6 @@ void LLViewerTexture::updateClass()
     constexpr F32 QUALITY_RECOVERY_CAP_PERCENTAGE = 0.78f;
     constexpr F32 CRITICAL_RECOVERY_CAP_PERCENTAGE = 0.90f;
     constexpr F32 MIN_REDUCIBLE_TEXTURE_BUDGET_MB = 256.f;
-    constexpr F32 MIN_DRIVER_RESERVE_MB = 256.f;
-    constexpr F32 MAX_DRIVER_RESERVE_MB = 1024.f;
-    constexpr F32 DRIVER_RESERVE_PERCENTAGE = 0.10f;
     constexpr F32 DRIVER_RECOVERY_RESERVE_SCALE = 1.25f;
     constexpr F32 CRITICAL_RECOVERY_RESERVE_SCALE = 0.75f;
     constexpr F32 PRESSURE_RECOVERY_SECONDS = 5.f;
@@ -692,13 +702,30 @@ void LLViewerTexture::updateClass()
     was_cap_adjusted = sVRAMCapAdjustedForFixedAllocations;
 
     // Cap pressure is handled by the normal time-sliced texture scheduler.
-    // Only genuine system/driver emergencies retain the synchronous safety
-    // purge. Recovery has an additional hold so texture upgrades cannot refill
+    // Only genuine system/driver emergencies request the safety purge. Recovery
+    // has an additional hold so texture upgrades cannot refill
     // the budget immediately after a pressure episode.
     static bool was_system_memory_low = false;
     static bool legacy_was_low = false;
     static LLFrameTimer quality_recovery_hold_timer;
     static bool quality_recovery_hold_active = false;
+
+    static ALVRAMRecovery::EvictionEpisode eviction_episode;
+    static LLCachedControl<bool> sliced(gSavedSettings, "AlchemyEmergencyPurgeSliced", true);
+    static LLCachedControl<bool> textures_fullres(gSavedSettings, "TextureLoadFullRes", false);
+    static LLCachedControl<bool> manual_pin(gSavedSettings, "BDMergeCaptureModePin", false);
+    ALVRAMRecovery::QualityInput quality;
+    quality.enabled = vram_governor_enabled;
+    quality.capture = sCaptureModeActive;
+    quality.fullres = textures_fullres;
+    quality.manual_pin = manual_pin;
+    quality.now = LLTimer::getTotalSeconds();
+    quality.tracked = sTrackedVRAMMegabytes;
+    quality.effective_cap = sEffectiveVRAMBudgetMegabytes;
+    quality.recovery_cap_percentage = RECOVERY_CAP_PERCENTAGE;
+    // Emergency visits below cannot grant full resolution before this frame's
+    // governor/background decision has been resolved.
+    sQualityOverrideAllowed = !vram_governor_enabled;
 
     if (vram_governor_enabled)
     {
@@ -715,6 +742,7 @@ void LLViewerTexture::updateClass()
         bool eviction_detected = false;
         if (first_driver_memory_sample || driver_memory_timer.getElapsedTimeF32() >= MEMORY_CHECK_WAIT_TIME)
         {
+            quality.driver_sample = true;
             first_driver_memory_sample = false;
             driver_memory_timer.reset();
             sDriverAvailableVRAMMegabytes = -1.f;
@@ -779,9 +807,7 @@ void LLViewerTexture::updateClass()
             driver_query_warning_logged = driver_query_failed;
         }
 
-        const F32 driver_reserve = llclamp(detected_vram * DRIVER_RESERVE_PERCENTAGE,
-                                           MIN_DRIVER_RESERVE_MB,
-                                           MAX_DRIVER_RESERVE_MB);
+        const F32 driver_reserve = ALVRAMRecovery::driverReserve(detected_vram);
         const F32 reducible_budget =
             llmax(sEffectiveVRAMBudgetMegabytes - sFixedVRAMMegabytes, 1.f);
         const F32 cap_usage = sReducibleTextureVRAMMegabytes / reducible_budget;
@@ -896,20 +922,33 @@ void LLViewerTexture::updateClass()
         }
 
         const bool system_low_started = is_sys_low && !was_system_memory_low;
+        const bool eviction_started = eviction_episode.update(true,
+            sVRAMPressureState == VRAM_PRESSURE_NORMAL, eviction_detected);
         if (system_low_started || eviction_detected)
         {
+            // Repeated evictions still attack immediately, even without a rescan.
             const F32 emergency_bias = 2.5f * (is_sys_low ? getSystemMemoryBudgetFactor() : 1.f);
             sDesiredDiscardBias = llmax(sDesiredDiscardBias, emergency_bias);
+        }
+        if (ALVRAMRecovery::emergencyRescan(system_low_started, eviction_started))
+        {
             LL_WARNS("VRAMGovernor")
                 << "Emergency "
-                << (system_low_started && eviction_detected
+                << (system_low_started && eviction_started
                         ? "system-memory and driver-eviction"
                         : (system_low_started ? "system-memory" : "driver-eviction"))
-                << " pressure; immediately rescanning textures for safety."
+                << " pressure; requesting emergency texture rescan for safety."
                 << LL_ENDL;
-            for (auto& image : gTextureList)
+            if (sliced)
             {
-                gTextureList.updateImageDecodePriority(image, false /*will modify gTextureList otherwise!*/);
+                gTextureList.requestEmergencyPurge();
+            }
+            else
+            {
+                for (auto& image : gTextureList)
+                {
+                    gTextureList.updateImageDecodePriority(image, false /*will modify gTextureList otherwise!*/);
+                }
             }
         }
         was_system_memory_low = is_sys_low;
@@ -961,9 +1000,15 @@ void LLViewerTexture::updateClass()
                 sDesiredDiscardBias -= decrement * gFrameIntervalSeconds;
             }
         }
+        quality.pressure = sVRAMPressureState != VRAM_PRESSURE_NORMAL;
+        quality.cap_pressure = cap_usage >= SOFT_CAP_PERCENTAGE;
+        quality.eviction = eviction_detected;
+        quality.available = sDriverAvailableVRAMMegabytes;
+        quality.reserve = driver_reserve;
     }
     else
     {
+        eviction_episode.update(false, true, false);
         // Master toggle is OFF: reproduce the ORIGINAL pre-governor discard-bias
         // management byte-faithful to indra/newview/llviewertexture.cpp as of
         // commit 6fbc0fc0efa^ (before the VRAM budget governor existed). Driver
@@ -1025,9 +1070,16 @@ void LLViewerTexture::updateClass()
             if (is_sys_low || over_pct > 2.f)
             { // if we're low on system memory, emergency purge off screen textures to avoid a death spiral
                 LL_WARNS() << "Low system memory detected, emergency downrezzing off screen textures" << LL_ENDL;
-                for (auto& image : gTextureList)
+                if (sliced)
                 {
-                    gTextureList.updateImageDecodePriority(image, false /*will modify gTextureList otherwise!*/);
+                    gTextureList.requestEmergencyPurge();
+                }
+                else
+                {
+                    for (auto& image : gTextureList)
+                    {
+                        gTextureList.updateImageDecodePriority(image, false /*will modify gTextureList otherwise!*/);
+                    }
                 }
             }
         }
@@ -1100,7 +1152,15 @@ void LLViewerTexture::updateClass()
         { // if the viewer was backgrounded
             LL_INFOS() << "Viewer is no longer backgrounded or minimized, resuming normal texture usage." << LL_ENDL;
             was_backgrounded = false;
-            sDesiredDiscardBias = last_desired_discard_bias;
+            if (vram_governor_enabled)
+            {
+                quality_recovery_hold_timer.reset();
+                quality_recovery_hold_active = true;
+            }
+            else
+            {
+                sDesiredDiscardBias = last_desired_discard_bias;
+            }
         }
     }
 
@@ -1122,10 +1182,22 @@ void LLViewerTexture::updateClass()
         sDesiredDiscardBias = llmax(sDesiredDiscardBias, pressure_bias_floor);
     }
 
-    // [BDMerge G5.2] Capture quality normally wins so a take is not downrezzed,
-    // but an explicit VRAM cap must remain meaningful. At Pressure or Critical
-    // the governor owns the bias. The pin remains armed and resumes only after
-    // hysteretic recovery returns the state to Normal.
+    quality.hold = quality_recovery_hold_active;
+    quality.background = was_backgrounded;
+    const bool was_suspended = sCaptureQualityLatch.suspended;
+    sQualityOverrideAllowed = sCaptureQualityLatch.update(quality);
+    if (sCaptureQualityLatch.suspended != was_suspended)
+    {
+        ++sCaptureQualityRevision;
+        LL_INFOS("VRAMGovernor")
+            << (sCaptureQualityLatch.suspended ? "capture pin suspended" : "capture pin resumed")
+            << ": peak_tracked=" << sCaptureQualityLatch.peak_tracked
+            << " MB, hold=" << sCaptureQualityLatch.hold_seconds << " s" << LL_ENDL;
+    }
+    gTextureList.continueEmergencyPurge();
+
+    // All capture-quality overrides share this frame's hold/suspend permission.
+    // The underlying capture preference stays armed while pressure owns quality.
     if (LLViewerTexture::isCaptureQualityPinActive())
     {
         sDesiredDiscardBias = 1.f;
@@ -2304,12 +2376,11 @@ void LLViewerFetchedTexture::processTextureStats()
     {
         updateVirtualSize();
 
-        // Full-resolution overrides yield to an active VRAM cap response.
-        // Capture remains armed and automatically resumes at Normal.
+        // Full-resolution overrides share the per-frame recovery permission.
         static LLCachedControl<bool> textures_fullres(gSavedSettings,"TextureLoadFullRes", false);
         const bool want_fullres =
             (textures_fullres || LLViewerTexture::isCaptureModeActive()) &&
-            !LLViewerTexture::isVRAMPressureActive();
+            sQualityOverrideAllowed;
 
         U32 max_tex_res = MAX_IMAGE_SIZE_DEFAULT;
         if (mBoostLevel < LLGLTexture::BOOST_HIGH)
@@ -3617,15 +3688,12 @@ void LLViewerLODTexture::processTextureStats()
 
     bool did_downscale = false;
 
-    // [BDMerge] Capture mode implies full resolution while the governor is
-    // Normal. At Pressure or Critical the user-selected cap takes ownership and
-    // permits the screen-space path below to downrez. The pin remains armed and
-    // full resolution resumes after hysteretic recovery. TextureLoadFullRes is
-    // also treated as a quality override, not permission to defeat the cap.
+    // Capture and TextureLoadFullRes share the same per-frame permission;
+    // ordinary screen-space quality can recover while the override is suspended.
     static LLCachedControl<bool> textures_fullres(gSavedSettings,"TextureLoadFullRes", false);
     const bool want_fullres =
         (textures_fullres || LLViewerTexture::isCaptureModeActive()) &&
-        !LLViewerTexture::isVRAMPressureActive();
+        sQualityOverrideAllowed;
 
     F32 max_tex_res = MAX_IMAGE_SIZE_DEFAULT;
     if (mBoostLevel < LLGLTexture::BOOST_HIGH)

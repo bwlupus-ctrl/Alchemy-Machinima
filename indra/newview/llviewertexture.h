@@ -125,8 +125,10 @@ public:
     // re-derive it.
     static bool isCaptureModeActive();
     // Capture quality is allowed to pin bias/full-resolution textures only
-    // while the VRAM governor is Normal. The cap owns Pressure and Critical.
+    // after the shared governor hold and suspension have cleared.
     static bool isCaptureQualityPinActive();
+    static bool isCaptureQualitySuspended();
+    static U64 getCaptureQualityRevision();
     static bool isVRAMPressureActive();
     static bool isSystemMemoryLow();
     static bool isSystemMemoryCritical();

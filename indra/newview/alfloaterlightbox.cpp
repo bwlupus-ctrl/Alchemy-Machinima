@@ -51,6 +51,7 @@
 
 //#include "alrenderutils.h"
 #include "llviewercontrol.h"
+#include "llviewertexture.h"
 #include "llspinctrl.h"
 #include "llsliderctrl.h"
 #include "lltextbox.h"
@@ -257,6 +258,11 @@ bool ALFloaterLightBox::postBuild()
     mTronTrailTargetSetConnection = gSavedSettings.getControl("TronTrailTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
 
     // Resolve draw-path widgets once. All Lightbox tabs are eagerly built.
+    mCaptureQualityPin = findChild<LLCheckBoxCtrl>("capture_quality_pin");
+    if (mCaptureQualityPin)
+    {
+        mCaptureQualityToolTip = mCaptureQualityPin->getToolTip();
+    }
     mTick.probe_status = findChild<LLTextBox>("probe_refresh_status");
     mTick.bd_joint_combo = getChild<LLComboBox>("bd_joint_combo");
     mTick.bd_texpool_stats = getChild<LLTextBox>("bd_texpool_stats");
@@ -488,6 +494,13 @@ void ALFloaterLightBox::showTab(const std::string& tab_panel_name)
 void ALFloaterLightBox::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
+    const U64 quality_revision = LLViewerTexture::getCaptureQualityRevision();
+    if (quality_revision != mCaptureQualityRevision && isWidgetOnScreen(mCaptureQualityPin))
+    {
+        mCaptureQualityRevision = quality_revision;
+        setToolTipIfChanged(mCaptureQualityPin, mCaptureQualityToolTip +
+            (LLViewerTexture::isCaptureQualitySuspended() ? " (suspended: VRAM)" : ""));
+    }
     const U64 subject_revision = LLDirectorCast::instance().getActorChoiceRevision();
     if (subject_revision != mSubjectComboRevision)
     {

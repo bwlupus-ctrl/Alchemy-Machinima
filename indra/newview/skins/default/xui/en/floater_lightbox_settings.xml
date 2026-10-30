@@ -4701,6 +4701,7 @@
 				top_pad="4"
 				width="360"
 				layout="topleft"
+				name="capture_quality_pin"
 				label="Pin scene textures (no degrade during takes)"
 				tool_tip="Holds every scene texture at loaded resolution: no downrez, no unload, alt-tab safe. Disables a memory safety valve - use for capture sessions."
 				control_name="BDMergeCaptureModePin" />
