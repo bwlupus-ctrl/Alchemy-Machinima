@@ -1908,7 +1908,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
 
 
 def theme_choices(themes_dir: Path = THEMES_DIR) -> tuple[list[str], list[str]]:
-    """(labels, ids) of the colour themes, Default first then by file name (ALDirectorTheme::listThemes order).
+    """(labels, ids) in ALDirectorTheme::listThemes stock order, then other file names.
 
     Every theme file must pass director_theme_check, so a bad file stops generation.
     """
@@ -1923,7 +1923,10 @@ def theme_choices(themes_dir: Path = THEMES_DIR) -> tuple[list[str], list[str]]:
         entries.append((path.stem, label))
     if not any(stem == "default" for stem, _label in entries):
         raise GenError("app_settings/director_themes/default.xml is required")
-    entries.sort(key=lambda entry: (entry[0] != "default", entry[0]))
+    stock_order = ("default", "second_life", "night_shoot", "tungsten", "graphite",
+                   "daylight", "teal_orange", "noir", "neon", "arctic")
+    ranks = {stem: rank for rank, stem in enumerate(stock_order)}
+    entries.sort(key=lambda entry: (ranks.get(entry[0], len(ranks)), entry[0]))
     return [label for _stem, label in entries], [stem for stem, _label in entries]
 
 

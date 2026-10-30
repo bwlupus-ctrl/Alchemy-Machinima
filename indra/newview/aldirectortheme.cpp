@@ -131,12 +131,17 @@ std::vector<ThemeInfo> listThemes()
     {
         result.insert(result.begin(), { kDefaultId, "Default" });
     }
-    else
-    {
-        // Keep Default first in the list.
-        std::stable_partition(result.begin(), result.end(),
-                              [](const ThemeInfo& info) { return info.id == kDefaultId; });
-    }
+    // Stock display order matches director_kit_gen.py; discovered custom themes follow by file name.
+    const std::vector<std::string> stock_order = {
+        "default", "second_life", "night_shoot", "tungsten", "graphite",
+        "daylight", "teal_orange", "noir", "neon", "arctic"
+    };
+    std::stable_sort(result.begin(), result.end(),
+                     [&stock_order](const ThemeInfo& left, const ThemeInfo& right)
+                     {
+                         return std::find(stock_order.begin(), stock_order.end(), left.id) <
+                                std::find(stock_order.begin(), stock_order.end(), right.id);
+                     });
     return result;
 }
 
