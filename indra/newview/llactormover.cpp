@@ -2682,6 +2682,8 @@ bool LLActorMover::setFollow(const LLUUID& follower, const LLUUID& leader,
     f.mMode   = llclamp(mode, 0, 1);
     f.mOffset = llmax(0.f, offset);
     mFollows[fk] = f;
+    const auto move = mMoves.find(fk);
+    if (move != mMoves.end()) move->second.mPathPoseEvaluated = false;
     LL_INFOS("ActorMover") << "follow set: " << fk << " -> " << lk
                            << " mode " << f.mMode << " offset " << f.mOffset << LL_ENDL;
     return true;
@@ -2700,6 +2702,7 @@ void LLActorMover::clearFollow(const LLUUID& follower)
     // own, end it cleanly here -- otherwise advancePath would fall through to an
     // empty own-path and hold the actor at the coordinate origin.
     auto mit = mMoves.find(fk);
+    if (mit != mMoves.end()) mit->second.mPathPoseEvaluated = false;
     if (mit != mMoves.end() && mit->second.mIsPath && !hasWalkablePath(follower))
     {
         stop(follower);
@@ -3023,7 +3026,113 @@ void LLActorMover::stepGazeParamTransition(Gaze& g, F32 dt)
     writeGazeBlendValues(g, blended);
 }
 
-void LLActorMover::advanceGazeParamTransition(Gaze& g)
+void LLActorMover::invalidateGazeCache(Gaze& g, bool owner_changed)
+{
+    g.mHoldCacheValid = false;
+    g.mJoints = {};
+    g.mHeldLids = {};
+    g.mHeldRotations.clear();
+    g.mHeldTargetDirections.clear();
+    g.mHeldMotorInputValid = false;
+    g.mHeldWrittenGaze = {};
+    if (owner_changed)
+    {
+        g.mOwner = {};
+        g.mHeldRootValid = false;
+        g.mAnimationClock = {};
+        g.mLifeClock = {};
+        g.mClockFrame = 0xFFFFFFFF;
+        g.mClockShift = 0.0;
+        g.mClockBlocked = false;
+        g.mGazeMotor = {};
+        g.mClockSafety = {};
+    }
+}
+
+bool LLActorMover::ensureGazeOwner(LLVOAvatar* av, Gaze& g)
+{
+    if (g.mOwner.matches(av, av->getID(), av->getCreationSerial())) return false;
+    invalidateGazeCache(g, true);
+    g.mOwner.set(av, av->getID(), av->getCreationSerial());
+    return true;
+}
+
+void LLActorMover::releaseDirectorTurnAO(DirectorGaze& runtime)
+{
+    ALAvatarAnimationTime::releaseTurnOverride(runtime.mTurnAOOverrideActive, runtime.mTurnSourceAnim,
+        [](const LLUUID& source) {
+            if (AOEngine::instanceExists()) AOEngine::instance().override(source, false);
+        });
+}
+
+void LLActorMover::invalidateDirectorCache(DirectorGaze& runtime)
+{
+    releaseDirectorTurnAO(runtime);
+    for (auto* pose : {&runtime.mRoot, &runtime.mPelvis, &runtime.mTorso, &runtime.mChest,
+        &runtime.mNeck, &runtime.mHead, &runtime.mEyeLeft, &runtime.mEyeRight,
+        &runtime.mAltEyeLeft, &runtime.mAltEyeRight}) pose->mValid = false;
+    runtime.mBlinkLeft.mValid = runtime.mBlinkRight.mValid = false;
+    runtime.mTurnAnim.setNull();
+    runtime.mTurnSourceAnim.setNull();
+    runtime.mOwnsTurnAnim = false;
+    if (runtime.mGaze.mAnimationClock.mValid)
+    {
+        runtime.mOwnerClockOffset = runtime.mGaze.mAnimationClock.epochOffset();
+        runtime.mOwnerClockPending = true;
+    }
+    invalidateGazeCache(runtime.mGaze, true);
+}
+
+bool LLActorMover::ensureDirectorOwner(LLVOAvatar* av, DirectorGaze& runtime)
+{
+    if (runtime.mGaze.mOwner.matches(av, av->getID(), av->getCreationSerial())) return false;
+    // Keep the UUID's gaze envelope/aim/acquisition state, but no old-body pose
+    // or local motion ownership may escape into the replacement.
+    invalidateDirectorCache(runtime);
+    ensureGazeOwner(av, runtime.mGaze);
+    return true;
+}
+
+F32 LLActorMover::advanceGazeClock(LLVOAvatar* av, Gaze& g)
+{
+    ensureGazeOwner(av, g);
+    const auto& context = LLPresentationTime::currentFrame();
+    auto dt = ALAvatarAnimationTime::gazePhaseDelta(
+        ALAvatarAnimationTime::forAvatar(gFrameIntervalSeconds.value(), *av),
+        (F32)context.presentation_delta, context.drives(LLTemporalFeature::ANIMATION),
+        av->getMotionController().getTimeFactor());
+    const bool seed_hold = ALAvatarAnimationTime::seedFrozenLayer(ALAvatarAnimationTime::frozen(dt),
+        !g.mHoldCacheValid || g.mHeldSkeletonSerial != av->getSkeletonSerialNum() ||
+        g.mHeldAppearanceSerial != av->getAppearanceSerialNum());
+    if (seed_hold) dt = ALAvatarAnimationTime::seedDelta();
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (g.mClockFrame != frame)
+    {
+        g.mClockFrame = frame;
+        const bool legacy_only = ALAvatarAnimationTime::legacyGazeClock(
+            context.active(), context.drives(LLTemporalFeature::ANIMATION));
+        const bool unit = ALAvatarAnimationTime::unitSpeed(*av);
+        const auto life_dt = seed_hold ? ALAvatarAnimationTime::seedDelta()
+            : ALAvatarAnimationTime::sKeepLife ? ALAvatarAnimationTime::forLife(gFrameIntervalSeconds.value(), *av) : dt;
+        const bool safe = !seed_hold && !g.mClockBlocked &&
+            ALGazeMotor::canReanchor(g.mGazeMotor, g.mClockSafety,
+                g.mAnimationClock.mTime + dt.mSeconds,
+                g.mLifeClock.mTime + life_dt.mSeconds,
+                g.mLifeClock.mTime + life_dt.mSeconds);
+        g.mClockShift = ALAvatarAnimationTime::sampleGazeClocks(g.mAnimationClock, g.mLifeClock,
+            context.presentation_time, dt, life_dt, unit, legacy_only, safe);
+        if (g.mClockShift != 0.0)
+        {
+            ALGazeMotor::rebaseClock(g.mGazeMotor, g.mClockShift);
+            g.mHeldMotorInput.mTime += g.mClockShift;
+        }
+    }
+    return ALAvatarAnimationTime::animationSeconds(gFrameIntervalSeconds.value(),
+        LLMotionController::getGlobalTimeFactor(), av->getMotionController().getTimeFactor(),
+        LLPresentationTime::presentationDelta(), LLPresentationTime::drives(LLTemporalFeature::ANIMATION));
+}
+
+void LLActorMover::advanceGazeParamTransition(LLVOAvatar* av, Gaze& g)
 {
     Gaze::ParamTransition& x = g.mParamTransition;
     if (!x.mActive)
@@ -3039,17 +3148,7 @@ void LLActorMover::advanceGazeParamTransition(Gaze& g)
         return;
     }
     x.mLastFrame = frame;
-    // Same presentation-clock dt (and 0.25s hitch cap) as the envelope
-    // advance in applyGaze(): scrub/timescale-safe, 0x holds the blend.
-    F32 dt;
-    if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
-    {
-        dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
-    }
-    else
-    {
-        dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
-    }
+    const F32 dt = advanceGazeClock(av, g);
     stepGazeParamTransition(g, dt);
 }
 
@@ -3857,6 +3956,12 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     dst.mSyncLeadTrail     = src.mSyncLeadTrail;
     dst.markDirty();
     dst.rebuild();
+    const auto move = mMoves.find(dst_key);
+    if (move != mMoves.end())
+    {
+        move->second.mDrivenClock = {};
+        move->second.mPathPoseEvaluated = false;
+    }
     return true;
 }
 
@@ -4241,8 +4346,29 @@ bool LLActorMover::isInEffectiveRoster(const LLUUID& actor_id)
         : (std::find(roster.begin(), roster.end(), actor_id) != roster.end());
 }
 
+void LLActorMover::onAvatarRemoved(const LLVOAvatar* avatar)
+{
+    if (!avatar) return;
+    const auto gaze = mGazes.find(avatar->getID());
+    if (gaze != mGazes.end() && gaze->second.mOwner.matches(
+            avatar, avatar->getID(), avatar->getCreationSerial()))
+        invalidateGazeCache(gaze->second, true);
+    const auto director = mDirectorGazes.find(avatar->getID());
+    if (director != mDirectorGazes.end() && director->second.mGaze.mOwner.matches(
+            avatar, avatar->getID(), avatar->getCreationSerial()))
+    {
+        // Balance global AO ownership, but never restore or stop a local motion
+        // on a replacement. Keep the UUID's envelope/aim for its next body.
+        invalidateDirectorCache(director->second);
+        mGazeCuePreviews.erase(avatar->getID());
+    }
+}
+
 void LLActorMover::onRosterMemberRemoved(const LLUUID& actor_id)
 {
+    const auto gaze = mGazes.find(actor_id);
+    if (gaze != mGazes.end()) invalidateGazeCache(gaze->second, true);
+    // Director runtime was already cleared by cast remove before roster erase.
     // [DirFix] Called from cast remove(). Targeted on purpose: during a ghost
     // runtime replace the mover has already migrated mEditActor old->new
     // (onActorRuntimeReplaced runs before the cast consumer, alghoststudio.cpp)
@@ -4348,6 +4474,8 @@ void LLActorMover::start(const LLUUID& actor_id)
         }
 
         Move mv;
+        ALAvatarAnimationTime::seedPose(mv.mPoseSeeded, mv.mCurPos, mv.mCurRot,
+            av->getBaseRootPosition(), av->getRootJoint()->getWorldRotation());
         mv.mIsPath   = true;
         mv.mSpeed    = 1.f;                 // filled from the leader path each frame
         mv.mDistance = 0.f;                 // "
@@ -4394,6 +4522,8 @@ void LLActorMover::start(const LLUUID& actor_id)
         }
 
         Move mv;
+        ALAvatarAnimationTime::seedPose(mv.mPoseSeeded, mv.mCurPos, mv.mCurRot,
+            av->getBaseRootPosition(), av->getRootJoint()->getWorldRotation());
         mv.mIsPath   = true;
         mv.mEndMode  = path.mEndMode;
         mv.mSpeed    = path.mSpeed;
@@ -4420,6 +4550,8 @@ void LLActorMover::start(const LLUUID& actor_id)
     const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + configuredHeading() * DEG_TO_RAD;
 
     Move mv;
+    ALAvatarAnimationTime::seedPose(mv.mPoseSeeded, mv.mCurPos, mv.mCurRot,
+        av->getBaseRootPosition(), av->getRootJoint()->getWorldRotation());
     mv.mOrigin   = av->getBaseRootPosition();   // rendered pose, incl. a prior move ([ClientHeight] base: offset re-added in applyOverride)
     mv.mHeading  = yaw;
     mv.mSpeed    = llclamp((F32)speed, 0.05f, 150.f);
@@ -4502,7 +4634,10 @@ void LLActorMover::placeAt(const LLUUID& actor_id, const LLVector3& pos)
     LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
 
     Move mv;
+    ALAvatarAnimationTime::seedPose(mv.mPoseSeeded, mv.mCurPos, mv.mCurRot,
+        av->getBaseRootPosition(), av->getRootJoint()->getWorldRotation());
     mv.mOrigin   = pos;
+    mv.mCurPos   = pos;
     mv.mHeading  = atan2f(at.mV[VY], at.mV[VX]);
     mv.mSpeed    = 0.f;         // zero speed + zero distance = pinned hold
     mv.mDistance = 0.f;
@@ -4679,6 +4814,9 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
         mv.mHasTrueGlobal  = true;
     }
 
+    ALAvatarAnimationTime::seedPose(mv.mPoseSeeded, mv.mCurPos, mv.mCurRot,
+        av->getBaseRootPosition(), av->getRootJoint()->getWorldRotation());
+
     // advance the path clock only once per frame; later calls in the same
     // frame (e.g. LLControlAvatar::matchVolumeTransform() re-syncing an
     // animesh root to its linkset) just re-assert the cached override pose
@@ -4686,22 +4824,10 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     if (mv.mLastFrame != frame)
     {
         mv.mLastFrame = frame;
-        // [Temporal Capture] Animation drive couples actor gait (sGlobalTimeFactor)
-        // with actor TRAVERSAL: advance the path/segment clock on the presentation
-        // delta so a walking actor stays foot-locked. Capped at the SAME 0.25s hitch
-        // cap the stock path uses below, so the path/ping-pong evaluator never gets
-        // an out-of-range step. Coupling with gait is exact while the per-frame delta
-        // stays under the cap (normal operation at any scale); it degrades only on a
-        // genuine stall, no worse than stock. 0x -> 0 holds.
-        F32 dt;
-        if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
-        {
-            dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
-        }
-        else
-        {
-            dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
-        }
+        // Placement follows world time; controller speed affects joints only.
+        const F32 dt = ALAvatarAnimationTime::placementSeconds(gFrameIntervalSeconds.value(),
+            LLMotionController::getGlobalTimeFactor(), LLPresentationTime::presentationDelta(),
+            LLPresentationTime::drives(LLTemporalFeature::ANIMATION));
         mv.mContactDiscontinuity = false;
 
         if (mv.mIsPath)
@@ -4709,7 +4835,7 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
             // [Pathing] evaluate the Catmull-Rom path at the actor's arc clock
             advancePath(av, mv, dt);
         }
-        else
+        else if (dt > 0.f)
         {
             // ---- legacy straight-segment move (unchanged) ----
             mv.mT += dt;
@@ -5131,6 +5257,20 @@ void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
         from = parked->second;
     }
 
+    // Cast remove(old) restores captures before its roster callback. Prune the
+    // departing body's captures here, before ANY runtime consumer is notified.
+    // Keep a new body's already-created runtime entirely independent.
+    if (from.notNull() && (from != new_id || removing_instance))
+    {
+        const auto director = mDirectorGazes.find(from);
+        if (director != mDirectorGazes.end())
+        {
+            invalidateDirectorCache(director->second);
+            mDirectorGazes.erase(director);
+        }
+        mGazeCuePreviews.erase(from);
+    }
+
     // A clone's eye motion owns blink visual params in addition to joints.
     // Stop and neutralize it before any runtime key is parked, moved or erased.
     if (from.notNull())
@@ -5277,6 +5417,7 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
         // coordinated motor state so it re-initializes on the current target
         // under the new key instead of carrying the old body's trajectory.
         mGazes[new_id].mGazeMotor = ALGazeMotor::GazeMotorState();
+        invalidateGazeCache(mGazes[new_id], true);
     }
 
     // ---- follow relationships: this actor as a FOLLOWER, and as any other
@@ -5296,12 +5437,9 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
         }
     }
 
-    // NOT migrated on purpose: mDirectorGazes (captured joint poses belong to
-    // the OLD skeleton; the Director-cast consumer's remove(old) hook restores
-    // and prunes them, and the new body starts clean) and the frame-local
-    // ghost batch/static-face harvests (rebuilt every frame from live wanted
-    // sources). The impostor snapshot metadata is per-BODY, so the old entry
-    // is dropped and the new body regenerates on demand.
+    // Director captures are intentionally not migrated: onActorRuntimeReplaced
+    // discards them before the cast consumer can restore onto the old body.
+    // Frame-local batches are rebuilt; impostor metadata is per body.
     mGhostImpostors.erase(old_id);
 
     // the path editor keeps pointing at the same logical actor; assign
@@ -5356,6 +5494,9 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
 // once per frame from applyOverride() after the path clock has ticked. Sets
 // mv.mCurPos (agent frame) + mv.mCurRot (turn-rate-smoothed facing).
 // ---------------------------------------------------------------------------
+static_assert(LLFlycamRecorder::LOOP_HOLD_END == 0 && LLFlycamRecorder::LOOP_REPEAT == 1 &&
+    LLFlycamRecorder::LOOP_PINGPONG == 2, "avatar playhead mapping must match recorder loop modes");
+
 void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
 {
     // [Follow-the-leader] a follower rides the LEADER's spline by reference; hand
@@ -5385,6 +5526,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     mv.mNominal = llclamp(path.mCadence, 0.5f, 12.f);
     if (path.mDirty)
     {
+        mv.mPathPoseEvaluated = false;
         path.rebuild();
     }
     const S32 n = (S32)path.mNodes.size();
@@ -5430,8 +5572,11 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         }
     }
 
+    if (!sync_active) mv.mDrivenClock = {};
+    if (!sync_active && !ALAvatarAnimationTime::placementNeedsSample(dt, mv.mPathPoseEvaluated)) return;
+
     // ---- dwell: hold at a node, walk clock frozen (not while sync-driven) ----
-    if (!sync_active && mv.mDwellNode >= 0)
+    if (!sync_active && dt > 0.f && mv.mDwellNode >= 0)
     {
         mv.mDwellT += dt;
         const F32 want = (mv.mDwellNode < n) ? path.mNodes[mv.mDwellNode].mDwell : 0.f;
@@ -5460,20 +5605,70 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         // and the actor scrubs with it; play it and the actor plays in lockstep.
         const LLFlycamRecorder& rec = LLFlycamRecorder::instance();
         const F32 dur = rec.getDuration();                  // > 0 (guarded above)
-        F32 u = (rec.getPlayhead() + path.mSyncLeadTrail) / dur;
+        const F32 rate = LLMotionController::getGlobalTimeFactor();
+        static LLCachedControl<S32> loop_mode(gSavedSettings, "FlycamRecLoopMode", 0);
+        const S32 source_mode = rec.getPlaybackProgressLoopMode() >= 0
+            ? rec.getPlaybackProgressLoopMode() : (S32)loop_mode;
+        const bool authored_revision = mv.mDrivenClock.mValid &&
+            mv.mDrivenClock.mRevision != rec.getPlaybackRevision();
+        if (authored_revision) mv.mDrivenClock.seekSource(rec.getPlaybackProgress(), rec.getPlaybackRevision());
+        if (mv.mDrivenClock.mValid && mv.mDrivenClock.mScaled &&
+            mv.mSyncMappingRevision != rec.getPlaybackMappingRevision())
+        {
+            const F64 held_playhead = ALAvatarAnimationTime::playhead(mv.mDrivenClock.mTime, dur, mv.mSyncLoopMode);
+            const F64 remapped = ALAvatarAnimationTime::sourceCoordinate(
+                held_playhead, dur, source_mode, rec.getPlaybackProgress());
+            mv.mDrivenClock.remapSource(rec.getPlaybackProgress(), remapped);
+        }
+        mv.mSyncMappingRevision = rec.getPlaybackMappingRevision();
+        mv.mSyncLoopMode = source_mode;
+        const F64 initial = (F64)mv.mDist / path.mTotalLength * dur - path.mSyncLeadTrail;
+        if (dt == 0.f)
+        {
+            mv.mDrivenClock.holdSource(rec.getPlaybackProgress(), initial, rec.getPlaybackRevision());
+            if (!ALAvatarAnimationTime::placementNeedsSample(dt, mv.mPathPoseEvaluated, authored_revision)) return;
+        }
+        // Bound total recovery speed against the current source pace as well
+        // as authored locomotion. Metadata edits preserve the remaining ease.
+        const F32 recovery_dt = gFrameIntervalSeconds.value();
+        const F64 source_step = rec.getPlaybackProgress() - mv.mDrivenClock.mSource;
+        const F64 max_arc_speed = ALAvatarAnimationTime::recoveryArcSpeed(
+            pathSpeedAt(path, mv.mDist, loop || pingpong), source_step, recovery_dt, path.mTotalLength, dur);
+        const bool recovery_frame = dt > 0.f && rate == 1.f && mv.mDrivenClock.mScaled;
+        const F64 sampled = dt == 0.f ? mv.mDrivenClock.mTime : mv.mDrivenClock.sample(
+            rec.getPlaybackProgress(), rate, initial, recovery_dt,
+            rec.getPlaybackRevision(), max_arc_speed * dur / path.mTotalLength);
+        const bool direct_source = authored_revision || (dt > 0.f && !mv.mDrivenClock.mScaled && rate == 1.f);
+        const F32 playhead = direct_source ? rec.getPlayhead()
+            : (F32)ALAvatarAnimationTime::playhead(sampled, dur, source_mode);
+        F32 u = (playhead + path.mSyncLeadTrail) / dur;
         u = llclamp(u, 0.f, 1.f);
         nd = u * path.mTotalLength;
+        if (recovery_frame)
+        {
+            // A bounded unwrapped phase can still cross a repeat seam. Bound
+            // the displayed arc too, retaining recovery until it actually lands.
+            const F32 bounded = (F32)ALAvatarAnimationTime::boundedRecoveryArc(
+                nd, old_d, max_arc_speed * recovery_dt);
+            if (bounded != nd)
+            {
+                nd = bounded;
+                mv.mDrivenClock.remapSource(rec.getPlaybackProgress(), ALAvatarAnimationTime::sourceCoordinate(
+                    (F64)nd / path.mTotalLength * dur - path.mSyncLeadTrail, dur, source_mode, rec.getPlaybackProgress()));
+                mv.mDrivenClock.mScaled = mv.mDrivenClock.mRecovering = true;
+            }
+        }
         // A paused playhead freezes the absolute local sample. A large one-frame
         // jump is a scrub seek (snap facing), and backward scrubbing intentionally
         // samples the locomotion clip backward.
         const F32 d_arc = nd - old_d;
         speed = (dt > 1e-4f) ? fabsf(d_arc) / dt : 0.f;
-        sync_seek = fabsf(d_arc) > SYNC_SEEK_SNAP_M;
-        mv.mTravelOdometer = llmax(0.0, (F64)nd);
+        sync_seek = ALAvatarAnimationTime::pathSeek(authored_revision, dt, d_arc, SYNC_SEEK_SNAP_M);
+        if (dt > 0.f || authored_revision) mv.mTravelOdometer = llmax(0.0, (F64)nd);
         mv.mDir     = 1.f;      // always face forward along the path
         mv.mArrived = false;    // a synced actor never settles; a scrub can move it
     }
-    else
+    else if (dt > 0.f)
     {
         speed = pathSpeedAt(path, mv.mDist, loop || pingpong);
         nd    = mv.mDist + mv.mDir * speed * dt;
@@ -5541,13 +5736,18 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         mv.mTravelOdometer += (F64)traveled_step;
     }
 
+    else
+    {
+        nd = mv.mDist;
+    }
+
     mv.mDist = nd;
     if (sync_seek &&
         (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
     {
         updateLocomotionSample(av, mv, true);
     }
-    else
+    else if (dt > 0.f || sync_seek)
     {
         // A seek with no owned clip needs a deterministic fallback. Never let
         // one-frame scrub distance select RUN/FLY and leak history into the
@@ -5585,6 +5785,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     mv.mContactDiscontinuity = sync_seek;
     agent.mV[VZ] = ground_z + root_above;
     mv.mCurPos = agent;
+    mv.mPathPoseEvaluated = true;
 
     static LLCachedControl<bool> zdbg(gSavedSettings, "ActorMoverPathZDebug", false);
     if (zdbg && mv.mDbgFrames < 5)
@@ -5671,10 +5872,10 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
 
     // Ordinary playback uses the shared scalar C2 solver. A recorder seek is
     // an explicit discontinuity and snaps instead of integrating fake history.
-    updatePathFacing(mv, target_yaw, target_pitch, dt, sync_seek);
+    if (dt > 0.f || sync_seek) updatePathFacing(mv, target_yaw, target_pitch, dt, sync_seek);
 
     // ---- arrival: settle into a stand at the last node (stop mode) ----
-    if (mv.mArrived && (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
+    if (dt > 0.f && mv.mArrived && (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
     {
         stopLocalMotion(av, mv.mSecondaryLocomotion);
         stopLocalMotion(av, mv.mLocomotion);
@@ -5736,8 +5937,12 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     }
     mv.mDistance = total;                       // progress readout vs the leader path
 
+    if (!ALAvatarAnimationTime::placementNeedsSample(dt, mv.mPathPoseEvaluated)) return;
+
     // ---- follower arc = leader arc minus the distance offset ----
-    const F32 leaderArc = lit->second.mDist;
+    const F32 world_factor = LLMotionController::getGlobalTimeFactor();
+    const F32 leaderArc = (F32)ALAvatarAnimationTime::followerSource(
+        lit->second.mDist, mv.mDist + f.mOffset, world_factor, !mv.mPathPoseEvaluated);
     F32 fArc;
     if (lpath.mEndMode == 1)        // loop: trail continuously around the ring
     {
@@ -5755,7 +5960,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     {
         traveled_step = llmin(traveled_step, total - traveled_step);
     }
-    const bool follower_seek = traveled_step > SYNC_SEEK_SNAP_M;
+    const bool follower_seek = dt > 0.f && traveled_step > SYNC_SEEK_SNAP_M;
     const F32 follower_speed = (dt > 1e-4f) ? traveled_step / dt : 0.f;
     mv.mDist = fArc;
     if (follower_seek)
@@ -5764,7 +5969,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
         // sampled foot phase deterministic for a given leader playhead.
         mv.mTravelOdometer = llmax(0.0, (F64)fArc);
     }
-    else
+    else if (dt > 0.f)
     {
         mv.mTravelOdometer += (F64)traveled_step;
     }
@@ -5775,7 +5980,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
         // Snap the owned clocks without interpreting scrub velocity as gait.
         updateLocomotionSample(av, mv, true);
     }
-    else
+    else if (dt > 0.f)
     {
         updateLocomotionGait(av, mv,
                              follower_seek ? 0.f : follower_speed,
@@ -5806,6 +6011,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     ground_z += pathGroundOffsetAt(lpath, fArc);
     agent.mV[VZ] = ground_z + mv.mFollowRootAbove;
     mv.mCurPos = agent;
+    mv.mPathPoseEvaluated = true;
 
     // ---- facing: anticipate the leader curve in the leader's travel direction ----
     const F32 travel_dir = lit->second.mDir;
@@ -5837,7 +6043,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
             target_pitch = llclamp(target_pitch, -45.f * DEG_TO_RAD, 45.f * DEG_TO_RAD);
         }
     }
-    updatePathFacing(mv, target_yaw, target_pitch, dt, follower_seek);
+    if (dt > 0.f) updatePathFacing(mv, target_yaw, target_pitch, dt, follower_seek);
 
 }
 
@@ -6050,6 +6256,7 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // this avatar has no gaze entry -> byte-identical
     }
     Gaze& g = git->second;
+    ensureGazeOwner(av, g);
 
     // [TrueMirror] The clone's head/eye/torso aim and blink come from the
     // source's stamped joints + face params (ALGhostStudio::updatePostObjectList
@@ -6121,21 +6328,12 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
     // re-asserted on every call (same idempotent idiom as applyOverride)
     const U32  frame   = LLFrameTimer::getFrameCount();
     const bool advance = (g.mLastFrame != frame);
+    const F32 clock_dt = advanceGazeClock(av, g);
     F32        dt      = 0.f;
     if (advance)
     {
         g.mLastFrame = frame;
-        // [Temporal Capture] Animation drive: ease gaze on the presentation clock so
-        // head aim slows with the body/world, capped at the same 0.25s hitch cap as
-        // the stock path. 0x -> 0 holds the envelope.
-        if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
-        {
-            dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
-        }
-        else
-        {
-            dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
-        }
+        dt = clock_dt;
         // Preset transition: ease every continuous gaze param between its
         // resolved endpoints on the presentation clock (scrub-safe) BEFORE
         // this frame's persona/ease/envelope reads consume them, so a blend
@@ -6143,7 +6341,7 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         // owns its own once-per-frame guard (applyDirectorLookAt also calls
         // it, since Director-driven actors skip applyGaze entirely).
         // Inactive by default: the legacy path below is byte-identical.
-        advanceGazeParamTransition(g);
+        advanceGazeParamTransition(av, g);
         static LLCachedControl<F32> gaze_ease_acquire(
             gSavedSettings, "DirectorGazeEaseAcquireSec", 0.25f);
         static LLCachedControl<F32> gaze_ease_release(
@@ -6257,6 +6455,7 @@ bool LLActorMover::resolveGazeObjectCenter(
 void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime,
                                              bool capture_blinks)
 {
+    ensureDirectorOwner(av, runtime);
     auto capture = [&](const char* name, DirectorJointPose& pose)
     {
         LLJoint* joint = av->getJoint(name);
@@ -6333,9 +6532,19 @@ void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
 
 void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime)
 {
-    if (!av)
+    if (!av || av->isDead())
     {
+        releaseDirectorTurnAO(runtime);
         return;
+    }
+    if (ensureDirectorOwner(av, runtime)) return;
+    if (runtime.mGaze.mHeldSkeletonSerial != av->getSkeletonSerialNum() ||
+        runtime.mGaze.mHeldAppearanceSerial != av->getAppearanceSerialNum())
+    {
+        for (auto* pose : {&runtime.mRoot, &runtime.mPelvis, &runtime.mTorso, &runtime.mChest,
+            &runtime.mNeck, &runtime.mHead, &runtime.mEyeLeft, &runtime.mEyeRight,
+            &runtime.mAltEyeLeft, &runtime.mAltEyeRight}) pose->mValid = false;
+        runtime.mBlinkLeft.mValid = runtime.mBlinkRight.mValid = false;
     }
     if (av->isGhostAvatar()) runtime.mGaze.mWrittenGaze = {};
     auto restore = [&](const char* name, DirectorJointPose& pose)
@@ -6382,21 +6591,12 @@ void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
 
 void LLActorMover::stopDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime)
 {
-    // override() owns AO state even though Director starts/stops the returned
-    // replacement locally. Always balance the canonical start before dropping
-    // the runtime, including the null-replacement fallback case.
-    if (runtime.mTurnAOOverrideActive && runtime.mTurnSourceAnim.notNull())
-    {
-        AOEngine::instance().override(runtime.mTurnSourceAnim, false);
-    }
-
-    // The AO route can only belong to self. If roster resolution disappeared
-    // during teardown, retain the ability to stop the exact local motion that
-    // Director started rather than orphaning a looping replacement.
-    if (!av && runtime.mTurnAOOverrideActive && isAgentAvatarValid())
-    {
-        av = gAgentAvatarp;
-    }
+    const bool used_ao = runtime.mTurnAOOverrideActive;
+    releaseDirectorTurnAO(runtime);
+    // Self fallback may resolve a different body: balance AO first, then guard
+    // before issuing any object-local stop.
+    if (!av && used_ao && isAgentAvatarValid()) av = gAgentAvatarp;
+    if (av && ensureDirectorOwner(av, runtime)) return;
 
     if (av && runtime.mOwnsTurnAnim && runtime.mTurnAnim.notNull())
     {
@@ -6473,6 +6673,17 @@ bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime,
                                          const LLVector3& target_direction)
 {
     LLJoint* root = av->getRootJoint();
+    const auto animation_dt = ALAvatarAnimationTime::forWorld(gFrameIntervalSeconds.value());
+    if (!animation_dt.mUnscaled && animation_dt.mSeconds == 0.f)
+    {
+        if (!runtime.mGaze.mHeldRootValid)
+        {
+            runtime.mGaze.mHeldRootWorld = root->getWorldRotation();
+            runtime.mGaze.mHeldRootValid = true;
+        }
+        root->setWorldRotation(runtime.mGaze.mHeldRootWorld);
+        return true;
+    }
     LLVector3 to_target = target_direction;
     to_target.mV[VZ] = 0.f;
     if (to_target.magVecSquared() <= 1e-4f)
@@ -6500,9 +6711,9 @@ bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime,
     if (advance)
     {
         runtime.mBodyLastFrame = frame;
-        dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
-            ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
-            : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        dt = ALAvatarAnimationTime::placementSeconds(gFrameIntervalSeconds.value(),
+            LLMotionController::getGlobalTimeFactor(), LLPresentationTime::presentationDelta(),
+            LLPresentationTime::drives(LLTemporalFeature::ANIMATION));
         const F32 error = llsimple_angle(target_yaw - runtime.mBodyYaw);
         const F32 alpha = 1.f - expf(-dt / DIRECTOR_BODY_TURN_TAU);
         const F32 max_step = DIRECTOR_BODY_TURN_RATE * dt;
@@ -6618,6 +6829,8 @@ bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime,
     LLQuaternion upright_yaw;
     upright_yaw.setEulerAngles(0.f, 0.f, runtime.mBodyYaw);
     root->setWorldRotation(upright_yaw);
+    runtime.mGaze.mHeldRootWorld = upright_yaw;
+    runtime.mGaze.mHeldRootValid = true;
     return true;
 }
 
@@ -6812,6 +7025,7 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
 
     DirectorGaze& runtime = selected
         ? mDirectorGazes[av->getID()] : runtime_it->second;
+    ensureDirectorOwner(av, runtime);
     if (selected)
     {
         runtime.mMode = requested_mode;
@@ -6827,12 +7041,22 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     auto transition_it = mGazes.find(av->getID());
     if (transition_it != mGazes.end())
     {
-        advanceGazeParamTransition(transition_it->second);
+        advanceGazeParamTransition(av, transition_it->second);
     }
 
     LLActorMover::GazeTarget configured_target = runtime.mLastTarget;
-    const F64 presentation_time =
-        LLPresentationTime::currentFrame().presentation_time;
+    advanceGazeClock(av, gaze);
+    if (runtime.mClockRebaseFrame != gaze.mClockFrame || runtime.mOwnerClockPending)
+    {
+        runtime.mClockRebaseFrame = gaze.mClockFrame;
+        const F64 shift = runtime.mOwnerClockPending
+            ? gaze.mAnimationClock.epochOffset() - runtime.mOwnerClockOffset : gaze.mClockShift;
+        runtime.mOwnerClockPending = false;
+        runtime.mAcquireStartPresentation += shift;
+        const auto preview = mGazeCuePreviews.find(av->getID());
+        if (preview != mGazeCuePreviews.end()) preview->second.mStartTime += shift;
+    }
+    const F64 presentation_time = gaze.mAnimationClock.mTime;
     const U64 seed = ALGazeMath::castSeedFromUUID(av->getID());
     bool cue_override = false;
     if (selected)
@@ -7144,9 +7368,7 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     if (advance)
     {
         gaze.mLastFrame = frame;
-        dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
-            ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
-            : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        dt = advanceGazeClock(av, gaze);
         if (!selected || reaction_ready)
         {
             gaze.mEnv = ALGazeMath::asymmetricEnvStep(
@@ -7407,6 +7629,60 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const GazeTarget* eye_target,
                             F32 timeline_influence)
 {
+    ensureGazeOwner(av, g);
+    const bool cache_changed = !g.mHoldCacheValid || g.mHeldSkeletonSerial != av->getSkeletonSerialNum() ||
+        g.mHeldAppearanceSerial != av->getAppearanceSerialNum();
+    if (!g.mHoldCacheValid || g.mHeldSkeletonSerial != av->getSkeletonSerialNum() ||
+        g.mHeldAppearanceSerial != av->getAppearanceSerialNum())
+    {
+        const char* names[] = {"mRoot", "mPelvis", "mTorso", "mChest", "mNeck", "mHead",
+            "mEyeLeft", "mEyeRight", "mFaceEyeAltLeft", "mFaceEyeAltRight"};
+        for (size_t i = 0; i < g.mJoints.size(); ++i) g.mJoints[i] = av->getJoint(names[i]);
+        g.mHeldLids = {};
+        g.mHeldLids[0].mParam = av->getVisualParam("Blink_Left");
+        g.mHeldLids[1].mParam = av->getVisualParam("Blink_Right");
+        g.mHeldRotations.clear();
+        g.mHeldRotations.reserve(24);
+        g.mHeldTargetDirections.clear();
+
+        g.mHeldMotorInputValid = false;
+        g.mHeldSkeletonSerial = av->getSkeletonSerialNum();
+        g.mHeldAppearanceSerial = av->getAppearanceSerialNum();
+        g.mHoldCacheValid = true;
+    }
+    g.mClockBlocked = (director_runtime &&
+        (director_runtime->mReactionPending || director_runtime->mCueOverride)) ||
+        g.mParamTransition.mActive || g.mAppliedSlewing || g.mBehindSweeping;
+    const auto animation_dt = ALAvatarAnimationTime::forAvatar(gFrameIntervalSeconds.value(), *av);
+    const bool clock_frozen = ALAvatarAnimationTime::frozen(animation_dt);
+    const bool seed_hold = ALAvatarAnimationTime::seedFrozenLayer(clock_frozen, cache_changed);
+    const bool frozen = clock_frozen && !seed_hold;
+    if (clock_frozen) { advance = false; dt = 0.f; }
+    if (frozen && !ALAvatarAnimationTime::sKeepLife)
+    {
+        if (director_runtime && director_runtime->mMode == 1 && director_runtime->mBodyTurnActive &&
+            LLMotionController::getGlobalTimeFactor() > 0.f)
+            applyDirectorBodyTurn(av, *director_runtime, g.mSmoothDir);
+        g.mWrittenGaze = g.mHeldWrittenGaze;
+        if (g.mHeldRootValid && av->getRootJoint())
+            av->getRootJoint()->setWorldRotation(g.mHeldRootWorld);
+        for (const auto& held : g.mHeldRotations)
+        {
+            held.first->setRotation(held.second);
+        }
+        bool changed = false;
+        for (const auto& lid : g.mHeldLids)
+        {
+            if (lid.mWritten && lid.mParam) changed |= av->setVisualParamWeight(lid.mParam, lid.mWeight);
+        }
+        if (changed) av->updateVisualParams();
+        return;
+    }
+    g.mHeldRotations.clear();
+    for (auto& lid : g.mHeldLids) lid.mWritten = false;
+    if (!frozen && !seed_hold) g.mHeldRootValid = false;
+    if (frozen) advance = false;
+    g.mHeldWrittenGaze = {};
     if (av->isGhostAvatar()) g.mWrittenGaze = {};
     auto set_gaze_rotation = [&](LLJoint* joint, const LLQuaternion& rotation, F32 alpha,
                                  const LLQuaternion& target_local)
@@ -7415,11 +7691,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         {
             const LLQuaternion parent_world = joint->getParent() ? joint->getParent()->getWorldRotation() : LLQuaternion::DEFAULT;
             g.mWrittenGaze.observe(joint->getName(), alpha, joint->getRotation(), target_local * parent_world);
+            g.mHeldWrittenGaze = g.mWrittenGaze;
         }
         joint->setRotation(rotation);
+        g.mHeldRotations.emplace_back(joint, rotation);
     };
-    LLJoint* head = av->getJoint("mHead");
-    LLJoint* root = av->getJoint("mRoot");
+    LLJoint* head = g.mJoints[Gaze::J_HEAD];
+    LLJoint* root = g.mJoints[Gaze::J_ROOT];
     if (!head || !root)
     {
         return;                 // no head/root to drive (animesh without them)
@@ -7483,15 +7761,15 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     GazeAnimSnap anim_snap;
     if (composition != GAZE_COMPOSE_REPLACE)
     {
-        anim_snap.capture(av->getJoint("mPelvis"));
-        anim_snap.capture(av->getJoint("mTorso"));
-        anim_snap.capture(av->getJoint("mChest"));
-        anim_snap.capture(av->getJoint("mNeck"));
+        anim_snap.capture(g.mJoints[Gaze::J_PELVIS]);
+        anim_snap.capture(g.mJoints[Gaze::J_TORSO]);
+        anim_snap.capture(g.mJoints[Gaze::J_CHEST]);
+        anim_snap.capture(g.mJoints[Gaze::J_NECK]);
         anim_snap.capture(head);
-        anim_snap.capture(av->getJoint("mEyeLeft"));
-        anim_snap.capture(av->getJoint("mEyeRight"));
-        anim_snap.capture(av->getJoint("mFaceEyeAltLeft"));
-        anim_snap.capture(av->getJoint("mFaceEyeAltRight"));
+        anim_snap.capture(g.mJoints[Gaze::J_EYE_LEFT]);
+        anim_snap.capture(g.mJoints[Gaze::J_EYE_RIGHT]);
+        anim_snap.capture(g.mJoints[Gaze::J_ALT_LEFT]);
+        anim_snap.capture(g.mJoints[Gaze::J_ALT_RIGHT]);
     }
 
     // Aim from the head where it is actually rendered.  Ghost scale is an
@@ -7525,7 +7803,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // target. The primary target continues through the pre-existing switch
     // below unchanged. Split-eye resolution declines invalid targets so the
     // eyes fall back to the primary aim instead of inventing a tangent target.
-    auto resolveTargetDirection = [&](const GazeTarget& from,
+    auto resolveTargetDirectionLive = [&](const GazeTarget& from,
                                       LLVector3& out_dir,
                                       F32& out_distance,
                                       bool fallback_to_tangent) -> bool
@@ -7595,8 +7873,25 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         return out_dir.magVecSquared() > 1e-6f;
     };
 
+    if (!frozen) g.mHeldTargetDirections.clear();
+    auto resolveTargetDirection = [&](Gaze::TargetSlot slot, const GazeTarget& from, LLVector3& direction,
+                                      F32& distance, bool fallback) -> bool
+    {
+        const auto& sample = g.mHeldTargetDirections.sample(slot, frozen, [&]()
+        {
+            Gaze::ResolvedLifeTarget value;
+            value.mValid = resolveTargetDirectionLive(from, direction, distance, fallback);
+            if (value.mValid) { value.mDirection = direction; value.mDistance = distance; }
+            return value;
+        });
+        direction = sample.mDirection;
+        distance = sample.mDistance;
+        return sample.mValid;
+    };
+
     const U64 seed = ALGazeMath::castSeedFromUUID(av->getID());
-    const F64 t_sec = LLPresentationTime::currentFrame().presentation_time;
+    const F64 t_sec = g.mAnimationClock.mTime;
+    const F64 life_sec = g.mLifeClock.mTime;
 
     static LLCachedControl<F32> gaze_microlife(
         gSavedSettings, "DirectorGazeMicroLife", 0.4f);
@@ -7726,7 +8021,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         (gaze_target_gen << 6) + (gaze_target_gen >> 2);
     gaze_target_gen ^= g.mObjectTarget.getCRC32() + 0x9E3779B9u +
         (gaze_target_gen << 6) + (gaze_target_gen >> 2);
-    const bool motor_acquire = (bool)gaze_motion_programs &&
+    const bool motor_acquire = !frozen && (bool)gaze_motion_programs &&
         g.mGazeMotor.mHasTargetGen &&
         g.mGazeMotor.mLastTargetGen != gaze_target_gen;
 
@@ -7759,6 +8054,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         camera_follow_roll = -ALGazeMath::cameraRollAboutForward(
             camera_forward, camera_up) * camera_roll_amount;
     }
+    if (frozen) camera_follow_roll = g.mHeldCameraRoll;
+    else g.mHeldCameraRoll = camera_follow_roll;
     const F32 camera_neck_roll =
         camera_follow_roll * GAZE_CAMERA_ROLL_NECK_SHARE;
 
@@ -7840,7 +8137,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             LLVector3 from_dir;
             F32 from_distance = 0.f;
             if (resolveTargetDirection(
-                    director_runtime->mCueFromTarget,
+                    Gaze::TargetSlot::CUE_FROM, director_runtime->mCueFromTarget,
                     from_dir, from_distance, true) &&
                 dir.magVecSquared() > 1e-6f)
             {
@@ -7853,7 +8150,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     LLVector3 from_base_dir;
                     F32 from_base_distance = 0.f;
                     if (resolveTargetDirection(
-                            director_runtime->mCueFromBaseTarget,
+                            Gaze::TargetSlot::CUE_BASE, director_runtime->mCueFromBaseTarget,
                             from_base_dir, from_base_distance, true))
                     {
                         from_base_dir.normVec();
@@ -8391,6 +8688,12 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             g.mChainYawValid, g.mChainYaw, g.mBehindShoulderSign,
             g.mBehindSweeping);
 
+
+        g.mClockSafety.mValid = true;
+        g.mClockSafety.mSeed = seed;
+        g.mClockSafety.mLife = life_params;
+        g.mClockSafety.mPersona = persona_mod;
+        g.mClockSafety.mNaturalBreaks = allow_natural_break;
         ALGazeMotor::GazeMotorInput in;
         // Desired chain aim in the SAME root-relative frame the legacy solve
         // measures raw_yaw/raw_pitch in; the dead-zone body-aim chase above is
@@ -8415,6 +8718,24 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         in.mAcquire          = motor_acquire;
         in.mTargetGeneration = gaze_target_gen;
 
+        if (frozen && g.mHeldMotorInputValid)
+        {
+            g.mHeldMotorInput.hold(in, life_sec);
+        }
+        else
+        {
+            g.mHeldMotorInput.capture(in);
+            g.mHeldMotorInputValid = true;
+        }
+        in.mUseLifeTime = true;
+        in.mLifeTimeSeconds = life_sec;
+        g.mClockSafety.mMotor = true;
+        g.mClockSafety.mBlinkRate = llmax(ms.mBlinkRate, 0.f) * ALGazeMotor::blinkStyleScale(affect);
+        g.mClockSafety.mCloseMs = ms.mBlinkCloseMs;
+        g.mClockSafety.mHoldMs = ms.mBlinkHoldMs;
+        g.mClockSafety.mOpenMs = ms.mBlinkOpenMs;
+        g.mClockSafety.mPartialChance = ms.mBlinkPartialChance;
+        g.mClockSafety.mRefractory = ms.mBlinkRefractorySec;
         ALGazeMotor::GazeMotorPose pose;
         ALGazeMotor::step(g.mGazeMotor, in, pose);
 
@@ -8506,7 +8827,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // the split share to the torso BEFORE the torso write so no reach is
         // ever lost. chest_share == 0 on every non-planted path keeps
         // pose.mChest* at exactly +0, so this is a no-op there.
-        LLJoint* chest_joint = av->getJoint("mChest");
+        LLJoint* chest_joint = g.mJoints[Gaze::J_CHEST];
         if (!chest_joint && chest_share > 0.f)
         {
             // Fold the WHOLE split share back (any magnitude) so no reach is
@@ -8646,7 +8967,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 (wCueBody > 0.001f &&
                  (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
             {
-                if (LLJoint* pelvis = av->getJoint("mPelvis"))
+                if (LLJoint* pelvis = g.mJoints[Gaze::J_PELVIS])
                 {
                     LLQuaternion hips_target;
                     hips_target.setEulerAngles(
@@ -8747,7 +9068,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 (wCueBody > 0.001f &&
                  (fabsf(chain.mTorsoYaw) + fabsf(chain.mTorsoPitch)) > 1e-5f))
             {
-                if (LLJoint* torso = av->getJoint("mTorso"))
+                if (LLJoint* torso = g.mJoints[Gaze::J_TORSO])
                 {
                     LLQuaternion torso_target;
                     torso_target.setEulerAngles(
@@ -8994,7 +9315,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                  (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
                   fabsf(camera_neck_roll)) > 1e-5f))
             {
-                if (LLJoint* neck = av->getJoint("mNeck"))
+                if (LLJoint* neck = g.mJoints[Gaze::J_NECK])
                 {
                     LLQuaternion neck_target;
                     neck_target.setEulerAngles(
@@ -9459,7 +9780,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             LLVector3 split_eye_look;
             F32 split_eye_distance = 0.f;
             if (resolveTargetDirection(
-                    *eye_target, split_eye_look, split_eye_distance, false))
+                    Gaze::TargetSlot::EYES, *eye_target, split_eye_look, split_eye_distance, false))
             {
                 const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
                 const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
@@ -9480,7 +9801,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             // Aim the eyes at the camera/head direction, offset by the living
             // off-lens wander. The head keeps aiming at the camera normally.
             eye_world_gaze = nearLensOffsetDir(
-                eye_world_gaze, root_up, seed, t_sec, (F32)gaze_near_lens_deg);
+                eye_world_gaze, root_up, seed, life_sec, (F32)gaze_near_lens_deg);
         }
 
         F32 lid_follow_pitch = 0.f;
@@ -9653,10 +9974,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     }
                 }
             };
-            applyMotorEye(av->getJoint("mEyeLeft"), -1.f);
-            applyMotorEye(av->getJoint("mEyeRight"), 1.f);
-            applyMotorEye(av->getJoint("mFaceEyeAltLeft"), -1.f);
-            applyMotorEye(av->getJoint("mFaceEyeAltRight"), 1.f);
+            applyMotorEye(g.mJoints[Gaze::J_EYE_LEFT], -1.f);
+            applyMotorEye(g.mJoints[Gaze::J_EYE_RIGHT], 1.f);
+            applyMotorEye(g.mJoints[Gaze::J_ALT_LEFT], -1.f);
+            applyMotorEye(g.mJoints[Gaze::J_ALT_RIGHT], 1.f);
         }
 
         // Tier-0 lids (fix 4): compose the full lid stack in the legacy order
@@ -9692,9 +10013,12 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             const F32 closure_l = compose_lid(pose.mLidClosureLeft);
             const F32 closure_r = compose_lid(pose.mLidClosureRight);
             bool visual_params_changed = false;
-            auto apply_lid = [&](const char* name, F32 closure)
+            auto apply_lid = [&](size_t index, F32 closure)
             {
-                if (LLVisualParam* param = av->getVisualParam(name))
+                auto& held = g.mHeldLids[index];
+                held.mWeight = closure;
+                held.mWritten = true;
+                if (LLVisualParam* param = held.mParam)
                 {
                     if (fabsf(av->getVisualParamWeight(param) - closure) > 1e-6f)
                     {
@@ -9703,8 +10027,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     }
                 }
             };
-            apply_lid("Blink_Left",  closure_l);
-            apply_lid("Blink_Right", closure_r);
+            apply_lid(0, closure_l);
+            apply_lid(1, closure_r);
             if (visual_params_changed)
             {
                 av->updateVisualParams();
@@ -9851,10 +10175,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     if (allow_natural_break)
     {
         ALGazeMath::evalNaturalBreak(
-            seed, t_sec, life_params.mBreakFrequency,
+            seed, life_sec, life_params.mBreakFrequency,
             break_yaw, break_pitch);
         const ALGazeMath::ContactRationOffset contact =
-            ALGazeMath::evalContactRation(seed, t_sec, persona_mod);
+            ALGazeMath::evalContactRation(seed, life_sec, persona_mod);
         break_yaw += contact.mDeflectYaw;
         break_pitch += contact.mDeflectPitch;
     }
@@ -9885,7 +10209,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         LLVector3 split_eye_look;
         F32 split_eye_distance = 0.f;
         if (resolveTargetDirection(
-                *eye_target, split_eye_look, split_eye_distance, false))
+                Gaze::TargetSlot::EYES, *eye_target, split_eye_look, split_eye_distance, false))
         {
             const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
             const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
@@ -9909,7 +10233,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     else if (eye_near_lens)
     {
         LLVector3 near_look = nearLensOffsetDir(
-            eye_look, root_up, seed, t_sec, (F32)gaze_near_lens_deg);
+            eye_look, root_up, seed, life_sec, (F32)gaze_near_lens_deg);
         if (near_look.normVec() > 1e-4f)
         {
             eye_look = near_look;
@@ -9999,7 +10323,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // returns the split share to the torso BEFORE the torso write so no reach
     // is ever lost. chest_share == 0 on every non-planted path keeps mChest*
     // at exactly +0, so this is a no-op there.
-    LLJoint* chest_joint = av->getJoint("mChest");
+    LLJoint* chest_joint = g.mJoints[Gaze::J_CHEST];
     if (!chest_joint && chest_share > 0.f)
     {
         // Fold the WHOLE split share back (any magnitude) so no reach is lost
@@ -10041,10 +10365,17 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         chain.mHipsPitch  *= body_scale;
     }
 
+    g.mClockSafety.mValid = true;
+    g.mClockSafety.mSeed = seed;
+    g.mClockSafety.mLife = life_params;
+    g.mClockSafety.mPersona = persona_mod;
+    g.mClockSafety.mNaturalBreaks = allow_natural_break;
+    g.mClockSafety.mMotor = false;
+
     // Micro-life evaluation (§B1)
     const ALGazeMath::MicroLifeOffsets micro =
         ALGazeMath::evalMicroLife(
-            seed, t_sec, life_params.mMicroLife,
+            seed, life_sec, life_params.mMicroLife,
             life_params.mBlinks, life_params.mBlinkRate);
 
     const bool head_priority_active = override_head_eyes && priority_env > 0.001f;
@@ -10064,7 +10395,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             (wCueBody > 0.001f &&
              (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
         {
-            if (LLJoint* pelvis = av->getJoint("mPelvis"))
+            if (LLJoint* pelvis = g.mJoints[Gaze::J_PELVIS])
             {
                 LLQuaternion hips_target;
                 hips_target.setEulerAngles(0.f, chain.mHipsPitch, chain.mHipsYaw);
@@ -10158,7 +10489,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             (wCueBody > 0.001f &&
              (fabsf(chain.mTorsoYaw) + fabsf(chain.mTorsoPitch)) > 1e-5f))
         {
-            if (LLJoint* torso = av->getJoint("mTorso"))
+            if (LLJoint* torso = g.mJoints[Gaze::J_TORSO])
             {
                 LLQuaternion torso_target;
                 torso_target.setEulerAngles(0.f, chain.mTorsoPitch, chain.mTorsoYaw);
@@ -10397,7 +10728,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
              (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
               fabsf(camera_neck_roll)) > 1e-5f))
         {
-            if (LLJoint* neck = av->getJoint("mNeck"))
+            if (LLJoint* neck = g.mJoints[Gaze::J_NECK])
             {
                 LLQuaternion neck_target;
                 neck_target.setEulerAngles(0.f, chain.mNeckPitch, chain.mNeckYaw);
@@ -10871,7 +11202,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             effective_intensity * cue_eye_weight, 0.f, 1.f);
         const ALGazeMath::MicroLifeOffsets lid_lead_micro =
             ALGazeMath::evalMicroLife(
-                seed, t_sec + 0.03, life_params.mMicroLife,
+                seed, life_sec + 0.03, life_params.mMicroLife,
                 life_params.mBlinks, life_params.mBlinkRate);
         auto applyEye = [&](LLJoint* eye, F32 convergence_sign)
         {
@@ -11005,10 +11336,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 }
             }
         };
-        applyEye(av->getJoint("mEyeLeft"), -1.f);
-        applyEye(av->getJoint("mEyeRight"), 1.f);
-        applyEye(av->getJoint("mFaceEyeAltLeft"), -1.f); // Bento alt eyes, if present
-        applyEye(av->getJoint("mFaceEyeAltRight"), 1.f);
+        applyEye(g.mJoints[Gaze::J_EYE_LEFT], -1.f);
+        applyEye(g.mJoints[Gaze::J_EYE_RIGHT], 1.f);
+        applyEye(g.mJoints[Gaze::J_ALT_LEFT], -1.f); // Bento alt eyes, if present
+        applyEye(g.mJoints[Gaze::J_ALT_RIGHT], 1.f);
     }
 
     // Director owns the stock eyelid morphs while procedural blink or lid
@@ -11034,9 +11365,12 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         closure *= 1.f - llclamp(
             director_runtime->mCueLidWiden, 0.f, 1.f);
         bool visual_params_changed = false;
-        auto apply_lid = [&](const char* name)
+        auto apply_lid = [&](size_t index)
         {
-            if (LLVisualParam* param = av->getVisualParam(name))
+            auto& held = g.mHeldLids[index];
+            held.mWeight = closure;
+            held.mWritten = true;
+            if (LLVisualParam* param = held.mParam)
             {
                 if (fabsf(av->getVisualParamWeight(param) - closure) > 1e-6f)
                 {
@@ -11045,8 +11379,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 }
             }
         };
-        apply_lid("Blink_Left");
-        apply_lid("Blink_Right");
+        apply_lid(0);
+        apply_lid(1);
         if (visual_params_changed)
         {
             av->updateVisualParams();

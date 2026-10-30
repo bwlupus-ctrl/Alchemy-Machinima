@@ -36,6 +36,7 @@
 #define AL_ALGHOSTSTUDIO_H
 
 #include "alghostgroupmodel.h"
+#include "alavataranimationtime.h"
 #include "alghostanimnames.h"
 #include "alghostanimmirrormath.h"
 #include "alghostrotation.h"
@@ -456,6 +457,7 @@ public:
         // first tick.
         F32         mCrowdFacingYawOffset = 0.f;
         F64         mCrowdFacingStart = 0.0;
+        ALAvatarAnimationTime::Clock mCrowdFacingClock;
 
         // ---- body turn (independent of look-at above) ----
         ETurnMode   mTurnMode = TURN_MODE_OFF;
@@ -901,10 +903,8 @@ private:
     void updateFreezeStrips(F64 now);
     void updateFormationMotion(F64 now);
     bool canApplyMotionTilt(const Instance& inst, const LLGhostAvatar* ghost) const;
-    // [GhostMotionModes] Advance mMotionClock once per presentation frame:
-    // by the scaled presentation delta while Temporal Capture drives
-    // ANIMATION, else by the unscaled wall delta. Both have the body-turn
-    // 0.25s hitch cap; normal frames stay in step with skeletons and cues.
+    // Advance the shared world-motion clock once per presentation frame.
+    // Animation drive uses presentation delta, otherwise wall delta; 0.25s cap.
     void advanceMotionClock();
     LLGhostAvatar* createEntityRuntime(Instance& inst, S32& attachments);
     void applyEntityRuntimeState(Instance& inst, LLGhostAvatar* ghost);

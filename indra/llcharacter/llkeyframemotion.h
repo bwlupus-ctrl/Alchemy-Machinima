@@ -369,7 +369,7 @@ protected:
 
     void deactivateConstraint(JointConstraint *constraintp);
 
-    void applyConstraint(JointConstraint* constraintp, F32 time, U8* joint_mask);
+    void applyConstraint(JointConstraint* constraintp, F32 time, U8* joint_mask, bool seed_spatial);
 
     bool    setupPose();
 
@@ -530,6 +530,13 @@ protected:
     LLCharacter*                    mCharacter;
     typedef std::list<JointConstraint*> constraint_list_t;
     constraint_list_t               mConstraints;
+    struct ConstraintPoseJoint
+    {
+        LLJointState* mState = nullptr;
+        LLQuaternion mRotation;
+        LLVector3 mPosition;
+    };
+    std::vector<ConstraintPoseJoint> mHeldConstraintPose;
     U32                             mLastSkeletonSerialNum;
     F32                             mLastUpdateTime;
     F32                             mLastLoopedTime;

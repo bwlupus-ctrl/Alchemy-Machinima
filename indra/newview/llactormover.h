@@ -40,14 +40,18 @@
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
 #include "alghostanimmirrormath.h" // Directed mirror gaze observer
 #include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
+#include "alavataranimationtime.h"
 #include "altrajectory.h"   // deterministic C2 path-facing trajectory
 #include "alpathgeometry.h" // exact circle/ellipse/helix path primitives
 
+#include <array>
 #include <map>
 #include <vector>
 #include <functional>       // [CloneFidelity] shared source-walk callbacks
 
 class LLVOAvatar;
+class LLJoint;
+class LLVisualParam;
 class LLView;
 class LLDrawInfo;
 class LLFace;
@@ -358,6 +362,7 @@ public:
     // through setEditActor(null) -> owner, node and tool session end atomically.
     void          pruneEditActor();
     void          onRosterMemberRemoved(const LLUUID& actor_id);
+    void          onAvatarRemoved(const LLVOAvatar* avatar);
     // [DirFix] the one definition of "effective roster" (cast ids, or my avatar
     // while the cast is empty); pruneEditActor and the path hosts' claims use it
     static bool   isInEffectiveRoster(const LLUUID& actor_id);
@@ -1163,6 +1168,11 @@ private:
         F32       mDistance = 5.f;  // path length, m
         S32       mEndMode = 0;     // 0 hold at end, 1 loop, 2 ping-pong
         F32       mT = 0.f;         // elapsed seconds
+        ALAvatarAnimationTime::DrivenClock mDrivenClock;
+        U64 mSyncMappingRevision = 0;
+        S32 mSyncLoopMode = 0;
+        bool mPoseSeeded = false;
+        bool mPathPoseEvaluated = false;
         LLUUID    mAnim;            // locomotion anim started for this move
         // per-frame cache so repeated applyOverride() calls are idempotent
         U32          mLastFrame = 0xFFFFFFFF;
@@ -1331,7 +1341,37 @@ private:
     // own map (session-only) so a no-gaze avatar is a pure map-miss no-op.
     struct Gaze
     {
+        ALAvatarAnimationTime::Clock mAnimationClock;
+        ALAvatarAnimationTime::Clock mLifeClock;
+        ALGazeMotor::TargetInput mHeldMotorInput;
+        ALGazeMotor::ClockSafety mClockSafety;
+        bool mClockBlocked = false;
+        F64 mClockShift = 0.0;
+        bool mHeldMotorInputValid = false;
+        F32 mHeldCameraRoll = 0.f;
+        struct ResolvedLifeTarget
+        {
+            LLVector3 mDirection;
+            F32 mDistance = 0.f;
+            bool mValid = false;
+        };
+        enum class TargetSlot { CUE_FROM, CUE_BASE, EYES, COUNT };
+        ALAvatarAnimationTime::SlotSamples<ResolvedLifeTarget,
+            static_cast<size_t>(TargetSlot::COUNT)> mHeldTargetDirections;
+        ALAvatarAnimationTime::OwnerIdentity mOwner;
+        U32 mClockFrame = 0xFFFFFFFF;
+        enum JointSlot { J_ROOT, J_PELVIS, J_TORSO, J_CHEST, J_NECK, J_HEAD,
+            J_EYE_LEFT, J_EYE_RIGHT, J_ALT_LEFT, J_ALT_RIGHT, J_COUNT };
+        std::array<LLJoint*, J_COUNT> mJoints{};
+        struct HeldLid { LLVisualParam* mParam = nullptr; F32 mWeight = 0.f; bool mWritten = false; };
+        std::array<HeldLid, 2> mHeldLids{};
+        std::vector<std::pair<LLJoint*, LLQuaternion>> mHeldRotations;
+        U32 mHeldSkeletonSerial = 0, mHeldAppearanceSerial = 0;
+        bool mHoldCacheValid = false;
+        LLQuaternion mHeldRootWorld;
+        bool mHeldRootValid = false;
         ALGhostAnimMirrorMath::GazeWeights mWrittenGaze;
+        ALGhostAnimMirrorMath::GazeWeights mHeldWrittenGaze;
         // authored (panel writes these)
         bool       mEnabled      = false;
         S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_OBJECT
@@ -1477,7 +1517,8 @@ private:
     // applyGaze entirely, so it must tick the blend itself). Computes the
     // same presentation dt as the envelope advance; no-op when inactive or
     // when the other path already advanced this frame.
-    void advanceGazeParamTransition(Gaze& g);
+    F32 advanceGazeClock(LLVOAvatar* av, Gaze& g);
+    void advanceGazeParamTransition(LLVOAvatar* av, Gaze& g);
     // Director-path consumption: replace the CONTINUOUS fields the authored
     // @target sets with the current blended concrete values from @g, so a
     // Director-driven actor eases a preset change exactly like the
@@ -1528,6 +1569,9 @@ private:
         bool             mWasSelected = false;
         bool             mReactionPending = false;
         F64              mAcquireStartPresentation = 0.0;
+        U32              mClockRebaseFrame = 0xFFFFFFFF;
+        F64              mOwnerClockOffset = 0.0;
+        bool             mOwnerClockPending = false;
         F32              mReactionDelay = 0.f;
         LLActorMover::GazeTarget mLastTarget;
         bool             mCueOverride = false;
@@ -1543,6 +1587,11 @@ private:
         bool             mLastGateActive = false;
         U64              mLastGateCutSerial = 0;
     };
+    static void invalidateGazeCache(Gaze& gaze, bool owner_changed);
+    static bool ensureGazeOwner(LLVOAvatar* avatar, Gaze& gaze);
+    static void releaseDirectorTurnAO(DirectorGaze& runtime);
+    static void invalidateDirectorCache(DirectorGaze& runtime);
+    static bool ensureDirectorOwner(LLVOAvatar* avatar, DirectorGaze& runtime);
     // per-frame gaze solve helpers (file-scope math lives in the cpp)
     void gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
                    bool constrain_eye_cone, bool allow_natural_break,

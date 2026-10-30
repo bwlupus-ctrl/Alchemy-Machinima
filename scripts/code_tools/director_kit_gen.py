@@ -345,8 +345,9 @@ def validate_data(data: dict) -> None:
     # Directed animation: exactly two Clones rows, Mirror and Source playing (10/29).
     # Probe reach: one persistent renderer switch, 2374 -> 2375 (10/30).
     # VRAM F1: exactly two Settings > Performance rows (purge switch and pin mirror).
-    if len(pages) != 38 or row_count != 2377:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2377")
+    # + Keep breathing while paused: exactly one persisted Time toggle (10/30).
+    if len(pages) != 38 or row_count != 2378:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2378")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2301,15 +2302,19 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         wind_down = find_named(temporal, "kc_wind_down")
         wind_rows = list(wind_down.iter("kit_row"))
         wind_widgets = {"btn_world_wind_down", "wind_down_seconds", "spin_up_seconds", "wind_down_curve",
-                        "wind_down_bezier_x1", "wind_down_bezier_y1", "wind_down_bezier_x2", "wind_down_bezier_y2"}
-        checks.append(("world wind-down has exactly eight searchable rows with Custom-only handles",
-                       len(wind_rows) == 8 and {row.get("widget") for row in wind_rows} == wind_widgets and
+                        "wind_down_bezier_x1", "wind_down_bezier_y1", "wind_down_bezier_x2", "wind_down_bezier_y2", "keep_avatar_life"}
+        checks.append(("world wind-down has exactly nine searchable rows with Custom-only handles and keep-life toggle",
+                       len(wind_rows) == 9 and {row.get("widget") for row in wind_rows} == wind_widgets and
                        all(row.get("widget").encode() in outputs[out_dir / "director_kit_index.xml"] and
                            "turntable tape stop pause world spin up gradual freeze" in row.get("keywords", "")
                            for row in wind_rows) and
                        all(row.get("visible") == "false" for row in wind_rows
                            if row.get("widget").startswith("wind_down_bezier_")) and
-                       find_named(temporal, "btn_world_wind_down").get("label") == "Wind down / Spin up"))
+                       find_named(temporal, "btn_world_wind_down").get("label") == "Wind down / Spin up" and
+                       find_named(temporal, "keep_avatar_life").get("control_name") == "WorldPauseKeepAvatarLife" and
+                       next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("label") == "Keep breathing while paused" and
+                       all(word in next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("keywords", "")
+                           for word in ("breathing", "breathe", "idle", "life", "pause", "freeze", "wind down", "slow motion"))))
         checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 37, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"

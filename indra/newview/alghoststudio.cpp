@@ -1673,7 +1673,8 @@ void ALGhostStudio::setTurnTarget(const LLUUID& id, ETurnMode mode,
 bool ALGhostStudio::stepTurn(const LLUUID& id, F32 dt)
 {
     Instance* inst = getInstance(id);
-    if (!inst || inst->mTurnMode == TURN_MODE_OFF)
+    if (!inst || inst->mTurnMode == TURN_MODE_OFF ||
+        ALAvatarAnimationTime::holdWorldTurn(dt, LLMotionController::getGlobalTimeFactor()))
     {
         return false;
     }
@@ -1780,7 +1781,8 @@ void ALGhostStudio::updateLookAt()
     }
     for (const LLUUID& id : tracking)
     {
-        faceInstance(id);
+        const auto dt = ALAvatarAnimationTime::forWorld(gFrameIntervalSeconds.value());
+        if (dt.mSeconds > 0.f) faceInstance(id);
     }
 }
 
@@ -2106,6 +2108,11 @@ void ALGhostStudio::updatePerFrame()
         {
             continue;
         }
+        const auto facing_dt = ALAvatarAnimationTime::forWorld(gFrameIntervalSeconds.value());
+        const F64 facing_time = inst.mCrowdFacingClock.sample(
+            facing_now - inst.mCrowdFacingStart, facing_dt,
+            LLMotionController::getGlobalTimeFactor() == 1.f);
+        if (ALAvatarAnimationTime::frozen(facing_dt)) continue;
         if (inst.mCrowdFacing == FACING_TRACK_SUBJECT)
         {
             LLVector3d target;
@@ -2140,7 +2147,7 @@ void ALGhostStudio::updatePerFrame()
         }
         if (inst.mCrowdFacing == FACING_WAVE && inst.mGroupId.isNull())
         {
-            const F32 phase = (F32)(facing_now - inst.mCrowdFacingStart) *
+            const F32 phase = (F32)facing_time *
                               2.5f - (F32)inst.mCrowdSlot * 0.65f;
             LLQuaternion rotation = inst.withHeading(
                 inst.mCrowdBaseYaw + inst.mCrowdFacingYawOffset +
@@ -2193,7 +2200,8 @@ void ALGhostStudio::updatePerFrame()
     }
     for (const LLUUID& id : tracking)
     {
-        faceInstance(id);
+        const auto dt = ALAvatarAnimationTime::forWorld(gFrameIntervalSeconds.value());
+        if (dt.mSeconds > 0.f) faceInstance(id);
     }
     stepAllTurns();
 }
@@ -2438,16 +2446,7 @@ void ALGhostStudio::stepAllTurns()
     // Body turn runs AFTER look-at and after motion, so it is the last word on
     // yaw for any instance that has a turn target -- except SPIN, which owns
     // yaw outright and would otherwise fight it every frame.
-    // [Temporal Capture] Animation drive: step body turns on the presentation
-    // clock so ghost turning slows with gait/world. 0x -> 0 holds; the clamp
-    // guards a fast-scale hitch from snapping the yaw.
-    F32 dt = gFrameIntervalSeconds;
-    if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
-    {
-        // presentation-scaled, capped at the uniform 0.25s hitch cap (stepTurn also
-        // clamps internally); coupling with gait is exact under the cap
-        dt = llclamp((F32)LLPresentationTime::presentationDelta(), 0.f, 0.25f);
-    }
+    const F32 wall_dt = gFrameIntervalSeconds.value();
     std::vector<LLUUID> turning;
     std::set<LLUUID> turning_groups;
     for (const Instance& inst : mInstances)
@@ -2463,6 +2462,8 @@ void ALGhostStudio::stepAllTurns()
     }
     for (const LLUUID& id : turning)
     {
+        const F32 dt = ALAvatarAnimationTime::placementSeconds(wall_dt, LLMotionController::getGlobalTimeFactor(),
+            LLPresentationTime::presentationDelta(), LLPresentationTime::drives(LLTemporalFeature::ANIMATION), false);
         stepTurn(id, dt);
     }
 }
@@ -5306,6 +5307,7 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
         {
             member->mCrowdFacing = draft.mSpec.mFacing;
             member->mCrowdFacingStart = LLTimer::getTotalSeconds();
+            member->mCrowdFacingClock = {0.0, false, true};
             if (draft.mSpec.mFacing == FACING_TRACK_SUBJECT)
             {
                 member->mKeepFacing = false;

@@ -34,6 +34,7 @@
 #define AL_ALPOSESECONDARY_H
 
 #include "llmath.h"
+#include "alavataranimationtime.h"
 
 #include <cmath>
 
@@ -126,6 +127,24 @@ inline F32 clampDelta(F32 rad)
 // ---------------------------------------------------------------------------
 // API
 // ---------------------------------------------------------------------------
+
+// False on a wall hitch: retain the existing reseed/skip-frame policy.
+// A zero animation delta holds phase, including at a nonzero phase.
+inline bool advanceTime(F32& time_sec, const ALAvatarAnimationTime::Delta& dt)
+{
+    if (ALAvatarAnimationTime::frozen(dt)) return true;
+    if (ALAvatarAnimationTime::polishReseed(dt))
+    {
+        time_sec = 0.f;
+        return false;
+    }
+    time_sec += dt.mSeconds;
+    if (time_sec >= COMMON_PERIOD_SEC)
+    {
+        time_sec = std::fmod(time_sec, COMMON_PERIOD_SEC);
+    }
+    return true;
+}
 
 // Evaluate the ambient secondary-motion pose at @time_sec (seconds; any origin,
 // the caller owns the clock/accumulator). Pure: no state, no side effects.

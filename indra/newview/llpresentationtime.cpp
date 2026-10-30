@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llpresentationtime.h"
+#include "alavatarlifepolicy.h"
 
 #include "aldirectorswitcher.h"
 #include "alworldwinddowncontrol.h"
@@ -100,6 +101,7 @@ U32 LLPresentationTime::readDriveMask() const
 
 void LLPresentationTime::tick()
 {
+    ALAvatarLifePolicy::update();
     // 0 = Live (stock), 1 = Manual scale. Other modes are reserved and not
     // settings-selectable in Landing 1.
     static LLCachedControl<S32> mode_setting(gSavedSettings, "TemporalMode",       0);

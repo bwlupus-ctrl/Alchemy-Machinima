@@ -860,6 +860,7 @@ void LLVOAvatar::debugAvatarRezTime(std::string notification_name, std::string c
 //------------------------------------------------------------------------
 LLVOAvatar::~LLVOAvatar()
 {
+    if (LLActorMover::instanceExists()) LLActorMover::instance().onAvatarRemoved(this);
     sInstances.remove(this);
 
     if (!mFullyLoaded)
@@ -926,6 +927,7 @@ LLClientOuterTransform* LLVOAvatar::getClientOuterTransformHandle() const
 
 void LLVOAvatar::markDead()
 {
+    if (LLActorMover::instanceExists()) LLActorMover::instance().onAvatarRemoved(this);
     if (mNameText)
     {
         mNameText->markDead();
@@ -2435,9 +2437,12 @@ void LLVOAvatar::resetSkeleton(bool reset_animations)
     }
 
     // [Machinima] The skeleton was rebuilt: joint pointers and bone lengths
-    // changed, so drop all Pose Polish shadow state (cached IK setup, contact
-    // locks, inertia offsets) to reseed fresh against the new skeleton.
-    mPosePolish.reset();
+    // changed. A world/joint pause retains only the ambient phase; stale rig
+    // repair state is reset before a zero-step paint of the new skeleton.
+    if (ALAvatarAnimationTime::frozen(ALAvatarAnimationTime::forAvatar(gFrameIntervalSeconds.value(), *this)))
+        mPosePolish.invalidateSkeleton();
+    else
+        mPosePolish.reset();
 
     LL_DEBUGS("Avatar") << avString() << " reset ends" << LL_ENDL;
 }
@@ -4738,6 +4743,10 @@ void LLVOAvatar::computeUpdatePeriod()
 //------------------------------------------------------------------------
 void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
 {
+    const auto world_dt = ALAvatarAnimationTime::forWorld(delta_time);
+    delta_time = world_dt.mSeconds;
+    if (ALAvatarAnimationTime::frozen(world_dt)) return;
+
             LLQuaternion iQ;
             LLVector3 upDir( 0.0f, 0.0f, 1.0f );
 
@@ -4850,7 +4859,8 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
                     pelvis_rot_threshold *= 0.4f;
                     // account for fps, assume that above value is for ~60fps
                     constexpr F32 default_frame_sec = 0.016f;
-                    F32 prev_frame_sec = LLFrameTimer::getFrameDeltaTimeF32();
+                    F32 prev_frame_sec = ALAvatarAnimationTime::forWorld(
+                        LLFrameTimer::getFrameDeltaTimeF32()).mSeconds;
                     if (default_frame_sec > prev_frame_sec)
                     {
                         // reduce threshold since turn rate per second is constant,
@@ -4986,7 +4996,19 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
         delta_time = llclamp( delta_time, DELTA_TIME_MIN, DELTA_TIME_MAX );
         mTimeLast = animation_time;
 
-        mSpeedAccum = (mSpeedAccum * 0.95f) + (speed * 0.05f);
+        if (LLMotionController::getGlobalTimeFactor() == 1.f)
+        {
+            mSpeedAccum = (mSpeedAccum * 0.95f) + (speed * 0.05f);
+        }
+        else
+        {
+            const auto anim_dt = ALAvatarAnimationTime::forWorld(1.f);
+            if (anim_dt.mSeconds > 0.f)
+            {
+                const F32 alpha = ALAvatarAnimationTime::interpolant(0.05f, anim_dt, 1.f);
+                mSpeedAccum = (mSpeedAccum * (1.f - alpha)) + (speed * alpha);
+            }
+        }
 
         //--------------------------------------------------------------------
         // compute the position of the avatar's root
@@ -5223,7 +5245,7 @@ const PolishJointEntry kPolishJoints[] = {
 const S32 kPolishJointCount = (S32)(sizeof(kPolishJoints) / sizeof(kPolishJoints[0]));
 }
 
-void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
+void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt, bool big_dt)
 {
     static LLCachedControl<F32> hl_spine(gSavedSettings, "ALPolishInertiaHalfLifeSpine", 0.13f);
     static LLCachedControl<F32> hl_arm(gSavedSettings,   "ALPolishInertiaHalfLifeArm",   0.09f);
@@ -5238,11 +5260,10 @@ void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
     }
     // A hitch / teleport / scrub shows up as a very large dt: reseed (raw pose)
     // instead of smoothing across the discontinuity.
-    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
 
     for (S32 i = 0; i < kPolishJointCount; ++i)
     {
-        LLJoint* j = av->getJoint(kPolishJoints[i].mName);
+        LLJoint* j = mPolishJoints[i];
         if (!j)
         {
             continue;
@@ -5266,6 +5287,7 @@ void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
         if (!s.mSettled)
         {
             j->setRotation(rot);
+            mHeldRotations.emplace_back(j, j->getRotation());
             mSeeded = true;
             ++mDiagInertia;   // M5 diagnostic
         }
@@ -5280,7 +5302,7 @@ void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
 // module; this function only wires it to the skeleton. Writes ONLY hip/knee/
 // ankle LOCAL rotations, blended by a ramped correction weight — never mRoot,
 // never sim position, never joint positions.
-void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
+void ALPosePolish::runContact(LLVOAvatar* av, F32 dt, bool big_dt)
 {
     static LLCachedControl<F32> contact_weight(gSavedSettings, "ALPolishContactWeight", 0.75f);
 
@@ -5289,17 +5311,16 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
     const F32 REACH_CLAMP    = 0.95f;  // fraction of full leg length: beyond => release
     const F32 MAX_CORRECTION = 0.35f;  // m: lock this far from the raw foot is stale => drop it
 
-    LLJoint* hip_l   = av->getJoint("mHipLeft");
-    LLJoint* knee_l  = av->getJoint("mKneeLeft");
-    LLJoint* ankle_l = av->getJoint("mAnkleLeft");
-    LLJoint* hip_r   = av->getJoint("mHipRight");
-    LLJoint* knee_r  = av->getJoint("mKneeRight");
-    LLJoint* ankle_r = av->getJoint("mAnkleRight");
-    LLJoint* pelvis  = av->getJoint("mPelvis");
+    LLJoint* hip_l   = mContactJoints[0];
+    LLJoint* knee_l  = mContactJoints[1];
+    LLJoint* ankle_l = mContactJoints[2];
+    LLJoint* hip_r   = mContactJoints[3];
+    LLJoint* knee_r  = mContactJoints[4];
+    LLJoint* ankle_r = mContactJoints[5];
+    LLJoint* pelvis  = mContactJoints[6];
 
     const bool joints_ok = pelvis && hip_l && knee_l && ankle_l
                                   && hip_r && knee_r && ankle_r;
-    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
     const bool have_mover_hints =
         mContactHints.mFrame == LLFrameTimer::getFrameCount() &&
         mContactHints.mMoverOwnsRoot;
@@ -5522,8 +5543,11 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
         // Read the solved LOCAL rotations back and blend them onto the real
         // joints by the ramped weight (rotations only; positions untouched).
         leg.mRealHip->setRotation(nlerp(weight, leg.mRealHip->getRotation(), leg.mCopyHip->getRotation()));
+        mHeldRotations.emplace_back(leg.mRealHip, leg.mRealHip->getRotation());
         leg.mRealKnee->setRotation(nlerp(weight, leg.mRealKnee->getRotation(), leg.mCopyKnee->getRotation()));
+        mHeldRotations.emplace_back(leg.mRealKnee, leg.mRealKnee->getRotation());
         leg.mRealAnkle->setRotation(nlerp(weight, leg.mRealAnkle->getRotation(), leg.mCopyAnkle->getRotation()));
+        mHeldRotations.emplace_back(leg.mRealAnkle, leg.mRealAnkle->getRotation());
         mSeeded = true;
         ++mDiagContact;   // M5 diagnostic
     }
@@ -5537,27 +5561,14 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
 // rotations (delta * current, same additive-over-animation discipline as the
 // gaze overlay). Rotation-only, chest/torso only — never mRoot, never pelvis
 // translation, never sim state.
-void ALPosePolish::runSecondary(LLVOAvatar* av, F32 dt)
+void ALPosePolish::runSecondary(LLVOAvatar* av, const ALAvatarAnimationTime::Delta& dt)
 {
     static LLCachedControl<F32> breath_amp(gSavedSettings, "ALPolishSecondaryBreathAmp", 1.f);
     static LLCachedControl<F32> sway_amp(gSavedSettings, "ALPolishSecondarySwayAmp", 1.f);
 
-    // A hitch / teleport / scrub shows up as a very large (or invalid) dt:
-    // restart the ambient clock instead of jumping phase (mirror the other
-    // stages' big_dt reseed). The zero-time pose is evaluated next frame.
-    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
-    if (big_dt)
+    if (!ALPoseSecondary::advanceTime(mSecondaryTime, dt))
     {
-        mSecondaryTime = 0.f;
         return;
-    }
-    // Advance the driving clock, wrapping at the waves' common period so F32
-    // precision never degrades over a long session (phase-exact by design:
-    // every component completes an integer cycle count per period).
-    mSecondaryTime += dt;
-    if (mSecondaryTime >= ALPoseSecondary::COMMON_PERIOD_SEC)
-    {
-        mSecondaryTime -= ALPoseSecondary::COMMON_PERIOD_SEC;
     }
 
     ALPoseSecondary::SecondaryParams params;
@@ -5576,15 +5587,12 @@ void ALPosePolish::runSecondary(LLVOAvatar* av, F32 dt)
     // axis = rise-and-fall). Falls back to mTorso on rigs without mChest.
     if (fabsf(pose.mChestPitch) > WRITE_EPS)
     {
-        LLJoint* chest = av->getJoint("mChest");
-        if (!chest)
-        {
-            chest = av->getJoint("mTorso");
-        }
+        LLJoint* chest = mSecondaryJoints[0] ? mSecondaryJoints[0] : mSecondaryJoints[1];
         if (chest)
         {
             const LLQuaternion delta(pose.mChestPitch, LLVector3(0.f, 1.f, 0.f));
             chest->setRotation(delta * chest->getRotation());
+            mHeldRotations.emplace_back(chest, chest->getRotation());
             mSeeded = true;
             ++mDiagSecondary;   // M5 diagnostic
         }
@@ -5594,11 +5602,12 @@ void ALPosePolish::runSecondary(LLVOAvatar* av, F32 dt)
     // lower spine (mTorso is the joint directly above the pelvis).
     if (fabsf(pose.mSpineRoll) > WRITE_EPS || fabsf(pose.mSpinePitch) > WRITE_EPS)
     {
-        if (LLJoint* torso = av->getJoint("mTorso"))
+        if (LLJoint* torso = mSecondaryJoints[1])
         {
             LLQuaternion delta;
             delta.setEulerAngles(pose.mSpineRoll, pose.mSpinePitch, 0.f);
             torso->setRotation(delta * torso->getRotation());
+            mHeldRotations.emplace_back(torso, torso->getRotation());
             mSeeded = true;
             ++mDiagSecondary;   // M5 diagnostic
         }
@@ -5636,21 +5645,79 @@ void ALPosePolish::run(LLVOAvatar* av, F32 dt)
         }
         return;
     }
+    auto anim_dt = ALAvatarAnimationTime::forAvatar(dt, *av);
+    auto life_dt = ALAvatarAnimationTime::forLife(dt, *av);
+    const bool cache_changed = !mJointsCached || mSkeletonSerial != av->getSkeletonSerialNum();
+    const bool seed_hold = ALAvatarAnimationTime::seedFrozenLayer(ALAvatarAnimationTime::frozen(anim_dt), cache_changed);
+    if (cache_changed)
+    {
+        if (seed_hold) invalidateSkeleton();
+        else reset();
+        mSkeletonSerial = av->getSkeletonSerialNum();
+        mPolishJoints.reserve(kPolishJointCount);
+        for (const auto& entry : kPolishJoints) mPolishJoints.push_back(av->getJoint(entry.mName));
+        const char* contact_names[] = {"mHipLeft", "mKneeLeft", "mAnkleLeft",
+            "mHipRight", "mKneeRight", "mAnkleRight", "mPelvis"};
+        for (size_t i = 0; i < mContactJoints.size(); ++i)
+            mContactJoints[i] = av->getJoint(contact_names[i]);
+        mSecondaryJoints = {av->getJoint("mChest"), av->getJoint("mTorso")};
+        mHeldRotations.reserve(kPolishJointCount + 8);
+        mSecondaryBaseRotations.reserve(2);
+        mJointsCached = true;
+    }
+    if (seed_hold) anim_dt = life_dt = ALAvatarAnimationTime::seedDelta();
+    // The controller reapplies its blended pose even at zero speed. Reassert
+    // our last output, rather than dropping or compounding additive overlays.
+    if (ALAvatarAnimationTime::frozen(anim_dt) && !seed_hold)
+    {
+        for (const auto& held : mHeldRotations)
+        {
+            held.first->setRotation(held.second);
+        }
+        if (life_dt.mSeconds > 0.f && !life_dt.mReseed)
+        {
+            // A layer first enabled while frozen has no prior baseline yet.
+            if (mSecondaryBaseRotations.empty())
+            {
+                for (LLJoint* joint : mSecondaryJoints)
+                {
+                    if (joint) mSecondaryBaseRotations.emplace_back(joint, joint->getRotation());
+                }
+            }
+            // Remove the previous secondary pose before layering this frame's
+            // breath/sway over the held inertia/contact output.
+            for (const auto& base : mSecondaryBaseRotations)
+            {
+                base.first->setRotation(base.second);
+            }
+            mHeldRotations.resize(mRepairRotationCount);
+            static LLCachedControl<bool> secondary_enabled(gSavedSettings, "ALPolishSecondaryEnabled", false);
+            if (secondary_enabled) runSecondary(av, life_dt);
+        }
+        return;
+    }
+    mHeldRotations.clear();
     mDiagInertia = mDiagContact = mDiagSecondary = 0;   // M5 per-frame counts
     static LLCachedControl<bool> inertia_enabled(gSavedSettings, "ALPolishInertiaEnabled", false);
     if (inertia_enabled)
     {
-        runInertialization(av, dt);
+        runInertialization(av, anim_dt.mSeconds, ALAvatarAnimationTime::polishReseed(anim_dt));
     }
     static LLCachedControl<bool> contact_enabled(gSavedSettings, "ALPolishContactEnabled", false);
     if (contact_enabled)
     {
-        runContact(av, dt);
+        runContact(av, anim_dt.mSeconds, ALAvatarAnimationTime::polishReseed(anim_dt));
+    }
+    mRepairRotationCount = mHeldRotations.size();
+    mSecondaryBaseRotations.clear();
+    for (LLJoint* joint : mSecondaryJoints)
+    {
+        if (joint) mSecondaryBaseRotations.emplace_back(joint, joint->getRotation());
     }
     static LLCachedControl<bool> secondary_enabled(gSavedSettings, "ALPolishSecondaryEnabled", false);
     if (secondary_enabled)
     {
-        runSecondary(av, dt);
+        runSecondary(av, life_dt);
     }
     // [Machinima] M5 layer diagnostic: surface which polish stages actually
     // touched joints this frame (the testable core of the NLA "current owner"
@@ -5663,9 +5730,33 @@ void ALPosePolish::run(LLVOAvatar* av, F32 dt)
     }
 }
 
+void ALPosePolish::invalidateSkeleton()
+{
+    // A new rig must not inherit offsets/foot locks from the prior geometry.
+    // At dt 0 an inertial offset cannot decay; only ambient phase is portable.
+    for (auto& joint : mInertiaJoints) ALPoseContinuity::resetJoint(joint);
+    for (auto& foot : mFoot) ALContactStab::resetFoot(foot);
+    mContactBlend[0] = mContactBlend[1] = 0.f;
+    mContactHold[0] = mContactHold[1] = LLVector3();
+    mSeeded = false;
+    mHeldRotations.clear();
+    mSecondaryBaseRotations.clear();
+    mPolishJoints.clear();
+    mContactJoints = {};
+    mSecondaryJoints = {};
+    mRepairRotationCount = 0;
+    mJointsCached = false;
+    mContactInit = false;
+}
+
 void ALPosePolish::reset()
 {
     mSeeded = false;
+    mHeldRotations.clear();
+    mSecondaryBaseRotations.clear();
+    mRepairRotationCount = 0;
+    mPolishJoints.clear();
+    mJointsCached = false;
     mLastFrame = 0xFFFFFFFF;
     for (ALPoseContinuity::InertiaJoint& s : mInertiaJoints)
     {

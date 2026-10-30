@@ -28,6 +28,7 @@
 // Header Files
 //-----------------------------------------------------------------------------
 #include "linden_common.h"
+#include "alavataranimationtime.h"
 
 #include "lltargetingmotion.h"
 #include "llcharacter.h"
@@ -104,7 +105,13 @@ bool LLTargetingMotion::onActivate()
 bool LLTargetingMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED;
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    if (!anim_dt.mUnscaled && anim_dt.mSeconds == 0.f) return true;
+
     F32 slerp_amt = LLSmoothInterpolation::getInterpolant(TORSO_TARGET_HALF_LIFE);
+    if (!anim_dt.mUnscaled)
+        slerp_amt = ALAvatarAnimationTime::interpolant(slerp_amt, anim_dt, wall_dt);
 
     LLVector3 target;
     LLVector3* lookAtPoint = (LLVector3*)mCharacter->getAnimationData("LookAtPoint");

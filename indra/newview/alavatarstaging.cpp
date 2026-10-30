@@ -6,6 +6,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alavatarstaging.h"
+#include "alavataranimationtime.h"
 
 #include "alghoststudio.h"
 #include "llactormover.h"
@@ -104,9 +105,9 @@ namespace
         {
             return 0.f;
         }
-        return LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
-            ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
-            : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        const F32 wall_dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+        return ALAvatarAnimationTime::placementSeconds(wall_dt, LLMotionController::getGlobalTimeFactor(),
+            LLPresentationTime::presentationDelta(), LLPresentationTime::drives(LLTemporalFeature::ANIMATION));
     }
 }
 

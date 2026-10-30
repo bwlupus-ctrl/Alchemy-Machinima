@@ -41,6 +41,8 @@
 #include "lljointsolverrp3.h"   // M2 leg IK: proven two-bone solver (pulls in lljoint.h)
 #include "v3math.h"
 
+#include <array>
+#include <utility>
 #include <vector>
 
 class LLVOAvatar;
@@ -94,9 +96,9 @@ public:
         mContactHints = hints;
     }
 
-    // Run the polish stage for @av this frame. @dt is the real frame interval
-    // (gFrameIntervalSeconds) used by the inertializer's decay; presentation
-    // pause/scrub is handled via reset(). No-op when ALPolishEnabled is false
+    // Run the polish stage for @av this frame. @dt is the wall frame interval;
+    // all stages use the avatar animation delta, with wall-only hitch reseeding.
+    // Zero animation delta holds the last procedural pose. No-op when disabled
     // or when there is nothing to repair. Defined in llvoavatar.cpp (needs the
     // full LLVOAvatar definition), which is the single avatar-touching site.
     void run(LLVOAvatar* av, F32 dt);
@@ -105,6 +107,7 @@ public:
     // Called on teleport, region cross, skeleton rebuild, and presentation
     // pause/scrub/time-reversal. A reset frame produces the raw blended pose.
     void reset();
+    void invalidateSkeleton();
 
     // True once any milestone shadow state has been seeded this session.
     bool isActive() const { return mSeeded; }
@@ -117,11 +120,19 @@ private:
     // static joint table in llvoavatar.cpp's runInertialization). Allocated
     // once on first use; reset() invalidates without freeing.
     std::vector<ALPoseContinuity::InertiaJoint> mInertiaJoints;
+    std::vector<std::pair<LLJoint*, LLQuaternion>> mHeldRotations;
+    std::vector<std::pair<LLJoint*, LLQuaternion>> mSecondaryBaseRotations;
+    std::vector<LLJoint*> mPolishJoints;
+    std::array<LLJoint*, 7> mContactJoints{};
+    std::array<LLJoint*, 2> mSecondaryJoints{};
+    U32 mSkeletonSerial = 0;
+    bool mJointsCached = false;
+    size_t mRepairRotationCount = 0;
 
     // M1 sub-stage: inertialize the freshly blended local rotations of the
     // major body joints so AO/gesture swaps do not pop. Defined in
     // llvoavatar.cpp (needs LLVOAvatar). No-op unless ALPolishInertiaEnabled.
-    void runInertialization(LLVOAvatar* av, F32 dt);
+    void runInertialization(LLVOAvatar* av, F32 dt, bool big_dt);
 
     // ---- M2 contact stabilizer state --------------------------------------
     // Internal LLJoint copies of the leg chains, mirroring
@@ -153,7 +164,7 @@ private:
     // M2 sub-stage: hold planted feet in world space via the leg IK. Defined in
     // llvoavatar.cpp (needs LLVOAvatar). No-op unless ALPolishContactEnabled;
     // grounded biped locomotion only (sit/fly/in-air skip + release).
-    void runContact(LLVOAvatar* av, F32 dt);
+    void runContact(LLVOAvatar* av, F32 dt, bool big_dt);
 
     // ---- M6 secondary-motion state ----------------------------------------
     // Driving clock for the pure ambient waves (alposesecondary.h). Advanced
@@ -166,7 +177,7 @@ private:
     // (spine roll/pitch) composed over the post-blend pose. Defined in
     // llvoavatar.cpp (needs LLVOAvatar). No-op unless ALPolishSecondaryEnabled;
     // zero amplitudes produce zero deltas and skip the joint writes entirely.
-    void runSecondary(LLVOAvatar* av, F32 dt);
+    void runSecondary(LLVOAvatar* av, const ALAvatarAnimationTime::Delta& dt);
 
     // ---- M5 layer diagnostic ----------------------------------------------
     // Per-frame count of joints each polish stage actually wrote, surfaced as

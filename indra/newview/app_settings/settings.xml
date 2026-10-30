@@ -9931,6 +9931,17 @@
       <key>Value</key>
       <real>27.0</real>
     </map>
+    <key>WorldPauseKeepAvatarLife</key>
+    <map>
+      <key>Comment</key>
+      <string>Avatars keep breathing and their subtle idle life while the world clock is paused or slowed. Off = everything freezes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>WorldWindDownSeconds</key>
     <map>
       <key>Comment</key>

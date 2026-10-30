@@ -198,12 +198,21 @@ bool LLHeadRotMotion::onActivate()
 bool LLHeadRotMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    if (!anim_dt.mUnscaled && anim_dt.mSeconds == 0.f) return true;
+
     LLQuaternion    targetHeadRotWorld;
     LLQuaternion    currentRootRotWorld = mRootJoint->getWorldRotation();
     LLQuaternion    currentInvRootRotWorld = ~currentRootRotWorld;
 
     F32 head_slerp_amt = LLSmoothInterpolation::getInterpolant(HEAD_LOOKAT_LAG_HALF_LIFE);
     F32 torso_slerp_amt = LLSmoothInterpolation::getInterpolant(TORSO_LOOKAT_LAG_HALF_LIFE);
+    if (!anim_dt.mUnscaled)
+    {
+        head_slerp_amt = ALAvatarAnimationTime::interpolant(head_slerp_amt, anim_dt, wall_dt);
+        torso_slerp_amt = ALAvatarAnimationTime::interpolant(torso_slerp_amt, anim_dt, wall_dt);
+    }
 
     LLVector3* targetPos = (LLVector3*)mCharacter->getAnimationData("LookAtPoint");
 
@@ -386,6 +395,7 @@ LLMotion::LLMotionInitStatus LLEyeMotion::onInitialize(LLCharacter *character)
 //-----------------------------------------------------------------------------
 bool LLEyeMotion::onActivate()
 {
+    mEyeTargetSeeded = false;
     return true;
 }
 
@@ -482,22 +492,45 @@ void LLEyeMotion::adjustEyeTarget(LLVector3* targetPos, LLJointState& left_eye_s
 bool LLEyeMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    const auto life_dt = ALAvatarAnimationTime::forLife(wall_dt, *mCharacter);
+
+    F32 jitter_elapsed = (F32)mEyeJitterClock.sample(
+        mEyeJitterTimer.getElapsedTimeF32(), life_dt, life_dt.mUnscaled);
+    F32 blink_elapsed = (F32)mEyeBlinkClock.sample(
+        mEyeBlinkTimer.getElapsedTimeF32(), life_dt, life_dt.mUnscaled);
+    const bool first_target = !mEyeTargetSeeded;
+    LLVector3* targetPos = (LLVector3*)mCharacter->getAnimationData("LookAtPoint");
+    targetPos = ALAvatarAnimationTime::eyeTarget(ALAvatarAnimationTime::frozen(anim_dt),
+        mEyeTargetSeeded, mHadEyeTarget, mHeldEyeTarget, targetPos);
+    if (ALAvatarAnimationTime::frozen(life_dt))
+    {
+        if (first_target)
+        {
+            adjustEyeTarget(targetPos, *mLeftEyeState, *mRightEyeState);
+            adjustEyeTarget(targetPos, *mAltLeftEyeState, *mAltRightEyeState);
+        }
+        return true;
+    }
     //calculate jitter
-    if (mEyeJitterTimer.getElapsedTimeF32() > mEyeJitterTime)
+    if (jitter_elapsed > mEyeJitterTime)
     {
         mEyeJitterTime = EYE_JITTER_MIN_TIME + ll_frand(EYE_JITTER_MAX_TIME - EYE_JITTER_MIN_TIME);
         mEyeJitterYaw = (ll_frand(2.f) - 1.f) * EYE_JITTER_MAX_YAW;
         mEyeJitterPitch = (ll_frand(2.f) - 1.f) * EYE_JITTER_MAX_PITCH;
         // make sure lookaway time count gets updated, because we're resetting the timer
-        mEyeLookAwayTime -= llmax(0.f, mEyeJitterTimer.getElapsedTimeF32());
+        mEyeLookAwayTime -= llmax(0.f, jitter_elapsed);
         mEyeJitterTimer.reset();
+        mEyeJitterClock = {0.0, false, true};
+        jitter_elapsed = 0.f;
     }
-    else if (mEyeJitterTimer.getElapsedTimeF32() > mEyeLookAwayTime)
+    else if (jitter_elapsed > mEyeLookAwayTime)
     {
         if (ll_frand() > 0.1f)
         {
             // blink while moving eyes some percentage of the time
-            mEyeBlinkTime = mEyeBlinkTimer.getElapsedTimeF32();
+            mEyeBlinkTime = blink_elapsed;
         }
         if (mEyeLookAwayYaw == 0.f && mEyeLookAwayPitch == 0.f)
         {
@@ -514,9 +547,9 @@ bool LLEyeMotion::onUpdate(F32 time, U8* joint_mask)
     }
 
     // do blinking
-    if (!mEyesClosed && mEyeBlinkTimer.getElapsedTimeF32() >= mEyeBlinkTime)
+    if (!mEyesClosed && blink_elapsed >= mEyeBlinkTime)
     {
-        F32 leftEyeBlinkMorph = mEyeBlinkTimer.getElapsedTimeF32() - mEyeBlinkTime;
+        F32 leftEyeBlinkMorph = blink_elapsed - mEyeBlinkTime;
         F32 rightEyeBlinkMorph = leftEyeBlinkMorph - EYE_BLINK_TIME_DELTA;
 
         leftEyeBlinkMorph = llclamp(leftEyeBlinkMorph / EYE_BLINK_SPEED, 0.f, 1.f);
@@ -530,13 +563,15 @@ bool LLEyeMotion::onUpdate(F32 time, U8* joint_mask)
             mEyesClosed = true;
             mEyeBlinkTime = EYE_BLINK_CLOSE_TIME;
             mEyeBlinkTimer.reset();
+            mEyeBlinkClock = {0.0, false, true};
+            blink_elapsed = 0.f;
         }
     }
     else if (mEyesClosed)
     {
-        if (mEyeBlinkTimer.getElapsedTimeF32() >= mEyeBlinkTime)
+        if (blink_elapsed >= mEyeBlinkTime)
         {
-            F32 leftEyeBlinkMorph = mEyeBlinkTimer.getElapsedTimeF32() - mEyeBlinkTime;
+            F32 leftEyeBlinkMorph = blink_elapsed - mEyeBlinkTime;
             F32 rightEyeBlinkMorph = leftEyeBlinkMorph - EYE_BLINK_TIME_DELTA;
 
             leftEyeBlinkMorph = 1.f - llclamp(leftEyeBlinkMorph / EYE_BLINK_SPEED, 0.f, 1.f);
@@ -550,11 +585,11 @@ bool LLEyeMotion::onUpdate(F32 time, U8* joint_mask)
                 mEyesClosed = false;
                 mEyeBlinkTime = EYE_BLINK_MIN_TIME + ll_frand(EYE_BLINK_MAX_TIME - EYE_BLINK_MIN_TIME);
                 mEyeBlinkTimer.reset();
+                mEyeBlinkClock = {0.0, false, true};
+                blink_elapsed = 0.f;
             }
         }
     }
-
-    LLVector3* targetPos = (LLVector3*)mCharacter->getAnimationData("LookAtPoint");
 
     adjustEyeTarget(targetPos, *mLeftEyeState, *mRightEyeState);
     adjustEyeTarget(targetPos, *mAltLeftEyeState, *mAltRightEyeState);

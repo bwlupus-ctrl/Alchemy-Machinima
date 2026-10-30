@@ -28,6 +28,7 @@
 // Header Files
 //-----------------------------------------------------------------------------
 #include "linden_common.h"
+#include "alavataranimationtime.h"
 
 #include "lleditingmotion.h"
 #include "llcharacter.h"
@@ -164,6 +165,10 @@ bool LLEditingMotion::onActivate()
 bool LLEditingMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED;
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    if (!anim_dt.mUnscaled && anim_dt.mSeconds == 0.f) return true;
+
     LLVector3 focus_pt;
     LLVector3* pointAtPt = (LLVector3*)mCharacter->getAnimationData("PointAtPoint");
 
@@ -236,6 +241,11 @@ bool LLEditingMotion::onUpdate(F32 time, U8* joint_mask)
 
         // use blending...
         F32 slerp_amt = LLSmoothInterpolation::getInterpolant(TARGET_LAG_HALF_LIFE);
+        if (anim_dt.mSeconds != wall_dt)
+        {
+            // The first endpoint is solved IK, the second is the old pose.
+            slerp_amt = ALAvatarAnimationTime::retainedInterpolant(slerp_amt, anim_dt, wall_dt);
+        }
         shoulderRot = slerp(slerp_amt, mShoulderJoint.getRotation(), shoulderRot);
         elbowRot = slerp(slerp_amt, mElbowJoint.getRotation(), elbowRot);
 

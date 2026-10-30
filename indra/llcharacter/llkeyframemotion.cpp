@@ -35,6 +35,8 @@
 #include "lldatapacker.h"
 #include "llcharacter.h"
 #include "llcriticaldamp.h"
+#include "alavataranimationtime.h"
+#include "alavatarconstraint.h"
 #include "lldir.h"
 #include "llendianswizzle.h"
 #include "llkeyframemotion.h"
@@ -59,13 +61,10 @@ std::map<LLUUID, LLKeyframeMotion::LocomotionPhaseInfo>
 //-----------------------------------------------------------------------------
 // Globals
 //-----------------------------------------------------------------------------
-static F32 JOINT_LENGTH_K = 0.7f;
 static S32 MAX_ITERATIONS = 20;
 static S32 MIN_ITERATIONS = 1;
-static S32 MIN_ITERATION_COUNT = 2;
 static F32 MAX_PIXEL_AREA_CONSTRAINTS = 80000.f;
 static F32 MIN_PIXEL_AREA_CONSTRAINTS = 1000.f;
-static F32 MIN_ACCELERATION_SQUARED = 0.0005f * 0.0005f;
 
 static F32 MAX_CONSTRAINTS = 10;
 
@@ -544,6 +543,7 @@ LLJoint* LLKeyframeMotion::getJoint(U32 index)
 //-----------------------------------------------------------------------------
 LLMotion::LLMotionInitStatus LLKeyframeMotion::onInitialize(LLCharacter *character)
 {
+    mHeldConstraintPose.clear();
     mCharacter = character;
 
     LLUUID* character_id;
@@ -681,6 +681,7 @@ LLMotion::LLMotionInitStatus LLKeyframeMotion::onInitialize(LLCharacter *charact
 //-----------------------------------------------------------------------------
 bool LLKeyframeMotion::setupPose()
 {
+    mHeldConstraintPose.clear();
     // add all valid joint states to the pose
     for (U32 jm=0; jm<mJointMotionList->getNumJointMotions(); jm++)
     {
@@ -720,6 +721,7 @@ bool LLKeyframeMotion::setupPose()
 //-----------------------------------------------------------------------------
 bool LLKeyframeMotion::onActivate()
 {
+    mHeldConstraintPose.clear();
     applyExternalLocomotionSeed();
 
     // If the keyframe anim has an associated emote, trigger it.
@@ -1357,16 +1359,55 @@ void LLKeyframeMotion::applyConstraints(F32 time, U8* joint_mask)
     if (mCharacter->getSkeletonSerialNum() != mLastSkeletonSerialNum)
     {
         mLastSkeletonSerialNum = mCharacter->getSkeletonSerialNum();
+        mHeldConstraintPose.clear();
         for (JointConstraint* constraintp : mConstraints)
         {
             initializeConstraint(constraintp);
         }
     }
 
-    // apply constraints
+    if (mConstraints.empty()) return;
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(
+        LLFrameTimer::getFrameDeltaTimeF32(), *mCharacter);
+    const bool is_frozen = ALAvatarAnimationTime::frozen(anim_dt);
+    const bool seed = ALAvatarAnimationTime::seedFrozenConstraint(is_frozen, !mHeldConstraintPose.empty());
+    if (is_frozen && !seed)
+    {
+        for (const auto& held : mHeldConstraintPose)
+        {
+            if (held.mState->getUsage() & LLJointState::ROT) held.mState->setRotation(held.mRotation);
+            if (held.mState->getUsage() & LLJointState::POS) held.mState->setPosition(held.mPosition);
+        }
+        return;
+    }
+
+    // Activation/rebuild while frozen gets one full spatial solve without
+    // advancing temporal clocks; subsequent frames replay the constrained pose.
     for (JointConstraint* constraintp : mConstraints)
     {
-        applyConstraint(constraintp, time, joint_mask);
+        applyConstraint(constraintp, time, joint_mask, seed);
+    }
+    if (mHeldConstraintPose.empty())
+    {
+        // Only constraint chains can be modified here; cache their state pointers
+        // once rather than copying the full skeleton every frame.
+        for (const auto* constraint : mConstraints)
+        {
+            const auto* shared = constraint->mSharedData;
+            if (!shared) continue;
+            for (S32 i = 0; i <= shared->mChainLength; ++i)
+            {
+                LLJointState* state = getJointState(shared->mJointStateIndices[i]);
+                bool found = false;
+                for (const auto& held : mHeldConstraintPose) found |= held.mState == state;
+                if (state && !found) mHeldConstraintPose.push_back({state, {}, {}});
+            }
+        }
+    }
+    for (auto& held : mHeldConstraintPose)
+    {
+        held.mRotation = held.mState->getRotation();
+        held.mPosition = held.mState->getPosition();
     }
 }
 
@@ -1375,6 +1416,7 @@ void LLKeyframeMotion::applyConstraints(F32 time, U8* joint_mask)
 //-----------------------------------------------------------------------------
 void LLKeyframeMotion::onDeactivate()
 {
+    mHeldConstraintPose.clear();
     mLocomotionSeedPending = false;
     mLocomotionSeedBaseTime = 0.0;
     mLocomotionSeedPhase = -1.f;
@@ -1508,8 +1550,15 @@ void LLKeyframeMotion::deactivateConstraint(JointConstraint *constraintp)
 //-----------------------------------------------------------------------------
 // applyConstraint()
 //-----------------------------------------------------------------------------
-void LLKeyframeMotion::applyConstraint(JointConstraint* constraint, F32 time, U8* joint_mask)
+void LLKeyframeMotion::applyConstraint(JointConstraint* constraint, F32 time, U8* joint_mask, bool seed_spatial)
 {
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    const bool unit_speed = ALAvatarAnimationTime::unitSpeed(*mCharacter);
+    // Bound the explicit spatial solver step; animation phase and damping
+    // retain the full clock rate even above unit speed.
+    const F32 step = unit_speed ? 1.f
+        : (wall_dt > 0.f ? llclamp(anim_dt.mSeconds / wall_dt, 0.f, 1.f) : 0.f);
     JointConstraintSharedData *shared_data = constraint->mSharedData;
     if (!shared_data) return;
 
@@ -1628,11 +1677,19 @@ void LLKeyframeMotion::applyConstraint(JointConstraint* constraint, F32 time, U8
     if (constraint->mSharedData->mChainLength != 0 &&
         dist_vec_squared(root_pos, target_pos) * 0.95f > constraint->mTotalLength * constraint->mTotalLength)
     {
-        constraint->mWeight = LLSmoothInterpolation::lerp(constraint->mWeight, 0.f, 0.1f);
+        constraint->mWeight = unit_speed
+            ? LLSmoothInterpolation::lerp(constraint->mWeight, 0.f, 0.1f)
+            : lerp(constraint->mWeight, 0.f, ALAvatarAnimationTime::interpolant(
+                LLSmoothInterpolation::getInterpolant(0.1f), anim_dt, wall_dt));
+        constraint->mWeight = ALAvatarConstraint::seedWeight(constraint->mWeight, 0.f, seed_spatial);
     }
     else
     {
-        constraint->mWeight = LLSmoothInterpolation::lerp(constraint->mWeight, 1.f, 0.3f);
+        constraint->mWeight = unit_speed
+            ? LLSmoothInterpolation::lerp(constraint->mWeight, 1.f, 0.3f)
+            : lerp(constraint->mWeight, 1.f, ALAvatarAnimationTime::interpolant(
+                LLSmoothInterpolation::getInterpolant(0.3f), anim_dt, wall_dt));
+        constraint->mWeight = ALAvatarConstraint::seedWeight(constraint->mWeight, 1.f, seed_spatial);
     }
 
     F32 weight = constraint->mWeight * ((shared_data->mEaseOutStopTime == 0.f) ? 1.f :
@@ -1681,40 +1738,13 @@ void LLKeyframeMotion::applyConstraint(JointConstraint* constraint, F32 time, U8
             F32 time_constant = 1.f / clamp_rescale(constraint->mFixupDistanceRMS, 0.f, 0.5f, 0.2f, 8.f);
 //          LL_INFOS() << "Interpolant " << LLSmoothInterpolation::getInterpolant(time_constant, false) << " and fixup distance " << constraint->mFixupDistanceRMS << " on " << mCharacter->findCollisionVolume(shared_data->mSourceConstraintVolume)->getName() << LL_ENDL;
             positions[joint_num] = lerp(positions[joint_num], kinematic_position,
-                LLSmoothInterpolation::getInterpolant(time_constant, false));
+                ALAvatarAnimationTime::interpolant(
+                    LLSmoothInterpolation::getInterpolant(time_constant, false), anim_dt, wall_dt));
         }
 
-        S32 iteration_count;
-        for (iteration_count = 0; iteration_count < max_iteration_count; iteration_count++)
-        {
-            S32 num_joints_finished = 0;
-            for (joint_num = 1; joint_num < shared_data->mChainLength; joint_num++)
-            {
-                // constraint to child
-                LLVector3 acceleration = (positions[joint_num - 1] - positions[joint_num]) *
-                    (dist_vec(positions[joint_num], positions[joint_num - 1]) - joint_lengths[joint_num - 1]) * JOINT_LENGTH_K;
-                // constraint to parent
-                acceleration  += (positions[joint_num + 1] - positions[joint_num]) *
-                    (dist_vec(positions[joint_num + 1], positions[joint_num]) - joint_lengths[joint_num]) * JOINT_LENGTH_K;
-
-                if (acceleration.magVecSquared() < MIN_ACCELERATION_SQUARED)
-                {
-                    num_joints_finished++;
-                }
-
-                velocities[joint_num - 1] = velocities[joint_num - 1] * 0.7f;
-                positions[joint_num] += velocities[joint_num - 1] + (acceleration * 0.5f);
-                velocities[joint_num - 1] += acceleration;
-            }
-
-            if ((iteration_count >= MIN_ITERATION_COUNT) &&
-                (num_joints_finished == shared_data->mChainLength - 1))
-            {
-//              LL_INFOS() << iteration_count << " iterations on " <<
-//                  mCharacter->findCollisionVolume(shared_data->mSourceConstraintVolume)->getName() << LL_ENDL;
-                break;
-            }
-        }
+        ALAvatarConstraint::relax(positions, velocities, joint_lengths,
+            shared_data->mChainLength, max_iteration_count,
+            ALAvatarConstraint::fullStep(unit_speed, seed_spatial), step);
 
         for (joint_num = shared_data->mChainLength; joint_num > 0; joint_num--)
         {
@@ -2041,6 +2071,7 @@ bool LLKeyframeMotion::deserialize(LLDataPacker& dp, const LLUUID& asset_id, boo
 
     joint_motion_list->mJointMotionArray.clear();
     joint_motion_list->mJointMotionArray.reserve(num_motions);
+    mHeldConstraintPose.clear();
     mJointStates.clear();
     mJointStates.reserve(num_motions);
 

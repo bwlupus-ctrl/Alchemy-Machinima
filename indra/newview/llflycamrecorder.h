@@ -103,6 +103,12 @@ public:
     // ---- introspection (for the floater) ----
     EState             getState() const        { return mState; }
     F32                getPlayhead() const     { return mPlayhead; }
+    // Unwrapped transport coordinate for avatar animation-clock consumers.
+    // Does not drive or change camera playback.
+    F64                getPlaybackProgress() const { return mPlaybackProgressOffset == 0.0 ? mPlaybackProgress : mPlaybackProgress + mPlaybackProgressOffset; }
+    U64 getPlaybackRevision() const { return mPlaybackRevision; }
+    U64 getPlaybackMappingRevision() const { return mPlaybackMappingRevision; }
+    S32 getPlaybackProgressLoopMode() const { return mProgressLoopMode; }
     F32                getDuration() const;
     S32                getNumKeyframes() const { return (S32)mKeys.size(); }
     const std::string& getStatus() const       { return mStatus; }
@@ -133,6 +139,12 @@ private:
     EState               mState = STATE_IDLE;
     std::vector<Keyframe> mKeys;
     F32                  mPlayhead = 0.f;
+    F64                  mPlaybackProgress = 0.0;
+    F32                  mPlaybackProgressDirection = 1.f;
+    F64                  mPlaybackProgressOffset = 0.0;
+    U64                  mPlaybackRevision = 0;
+    U64                  mPlaybackMappingRevision = 0;
+    S32                  mProgressLoopMode = -1;
     F32                  mPlayDir = 1.f;        // ping-pong direction
     LLTimer              mRecordTimer;
     std::string          mStatus;

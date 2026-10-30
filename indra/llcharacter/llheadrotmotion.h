@@ -31,6 +31,7 @@
 // Header files
 //-----------------------------------------------------------------------------
 #include "llmotion.h"
+#include "alavataranimationtime.h"
 #include "llframetimer.h"
 
 #define MIN_REQUIRED_PIXEL_AREA_HEAD_ROT 500.f;
@@ -213,7 +214,11 @@ public:
     LLPointer<LLJointState> mAltLeftEyeState;
     LLPointer<LLJointState> mAltRightEyeState;
 
+    LLVector3           mHeldEyeTarget;
+    bool                mHadEyeTarget = false;
+    bool                mEyeTargetSeeded = false;
     LLFrameTimer        mEyeJitterTimer;
+    ALAvatarAnimationTime::Clock mEyeJitterClock{0.0, false, true};
     F32                 mEyeJitterTime;
     F32                 mEyeJitterYaw;
     F32                 mEyeJitterPitch;
@@ -223,6 +228,7 @@ public:
 
     // eye blinking
     LLFrameTimer        mEyeBlinkTimer;
+    ALAvatarAnimationTime::Clock mEyeBlinkClock{0.0, false, true};
     F32                 mEyeBlinkTime;
     bool                mEyesClosed;
 

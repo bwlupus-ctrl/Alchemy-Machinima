@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llflycamrecorder.h"
+#include "alavataranimationtime.h"
 
 #include <algorithm>
 #include <cmath>
@@ -192,6 +193,11 @@ void LLFlycamRecorder::startRecording(bool log_take)
     mState = STATE_RECORDING;
     mKeys.clear();
     mPlayhead = 0.f;
+    mPlaybackProgressDirection = 1.f;
+    mPlaybackProgressOffset = 0.0;
+    mPlaybackProgress = mPlayhead;
+    mProgressLoopMode = -1;
+    ++mPlaybackRevision;
     mPlayDir = 1.f;
     mHavePrev = false;
     mHaveLiveAnchor = false;
@@ -225,11 +231,16 @@ void LLFlycamRecorder::startPlayback(bool log_take)
         mStatus = "Nothing to play";
         return;
     }
+    const bool resuming = mState == STATE_PAUSED && mPlayhead < getDuration();
     if (mPlayhead >= getDuration())
     {
         mPlayhead = 0.f;    // replay from the top when parked at the end
     }
     mPlayDir = 1.f;
+    static LLCachedControl<S32> loop_mode(gSavedSettings, "FlycamRecLoopMode", 0);
+    ALAvatarAnimationTime::startPlaybackProgress(resuming, mPlayhead, getDuration(), (S32)loop_mode,
+        mPlaybackProgress, mProgressLoopMode, mPlaybackProgressDirection, mPlaybackProgressOffset,
+        mPlaybackRevision, mPlaybackMappingRevision);
     mHavePrev = false;
     mHaveLiveAnchor = false;    // re-latch the anchor fresh for this run
     LLCameraOperator::instance().reset();
@@ -265,6 +276,11 @@ void LLFlycamRecorder::stopPlayback()
     {
         mState = STATE_IDLE;
         mPlayhead = 0.f;
+        mPlaybackProgressDirection = 1.f;
+        mPlaybackProgressOffset = 0.0;
+        mPlaybackProgress = mPlayhead;
+        mProgressLoopMode = -1;
+        ++mPlaybackRevision;
         mPlayDir = 1.f;
         mStatus = "Stopped";
     }
@@ -278,6 +294,11 @@ void LLFlycamRecorder::clear()
     }
     mKeys.clear();
     mPlayhead = 0.f;
+    mPlaybackProgressDirection = 1.f;
+    mPlaybackProgressOffset = 0.0;
+    mPlaybackProgress = mPlayhead;
+    mProgressLoopMode = -1;
+    ++mPlaybackRevision;
     mPlayDir = 1.f;
     mHaveRecAnchor = false;
     mHaveLiveAnchor = false;
@@ -291,6 +312,11 @@ void LLFlycamRecorder::seek(F32 time)
         return;
     }
     mPlayhead = llclamp(time, 0.f, getDuration());
+    mPlaybackProgressDirection = 1.f;
+    mPlaybackProgressOffset = 0.0;
+    mPlaybackProgress = mPlayhead;
+    mProgressLoopMode = -1;
+    ++mPlaybackRevision;
     mHavePrev = false;      // don't let the operator see the jump as motion
     if (mState == STATE_IDLE)
     {
@@ -576,6 +602,21 @@ void LLFlycamRecorder::updateCamera()
 
     if (mState == STATE_PLAYING)
     {
+        if (mProgressLoopMode != (S32)loop_mode)
+        {
+            mPlaybackProgressDirection = 1.f;
+            mPlaybackProgressOffset = 0.0;
+            mPlaybackProgress = (S32)loop_mode == LOOP_PINGPONG && mPlayDir < 0.f
+                ? 2.0 * duration - mPlayhead : mPlayhead;
+            mProgressLoopMode = (S32)loop_mode;
+            ++mPlaybackMappingRevision;
+        }
+        // Read-only transport metadata. Camera playhead arithmetic below is
+        // deliberately unchanged, including its existing boundary handling.
+        const F32 progress_step = dt * llclamp((F32)speed, 0.05f, 5.f);
+        mPlaybackProgress += (S32)loop_mode == LOOP_PINGPONG
+            ? (mPlaybackProgressDirection == 1.f ? progress_step : -progress_step)
+            : progress_step * mPlayDir;
         mPlayhead += dt * llclamp((F32)speed, 0.05f, 5.f) * mPlayDir;
         if (mPlayhead >= duration || mPlayhead <= 0.f)
         {
@@ -779,6 +820,11 @@ bool LLFlycamRecorder::loadFromFile(const std::string& filename)
     mState = STATE_IDLE;
     mKeys.swap(unique_keys);
     mPlayhead = 0.f;
+    mPlaybackProgressDirection = 1.f;
+    mPlaybackProgressOffset = 0.0;
+    mPlaybackProgress = mPlayhead;
+    mProgressLoopMode = -1;
+    ++mPlaybackRevision;
     mPlayDir = 1.f;
     mHaveLiveAnchor = false;
     canonicalizeRotations();

@@ -218,6 +218,7 @@ public:
     inline S32 getCollisionVolumeJointCount() const { return mNumCollisionVolumes; }
     U32 getJointOverrideEpoch() const { return mJointOverrideEpoch; }
     U32 getSteppedSkeletonSerial() const { return mLastSkeletonSerialNum; }
+    U64 getCreationSerial() const { return mCreationSerial; }
     U32 invalidateSkinPalettesForOverlay();
     U32 invalidateSkinPalettesAfterOverlay();
     void syncStepAnimAttachmentMatrices();
@@ -1209,6 +1210,8 @@ private:
     // [Machinima] Post-blend Pose Polish stage (continuity/grounding/secondary).
     // Session-only, disabled by default; see alposepolish.h.
     ALPosePolish mPosePolish;
+    inline static U64 sNextCreationSerial = 0;
+    const U64 mCreationSerial = ++sNextCreationSerial;
 
     //--------------------------------------------------------------------
     // Dimensions

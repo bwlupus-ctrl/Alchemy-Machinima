@@ -28,6 +28,7 @@
 // Header Files
 //-----------------------------------------------------------------------------
 #include "linden_common.h"
+#include "alavataranimationtime.h"
 
 #include "llkeyframewalkmotion.h"
 #include "llcharacter.h"
@@ -599,6 +600,10 @@ bool LLWalkAdjustMotion::onActivate()
 bool LLWalkAdjustMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED;
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    if (!anim_dt.mUnscaled && anim_dt.mSeconds == 0.f) return true;
+
     // delta_time is guaranteed to be non zero
     F32 delta_time = llclamp(time - mLastTime, TIME_EPSILON, MAX_TIME_DELTA);
     mLastTime = time;
@@ -685,7 +690,10 @@ bool LLWalkAdjustMotion::onUpdate(F32 time, U8* joint_mask)
         F32 desired_speed_multiplier = llclamp(speed / foot_speed, min_speed_multiplier, ANIM_SPEED_MAX);
 
         // blend towards new speed adjustment value
-        F32 new_speed_adjust = LLSmoothInterpolation::lerp(mAdjustedSpeed, desired_speed_multiplier, SPEED_ADJUST_TIME_CONSTANT);
+        F32 new_speed_adjust = ALAvatarAnimationTime::unitSpeed(*mCharacter)
+            ? LLSmoothInterpolation::lerp(mAdjustedSpeed, desired_speed_multiplier, SPEED_ADJUST_TIME_CONSTANT)
+            : lerp(mAdjustedSpeed, desired_speed_multiplier, ALAvatarAnimationTime::interpolant(
+                LLSmoothInterpolation::getInterpolant(SPEED_ADJUST_TIME_CONSTANT), anim_dt, wall_dt));
 
         // limit that rate at which the speed adjustment changes
         F32 speedDelta = llclamp(new_speed_adjust - mAdjustedSpeed, -SPEED_ADJUST_MAX_SEC * delta_time, SPEED_ADJUST_MAX_SEC * delta_time);
@@ -703,7 +711,10 @@ bool LLWalkAdjustMotion::onUpdate(F32 time, U8* joint_mask)
     {   // standing/turning
 
         // damp out speed adjustment to 0
-        mAnimSpeed = LLSmoothInterpolation::lerp(mAnimSpeed, 1.f, 0.2f);
+        mAnimSpeed = ALAvatarAnimationTime::unitSpeed(*mCharacter)
+            ? LLSmoothInterpolation::lerp(mAnimSpeed, 1.f, 0.2f)
+            : lerp(mAnimSpeed, 1.f, ALAvatarAnimationTime::interpolant(
+                LLSmoothInterpolation::getInterpolant(0.2f), anim_dt, wall_dt));
         //mPelvisOffset = lerp(mPelvisOffset, LLVector3::zero, LLSmoothInterpolation::getInterpolant(0.2f));
     }
 
@@ -775,6 +786,10 @@ bool LLFlyAdjustMotion::onActivate()
 bool LLFlyAdjustMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED;
+    const F32 wall_dt = LLFrameTimer::getFrameDeltaTimeF32();
+    const auto anim_dt = ALAvatarAnimationTime::forAvatar(wall_dt, *mCharacter);
+    if (!anim_dt.mUnscaled && anim_dt.mSeconds == 0.f) return true;
+
     LLVector3 ang_vel = mCharacter->getCharacterAngularVelocity() * mCharacter->getTimeDilation();
     F32 speed = mCharacter->getCharacterVelocity().magVec();
 
@@ -782,7 +797,10 @@ bool LLFlyAdjustMotion::onUpdate(F32 time, U8* joint_mask)
     F32 target_roll = llclamp(ang_vel.mV[VZ], -4.f, 4.f) * roll_factor;
 
     // roll is critically damped interpolation between current roll and angular velocity-derived target roll
-    mRoll = LLSmoothInterpolation::lerp(mRoll, target_roll, F32Milliseconds(100.f));
+    mRoll = ALAvatarAnimationTime::unitSpeed(*mCharacter)
+        ? LLSmoothInterpolation::lerp(mRoll, target_roll, F32Milliseconds(100.f))
+        : lerp(mRoll, target_roll, ALAvatarAnimationTime::interpolant(
+            LLSmoothInterpolation::getInterpolant(F32Milliseconds(100.f)), anim_dt, wall_dt));
 
     LLQuaternion roll(mRoll, LLVector3(0.f, 0.f, 1.f));
     mPelvisState->setRotation(roll);

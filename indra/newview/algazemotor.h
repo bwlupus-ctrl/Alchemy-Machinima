@@ -306,7 +306,9 @@ struct GazeMotorInput
     LLQuaternion mHeadWorldRot; // current head world rotation (VOR input)
     LLQuaternion mRefWorldRot;  // frame the aim yaw/pitch are measured in
 
-    F64 mTimeSeconds = 0.0; // presentation time
+    F64 mTimeSeconds = 0.0; // animation time for target/motor programs
+    bool mUseLifeTime = false;
+    F64 mLifeTimeSeconds = 0.0; // optional independent ambient clock
     F32 mDeltaTime   = 0.f; // frame dt (informational; motor is closed-form)
     U64 mSeed        = 0;   // per-actor seed (castSeedFromUUID pattern)
     F32 mCueWeight   = 1.f; // integration passthrough (cue/priority weight);
@@ -328,6 +330,31 @@ struct GazeMotorInput
 
     AffectState      mAffect;
     GazeMotorSettings mSettings;
+};
+
+// Cache only target-driving inputs, not the per-frame motor settings bundle.
+struct TargetInput
+{
+    F32 mYaw = 0.f, mPitch = 0.f, mRoll = 0.f;
+    LLQuaternion mHeadWorld, mRefWorld;
+    F64 mTime = 0.0;
+    U64 mSeed = 0;
+    U32 mGeneration = 0;
+
+    void capture(const GazeMotorInput& input)
+    {
+        mYaw = input.mTargetYaw; mPitch = input.mTargetPitch; mRoll = input.mTargetRoll;
+        mHeadWorld = input.mHeadWorldRot; mRefWorld = input.mRefWorldRot;
+        mTime = input.mTimeSeconds; mSeed = input.mSeed; mGeneration = input.mTargetGeneration;
+    }
+    void hold(GazeMotorInput& input, F64 life_time) const
+    {
+        input.mTargetYaw = mYaw; input.mTargetPitch = mPitch; input.mTargetRoll = mRoll;
+        input.mHeadWorldRot = mHeadWorld; input.mRefWorldRot = mRefWorld;
+        input.mTimeSeconds = mTime; input.mSeed = mSeed; input.mTargetGeneration = mGeneration;
+        input.mAcquire = false; input.mDeltaTime = 0.f;
+        input.mUseLifeTime = true; input.mLifeTimeSeconds = life_time;
+    }
 };
 
 // One aim channel: the active closed-form program plus at most one pending
@@ -437,6 +464,19 @@ struct GazeMotorPose
 
     F32  mCueWeight = 1.f;  // passthrough from the input
     bool mActive    = false; // false = master gate off (documented passthrough)
+};
+
+struct ClockSafety
+{
+    bool mValid = false;
+    bool mMotor = false;
+    bool mNaturalBreaks = false;
+    U64 mSeed = 0;
+    ALGazeMath::GazeLifeParams mLife;
+    ALGazeMath::PersonaModulation mPersona;
+    F32 mBlinkRate = 0.f;
+    F32 mCloseMs = 0.f, mHoldMs = 0.f, mOpenMs = 0.f;
+    F32 mPartialChance = 0.f, mRefractory = 0.f;
 };
 
 // ---------------------------------------------------------------------------
@@ -1044,8 +1084,10 @@ inline void commitRetarget(GazeMotorState& state, const GazeMotorInput& input,
     state.mCommittedPitch = target_pitch;
     state.mCommittedRoll  = target_roll_in;
 
+    const F64 life_now = input.mUseLifeTime
+        ? ALTrajectory::sanitizeTime(input.mLifeTimeSeconds) : now;
     // Gaze-evoked blink roll. INTERNALLY deterministic (see the blink
-    // scheduler contract above): the onset is the commit time `now`, the
+    // scheduler contract above): the onset is the commit time `life_now`, the
     // draw hashes (seed, retarget counter), and the gates below consume
     // only closed-form lattice samples and prior committed state -- nothing
     // depends on call cadence beyond the commit itself.
@@ -1063,7 +1105,7 @@ inline void commitRetarget(GazeMotorState& state, const GazeMotorInput& input,
         const F32 rate_eff = llmax(s.mBlinkRate, 0.f) *
             blinkStyleScale(input.mAffect);
         const BlinkLatticeSample spont = sampleSpontaneousBlink(
-            input.mSeed, now, rate_eff,
+            input.mSeed, life_now, rate_eff,
             s.mBlinkCloseMs, s.mBlinkHoldMs, s.mBlinkOpenMs,
             s.mBlinkPartialChance, state.mEvokedBlinkStart,
             s.mBlinkRefractorySec);
@@ -1078,13 +1120,13 @@ inline void commitRetarget(GazeMotorState& state, const GazeMotorInput& input,
         // suppressed, so either way no two onsets land closer than the
         // blink duration + refractory.
         const bool clear_of_evoked =
-            now - state.mEvokedBlinkStart >= total_s + refractory;
+            life_now - state.mEvokedBlinkStart >= total_s + refractory;
         const bool clear_of_spontaneous =
-            now - spont.mPrevOnset >= total_s + refractory &&
-            spont.mNextOnset - now >= refractory;
+            life_now - spont.mPrevOnset >= total_s + refractory &&
+            spont.mNextOnset - life_now >= refractory;
         if (draw < probability && clear_of_evoked && clear_of_spontaneous)
         {
-            state.mEvokedBlinkStart = now;
+            state.mEvokedBlinkStart = life_now;
             state.mEvokedBlinkDepth = 1.f;
         }
     }
@@ -1182,6 +1224,68 @@ inline void detectRetarget(GazeMotorState& state, const GazeMotorInput& input,
 // ---------------------------------------------------------------------------
 // step(): the per-frame 7-step motor program (spec 6A)
 // ---------------------------------------------------------------------------
+inline bool programsIdle(const GazeMotorState& state, F64 now)
+{
+    if (!state.mInitialized) return true;
+    if (state.mCandidateValid) return false;
+    for (const auto& channel : state.mChannels)
+        if (channel.mPendingValid || now < ALTrajectory::programEndTime(channel.mProgram)) return false;
+    return true;
+}
+
+inline bool lifeIdle(const GazeMotorState& state, const ClockSafety& safety, F64 now, F64 epoch_shift = 0.0)
+{
+    if (safety.mMotor)
+    {
+        const F64 evoked_start = state.mEvokedBlinkStart + epoch_shift;
+        const F32 evoked_depth = state.mEvokedBlinkDepth;
+        const F32 asym_lag = (ALGazeNoise::unitHash(
+            safety.mSeed, NOISE_CH_ASYM, 0, 0, 0) * 2.f - 1.f) * 0.006f;
+        for (const F64 eye_time : {now, now - static_cast<F64>(asym_lag)})
+        {
+            const auto blink = sampleSpontaneousBlink(safety.mSeed, eye_time, safety.mBlinkRate,
+                safety.mCloseMs, safety.mHoldMs, safety.mOpenMs, safety.mPartialChance,
+                evoked_start, safety.mRefractory);
+            if (blink.mClosure > 0.f || ALGazeBlink::blinkClosure(eye_time - evoked_start,
+                safety.mCloseMs, safety.mHoldMs, safety.mOpenMs, evoked_depth) > 0.f) return false;
+        }
+    }
+    else if (ALGazeMath::evalMicroLife(safety.mSeed, now, safety.mLife.mMicroLife,
+        safety.mLife.mBlinks, safety.mLife.mBlinkRate).mBlinkFraction > 0.f) return false;
+    if (safety.mNaturalBreaks)
+    {
+        F32 yaw, pitch, weight;
+        ALGazeMath::evalNaturalBreak(safety.mSeed, now, safety.mLife.mBreakFrequency, yaw, pitch, weight);
+        if (weight > 0.f || ALGazeMath::evalContactRation(safety.mSeed, now, safety.mPersona).mAverting)
+            return false;
+    }
+    return true;
+}
+
+inline bool canReanchor(const GazeMotorState& state, const ClockSafety& safety,
+                        F64 animation_now, F64 life_now, F64 legacy_time)
+{
+    return programsIdle(state, animation_now) && (!safety.mValid ||
+        (lifeIdle(state, safety, life_now) && lifeIdle(state, safety, legacy_time, legacy_time - life_now)));
+}
+
+// Completed programs must remain completed even when the legacy epoch is behind
+// the scaled epoch (fast motion). Relative program sampling is unchanged.
+inline void rebaseClock(GazeMotorState& state, F64 shift)
+{
+    if (!state.mInitialized || shift == 0.0) return;
+    for (auto& channel : state.mChannels)
+    {
+        for (auto* program : {&channel.mProgram, &channel.mPending})
+        {
+            program->mStartTime += shift;
+            for (auto& segment : program->mSegments) segment.mStartTime += shift;
+        }
+    }
+    state.mCandidateSince += shift;
+    // Blink onset belongs to the independent life clock, which never reanchors.
+}
+
 inline void step(GazeMotorState& state, const GazeMotorInput& input,
                  GazeMotorPose& out_pose)
 {
@@ -1434,6 +1538,8 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     state.mLastEyeInHeadYaw = eye_yaw;   // eccentricity input for the next
     state.mLastEyeInHeadPitch = eye_pitch; // retarget's head-latency policy
 
+    const F64 life_now = input.mUseLifeTime
+        ? ALTrajectory::sanitizeTime(input.mLifeTimeSeconds) : now;
     // (5) Micro-life, POST-smoothing additive (same ordering as
     //     llactormover.cpp:4744) and arousal-scaled. Eye drift runs on a
     //     faster lattice than head drift; microsaccades are eye-only.
@@ -1452,26 +1558,26 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     F32 eye_yaw_micro = 0.f;
     F32 eye_pitch_micro = 0.f;
     eye_yaw_micro += ALGazeNoise::driftOffset(
-        input.mSeed, NOISE_CH_EYE_YAW, now, eye_cell,
+        input.mSeed, NOISE_CH_EYE_YAW, life_now, eye_cell,
         s.mEyeDriftAmpRad * micro);
     eye_yaw_micro += ALGazeNoise::microsaccadeOffset(
-        input.mSeed, NOISE_CH_EYE_YAW, now, micro_rate,
+        input.mSeed, NOISE_CH_EYE_YAW, life_now, micro_rate,
         s.mMicrosaccadeAmpRad * micro);
     eye_pitch_micro += ALGazeNoise::driftOffset(
-        input.mSeed, NOISE_CH_EYE_PITCH, now, eye_cell,
+        input.mSeed, NOISE_CH_EYE_PITCH, life_now, eye_cell,
         s.mEyeDriftAmpRad * 0.7f * micro);
     eye_pitch_micro += ALGazeNoise::microsaccadeOffset(
-        input.mSeed, NOISE_CH_EYE_PITCH, now, micro_rate,
+        input.mSeed, NOISE_CH_EYE_PITCH, life_now, micro_rate,
         s.mMicrosaccadeAmpRad * 0.7f * micro);
     eye_yaw += eye_yaw_micro;
     eye_pitch += eye_pitch_micro;
     out_pose.mEyeYawMicro = eye_yaw_micro;
     out_pose.mEyePitchMicro = eye_pitch_micro;
     out_pose.mHeadYaw += ALGazeNoise::driftOffset(
-        input.mSeed, NOISE_CH_HEAD_YAW, now, s.mDriftCellSec,
+        input.mSeed, NOISE_CH_HEAD_YAW, life_now, s.mDriftCellSec,
         s.mHeadDriftAmpRad * micro);
     out_pose.mHeadPitch += ALGazeNoise::driftOffset(
-        input.mSeed, NOISE_CH_HEAD_PITCH, now, s.mDriftCellSec,
+        input.mSeed, NOISE_CH_HEAD_PITCH, life_now, s.mDriftCellSec,
         s.mHeadDriftAmpRad * 0.75f * micro);
     out_pose.mEyeYaw = eye_yaw;
     out_pose.mEyePitch = eye_pitch;
@@ -1490,7 +1596,7 @@ inline void step(GazeMotorState& state, const GazeMotorInput& input,
     F32 closure[2];
     for (S32 eye = 0; eye < 2; ++eye)
     {
-        const F64 t_eye = eye == 0 ? now : now - static_cast<F64>(asym_lag_s);
+        const F64 t_eye = eye == 0 ? life_now : life_now - static_cast<F64>(asym_lag_s);
         const BlinkLatticeSample spont = sampleSpontaneousBlink(
             input.mSeed, t_eye, rate_eff,
             s.mBlinkCloseMs, s.mBlinkHoldMs, s.mBlinkOpenMs,
