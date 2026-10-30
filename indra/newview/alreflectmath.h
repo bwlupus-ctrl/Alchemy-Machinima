@@ -7,6 +7,7 @@
 #include "v3math.h"
 #include "v3dmath.h"
 #include <cmath>
+#include <cstring>
 #include <string>
 #include <utility>
 
@@ -31,6 +32,41 @@ inline LLQuaternion rotation(const LLQuaternion& q)
 { return LLQuaternion(-q.mQ[0], q.mQ[1], -q.mQ[2], q.mQ[3]); }
 inline LLVector3 vector(const LLVector3& v)
 { return LLVector3(v.mV[0], -v.mV[1], v.mV[2]); }
+// /fp:fast must not optimize away validation of asset/controller inputs.
+inline bool finiteBits(F32 value)
+{
+    U32 bits;
+    std::memcpy(&bits, &value, sizeof(bits));
+    return (bits & 0x7f800000u) != 0x7f800000u;
+}
+struct LocalPose
+{
+    LLQuaternion rotation;
+    LLVector3 position;
+};
+inline bool reflectLocalPose(const LocalPose& source, LocalPose& target)
+{
+    for (F32 component : source.rotation.mQ) if (!finiteBits(component)) return false;
+    for (F32 component : source.position.mV) if (!finiteBits(component)) return false;
+    target.rotation = rotation(source.rotation);
+    target.position = vector(source.position);
+    return true;
+}
+// Snapshot/output buffers must be distinct. Root/facing is deliberately outside
+// this local-joint API. Validate the entire pose/table before publishing output.
+inline bool reflectPose(const LocalPose* input, LocalPose* output,
+                        const size_t* partners, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+    {
+        LocalPose checked;
+        if (partners[i] >= count || partners[partners[i]] != i ||
+            !reflectLocalPose(input[i], checked)) return false;
+    }
+    for (size_t i = 0; i < count; ++i)
+        reflectLocalPose(input[i], output[partners[i]]);
+    return true;
+}
 // serialize() floors twice (quantize16, then packU16); decoding also snaps
 // values within one code of zero. Allow three codes, including float noise.
 inline F32 componentTolerance(F32 range) { return 3.f * range / 65535.f + 1e-6f; }

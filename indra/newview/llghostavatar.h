@@ -30,6 +30,7 @@
 #include "llvoavatar.h"
 #include "alghostautoanimmodel.h" // [AutoAnimate]
 #include "alreflectmath.h"
+#include "alghostanimmirrormath.h"
 #include <memory> // [AutoAnimate]
 
 #include <set>
@@ -177,6 +178,8 @@ public:
     // Self-gates on the drive mode; a missing/dead/unbuilt source HOLDS the
     // last stamped pose (the paused controller keeps it).
     void applyTrueMirrorStamp();
+    void setDirectedMirror(bool enabled);
+    void applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive);
     // True while this clone is in DRIVE_TRUE_MIRROR. Used by LLActorMover to
     // skip its root override and gaze layer (the stamp owns the pose).
     bool isTrueMirrorDriven() const;
@@ -258,6 +261,32 @@ private:
     void stampTrueMirrorFace(LLVOAvatar* source);
     void buildTrueMirrorParamSets();
     void moveStampedAttachments();
+    bool buildSkeleton(const LLAvatarSkeletonInfo* info) override;
+    void restoreDirectedMirrorPose(bool invalidate_skin = true);
+    void buildDirectedMirrorJoints();
+    void clearDirectedMirrorJoints();
+    bool directedMirrorCacheMatches();
+    bool mDirectedMirror = false;
+    bool mDirectedMirrorWritten = false;
+    U32 mDirectedMirrorFrame = ~0u;
+    std::vector<LLJoint*> mDirectedMirrorJoints;
+    std::vector<size_t> mDirectedMirrorPartners;
+    std::vector<ALReflect::LocalPose> mDirectedMirrorInput;
+    std::vector<ALReflect::LocalPose> mDirectedMirrorOutput;
+    std::vector<U32> mDirectedMirrorGazeBits;
+    std::vector<size_t> mDirectedMirrorGazeSlots;
+    std::vector<ALGhostAnimMirrorMath::GazeSample> mDirectedMirrorGazeSamples;
+    std::vector<F32> mDirectedMirrorAlpha;
+    std::vector<size_t> mDirectedMirrorParents;
+    std::vector<LLQuaternion> mDirectedMirrorWorldBefore;
+    std::vector<LLQuaternion> mDirectedMirrorWorldAfter;
+    U64 mSkeletonGeneration = 0;
+    U64 mDirectedMirrorSkeletonGeneration = 0;
+    const void* mDirectedMirrorSkeletonData = nullptr;
+    const void* mDirectedMirrorSkeletonFirst = nullptr;
+    size_t mDirectedMirrorSkeletonSize = 0;
+    bool mDirectedMirrorPartnersValid = false;
+    bool mDirectedMirrorNeedsReskin = false;
 
     bool mMarkedForDeath;
     LLUUID mClientHeightKey;   // [ClientHeight] see setClientHeightKey()

@@ -98,6 +98,7 @@ private:
     S32 mAutoAnimDisplayMode = -1;
     bool mAutoAnimDisplayValid = false;
     void populateAnimationLibrary();   // mirror the shared ALGhostStudio animation library into the combo
+    void refreshSourceAnimations(const ALGhostStudio::Instance& inst);
     void refreshStatus();           // bottom status line (4 Hz)
     void refreshRigDiagnostics();   // selected entity clone/source prim state: on demand / revision, on screen only
     void onClickRigDiagRefresh();   // Refresh button: one snapshot WITH live render/cull columns
@@ -176,6 +177,8 @@ private:
     void onDriveModeCommit();
     void onDirectedAnimCommit();
     void onAnimationLibraryCommit();
+    void onDirectedMirrorCommit();
+    void onSourceAnimationCommit();
     void onLoopModeCommit();
     void onClickAnimSync();
     void onLensGazeToggle();
@@ -349,6 +352,12 @@ private:
     LLTextBox*        mReflectStatus = nullptr;
     LLComboBox*       mDriveModeCombo = nullptr;
     LLLineEditor*     mDirectedAnimEdit = nullptr;
+    LLCheckBoxCtrl*   mDirectedMirrorCheck = nullptr;
+    LLComboBox*       mSourceAnimationsCombo = nullptr;
+    LLUUID mSourceAnimationsSource;
+    U64 mSourceAnimationsLibraryRev = ~0ull;
+    U64 mSourceAnimationsMetadataRev = ~0ull;
+    std::vector<LLUUID> mSourceAnimationsShown;
     LLComboBox*       mAnimationLibraryCombo = nullptr;
     LLButton*         mAnimationLibraryRefreshBtn = nullptr;
     LLComboBox*       mLoopModeCombo = nullptr;

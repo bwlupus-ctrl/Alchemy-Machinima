@@ -38,6 +38,7 @@
 #include "llquaternion.h"
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
+#include "alghostanimmirrormath.h" // Directed mirror gaze observer
 #include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
 #include "altrajectory.h"   // deterministic C2 path-facing trajectory
 #include "alpathgeometry.h" // exact circle/ellipse/helix path primitives
@@ -582,6 +583,10 @@ public:
     void        setGazeEnabled(const LLUUID& actor_id, bool on);
     U64         getGazeRevision() const { return mGazeRevision; }
     bool        isGazeEnabled(const LLUUID& actor_id) const;
+    // Exact joint writes from the latest gaze evaluation; retained across
+    // skipped avatar updates. Read-only observer for Directed clone mirroring.
+    ALGhostAnimMirrorMath::GazeWeights getGazeWrittenWeights(const LLUUID& actor_id) const;
+    void        resetGazeWrittenJointMask(const LLUUID& actor_id);
     void        setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..4
     S32         getGazeTargetMode(const LLUUID& actor_id) const;
     void        setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id);
@@ -1326,6 +1331,7 @@ private:
     // own map (session-only) so a no-gaze avatar is a pure map-miss no-op.
     struct Gaze
     {
+        ALGhostAnimMirrorMath::GazeWeights mWrittenGaze;
         // authored (panel writes these)
         bool       mEnabled      = false;
         S32        mTarget       = 0;       // GAZE_TANGENT..GAZE_OBJECT

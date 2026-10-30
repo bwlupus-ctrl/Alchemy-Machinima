@@ -342,8 +342,9 @@ def validate_data(data: dict) -> None:
     # World wind-down: exactly eight Time rows (toggle, times, curve, four handles): 2368 (10/28).
     # Hidden system body: exactly one Soft shadows toggle, 2368 -> 2369 (10/28).
     # Ghost motion: exactly one built-in animation-cue toggle, 2369 -> 2370 (10/29).
-    if len(pages) != 38 or row_count != 2370:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2370")
+    # Directed animation: exactly two Clones rows, Mirror and Source playing (10/29).
+    if len(pages) != 38 or row_count != 2372:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2372")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2431,6 +2432,17 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        {node.get("control_name") for node in gated} == new_only and len(gated) == 9 and
                        all("New engine only" in node.get("tool_tip", "") for node in gated)))
         ghosts = ET.fromstring(outputs[out_dir / "panel_dpage_cast_ghosts.xml"], parser=parser())
+        ghost_legacy = ET.parse(ROOT / "indra/newview/skins/default/xui/en/panel_ghost_studio.xml").getroot()
+        animation_widgets = {"directed_anim_mirror_check", "source_animations_combo"}
+        animation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in animation_widgets]
+        checks.append(("Directed Mirror and source animation names are searchable with identical legacy help",
+                       len(animation_rows) == 2 and all(
+                           find_named(ghosts, row.get("widget")).get("tool_tip") ==
+                           find_named(ghost_legacy, row.get("widget")).get("tool_tip") == row.get("help")
+                           for row in animation_rows) and
+                       any(row.get("keywords") == "mirror animation flip left right clone directed"
+                           for row in animation_rows) and
+                       any("animation name" in row.get("keywords", "") for row in animation_rows)))
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in
                          {"yaw_spinner", "pitch_spinner", "roll_spinner"}]
         checks.append(("clone Yaw/Pitch/Roll retain identical native spinner wheel path and resets",

@@ -11,6 +11,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "alghostanimmirrormath.h"
 #include "alkithistory.h"
 #include "alkitpage.h"
 #include "alundosequence.h"
@@ -6018,8 +6019,27 @@ bool sameGazeTarget(const LLActorMover::GazeTarget& first,
 }
 } // anonymous namespace
 
+ALGhostAnimMirrorMath::GazeWeights LLActorMover::getGazeWrittenWeights(const LLUUID& actor_id) const
+{
+    ALGhostAnimMirrorMath::GazeWeights weights;
+    const auto actor = mGazes.find(actor_id);
+    if (actor != mGazes.end()) weights.merge(actor->second.mWrittenGaze);
+    const auto director = mDirectorGazes.find(actor_id);
+    if (director != mDirectorGazes.end()) weights.merge(director->second.mGaze.mWrittenGaze);
+    return weights;
+}
+
+void LLActorMover::resetGazeWrittenJointMask(const LLUUID& actor_id)
+{
+    const auto actor = mGazes.find(actor_id);
+    if (actor != mGazes.end()) actor->second.mWrittenGaze = {};
+    const auto director = mDirectorGazes.find(actor_id);
+    if (director != mDirectorGazes.end()) director->second.mGaze.mWrittenGaze = {};
+}
+
 void LLActorMover::applyGaze(LLVOAvatar* av)
 {
+    if (av && av->isGhostAvatar()) resetGazeWrittenJointMask(av->getID());
     if (mGazes.empty() || !av)
     {
         return;                 // default no-op: no gaze configured anywhere
@@ -6317,6 +6337,7 @@ void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
     {
         return;
     }
+    if (av->isGhostAvatar()) runtime.mGaze.mWrittenGaze = {};
     auto restore = [&](const char* name, DirectorJointPose& pose)
     {
         if (pose.mValid)
@@ -6679,6 +6700,13 @@ void LLActorMover::clearGazeCuePreview(const LLUUID& actor_id)
 
 bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
 {
+    // A rejected Director evaluation must not erase the Actor gaze observer
+    // on LOD-skipped ghosts, where applyGaze will not run at all.
+    if (av && av->isGhostAvatar())
+    {
+        const auto director = mDirectorGazes.find(av->getID());
+        if (director != mDirectorGazes.end()) director->second.mGaze.mWrittenGaze = {};
+    }
     static LLCachedControl<bool> enabled(
         gSavedSettings, "DirectorLookAtCameraEnabled", false);
 
@@ -7379,6 +7407,17 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const GazeTarget* eye_target,
                             F32 timeline_influence)
 {
+    if (av->isGhostAvatar()) g.mWrittenGaze = {};
+    auto set_gaze_rotation = [&](LLJoint* joint, const LLQuaternion& rotation, F32 alpha,
+                                 const LLQuaternion& target_local)
+    {
+        if (av->isGhostAvatar())
+        {
+            const LLQuaternion parent_world = joint->getParent() ? joint->getParent()->getWorldRotation() : LLQuaternion::DEFAULT;
+            g.mWrittenGaze.observe(joint->getName(), alpha, joint->getRotation(), target_local * parent_world);
+        }
+        joint->setRotation(rotation);
+    };
     LLJoint* head = av->getJoint("mHead");
     LLJoint* root = av->getJoint("mRoot");
     if (!head || !root)
@@ -8624,8 +8663,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, pelvis, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            pelvis->setRotation(nlerp(
-                                ga, pelvis->getRotation(), owned_target));
+                            set_gaze_rotation(pelvis, nlerp(
+                                ga, pelvis->getRotation(), owned_target), ga, owned_target);
                         }
                         else
                         {
@@ -8661,8 +8700,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const F32 ga = gazeAllowedAlpha(
                                 av, pelvis, priority_env, gaze_anim_priority);
                             if (ga > 0.f)
-                                pelvis->setRotation(nlerp(
-                                    ga, pelvis->getRotation(), q_endpoint));
+                                set_gaze_rotation(pelvis, nlerp(
+                                    ga, pelvis->getRotation(), q_endpoint), ga, q_endpoint);
                         }
                     }
                     else
@@ -8672,8 +8711,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, pelvis, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
-                            pelvis->setRotation(nlerp(
-                                ga, pelvis->getRotation(), hips_target));
+                            set_gaze_rotation(pelvis, nlerp(
+                                ga, pelvis->getRotation(), hips_target), ga, hips_target);
                         }
                         else
                         {
@@ -8698,8 +8737,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const F32 ga = gazeAllowedAlpha(
                                 av, pelvis, wCueBody, gaze_anim_priority);
                             if (ga > 0.f)
-                                pelvis->setRotation(nlerp(
-                                    ga, pelvis->getRotation(), q_endpoint));
+                                set_gaze_rotation(pelvis, nlerp(
+                                    ga, pelvis->getRotation(), q_endpoint), ga, q_endpoint);
                         }
                     }
                 }
@@ -8722,8 +8761,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, torso, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            torso->setRotation(nlerp(
-                                ga, torso->getRotation(), owned_target));
+                            set_gaze_rotation(torso, nlerp(
+                                ga, torso->getRotation(), owned_target), ga, owned_target);
                         }
                         else
                         {
@@ -8763,8 +8802,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const F32 ga = gazeAllowedAlpha(
                                 av, torso, priority_env, gaze_anim_priority);
                             if (ga > 0.f)
-                                torso->setRotation(nlerp(
-                                    ga, torso->getRotation(), q_endpoint));
+                                set_gaze_rotation(torso, nlerp(
+                                    ga, torso->getRotation(), q_endpoint), ga, q_endpoint);
                         }
                     }
                     else
@@ -8774,8 +8813,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, torso, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
-                            torso->setRotation(nlerp(
-                                ga, torso->getRotation(), torso_target));
+                            set_gaze_rotation(torso, nlerp(
+                                ga, torso->getRotation(), torso_target), ga, torso_target);
                         }
                         else
                         {
@@ -8799,8 +8838,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const F32 ga = gazeAllowedAlpha(
                                 av, torso, wCueBody, gaze_anim_priority);
                             if (ga > 0.f)
-                                torso->setRotation(nlerp(
-                                    ga, torso->getRotation(), q_endpoint));
+                                set_gaze_rotation(torso, nlerp(
+                                    ga, torso->getRotation(), q_endpoint), ga, q_endpoint);
                         }
                     }
                 }
@@ -8849,8 +8888,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, chest_joint, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        chest_joint->setRotation(nlerp(
-                            ga, chest_joint->getRotation(), local_target));
+                        set_gaze_rotation(chest_joint, nlerp(
+                            ga, chest_joint->getRotation(), local_target), ga, local_target);
                     }
                     else
                     {
@@ -8910,8 +8949,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, chest_joint, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            chest_joint->setRotation(nlerp(
-                                ga, chest_joint->getRotation(), q_endpoint));
+                            set_gaze_rotation(chest_joint, nlerp(
+                                ga, chest_joint->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
                 else
@@ -8921,8 +8960,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, chest_joint, wCueBody, gaze_anim_priority);
                     if (ga > 0.f)
-                        chest_joint->setRotation(nlerp(
-                            ga, chest_joint->getRotation(), chest_target));
+                        set_gaze_rotation(chest_joint, nlerp(
+                            ga, chest_joint->getRotation(), chest_target), ga, chest_target);
                     }
                     else
                     {
@@ -8945,8 +8984,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, chest_joint, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
-                            chest_joint->setRotation(nlerp(
-                                ga, chest_joint->getRotation(), q_endpoint));
+                            set_gaze_rotation(chest_joint, nlerp(
+                                ga, chest_joint->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
             }
@@ -9014,8 +9053,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, neck, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            neck->setRotation(nlerp(
-                                ga, neck->getRotation(), local_target));
+                            set_gaze_rotation(neck, nlerp(
+                                ga, neck->getRotation(), local_target), ga, local_target);
                         }
                         else
                         {
@@ -9116,8 +9155,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const F32 ga = gazeAllowedAlpha(
                                 av, neck, priority_env, gaze_anim_priority);
                             if (ga > 0.f)
-                                neck->setRotation(nlerp(
-                                    ga, neck->getRotation(), q_endpoint));
+                                set_gaze_rotation(neck, nlerp(
+                                    ga, neck->getRotation(), q_endpoint), ga, q_endpoint);
                         }
                     }
                     else
@@ -9128,8 +9167,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, neck, wCueHead, gaze_anim_priority);
                         if (ga > 0.f)
-                            neck->setRotation(nlerp(
-                                ga, neck->getRotation(), neck_target));
+                            set_gaze_rotation(neck, nlerp(
+                                ga, neck->getRotation(), neck_target), ga, neck_target);
                         }
                         else
                         {
@@ -9155,8 +9194,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                             const F32 ga = gazeAllowedAlpha(
                                 av, neck, wCueHead, gaze_anim_priority);
                             if (ga > 0.f)
-                                neck->setRotation(nlerp(
-                                    ga, neck->getRotation(), q_endpoint));
+                                set_gaze_rotation(neck, nlerp(
+                                    ga, neck->getRotation(), q_endpoint), ga, q_endpoint);
                         }
                     }
                 }
@@ -9224,8 +9263,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, head, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        head->setRotation(nlerp(
-                            ga, head->getRotation(), local_target));
+                        set_gaze_rotation(head, nlerp(
+                            ga, head->getRotation(), local_target), ga, local_target);
                     }
                     else
                     {
@@ -9341,8 +9380,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, head, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            head->setRotation(nlerp(
-                                ga, head->getRotation(), q_endpoint));
+                            set_gaze_rotation(head, nlerp(
+                                ga, head->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
                 else
@@ -9353,8 +9392,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, head, wCueHead, gaze_anim_priority);
                     if (ga > 0.f)
-                        head->setRotation(nlerp(
-                            ga, head->getRotation(), head_target));
+                        set_gaze_rotation(head, nlerp(
+                            ga, head->getRotation(), head_target), ga, head_target);
                     }
                     else
                     {
@@ -9379,8 +9418,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, head, wCueHead, gaze_anim_priority);
                         if (ga > 0.f)
-                            head->setRotation(nlerp(
-                                ga, head->getRotation(), q_endpoint));
+                            set_gaze_rotation(head, nlerp(
+                                ga, head->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
             }
@@ -9544,8 +9583,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, eye, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        eye->setRotation(nlerp(
-                            ga, eye->getRotation(), owned_target));
+                        set_gaze_rotation(eye, nlerp(
+                            ga, eye->getRotation(), owned_target), ga, owned_target);
                     }
                     else
                     {
@@ -9574,8 +9613,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, eye, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            eye->setRotation(nlerp(
-                                ga, eye->getRotation(), q_endpoint));
+                            set_gaze_rotation(eye, nlerp(
+                                ga, eye->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
                 else
@@ -9585,7 +9624,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, eye, wEye, gaze_anim_priority);
                     if (ga > 0.f)
-                        eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
+                        set_gaze_rotation(eye, nlerp(ga, eye->getRotation(), tgt), ga, tgt);
                     }
                     else
                     {
@@ -9609,8 +9648,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, eye, wEye, gaze_anim_priority);
                         if (ga > 0.f)
-                            eye->setRotation(nlerp(
-                                ga, eye->getRotation(), q_endpoint));
+                            set_gaze_rotation(eye, nlerp(
+                                ga, eye->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
             };
@@ -10040,8 +10079,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, pelvis, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        pelvis->setRotation(nlerp(
-                            ga, pelvis->getRotation(), owned_target));
+                        set_gaze_rotation(pelvis, nlerp(
+                            ga, pelvis->getRotation(), owned_target), ga, owned_target);
                     }
                     else
                     {
@@ -10074,8 +10113,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, pelvis, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            pelvis->setRotation(nlerp(
-                                ga, pelvis->getRotation(), q_endpoint));
+                            set_gaze_rotation(pelvis, nlerp(
+                                ga, pelvis->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
                 else
@@ -10085,8 +10124,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, pelvis, wCueBody, gaze_anim_priority);
                     if (ga > 0.f)
-                        pelvis->setRotation(nlerp(
-                            ga, pelvis->getRotation(), hips_target));
+                        set_gaze_rotation(pelvis, nlerp(
+                            ga, pelvis->getRotation(), hips_target), ga, hips_target);
                     }
                     else
                     {
@@ -10109,8 +10148,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, pelvis, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
-                            pelvis->setRotation(nlerp(
-                                ga, pelvis->getRotation(), q_endpoint));
+                            set_gaze_rotation(pelvis, nlerp(
+                                ga, pelvis->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
             }
@@ -10132,8 +10171,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, torso, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        torso->setRotation(nlerp(
-                            ga, torso->getRotation(), owned_target));
+                        set_gaze_rotation(torso, nlerp(
+                            ga, torso->getRotation(), owned_target), ga, owned_target);
                     }
                     else
                     {
@@ -10170,8 +10209,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, torso, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            torso->setRotation(nlerp(
-                                ga, torso->getRotation(), q_endpoint));
+                            set_gaze_rotation(torso, nlerp(
+                                ga, torso->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
                 else
@@ -10181,8 +10220,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, torso, wCueBody, gaze_anim_priority);
                     if (ga > 0.f)
-                        torso->setRotation(nlerp(
-                            ga, torso->getRotation(), torso_target));
+                        set_gaze_rotation(torso, nlerp(
+                            ga, torso->getRotation(), torso_target), ga, torso_target);
                     }
                     else
                     {
@@ -10205,8 +10244,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, torso, wCueBody, gaze_anim_priority);
                         if (ga > 0.f)
-                            torso->setRotation(nlerp(
-                                ga, torso->getRotation(), q_endpoint));
+                            set_gaze_rotation(torso, nlerp(
+                                ga, torso->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
             }
@@ -10253,8 +10292,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 ga = gazeAllowedAlpha(
                     av, chest_joint, priority_env, gaze_anim_priority);
                 if (ga > 0.f)
-                    chest_joint->setRotation(nlerp(
-                        ga, chest_joint->getRotation(), local_target));
+                    set_gaze_rotation(chest_joint, nlerp(
+                        ga, chest_joint->getRotation(), local_target), ga, local_target);
                 }
                 else
                 {
@@ -10313,8 +10352,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, chest_joint, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        chest_joint->setRotation(nlerp(
-                            ga, chest_joint->getRotation(), q_endpoint));
+                        set_gaze_rotation(chest_joint, nlerp(
+                            ga, chest_joint->getRotation(), q_endpoint), ga, q_endpoint);
                 }
             }
             else
@@ -10324,8 +10363,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 ga = gazeAllowedAlpha(
                     av, chest_joint, wCueBody, gaze_anim_priority);
                 if (ga > 0.f)
-                    chest_joint->setRotation(nlerp(
-                        ga, chest_joint->getRotation(), chest_target));
+                    set_gaze_rotation(chest_joint, nlerp(
+                        ga, chest_joint->getRotation(), chest_target), ga, chest_target);
                 }
                 else
                 {
@@ -10348,8 +10387,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, chest_joint, wCueBody, gaze_anim_priority);
                     if (ga > 0.f)
-                        chest_joint->setRotation(nlerp(
-                            ga, chest_joint->getRotation(), q_endpoint));
+                        set_gaze_rotation(chest_joint, nlerp(
+                            ga, chest_joint->getRotation(), q_endpoint), ga, q_endpoint);
                 }
             }
         }
@@ -10414,8 +10453,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, neck, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        neck->setRotation(nlerp(
-                            ga, neck->getRotation(), local_target));
+                        set_gaze_rotation(neck, nlerp(
+                            ga, neck->getRotation(), local_target), ga, local_target);
                     }
                     else
                     {
@@ -10513,8 +10552,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, neck, priority_env, gaze_anim_priority);
                         if (ga > 0.f)
-                            neck->setRotation(nlerp(
-                                ga, neck->getRotation(), q_endpoint));
+                            set_gaze_rotation(neck, nlerp(
+                                ga, neck->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
                 else
@@ -10525,8 +10564,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, neck, wCueHead, gaze_anim_priority);
                     if (ga > 0.f)
-                        neck->setRotation(nlerp(
-                            ga, neck->getRotation(), neck_target));
+                        set_gaze_rotation(neck, nlerp(
+                            ga, neck->getRotation(), neck_target), ga, neck_target);
                     }
                     else
                     {
@@ -10551,8 +10590,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                         const F32 ga = gazeAllowedAlpha(
                             av, neck, wCueHead, gaze_anim_priority);
                         if (ga > 0.f)
-                            neck->setRotation(nlerp(
-                                ga, neck->getRotation(), q_endpoint));
+                            set_gaze_rotation(neck, nlerp(
+                                ga, neck->getRotation(), q_endpoint), ga, q_endpoint);
                     }
                 }
             }
@@ -10623,8 +10662,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 ga = gazeAllowedAlpha(
                     av, head, priority_env, gaze_anim_priority);
                 if (ga > 0.f)
-                    head->setRotation(nlerp(
-                        ga, head->getRotation(), local_target));
+                    set_gaze_rotation(head, nlerp(
+                        ga, head->getRotation(), local_target), ga, local_target);
                 }
                 else
                 {
@@ -10735,8 +10774,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, head, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        head->setRotation(nlerp(
-                            ga, head->getRotation(), q_endpoint));
+                        set_gaze_rotation(head, nlerp(
+                            ga, head->getRotation(), q_endpoint), ga, q_endpoint);
                 }
             }
             else
@@ -10747,8 +10786,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 ga = gazeAllowedAlpha(
                     av, head, wCueHead, gaze_anim_priority);
                 if (ga > 0.f)
-                    head->setRotation(nlerp(
-                        ga, head->getRotation(), head_target));
+                    set_gaze_rotation(head, nlerp(
+                        ga, head->getRotation(), head_target), ga, head_target);
                 }
                 else
                 {
@@ -10773,8 +10812,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, head, wCueHead, gaze_anim_priority);
                     if (ga > 0.f)
-                        head->setRotation(nlerp(
-                            ga, head->getRotation(), q_endpoint));
+                        set_gaze_rotation(head, nlerp(
+                            ga, head->getRotation(), q_endpoint), ga, q_endpoint);
                 }
             }
         }
@@ -10898,8 +10937,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 ga = gazeAllowedAlpha(
                     av, eye, priority_env, gaze_anim_priority);
                 if (ga > 0.f)
-                    eye->setRotation(nlerp(
-                        ga, eye->getRotation(), owned_target));
+                    set_gaze_rotation(eye, nlerp(
+                        ga, eye->getRotation(), owned_target), ga, owned_target);
                 }
                 else
                 {
@@ -10927,8 +10966,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, eye, priority_env, gaze_anim_priority);
                     if (ga > 0.f)
-                        eye->setRotation(nlerp(
-                            ga, eye->getRotation(), q_endpoint));
+                        set_gaze_rotation(eye, nlerp(
+                            ga, eye->getRotation(), q_endpoint), ga, q_endpoint);
                 }
             }
             else
@@ -10938,7 +10977,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 const F32 ga = gazeAllowedAlpha(
                     av, eye, wEye, gaze_anim_priority);
                 if (ga > 0.f)
-                    eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
+                    set_gaze_rotation(eye, nlerp(ga, eye->getRotation(), tgt), ga, tgt);
                 }
                 else
                 {
@@ -10961,8 +11000,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     const F32 ga = gazeAllowedAlpha(
                         av, eye, wEye, gaze_anim_priority);
                     if (ga > 0.f)
-                        eye->setRotation(nlerp(
-                            ga, eye->getRotation(), q_endpoint));
+                        set_gaze_rotation(eye, nlerp(
+                            ga, eye->getRotation(), q_endpoint), ga, q_endpoint);
                 }
             }
         };

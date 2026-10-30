@@ -5,6 +5,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alghostanimassetindex.h"
+#include "alghostanimnames.h"
 
 #include "llagent.h"
 #include "llanimationstates.h"
@@ -303,7 +304,10 @@ void ALGhostAnimAssetIndex::requestMetadata(const LLUUID& asset_id)
     {
         return;
     }
+    const std::string previous_name = sessionName(asset_id);
     mMetadata[asset_id] = *indexed; // pending also deduplicates requests
+    if (ALGhostAnimNames::hasDisplayName(indexed->mName) && indexed->mName != previous_name)
+        ++mMetadataRevision; // names change here; timing/failure receipts do not
     gAssetStorage->getAssetData(asset_id, LLAssetType::AT_ANIMATION,
                                 onAssetLoaded, nullptr, false);
 }

@@ -414,6 +414,7 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
         llclamp(inst.mAnimSpeed * chaos_factor, 0.05f, 4.f));
     ghost->setEntityPhysicsEnabled(inst.mPhysicsEnabled);
     ghost->setEntityLoopMode(inst.mLoopMode);
+    ghost->setDirectedMirror(inst.mDirectedMirror);
     ghost->setEntityLook(inst.mLook, inst.mLookAlpha);
     set_entity_clone_visible(ghost, mShowAll && inst.mEnabled);
 
@@ -2045,6 +2046,14 @@ void ALGhostStudio::scanAnimLibrary()
     ++mAnimLibraryRevision;
 }
 
+const std::string& ALGhostStudio::animationName(const LLUUID& id)
+{
+    return mAnimNames.resolve(id, mAnimLibrary, mAnimLibraryRevision,
+        [](const LLUUID& asset) { return gAnimLibrary.animStateToString(asset); },
+        ALGhostAnimAssetIndex::instance().sessionName(id),
+        ALGhostAnimAssetIndex::instance().metadataRevision());
+}
+
 void ALGhostStudio::advanceMotionClock()
 {
     const LLTemporalFrameContext& frame = LLPresentationTime::currentFrame();
@@ -2388,6 +2397,9 @@ void ALGhostStudio::updatePostObjectList()
                     inst.mReflectWasDriven = false;
                 }
                 if (inst.mDriveMode == DRIVE_TRUE_MIRROR) ghost->applyTrueMirrorStamp(); // original eligibility and implementation
+                if (ALGhostAnimMirrorMath::eligible(inst.mDriveMode,
+                        inst.mDirectedMirrorFreezeDrive, inst.mDirectedMirror, mode))
+                    ghost->applyDirectedMirrorStamp(inst.mDriveMode, inst.mDirectedMirrorFreezeDrive);
             }
         }
     }
@@ -2860,16 +2872,33 @@ bool ALGhostStudio::setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
         inst->mState = STATE_ERROR;
         return false;
     }
-    if (inst->mDriveMode != mode)
+    const LLUUID next_anim = mode == DRIVE_DIRECTED ? directed_anim : LLUUID::null;
+    if (inst->mDriveMode != mode || inst->mDirectedAnim != next_anim)
     {
-        ++mInstanceRevision; // [GhostPanelPerf] "frozen" state label follows the drive mode
+        ++mInstanceRevision; // roster drive/Directed animation display changed
     }
     if (mode != DRIVE_REFLECT && mode != DRIVE_FROZEN) inst->mReflectPlaneValid = false;
+    // Mirror eligibility remembers the frozen pose owner separately. Playback
+    // Resume records retain their pre-feature, Pause-only behavior.
+    if (mode == DRIVE_FROZEN && inst->mDriveMode != DRIVE_FROZEN)
+    {
+        inst->mDirectedMirrorFreezeDrive = inst->mDriveMode;
+    }
     inst->mDriveMode = mode;
-    inst->mDirectedAnim = mode == DRIVE_DIRECTED ? directed_anim : LLUUID::null;
+    inst->mDirectedAnim = next_anim;
     ghost->setEntityDriveMode(mode, inst->mDirectedAnim);
     ghost->setEntityLoopMode(inst->mLoopMode);
     return true;
+}
+
+void ALGhostStudio::setInstanceDirectedMirror(const LLUUID& id, bool enabled)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || inst->mDirectedMirror == enabled) return;
+    inst->mDirectedMirror = enabled;
+    ++mInstanceRevision;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setDirectedMirror(enabled);
 }
 
 void ALGhostStudio::refreshLifecycleStates()

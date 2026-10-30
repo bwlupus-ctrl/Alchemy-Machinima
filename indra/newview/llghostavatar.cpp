@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llghostavatar.h"
+#include "alghostanimmirrormath.h"
 #include "alreflectmath.h"
 #include "alghostmotionmath.h"
 
@@ -1618,6 +1619,12 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     {
         return;
     }
+    // A Directed pause/resume retains the presentation until the next avatar
+    // evaluation restores its input. Other owners receive an unmirrored pose.
+    const auto* mirror_inst = ALGhostStudio::instance().findInstanceByRuntime(getID());
+    const bool keep_directed_mirror = mirror_inst && ALGhostAnimMirrorMath::eligible(
+        mirror_inst->mDriveMode, mirror_inst->mDirectedMirrorFreezeDrive, mDirectedMirror, mode);
+    if (!keep_directed_mirror) restoreDirectedMirrorPose();
     // Freeze keeps the reflected placement. Other drives resume the ordinary
     // upright foot lock; Wall switches do this through applyEntityTransform.
     if (mGhostFloorPosition && mode != ALGhostStudio::DRIVE_REFLECT && mode != ALGhostStudio::DRIVE_FROZEN)
@@ -1777,6 +1784,178 @@ void LLGhostAvatar::captureReflectPositions()
     mReflectSnapshotValid = true;
 }
 
+bool LLGhostAvatar::buildSkeleton(const LLAvatarSkeletonInfo* info)
+{
+    ++mSkeletonGeneration; // [GhostDirectedMirror] also observes in-place resets
+    clearDirectedMirrorJoints(); // never restore channels from the old generation
+    return LLVOAvatar::buildSkeleton(info);
+}
+
+void LLGhostAvatar::setDirectedMirror(bool enabled)
+{
+    if (mDirectedMirror == enabled && enabled) return;
+    restoreDirectedMirrorPose();
+    mDirectedMirror = enabled;
+    mDirectedMirrorFrame = ~0u;
+    if (!enabled) clearDirectedMirrorJoints();
+    else if (isBuilt()) buildDirectedMirrorJoints();
+}
+
+bool LLGhostAvatar::directedMirrorCacheMatches()
+{
+    const auto& skeleton = getSkeleton();
+    return mDirectedMirrorSkeletonGeneration == mSkeletonGeneration &&
+        mDirectedMirrorSkeletonData == skeleton.data() &&
+        mDirectedMirrorSkeletonSize == skeleton.size() &&
+        mDirectedMirrorSkeletonFirst == (skeleton.empty() ? nullptr : skeleton.front());
+}
+
+void LLGhostAvatar::clearDirectedMirrorJoints()
+{
+    mDirectedMirrorWritten = false;
+    mDirectedMirrorFrame = ~0u;
+    mDirectedMirrorPartnersValid = false;
+    mDirectedMirrorNeedsReskin = false;
+    mDirectedMirrorSkeletonData = nullptr;
+    mDirectedMirrorSkeletonFirst = nullptr;
+    mDirectedMirrorSkeletonSize = 0;
+    mDirectedMirrorJoints.clear();
+    mDirectedMirrorPartners.clear();
+    mDirectedMirrorInput.clear();
+    mDirectedMirrorOutput.clear();
+    mDirectedMirrorGazeBits.clear();
+    mDirectedMirrorGazeSlots.clear();
+    mDirectedMirrorGazeSamples.clear();
+    mDirectedMirrorAlpha.clear();
+    mDirectedMirrorParents.clear();
+    mDirectedMirrorWorldBefore.clear();
+    mDirectedMirrorWorldAfter.clear();
+}
+
+void LLGhostAvatar::buildDirectedMirrorJoints()
+{
+    clearDirectedMirrorJoints();
+    const auto& skeleton = getSkeleton();
+    mDirectedMirrorSkeletonGeneration = mSkeletonGeneration;
+    mDirectedMirrorSkeletonData = skeleton.data();
+    mDirectedMirrorSkeletonSize = skeleton.size();
+    mDirectedMirrorSkeletonFirst = skeleton.empty() ? nullptr : skeleton.front();
+    mDirectedMirrorNeedsReskin = true;
+    // Collision volumes retain their asymmetric rest rotations. All attachment
+    // parents in avatar_lad.xml are skeleton/root/screen joints, never volumes.
+    for (LLJoint* joint : skeleton)
+        if (joint && joint != mRoot) mDirectedMirrorJoints.push_back(joint);
+    const size_t count = mDirectedMirrorJoints.size();
+    mDirectedMirrorPartners.resize(count);
+    mDirectedMirrorInput.resize(count);
+    mDirectedMirrorOutput.resize(count);
+    mDirectedMirrorGazeBits.resize(count);
+    mDirectedMirrorGazeSlots.resize(count);
+    mDirectedMirrorGazeSamples.resize(count);
+    mDirectedMirrorAlpha.resize(count);
+    mDirectedMirrorParents.resize(count);
+    mDirectedMirrorWorldBefore.resize(count);
+    mDirectedMirrorWorldAfter.resize(count);
+    for (size_t i = 0; i < count; ++i)
+    {
+        const std::string other = ALReflect::partner(mDirectedMirrorJoints[i]->getName());
+        const auto paired = std::find_if(mDirectedMirrorJoints.begin(), mDirectedMirrorJoints.end(),
+            [&other](LLJoint* joint) { return joint->getName() == other; });
+        mDirectedMirrorPartners[i] = static_cast<size_t>(std::distance(mDirectedMirrorJoints.begin(), paired));
+        mDirectedMirrorGazeBits[i] = ALGhostAnimMirrorMath::gazeJointBit(mDirectedMirrorJoints[i]->getName());
+        mDirectedMirrorGazeSlots[i] = ALGhostAnimMirrorMath::gazeJointSlot(mDirectedMirrorJoints[i]->getName());
+        const auto parent = std::find(mDirectedMirrorJoints.begin(), mDirectedMirrorJoints.end(),
+            mDirectedMirrorJoints[i]->getParent());
+        mDirectedMirrorParents[i] = static_cast<size_t>(std::distance(mDirectedMirrorJoints.begin(), parent));
+    }
+    size_t bad = 0;
+    mDirectedMirrorPartnersValid = ALGhostAnimMirrorMath::validatePartners(mDirectedMirrorPartners.data(), count, bad);
+    if (!mDirectedMirrorPartnersValid)
+        LL_WARNS_ONCE("GhostDirectedMirror") << "Invalid partner for joint "
+            << mDirectedMirrorJoints[bad]->getName() << " index " << bad << LL_ENDL;
+}
+
+void LLGhostAvatar::restoreDirectedMirrorPose(bool invalidate_skin)
+{
+    if (!mDirectedMirrorWritten) return;
+    // Never dereference cached joints after a skeleton replacement.
+    if (!directedMirrorCacheMatches()) { clearDirectedMirrorJoints(); return; }
+    bool changed = false;
+    for (size_t i = 0; i < mDirectedMirrorJoints.size(); ++i)
+    {
+        LLJoint* joint = mDirectedMirrorJoints[i];
+        const ALReflect::LocalPose current{joint->getRotation(), joint->getPosition()};
+        const auto restored = ALGhostAnimMirrorMath::guardedRestore(current, mDirectedMirrorInput[i], mDirectedMirrorOutput[i]);
+        if (!ALGhostAnimMirrorMath::sameRotationBits(current.rotation, restored.rotation))
+        { joint->setRotation(restored.rotation); changed = true; }
+        if (!ALGhostAnimMirrorMath::samePositionBits(current.position, restored.position))
+        { joint->setPosition(restored.position); changed = true; }
+    }
+    mDirectedMirrorWritten = false;
+    // The in-update path immediately evaluates/propagates the avatar again.
+    // Only out-of-update releases need reskin and attachment propagation here.
+    if (invalidate_skin && changed)
+    {
+        markStepAnimPoseChanged(); // [GhostDirectedMirror] public, rank-independent reskin API
+        if (mRoot) mRoot->updateWorldMatrixChildren();
+        moveStampedAttachments();
+    }
+}
+
+void LLGhostAvatar::applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive)
+{
+    if (!ALGhostAnimMirrorMath::eligible(authored_drive, resume_drive, mDirectedMirror, mEntityDriveMode) ||
+        isDead() || !isBuilt() || !mRoot) return;
+    if (!directedMirrorCacheMatches()) buildDirectedMirrorJoints();
+    if (mDirectedMirrorWritten || !mDirectedMirrorPartnersValid) return;
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (mDirectedMirrorFrame == frame) return;
+    mDirectedMirrorFrame = frame;
+    auto gaze = LLActorMover::instance().getGazeWrittenWeights(getID());
+    for (size_t i = 0; i < mDirectedMirrorJoints.size(); ++i)
+    {
+        LLJoint* joint = mDirectedMirrorJoints[i];
+        mDirectedMirrorInput[i] = {joint->getRotation(), joint->getPosition()};
+        const size_t slot = mDirectedMirrorGazeSlots[i];
+        mDirectedMirrorGazeSamples[i] = slot < gaze.samples.size() ? gaze.samples[slot] : ALGhostAnimMirrorMath::GazeSample{};
+        const size_t partner = mDirectedMirrorPartners[i];
+        mDirectedMirrorAlpha[i] = partner < mDirectedMirrorJoints.size() ? gaze.weight(
+            mDirectedMirrorGazeBits[i] | mDirectedMirrorGazeBits[partner]) : 0.f;
+    }
+    const size_t count = mDirectedMirrorJoints.size();
+    size_t bad = count;
+    if (!ALGhostAnimMirrorMath::reflectPose(mDirectedMirrorInput.data(), mDirectedMirrorOutput.data(),
+            mDirectedMirrorPartners.data(), nullptr, count, bad)) return;
+    if (bad < count)
+        LL_WARNS_ONCE("GhostDirectedMirror") << "Kept non-finite joint "
+            << mDirectedMirrorJoints[bad]->getName() << " index " << bad << " and partner "
+            << mDirectedMirrorJoints[mDirectedMirrorPartners[bad]]->getName() << LL_ENDL;
+    if (!ALGhostAnimMirrorMath::preserveGaze(mDirectedMirrorInput.data(), mDirectedMirrorOutput.data(),
+            mDirectedMirrorPartners.data(), mDirectedMirrorParents.data(), mDirectedMirrorAlpha.data(),
+            count, mRoot->getWorldRotation(),
+            mDirectedMirrorWorldBefore.data(), mDirectedMirrorWorldAfter.data(), mDirectedMirrorGazeSamples.data()))
+    {
+        LL_WARNS_ONCE("GhostDirectedMirror") << "Cannot preserve gaze: invalid parent-before-child skeleton order" << LL_ENDL;
+        return;
+    }
+    for (size_t i = 0; i < mDirectedMirrorJoints.size(); ++i)
+    {
+        const auto& reflected = mDirectedMirrorOutput[i];
+        mDirectedMirrorJoints[i]->setRotation(reflected.rotation);
+        mDirectedMirrorJoints[i]->setPosition(reflected.position);
+    }
+    mDirectedMirrorWritten = true;
+    // First publication also covers enabling on a LOD-skipped/paused avatar.
+    // Normal frames follow True Mirror's updateCharacter reskin contract.
+    if (mDirectedMirrorNeedsReskin)
+    {
+        markStepAnimPoseChanged();
+        mDirectedMirrorNeedsReskin = false;
+    }
+    mRoot->updateWorldMatrixChildren();
+    moveStampedAttachments();
+}
+
 void LLGhostAvatar::buildReflectPartners(LLVOAvatar* source)
 {
     U32 paired = 0, centre = 0, unresolved = 0;
@@ -1879,10 +2058,13 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         LLJoint* src = src_joint(names.first);
         LLJoint* dst = dst_joint(names.second);
         if (!src || !dst) { written = false; mReflectLastRotations.emplace_back(); continue; }
-        const LLQuaternion q = ALReflect::rotation(src->getRotation());
-        const LLVector3 p = ALReflect::vector(src->getPosition());
-        if (q.isFinite()) dst->setRotation(q); else written = false;
-        if (p.isFinite()) dst->setPosition(p); else written = false;
+        ALReflect::LocalPose reflected;
+        if (ALReflect::reflectLocalPose({src->getRotation(), src->getPosition()}, reflected))
+        {
+            dst->setRotation(reflected.rotation);
+            dst->setPosition(reflected.position);
+        }
+        else written = false;
         mReflectLastRotations.push_back(dst->getRotation());
     }
     if (face)
@@ -3862,6 +4044,10 @@ void LLGhostAvatar::resetHeldAnimeshRepeat()
 void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf] named zone, sub-zones below
+    // Undo only our previous presentation stamp before motion blending / gaze.
+    // This also handles paused and temporally stepped controllers, which may
+    // leave some or all joint channels untouched on this update.
+    restoreDirectedMirrorPose(false); // updateCharacter() supplies this frame's reskin
     if (mMarkedForDeath)
     {
         markDead();

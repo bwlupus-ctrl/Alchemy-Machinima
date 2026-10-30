@@ -632,6 +632,37 @@ transform**.
 Silhouette, Toon-Ink, and more. Each clone also has an **animation-speed** spinner
 (0.05×–4×).
 
+**Animation (entity clones, Pose tab; Director v2 -> Clones -> Animation asset):**
+choose **Directed**, then pick an inventory animation or paste its editable asset
+UUID. The metadata line shows its resolved animation name and short UUID; the
+clone list also shows the Directed animation name. Names prefer the first matching
+inventory-library entry, then SL's built-in name (such as `stand` or `dance1`), then
+an available session metadata name; otherwise **Unknown animation**. Inventory is
+scanned lazily; use **Refresh** after adding or renaming inventory animations.
+**Source playing** lists the source avatar's locally known playing animations.
+Choosing one assigns its UUID to every selected Directed clone.
+
+Tick **Mirror** beside the Directed UUID to flip that clone's own final animated
+pose left/right in place, including Bento fingers. Animated eyes mirror with
+the head unless gaze is actively aiming them. Collision volumes keep
+their rest pose; attachments follow their skeleton parents.
+Its root position and facing stay with placement, Actor Mover or formation motion.
+**Gaze keeps aiming correctly: head and eyes follow the target under mirrored
+parents and blend in and out smoothly.** Gaze-owned joints (including any spine
+share) preserve their evaluated world aim at full weight; the mirror blends to
+that aim using the applied gaze weight, from the pre-gaze animation pose to the
+aimed world target (without applying the ease twice). Without gaze, the full
+animated skeleton is mirrored. Face morph expressions are not flipped. Asymmetric rigs or shape distortions may deform when
+mirrored: skin weights stay on the original bones. Loop/Play once, Pause/Resume/Sync, Anim Speed and stepped/Temporal
+ANIMATION time (including world wind-down) use the same controller. Pause holds
+the mirrored Directed pose; Resume continues mirrored. A finished Play once
+animation also holds its mirrored last frame while Directed. This Mirror checkbox
+is dormant for other Frozen sources and other drives. A temporary Director
+Directed clip on a paused Directed+Mirror clone also plays mirrored. Mirror and
+animation assignments apply to all selected group members. Duplicates inherit the
+Mirror preference. Clones and this preference are session-only, absent from scene
+files; no animation or pose change is sent to the server.
+
 **Motion modes (Pose tab → Freeze Strip & Formation Motion):** select one or more
 clones, pick a mode, set **Speed** and **Amp**, and click **Apply selection**. Pick
 **Off** to put them back where you placed them. Looping modes ease in over half a

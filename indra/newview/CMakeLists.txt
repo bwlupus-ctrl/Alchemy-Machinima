@@ -1339,6 +1339,8 @@ set(viewer_HEADER_FILES
     alrelightmath.h
     alrelighttakerecord.h
     alrelighttakewriter.h
+    alghostanimnames.h
+    alghostanimmirrormath.h
     alreflectmath.h
     alreflectanim.h
     alavataranimspeed.h
@@ -2944,6 +2946,8 @@ if (BUILD_TESTING)
   # instead of inventing a production .cpp solely for the per-source macro.
   LL_ADD_INTEGRATION_TEST(alrelightmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alreflectmath "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alghostanimmirror "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alghostanimnames "" "${test_libs};llcharacter" "${test_project}")
   LL_ADD_INTEGRATION_TEST(algazemath
     ""
     "${test_libs}"

@@ -36,6 +36,8 @@
 #define AL_ALGHOSTSTUDIO_H
 
 #include "alghostgroupmodel.h"
+#include "alghostanimnames.h"
+#include "alghostanimmirrormath.h"
 #include "alghostrotation.h"
 #include "alghostplacementresolver.h"
 #include "alformationsolver.h"
@@ -112,6 +114,11 @@ public:
     {
         DRIVE_MIRROR = 0, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR, DRIVE_REFLECT
     };
+    static_assert(DRIVE_MIRROR == (S32)ALGhostAnimMirrorMath::DRIVE_MIRROR &&
+        DRIVE_DIRECTED == (S32)ALGhostAnimMirrorMath::DRIVE_DIRECTED &&
+        DRIVE_FROZEN == (S32)ALGhostAnimMirrorMath::DRIVE_FROZEN &&
+        DRIVE_TRUE_MIRROR == (S32)ALGhostAnimMirrorMath::DRIVE_TRUE_MIRROR &&
+        DRIVE_REFLECT == (S32)ALGhostAnimMirrorMath::DRIVE_REFLECT, "mirror drive indices");
     enum ELoopMode : S32 { LOOP_RETRIGGER = 0, LOOP_PLAY_ONCE };
     enum ELockMode : S32
     {
@@ -394,6 +401,8 @@ public:
         U32 mAutoAnimSeedSalt = 0;
         std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoAnimPool;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
+        bool        mDirectedMirror = false; // own Directed/paused pose; session-only
+        EDriveMode  mDirectedMirrorFreezeDrive = DRIVE_MIRROR; // eligibility only, never playback Resume
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
         bool        mPhysicsEnabled = true;
         ELoopMode   mLoopMode = LOOP_RETRIGGER;
@@ -630,6 +639,7 @@ public:
     U64  animLibraryRevision() const { return mAnimLibraryRevision; }
     void scanAnimLibrary();
     const std::vector<std::pair<std::string, LLUUID>>& animLibrary() const { return mAnimLibrary; }
+    const std::string& animationName(const LLUUID& id);
 
     // ---- instance CRUD ----
     // Add spawns at the source's current rendered feet (so a fresh ghost is
@@ -696,6 +706,7 @@ public:
     const Instance* findInstanceByRuntime(const LLUUID& runtime) const;
     bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
                                    const LLUUID& directed_anim = LLUUID::null);
+    void      setInstanceDirectedMirror(const LLUUID& id, bool enabled);
     void      refreshLifecycleStates();
     void      removeInstance(const LLUUID& id);
     S32       lockGroup(const std::vector<LLUUID>& ids,
@@ -929,6 +940,7 @@ private:
     bool   mAnimLibraryScanRequested = false;   // [GhostPanelPerf] see requestAnimLibraryScan()
     U64    mAnimLibraryRevision = 0;            // 0 = never scanned
     std::vector<std::pair<std::string, LLUUID>> mAnimLibrary;
+    ALGhostAnimNames mAnimNames;
     std::vector<FreezeStrip> mFreezeStrips;
     U32 mNextStripId = 1;
     std::string mLastStripStatus;

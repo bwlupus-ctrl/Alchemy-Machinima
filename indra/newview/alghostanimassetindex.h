@@ -40,6 +40,14 @@ public:
 
     const std::vector<Entry>& refreshInventory();
     const Entry* find(const LLUUID& asset_id) const;
+    U64 metadataRevision() const { return mMetadataRevision; }
+    // Names already retained with requested metadata. Never walks inventory.
+    const std::string& sessionName(const LLUUID& asset_id) const
+    {
+        static const std::string empty;
+        const auto found = mMetadata.find(asset_id);
+        return found != mMetadata.end() ? found->second.mName : empty;
+    }
     void requestMetadata(const LLUUID& asset_id);
 
 private:
@@ -49,6 +57,7 @@ private:
 
     std::vector<Entry> mEntries;
     std::map<LLUUID, Entry> mMetadata;
+    U64 mMetadataRevision = 0;
 };
 
 #endif

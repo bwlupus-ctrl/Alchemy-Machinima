@@ -39,6 +39,8 @@
 #include "lldirectorcast.h"         // source picker = the cast
 #include "lljoint.h"
 #include "lllineeditor.h"
+#include "llmotion.h"
+#include "llkeyframemotion.h"
 #include "llghostavatar.h"
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
@@ -433,6 +435,8 @@ bool ALPanelGhostStudio::postBuild()
         studio.invalidateReflectPlane(studio.getSelected());
     });
     mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
+    mDirectedMirrorCheck = getChild<LLCheckBoxCtrl>("directed_anim_mirror_check");
+    mSourceAnimationsCombo = getChild<LLComboBox>("source_animations_combo");
     mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
     mAnimationLibraryRefreshBtn = getChild<LLButton>("btn_anim_library_refresh");
     mLoopModeCombo = getChild<LLComboBox>("anim_loop_mode_combo");
@@ -648,6 +652,8 @@ bool ALPanelGhostStudio::postBuild()
     mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
     mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
     mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
+    mDirectedMirrorCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedMirrorCommit(); });
+    mSourceAnimationsCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSourceAnimationCommit(); });
     mAnimationLibraryCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimationLibraryCommit(); });
     mAnimationLibraryRefreshBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
@@ -1250,7 +1256,8 @@ std::string ALPanelGhostStudio::lookTargetSignature() const
 std::string ALPanelGhostStudio::listSignature() const
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    std::string sig;
+    std::string sig = std::to_string(studio.animLibraryRevision()) + ":" +
+        std::to_string(ALGhostAnimAssetIndex::instance().metadataRevision());
     std::set<LLUUID> signed_groups;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
@@ -1261,6 +1268,8 @@ std::string ALPanelGhostStudio::listSignature() const
         sig += state_name(inst);
         sig += style_name(inst.mStyle);
         sig += (inst.mPose == ALGhostStudio::POSE_FROZEN) ? 'F' : 'L';
+        sig += llformat("%d", (S32)inst.mDriveMode);
+        sig += inst.mDirectedAnim.asString();
         sig += sourceName(inst.mSource);
         sig += inst.mGroupId.asString();
         sig += llformat("%d", (S32)inst.mLockMode);
@@ -1398,6 +1407,48 @@ void ALPanelGhostStudio::populateAnimationLibrary()
         mAnimationLibraryCombo->setSelectedByValue(selected, true);
     }
 }
+
+// ui-draw-lint: allow-function(raw-write) 4 Hz caller; rebuild only on source IDs/library revision change
+void ALPanelGhostStudio::refreshSourceAnimations(const ALGhostStudio::Instance& inst)
+{
+    if (!isWidgetOnScreen(mSourceAnimationsCombo) || alIsBeingEdited(mSourceAnimationsCombo)) return;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const LLUUID source_id = inst.mSource.isNull() ? gAgent.getID() : inst.mSource;
+    LLViewerObject* object = gObjectList.findObject(source_id);
+    LLVOAvatar* source = object ? object->asAvatar() : nullptr;
+    std::set<LLUUID> ids;
+    if (source && !source->isDead())
+    {
+        // The registered controller instance distinguishes fetched keyframe
+        // assets from internal head/eye/hand/emote/breath/target motions.
+        for (const auto& anim : source->mSignaledAnimations)
+            if (dynamic_cast<LLKeyframeMotion*>(source->findMotion(anim.first))) ids.insert(anim.first);
+        for (LLMotion* motion : source->getMotionController().getActiveMotions())
+            if (dynamic_cast<LLKeyframeMotion*>(motion) && !motion->isStopped()) ids.insert(motion->getID());
+    }
+    if (!ids.empty() && !studio.animLibraryScanned()) studio.requestAnimLibraryScan();
+    const std::vector<LLUUID> current(ids.begin(), ids.end());
+    if (source_id == mSourceAnimationsSource && current == mSourceAnimationsShown &&
+        studio.animLibraryRevision() == mSourceAnimationsLibraryRev &&
+        ALGhostAnimAssetIndex::instance().metadataRevision() == mSourceAnimationsMetadataRev) return;
+    mSourceAnimationsSource = source_id;
+    mSourceAnimationsShown = current;
+    mSourceAnimationsLibraryRev = studio.animLibraryRevision();
+    mSourceAnimationsMetadataRev = ALGhostAnimAssetIndex::instance().metadataRevision();
+    std::vector<std::pair<std::string, LLUUID>> choices;
+    for (const LLUUID& id : current) choices.emplace_back(
+        studio.animLibraryScanned() ? studio.animationName(id) : "Metadata pending...", id);
+    std::sort(choices.begin(), choices.end(), [](const auto& a, const auto& b)
+    {
+        const S32 order = LLStringUtil::compareInsensitive(a.first, b.first);
+        return order == 0 ? a.second < b.second : order < 0;
+    });
+    mSourceAnimationsCombo->removeall();
+    mSourceAnimationsCombo->add("Source playing animations...", LLUUID::null);
+    for (const auto& choice : choices)
+        mSourceAnimationsCombo->add(choice.first + " (" + choice.second.asString().substr(0, 8) + ")", choice.second);
+    mSourceAnimationsCombo->setSelectedByValue(LLUUID::null, true);
+}
 // ui-draw-lint: allow-function(raw-write) list rebuild is instance/cast-revision gated
 void ALPanelGhostStudio::refreshList(bool force_now)
 {
@@ -1406,7 +1457,8 @@ void ALPanelGhostStudio::refreshList(bool force_now)
     // [GhostPanelPerf] rebuild rows only when the instance/group model or the cast
     // (source-name column) revision moved -- no signature strings in the draw path.
     const std::initializer_list<U64> revisions =
-        { studio.getInstanceRevision(), LLDirectorCast::instance().getCastRevision() };
+        { studio.getInstanceRevision(), LLDirectorCast::instance().getCastRevision(), studio.animLibraryRevision(),
+          ALGhostAnimAssetIndex::instance().metadataRevision() };
     bool stale = mListGate.isStale(revisions) || ghost_refresh_always();
     if (stale && (mListGate.lastWasFallback() || ghost_refresh_always()))
     {
@@ -1437,7 +1489,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
     std::set<LLUUID> emitted_groups;
 
     auto add_instance_row =
-        [this](const ALGhostStudio::Instance& inst, bool indented)
+        [this, &studio](const ALGhostStudio::Instance& inst, bool indented)
     {
         LLSD row;
         row["value"] = inst.mId;
@@ -1460,9 +1512,15 @@ void ALPanelGhostStudio::refreshList(bool force_now)
             inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE
                 ? std::string("Scene-lit")
                 : std::string(style_name(inst.mStyle));
+        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst.mDriveMode == ALGhostStudio::DRIVE_DIRECTED && inst.mDirectedAnim.notNull() &&
+            !studio.animLibraryScanned()) studio.requestAnimLibraryScan();
         row["columns"][6]["column"] = column_name(mList, 6, "pose");
         row["columns"][6]["value"] =
-            inst.mPose == ALGhostStudio::POSE_FROZEN
+            inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE && inst.mDriveMode == ALGhostStudio::DRIVE_DIRECTED
+                ? (inst.mDirectedAnim.isNull() ? std::string("(none)") :
+                    studio.animLibraryScanned() ? studio.animationName(inst.mDirectedAnim) : "Metadata pending...")
+                : inst.mPose == ALGhostStudio::POSE_FROZEN
                 ? std::string("FROZEN") : std::string("live");
         mList->addElement(row, ADD_BOTTOM);
     };
@@ -1665,6 +1723,13 @@ void ALPanelGhostStudio::refreshDetail()
         "Reflect requires an entity clone");
     setRowVisibleIfChanged(mDirectedAnimEdit, directed);
     setEnabledIfChanged(mDirectedAnimEdit, directed);
+    const bool directed_mirror_control = entity && ALGhostAnimMirrorMath::directedMirrorActive(
+        inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);
+    setRowVisibleIfChanged(mDirectedMirrorCheck, directed_mirror_control);
+    setEnabledIfChanged(mDirectedMirrorCheck, directed_mirror_control);
+    setValueIfChanged(mDirectedMirrorCheck, LLSD(inst && inst->mDirectedMirror), true);
+    setRowVisibleIfChanged(mSourceAnimationsCombo, directed);
+    setEnabledIfChanged(mSourceAnimationsCombo, directed);
     setRowVisibleIfChanged(mAnimationLibraryCombo, directed);
     setRowVisibleIfChanged(mAnimationLibraryRefreshBtn, directed);
     setEnabledIfChanged(mAnimationLibraryCombo, directed);
@@ -1915,6 +1980,7 @@ void ALPanelGhostStudio::refreshDetail()
 
     if (directed && slow_tick)
     {
+        refreshSourceAnimations(*inst);
         // library: lazy, shared, never scanned here. Ask once; mirror when it changes.
         if (!studio.animLibraryScanned())
         {
@@ -1966,6 +2032,9 @@ void ALPanelGhostStudio::refreshDetail()
                 }
             }
         }
+        if (inst->mDirectedAnim.notNull())
+            metadata = studio.animationName(inst->mDirectedAnim) + " (" +
+                inst->mDirectedAnim.asString().substr(0, 8) + ")\n" + metadata;
         setTextIfChanged(mAnimMetadataText, metadata);
     }
 
@@ -2926,6 +2995,23 @@ void ALPanelGhostStudio::onAnimationLibraryCommit()
     mDirectedAnimEdit->setText(asset_id.asString());
     onDirectedAnimCommit();
     ALGhostAnimAssetIndex::instance().requestMetadata(asset_id);
+}
+
+void ALPanelGhostStudio::onDirectedMirrorCommit()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const bool enabled = mDirectedMirrorCheck->getValue().asBoolean();
+    for (const LLUUID& id : selectedInstances()) studio.setInstanceDirectedMirror(id, enabled);
+}
+
+void ALPanelGhostStudio::onSourceAnimationCommit()
+{
+    const LLUUID id = mSourceAnimationsCombo->getSelectedValue().asUUID();
+    if (id.isNull()) return;
+    mDirectedAnimEdit->setText(id.asString());
+    onDirectedAnimCommit();
+    mSourceAnimationsCombo->setSelectedByValue(LLUUID::null, true);
+    ALGhostAnimAssetIndex::instance().requestMetadata(id);
 }
 
 void ALPanelGhostStudio::onLoopModeCommit()
