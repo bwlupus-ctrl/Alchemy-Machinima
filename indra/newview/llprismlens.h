@@ -25,6 +25,8 @@
 #include <vector>
 #include <variant>
 
+namespace ALProbeReach { struct Views; }
+
 class LLFace;
 class LLPlane;
 class LLRenderTarget;
@@ -1671,6 +1673,9 @@ bool captureOutputSize(const CaptureHandle& capture, U32& width, U32& height);
 U32 liveAreaFeeds(U32 (&widths)[MAX_CAPTURES], U32 (&heights)[MAX_CAPTURES], U32 (&slots)[MAX_CAPTURES]);
 // The registry slot of the camera feed being rendered right now (-1 outside a scheduled feed render).
 S32 activeAreaFeedSlot();
+// Conservatively include registered camera views, including preview/dormant feeds,
+// without taking an allocating registry snapshot or traversing the scene.
+void extendProbeReach(ALProbeReach::Views& views);
 // Canonical render-side query. Real spotlights return their object params;
 // bound point lights return a viewer-local 60-degree cone. UI/build code must
 // continue to query LLVOVolume directly so the object remains untouched.

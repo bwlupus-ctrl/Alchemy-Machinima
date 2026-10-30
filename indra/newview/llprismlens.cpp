@@ -6,6 +6,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llprismlens.h"
+#include "alprobereach.h"
 #include "llprismpreview.h"
 #include "llprismgate.h"
 #include "alvcamobjectpovsettings.h"
@@ -5301,6 +5302,52 @@ public:
             ++count;
         }
         return count;
+    }
+
+    void extendProbeReach(ALProbeReach::Views& views) const
+    {
+        // Include even dormant feeds: relevance can be queried before this
+        // frame's demand/preparation, and a preview can become a full feed.
+        // Current auxiliary UBOs use only the exempt default probe; retaining
+        // the camera union also protects any main/local-probe consumer.
+        for (const auto& lens : mLenses)
+        {
+            if (!lens.mOccupied || !lens.cameraData() || lens.cameraData()->mSettings.mTestPattern)
+            {
+                continue;
+            }
+            if (!lens.isCameraFeed())
+            {
+                // Surface lenses use an oblique secondary eye. Its extent is
+                // not bounded here: preserve all local probes conservatively.
+                views.mKeepAll = true;
+                continue;
+            }
+            const auto& camera = lens.cameraData()->mSettings;
+            if (camera.mBonePov.mEnabled || camera.mObjectPov.mEnabled)
+            {
+                // These drivers can publish a new eye after the reach pass.
+                // Keep their local-probe coverage without evaluating the rig
+                // or walking avatar joints a second time.
+                views.mKeepAll = true;
+                continue;
+            }
+            if (camera.mVirtual)
+            {
+                views.add(camera.mVirtualPos.mV, camera.mFarClip);
+            }
+            else if (const LLViewerObject* object = gObjectList.findObject(lens.cameraData()->mObjectId))
+            {
+                const LLVector3 eye = object->getRenderPosition() +
+                    camera.mLocalEyeOffset * object->getRenderRotation();
+                views.add(eye.mV, camera.mFarClip);
+            }
+            else
+            {
+                // A bound camera whose eye is unavailable must fail open.
+                views.mKeepAll = true;
+            }
+        }
     }
 
     bool getOutputOrientation(U32 slot, F32 scale[2], F32 offset[2]) const
@@ -10639,6 +10686,14 @@ bool captureOutputSize(const CaptureHandle& capture, U32& width, U32& height)
 U32 liveAreaFeeds(U32 (&widths)[MAX_CAPTURES], U32 (&heights)[MAX_CAPTURES], U32 (&slots)[MAX_CAPTURES])
 {
     return PrismLensRegistry::instance().liveAreaFeeds(widths, heights, slots);
+}
+
+void extendProbeReach(ALProbeReach::Views& views)
+{
+    if (instanceExists() && prismEnabled())
+    {
+        PrismLensRegistry::instance().extendProbeReach(views);
+    }
 }
 
 S32 activeAreaFeedSlot()

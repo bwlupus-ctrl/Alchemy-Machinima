@@ -22223,6 +22223,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+    <key>RenderReflectionProbeReachCull</key>
+    <map>
+        <key>Comment</key>
+        <string>Skip reflection probes whose influence sphere is wholly beyond draw distance of every view.</string>
+        <key>Persist</key>
+        <integer>1</integer>
+        <key>Type</key>
+        <string>Boolean</string>
+        <key>Value</key>
+        <integer>1</integer>
+    </map>
     <key>RenderReflectionProbeDynamicAllocation</key>
     <map>
         <key>Comment</key>

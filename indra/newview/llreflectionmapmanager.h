@@ -112,6 +112,9 @@ public:
     // maintain reflection probes
     void update();
 
+    // Called at the relevance-query boundary; at most one bounded pass per frame.
+    void updateProbeReach();
+
     void refreshSettings();
 
     // add a probe for the given spatial group
@@ -514,6 +517,10 @@ private:
     U32 mReflectionProbeCount;
 
     U32 mDynamicProbeCount;
+    U32 mReachFrame = ~0u;
+    U32 mReachRelevantCount = 0;
+    // Relevant at the previous manager update, default included, in steps of 16.
+    U32 mRelevantProbeCount = 0;
 
     // cached settings from gSavedSettings
     S32 mRenderReflectionProbeDetail = -1;

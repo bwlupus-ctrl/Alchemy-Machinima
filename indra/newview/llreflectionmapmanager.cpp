@@ -37,6 +37,9 @@
 #include "alcinelightrigmanager.h" // [LiveProbeRefresh]
 #include "alenvintensity.h"       // [ProbeOnDemand]
 #include "alprobedirty.h"         // [ProbeOnDemand]
+#include "alprobereach.h"
+#include "llagentcamera.h"
+#include "llprismlens.h"
 #include "lldrawable.h"           // [ProbeOnDemand]
 #include "lllightconstants.h"     // [ProbeOnDemand]
 #include "lltimer.h"              // [LiveProbeRefresh]
@@ -258,6 +261,73 @@ static bool check_priority(LLReflectionMap* a, LLReflectionMap* b)
     return b->mComplete;
 }
 
+void LLReflectionMapManager::updateProbeReach()
+{
+    if (mReachFrame == gFrameCount)
+    {
+        return;
+    }
+    mReachFrame = gFrameCount;
+    ALProbeReach::Views views;
+    const LLVector3& camera = LLViewerCamera::instance().getOrigin();
+    views.add(camera.mV, gAgentCamera.mDrawDistance);
+    LLPrismLens::extendProbeReach(views);
+    // A mirror's reflected eye can reach local probes outside the main sphere.
+    // Its existing roster is bounded; retain the union conservatively without
+    // another scene traversal or changing the hero manager's own relevance.
+    views.mKeepAll = views.mKeepAll ||
+        (gPipeline.RenderMirrors && !gPipeline.mHeroProbeManager.mHeroVOList.empty()) ||
+        gCubeSnapshot || LLPipeline::sPrismLensRender || LLPipeline::sPrismPreviewRender ||
+        LLPipeline::sShadowRender || LLPipeline::sReflectionRender || LLPipeline::sImpostorRender;
+    mReachRelevantCount = 0;
+
+    const auto update_reach = [&](LLReflectionMap* probe)
+    {
+        if (probe == mDefaultProbe)
+        {
+            // Global illumination for every eye; preserve its scheduling distance.
+            probe->mInReach = true;
+            ++mReachRelevantCount;
+            return;
+        }
+        LLVector3 origin(probe->mOrigin.getF32ptr());
+        F32 radius = probe->mRadius;
+        if (probe->mViewerObject)
+        {
+            // Placed probes can move or grow while culled. Read their current
+            // influence sphere, including the enclosing sphere of box probes.
+            origin = probe->mViewerObject->getPositionAgent();
+            radius = probe->mViewerObject->getReflectionProbeIsBox()
+                ? probe->mViewerObject->getScale().length() * 0.5f
+                : probe->mViewerObject->getScale().mV[0] * 0.5f;
+        }
+        // Default lights all views. Cine/Director client-only probes are authored
+        // live resources, including the interval before designation is published.
+        // Hero/mirror probes belong to LLHeroProbeManager and never enter this pass.
+        const bool exempt = probe == mCinematicLiveProbe ||
+            (probe->mViewerObject && probe->mViewerObject->isLocalOnly());
+        probe->mInReach = views.inReach(origin.mV, radius, exempt);
+        mReachRelevantCount += probe->isRelevant() ? 1u : 0u;
+        if (!probe->mInReach)
+        {
+            probe->mDistance = FLT_MAX;
+        }
+        else
+        {
+            const F32 distance = (origin - camera).length() - radius;
+            probe->mDistance = ALProbeReach::finite(distance) ? distance : 0.f;
+        }
+    };
+    for (const auto& probe : mProbes)
+    {
+        update_reach(probe.get());
+    }
+    for (const auto& probe : mCreateList)
+    {
+        update_reach(probe.get());
+    }
+}
+
 // helper class to seed octree with probes
 void LLReflectionMapManager::update()
 {
@@ -304,6 +374,12 @@ void LLReflectionMapManager::update()
         return;
     }
 
+    static LLCachedControl<bool> reach_cull(gSavedSettings, "RenderReflectionProbeReachCull", true);
+    if (reach_cull)
+    {
+        updateProbeReach();
+    }
+
     if (mPaused && gFrameTimeSeconds > mResumeTime)
     {
         resume();
@@ -313,39 +389,47 @@ void LLReflectionMapManager::update()
 
     {
         U32 probe_count_temp = mDynamicProbeCount;
-        if (mRenderReflectionProbeDynamicAllocation > -1)
+        if (reach_cull)
         {
-            if (mRenderReflectionProbeLevel == 0)
-            {
-                mDynamicProbeCount = 1;
-            }
-            else if (mRenderReflectionProbeLevel == 1)
-            {
-                mDynamicProbeCount = (U32)mProbes.size();
-            }
-            else if (mRenderReflectionProbeLevel == 2)
-            {
-                mDynamicProbeCount = llmax((U32)mProbes.size(), 128);
-            }
-            else
-            {
-                mDynamicProbeCount = 256;
-            }
-
-            if (mRenderReflectionProbeDynamicAllocation > 1)
-            {
-                // Round mDynamicProbeCount to the nearest increment of 16
-                mDynamicProbeCount = ((mDynamicProbeCount + mRenderReflectionProbeDynamicAllocation / 2) / mRenderReflectionProbeDynamicAllocation) * 16;
-                mDynamicProbeCount = llclamp(mDynamicProbeCount, 1, mRenderReflectionProbeCount);
-            }
-            else
-            {
-                mDynamicProbeCount = llclamp(mDynamicProbeCount + mRenderReflectionProbeDynamicAllocation, 1, mRenderReflectionProbeCount);
-            }
+            mDynamicProbeCount = ALProbeReach::dynamicProbeCount(mRenderReflectionProbeLevel,
+                mRenderReflectionProbeDynamicAllocation, mRelevantProbeCount, mRenderReflectionProbeCount);
         }
         else
         {
-            mDynamicProbeCount = mRenderReflectionProbeCount;
+            if (mRenderReflectionProbeDynamicAllocation > -1)
+            {
+                if (mRenderReflectionProbeLevel == 0)
+                {
+                    mDynamicProbeCount = 1;
+                }
+                else if (mRenderReflectionProbeLevel == 1)
+                {
+                    mDynamicProbeCount = (U32)mProbes.size();
+                }
+                else if (mRenderReflectionProbeLevel == 2)
+                {
+                    mDynamicProbeCount = llmax((U32)mProbes.size(), 128);
+                }
+                else
+                {
+                    mDynamicProbeCount = 256;
+                }
+
+                if (mRenderReflectionProbeDynamicAllocation > 1)
+                {
+                    // Round mDynamicProbeCount to the nearest increment of 16
+                    mDynamicProbeCount = ((mDynamicProbeCount + mRenderReflectionProbeDynamicAllocation / 2) / mRenderReflectionProbeDynamicAllocation) * 16;
+                    mDynamicProbeCount = llclamp(mDynamicProbeCount, 1, mRenderReflectionProbeCount);
+                }
+                else
+                {
+                    mDynamicProbeCount = llclamp(mDynamicProbeCount + mRenderReflectionProbeDynamicAllocation, 1, mRenderReflectionProbeCount);
+                }
+            }
+            else
+            {
+                mDynamicProbeCount = mRenderReflectionProbeCount;
+            }
         }
 
         // The default probe owns slot zero. While the cinematic Live Probe is
@@ -421,6 +505,21 @@ void LLReflectionMapManager::update()
         return;
     }
 
+    if (reach_cull)
+    {
+        mRelevantProbeCount = ALProbeReach::stepRelevant(mReachRelevantCount, mRelevantProbeCount);
+
+        // An ordinary pass may have started while the probe was still in reach.
+        // Discard its partial scratch capture instead of spending more far passes.
+        if (mUpdatingProbe && !mUpdatingProbe->mInReach)
+        {
+            ALProbeSched::clearTxn(mUpdatingProbe->mSched);
+            mUpdatingProbe = nullptr;
+            mUpdatingFace = 0;
+            mRadiancePass = false;
+        }
+    }
+
     // [ProbeOnDemand] Collect the frame's dirty events, hit the probes they reach,
     // run the environment / light diff and the refresh-all barrier. OFF: a no-op.
     flushProbeSchedule();
@@ -477,12 +576,13 @@ void LLReflectionMapManager::update()
     // make sure we're assigning cube slots to the closest probes
 
     // first free any cube indices for distant probes
-    for (U32 i = mReflectionProbeCount; i < mProbes.size(); ++i)
+    for (U32 i = reach_cull ? 1u : mReflectionProbeCount; i < mProbes.size(); ++i)
     {
         LLReflectionMap* probe = mProbes[i];
         llassert(probe != nullptr);
 
-        if (probe && probe->mCubeIndex != -1 && mUpdatingProbe != probe)
+        if (probe && (i >= mReflectionProbeCount || (reach_cull && !probe->mInReach)) &&
+            probe->mCubeIndex != -1 && mUpdatingProbe != probe)
         { // free this index
             mCubeFree.push_back(probe->mCubeIndex);
 
@@ -501,7 +601,7 @@ void LLReflectionMapManager::update()
         // find the closest probe that needs a cube index
         LLReflectionMap* probe = mProbes[i];
 
-        if (probe->mCubeIndex == -1)
+        if (probe->mCubeIndex == -1 && (!reach_cull || probe->mInReach))
         {
             S32 idx = allocateCubeIndex();
             llassert(idx > 0); //if we're still in this loop, mCubeFree should not be empty and allocateCubeIndex should be returning good indices
@@ -2723,6 +2823,7 @@ void LLReflectionMapManager::setCinematicLiveProbe(
         resetCinematicRefresh(); // [LiveProbeRefresh]
         if (probe)
         {
+            probe->mInReach = true;
             probe->mComplete = false;
             probe->mFadeIn = 0.f;
         }

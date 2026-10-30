@@ -111,6 +111,10 @@ public:
     // probe has had at least one full update and is ready to render
     bool mComplete = false;
 
+    // Manager's once-per-frame reach result. Hero/mirror probes are managed
+    // separately and retain this default; newly registered probes fail open.
+    bool mInReach = true;
+
     // fade in parameter for this probe
     F32 mFadeIn = 0.f;
 

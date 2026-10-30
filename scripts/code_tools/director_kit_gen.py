@@ -343,9 +343,9 @@ def validate_data(data: dict) -> None:
     # Hidden system body: exactly one Soft shadows toggle, 2368 -> 2369 (10/28).
     # Ghost motion: exactly one built-in animation-cue toggle, 2369 -> 2370 (10/29).
     # Directed animation: exactly two Clones rows, Mirror and Source playing (10/29).
-    # Steady shadow slots: one persistent renderer switch, 2373 -> 2374 (10/29).
-    if len(pages) != 38 or row_count != 2374:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2374")
+    # Probe reach: one persistent renderer switch, 2374 -> 2375 (10/30).
+    if len(pages) != 38 or row_count != 2375:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2375")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2395,6 +2395,16 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        steady[0].get("bind") == "setting" and
                        steady[0].find("kit_switch").get("control_name") == "RenderShadowSlotHysteresis" and
                        b"shadow_slot_hysteresis" in outputs[out_dir / "director_kit_index.xml"]))
+        probe_page = ET.fromstring(outputs[out_dir / "panel_dpage_world_shadows_probes.xml"], parser=parser())
+        probe_rows = [row for row in probe_page.iter("kit_row")
+                      if row.get("setting") == "RenderReflectionProbeReachCull"]
+        checks.append(("Skip far probes is bound and searchable on World > Shadows > Probes",
+                       len(probe_rows) == 1 and probe_rows[0].get("label") == "Skip far probes" and
+                       probe_rows[0].get("help") == "Reflection probes entirely beyond draw distance (e.g. a region you just left) stop using probe slots and updates. Off = old behaviour." and
+                       probe_rows[0].get("bind") == "setting" and
+                       probe_rows[0].find("kit_switch").get("control_name") == "RenderReflectionProbeReachCull" and
+                       probe_rows[0] in list(find_named(probe_page, "kc_probe_reach").iter("kit_row")) and
+                       b"set_RenderReflectionProbeReachCull" in outputs[out_dir / "director_kit_index.xml"]))
         rig_page = next(rig.iter("kit_page"))
         checks.append(("rig session status and All off declare persistent chrome with reachable roster",
                        rig_page.get("persistent_status_widget") == "cine_rig_group_status" and

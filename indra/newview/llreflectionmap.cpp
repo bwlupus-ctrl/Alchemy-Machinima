@@ -291,6 +291,18 @@ bool LLReflectionMap::isActive() const
 
 bool LLReflectionMap::isRelevant() const
 {
+    static LLCachedControl<bool> reach_cull(gSavedSettings, "RenderReflectionProbeReachCull", true);
+    if (reach_cull)
+    {
+        // Relevance is also queried by culling, neighbors and auxiliary renders,
+        // before the normal end-of-frame manager update. Refresh before reading.
+        gPipeline.mReflectionMapManager.updateProbeReach();
+        if (!mInReach)
+        {
+            return false;
+        }
+    }
+
     static LLCachedControl<S32> RenderReflectionProbeLevel(gSavedSettings, "RenderReflectionProbeLevel", 3);
 
     if (mViewerObject && RenderReflectionProbeLevel > 0)
