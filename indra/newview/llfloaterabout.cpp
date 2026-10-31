@@ -131,9 +131,6 @@ bool LLFloaterAbout::postBuild()
     LLViewerTextEditor *contrib_names_widget =
         getChild<LLViewerTextEditor>("contrib_names", true);
 
-    LLViewerTextEditor *suppoter_names_widget =
-        getChild<LLViewerTextEditor>("alchemy_supporter_names", true);
-
     LLViewerTextEditor *licenses_widget =
         getChild<LLViewerTextEditor>("licenses_editor", true);
 
@@ -201,26 +198,6 @@ bool LLFloaterAbout::postBuild()
         contrib_names_widget->setText(contributors);
         contrib_names_widget->setEnabled(false);
         contrib_names_widget->startOfDoc();
-    }
-
-    {
-        // Get the names of supporters, extracted from .../doc/supporters.txt by viewer_manifest.py at build time
-        std::string supporters_path = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS,"supporters.txt");
-        llifstream supporters_file;
-        std::string supporters;
-        supporters_file.open(supporters_path.c_str());      /* Flawfinder: ignore */
-        if (supporters_file.is_open())
-        {
-            std::getline(supporters_file, supporters); // all names are on a single line
-            supporters_file.close();
-        }
-        else
-        {
-            LL_WARNS("AboutInit") << "Could not read supporters file at " << supporters_path << LL_ENDL;
-        }
-        suppoter_names_widget->setText(supporters);
-        suppoter_names_widget->setEnabled(false);
-        suppoter_names_widget->startOfDoc();
     }
 
     // Get the Versions and Copyrights, created at build time

@@ -91,14 +91,55 @@
    expanded="true"
    fit_panel="false"
    layout="topleft"
-   name="alchemy_credits_tab"
-   title="Alchemy">
+   name="absolute_cinema_credits_tab"
+   title="Absolute Cinema">
     <panel
      border="false" 
      follows="all"
      left="10"
+     name="absolute_cinema_credits_panel"
+     height="70"
+     top="10">
+      <text
+          follows="top|left|right"
+          font.style="BOLD"
+          height="10"
+          layout="topleft"
+          left="5"
+          name="absolute_cinema_intro"
+          top="0"
+          width="435"
+          wrap="true">
+Absolute Cinema is made by:
+      </text>
+      <text_editor
+       enabled="false" 
+       follows="top|left"
+       height="40"
+       bg_readonly_color="Transparent"
+       left="5"
+       text_color="LtGray"
+       max_length="65536"
+       name="absolute_cinema_names"
+       top_pad="5"
+       width="545"
+       word_wrap="true">
+bwlupus
+      </text_editor>
+    </panel>
+  </accordion_tab>
+  <accordion_tab
+   expanded="false"
+   fit_panel="false"
+   layout="topleft"
+   name="alchemy_credits_tab"
+   title="Alchemy">
+    <panel
+     border="false"
+     follows="all"
+     left="10"
      name="alchemy_credits_panel"
-     height="295"
+     height="130"
      top="10">
       <text
           follows="top|left|right"
@@ -132,36 +173,10 @@ Inusaito Kanya
 Zanibar Darkstone
 Doug Falta
       </text_editor>
-      <text
-          follows="top|left"
-          font.style="BOLD"
-          height="10"
-          layout="topleft"
-          left="5"
-          name="alchemy_thanks_intro"
-          top_pad="5"
-          width="435"
-          wrap="true">
-with special thanks to:
-      </text>
-      <text_editor
-       enabled="false" 
-       follows="top|left"
-       height="150"
-       bg_readonly_color="Transparent"
-       left="5"
-       text_color="LtGray"
-       max_length="65536"
-       name="alchemy_supporter_names"
-       top_pad="5"
-       width="545"
-       word_wrap="true">
-Dummy Name replaced at run time
-      </text_editor>
     </panel>
   </accordion_tab>
   <accordion_tab
-   expanded="true"
+   expanded="false"
    fit_panel="false"
    layout="topleft"
    name="sl_credits_tab"
