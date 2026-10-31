@@ -1,7 +1,7 @@
 # Focus — Director Kit page contract
 
 Page key: `focus_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **pure-setting** (14/14 setting-bound rows; 0 C++-referenced rows).
+Computed class: **pure-setting** (17/17 setting-bound rows; 0 C++-referenced rows).
 
 ## Real owners
 
@@ -31,9 +31,12 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `focus_point` / `focus_point_follows_pointer_check` (Follow mouse) | none | kit `toggle` ↔ `RenderFocusPointFollowsPointer` `Boolean` | `indra/newview/skins/default/xui/en/floater_phototools.xml:207` `FocusFollowsPointer`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:52` `focus_point_follows_pointer_check` |
 | `focus_point` / `FocusCrosshair` (Show crosshair) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:218`, `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:38` | kit `toggle` ↔ `RenderFocusPointCrosshair` `Boolean` | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:280` `diopter_focus_crosshair`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:55` `FocusCrosshair` |
 | `comp_guide` / `GuideStyle` (Style) | `combo_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:252`, `combo_box` `indra/newview/skins/default/xui/en/panel_dof.xml:409` | kit `combo` ↔ `RenderCompositionGuideStyle` `String` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:60` `GuideStyle` |
-| `comp_guide` / `GuideColor` (Colour) | `color_swatch` `indra/newview/skins/default/xui/en/floater_phototools.xml:286`, `color_swatch` `indra/newview/skins/default/xui/en/panel_dof.xml:443` | kit `color` ↔ `RenderCompositionGuideColor` `Color3` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:72` `GuideColor` |
-| `comp_guide` / `GuideThickness` (Thickness) | `spinner` `indra/newview/skins/default/xui/en/floater_phototools.xml:308`, `spinner` `indra/newview/skins/default/xui/en/panel_dof.xml:466` | kit `number` ↔ `RenderCompositionGuideWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:75` `GuideThickness` |
-| `comp_guide` / `GuideOpacity` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_phototools.xml:332`, `slider` `indra/newview/skins/default/xui/en/panel_dof.xml:490` | kit `slider` ↔ `RenderCompositionGuideVisibility` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:78` `GuideOpacity` |
+| `comp_guide` / `GuideColor` (Colour) | `color_swatch` `indra/newview/skins/default/xui/en/floater_phototools.xml:302`, `color_swatch` `indra/newview/skins/default/xui/en/panel_dof.xml:443` | kit `color` ↔ `RenderCompositionGuideColor` `Color3` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:76` `GuideColor` |
+| `comp_guide` / `GuideThickness` (Thickness) | `spinner` `indra/newview/skins/default/xui/en/floater_phototools.xml:324`, `spinner` `indra/newview/skins/default/xui/en/panel_dof.xml:466` | kit `number` ↔ `RenderCompositionGuideWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:79` `GuideThickness` |
+| `comp_guide` / `GuideOpacity` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_phototools.xml:348`, `slider` `indra/newview/skins/default/xui/en/panel_dof.xml:490` | kit `slider` ↔ `RenderCompositionGuideVisibility` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:82` `GuideOpacity` |
+| `comp_guide` / `GuideCenter` (Centre cross) | none | kit `toggle` ↔ `RenderCompositionGuideCenter` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:87` `GuideCenter` |
+| `comp_guide` / `GuideSafeAreas` (Safe areas) | none | kit `toggle` ↔ `RenderCompositionGuideSafeAreas` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:90` `GuideSafeAreas` |
+| `comp_guide` / `GuideWithUIHidden` (Show with interface hidden) | none | kit `toggle` ↔ `RenderCompositionGuideWithUIHidden` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:93` `GuideWithUIHidden` |
 
 ## Adapter extraction
 
@@ -48,7 +51,7 @@ No approved widget has a C++ literal reference. `ALFocusKitAdapter` owns only ex
 
 ## Bounded non-default audit states
 
-Manifest size: **23 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **30 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -75,6 +78,13 @@ Manifest size: **23 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `GuideStyle-option-3` | Only `GuideStyle` selects `Golden Ratio (Bottom Left)`; other selectors remain default. |
 | `GuideStyle-option-4` | Only `GuideStyle` selects `Golden Ratio (Bottom Right)`; other selectors remain default. |
 | `GuideStyle-option-5` | Only `GuideStyle` selects `Diagonal`; other selectors remain default. |
+| `GuideStyle-option-6` | Only `GuideStyle` selects `Phi Grid`; other selectors remain default. |
+| `GuideStyle-option-7` | Only `GuideStyle` selects `Golden Triangles`; other selectors remain default. |
+| `GuideStyle-option-8` | Only `GuideStyle` selects `Golden Triangles (Flipped)`; other selectors remain default. |
+| `GuideStyle-option-9` | Only `GuideStyle` selects `None (extras only)`; other selectors remain default. |
+| `GuideCenter-on` | Only `GuideCenter` is on; dependent visibility is measured. |
+| `GuideSafeAreas-on` | Only `GuideSafeAreas` is on; dependent visibility is measured. |
+| `GuideWithUIHidden-on` | Only `GuideWithUIHidden` is on; dependent visibility is measured. |
 
 ## Parity check
 
@@ -89,7 +99,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-15 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+18 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
