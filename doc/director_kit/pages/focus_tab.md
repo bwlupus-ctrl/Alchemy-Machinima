@@ -36,7 +36,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `comp_guide` / `GuideOpacity` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_phototools.xml:348`, `slider` `indra/newview/skins/default/xui/en/panel_dof.xml:490` | kit `slider` ↔ `RenderCompositionGuideVisibility` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:82` `GuideOpacity` |
 | `comp_guide` / `GuideCenter` (Centre cross) | none | kit `toggle` ↔ `RenderCompositionGuideCenter` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:87` `GuideCenter` |
 | `comp_guide` / `GuideSafeAreas` (Safe areas) | none | kit `toggle` ↔ `RenderCompositionGuideSafeAreas` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:90` `GuideSafeAreas` |
-| `comp_guide` / `GuideWithUIHidden` (Show with interface hidden) | none | kit `toggle` ↔ `RenderCompositionGuideWithUIHidden` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:93` `GuideWithUIHidden` |
+| `comp_guide` / `GuideWithUIHidden` (With UI hidden) | none | kit `toggle` ↔ `RenderCompositionGuideWithUIHidden` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:93` `GuideWithUIHidden` |
 
 ## Adapter extraction
 

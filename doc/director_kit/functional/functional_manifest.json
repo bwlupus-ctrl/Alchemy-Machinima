@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "31d3b95349f4abdcd813ff3b4a1943b5bbcbd8fd13429891ef3e0bd9cf5c3a3c",
+  "csv_sha256": "af137987106dd63529eaa5407f6b81609802d7749e90a26dd859fb476671f827",
   "interactive_rows": 2060,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -39095,7 +39095,7 @@
    "csv_index": 788,
    "card": "comp_guide",
    "card_title": "Composition guide",
-   "row_label": "Show with interface hidden",
+   "row_label": "With UI hidden",
    "xui_file": "",
    "xui_line": null,
    "widget_name": "GuideWithUIHidden",
@@ -179064,7 +179064,7 @@
    "csv_index": null,
    "card": "comp_guide",
    "card_title": "Composition guide",
-   "row_label": "Show with interface hidden",
+   "row_label": "With UI hidden",
    "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
    "xui_line": null,
    "widget_name": "GuideWithUIHidden",

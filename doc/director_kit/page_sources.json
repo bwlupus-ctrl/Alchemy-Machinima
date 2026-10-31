@@ -144463,7 +144463,7 @@
           "option_index": null,
           "option_label": null,
           "index": 6,
-          "label": "Show with interface hidden",
+          "label": "With UI hidden",
           "kind": "toggle",
           "widget": "GuideWithUIHidden",
           "matched_widget": "GuideWithUIHidden",

@@ -1281,7 +1281,7 @@ Computed logic class: **pure-setting**; 17/17 rows setting-bound, 0 rows referen
 | `comp_guide` / Opacity | `GuideOpacity` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:2822` (Global) | `indra/newview/skins/default/xui/en/floater_phototools.xml:348` `floater_phototools`/slider, `indra/newview/skins/default/xui/en/panel_dof.xml:490` `panel_dof`/slider | — | `focus_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:82` | — |
 | `comp_guide` / Centre cross | `GuideCenter` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:2833` (Global) | — | — | `focus_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:87` | — |
 | `comp_guide` / Safe areas | `GuideSafeAreas` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:2844` (Global) | — | — | `focus_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:90` | — |
-| `comp_guide` / Show with interface hidden | `GuideWithUIHidden` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:2855` (Global) | — | — | `focus_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:93` | — |
+| `comp_guide` / With UI hidden | `GuideWithUIHidden` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:2855` (Global) | — | — | `focus_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:93` | — |
 
 ### Filters (`filters_tab`)
 
