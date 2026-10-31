@@ -39,23 +39,23 @@
        width="128" />
       <button
        visible="false"
-       follows="bottom|left" 
+       follows="top|left"
        tool_tip="Check for and download updates."
        name="update_btn"
        label="Check for Updates"
        left="3"
-       bottom="-30"
+       top="298"
        height="22"
        width="125" />
       <button
-       follows="bottom|left" 
+       follows="top|left"
        image_overlay="Copy"
        image_overlay_alignment="left"
        tool_tip="Copy the About information to the clipboard."
        name="copy_btn"
        label="Copy Info"
        left="3"
-       bottom="4"
+       top="324"
        height="22"
        width="125" />
       <text_editor
@@ -79,17 +79,20 @@
       name="credits_panel">
 <accordion
  fit_parent="false"
- follows="all"
+ follows="top|left"
  layout="topleft"
  left="2"
  name="credits_accordion"
  single_expansion="true"
  top="0"
- right="-1">
+ width="566"
+ height="350">
 <!-- Credits -->
   <accordion_tab
    expanded="true"
    fit_panel="false"
+   height="70"
+   width="566"
    layout="topleft"
    name="absolute_cinema_credits_tab"
    title="Absolute Cinema">
@@ -98,7 +101,8 @@
      follows="all"
      left="10"
      name="absolute_cinema_credits_panel"
-     height="70"
+     width="546"
+     height="50"
      top="10">
       <text
           follows="top|left|right"
@@ -108,21 +112,21 @@
           left="5"
           name="absolute_cinema_intro"
           top="0"
-          width="435"
+          width="536"
           wrap="true">
 Absolute Cinema is made by:
       </text>
       <text_editor
        enabled="false" 
        follows="top|left"
-       height="40"
+       height="30"
        bg_readonly_color="Transparent"
        left="5"
        text_color="LtGray"
        max_length="65536"
        name="absolute_cinema_names"
        top_pad="5"
-       width="545"
+       width="536"
        word_wrap="true">
 bwlupus
       </text_editor>
@@ -131,6 +135,8 @@ bwlupus
   <accordion_tab
    expanded="false"
    fit_panel="false"
+   height="145"
+   width="566"
    layout="topleft"
    name="alchemy_credits_tab"
    title="Alchemy">
@@ -139,7 +145,8 @@ bwlupus
      follows="all"
      left="10"
      name="alchemy_credits_panel"
-     height="130"
+     width="546"
+     height="125"
      top="10">
       <text
           follows="top|left|right"
@@ -149,21 +156,21 @@ bwlupus
           left="5"
           name="alchemy_intro"
           top="0"
-          width="435"
+          width="536"
           wrap="true">
 Alchemy is brought to you by the Alchemy Development Group:
       </text>
       <text_editor
        enabled="false" 
        follows="top|left"
-       height="100"
+       height="105"
        bg_readonly_color="Transparent"
        left="5"
        text_color="LtGray"
        max_length="65536"
        name="alchemy_names"
        top_pad="5"
-       width="545"
+       width="536"
        word_wrap="true">
 Rye Cogtail
 Luminous Luminos
@@ -178,6 +185,8 @@ Doug Falta
   <accordion_tab
    expanded="false"
    fit_panel="false"
+   height="135"
+   width="566"
    layout="topleft"
    name="sl_credits_tab"
    title="Second Life">
@@ -186,7 +195,8 @@ Doug Falta
      follows="all"
      left="10"
      name="sl_credits_panel"
-     height="332"
+     width="546"
+     height="115"
      top="10">
       <text
           follows="top|left|right"
@@ -196,7 +206,7 @@ Doug Falta
           left="5"
           name="linden_intro"
           top="0"
-          width="465"
+          width="536"
           wrap="true">
 Second Life is brought to you by the Lindens, 
 with open source contributions from:
@@ -204,14 +214,14 @@ with open source contributions from:
       <text_editor
        enabled="false" 
        follows="top|left"
-       height="270"
+       height="85"
        bg_readonly_color="Transparent"
        left="5"
        text_color="LtGray"
        max_length="65536"
        name="contrib_names"
        top_pad="5"
-       width="545"
+       width="536"
        word_wrap="true">
 Dummy Name replaced at run time
       </text_editor>
