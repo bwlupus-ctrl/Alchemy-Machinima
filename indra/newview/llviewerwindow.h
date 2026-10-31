@@ -601,6 +601,10 @@ private:
 
 extern LLViewerWindow*  gViewerWindow;
 
+// Active Frame format rectangle inside a width x height view (any units, same
+// origin); false when the format is Off / Native. Defined in llviewerwindow.cpp.
+bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame);
+
 extern LLFrameTimer     gAwayTimer;             // tracks time before setting the avatar away state to true
 extern LLFrameTimer     gAwayTriggerTimer;      // how long the avatar has been away
 

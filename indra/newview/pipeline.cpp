@@ -9322,7 +9322,14 @@ void LLPipeline::renderFocusPoint()
 void LLPipeline::renderCompositionGuideOverlay()
 {
     static LLCachedControl<bool> show_guides(gSavedSettings, "RenderCompositionGuide", false);
-    if (!show_guides || !gViewerWindow || !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    static LLCachedControl<bool> with_ui_hidden(gSavedSettings, "RenderCompositionGuideWithUIHidden", true);
+    if (!show_guides || !gViewerWindow || gSnapshot || gCubeSnapshot)
+    {
+        return;
+    }
+    // Shown with the interface, and optionally while it is hidden (either
+    // hide-UI mechanism). gSnapshot above keeps it out of every capture buffer.
+    if (!gViewerWindow->getIndicatorsVisible() && !with_ui_hidden)
     {
         return;
     }
@@ -9339,8 +9346,10 @@ void LLPipeline::renderCompositionGuideOverlay()
     static LLCachedControl<F32> guide_thickness(gSavedSettings, "RenderCompositionGuideWidth", 2.0f);
     static LLCachedControl<F32> guide_visibility(gSavedSettings, "RenderCompositionGuideVisibility", 0.5f);
     static LLCachedControl<std::string> guide_style_setting(gSavedSettings, "RenderCompositionGuideStyle", std::string("rule_of_thirds"));
+    static LLCachedControl<bool> guide_center(gSavedSettings, "RenderCompositionGuideCenter", false);
+    static LLCachedControl<bool> guide_safe_areas(gSavedSettings, "RenderCompositionGuideSafeAreas", false);
 
-    enum class GuideStyle : U8 { RuleOfThirds, GoldenRatio, Diagonal };
+    enum class GuideStyle : U8 { RuleOfThirds, GoldenRatio, Diagonal, PhiGrid, GoldenTriangles, None };
     enum class GoldenOrientation : U8 { TopLeft, TopRight, BottomLeft, BottomRight };
 
     GuideStyle guide_style = GuideStyle::RuleOfThirds;
@@ -9370,6 +9379,19 @@ void LLPipeline::renderCompositionGuideOverlay()
     {
         guide_style = GuideStyle::Diagonal;
     }
+    else if (style_value == "phi_grid")
+    {
+        guide_style = GuideStyle::PhiGrid;
+    }
+    else if (style_value == "golden_triangles" || style_value == "golden_triangles_flipped")
+    {
+        guide_style = GuideStyle::GoldenTriangles;
+    }
+    else if (style_value == "none")
+    {
+        guide_style = GuideStyle::None;
+    }
+    const bool triangles_flipped = style_value == "golden_triangles_flipped";
 
     const F32 alpha = llclamp((F32)guide_visibility, 0.f, 1.f);
     if (alpha <= 0.f)
@@ -9377,14 +9399,19 @@ void LLPipeline::renderCompositionGuideOverlay()
         return;
     }
 
-    // Full viewport - unlike the donor there is no snapshot capture-frame
-    // rectangle to inset against (see comment above).
-    const F32 left_px = 0.f;
-    const F32 right_px = width;
-    const F32 bottom_px = 0.f;
-    const F32 top_px = height;
-    const F32 frame_width = width;
-    const F32 frame_height = height;
+    // Inside the active frame format (the same rectangle the Frame format
+    // guide marks); the whole 3D view when the format is Off / Native.
+    LLRect frame_rect;
+    if (!cinematicTargetFrameRect((S32)width, (S32)height, frame_rect))
+    {
+        frame_rect = LLRect(0, (S32)height, (S32)width, 0);
+    }
+    const F32 left_px = (F32)frame_rect.mLeft;
+    const F32 right_px = (F32)frame_rect.mRight;
+    const F32 bottom_px = (F32)frame_rect.mBottom;
+    const F32 top_px = (F32)frame_rect.mTop;
+    const F32 frame_width = right_px - left_px;
+    const F32 frame_height = top_px - bottom_px;
 
     LLGLDisable depth(GL_DEPTH_TEST);
     LLGLDisable cull(GL_CULL_FACE);
@@ -9438,6 +9465,40 @@ void LLPipeline::renderCompositionGuideOverlay()
     {
         const F32 y = bottom_px + frame_height * norm;
         draw_filled_rect(left_px, y - half_thickness, right_px, y + half_thickness);
+    };
+
+    // Slanted line as a thin quad, so it keeps the set thickness on drivers
+    // without wide GL lines.
+    auto draw_segment = [&](F32 x0, F32 y0, F32 x1, F32 y1)
+    {
+        const F32 dx = x1 - x0;
+        const F32 dy = y1 - y0;
+        const F32 len = sqrtf(dx * dx + dy * dy);
+        if (len <= 0.f)
+        {
+            return;
+        }
+        const F32 half = llmax(half_thickness, 0.5f);
+        const F32 nx = -dy / len * half;
+        const F32 ny = dx / len * half;
+        gGL.color4fv(line_color.mV);
+        gGL.begin(LLRender::TRIANGLES);
+        gGL.vertex2f(x0 + nx, y0 + ny); gGL.vertex2f(x0 - nx, y0 - ny); gGL.vertex2f(x1 - nx, y1 - ny);
+        gGL.vertex2f(x0 + nx, y0 + ny); gGL.vertex2f(x1 - nx, y1 - ny); gGL.vertex2f(x1 + nx, y1 + ny);
+        gGL.end();
+    };
+
+    // Rectangle outline inset by a fraction of the frame on every side.
+    auto draw_inset_box = [&](F32 inset)
+    {
+        const F32 l = left_px + frame_width * inset;
+        const F32 r = right_px - frame_width * inset;
+        const F32 b = bottom_px + frame_height * inset;
+        const F32 t = top_px - frame_height * inset;
+        draw_filled_rect(l - half_thickness, b - half_thickness, r + half_thickness, b + half_thickness);
+        draw_filled_rect(l - half_thickness, t - half_thickness, r + half_thickness, t + half_thickness);
+        draw_filled_rect(l - half_thickness, b, l + half_thickness, t);
+        draw_filled_rect(r - half_thickness, b, r + half_thickness, t);
     };
 
     switch (guide_style)
@@ -9659,18 +9720,65 @@ void LLPipeline::renderCompositionGuideOverlay()
         }
         case GuideStyle::Diagonal:
         {
-            const F32 line_width = llmax(thickness, 1.f);
-            gGL.flush();
-            gGL.setLineWidth(line_width);
-            gGL.begin(LLRender::LINES);
-            gGL.vertex2f(left_px, bottom_px);
-            gGL.vertex2f(right_px, top_px);
-            gGL.vertex2f(left_px, top_px);
-            gGL.vertex2f(right_px, bottom_px);
-            gGL.end();
-            gGL.setLineWidth(1.f);
+            draw_segment(left_px, bottom_px, right_px, top_px);
+            draw_segment(left_px, top_px, right_px, bottom_px);
             break;
         }
+        case GuideStyle::PhiGrid:
+        {
+            // 1 : 0.618 : 1 split, the golden-ratio cousin of thirds.
+            constexpr F32 phi_inv_sq = 0.38196601125f; // 1 / (1 + phi)
+            constexpr std::array<F32, 2> offsets = { phi_inv_sq, 1.f - phi_inv_sq };
+            for (F32 offset : offsets)
+            {
+                draw_vertical_norm(offset);
+                draw_horizontal_norm(offset);
+            }
+            break;
+        }
+        case GuideStyle::GoldenTriangles:
+        {
+            // One diagonal plus a perpendicular to it from each of the other
+            // two corners (measured in pixels, so it holds for any aspect).
+            const F32 ax = left_px;
+            const F32 ay = triangles_flipped ? top_px : bottom_px;
+            const F32 bx = right_px;
+            const F32 by = triangles_flipped ? bottom_px : top_px;
+            draw_segment(ax, ay, bx, by);
+
+            const F32 dx = bx - ax;
+            const F32 dy = by - ay;
+            const F32 len_sq = dx * dx + dy * dy;
+            if (len_sq > 0.f)
+            {
+                auto draw_perpendicular = [&](F32 px, F32 py)
+                {
+                    const F32 t = ((px - ax) * dx + (py - ay) * dy) / len_sq;
+                    draw_segment(px, py, ax + dx * t, ay + dy * t);
+                };
+                draw_perpendicular(left_px, triangles_flipped ? bottom_px : top_px);
+                draw_perpendicular(right_px, triangles_flipped ? top_px : bottom_px);
+            }
+            break;
+        }
+        case GuideStyle::None:
+        default:
+            break;
+    }
+
+    if (guide_safe_areas)
+    {
+        draw_inset_box(0.05f); // action safe, 90%
+        draw_inset_box(0.10f); // title safe, 80%
+    }
+
+    if (guide_center)
+    {
+        const F32 cx = left_px + frame_width * 0.5f;
+        const F32 cy = bottom_px + frame_height * 0.5f;
+        const F32 arm = llmax(llmin(frame_width, frame_height) * 0.03f, 6.f);
+        draw_filled_rect(cx - arm, cy - half_thickness, cx + arm, cy + half_thickness);
+        draw_filled_rect(cx - half_thickness, cy - arm, cx + half_thickness, cy + arm);
     }
 
     gGL.matrixMode(LLRender::MM_MODELVIEW);

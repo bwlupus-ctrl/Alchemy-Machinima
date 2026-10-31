@@ -261,11 +261,10 @@ LLFrameTimer    gAwayTriggerTimer;
 
 bool            gShowOverlayTitle = false;
 
-namespace
-{
-// Target-frame rectangle shared by the frame guide and the viewfinder. Returns
-// false when no aspect is active (Off / Native, bad values) or the frame is
-// as-near-native as the window, so there is nothing to mark.
+// Target-frame rectangle shared by the frame guide, the viewfinder and the
+// composition guide (pipeline.cpp). Returns false when no aspect is active
+// (Off / Native, bad values) or the frame is as-near-native as the window, so
+// there is nothing to mark.
 bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame)
 {
     static LLCachedControl<F32> configured_aspect(
@@ -306,6 +305,9 @@ bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame)
     // Native/as-near-native formats produce no useful guide and no draw call.
     return !(frame.getWidth() >= width - 1 && frame.getHeight() >= height - 1);
 }
+
+namespace
+{
 
 // Drawn only in LLViewerWindow::draw() for the live UI composite. It is
 // deliberately absent from snapshot renders and is placed before mRootView so

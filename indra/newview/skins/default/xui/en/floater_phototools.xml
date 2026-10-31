@@ -281,6 +281,22 @@
                     name="diagonal"
                     label="Diagonal"
                     value="diagonal" />
+                <combo_box.item
+                    name="phi_grid"
+                    label="Phi Grid"
+                    value="phi_grid" />
+                <combo_box.item
+                    name="golden_triangles"
+                    label="Golden Triangles"
+                    value="golden_triangles" />
+                <combo_box.item
+                    name="golden_triangles_flipped"
+                    label="Golden Triangles (Flipped)"
+                    value="golden_triangles_flipped" />
+                <combo_box.item
+                    name="none"
+                    label="None (extras only)"
+                    value="none" />
             </combo_box>
             <color_swatch
                 name="GuideColor"

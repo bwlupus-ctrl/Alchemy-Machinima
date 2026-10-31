@@ -2785,7 +2785,7 @@
         <key>RenderCompositionGuideStyle</key>
         <map>
             <key>Comment</key>
-            <string>[F8] rule_of_thirds | golden_ratio_top_left | golden_ratio_top_right | golden_ratio_bottom_left | golden_ratio_bottom_right | diagonal. Donor: Firestorm FSSnapshotGuideStyle.</string>
+            <string>[F8] rule_of_thirds | golden_ratio_top_left | golden_ratio_top_right | golden_ratio_bottom_left | golden_ratio_bottom_right | diagonal | phi_grid | golden_triangles | golden_triangles_flipped | none (extras only). Donor: Firestorm FSSnapshotGuideStyle.</string>
             <key>Persist</key>
             <integer>1</integer>
             <key>Type</key>
@@ -2829,6 +2829,39 @@
             <string>F32</string>
             <key>Value</key>
             <real>0.5</real>
+        </map>
+        <key>RenderCompositionGuideCenter</key>
+        <map>
+            <key>Comment</key>
+            <string>Composition guide: also draw a small centre cross. Combines with any style.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderCompositionGuideSafeAreas</key>
+        <map>
+            <key>Comment</key>
+            <string>Composition guide: also draw action-safe (90%) and title-safe (80%) boxes inside the frame. Combines with any style.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>RenderCompositionGuideWithUIHidden</key>
+        <map>
+            <key>Comment</key>
+            <string>Composition guide stays on screen while the interface is hidden (it then shows in a capture of the main window). Never written into snapshots.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
         </map>
         <key>FSSnapshotDoFWysiwyg</key>
         <map>

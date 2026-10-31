@@ -348,8 +348,9 @@ def validate_data(data: dict) -> None:
     # + Keep breathing while paused: exactly one persisted Time toggle (10/30).
     # Shadow depth + distance reach: exactly three Soft shadows rows, 2378 -> 2381 (10/30).
     # Hide cursor with interface: one global Frame format preference, 2381 -> 2382 (10/30).
-    if len(pages) != 38 or row_count != 2382:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2382")
+    # Composition guide: Centre cross, Safe areas, Show with interface hidden, 2382 -> 2385 (10/31).
+    if len(pages) != 38 or row_count != 2385:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2385")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
