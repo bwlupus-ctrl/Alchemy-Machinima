@@ -22,6 +22,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 
 // File includes
 #include "altoolalign.h"
@@ -442,9 +443,12 @@ public:
 
 void ALToolAlign::align()
 {
+    ALProjectorTracker::instance().pauseSelectionForEdit();
     // no linkset parts, please
     auto& select_mgr = LLSelectMgr::instance();
     select_mgr.promoteSelectionToRoot();
+    select_mgr.updateSelectionCenter();
+    mBBox = get_selection_axis_aligned_bbox();
 
     std::vector<LLPointer<LLViewerObject> > objects;
     std::map<LLPointer<LLViewerObject>, LLBBox > original_bboxes;

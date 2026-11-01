@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 #include "alpaneldirectorvcam.h"
 
 #include "llviewermenu.h"
@@ -6030,6 +6031,7 @@ class LLToolsSnapObjectXY : public view_listener_t
 {
     bool handleEvent(const LLSD& userdata)
     {
+        ALProjectorTracker::instance().pauseSelectionForEdit();
         F64 snap_size = (F64)gSavedSettings.getF32("GridResolution");
 
         for (LLObjectSelection::root_iterator iter = LLSelectMgr::getInstance()->getSelection()->root_begin();

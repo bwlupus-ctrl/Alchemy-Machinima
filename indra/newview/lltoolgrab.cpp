@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 
 #include "lltoolgrab.h"
 
@@ -203,6 +204,27 @@ void LLToolGrabBase::pickCallback(const LLPickInfo& pick_info)
     }
 }
 
+namespace
+{
+// Preserve the material point in prim coordinates as the linkset is restored.
+// A ray repick could miss a Follow light that returned to its real fixture.
+bool restoreGrabPick(LLViewerObject* object, LLPickInfo& pick)
+{
+    const ALProjectorTrackMath::Pose old{object->getRenderPosition(), object->getRenderRotation()};
+    const bool changed = ALProjectorTracker::instance().pauseObjectForEdit(object);
+    if (!ALProjectorTracker::instance().canUseTransform(object)) return false;
+    if (changed)
+    {
+        const LLQuaternion delta = ~old.rotation * object->getRenderRotation();
+        pick.mIntersection = (pick.mIntersection - old.position) * delta + object->getRenderPosition();
+        pick.mPosGlobal = gAgent.getPosGlobalFromAgent(pick.mIntersection);
+        pick.mNormal = pick.mNormal * delta;
+        pick.mBinormal = pick.mBinormal * delta;
+    }
+    return true;
+}
+}
+
 bool LLToolGrabBase::handleObjectHit(const LLPickInfo& info)
 {
     mGrabPick = info;
@@ -229,6 +251,8 @@ bool LLToolGrabBase::handleObjectHit(const LLPickInfo& info)
         return true;
     }
 
+    if (!restoreGrabPick(objectp, mGrabPick)) return false;
+    ALProjectorTracker::instance().beginGrab(objectp);
     setMouseCapture( true );
 
     // Grabs always start from the root
@@ -344,6 +368,8 @@ void LLToolGrabBase::startSpin()
         // Client-only local previews have no sim object to spin.
         return;
     }
+    if (!restoreGrabPick(objectp, mGrabPick)) return;
+    ALProjectorTracker::instance().beginGrab(objectp);
     mSpinGrabbing = true;
 
     // Was saveSelectedObjectTransform()
@@ -405,6 +431,8 @@ void LLToolGrabBase::startGrab()
         return;
     }
 
+    if (!restoreGrabPick(objectp, mGrabPick)) return;
+    ALProjectorTracker::instance().beginGrab(objectp);
     LLViewerObject *root = (LLViewerObject *)objectp->getRoot();
 
     // drag from center
@@ -507,6 +535,7 @@ void LLToolGrabBase::handleHoverActive(S32 x, S32 y, MASK mask)
 {
     LLViewerObject* objectp = mGrabPick.getObject();
     if (!objectp || !hasMouseCapture() ) return;
+    if (!ALProjectorTracker::instance().canUseTransform(objectp)) return;
     if (objectp->isDead())
     {
         // Bail out of drag because object has been killed
@@ -792,6 +821,7 @@ void LLToolGrabBase::handleHoverNonPhysical(S32 x, S32 y, MASK mask)
 {
     LLViewerObject* objectp = mGrabPick.getObject();
     if (!objectp || !hasMouseCapture() ) return;
+    if (!ALProjectorTracker::instance().canUseTransform(objectp)) return;
     if (objectp->isDead())
     {
         // Bail out of drag because object has been killed
@@ -1049,6 +1079,7 @@ void LLToolGrabBase::onMouseCaptureLost()
     if (!objectp)
     {
         gViewerWindow->showCursor();
+        ALProjectorTracker::instance().endGrab();
         return;
     }
     // First, fix cursor placement
@@ -1091,6 +1122,7 @@ void LLToolGrabBase::onMouseCaptureLost()
     mHideBuildHighlight = false;
 
     mGrabPick.mObjectID.setNull();
+    ALProjectorTracker::instance().endGrab();
 
     LLSelectMgr::getInstance()->updateSelectionCenter();
     gAgentCamera.setPointAt(POINTAT_TARGET_CLEAR);
@@ -1102,6 +1134,7 @@ void LLToolGrabBase::onMouseCaptureLost()
 
 void LLToolGrabBase::resetStateWithoutSending()
 {
+    ALProjectorTracker::instance().endGrab();
     mMode = GRAB_INACTIVE;
     mSpinGrabbing = false;
     mHideBuildHighlight = false;
@@ -1189,10 +1222,11 @@ LLVector3d LLToolGrabBase::getGrabPointGlobal()
 }
 
 
-void send_ObjectGrab_message(LLViewerObject* object, const LLPickInfo & pick, const LLVector3 &grab_offset)
+void send_ObjectGrab_message(LLViewerObject* object, LLPickInfo & pick, const LLVector3 &grab_offset)
 {
     // Client-only local previews have no sim object; localid 0 means nothing there.
     if (!object || object->isLocalOnly()) return;
+    if (!restoreGrabPick(object, pick)) return;
 
     LLMessageSystem *msg = gMessageSystem;
 

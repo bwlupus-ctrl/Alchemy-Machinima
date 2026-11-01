@@ -176449,7 +176449,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 124,
+              "line": 257,
               "class": "ALProjectorTracker",
               "function": "enable",
               "wired_class": "ALPanelPracticals",
@@ -176484,7 +176484,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8130,
+              "line": 8131,
               "class": "LLFloaterDirector",
               "function": "showProjectorTrack",
               "wired_class": "LLFloaterDirector",
@@ -176516,7 +176516,7 @@
           "cpp": [
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 91,
+              "line": 143,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176589,7 +176589,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 91,
+              "line": 143,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176657,7 +176657,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 91,
+              "line": 143,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176722,7 +176722,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 91,
+              "line": 143,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176798,7 +176798,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 145,
+              "line": 283,
               "class": "ALProjectorTracker",
               "function": "capture",
               "wired_class": "ALPanelPracticals",
@@ -176863,7 +176863,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 59,
+              "line": 89,
               "class": "ALProjectorTracker",
               "function": "state",
               "wired_class": "ALPanelPracticals",

@@ -5072,7 +5072,7 @@ void LLSelectMgr::sendMultipleUpdate(U32 type)
 {
     if (type == UPD_NONE) return;
     // Last-resort barrier: an unhooked editor must never send a tracked pose.
-    if (ALProjectorTracker::instance().pauseSelectionForEdit()) return;
+    if (ALProjectorTracker::instance().selectionSendBarrier()) return;
     // Client-only local previews are moved/rotated/scaled purely locally; never
     // send their transforms to the sim.
     if (selectionAllLocalPreview(mSelectedObjects)) return;
@@ -5527,6 +5527,13 @@ void LLSelectMgr::sendAttach(LLObjectSelectionHandle selection_handle, U8 attach
         return;
     }
 
+    // Also protect attachment requests using an alternate selection handle.
+    for (auto node = selection_handle->begin(); node != selection_handle->end(); ++node)
+    {
+        auto* object = (*node)->getObject();
+        ALProjectorTracker::instance().pauseObjectForEdit(object);
+        if (!ALProjectorTracker::instance().canUseTransform(object)) return;
+    }
     bool build_mode = LLToolMgr::getInstance()->inEdit();
     // Special case: Attach to default location for this object.
     if (0 == attachment_point ||
@@ -5796,8 +5803,8 @@ void LLSelectMgr::saveSelectedObjectTextures()
 // also need to know to which simulator to send update message
 void LLSelectMgr::saveSelectedObjectTransform(EActionType action_type)
 {
-    // PICK is selection/bookkeeping only. A real manip edit restores before
-    // taking its drag baseline, including counter-moved child prims.
+    // Restore before even the PICK baseline of a click that starts a drag.
+    ALProjectorTracker::instance().selectionChanged();
     if (action_type != SELECT_ACTION_TYPE_PICK)
         ALProjectorTracker::instance().pauseSelectionForEdit();
     if (mSelectedObjects->isEmpty())
@@ -6023,6 +6030,7 @@ void LLSelectMgr::packObjectID(LLSelectNode* node, void *user_data)
 void LLSelectMgr::packObjectIDAndRotation(LLSelectNode* node, void *user_data)
 {
     ALProjectorTracker::instance().pauseObjectForEdit(node->getObject());
+    if (!ALProjectorTracker::instance().canUseTransform(node->getObject())) return;
     gMessageSystem->nextBlockFast(_PREHASH_ObjectData);
     gMessageSystem->addU32Fast(_PREHASH_ObjectLocalID, node->getObject()->getLocalID() );
     gMessageSystem->addQuatFast(_PREHASH_Rotation, node->getObject()->getRotation());
@@ -7231,6 +7239,10 @@ void LLSelectMgr::generateSilhouette(LLSelectNode* nodep, const LLVector3& view_
     if (objectp && objectp->getPCode() == LL_PCODE_VOLUME)
     {
         ((LLVOVolume*)objectp)->generateSilhouette(nodep, view_point);
+        nodep->mSilhouettePosition = objectp->getRenderPosition();
+        nodep->mSilhouetteRotation = objectp->getRenderRotation();
+        nodep->mSilhouetteFrame = objectp->mDrawable->isActive() ? objectp->getRenderMatrix() : LLMatrix4();
+        nodep->mSilhouetteFrameValid = true;
     }
 }
 
@@ -7293,6 +7305,10 @@ LLSelectNode::LLSelectNode(const LLSelectNode& nodep)
     mSilhouetteVertices = nodep.mSilhouetteVertices;
     mSilhouetteNormals = nodep.mSilhouetteNormals;
     mSilhouetteExists = nodep.mSilhouetteExists;
+    mSilhouettePosition = nodep.mSilhouettePosition;
+    mSilhouetteRotation = nodep.mSilhouetteRotation;
+    mSilhouetteFrame = nodep.mSilhouetteFrame;
+    mSilhouetteFrameValid = nodep.mSilhouetteFrameValid;
     mObject = nodep.mObject;
 
     std::vector<LLColor4>::const_iterator color_iter;
@@ -7703,7 +7719,21 @@ void LLSelectNode::renderOneSilhouette(const LLColor4 &color)
     }
 
 
-    if (drawable->isActive())
+    auto& tracker = ALProjectorTracker::instance();
+    if (mSilhouetteFrameValid && (tracker.tracked(objectp->getID()) || tracker.tracked(objectp->getRootEdit()->getID())))
+    {
+        // Reuse the captured contour, carrying it with the current rigid pose.
+        // This also handles an independently driven child outside Build tools.
+        LLMatrix4 old_pose, new_pose;
+        old_pose.initAll(LLVector3(1,1,1), mSilhouetteRotation, mSilhouettePosition);
+        new_pose.initAll(LLVector3(1,1,1), objectp->getRenderRotation(), objectp->getRenderPosition());
+        old_pose.invert();
+        LLMatrix4 frame = mSilhouetteFrame;
+        frame *= old_pose;
+        frame *= new_pose;
+        gGL.multMatrix((const F32*)frame.mMatrix);
+    }
+    else if (drawable->isActive())
     {
         gGL.multMatrix((F32*) objectp->getRenderMatrix().mMatrix);
     }
@@ -7899,6 +7929,7 @@ S32 get_family_count(LLViewerObject *parent)
 // -----------------------------------------------------------------------------
 void LLSelectMgr::updateSelectionCenter()
 {
+    ALProjectorTracker::instance().selectionChanged();
     const F32 MOVE_SELECTION_THRESHOLD = 1.f;       //  Movement threshold in meters for updating selection
                                                     //  center (tractor beam)
 
@@ -9243,7 +9274,7 @@ bool LLSelectMgr::selectionMove(const LLVector3& displ,
 
 void LLSelectMgr::sendSelectionMove()
 {
-    if (ALProjectorTracker::instance().pauseSelectionForEdit()) return;
+    if (ALProjectorTracker::instance().selectionSendBarrier()) return;
     LLSelectNode *node = mSelectedObjects->getFirstRootNode();
     if (node == NULL)
     {

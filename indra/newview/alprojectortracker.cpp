@@ -3,33 +3,47 @@
 #include "llagent.h"
 #include "lldirectorcast.h"
 #include "lldrawable.h"
+#include "llfloatertools.h"
 #include "lljoint.h"
 #include "llprismlens.h"
 #include "llselectmgr.h"
+#include "llspatialpartition.h"
 #include "lltimer.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llviewerregion.h"
 #include "llvoavatar.h"
 #include "llvovolume.h"
 #include "pipeline.h"
 using namespace ALProjectorTrackMath;
 namespace
 {
-// Match Path Object's placement write and moved-child traversal. Resolve the
-// changed drawables immediately as well: this tracker runs AFTER the normal
-// moved list, so parent render transforms are current before child-local math.
 void markOne(LLDrawable* drawable)
 {
     if (!drawable || drawable->isDead()) return;
     gPipeline.markMoved(drawable, false);
     drawable->clearState(LLDrawable::EARLY_MOVE);
     gPipeline.updateMoveNormalAsync(drawable);
+    // Child bounds live inside the bridge. Refit them before early cube culls.
+    if (auto* volume = drawable->getVOVolume())
+    {
+        if (volume->getVolume())
+        {
+            volume->updateRelativeXform();
+            volume->genBBoxes(false);
+        }
+    }
 }
 void markMoved(LLViewerObject* object)
 {
     markOne(object->mDrawable);
     for (LLViewerObject* child : object->getChildren())
         if (child) markOne(child->mDrawable);
+    // Hero/mirror probes run before updateGeom drains the bridge move queue.
+    // Refit this linkset now without reordering the global render pipeline.
+    auto* root = object->getRootEdit();
+    if (root->getRegion() && root->mDrawable.notNull())
+        if (auto* bridge = root->mDrawable->getSpatialBridge()) bridge->updateMove();
 }
 LLViewerObject* parentOf(LLViewerObject* object)
 {
@@ -37,6 +51,7 @@ LLViewerObject* parentOf(LLViewerObject* object)
 }
 void place(LLViewerObject* object, const Pose& world)
 {
+    const bool silhouette = object->isChanged(LLXform::SILHOUETTE);
     if (auto* parent = parentOf(object))
     {
         const Pose local = relative(world, {parent->getRenderPosition(), parent->getRenderRotation()});
@@ -48,7 +63,22 @@ void place(LLViewerObject* object, const Pose& world)
         object->setPositionAgent(world.position);
         object->setRotation(world.rotation);
     }
+    // Cached selection contours are carried by the current rigid pose. Keep
+    // real camera/geometry invalidations, not drive-only silhouette dirtiness.
+    if (!silhouette) object->clearChanged(LLXform::SILHOUETTE);
     markMoved(object);
+}
+bool subjectFrame(LLVOAvatar* avatar, LLJoint* joint, Pose& frame)
+{
+    if (!avatar || !joint || !avatar->getRootJoint()) return false;
+    LLVector3 position = joint->getWorldPosition();
+    if (avatar->hasClientOuterTransform())
+        position = renderedJoint(position, avatar->getClientOuterTransformMatrix());
+    // Joint world positions use the common agent origin, including neighbors;
+    // global rebasing avoids any dependence on the subject's region origin.
+    position = gAgent.getPosAgentFromGlobal(gAgent.getPosGlobalFromAgent(position));
+    frame = {position, bodyYaw(avatar->getRootJoint()->getWorldRotation())};
+    return frame.position.isFinite() && frame.rotation.isFinite();
 }
 }
 ALProjectorTracker& ALProjectorTracker::instance()
@@ -71,19 +101,41 @@ const char* ALProjectorTracker::jointName(S32 index)
 bool ALProjectorTracker::eligible(LLViewerObject* object)
 {
     auto* volume = dynamic_cast<LLVOVolume*>(object);
-    return volume && !object->isDead() && !object->isAttachment() &&
+    return volume && object->getRegion() && !object->isDead() && !object->isAttachment() &&
         !object->isHUDAttachment() && !object->isLocalOnly() &&
         (volume->isLightSpotlight() || LLPrismLens::hasProjectorBinding(object->getID()));
 }
+bool ALProjectorTracker::canUseTransform(LLViewerObject* object) const
+{
+    if (mActive.empty() || !object) return true;
+    for (const auto& id : mActive)
+    {
+        auto* candidate = gObjectList.findObject(id);
+        if (!candidate || candidate->getRootEdit() != object->getRootEdit()) continue;
+        Pose checked;
+        if (mStates.at(id).restorePending || (candidate->hasLastServerTransform() &&
+            !candidate->getLastServerTransform(checked.position, checked.rotation))) return false;
+    }
+    return true;
+}
 bool ALProjectorTracker::serverEditTransform(LLViewerObject* object, Pose& pose) const
 {
-    if (!object || (!tracked(object->getID()) && !tracked(object->getRootEdit()->getID()))) return false;
-    pose = tracked(object->getID()) ? state(object->getID()).server
-                                   : Pose{object->getPosition(), object->getRotation()};
+    if (mActive.empty() || !object || !canUseTransform(object) ||
+        (!tracked(object->getID()) && !tracked(object->getRootEdit()->getID()))) return false;
+    pose = {object->getPosition(), object->getRotation()};
+    if (tracked(object->getID()))
+    {
+        pose = state(object->getID()).server;
+        object->getLastServerTransform(pose.position, pose.rotation);
+    }
     for (auto* parent = parentOf(object); parent; parent = parentOf(parent))
     {
-        const Pose frame = tracked(parent->getID()) ? state(parent->getID()).server
-                          : Pose{parent->getPosition(), parent->getRotation()};
+        Pose frame{parent->getPosition(), parent->getRotation()};
+        if (tracked(parent->getID()))
+        {
+            frame = state(parent->getID()).server;
+            parent->getLastServerTransform(frame.position, frame.rotation);
+        }
         pose = apply(pose, frame);
     }
     return true;
@@ -101,25 +153,106 @@ void ALProjectorTracker::configure(const LLUUID& id, const LLUUID& subject,
     if (!has_subject) stop(id, "Choose a subject");
     ++mRevision;
 }
-void ALProjectorTracker::restore(LLViewerObject* object, const State& s)
+bool ALProjectorTracker::restore(LLViewerObject* object, State& s)
 {
-    if (!object || object->isDead()) return;
-    // A relink changes the coordinate frame. Never apply an old local snapshot
-    // to a different parent; processUpdateCore will capture the new frame.
+    if (!object || object->isDead()) return true;
+    if (!s.overridden && !s.restorePending) return true;
+    Pose server;
     const auto* parent = parentOf(object);
-    if (object->getRegion() != s.region || (parent ? parent->getID() : LLUUID::null) != s.parent) return;
-    object->setPosition(s.server.position);
-    object->setRotation(s.server.rotation);
+    if (!object->getLastServerTransform(server.position, server.rotation))
+    {
+        // Never reinterpret stale packet locals in a different frame. A cache
+        // with unresolved metadata cannot fall back to the driven object pose.
+        if (object->hasLastServerTransform() || object->getRegion() != s.region ||
+            (parent ? parent->getID() : LLUUID::null) != s.parent)
+        {
+            if (!s.restorePending || !s.paused) ++mRevision;
+            s.restorePending = true;
+            s.paused = true;
+            s.status = "Restore pending: waiting for server pose";
+            return false;
+        }
+        server = s.server; // uncached initial pose, still in the identical frame
+    }
+    object->setPosition(server.position);
+    object->setRotation(server.rotation);
+    s.server = server;
+    s.overridden = false;
+    s.restorePending = false;
     markMoved(object);
+    return true;
 }
 void ALProjectorTracker::stop(const LLUUID& id, const std::string& status)
 {
     auto it = mStates.find(id);
     if (it == mStates.end()) return;
-    if (mActive.erase(id)) restore(gObjectList.findObject(id), it->second);
     it->second.enabled = false;
-    it->second.status = status;
+    // Track off / clear must retain protection until restoration succeeds.
+    if (restore(gObjectList.findObject(id), it->second))
+    {
+        mActive.erase(id);
+        it->second.status = status;
+    }
     ++mRevision;
+}
+bool ALProjectorTracker::selected(LLViewerObject* object) const
+{
+    auto selection = LLSelectMgr::getInstance()->getSelection();
+    for (auto node = selection->begin(); node != selection->end(); ++node)
+    {
+        auto* candidate = (*node)->getObject();
+        if (candidate && candidate->getRootEdit() == object->getRootEdit()) return true;
+    }
+    return false;
+}
+bool ALProjectorTracker::grabbed(LLViewerObject* object) const
+{
+    return mGrabRoot.notNull() && object->getRootEdit()->getID() == mGrabRoot;
+}
+bool ALProjectorTracker::pause(LLViewerObject* object, State& s, const char* status)
+{
+    const bool changed = s.overridden || s.restorePending;
+    const bool was_paused = s.paused;
+    const std::string old_status = s.status;
+    s.paused = true;
+    if (restore(object, s)) s.status = status;
+    if (!was_paused || changed || old_status != s.status) ++mRevision;
+    return changed;
+}
+void ALProjectorTracker::refreshPause(LLViewerObject* object, State& s)
+{
+    if (grabbed(object)) pause(object, s, "Paused while grabbed");
+    else if (gFloaterTools && gFloaterTools->getVisible() && selected(object))
+        pause(object, s, "Paused while selected in Build tools");
+    else if (!s.restorePending && s.paused)
+    {
+        s.paused = false;
+        s.current = {object->getRenderPosition(), object->getRenderRotation()};
+        s.status = "Tracking";
+        ++mRevision;
+    }
+}
+void ALProjectorTracker::selectionChanged()
+{
+    if (mActive.empty()) return;
+    bool restored = false;
+    for (const auto& id : mActive)
+        if (auto* object = gObjectList.findObject(id))
+        {
+            auto& s = mStates.at(id);
+            const bool overridden = s.overridden;
+            refreshPause(object, s);
+            restored |= overridden && !s.overridden;
+        }
+    if (restored)
+    {
+        auto selection = LLSelectMgr::getInstance()->getSelection();
+        for (auto node = selection->begin(); node != selection->end(); ++node)
+        {
+            (*node)->mLastPositionLocal.clearVec();
+            (*node)->mLastRotation = LLQuaternion();
+        }
+    }
 }
 void ALProjectorTracker::enable(const LLUUID& id, bool enabled)
 {
@@ -127,7 +260,7 @@ void ALProjectorTracker::enable(const LLUUID& id, bool enabled)
     auto* object = gObjectList.findObject(id);
     auto& s = mStates[id];
     if (!eligible(object) || !s.hasSubject) return;
-    if (tracked(id)) return;
+    if (tracked(id)) { s.enabled = true; refreshPause(object, s); return; }
     s.server = {object->getPosition(), object->getRotation()};
     object->getLastServerTransform(s.server.position, s.server.rotation);
     s.current = {object->getRenderPosition(), object->getRenderRotation()};
@@ -138,7 +271,12 @@ void ALProjectorTracker::enable(const LLUUID& id, bool enabled)
     s.missingSince = 0.;
     s.enabled = true;
     s.status = "Tracking";
+    s.overridden = false;
     mActive.insert(id);
+    s.restorePending = object->hasLastServerTransform() &&
+        !object->getLastServerTransform(s.server.position, s.server.rotation);
+    if (s.restorePending) pause(object, s, "Restore pending: waiting for server pose");
+    refreshPause(object, s);
     mRegion = gAgent.getRegion();
     ++mRevision;
 }
@@ -150,91 +288,133 @@ void ALProjectorTracker::capture(const LLUUID& id)
     auto* object = gObjectList.findObject(id);
     auto* avatar = s.hasSubject ? LLDirectorCast::instance().resolve(s.subject) : nullptr;
     LLJoint* joint = avatar ? avatar->getJoint(jointName(s.joint)) : nullptr;
-    if (!object || !joint || !joint->getWorldPosition().isFinite()) return;
+    Pose frame;
+    if (!object || !canUseTransform(object) || !subjectFrame(avatar, joint, frame)) return;
     s.current = {object->getRenderPosition(), object->getRenderRotation()};
-    s.offset = relative(s.current, {joint->getWorldPosition(), avatar->getRenderRotation()});
+    s.offset = relative(s.current, frame);
     s.captured = true;
 }
 void ALProjectorTracker::beforeObjectUpdate(LLViewerObject* object)
 {
+    if (mActive.empty()) return;
     if (tracked(object->getID())) restore(object, mStates.at(object->getID()));
 }
 void ALProjectorTracker::receivedServerPose(LLViewerObject* object, const LLVector3& position, const LLQuaternion& rotation)
 {
+    if (mActive.empty()) return;
     if (!tracked(object->getID()) || object->isDead() || !position.isFinite() || !rotation.isFinite()) return;
     auto& s = mStates.at(object->getID());
     s.server = {position, rotation};
     const auto* parent = parentOf(object);
     s.parent = parent ? parent->getID() : LLUUID::null;
     s.region = object->getRegion();
+    // The decoder installs this accepted pose immediately after this hook.
+    // LLViewerObject retains the packet parent ID even for unresolved orphans.
+    s.overridden = false;
+    Pose checked;
+    s.restorePending = !object->getLastServerTransform(checked.position, checked.rotation);
+    if (!s.enabled && !s.restorePending) { mActive.erase(object->getID()); ++mRevision; }
 }
-void ALProjectorTracker::pauseObjectForEdit(LLViewerObject* object)
+bool ALProjectorTracker::pauseObjectForEdit(LLViewerObject* object)
 {
-    if (!object) return;
-    for (auto it = mActive.begin(); it != mActive.end();)
+    if (mActive.empty() || !object) return false;
+    bool changed = false;
+    for (const auto& id : mActive)
     {
-        const LLUUID id = *it++;
-        auto* tracked_object = gObjectList.findObject(id);
-        if (tracked_object && tracked_object->getRootEdit() == object->getRootEdit())
-            stop(id, "Paused for Build edit; re-enable Track to resume");
+        auto* candidate = gObjectList.findObject(id);
+        if (candidate && candidate->getRootEdit() == object->getRootEdit())
+            changed |= pause(candidate, mStates.at(id),
+                gFloaterTools && gFloaterTools->getVisible() && selected(candidate)
+                ? "Paused while selected in Build tools" : "Paused for edit");
     }
+    return changed;
 }
 bool ALProjectorTracker::pauseSelectionForEdit()
 {
-    bool paused = false;
+    if (mActive.empty()) return false;
+    bool changed = false;
     auto selection = LLSelectMgr::getInstance()->getSelection();
-    for (auto it = mActive.begin(); it != mActive.end();)
-    {
-        const LLUUID id = *it++;
-        auto* object = gObjectList.findObject(id);
-        if (!object) continue;
-        auto* root = object->getRootEdit();
-        bool selected = false;
-        for (auto node = selection->begin(); node != selection->end(); ++node)
-        {
-            auto* candidate = (*node)->getObject();
-            if (candidate && candidate->getRootEdit() == root) { selected = true; break; }
-        }
-        if (selected) { stop(id, "Paused for Build edit; re-enable Track to resume"); paused = true; }
-    }
-    if (paused)
-    {
-        // Clear edit override caches before the selection manager can reapply
-        // a previous preview. Reset the baseline without triggering another edit.
+    for (auto node = selection->begin(); node != selection->end(); ++node)
+        changed |= pauseObjectForEdit((*node)->getObject());
+    // Never recapture a mixed selection after callers may have mutated it.
+    if (changed)
         for (auto node = selection->begin(); node != selection->end(); ++node)
         {
             (*node)->mLastPositionLocal.clearVec();
             (*node)->mLastRotation = LLQuaternion();
         }
-        LLSelectMgr::getInstance()->updateSelectionCenter();
-        LLSelectMgr::getInstance()->saveSelectedObjectTransform(SELECT_ACTION_TYPE_PICK);
+    return changed;
+}
+bool ALProjectorTracker::selectionSendBarrier()
+{
+    if (mActive.empty()) return false;
+    bool cancel = pauseSelectionForEdit();
+    auto selection = LLSelectMgr::getInstance()->getSelection();
+    for (const auto& id : mActive)
+        if (auto* object = gObjectList.findObject(id))
+            if (selected(object) && !canUseTransform(object)) cancel = true;
+    if (!cancel) return false;
+    // Backstop cancellation rolls back EVERY selected node, including ordinary
+    // prims already mutated by an unhooked align/snap/scale operation.
+    for (auto node = selection->begin(); node != selection->end(); ++node)
+    {
+        auto* object = (*node)->getObject();
+        if (!object) continue;
+        Pose server;
+        if (object->getLastServerTransform(server.position, server.rotation))
+        {
+            object->setPosition(server.position);
+            object->setRotation(server.rotation);
+        }
+        else if (!tracked(object->getID()) || canUseTransform(object))
+        {
+            object->setPosition((*node)->mSavedPositionLocal);
+            LLQuaternion rotation = (*node)->mSavedRotation;
+            if (auto* parent = parentOf(object)) rotation = rotation * ~parent->getRotationRegion();
+            object->setRotation(rotation);
+        }
+        object->setScale((*node)->mSavedScale);
+        markMoved(object);
+        (*node)->mLastPositionLocal.clearVec();
+        (*node)->mLastRotation = LLQuaternion();
     }
-    return paused;
+    LLSelectMgr::getInstance()->updateSelectionCenter();
+    return true;
+}
+void ALProjectorTracker::beginGrab(LLViewerObject* object)
+{
+    if (!object) return;
+    mGrabRoot = object->getRootEdit()->getID(); // even when Track starts mid-grab
+    pauseObjectForEdit(object);
+    selectionChanged();
+}
+void ALProjectorTracker::endGrab()
+{
+    mGrabRoot.setNull();
+    selectionChanged();
 }
 void ALProjectorTracker::drop(const LLUUID& id)
 {
+    if (mActive.empty()) return;
     mActive.erase(id);
     if (mStates.erase(id)) ++mRevision;
 }
 void ALProjectorTracker::clear()
 {
     if (mStates.empty() && mActive.empty()) return;
-    while (!mActive.empty())
-    {
-        const LLUUID id = *mActive.begin();
-        stop(id, "Track off");
-    }
-    mStates.clear();
+    const auto active = mActive;
+    for (const auto& id : active) stop(id, "Track off");
+    for (auto it = mStates.begin(); it != mStates.end();)
+        if (!tracked(it->first)) it = mStates.erase(it); else ++it;
     mRegion = nullptr;
     ++mRevision;
 }
 void ALProjectorTracker::update(F32 dt)
 {
     if (mActive.empty()) return;
-    if (mRegion != gAgent.getRegion()) { clear(); return; }
+    if (mRegion != gAgent.getRegion()) { clear(); mRegion = gAgent.getRegion(); }
     const F64 now = LLTimer::getTotalSeconds();
-    // Linksets are flat. Place roots before tracked children so a child uses
-    // this frame's final rendered parent, even when both lights are tracked.
+    // Place roots before children, using this frame's final parent transform.
     for (S32 pass = 0; pass != 2; ++pass)
     for (auto it = mActive.begin(); it != mActive.end();)
     {
@@ -242,12 +422,25 @@ void ALProjectorTracker::update(F32 dt)
         auto* object = gObjectList.findObject(id);
         if (object && !object->isDead() && (object->isRootEdit() ? 0 : 1) != pass) continue;
         if (!object || object->isDead()) { mActive.erase(id); mStates.erase(id); ++mRevision; continue; }
-        if (!eligible(object) || object->getRegion() != mStates.at(id).region)
-        { stop(id, "Projector unavailable"); continue; }
         auto& s = mStates.at(id);
+        if (!s.enabled)
+        {
+            if (restore(object, s)) { mActive.erase(id); ++mRevision; }
+            continue;
+        }
+        if (!eligible(object)) { stop(id, "Projector unavailable"); continue; }
+        if (s.restorePending && !restore(object, s)) continue;
+        refreshPause(object, s);
+        if (s.paused) continue;
+        Pose server = s.server;
+        if (object->hasLastServerTransform() && !object->getLastServerTransform(server.position, server.rotation))
+        { s.restorePending = true; pause(object, s, "Restore pending: waiting for server pose"); continue; }
+        const Pose true_world = parentOf(object) ? apply(server,
+            {parentOf(object)->getRenderPosition(), parentOf(object)->getRenderRotation()}) :
+            Pose{gAgent.getPosAgentFromGlobal(object->getRegion()->getOriginGlobal() + LLVector3d(server.position)), server.rotation};
+        // Aim overrides rotation only, even with a missing joint or subject.
+        if (s.mode == AIM) s.current.position = true_world.position;
         auto* avatar = LLDirectorCast::instance().resolve(s.subject);
-        if (avatar && avatar->getRegion() != object->getRegion())
-        { stop(id, "Subject left region"); continue; }
         LLJoint* joint = avatar && !avatar->isDead() && avatar->mDrawable.notNull()
             ? avatar->getJoint(jointName(s.joint)) : nullptr;
         if (!avatar || avatar->isDead() || avatar->mDrawable.isNull())
@@ -255,20 +448,23 @@ void ALProjectorTracker::update(F32 dt)
             if (!s.missingSince) s.missingSince = now;
             if (now - s.missingSince > 2.) { stop(id, "Subject unavailable"); continue; }
             place(object, s.current);
+            s.overridden = true;
             continue;
         }
         s.missingSince = 0.;
-        if (!joint || !joint->getWorldPosition().isFinite())
-        { place(object, s.current); continue; } // never snap to the root
-        const Pose frame{joint->getWorldPosition(), avatar->getRenderRotation()};
+        Pose frame;
+        if (!subjectFrame(avatar, joint, frame))
+        { place(object, s.current); s.overridden = true; continue; }
         if (!s.captured)
         {
             s.offset = relative(s.current, frame);
             s.captured = true;
         }
         Pose desired = s.mode == FOLLOW ? apply(s.offset, frame) : s.current;
-        if (s.mode == AIM) desired.rotation = aim(frame.position - s.current.position, s.current.rotation);
+        if (s.mode == AIM) desired.rotation = aim(frame.position - true_world.position, s.current.rotation);
         s.current = smooth(s.current, desired, dt, s.smoothing);
+        if (s.mode == AIM) s.current.position = true_world.position;
         place(object, s.current);
+        s.overridden = true;
     }
 }

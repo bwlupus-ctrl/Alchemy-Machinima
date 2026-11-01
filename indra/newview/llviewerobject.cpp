@@ -1348,7 +1348,7 @@ U32 LLViewerObject::processUpdateMessage(LLMessageSystem *mesgsys,
     LLQuaternion new_rot;
     LLVector3 new_scale = getScale();
 
-    U32 parent_id = 0;
+    U32 parent_id = mHasServerTransform ? mLastServerParentLocalID : 0;
     U8  material = 0;
     U8 click_action = 0;
     U32 crc = 0;
@@ -2342,6 +2342,15 @@ U32 LLViewerObject::processUpdateMessage(LLMessageSystem *mesgsys,
     // Track only accepted packets, before ping extrapolation / target omega.
     if (server_position.isFinite() && new_rot.isFinite())
     {
+        // Keep the packet frame, including unresolved parents, independently
+        // of recursive setRegion propagation and later orphan adoption.
+        mLastServerParentLocalID = parent_id;
+        mLastServerParentUUID.setNull();
+        if (parent_id && getRegion())
+            gObjectList.getUUIDFromLocal(mLastServerParentUUID, parent_id,
+                getRegion()->getHost().getAddress(), getRegion()->getHost().getPort());
+        mLastServerRegionHandle = getRegion()->getHandle();
+        mLastServerOriginGlobal = getRegion()->getOriginGlobal();
         mLastServerPosition = server_position;
         mLastServerRotation = new_rot;
         mHasServerTransform = true;
@@ -4577,6 +4586,27 @@ const LLVector3 &LLViewerObject::getPositionRegion() const
     }
 
     return mPositionRegion;
+}
+
+bool LLViewerObject::getLastServerTransform(LLVector3& position, LLQuaternion& rotation) const
+{
+    if (!mHasServerTransform || !getRegion()) return false;
+    const auto* parent = static_cast<const LLViewerObject*>(getParent());
+    const bool same_parent = parent &&
+        (mLastServerParentUUID.notNull() ? parent->getID() == mLastServerParentUUID :
+         parent->getLocalID() == mLastServerParentLocalID &&
+         getRegion()->getHandle() == mLastServerRegionHandle);
+    if (!ALProjectorTrackMath::restorableFrame(mLastServerParentLocalID != 0,
+                                             parent != nullptr, same_parent)) return false;
+    position = mLastServerPosition;
+    if (!parent)
+    {
+        LLVector3 delta;
+        delta.setVec(mLastServerOriginGlobal - getRegion()->getOriginGlobal());
+        position += delta;
+    }
+    rotation = mLastServerRotation;
+    return position.isFinite() && rotation.isFinite();
 }
 
 const LLVector3 LLViewerObject::getPositionEdit() const

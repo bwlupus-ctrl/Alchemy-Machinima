@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 
 #include "llfloatertools.h"
 
@@ -985,6 +986,9 @@ bool LLFloaterTools::canClose()
 // virtual
 void LLFloaterTools::onOpen(const LLSD& key)
 {
+    ALProjectorTracker::instance().selectionChanged();
+    LLSelectMgr::getInstance()->updateSelectionCenter();
+    LLSelectMgr::getInstance()->saveSelectedObjectTransform(SELECT_ACTION_TYPE_PICK);
     mParcelSelection = LLViewerParcelMgr::getInstance()->getFloatingParcelSelection();
     mObjectSelection = LLSelectMgr::getInstance()->getEditSelection();
 

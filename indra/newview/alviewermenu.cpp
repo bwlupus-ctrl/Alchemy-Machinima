@@ -18,6 +18,7 @@
 **/
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 #include "alavataranimspeed.h"
 #include "alviewermenu.h"
 
@@ -258,6 +259,7 @@ namespace
 
     bool is_powerful_wizard_object()
     {
+        ALProjectorTracker::instance().pauseSelectionForEdit();
         LLViewerObject* objpos = LLSelectMgr::getInstance()->getSelection()->getFirstRootObject();
         if (objpos)
         {

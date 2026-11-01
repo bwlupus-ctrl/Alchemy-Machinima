@@ -379,7 +379,7 @@ void LLPanelObject::getState( )
         volobjp = (LLVOVolume *)objectp;
     }
 
-    if( !objectp )
+    if (!objectp || !ALProjectorTracker::instance().canUseTransform(objectp))
     {
         //forfeit focus
         if (gFocusMgr.childHasKeyboardFocus(this))
@@ -1788,8 +1788,8 @@ void LLPanelObject::getVolumeParams(LLVolumeParams& volume_params)
 // BUG: Make work with multiple objects
 void LLPanelObject::sendRotation(bool btn_down)
 {
-    // Discard the first commit's cached preview values and refresh all axes
-    // from the restored server pose; the next edit operates on that baseline.
+    // Backstop only: normal Build selection already restored the pose.
+    // Discard cached controls only if an override actually survived to here.
     if (ALProjectorTracker::instance().pauseSelectionForEdit())
     {
         getState();
@@ -1862,8 +1862,8 @@ void LLPanelObject::sendRotation(bool btn_down)
 // BUG: Make work with multiple objects
 void LLPanelObject::sendScale(bool btn_down)
 {
-    // Discard the first commit's cached preview values and refresh all axes
-    // from the restored server pose; the next edit operates on that baseline.
+    // Backstop only: normal Build selection already restored the pose.
+    // Discard cached controls only if an override actually survived to here.
     if (ALProjectorTracker::instance().pauseSelectionForEdit())
     {
         getState();
@@ -1916,8 +1916,8 @@ void LLPanelObject::sendScale(bool btn_down)
 
 void LLPanelObject::sendPosition(bool btn_down)
 {
-    // Discard the first commit's cached preview values and refresh all axes
-    // from the restored server pose; the next edit operates on that baseline.
+    // Backstop only: normal Build selection already restored the pose.
+    // Discard cached controls only if an override actually survived to here.
     if (ALProjectorTracker::instance().pauseSelectionForEdit())
     {
         getState();
@@ -2470,7 +2470,10 @@ bool LLPanelObject::menuEnableItem(const LLSD& userdata)
 
 void LLPanelObject::onCopyPos()
 {
-    mClipboardPos = LLVector3(mCtrlPosX->get(), mCtrlPosY->get(), mCtrlPosZ->get());
+    if (!ALProjectorTracker::instance().canUseTransform(mObject)) return;
+    ALProjectorTrackMath::Pose server;
+    mClipboardPos = ALProjectorTracker::instance().serverEditTransform(mObject, server)
+        ? server.position : LLVector3(mCtrlPosX->get(), mCtrlPosY->get(), mCtrlPosZ->get());
 
     std::string stringVec = llformat("<%g, %g, %g>", mClipboardPos.mV[VX], mClipboardPos.mV[VY], mClipboardPos.mV[VZ]);
     LLView::getWindow()->copyTextToClipboard(utf8str_to_wstring(stringVec));
@@ -2499,7 +2502,14 @@ void LLPanelObject::onCopySize()
 
 void LLPanelObject::onCopyRot()
 {
+    if (!ALProjectorTracker::instance().canUseTransform(mObject)) return;
+    ALProjectorTrackMath::Pose server;
     mClipboardRot = LLVector3(mCtrlRotX->get(), mCtrlRotY->get(), mCtrlRotZ->get());
+    if (ALProjectorTracker::instance().serverEditTransform(mObject, server))
+    {
+        server.rotation.getEulerAngles(&mClipboardRot.mV[VX], &mClipboardRot.mV[VY], &mClipboardRot.mV[VZ]);
+        mClipboardRot *= RAD_TO_DEG;
+    }
 
     std::string stringVec = llformat("<%g, %g, %g>", mClipboardRot.mV[VX], mClipboardRot.mV[VY], mClipboardRot.mV[VZ]);
     LLView::getWindow()->copyTextToClipboard(utf8str_to_wstring(stringVec));
@@ -2717,9 +2727,12 @@ void LLPanelObject::onClickPipetteParams()
 
 void LLPanelObject::onPosSelect(bool success, LLViewerObject* obj, const LLTextureEntry& te)
 {
-    if (success && obj && mObject && obj->permMove() && mObject->permMove())
+    if (success && obj && mObject && obj->permMove() && mObject->permMove() &&
+        ALProjectorTracker::instance().canUseTransform(obj))
     {
-        LLVector3 selected_pos = obj->getPositionEdit();
+        ALProjectorTrackMath::Pose server;
+        LLVector3 selected_pos = ALProjectorTracker::instance().serverEditTransform(obj, server)
+            ? server.position : obj->getPositionEdit();
 
         // Clamp pos on non-attachments, just keep the prims within the region
         if (!mObject->isAttachment())
@@ -2766,9 +2779,12 @@ void LLPanelObject::onSizeSelect(bool success, LLViewerObject* obj, const LLText
 
 void LLPanelObject::onRotSelect(bool success, LLViewerObject* obj, const LLTextureEntry& te)
 {
-    if (success && obj && mObject && obj->permMove() && mObject->permMove())
+    if (success && obj && mObject && obj->permMove() && mObject->permMove() &&
+        ALProjectorTracker::instance().canUseTransform(obj))
     {
-        LLQuaternion selected_rot = obj->getRotationEdit();
+        ALProjectorTrackMath::Pose server;
+        LLQuaternion selected_rot = ALProjectorTracker::instance().serverEditTransform(obj, server)
+            ? server.rotation : obj->getRotationEdit();
 
         LLVector3 new_euler_angles;
         selected_rot.getEulerAngles(&(new_euler_angles.mV[VX]), &(new_euler_angles.mV[VY]), &(new_euler_angles.mV[VZ]));

@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 
 // file include
 #include "llpanelvolume.h"
@@ -1832,6 +1833,7 @@ void LLPanelVolume::onCommitProbe(LLUICtrl* ctrl, void* userdata)
 
     if (volobjp->setReflectionProbeIsBox(is_box))
     {
+        ALProjectorTracker::instance().pauseSelectionForEdit();
         // make the volume match the probe
         auto* select_mgr = LLSelectMgr::getInstance();
 

@@ -245,6 +245,10 @@ public:
     std::vector< std::vector<LLVector2> >  mGLTFOffsets;
     std::vector<LLVector3>  mSilhouetteVertices;    // array of vertices to render silhouette of object
     std::vector<LLVector3>  mSilhouetteNormals; // array of normals to render silhouette of object
+    LLVector3               mSilhouettePosition;
+    LLQuaternion            mSilhouetteRotation;
+    LLMatrix4               mSilhouetteFrame;
+    bool                    mSilhouetteFrameValid = false;
     bool                    mSilhouetteExists;  // need to generate silhouette?
 
 protected:

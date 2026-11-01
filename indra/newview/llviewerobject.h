@@ -491,13 +491,8 @@ public:
     // Latest accepted ObjectUpdate, before ping/omega extrapolation. A local
     // render override must restore these values, including when it starts on
     // an already moving prim. This cache is never serialized or sent.
-    bool getLastServerTransform(LLVector3& position, LLQuaternion& rotation) const
-    {
-        if (!mHasServerTransform) return false;
-        position = mLastServerPosition;
-        rotation = mLastServerRotation;
-        return true;
-    }
+    bool hasLastServerTransform() const { return mHasServerTransform; }
+    bool getLastServerTransform(LLVector3& position, LLQuaternion& rotation) const;
 
     void sendShapeUpdate();
 
@@ -1060,6 +1055,10 @@ protected:
     F32             mRotTime;                   // Amount (in seconds) that object has rotated according to angular velocity (llSetTargetOmega)
     LLQuaternion    mAngularVelocityRot;        // accumulated rotation from the angular velocity computations
     LLQuaternion    mPreviousRotation;
+    LLVector3d      mLastServerOriginGlobal;
+    LLUUID          mLastServerParentUUID;
+    U32             mLastServerParentLocalID = 0;
+    U64             mLastServerRegionHandle = 0;
     LLVector3       mLastServerPosition;
     LLQuaternion    mLastServerRotation;
     bool            mHasServerTransform = false;

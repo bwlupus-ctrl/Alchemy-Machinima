@@ -8118,7 +8118,8 @@ void LLFloaterDirector::showProjectorTrack(const LLUUID& projector)
 {
     auto* object = gObjectList.findObject(projector);
     if (!object || object->isDead()) return;
-    LLSelectMgr::getInstance()->deselectAll();
+    // Existing primary-selection operation; navigation must not clear the
+    // rest of the user's world selection.
     LLSelectMgr::getInstance()->selectObjectOnly(object);
     if (auto* director = LLFloaterReg::showTypedInstance<LLFloaterDirector>("director"))
     {

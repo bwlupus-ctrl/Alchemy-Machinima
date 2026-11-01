@@ -31,28 +31,41 @@ template<> template<> void projector_track_object::test<1>()
         const LLQuaternion q = aim(direction, LLQuaternion());
         ensure("finite aim", q.isFinite());
         expectVector("beam is local -Z", LLVector3(0,0,-1) * q, direction);
-        if (std::fabs(direction.mV[2]) < .98f)
-        {
-            LLVector3 up = LLVector3::z_axis - direction * direction.mV[2];
-            up.normalize();
-            expectVector("gobo up is projected world Z", LLVector3::y_axis * q, up);
-        }
+        const LLVector3 up = LLVector3::y_axis * q;
+        ensure("up perpendicular to beam", std::fabs(up * direction) < 2.e-4f);
+        ensure("unit up", std::fabs(up.length() - 1.f) < 2.e-4f);
     }
 }
 template<> template<> void projector_track_object::test<2>()
 {
-    // Cross directly over each pole: tiny positional noise must not spin the gobo.
+    // Full outside -> cone -> pole -> cone -> outside sweep at fine steps.
+    // Bound adjacent up changes relative to beam travel, including noise near
+    // both former hard thresholds, on both sides of both poles.
     for (F32 sign : {-1.f, 1.f})
     {
-        LLQuaternion q = aim(LLVector3(.02f,0,sign), LLQuaternion());
-        for (S32 step = 19; step >= -20; --step)
+        LLVector3 old_beam(.5f, 0, sign);
+        old_beam.normalize();
+        LLQuaternion q = aim(old_beam, LLQuaternion());
+        auto step = [&](LLVector3 beam)
         {
+            beam.normalize();
             const LLVector3 old_up = LLVector3::y_axis * q;
-            LLVector3 direction(step * .001f, 0, sign);
-            direction.normalize();
-            q = aim(direction, q);
-            expectVector("near-vertical beam", LLVector3(0,0,-1) * q, direction);
-            ensure("continuous roll through pole", old_up * (LLVector3::y_axis * q) > .999f);
+            q = aim(beam, q);
+            const LLVector3 up = LLVector3::y_axis * q;
+            const F32 beam_angle = std::atan2((old_beam % beam).length(), old_beam * beam);
+            const F32 up_angle = std::atan2((old_up % up).length(), old_up * up);
+            ensure("roll bounded by beam travel", up_angle <= 3.1f * beam_angle + 2.e-5f);
+            projector_track_data::expectVector("beam through pole", LLVector3(0,0,-1) * q, beam);
+            old_beam = beam;
+        };
+        for (S32 n = 499; n >= -500; --n) step(LLVector3(n * .001f, 0, sign));
+        for (F32 side : {-1.f, 1.f})
+        {
+            for (S32 n = -499; n <= 500; ++n) step(LLVector3(n * .001f * side, 0, sign));
+            for (S32 n = 499; n >= 203; --n) step(LLVector3(n * .001f * side, 0, sign));
+            for (S32 n = 0; n < 1000; ++n)
+                step(LLVector3(side * (.20306f + .0003f * std::sin(n * .1f)),
+                              .0001f * std::sin(n * .07f), sign));
         }
     }
     const LLQuaternion previous(.7f, LLVector3::x_axis);
@@ -105,5 +118,36 @@ template<> template<> void projector_track_object::test<6>()
     const Pose held = smooth(initial, target, 0.f, .15f);
     expectVector("zero dt holds position", held.position, initial.position);
     sameRotation(held.rotation, initial.rotation);
+}
+
+template<> template<> void projector_track_object::test<7>()
+{
+    const LLVector3 foot(10,20,1), native(10,20,3), animated(.2f,-.1f,.3f);
+    LLMatrix4 outer;
+    outer.initAll(LLVector3(2,2,2), LLQuaternion(), -foot);
+    const LLVector3 visible = renderedJoint(native, outer);
+    expectVector("scaled rendered joint", visible, foot + (native - foot) * 2.f);
+    expectVector("animated displacement scales too", renderedJoint(native + animated, outer) - visible, animated * 2.f);
+    const Pose frame{visible, LLQuaternion(.4f, LLVector3::z_axis)};
+    const Pose light{visible + LLVector3(1,2,3), LLQuaternion()};
+    const Pose offset = relative(light, frame);
+    const Pose moved{renderedJoint(native + animated, outer), frame.rotation};
+    expectVector("capture and tick share outer transform", apply(offset, moved).position, light.position + animated * 2.f);
+}
+template<> template<> void projector_track_object::test<8>()
+{
+    ensure("root region conversion allowed", restorableFrame(false, false, false));
+    ensure("child region propagation preserves locals", restorableFrame(true, true, true));
+    ensure("orphan reunion with packet parent allowed", restorableFrame(true, true, true));
+    ensure("unresolved packet parent stays guarded", !restorableFrame(true, false, false));
+    ensure("different parent stays guarded", !restorableFrame(true, true, false));
+    ensure("root snapshot cannot restore into child", !restorableFrame(false, true, false));
+    ensure("child snapshot cannot restore into root", !restorableFrame(true, false, true));
+}
+template<> template<> void projector_track_object::test<9>()
+{
+    const LLQuaternion yaw(.6f, LLVector3::z_axis);
+    const LLQuaternion body = LLQuaternion(.2f, LLVector3::x_axis) * yaw;
+    sameRotation(bodyYaw(body), yaw);
 }
 }

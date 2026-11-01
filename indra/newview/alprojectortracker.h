@@ -1,6 +1,6 @@
 /** Session-only, local prim overrides. No simulator writes or scene/settings data.
  * Server snapshots are in object parent coordinates, never inferred from a driven pose.
- * Build edits pause a drive until explicitly re-armed; selection does not pause it.
+ * Build selection and grab gestures pause a drive; Track remains armed.
  */
 #ifndef AL_PROJECTOR_TRACKER_H
 #define AL_PROJECTOR_TRACKER_H
@@ -29,6 +29,9 @@ public:
         LLViewerRegion* region = nullptr;
         F64 missingSince = 0.;
         bool captured = false;
+        bool paused = false;
+        bool overridden = false;
+        bool restorePending = false;
     };
     static ALProjectorTracker& instance();
     const State& state(const LLUUID& id) const;
@@ -47,7 +50,12 @@ public:
     void drop(const LLUUID& id);
     // Returns true if any selected linkset drive was restored and paused.
     bool pauseSelectionForEdit();
-    void pauseObjectForEdit(LLViewerObject* object);
+    bool pauseObjectForEdit(LLViewerObject* object);
+    void selectionChanged();
+    bool selectionSendBarrier();
+    void beginGrab(LLViewerObject* object);
+    void endGrab();
+    bool canUseTransform(LLViewerObject* object) const;
     static bool eligible(LLViewerObject* object);
     // Read-only Build display: never seed a spinner or clipboard with a fake
     // tracked transform, even if Track is switched off before the next commit.
@@ -55,9 +63,14 @@ public:
     static const char* jointName(S32 index);
 private:
     void stop(const LLUUID& id, const std::string& status);
-    void restore(LLViewerObject* object, const State& state);
+    bool restore(LLViewerObject* object, State& state);
+    bool pause(LLViewerObject* object, State& state, const char* status);
+    bool selected(LLViewerObject* object) const;
+    bool grabbed(LLViewerObject* object) const;
+    void refreshPause(LLViewerObject* object, State& state);
     std::unordered_map<LLUUID, State> mStates;
     std::unordered_set<LLUUID> mActive;
+    LLUUID mGrabRoot;
     U64 mRevision = 1;
     LLViewerRegion* mRegion = nullptr;
 };
