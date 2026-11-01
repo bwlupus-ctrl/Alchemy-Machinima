@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 38 | 2188 | 35 | 58 | 0 | 21 |
+| 38 | 2189 | 35 | 58 | 0 | 21 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -1658,11 +1658,11 @@ Computed logic class: **code-driven**; 76/86 rows setting-bound, 7 rows referenc
 
 ### Exposure (`exposure_tab`)
 
-Real owner roots: `exposure_tab_logic` in `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:3` (51 matched rows), `panel_exposure_hub` in `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:2` (25 matched rows), `floater_director` in `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matched rows).
+Real owner roots: `exposure_tab_logic` in `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:3` (52 matched rows), `panel_exposure_hub` in `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:2` (25 matched rows), `floater_director` in `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matched rows).
 
-C++ owner classes: `ALPanelExposurePage` (14 references), `ALPanelExposureHub` (4 references), `ALExposureSettingsHistory` (2 references), `ALFloaterLightBox` (2 references), `ALKitBindingRegistry` (2 references), `LLButton` (1 references), `LLFloaterReg` (1 references), `LLFloaterDirector` (1 references).
+C++ owner classes: `ALPanelExposurePage` (17 references), `ALPanelExposureHub` (4 references), `ALExposureSettingsHistory` (2 references), `ALFloaterLightBox` (2 references), `ALKitBindingRegistry` (2 references), `LLButton` (1 references), `LLFloaterReg` (1 references), `LLFloaterDirector` (1 references).
 
-Computed logic class: **code-driven**; 43/51 rows setting-bound, 13 rows referenced in C++.
+Computed logic class: **code-driven**; 44/52 rows setting-bound, 16 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
@@ -1698,25 +1698,26 @@ Computed logic class: **code-driven**; 43/51 rows setting-bound, 13 rows referen
 | `sensor` / ISO | `sensor_iso` | `combo` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4550` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:159` `exposure_tab_logic`/combo_box | `ALKitBindingRegistry::add indra/newview/alpanelexposurepage.cpp:234`, `ALPanelExposurePage::alKitSetTypedControl indra/newview/alpanelexposurepage.cpp:236` | — | — |
 | `sensor` / Camera preset | `sensor_preset` | `combo` | `U32` `indra/newview/app_settings/settings_alchemy.xml:4561` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:193` `exposure_tab_logic`/combo_box | — | — | — |
 | `sensor` / Brightness mode | `sensor_brightness` | `combo` | `U32` `indra/newview/app_settings/settings_alchemy.xml:4572` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:203` `exposure_tab_logic`/combo_box | — | — | — |
-| `sensor` / Noise amount | `sensor_amount` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4583` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:211` `exposure_tab_logic`/slider | — | — | — |
-| `sensor` / Chroma noise | `sensor_chroma` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4594` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:216` `exposure_tab_logic`/slider | — | — | — |
-| `sensor` / Fixed seed | `sensor_seed_fixed` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:4605` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:221` `exposure_tab_logic`/kit_switch | — | — | — |
-| `sensor` / Seed | `sensor_seed` | `text` | `U32` `indra/newview/app_settings/settings_alchemy.xml:4616` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:224` `exposure_tab_logic`/line_editor | `ALKitBindingRegistry::add indra/newview/alpanelexposurepage.cpp:244`, `ALPanelExposurePage::getU32 indra/newview/alpanelexposurepage.cpp:249` | — | — |
-| `sensor` / Sensor readout | `sensor_readout` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:227` `exposure_tab_logic`/text | — | — | — |
-| `sensor` / Status | `sensor_status` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:230` `exposure_tab_logic`/text | — | — | — |
-| `custom_sensor` / Base ISO | `sensor_custom_base` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4627` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:235` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / HCG switch ISO | `sensor_custom_switch` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4638` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:238` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / Base headroom | `sensor_custom_headroom` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4649` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:241` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / LCG capacity | `sensor_custom_lcg_fullwell` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4660` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:244` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / LCG read noise | `sensor_custom_lcg_readnoise` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4671` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:247` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / LCG base gain | `sensor_custom_lcg_analogbase` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4682` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:250` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / LCG black level | `sensor_custom_lcg_pedestal` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4693` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:253` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / LCG white level | `sensor_custom_lcg_white` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4704` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:256` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / HCG capacity | `sensor_custom_hcg_fullwell` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4715` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:259` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / HCG read noise | `sensor_custom_hcg_readnoise` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4726` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:262` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / HCG base gain | `sensor_custom_hcg_analogbase` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4737` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:265` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / HCG black level | `sensor_custom_hcg_pedestal` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4748` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:268` `exposure_tab_logic`/spinner | — | — | — |
-| `custom_sensor` / HCG white level | `sensor_custom_hcg_white` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4759` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:271` `exposure_tab_logic`/spinner | — | — | — |
+| `sensor` / Sensor noise | `sensor_noise_enabled` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:4539` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:211` `exposure_tab_logic`/kit_switch | — | — | — |
+| `sensor` / Noise amount | `sensor_amount` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4583` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:214` `exposure_tab_logic`/slider | — | — | — |
+| `sensor` / Chroma noise | `sensor_chroma` | `slider` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4594` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:219` `exposure_tab_logic`/slider | — | — | — |
+| `sensor` / Fixed seed | `sensor_seed_fixed` | `toggle` | `Boolean` `indra/newview/app_settings/settings_alchemy.xml:4605` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:224` `exposure_tab_logic`/kit_switch | — | — | — |
+| `sensor` / Seed | `sensor_seed` | `text` | `U32` `indra/newview/app_settings/settings_alchemy.xml:4616` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:227` `exposure_tab_logic`/line_editor | `ALKitBindingRegistry::add indra/newview/alpanelexposurepage.cpp:244`, `ALPanelExposurePage::getU32 indra/newview/alpanelexposurepage.cpp:249` | — | — |
+| `sensor` / Sensor readout | `sensor_readout` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:230` `exposure_tab_logic`/text | — | — | — |
+| `sensor` / Status | `sensor_status` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:233` `exposure_tab_logic`/text | — | — | — |
+| `custom_sensor` / Base ISO | `sensor_custom_base` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4627` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:238` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / HCG switch ISO | `sensor_custom_switch` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4638` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:241` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / Base headroom | `sensor_custom_headroom` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4649` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:244` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / LCG capacity | `sensor_custom_lcg_fullwell` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4660` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:247` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / LCG read noise | `sensor_custom_lcg_readnoise` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4671` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:250` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / LCG base gain | `sensor_custom_lcg_analogbase` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4682` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:253` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / LCG black level | `sensor_custom_lcg_pedestal` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4693` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:256` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / LCG white level | `sensor_custom_lcg_white` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4704` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:259` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / HCG capacity | `sensor_custom_hcg_fullwell` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4715` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:262` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / HCG read noise | `sensor_custom_hcg_readnoise` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4726` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:265` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / HCG base gain | `sensor_custom_hcg_analogbase` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4737` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:268` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / HCG black level | `sensor_custom_hcg_pedestal` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4748` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:271` `exposure_tab_logic`/spinner | — | — | — |
+| `custom_sensor` / HCG white level | `sensor_custom_hcg_white` | `number` | `F32` `indra/newview/app_settings/settings_alchemy.xml:4759` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:274` `exposure_tab_logic`/spinner | — | — | — |
 
 ### Practicals (`practicals_tab`)
 

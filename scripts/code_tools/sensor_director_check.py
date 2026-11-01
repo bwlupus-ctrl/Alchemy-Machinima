@@ -72,7 +72,8 @@ def check(xml=None, quiet=False):
             if row['w'] == 'sensor_seed':
                 assert row['k'] == 'text', 'U32 seed must survive beyond F32 integer precision'
     bound = {n.get('setting') for n in xml.iter('kit_row')}
-    assert not bound & {'CineSensorNoiseEnabled', 'CineSensorPhysicalOrderEnabled'}, 'debug-only rows'
+    assert 'CineSensorNoiseEnabled' in bound, 'Sensor noise on/off row'
+    assert 'CineSensorPhysicalOrderEnabled' not in bound, 'debug-only row'
     if not quiet:
         print('PASS: cards, per-control native setting/read-back, numeric ranges and combo values')
 
@@ -235,6 +236,7 @@ struct ALPanelExposurePage {
     LLTextBox readout,status; LLComboBox iso; LLView seed,custom;
     LLTextBox* mSensorReadout=&readout; LLTextBox* mSensorStatus=&status;
     LLComboBox* mSensorISO=&iso; LLView* mSensorSeedRow=&seed; LLView* mCustomSensorCard=&custom;
+    LLView amount,chroma,fixed; std::vector<LLView*> mSensorNoiseRows{&amount,&chroma,&fixed};
     LLSD mSensorStoredISO,mSensorStoredSeed;
     bool mSensorDirty=true;
     bool mSensorEnabled=false;std::string mSensorReadoutText;
@@ -277,6 +279,7 @@ int main(int argc,char** argv){
         gSavedSettings.setF32(prefix+"Pedestal",256.f);
         gSavedSettings.setF32(prefix+"White",16383.f);
     }
+    gSavedSettings.setF32("CineSensorNoiseEnabled",1.f);
     ALPanelExposurePage ui;
     for(const auto seed:{0u,1u,16777217u,2147483648u,4294967295u}){
         gSavedSettings.setU32("CineSensorSeed",seed);ui.updateSensor();
@@ -310,6 +313,13 @@ int main(int argc,char** argv){
             assert(ui.seed.enabled==(fixed!=0));assert(ui.custom.enabled==(index==3));
             assert(ui.iso.selected==gSavedSettings.getControl("CineSensorISO")->get().asString());
         }
+    }
+    for(U32 fixed:{0u,1u}){
+        gSavedSettings.setF32("CineSensorSeedFixed",static_cast<F32>(fixed));
+        gSavedSettings.setF32("CineSensorNoiseEnabled",0.f);ui.updateSensor();
+        assert(!ui.amount.enabled && !ui.chroma.enabled && !ui.fixed.enabled && !ui.seed.enabled);
+        gSavedSettings.setF32("CineSensorNoiseEnabled",1.f);ui.updateSensor();
+        assert(ui.amount.enabled && ui.chroma.enabled && ui.fixed.enabled && ui.seed.enabled==(fixed!=0));
     }
     gSavedSettings.setF32("CineSensorPhysicalOrderEnabled",1.f);
     gSavedSettings.setF32("CineSensorNoiseEnabled",1.f);
@@ -384,8 +394,10 @@ template<class A,class B> void ensure_equals(const char*,const A& a,const B& b){
     print('PASS: all 9 production sensor-model unit cases executed with a standalone TUT adapter')
     mutations = {
         'readout_model': ('ALSensorModel::readout(preset, iso, mode)', 'ALSensorModel::readout(preset, 50., mode)'),
-        'seed_enable': ('setEnabledIfChanged(mSensorSeedRow, gSavedSettings.getBOOL("CineSensorSeedFixed"))',
-                        'setEnabledIfChanged(mSensorSeedRow, !gSavedSettings.getBOOL("CineSensorSeedFixed"))'),
+        'seed_enable': ('setEnabledIfChanged(mSensorSeedRow, noise && gSavedSettings.getBOOL("CineSensorSeedFixed"))',
+                        'setEnabledIfChanged(mSensorSeedRow, noise && !gSavedSettings.getBOOL("CineSensorSeedFixed"))'),
+        'noise_enable': ('        setEnabledIfChanged(row, noise);',
+                         '        setEnabledIfChanged(row, true);'),
         'custom_enable': ('setEnabledIfChanged(mCustomSensorCard, gSavedSettings.getU32("CineSensorPreset") == 3)',
                           'setEnabledIfChanged(mCustomSensorCard, gSavedSettings.getU32("CineSensorPreset") == 2)'),
         'preset_iso': ('static_cast<F32>(ALSensorSettings::preset().baseISO)',

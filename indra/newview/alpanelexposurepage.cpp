@@ -254,11 +254,13 @@ bool ALPanelExposurePage::postBuild()
             control->setValue(LLSD(sensorSeedText(LLSD(static_cast<F64>(gSavedSettings.getU32("CineSensorSeed"))))));
     });
     mCustomSensorCard = getChildView("kc_custom_sensor");
+    for (const char* name : { "sensor_amount", "sensor_chroma", "sensor_seed_fixed" })
+        mSensorNoiseRows.push_back(getChildView(name)->getParent());
     // Native setting bindings own values. Signals invalidate the physical readout,
     // including while hidden; revealing the page always refreshes it immediately.
     for (const char* name : {
         "CineSensorEnabled", "CineSensorISO", "CineSensorPreset", "CineSensorBrightnessMode",
-        "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
+        "CineSensorNoiseEnabled", "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
         "CineSensorCustomBaseISO", "CineSensorCustomSwitchISO", "CineSensorCustomHeadroom",
         "CineSensorCustomLCGFullWell", "CineSensorCustomLCGReadNoise", "CineSensorCustomLCGAnalogBase",
         "CineSensorCustomLCGPedestal", "CineSensorCustomLCGWhite", "CineSensorCustomHCGFullWell",
@@ -346,7 +348,11 @@ void ALPanelExposurePage::syncSensorISO()
 
 void ALPanelExposurePage::updateSensorGating()
 {
-    setEnabledIfChanged(mSensorSeedRow, gSavedSettings.getBOOL("CineSensorSeedFixed"));
+    // Sensor noise off: noise-shaping rows dim; gain, clipping and the readout stay live.
+    const bool noise = gSavedSettings.getBOOL("CineSensorNoiseEnabled");
+    for (LLView* row : mSensorNoiseRows)
+        setEnabledIfChanged(row, noise);
+    setEnabledIfChanged(mSensorSeedRow, noise && gSavedSettings.getBOOL("CineSensorSeedFixed"));
     setEnabledIfChanged(mCustomSensorCard, gSavedSettings.getU32("CineSensorPreset") == 3);
 }
 

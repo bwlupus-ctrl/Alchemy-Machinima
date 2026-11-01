@@ -351,8 +351,9 @@ def validate_data(data: dict) -> None:
     # Composition guide: Centre cross, Safe areas, Show with interface hidden, 2382 -> 2385 (10/31).
     # Avatar targets (10/31): Shot Target + OTS/Two-Shot Second, Moves Target + Second; 2385 -> 2390.
     # Projector joint tracking: seven session-only Practicals rows, 2390 -> 2397.
-    if len(pages) != 38 or row_count != 2397:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2397")
+    # Sensor noise on/off row on Light > Exposure, 2397 -> 2398.
+    if len(pages) != 38 or row_count != 2398:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2398")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

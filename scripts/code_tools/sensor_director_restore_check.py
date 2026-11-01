@@ -74,7 +74,7 @@ def check(reference=None):
                                (declaration if guarded else '') + 'applyPair(iso_first);}')
     settings_xml = read('app_settings/settings_alchemy.xml')
     expected = sorted(set(re.findall(r'<key>(CineSensor\w+)</key>', settings_xml)) -
-                      {'CineSensorPhysicalOrderEnabled', 'CineSensorNoiseEnabled'})
+                      {'CineSensorPhysicalOrderEnabled'})
     prefix = r'''
 #include "alsensormodel.h"
 #include <algorithm>
@@ -183,7 +183,7 @@ int main(int argc,char** argv){
             gSavedSettings.setF32(key,custom.count(key)?custom.at(key):1.f);
         }
         gSavedSettings.setF32("CineSensorNoiseAmount",1.25f);gSavedSettings.setF32("CineSensorChroma",.5f);
-        for(const auto& key:sceneSettingsList())if(key=="CineSensorNoiseEnabled"||key=="CineSensorPhysicalOrderEnabled")return 2;
+        for(const auto& key:sceneSettingsList())if(key=="CineSensorPhysicalOrderEnabled")return 2;
         gSavedSettings.setU32("CineSensorPreset",1);gSavedSettings.setF32("CineSensorISO",3200.f);
         gSavedSettings.setU32("CineSensorSeed",4294967295u);
         const auto saved=saveScene();

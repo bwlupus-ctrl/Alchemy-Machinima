@@ -1,14 +1,14 @@
 # Exposure — Director Kit page contract
 
 Page key: `exposure_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (43/51 setting-bound rows; 13 C++-referenced rows).
+Computed class: **code-driven** (44/52 setting-bound rows; 16 C++-referenced rows).
 
 ## Real owners
 
-- `exposure_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:3` (51 matching rows).
+- `exposure_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:3` (52 matching rows).
 - `panel_exposure_hub` / `panel` at `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:2` (25 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelExposurePage` (14), `ALPanelExposureHub` (4), `ALExposureSettingsHistory` (2), `ALFloaterLightBox` (2), `ALKitBindingRegistry` (2), `LLButton` (1), `LLFloaterReg` (1), `LLFloaterDirector` (1).
+- Referencing classes: `ALPanelExposurePage` (17), `ALPanelExposureHub` (4), `ALExposureSettingsHistory` (2), `ALFloaterLightBox` (2), `ALKitBindingRegistry` (2), `LLButton` (1), `LLFloaterReg` (1), `LLFloaterDirector` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -54,25 +54,26 @@ Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.
 | `sensor` / `sensor_iso` (ISO) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:159` | kit `combo` ↔ `CineSensorISO` `F32`; `ALExposureKitAdapter` preserves/calls wired in `ALPanelExposurePage::postBuild()`; behavior `ALKitBindingRegistry::add()` (`indra/newview/alpanelexposurepage.cpp:234`), wired in `ALPanelExposurePage::postBuild()`; behavior `ALPanelExposurePage::alKitSetTypedControl()` (`indra/newview/alpanelexposurepage.cpp:236`) | none |
 | `sensor` / `sensor_preset` (Camera preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:193` | kit `combo` ↔ `CineSensorPreset` `U32` | none |
 | `sensor` / `sensor_brightness` (Brightness mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:203` | kit `combo` ↔ `CineSensorBrightnessMode` `U32` | none |
-| `sensor` / `sensor_amount` (Noise amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:211` | kit `slider` ↔ `CineSensorNoiseAmount` `F32` | none |
-| `sensor` / `sensor_chroma` (Chroma noise) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:216` | kit `slider` ↔ `CineSensorChroma` `F32` | none |
-| `sensor` / `sensor_seed_fixed` (Fixed seed) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:221` | kit `toggle` ↔ `CineSensorSeedFixed` `Boolean` | none |
-| `sensor` / `sensor_seed` (Seed) | `line_editor` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:224` | kit `text` ↔ `CineSensorSeed` `U32`; `ALExposureKitAdapter` preserves/calls wired in `ALPanelExposurePage::postBuild()`; behavior `ALKitBindingRegistry::add()` (`indra/newview/alpanelexposurepage.cpp:244`), wired in `ALPanelExposurePage::postBuild()`; behavior `ALPanelExposurePage::getU32()` (`indra/newview/alpanelexposurepage.cpp:249`) | none |
-| `sensor` / `sensor_readout` (Sensor readout) | `text` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:227` | kit readout ← approved static copy; no runtime writer | none |
-| `sensor` / `sensor_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:230` | kit readout ← approved static copy; no runtime writer | none |
-| `custom_sensor` / `sensor_custom_base` (Base ISO) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:235` | kit `number` ↔ `CineSensorCustomBaseISO` `F32` | none |
-| `custom_sensor` / `sensor_custom_switch` (HCG switch ISO) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:238` | kit `number` ↔ `CineSensorCustomSwitchISO` `F32` | none |
-| `custom_sensor` / `sensor_custom_headroom` (Base headroom) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:241` | kit `number` ↔ `CineSensorCustomHeadroom` `F32` | none |
-| `custom_sensor` / `sensor_custom_lcg_fullwell` (LCG capacity) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:244` | kit `number` ↔ `CineSensorCustomLCGFullWell` `F32` | none |
-| `custom_sensor` / `sensor_custom_lcg_readnoise` (LCG read noise) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:247` | kit `number` ↔ `CineSensorCustomLCGReadNoise` `F32` | none |
-| `custom_sensor` / `sensor_custom_lcg_analogbase` (LCG base gain) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:250` | kit `number` ↔ `CineSensorCustomLCGAnalogBase` `F32` | none |
-| `custom_sensor` / `sensor_custom_lcg_pedestal` (LCG black level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:253` | kit `number` ↔ `CineSensorCustomLCGPedestal` `F32` | none |
-| `custom_sensor` / `sensor_custom_lcg_white` (LCG white level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:256` | kit `number` ↔ `CineSensorCustomLCGWhite` `F32` | none |
-| `custom_sensor` / `sensor_custom_hcg_fullwell` (HCG capacity) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:259` | kit `number` ↔ `CineSensorCustomHCGFullWell` `F32` | none |
-| `custom_sensor` / `sensor_custom_hcg_readnoise` (HCG read noise) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:262` | kit `number` ↔ `CineSensorCustomHCGReadNoise` `F32` | none |
-| `custom_sensor` / `sensor_custom_hcg_analogbase` (HCG base gain) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:265` | kit `number` ↔ `CineSensorCustomHCGAnalogBase` `F32` | none |
-| `custom_sensor` / `sensor_custom_hcg_pedestal` (HCG black level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:268` | kit `number` ↔ `CineSensorCustomHCGPedestal` `F32` | none |
-| `custom_sensor` / `sensor_custom_hcg_white` (HCG white level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:271` | kit `number` ↔ `CineSensorCustomHCGWhite` `F32` | none |
+| `sensor` / `sensor_noise_enabled` (Sensor noise) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:211` | kit `toggle` ↔ `CineSensorNoiseEnabled` `Boolean` | none |
+| `sensor` / `sensor_amount` (Noise amount) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:214` | kit `slider` ↔ `CineSensorNoiseAmount` `F32` | none |
+| `sensor` / `sensor_chroma` (Chroma noise) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:219` | kit `slider` ↔ `CineSensorChroma` `F32` | none |
+| `sensor` / `sensor_seed_fixed` (Fixed seed) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:224` | kit `toggle` ↔ `CineSensorSeedFixed` `Boolean` | none |
+| `sensor` / `sensor_seed` (Seed) | `line_editor` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:227` | kit `text` ↔ `CineSensorSeed` `U32`; `ALExposureKitAdapter` preserves/calls wired in `ALPanelExposurePage::postBuild()`; behavior `ALKitBindingRegistry::add()` (`indra/newview/alpanelexposurepage.cpp:244`), wired in `ALPanelExposurePage::postBuild()`; behavior `ALPanelExposurePage::getU32()` (`indra/newview/alpanelexposurepage.cpp:249`) | none |
+| `sensor` / `sensor_readout` (Sensor readout) | `text` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:230` | kit readout ← approved static copy; no runtime writer | none |
+| `sensor` / `sensor_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:233` | kit readout ← approved static copy; no runtime writer | none |
+| `custom_sensor` / `sensor_custom_base` (Base ISO) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:238` | kit `number` ↔ `CineSensorCustomBaseISO` `F32` | none |
+| `custom_sensor` / `sensor_custom_switch` (HCG switch ISO) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:241` | kit `number` ↔ `CineSensorCustomSwitchISO` `F32` | none |
+| `custom_sensor` / `sensor_custom_headroom` (Base headroom) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:244` | kit `number` ↔ `CineSensorCustomHeadroom` `F32` | none |
+| `custom_sensor` / `sensor_custom_lcg_fullwell` (LCG capacity) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:247` | kit `number` ↔ `CineSensorCustomLCGFullWell` `F32` | none |
+| `custom_sensor` / `sensor_custom_lcg_readnoise` (LCG read noise) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:250` | kit `number` ↔ `CineSensorCustomLCGReadNoise` `F32` | none |
+| `custom_sensor` / `sensor_custom_lcg_analogbase` (LCG base gain) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:253` | kit `number` ↔ `CineSensorCustomLCGAnalogBase` `F32` | none |
+| `custom_sensor` / `sensor_custom_lcg_pedestal` (LCG black level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:256` | kit `number` ↔ `CineSensorCustomLCGPedestal` `F32` | none |
+| `custom_sensor` / `sensor_custom_lcg_white` (LCG white level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:259` | kit `number` ↔ `CineSensorCustomLCGWhite` `F32` | none |
+| `custom_sensor` / `sensor_custom_hcg_fullwell` (HCG capacity) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:262` | kit `number` ↔ `CineSensorCustomHCGFullWell` `F32` | none |
+| `custom_sensor` / `sensor_custom_hcg_readnoise` (HCG read noise) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:265` | kit `number` ↔ `CineSensorCustomHCGReadNoise` `F32` | none |
+| `custom_sensor` / `sensor_custom_hcg_analogbase` (HCG base gain) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:268` | kit `number` ↔ `CineSensorCustomHCGAnalogBase` `F32` | none |
+| `custom_sensor` / `sensor_custom_hcg_pedestal` (HCG black level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:271` | kit `number` ↔ `CineSensorCustomHCGPedestal` `F32` | none |
+| `custom_sensor` / `sensor_custom_hcg_white` (HCG white level) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml:274` | kit `number` ↔ `CineSensorCustomHCGWhite` `F32` | none |
 
 ## Adapter extraction
 
@@ -98,7 +99,7 @@ Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.
 
 ## Bounded non-default audit states
 
-Manifest size: **67 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **68 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -166,6 +167,7 @@ Manifest size: **67 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `sensor_preset-option-3` | Only `sensor_preset` selects `Custom`; other selectors remain default. |
 | `sensor_brightness-option-0` | Only `sensor_brightness` selects `Neutral`; other selectors remain default. |
 | `sensor_brightness-option-1` | Only `sensor_brightness` selects `Brightens`; other selectors remain default. |
+| `sensor_noise_enabled-on` | Only `sensor_noise_enabled` is on; dependent visibility is measured. |
 | `sensor_seed_fixed-on` | Only `sensor_seed_fixed` is on; dependent visibility is measured. |
 | `card-custom_sensor-tallest-850` | Only `custom_sensor` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-custom_sensor-tallest-1160` | Only `custom_sensor` is put in its tallest local state at 1160 px; all other cards stay default. |

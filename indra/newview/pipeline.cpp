@@ -26218,7 +26218,7 @@ const char* LLPipeline::sensorUnavailableReason() const
     if (mRT != &mMainRT || gCubeSnapshot || sPrismLensRender || sPrismPreviewRender || sImpostorRender || sRenderingHUDs)
         return "Sensor unavailable in this capture context; only the main HDR camera is supported.";
     if (!gSavedSettings.getBOOL("CineSensorNoiseEnabled"))
-        return "Sensor noise is disabled in Debug Settings; only the physical processing order runs.";
+        return "Sensor noise off: ISO gain, highlight clipping and headroom still apply.";
     return "";
 }
 

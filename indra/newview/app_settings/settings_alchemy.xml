@@ -4539,7 +4539,7 @@
     <key>CineSensorNoiseEnabled</key>
     <map>
         <key>Comment</key>
-        <string>Internal physical camera sensor: NoiseEnabled. Illustrative calibration; no Director row.</string>
+        <string>Physical camera sensor: NoiseEnabled. Off removes noise and quantisation but keeps ISO gain, clipping and headroom; exposed in Director &gt; Light &gt; Exposure.</string>
         <key>Persist</key>
         <integer>1</integer>
         <key>Type</key>

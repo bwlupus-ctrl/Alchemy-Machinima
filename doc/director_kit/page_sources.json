@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2188,
+    "rows": 2189,
     "owner_roots": 35,
     "unresolved_rows": 58,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2188
+    "independent_json_rows": 2189
   },
   "setting_conflicts": [
     {
@@ -18873,7 +18873,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 216,
+          "line": 219,
           "widget": "sensor_chroma",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18901,7 +18901,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 235,
+          "line": 238,
           "widget": "sensor_custom_base",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18929,7 +18929,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 265,
+          "line": 268,
           "widget": "sensor_custom_hcg_analogbase",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18957,7 +18957,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 259,
+          "line": 262,
           "widget": "sensor_custom_hcg_fullwell",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -18985,7 +18985,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 268,
+          "line": 271,
           "widget": "sensor_custom_hcg_pedestal",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19013,7 +19013,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 262,
+          "line": 265,
           "widget": "sensor_custom_hcg_readnoise",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19041,7 +19041,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 271,
+          "line": 274,
           "widget": "sensor_custom_hcg_white",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19069,7 +19069,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 241,
+          "line": 244,
           "widget": "sensor_custom_headroom",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19097,7 +19097,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 250,
+          "line": 253,
           "widget": "sensor_custom_lcg_analogbase",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19125,7 +19125,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 244,
+          "line": 247,
           "widget": "sensor_custom_lcg_fullwell",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19153,7 +19153,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 253,
+          "line": 256,
           "widget": "sensor_custom_lcg_pedestal",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19181,7 +19181,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 247,
+          "line": 250,
           "widget": "sensor_custom_lcg_readnoise",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19209,7 +19209,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 256,
+          "line": 259,
           "widget": "sensor_custom_lcg_white",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19237,7 +19237,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 238,
+          "line": 241,
           "widget": "sensor_custom_switch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19293,7 +19293,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 211,
+          "line": 214,
           "widget": "sensor_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -19309,6 +19309,34 @@
           "line": 4583,
           "group": "Global",
           "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "CineSensorNoiseEnabled",
+      "pages": [
+        "exposure_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+          "line": 211,
+          "widget": "sensor_noise_enabled",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+            "tag": "panel",
+            "name": "exposure_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings_alchemy.xml",
+          "line": 4539,
+          "group": "Global",
+          "type": "Boolean"
         }
       ],
       "writable_home": null
@@ -19349,7 +19377,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-          "line": 221,
+          "line": 224,
           "widget": "sensor_seed_fixed",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -171328,14 +171356,14 @@
       "label": "Exposure",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 51,
+      "row_count": 52,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
           "tag": "panel",
           "name": "exposure_tab_logic",
           "line": 3,
-          "matched_rows": 51,
+          "matched_rows": 52,
           "evidence": "row-widget match"
         },
         {
@@ -171358,7 +171386,7 @@
       "owner_classes": [
         {
           "class": "ALPanelExposurePage",
-          "reference_count": 14
+          "reference_count": 17
         },
         {
           "class": "ALPanelExposureHub",
@@ -171391,9 +171419,9 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 43,
-        "setting_coverage": 0.843137,
-        "cpp_referenced_rows": 13,
+        "setting_bound_rows": 44,
+        "setting_coverage": 0.846154,
+        "cpp_referenced_rows": 16,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -172573,7 +172601,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 392,
+              "line": 398,
               "class": "ALPanelExposurePage",
               "function": "updateEnvOnlyAvailability",
               "wired_class": "ALPanelExposurePage",
@@ -172675,7 +172703,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelexposurepage.cpp",
-              "line": 396,
+              "line": 402,
               "class": "ALPanelExposurePage",
               "function": "updateEnvOnlyAvailability",
               "wired_class": "ALPanelExposurePage",
@@ -174745,21 +174773,21 @@
           "option_index": null,
           "option_label": null,
           "index": 4,
-          "label": "Noise amount",
-          "kind": "slider",
-          "widget": "sensor_amount",
-          "matched_widget": "sensor_amount",
-          "declared_setting": "CineSensorNoiseAmount",
-          "resolved_setting": "CineSensorNoiseAmount",
+          "label": "Sensor noise",
+          "kind": "toggle",
+          "widget": "sensor_noise_enabled",
+          "matched_widget": "sensor_noise_enabled",
+          "declared_setting": "CineSensorNoiseEnabled",
+          "resolved_setting": "CineSensorNoiseEnabled",
           "setting_candidates": [
-            "CineSensorNoiseAmount"
+            "CineSensorNoiseEnabled"
           ],
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings_alchemy.xml",
-              "line": 4583,
+              "line": 4539,
               "group": "Global",
-              "type": "F32"
+              "type": "Boolean"
             }
           ],
           "items": [],
@@ -174767,8 +174795,8 @@
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
               "line": 211,
-              "tag": "slider",
-              "control_name": "CineSensorNoiseAmount",
+              "tag": "kit_switch",
+              "control_name": "CineSensorNoiseEnabled",
               "callbacks": [],
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
@@ -174794,6 +174822,67 @@
           "option_index": null,
           "option_label": null,
           "index": 5,
+          "label": "Noise amount",
+          "kind": "slider",
+          "widget": "sensor_amount",
+          "matched_widget": "sensor_amount",
+          "declared_setting": "CineSensorNoiseAmount",
+          "resolved_setting": "CineSensorNoiseAmount",
+          "setting_candidates": [
+            "CineSensorNoiseAmount"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings_alchemy.xml",
+              "line": 4583,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+              "line": 214,
+              "tag": "slider",
+              "control_name": "CineSensorNoiseAmount",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+                "tag": "panel",
+                "name": "exposure_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 257,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "for (const char* name : { \"sensor_amount\", \"sensor_chroma\", \"sensor_seed_fixed\" })"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "sensor",
+          "card_title": "Sensor",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
           "label": "Chroma noise",
           "kind": "slider",
           "widget": "sensor_chroma",
@@ -174815,7 +174904,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 216,
+              "line": 219,
               "tag": "slider",
               "control_name": "CineSensorChroma",
               "callbacks": [],
@@ -174827,7 +174916,19 @@
               }
             }
           ],
-          "cpp": [],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 257,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "for (const char* name : { \"sensor_amount\", \"sensor_chroma\", \"sensor_seed_fixed\" })"
+            }
+          ],
           "callback_handlers": [],
           "callbacks": [],
           "kit_action": null,
@@ -174842,7 +174943,7 @@
           "card_title": "Sensor",
           "option_index": null,
           "option_label": null,
-          "index": 6,
+          "index": 7,
           "label": "Fixed seed",
           "kind": "toggle",
           "widget": "sensor_seed_fixed",
@@ -174864,7 +174965,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 221,
+              "line": 224,
               "tag": "kit_switch",
               "control_name": "CineSensorSeedFixed",
               "callbacks": [],
@@ -174876,7 +174977,19 @@
               }
             }
           ],
-          "cpp": [],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelexposurepage.cpp",
+              "line": 257,
+              "class": "ALPanelExposurePage",
+              "function": "postBuild",
+              "wired_class": "ALPanelExposurePage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "for (const char* name : { \"sensor_amount\", \"sensor_chroma\", \"sensor_seed_fixed\" })"
+            }
+          ],
           "callback_handlers": [],
           "callbacks": [],
           "kit_action": null,
@@ -174891,7 +175004,7 @@
           "card_title": "Sensor",
           "option_index": null,
           "option_label": null,
-          "index": 7,
+          "index": 8,
           "label": "Seed",
           "kind": "text",
           "widget": "sensor_seed",
@@ -174913,7 +175026,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 224,
+              "line": 227,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -174974,7 +175087,7 @@
           "card_title": "Sensor",
           "option_index": null,
           "option_label": null,
-          "index": 8,
+          "index": 9,
           "label": "Sensor readout",
           "kind": "readout",
           "widget": "sensor_readout",
@@ -174987,7 +175100,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 227,
+              "line": 230,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -175026,7 +175139,7 @@
           "card_title": "Sensor",
           "option_index": null,
           "option_label": null,
-          "index": 9,
+          "index": 10,
           "label": "Status",
           "kind": "readout",
           "widget": "sensor_status",
@@ -175039,7 +175152,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 230,
+              "line": 233,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -175100,7 +175213,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 235,
+              "line": 238,
               "tag": "spinner",
               "control_name": "CineSensorCustomBaseISO",
               "callbacks": [],
@@ -175149,7 +175262,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 238,
+              "line": 241,
               "tag": "spinner",
               "control_name": "CineSensorCustomSwitchISO",
               "callbacks": [],
@@ -175198,7 +175311,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 241,
+              "line": 244,
               "tag": "spinner",
               "control_name": "CineSensorCustomHeadroom",
               "callbacks": [],
@@ -175247,7 +175360,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 244,
+              "line": 247,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGFullWell",
               "callbacks": [],
@@ -175296,7 +175409,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 247,
+              "line": 250,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGReadNoise",
               "callbacks": [],
@@ -175345,7 +175458,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 250,
+              "line": 253,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGAnalogBase",
               "callbacks": [],
@@ -175394,7 +175507,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 253,
+              "line": 256,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGPedestal",
               "callbacks": [],
@@ -175443,7 +175556,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 256,
+              "line": 259,
               "tag": "spinner",
               "control_name": "CineSensorCustomLCGWhite",
               "callbacks": [],
@@ -175492,7 +175605,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 259,
+              "line": 262,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGFullWell",
               "callbacks": [],
@@ -175541,7 +175654,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 262,
+              "line": 265,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGReadNoise",
               "callbacks": [],
@@ -175590,7 +175703,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 265,
+              "line": 268,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGAnalogBase",
               "callbacks": [],
@@ -175639,7 +175752,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 268,
+              "line": 271,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGPedestal",
               "callbacks": [],
@@ -175688,7 +175801,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-              "line": 271,
+              "line": 274,
               "tag": "spinner",
               "control_name": "CineSensorCustomHCGWhite",
               "callbacks": [],

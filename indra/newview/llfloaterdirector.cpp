@@ -4155,9 +4155,9 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "AlchemyWeatherLightningDistanceGrading",
         "AlchemyWeatherLightningAfterglowStrength",
         "AlchemyWeatherLightningEnergyCeiling",
-        // Sensor look, including the complete Custom calibration. Debug gates stay session-local.
+        // Sensor look, including the complete Custom calibration. The physical-order debug gate stays session-local.
         "CineSensorEnabled", "CineSensorISO", "CineSensorPreset", "CineSensorBrightnessMode",
-        "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
+        "CineSensorNoiseEnabled", "CineSensorNoiseAmount", "CineSensorChroma", "CineSensorSeedFixed", "CineSensorSeed",
         "CineSensorCustomBaseISO", "CineSensorCustomSwitchISO", "CineSensorCustomHeadroom",
         "CineSensorCustomLCGFullWell", "CineSensorCustomLCGReadNoise", "CineSensorCustomLCGAnalogBase",
         "CineSensorCustomLCGPedestal", "CineSensorCustomLCGWhite", "CineSensorCustomHCGFullWell",

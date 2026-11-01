@@ -66,6 +66,7 @@ private:
     LLSD mSensorStoredISO;
     LLSD mSensorStoredSeed;
     LLView* mSensorSeedRow = nullptr;
+    std::vector<LLView*> mSensorNoiseRows; // amount, chroma, fixed seed: dimmed while Sensor noise is off
     LLView* mCustomSensorCard = nullptr;
     bool mSensorDirty = true;
     bool mSensorEnabled = false;
