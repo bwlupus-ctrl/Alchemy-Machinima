@@ -349,8 +349,9 @@ def validate_data(data: dict) -> None:
     # Shadow depth + distance reach: exactly three Soft shadows rows, 2378 -> 2381 (10/30).
     # Hide cursor with interface: one global Frame format preference, 2381 -> 2382 (10/30).
     # Composition guide: Centre cross, Safe areas, Show with interface hidden, 2382 -> 2385 (10/31).
-    if len(pages) != 38 or row_count != 2385:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2385")
+    # Avatar targets (10/31): Shot Target + OTS/Two-Shot Second, Moves Target + Second; 2385 -> 2390.
+    if len(pages) != 38 or row_count != 2390:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2390")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -658,6 +659,14 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     custom_tag = row.get("custom_tag")
     if custom_tag:
         child = ET.Element(str(custom_tag), {"name": widget})
+        if row.get("readout"):
+            # Compact avatar target rows: name/source above two pairs of actions.
+            child.set("width", "156")
+            child.set("height", str(row["row_height"]))
+            ET.SubElement(child, "text", {
+                "name": row["readout"], "layout": "topleft", "left": "0", "top": "0",
+                "width": "156", "height": "36", "follows": "left|right|top",
+                "font": "SansSerifSmall", "word_wrap": "true"}).text = row.get("text", "")
         for column in row.get("columns", []):
             ET.SubElement(child, "columns", {key: str(value) for key, value in column.items()})
         if row.get("actions"):
@@ -669,7 +678,9 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
                 ET.SubElement(child, "button", {
                     "name": action["w"], "label": action["l"],
                     "tool_tip": action["h"], "layout": "topleft",
-                    "left": str(left), "top": "0", "width": str(width), "height": "24"})
+                    "follows": "left|top",
+                    "left": str(action.get("left", left)), "top": str(action.get("top", 0)),
+                    "width": str(width), "height": "24"})
                 left += width + 6
         return kind, child, "code"
     tag = NATIVE_TAG.get(kind)
@@ -796,7 +807,11 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         attrs["bulk_reset"] = "false"
     if row.get("no_widget_history"):
         attrs["widget_history"] = "false"
-    if row.get("actions"):
+    # Readout/action panels have an explicit 156 x row_height base rect and
+    # two authored button lines. ALKitRow's ordinary custom-panel reshape
+    # stretches the readout via follows; action_row would instead sort by X
+    # and repack all buttons over the readout with a different (6 px) gap.
+    if row.get("actions") and not row.get("readout"):
         attrs["action_row"] = "true"
     if row.get("fill_width"):
         attrs["fill_width"] = "true"
@@ -2109,6 +2124,49 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         outputs, classes = generate(data_path, config_path, out_dir)
         config = json.loads(config_path.read_text(encoding="utf-8"))
         checks = []
+        target_widgets = {"shot_target", "shot_ots_second", "shot_two_second",
+                          "moves_target", "moves_second"}
+        target_rows = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
+                       for node in ET.fromstring(payload).iter("kit_row")
+                       if node.get("widget") in target_widgets]
+        target_layout_ok = {row.get("widget") for row in target_rows} == target_widgets
+        for row in target_rows:
+            panel = row.find("panel")
+            target_layout_ok &= (row.get("action_row", "false") == "false"
+                                 and row.get("kind") == "custom" and row.get("row_height") == "96")
+            if panel is None:
+                target_layout_ok = False
+                continue
+            # Simulate ALKitRow::layoutRow (ordinary labelled custom panel):
+            # h=96, span=cw+COL_GAP+VALUE_W=w-164; no action packing branch.
+            # Then apply LLView::reshape's child follows flags across repeated
+            # grow/shrink cycles, not just the initial authored XML bounds.
+            panel_width, panel_height = int(panel.get("width")), int(panel.get("height"))
+            children = list(panel)
+            rects = [[int(c.get("left")), panel_height - int(c.get("top")) - int(c.get("height")),
+                      int(c.get("width")), int(c.get("height"))] for c in children]
+            target_layout_ok &= (len(children) == 5 and children[0].tag == "text"
+                                 and [c.get("label") for c in children[1:]] ==
+                                 ["Choose...", "Use selected", "You", "Clear"])
+            for row_width in (320, 384, 564, 320):  # control tracks: 156, 220, 400, 156
+                width, height = row_width - 164, 96
+                for child, rect in zip(children, rects):
+                    follows = set(child.get("follows", "").split("|"))
+                    if "right" in follows:
+                        if "left" in follows: rect[2] += width - panel_width
+                        else: rect[0] += width - panel_width
+                    if "top" in follows:
+                        if "bottom" in follows: rect[3] += height - panel_height
+                        else: rect[1] += height - panel_height
+                panel_width, panel_height = width, height
+                target_layout_ok &= rects == [[0, 60, width, 36], [0, 34, 70, 24],
+                                              [74, 34, 82, 24], [0, 6, 70, 24], [74, 6, 82, 24]]
+                for i, (x, y, w, h) in enumerate(rects):
+                    target_layout_ok &= 0 <= x < x + w <= width and 0 <= y < y + h <= height
+                    for ox, oy, ow, oh in rects[:i]:
+                        target_layout_ok &= (x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y)
+        checks.append(("five avatar target panels preserve readout and button pairs at 156/220/400 px through reshape",
+                       len(target_rows) == 5 and target_layout_ok))
         vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))
         validate_vcam_page(vcam)
         rejects = []

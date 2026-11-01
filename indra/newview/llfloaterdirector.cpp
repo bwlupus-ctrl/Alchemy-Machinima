@@ -24,6 +24,7 @@
 #include "alkitpage.h"
 #include "alkitpopover.h"
 #include "alkitrow.h"
+#include "alkitmenu.h"
 #include "alkitstyle.h"
 
 #include "llfloaterdirector.h"
@@ -96,12 +97,15 @@
 #include "lltextbox.h"
 #include "lltexteditor.h"
 #include "lltooldraganddrop.h"
+#include "lltool.h"
+#include "lltoolmgr.h"
 #include "lluictrlfactory.h"
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewermenu.h"           // gMenuHolder, LLViewerMenuHolderGL
 #include "llviewerobject.h"         // getRootEdit/isAnimatedObject/getControlAvatar
 #include "llviewerobjectlist.h"     // gObjectList
+#include "llviewerwindow.h"
 #include "llmotion.h"               // LLMotion::setPriorityOverride (play-local priority)
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
@@ -129,6 +133,109 @@
 
 namespace
 {
+bool camera_subject_avatar(const LLVOAvatar* avatar)
+{
+    return avatar && !avatar->isDead() && !avatar->isControlAvatar() &&
+        !avatar->mIsDummy && !avatar->isGhostAvatar();
+}
+
+LLVOAvatar* camera_subject_from_object(LLViewerObject* object)
+{
+    if (!object) return nullptr;
+    if (auto* avatar = object->asAvatar()) return avatar;
+    // Walk attachments to the wearer even for animated attachments, whose
+    // getAvatar() can otherwise return their own animesh control avatar.
+    if (object->isAttachment())
+    {
+        LLViewerObject* parent = (LLViewerObject*)object->getParent();
+        while (parent && !parent->asAvatar()) parent = (LLViewerObject*)parent->getParent();
+        return parent ? parent->asAvatar() : nullptr;
+    }
+    return object->getAvatar();
+}
+
+// Wearer resolution belongs only to the new avatar assignment controls.
+// Existing selection consumers must keep CineCam's getAvatar() semantics.
+LLVOAvatar* camera_subject_from_selection()
+{
+    return camera_subject_from_object(
+        LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+}
+
+// Same asynchronous lifecycle as VCam's MediaFacePickTool: one outstanding
+// pick, generation invalidation on deselect, and a weak owner on completion.
+class CameraSubjectPickTool final : public LLTool
+{
+public:
+    CameraSubjectPickTool() : LLTool("Director avatar target") {}
+    static CameraSubjectPickTool& instance() { static CameraSubjectPickTool tool; return tool; }
+    void begin(LLFloater* owner, std::function<void(const LLUUID&)> picked)
+    {
+        ++mGeneration;
+        mOwner = owner->getHandle();
+        mPicked = std::move(picked);
+        gFocusMgr.setKeyboardFocus(nullptr);
+    }
+    void cancelFor(LLFloater* owner)
+    {
+        if (mOwner.get() == owner && LLToolMgr::getInstance()->getCurrentTool() == this)
+            LLToolMgr::getInstance()->clearTransientTool();
+    }
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override
+    {
+        if (mPickPending) return true;
+        mPickPending = true;
+        mPendingGeneration = mGeneration;
+        gViewerWindow->pickAsync(x, y, mask, [](const LLPickInfo& pick)
+        {
+            auto& tool = instance();
+            tool.mPickPending = false;
+            if (tool.mPendingGeneration != tool.mGeneration ||
+                LLToolMgr::getInstance()->getCurrentTool() != &tool) return;
+            LLViewerObject* object = pick.getObject();
+            LLVOAvatar* avatar = camera_subject_from_object(object);
+            const LLUUID id = camera_subject_avatar(avatar) ? avatar->getID() : LLUUID::null;
+            const auto owner = tool.mOwner;
+            const auto callback = std::move(tool.mPicked);
+            LLToolMgr::getInstance()->clearTransientTool();
+            if (owner.get() && owner.get()->isInVisibleChain() && callback && id.notNull()) callback(id);
+        }, false, true); // include rigged avatar mesh and worn attachments
+        return true;
+    }
+    bool handleHover(S32, S32, MASK) override
+    {
+        gViewerWindow->setCursor(UI_CURSOR_TOOLPICKOBJECT3);
+        return true;
+    }
+    bool handleKey(KEY key, MASK mask) override
+    {
+        if (key != KEY_ESCAPE || mask != MASK_NONE) return false;
+        LLToolMgr::getInstance()->clearTransientTool();
+        return true;
+    }
+    bool handleRightMouseDown(S32, S32, MASK) override
+    {
+        LLToolMgr::getInstance()->clearTransientTool();
+        return true;
+    }
+    void handleDeselect() override
+    {
+        ++mGeneration;
+        // App focus loss deselects without removing the transient tool. Keep
+        // its callback/owner armed, but discard any pick started before blur.
+        // A real tool change updates the selected tool before calling us.
+        if (LLToolMgr::getInstance()->getCurrentTool() == this) return;
+        mPicked = {};
+        mOwner.markDead();
+    }
+private:
+    LLHandle<LLFloater> mOwner;
+    std::function<void(const LLUUID&)> mPicked;
+    U64 mGeneration = 1;
+    U64 mPendingGeneration = 0;
+    bool mPickPending = false;
+};
+
 // cast-row status glyphs (existing skin icons, poser iconography rule)
 constexpr char ICON_MOVING[]   = "Move_Walk_Off";
 constexpr char ICON_IDLE[]     = "Profile_Friend_Online";
@@ -1249,6 +1356,8 @@ LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 
 LLFloaterDirector::~LLFloaterDirector()
 {
+    CameraSubjectPickTool::instance().cancelFor(this);
+    if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->die();
     if (sRecoveryDirectorHandle.get() == this)
     {
         sRecoveryDirectorHandle.markDead();
@@ -1270,6 +1379,8 @@ LLFloaterDirector::~LLFloaterDirector()
 
 void LLFloaterDirector::onClose(bool app_quitting)
 {
+    CameraSubjectPickTool::instance().cancelFor(this);
+    if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->hide();
     if (mShell)
         mShell->setSearchPopupArmed(nullptr, false);
     if(mShell)if(ALKitPage* page=mShell->currentKitPage())page->saveState();
@@ -2966,6 +3077,7 @@ void LLFloaterDirector::bindAnimatePage(LLView* root)
 
 void LLFloaterDirector::bindCameraPage(LLView* root)
 {
+    bindCameraSubjectRows(root);
     if (LLTextBox* control = root->findChild<LLTextBox>("subject_a_text", true))
     {
         mSubjectAText = control;
@@ -3600,6 +3712,7 @@ void LLFloaterDirector::draw()
     refreshAnimateTab(selected); // [DirFix] D8: gated on its tab being visible (inside)
     refreshGazeSelection(selected);
     refreshSubjects();
+    refreshCameraSubjectRows();
     refreshPrismDependents();
     refreshLauncherCards();
     refreshStatusStrip();
@@ -3614,6 +3727,9 @@ void LLFloaterDirector::draw()
 
 bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
 {
+    if (key == KEY_ESCAPE && mask == MASK_NONE &&
+        LLToolMgr::getInstance()->getCurrentTool() == &CameraSubjectPickTool::instance())
+        return CameraSubjectPickTool::instance().handleKey(key, mask);
     if(mIsV2)
     {
         LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
@@ -7533,13 +7649,181 @@ LLUUID LLFloaterDirector::animSourceObject(const LLUUID& anim_id) const
 // ---------------------------------------------------------------------------
 // Camera tab
 // ---------------------------------------------------------------------------
+void LLFloaterDirector::bindCameraSubjectRows(LLView* root)
+{
+    struct Binding { const char* mPrefix; S32 mSubject; bool mRequired; };
+    const Binding bindings[] = {
+        { "shot_target", SUBJECT_A, false },
+        { "shot_ots_second", SUBJECT_B, false },
+        { "shot_two_second", SUBJECT_B, false },
+        { "moves_target", SUBJECT_A, true },
+        { "moves_second", SUBJECT_B, true }
+    };
+    for (const auto& binding : bindings)
+    {
+        const std::string prefix = binding.mPrefix;
+        auto* name = root->findChild<LLTextBox>(prefix + "_name", true);
+        auto* choose = root->findChild<LLButton>(prefix + "_choose", true);
+        auto* selected = root->findChild<LLButton>(prefix + "_selected", true);
+        auto* you = root->findChild<LLButton>(prefix + "_you", true);
+        auto* clear = root->findChild<LLButton>(prefix + "_clear", true);
+        if (!name || !choose || !selected || !you || !clear) continue;
+        if (std::any_of(mCameraSubjectRows.begin(), mCameraSubjectRows.end(),
+                [name](const CameraSubjectRow& row) { return row.mName.get() == name; })) continue;
+        const S32 subject = binding.mSubject;
+        mCameraSubjectRows.push_back({ name->getDerivedHandle<LLTextBox>(),
+            selected->getDerivedHandle<LLButton>(), clear->getDerivedHandle<LLButton>(),
+            subject, binding.mRequired });
+        choose->setCommitCallback([this, subject](LLUICtrl* anchor, const LLSD&)
+            { showCameraSubjectMenu(anchor, subject); });
+        selected->setCommitCallback([this, subject](LLUICtrl*, const LLSD&)
+        {
+            if (LLVOAvatar* avatar = camera_subject_from_selection(); camera_subject_avatar(avatar))
+                assignCameraSubject(subject, avatar->getID());
+        });
+        you->setCommitCallback([this, subject](LLUICtrl*, const LLSD&)
+            { assignCameraSubject(subject, gAgentID); });
+        clear->setCommitCallback([this, subject](LLUICtrl*, const LLSD&)
+            { onClickClearSubject(subject); });
+    }
+    if (!mCameraSubjectRows.empty() && !mCameraSubjectConnection.connected())
+        mCameraSubjectConnection = LLDirectorCast::instance().addChangedCallback(
+            [this]() { mCameraSubjectsDirty = true; });
+    mCameraSubjectsDirty = true;
+    refreshCameraSubjectRows();
+}
+
+void LLFloaterDirector::assignCameraSubject(S32 subject, const LLUUID& id)
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (id.isNull() || !camera_subject_avatar(cast.resolve(id))) return;
+    cast.add(id);
+    assign_subject(cast, subject, id);
+}
+
+void LLFloaterDirector::showCameraSubjectMenu(LLUICtrl* anchor, S32 subject)
+{
+    if (!anchor || !gMenuHolder) return;
+    if (LLContextMenu* old = mCameraSubjectMenu.get())
+    {
+        old->hide();
+        delete old;
+    }
+    LLContextMenu::Params params;
+    params.name = "director_camera_subject_menu";
+    params.visible = false;
+    auto* menu = LLUICtrlFactory::create<LLContextMenu>(params);
+    mCameraSubjectMenu = menu->getHandle();
+    gMenuHolder->addChild(menu);
+    auto add = [menu](const std::string& name, const std::string& label,
+                      bool enabled, std::function<void()> action)
+    {
+        LLMenuItemCallGL::Params item;
+        item.name = name;
+        item.label = label;
+        item.enabled = enabled;
+        item.on_click.function = [action](LLUICtrl*, const LLSD&) { if (action) action(); };
+        menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+    };
+    const auto handle = getHandle();
+    add("pick_world", "Click avatar in world", true, [handle, subject]()
+    {
+        auto* self = dynamic_cast<LLFloaterDirector*>(handle.get());
+        if (!self || !self->isInVisibleChain()) return;
+        auto& tool = CameraSubjectPickTool::instance();
+        LLToolMgr::getInstance()->setTransientTool(&tool);
+        tool.begin(self, [handle, subject](const LLUUID& id)
+        {
+            if (auto* owner = dynamic_cast<LLFloaterDirector*>(handle.get()))
+                owner->assignCameraSubject(subject, id);
+        });
+    });
+    auto& cast = LLDirectorCast::instance();
+    std::set<LLUUID> emitted;
+    auto add_avatar = [&](const LLUUID& id, const std::string& name, bool in_cast)
+    {
+        LLVOAvatar* avatar = cast.resolve(id);
+        if (avatar && !camera_subject_avatar(avatar)) return;
+        if (!avatar)
+        {
+            // Preserve away cast entries as read-only choices. A live avatar is
+            // required to assign here; known props and Studio clones are omitted.
+            const auto& studio = ALGhostStudio::instance();
+            if (!in_cast || gObjectList.findObject(id) || studio.getInstance(id) ||
+                studio.findInstanceByRuntime(id)) return;
+        }
+        if (!emitted.insert(id).second) return;
+        std::string label = id == gAgentID ? "You" :
+            !name.empty() ? name : avatar ? avatar->getFullname() : id.asString();
+        const S32 mark = cast.getSubjectA() == id ? SUBJECT_A :
+            cast.getSubjectB() == id ? SUBJECT_B : cast.getSubjectC() == id ? SUBJECT_C :
+            cast.getSubjectD() == id ? SUBJECT_D : -1;
+        label += mark >= SUBJECT_A ? llformat(" - Subject %c", 'A' + mark - SUBJECT_A) :
+            (in_cast ? " - cast" : " - nearby");
+        if (!avatar) label += " (away)";
+        add("avatar_" + id.asString(), label, avatar != nullptr, [handle, subject, id]()
+        {
+            if (auto* self = dynamic_cast<LLFloaterDirector*>(handle.get()))
+                self->assignCameraSubject(subject, id);
+        });
+    };
+    for (const auto& member : cast.getCast()) add_avatar(member.mId, member.mLastName, true);
+    // Same live-avatar source and filters as Light rig > Add avatar. Only on open.
+    for (LLCharacter* character : LLCharacter::sInstances)
+        if (auto* avatar = dynamic_cast<LLVOAvatar*>(character); camera_subject_avatar(avatar))
+            add_avatar(avatar->getID(), avatar->getFullname(), false);
+    if (emitted.empty()) add("no_avatars", "No live avatars nearby", false, {});
+    menu->buildDrawLabels();
+    ALKitMenu::showContextMenu(anchor, menu, 0, 0);
+}
+
+void LLFloaterDirector::refreshCameraSubjectRows()
+{
+    const bool visible = std::any_of(mCameraSubjectRows.begin(), mCameraSubjectRows.end(),
+        [](const CameraSubjectRow& row) { return row.mName.get() && row.mName.get()->isInVisibleChain(); });
+    if (!visible) return;
+    if (mCameraSubjectsDirty) mCameraSubjectClock.forceDue();
+    if (!mCameraSubjectClock.due()) return;
+    mCameraSubjectsDirty = false;
+    auto& cast = LLDirectorCast::instance();
+    const bool have_selected = camera_subject_avatar(camera_subject_from_selection());
+    for (const auto& row : mCameraSubjectRows)
+    {
+        auto* name = row.mName.get();
+        if (!name || !name->isInVisibleChain()) continue;
+        const bool second = row.mSubject == SUBJECT_B;
+        std::string source;
+        LLVOAvatar* avatar = nullptr;
+        if (row.mRequired)
+        {
+            avatar = second ? cast.resolveSubjectB() : cast.resolveSubjectA();
+            source = second ? "Subject B" : "Subject A";
+        }
+        else
+        {
+            auto& camera = LLCinematicCamera::instance();
+            avatar = second ? camera.resolveSecondaryTarget(&source) : camera.resolveTarget(&source);
+            if (second && !avatar)
+                avatar = isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : camera.resolveTarget();
+        }
+        const std::string text = avatar
+            ? (avatar->getID() == gAgentID ? "You" : castMemberName(avatar->getID())) + " - " + source
+            : row.mRequired ? (second ? "Second required - choose Subject B" : "Target required - choose Subject A")
+                            : "No live avatar - fallback";
+        setTextIfChanged(name, text);
+        setToolTipIfChanged(name, text);
+        setEnabledIfChanged(row.mSelected.get(), have_selected);
+        setEnabledIfChanged(row.mClear.get(), (second ? cast.getSubjectB() : cast.getSubjectA()).notNull());
+    }
+}
+
 //static
 LLUUID LLFloaterDirector::avatarFromSelection()
 {
     LLViewerObject* obj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     if (obj)
     {
-        LLVOAvatar* av = obj->getAvatar();  // avatar itself or attachment parent
+        LLVOAvatar* av = obj->getAvatar();
         if (av && !av->isDead())
         {
             return av->getID();

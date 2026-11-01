@@ -261,6 +261,23 @@ private:
     LLUUID animSourceObject(const LLUUID& anim_id) const; // the object playing it on you
 
     // ---- Camera tab ----
+    void bindCameraSubjectRows(LLView* root);
+    void showCameraSubjectMenu(LLUICtrl* anchor, S32 subject);
+    void assignCameraSubject(S32 subject, const LLUUID& id);
+    void refreshCameraSubjectRows();
+    struct CameraSubjectRow
+    {
+        LLHandle<LLTextBox> mName;
+        LLHandle<LLButton> mSelected;
+        LLHandle<LLButton> mClear;
+        S32 mSubject;
+        bool mRequired;
+    };
+    std::vector<CameraSubjectRow> mCameraSubjectRows;
+    LLHandle<LLContextMenu> mCameraSubjectMenu;
+    boost::signals2::scoped_connection mCameraSubjectConnection;
+    ALLiveReadoutClock mCameraSubjectClock{1.f};
+    bool mCameraSubjectsDirty = true;
     static LLUUID avatarFromSelection();
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickAssignSubjects();
