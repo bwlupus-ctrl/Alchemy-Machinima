@@ -1615,8 +1615,8 @@ void ALKitPage::setSearchText(const std::string& q)
         mSearch->setValue(q);
     if (q.empty())
     {
-        if (ALKitShell* shell = ALKitShell::find(this); shell && shell->changedOnly())
-            applyLocalFilter("", true);
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->clearSearch();
         else
             clearSearch();
     }

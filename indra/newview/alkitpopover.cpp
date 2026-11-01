@@ -420,6 +420,8 @@ bool ALKitPopover::handleKeyHere(KEY key, MASK mask)
 {
     if (key == KEY_ESCAPE && mask == MASK_NONE)
     {
+        if (ALKitShell* shell = ALKitShell::find(this); shell && shell->closePopover())
+            return true;
         hide();
         return true;
     }

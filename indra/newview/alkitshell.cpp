@@ -1337,6 +1337,7 @@ bool ALKitShell::revealLegacyWidget(LLPanel* panel, LLView* view)
 
 bool ALKitShell::selectPage(const std::string& page_name)
 {
+    setSearchPopupArmed(nullptr, false);
     if (ALKitPage* current = currentKitPage())
         current->saveState();
     ALKitLazyPage* page = findChild<ALKitLazyPage>(page_name);
@@ -1375,8 +1376,7 @@ bool ALKitShell::selectPage(const std::string& page_name)
 
 void ALKitShell::syncSelection()
 {
-    // Page/group navigation always closes the results popup and never reopens
-    // it; only typing (or clicking back into a non-empty box) re-arms it.
+    // Also covers group/legacy tab changes that bypass selectPage().
     setSearchPopupArmed(nullptr, false);
     layoutChrome();
     if (ALKitPage* page = currentKitPage())
@@ -1557,8 +1557,6 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
                     shell->setSearchPopupArmed(nullptr, false);
                 });
             });
-        if (mSearchPopover)
-            mSearchPopover->bindAnchor(editor);
     }
     if (LLButton* who = page->whoChip(); who && page->whoCombo())
     {
@@ -1647,24 +1645,22 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
 
 void ALKitShell::runSearch(const std::string& query)
 {
+    if (query.empty() && !mChangedOnly)
+    {
+        clearSearch();
+        return;
+    }
     mSearch.setQuery(query);
     ALKitPage* page = currentKitPage();
     if (!page)
         return;
+    if (!query.empty() && page->scroller())
+        mSearchScrollPositions.emplace(page->pageKey(), page->scroller()->getDocPosVertical());
     if (page->pageKey() == "quick_group/quick_tab")
     {
         page->applyLocalFilter(query, mChangedOnly);
         ALKitSearch::Hits hits = query.empty() ? ALKitSearch::Hits() : mSearch.query(query);
         updateSearchResults(hits, page);
-        return;
-    }
-    if (query.empty() && !mChangedOnly)
-    {
-        page->clearSearch();
-        if (mSearchPopover)
-            mSearchPopover->hide();
-        mSearchHits.clear();
-        mHasTopSearchHit = false;
         return;
     }
     mSearch.setCurrentPage(page->pageKey());
@@ -1705,8 +1701,16 @@ void ALKitShell::runSearch(const std::string& query)
 
 void ALKitShell::queueSearch(const std::string& query)
 {
+    // Clear immediately, including a query whose debounce has not fired yet.
+    if (query.empty())
+    {
+        clearSearch();
+        return;
+    }
     mPendingQuery = query;
     mSearch.setQuery(query);
+    if (ALKitPage* page = currentKitPage(); page && mSearchPopover)
+        mSearchPopover->bindAnchor(page->searchEditor());
     if (auto timer = mSearchDebounce.lock())
         delete timer.get();
     LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
@@ -1842,11 +1846,10 @@ bool ALKitShell::handleSearchKey(KEY key)
 {
     if (key == KEY_ESCAPE)
     {
-        // Esc closes an open results popup (text and filters are kept); with no
-        // popup open it falls through to the floater's Esc handling.
-        if (!mSearchPopover || !mSearchPopover->getVisible())
+        if (mSearch.queryText().empty() && mPendingQuery.empty() &&
+            (!mSearchPopover || !mSearchPopover->getVisible()))
             return false;
-        setSearchPopupArmed(nullptr, false);
+        clearSearch();
         return true;
     }
     if (key == KEY_RETURN && mSearchSelectionMoved && !mSearchHits.empty())
@@ -1912,7 +1915,7 @@ void ALKitShell::activateSearchResult(const ALKitSearch::Hit& hit)
 
 bool ALKitShell::openExternalResult(const ALKitSearch::Hit& hit)
 {
-    setSearchPopupArmed(nullptr, false);
+    clearSearch();
     LLFloater* floater = LLFloaterReg::showInstance(hit.external_floater);
     if (!floater)
     {
@@ -2061,18 +2064,41 @@ void ALKitShell::clearSearch()
     if (auto timer = mSearchDebounce.lock())
         delete timer.get();
     mSearchDebounce.reset();
+    mPendingQuery.clear();
     mSearch.setQuery("");
-    if (ALKitPage* page = currentKitPage())
-    {
-        page->setSearchText("");
-        if (mChangedOnly)
-            page->applyLocalFilter("", true);
-        else
-            page->clearSearch();
-    }
+    mSearchPopupArmed = false;
+    if (mSearchPopover)
+        mSearchPopover->hide();
+    // Navigation can leave filtered pages behind. Restore them all, including
+    // their editors and section chips, before a result reveals its destination.
+    for (const auto& entry : mBuiltPages)
+        if (ALKitPage* page = entry.second.get())
+        {
+            if (LLLineEditor* editor = page->searchEditor())
+                editor->setValue("");
+            if (mChangedOnly)
+                page->applyLocalFilter("", true);
+            else
+                page->clearSearch();
+            const auto scroll = mSearchScrollPositions.find(entry.first);
+            if (scroll != mSearchScrollPositions.end() && page->scroller())
+            {
+                page->relayoutNow();
+                // Refresh the scrollbar range after expanding the document.
+                page->scroller()->getVisibleContentRect();
+                page->scroller()->setDocPosVertical(scroll->second);
+            }
+        }
+    mSearchScrollPositions.clear();
     mSearchHits.clear();
+    mTopSearchHit = ALKitSearch::Hit();
     mHasTopSearchHit = false;
-    setSearchPopupArmed(nullptr, false);
+    mSearchSelection = 0;
+    mSearchSelectionMoved = false;
+    for (ALKitSearchResultRow* row : mSearchRows)
+        row->setSelected(false);
+    if (mSearchScroller)
+        mSearchScroller->goToTop();
 }
 
 void ALKitShell::setSearchPopupArmed(LLLineEditor* editor, bool armed)
@@ -2080,7 +2106,9 @@ void ALKitShell::setSearchPopupArmed(LLLineEditor* editor, bool armed)
     mSearchPopupArmed = armed && editor && editor->hasFocus() && !editor->getText().empty();
     if (!mSearchPopupArmed)
     {
-        if (mSearchPopover)
+        if (!mSearch.queryText().empty() || !mPendingQuery.empty() || !mSearchScrollPositions.empty())
+            clearSearch();
+        else if (mSearchPopover)
             mSearchPopover->hide();
         return;
     }
@@ -2275,6 +2303,11 @@ bool ALKitShell::closePopover()
 {
     if (!mOpenPopover || !mOpenPopover->getVisible())
         return false;
+    if (mOpenPopover == mSearchPopover)
+    {
+        clearSearch();
+        return true;
+    }
     mOpenPopover->hide();
     mOpenPopover = nullptr;
     return true;
@@ -2303,6 +2336,18 @@ void ALKitShell::popoverHidden(ALKitPopover* popover)
 
 bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    // Hit-test before restoring: a reflow/scroll restore must not change which
+    // control receives this press. This also dismisses searches with no popup
+    // (no matches, or global results disabled), even on a non-focusable area.
+    bool finish_search = !mSearch.queryText().empty() || !mPendingQuery.empty();
+    if (finish_search && mSearchPopover)
+    {
+        S32 popup_x = 0, popup_y = 0;
+        localPointToOtherView(x, y, &popup_x, &popup_y, mSearchPopover);
+        if (mSearchPopover->anchorContains(x, y) ||
+            (mSearchPopover->getVisible() && mSearchPopover->pointInView(popup_x, popup_y)))
+            finish_search = false;
+    }
     mAnchorClosedPopover = nullptr; // any other mouse-down invalidates the previous press
     if (mOpenPopover && mOpenPopover->getVisible())
     {
@@ -2311,19 +2356,22 @@ bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
         localPointToOtherView(x, y, &local_x, &local_y, mOpenPopover);
         if (!mOpenPopover->pointInView(local_x, local_y))
         {
-            // A click outside the results popup disarms it so a pending debounced
-            // search cannot reopen it; clicking into the box re-arms it.
-            if (mOpenPopover == mSearchPopover)
-                mSearchPopupArmed = false;
             ALKitPopover* closing = mOpenPopover;
             const bool on_anchor = closing->anchorContains(x, y);
-            closePopover();
+            // Search restoration waits until the press has reached its target.
+            if (closing == mSearchPopover)
+                closing->hide();
+            else
+                closePopover();
             // A press on the popover's own anchor closes it; remember that so the
             // anchor's click (toggle) does not immediately reopen it.
             mAnchorClosedPopover = on_anchor ? closing : nullptr;
         }
     }
-    return LLPanel::handleMouseDown(x, y, mask);
+    const bool handled = LLPanel::handleMouseDown(x, y, mask);
+    if (finish_search)
+        clearSearch();
+    return handled;
 }
 
 bool ALKitShell::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)

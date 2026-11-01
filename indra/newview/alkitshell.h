@@ -83,8 +83,7 @@ public:
     void                        startSearchLoad();
     void                        clearSearch();
     bool                        handleSearchKey(KEY key);
-    // Results popup gate: opens only while the user is typing in (or clicks
-    // back into) a non-empty search box; anything else closes it.
+    // Results popup gate: disarming ends the search and restores page filters.
     void                        setSearchPopupArmed(LLLineEditor* editor, bool armed);
     bool                        cycleChip(S32 delta);
     bool                        cyclePage(S32 delta);
@@ -199,6 +198,7 @@ private:
     bool                                                 mSearchSelectionMoved = false;
     LLEventTimer::weak_t                                 mSearchDebounce;
     std::string                                          mPendingQuery;
+    std::unordered_map<std::string, S32>                  mSearchScrollPositions;
     bool                                                 mRailLabels    = true;
     bool                                                 mWideHelp      = true;
     bool                                                 mSearchStarted = false;
