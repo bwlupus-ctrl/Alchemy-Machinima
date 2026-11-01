@@ -1649,8 +1649,8 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     {
         return;
     }
-    // A Directed pause/resume retains the presentation until the next avatar
-    // evaluation restores its input. Other owners receive an unmirrored pose.
+    // An eligible pause/resume retains the pose flip until the next avatar
+    // evaluation restores its input. Other owners receive an unflipped pose.
     const auto* mirror_inst = ALGhostStudio::instance().findInstanceByRuntime(getID());
     const bool keep_directed_mirror = mirror_inst && ALGhostAnimMirrorMath::eligible(
         mirror_inst->mDriveMode, mirror_inst->mDirectedMirrorFreezeDrive, mDirectedMirror, mode);
@@ -4074,7 +4074,8 @@ void LLGhostAvatar::resetHeldAnimeshRepeat()
 void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf] named zone, sub-zones below
-    // Undo only our previous presentation stamp before motion blending / gaze.
+    // Undo only our previous pose flip before motion blending / gaze or the
+    // next True mirror source stamp. All eligible drives use this same restore.
     // This also handles paused and temporally stepped controllers, which may
     // leave some or all joint channels untouched on this update.
     restoreDirectedMirrorPose(false); // updateCharacter() supplies this frame's reskin

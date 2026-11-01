@@ -175,13 +175,13 @@ template<> template<> void ghost_anim_mirror_object::test<4>()
 template<> template<> void ghost_anim_mirror_object::test<5>()
 {
     // Rows are current drive, columns stored resume drive, in the public enum
-    // order Mirror/Directed/Frozen/True Mirror/Reflect. Only Directed and its
-    // paused Frozen pose are eligible; unrelated Frozen owners stay unflipped.
+    // order Mirror/Directed/Frozen/True Mirror/Reflect. Each supported drive
+    // and its paused Frozen pose is eligible; Reflect never gets another flip.
     const bool expected[5][5] = {
-        {false, false, false, false, false},
         {true,  true,  true,  true,  true },
-        {false, true,  false, false, false},
-        {false, false, false, false, false},
+        {true,  true,  true,  true,  true },
+        {true,  true,  false, true,  false},
+        {true,  true,  true,  true,  true },
         {false, false, false, false, false}
     };
     for (S32 drive = 0; drive < 5; ++drive)
@@ -196,6 +196,8 @@ template<> template<> void ghost_anim_mirror_object::test<5>()
         ALGhostAnimMirrorMath::DRIVE_FROZEN, ALGhostAnimMirrorMath::DRIVE_DIRECTED, true));
     ensure("unknown drive is ineligible", !ALGhostAnimMirrorMath::directedMirrorActive(
         -1, ALGhostAnimMirrorMath::DRIVE_DIRECTED, true));
+    ensure("unknown frozen owner is ineligible", !ALGhostAnimMirrorMath::directedMirrorActive(
+        ALGhostAnimMirrorMath::DRIVE_FROZEN, -1, true));
 }
 
 template<> template<> void ghost_anim_mirror_object::test<6>()
@@ -275,6 +277,22 @@ template<> template<> void ghost_anim_mirror_object::test<8>()
     ensure("checkbox gates temporary drive", !eligible(DRIVE_DIRECTED, DRIVE_DIRECTED, false, DRIVE_FROZEN));
     for (S32 drive : {DRIVE_MIRROR, DRIVE_TRUE_MIRROR, DRIVE_REFLECT})
         ensure("other runtime owns pose", !eligible(DRIVE_DIRECTED, DRIVE_DIRECTED, true, drive));
+    // Full authored/resume/runtime matrix: active modes must match, and a
+    // borrowed Director Frozen pose only retains the existing Directed flip.
+    for (S32 authored = DRIVE_MIRROR; authored <= DRIVE_REFLECT; ++authored)
+        for (S32 resume = DRIVE_MIRROR; resume <= DRIVE_REFLECT; ++resume)
+            for (S32 runtime = DRIVE_MIRROR; runtime <= DRIVE_REFLECT; ++runtime)
+            {
+                const bool owner = authored == DRIVE_MIRROR || authored == DRIVE_DIRECTED ||
+                    authored == DRIVE_TRUE_MIRROR || (authored == DRIVE_FROZEN &&
+                        (resume == DRIVE_MIRROR || resume == DRIVE_DIRECTED || resume == DRIVE_TRUE_MIRROR));
+                const bool matching = runtime == authored ||
+                    (authored == DRIVE_DIRECTED && runtime == DRIVE_FROZEN);
+                ensure_equals("runtime ownership", eligible(authored, resume, true, runtime), owner && matching);
+                ensure("disabled never flips", !eligible(authored, resume, false, runtime));
+            }
+    ensure("unknown authored drive never flips", !eligible(-1, DRIVE_MIRROR, true, DRIVE_MIRROR));
+    ensure("unknown runtime never flips", !eligible(DRIVE_MIRROR, DRIVE_MIRROR, true, -1));
 }
 
 template<> template<> void ghost_anim_mirror_object::test<9>()
