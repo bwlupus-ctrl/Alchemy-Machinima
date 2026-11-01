@@ -132,6 +132,10 @@ public:
     // same avatar clears it. Null = stock behavior (selection / self).
     static void toggleFollowTarget(const LLUUID& id);
     static bool isFollowTarget(const LLUUID& id);
+    // Read-only target/source view for Director's avatar readouts. A null
+    // secondary means the existing OTS/Two-Shot self fallback.
+    LLVOAvatar* resolveTarget(std::string* source = nullptr) const;
+    LLVOAvatar* resolveSecondaryTarget(std::string* source = nullptr) const;
     static void onRuntimeTargetReplaced(const LLUUID& old_id,
                                         const LLUUID& new_id);
 
@@ -200,10 +204,8 @@ private:
     LLQuaternion mObjectOutputRotation;
     F32 mObjectOutputFov = 0.f;
 
-    LLVOAvatar* resolveTarget() const;
-    LLVOAvatar* resolveDefaultTarget() const;
+    LLVOAvatar* resolveDefaultTarget(std::string* source = nullptr) const;
     LLVOAvatar* resolveMarkedTarget(S32 subject) const;
-    LLVOAvatar* resolveSecondaryTarget() const;
     void captureMotionStart(LLVOAvatar* av, const LLVector3& center,
                             S32 mode, S32 switcher_slot, U64 shot_index);
     F32 motionStartAzimuth(F32 classic_azimuth) const

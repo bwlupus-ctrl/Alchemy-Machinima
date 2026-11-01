@@ -349,8 +349,9 @@ def validate_data(data: dict) -> None:
     # Shadow depth + distance reach: exactly three Soft shadows rows, 2378 -> 2381 (10/30).
     # Hide cursor with interface: one global Frame format preference, 2381 -> 2382 (10/30).
     # Composition guide: Centre cross, Safe areas, Show with interface hidden, 2382 -> 2385 (10/31).
-    if len(pages) != 38 or row_count != 2385:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2385")
+    # Avatar targets (10/31): Shot Target + OTS/Two-Shot Second, Moves Target + Second; 2385 -> 2390.
+    if len(pages) != 38 or row_count != 2390:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2390")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -658,6 +659,14 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     custom_tag = row.get("custom_tag")
     if custom_tag:
         child = ET.Element(str(custom_tag), {"name": widget})
+        if row.get("readout"):
+            # Compact avatar target rows: name/source above two pairs of actions.
+            child.set("width", "156")
+            child.set("height", str(row["row_height"]))
+            ET.SubElement(child, "text", {
+                "name": row["readout"], "layout": "topleft", "left": "0", "top": "0",
+                "width": "156", "height": "36", "follows": "left|right|top",
+                "font": "SansSerifSmall", "word_wrap": "true"}).text = row.get("text", "")
         for column in row.get("columns", []):
             ET.SubElement(child, "columns", {key: str(value) for key, value in column.items()})
         if row.get("actions"):
@@ -669,7 +678,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
                 ET.SubElement(child, "button", {
                     "name": action["w"], "label": action["l"],
                     "tool_tip": action["h"], "layout": "topleft",
-                    "left": str(left), "top": "0", "width": str(width), "height": "24"})
+                    "left": str(action.get("left", left)), "top": str(action.get("top", 0)),
+                    "width": str(width), "height": "24"})
                 left += width + 6
         return kind, child, "code"
     tag = NATIVE_TAG.get(kind)

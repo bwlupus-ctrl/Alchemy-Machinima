@@ -874,7 +874,7 @@ bool LLCinematicCamera::isActiveOrbitAnchor(const LLUUID& avatar_id) const
     return target && !target->isDead() && target->getID() == avatar_id;
 }
 
-LLVOAvatar* LLCinematicCamera::resolveTarget() const
+LLVOAvatar* LLCinematicCamera::resolveTarget(std::string* source) const
 {
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     if (switcher.isDrivingCamera())
@@ -886,20 +886,22 @@ LLVOAvatar* LLCinematicCamera::resolveTarget() const
             // target chain rather than dropping camera ownership.
             if (LLVOAvatar* marked = resolveMarkedTarget(subject))
             {
+                if (source) *source = llformat("Switcher Subject %c", 'A' + subject - ALDirectorSwitcher::SUBJECT_A);
                 return marked;
             }
         }
     }
-    return resolveDefaultTarget();
+    return resolveDefaultTarget(source);
 }
 
-LLVOAvatar* LLCinematicCamera::resolveDefaultTarget() const
+LLVOAvatar* LLCinematicCamera::resolveDefaultTarget(std::string* source) const
 {
     // [Director] Subject A beats everything while set and alive; unset (or
     // out-of-world) falls through to the stock chain, so an empty cast is
     // byte-identical to pre-Director behavior.
     if (LLVOAvatar* subject = LLDirectorCast::instance().resolveSubjectA())
     {
+        if (source) *source = "Subject A";
         return subject;
     }
 
@@ -911,6 +913,7 @@ LLVOAvatar* LLCinematicCamera::resolveDefaultTarget() const
         LLVOAvatar* av = obj ? obj->asAvatar() : nullptr;
         if (av && !av->isDead())
         {
+            if (source) *source = "follow lock";
             return av;
         }
     }
@@ -924,11 +927,13 @@ LLVOAvatar* LLCinematicCamera::resolveDefaultTarget() const
             LLVOAvatar* av = obj->getAvatar();  // avatar itself or attachment parent
             if (av && !av->isDead())
             {
+                if (source) *source = "selection";
                 return av;
             }
         }
         // fall through to self so the camera doesn't drop out mid-shot
     }
+    if (source) *source = "fallback";
     return isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : nullptr;
 }
 
@@ -945,7 +950,7 @@ LLVOAvatar* LLCinematicCamera::resolveMarkedTarget(S32 subject) const
     }
 }
 
-LLVOAvatar* LLCinematicCamera::resolveSecondaryTarget() const
+LLVOAvatar* LLCinematicCamera::resolveSecondaryTarget(std::string* source) const
 {
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     if (switcher.isDrivingCamera())
@@ -953,11 +958,15 @@ LLVOAvatar* LLCinematicCamera::resolveSecondaryTarget() const
         if (LLVOAvatar* marked =
                 resolveMarkedTarget(switcher.activeSecondarySubject()))
         {
+            if (source) *source = llformat("Switcher Subject %c",
+                'A' + switcher.activeSecondarySubject() - ALDirectorSwitcher::SUBJECT_A);
             return marked;
         }
     }
     // Legacy A-over-B dialogue behavior and fail-soft fallback.
-    return LLDirectorCast::instance().resolveSubjectB();
+    LLVOAvatar* second = LLDirectorCast::instance().resolveSubjectB();
+    if (source) *source = second ? "Subject B" : "fallback";
+    return second;
 }
 
 // anchor transform for external riders (Flycam Orbit): same target/joint
