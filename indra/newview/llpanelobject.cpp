@@ -2133,6 +2133,7 @@ void LLPanelObject::refresh()
 
 void LLPanelObject::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // Tune the colors of the labels
     LLTool* tool = LLToolMgr::getInstance()->getCurrentTool();
 

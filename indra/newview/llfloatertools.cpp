@@ -660,6 +660,7 @@ void LLFloaterTools::refresh()
 
 void LLFloaterTools::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     bool has_selection = !LLSelectMgr::getInstance()->getSelection()->isEmpty();
     if(!has_selection && (mHasSelection != has_selection))
     {
