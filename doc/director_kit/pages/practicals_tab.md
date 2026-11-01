@@ -1,12 +1,12 @@
 # Practicals — Director Kit page contract
 
 Page key: `practicals_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (0/16 setting-bound rows; 15 C++-referenced rows).
+Computed class: **code-driven** (0/23 setting-bound rows; 22 C++-referenced rows).
 
 ## Real owners
 
 - `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (15 matching rows).
-- Referencing classes: `ALFloaterLightBox` (39).
+- Referencing classes: `ALFloaterLightBox` (39), `ALPanelPracticals` (25), `ALProjectorTracker` (9).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -21,10 +21,17 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `sel` / `sl_status` (Status) | `text` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6432` | kit readout ← approved static copy; no runtime writer | none |
-| `sel` / `sl_cast_shadows` (Cast shadows) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6434` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightCastShadows()` (`indra/newview/alfloaterlightbox.cpp:90`) | none |
-| `sel` / `sl_volumetric` (Light cone) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6438` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightVolumetric()` (`indra/newview/alfloaterlightbox.cpp:91`) | none |
-| `sel` / `sl_capture` (Capture shaft) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6441` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightCaptureOverride()` (`indra/newview/alfloaterlightbox.cpp:92`) | none |
-| `sel` / `sl_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6444` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightClearOverride()` (`indra/newview/alfloaterlightbox.cpp:93`) | none |
+| `sel` / `sl_cast_shadows` (Cast shadows) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6434` | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALPanelPracticals::onCastShadows()` (`indra/newview/alpanelpracticals.cpp:108`), wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightCastShadows()` (`indra/newview/alfloaterlightbox.cpp:90`) | none |
+| `sel` / `sl_volumetric` (Light cone) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6438` | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALPanelPracticals::onVolumetric()` (`indra/newview/alpanelpracticals.cpp:109`), wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightVolumetric()` (`indra/newview/alfloaterlightbox.cpp:91`) | none |
+| `sel` / `sl_capture` (Capture shaft) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6441` | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALPanelPracticals::onCaptureOverride()` (`indra/newview/alpanelpracticals.cpp:110`), wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightCaptureOverride()` (`indra/newview/alfloaterlightbox.cpp:92`) | none |
+| `sel` / `sl_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6444` | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALPanelPracticals::onClearOverride()` (`indra/newview/alpanelpracticals.cpp:111`), wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightClearOverride()` (`indra/newview/alfloaterlightbox.cpp:93`) | none |
+| `track` / `sl_track` (Track) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::asBoolean()` (`indra/newview/alpanelpracticals.cpp:51`), wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::enable()` (`indra/newview/alprojectortracker.cpp:124`) | none |
+| `track` / `sl_track_subject` (Subject) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::configure()` (`indra/newview/alprojectortracker.cpp:91`) | none |
+| `track` / `sl_track_joint` (Joint) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::configure()` (`indra/newview/alprojectortracker.cpp:91`) | none |
+| `track` / `sl_track_mode` (Mode) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::configure()` (`indra/newview/alprojectortracker.cpp:91`) | none |
+| `track` / `sl_track_smoothing` (Smoothing) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::configure()` (`indra/newview/alprojectortracker.cpp:91`) | none |
+| `track` / `sl_track_capture` (Offset) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::capture()` (`indra/newview/alpanelpracticals.cpp:59`), wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::capture()` (`indra/newview/alprojectortracker.cpp:145`) | none |
+| `track` / `sl_track_status` (Track status) | none | `ALPracticalsKitAdapter` command/model binding → wired in `ALPanelPracticals::postBuild()`; behavior `ALProjectorTracker::state()` (`indra/newview/alprojectortracker.cpp:59`) | none |
 | `gobo` / `sl_gobo` (Pattern) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6449` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:94`) | none |
 | `gobo` / `sl_gobo_animmode` (Animation) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6467` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:95`) | none |
 | `gobo` / `sl_gobo_speed` (Speed) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6478` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:96`) | none |
@@ -46,6 +53,16 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALFloaterLightBox::onSelLightCastShadows()` — `indra/newview/alfloaterlightbox.cpp:90` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onSelLightClearOverride()` — `indra/newview/alfloaterlightbox.cpp:93` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onSelLightVolumetric()` — `indra/newview/alfloaterlightbox.cpp:91` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelPracticals::onCaptureOverride()` — `indra/newview/alpanelpracticals.cpp:110` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelPracticals::onCastShadows()` — `indra/newview/alpanelpracticals.cpp:108` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelPracticals::onClearOverride()` — `indra/newview/alpanelpracticals.cpp:111` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelPracticals::onVolumetric()` — `indra/newview/alpanelpracticals.cpp:109` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALProjectorTracker::asBoolean()` — `indra/newview/alpanelpracticals.cpp:51` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALProjectorTracker::capture()` — `indra/newview/alpanelpracticals.cpp:59` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALProjectorTracker::capture()` — `indra/newview/alprojectortracker.cpp:145` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALProjectorTracker::configure()` — `indra/newview/alprojectortracker.cpp:91` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALProjectorTracker::enable()` — `indra/newview/alprojectortracker.cpp:124` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALProjectorTracker::state()` — `indra/newview/alprojectortracker.cpp:59` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -56,7 +73,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **35 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **47 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -67,6 +84,18 @@ Manifest size: **35 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `card-sel-tallest-1160` | Only `sel` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `sl_cast_shadows-on` | Only `sl_cast_shadows` is on; dependent visibility is measured. |
 | `sl_volumetric-on` | Only `sl_volumetric` is on; dependent visibility is measured. |
+| `card-track-tallest-850` | Only `track` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-track-tallest-1160` | Only `track` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `sl_track-on` | Only `sl_track` is on; dependent visibility is measured. |
+| `sl_track_joint-option-0` | Only `sl_track_joint` selects `Head`; other selectors remain default. |
+| `sl_track_joint-option-1` | Only `sl_track_joint` selects `Chest`; other selectors remain default. |
+| `sl_track_joint-option-2` | Only `sl_track_joint` selects `Hips`; other selectors remain default. |
+| `sl_track_joint-option-3` | Only `sl_track_joint` selects `Left hand`; other selectors remain default. |
+| `sl_track_joint-option-4` | Only `sl_track_joint` selects `Right hand`; other selectors remain default. |
+| `sl_track_joint-option-5` | Only `sl_track_joint` selects `Left foot`; other selectors remain default. |
+| `sl_track_joint-option-6` | Only `sl_track_joint` selects `Right foot`; other selectors remain default. |
+| `sl_track_mode-option-0` | Only `sl_track_mode` selects `Aim`; other selectors remain default. |
+| `sl_track_mode-option-1` | Only `sl_track_mode` selects `Follow`; other selectors remain default. |
 | `card-gobo-tallest-850` | Only `gobo` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-gobo-tallest-1160` | Only `gobo` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `sl_gobo-option-0` | Only `sl_gobo` selects `Off (texture)`; other selectors remain default. |
@@ -109,7 +138,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-48 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+37 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

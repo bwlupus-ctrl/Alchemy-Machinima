@@ -350,8 +350,9 @@ def validate_data(data: dict) -> None:
     # Hide cursor with interface: one global Frame format preference, 2381 -> 2382 (10/30).
     # Composition guide: Centre cross, Safe areas, Show with interface hidden, 2382 -> 2385 (10/31).
     # Avatar targets (10/31): Shot Target + OTS/Two-Shot Second, Moves Target + Second; 2385 -> 2390.
-    if len(pages) != 38 or row_count != 2390:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2390")
+    # Projector joint tracking: seven session-only Practicals rows, 2390 -> 2397.
+    if len(pages) != 38 or row_count != 2397:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2397")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2125,7 +2126,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         config = json.loads(config_path.read_text(encoding="utf-8"))
         checks = []
         target_widgets = {"shot_target", "shot_ots_second", "shot_two_second",
-                          "moves_target", "moves_second"}
+                          "moves_target", "moves_second", "sl_track_subject"}
         target_rows = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                        for node in ET.fromstring(payload).iter("kit_row")
                        if node.get("widget") in target_widgets]
@@ -2134,7 +2135,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                           if path.name.startswith("panel_dpage_")
                           for node in ET.fromstring(payload).iter("kit_row")
                           if node.get("fixed_actions") == "true"]
-        target_layout_ok &= len(marked_widgets) == 5 and set(marked_widgets) == target_widgets
+        target_layout_ok &= len(marked_widgets) == 6 and set(marked_widgets) == target_widgets
         for row in target_rows:
             panel = row.find("panel")
             target_layout_ok &= (row.get("action_row", "false") == "false"
@@ -2171,8 +2172,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                     target_layout_ok &= 0 <= x < x + w <= width and 0 <= y < y + h <= height
                     for ox, oy, ow, oh in rects[:i]:
                         target_layout_ok &= (x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y)
-        checks.append(("five avatar target panels preserve readout and button pairs at 156/220/400 px through reshape",
-                       len(target_rows) == 5 and target_layout_ok))
+        checks.append(("six avatar target panels preserve readout and button pairs at 156/220/400 px through reshape",
+                       len(target_rows) == 6 and target_layout_ok))
         vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))
         validate_vcam_page(vcam)
         rejects = []

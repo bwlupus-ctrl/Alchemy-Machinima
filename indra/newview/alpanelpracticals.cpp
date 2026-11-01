@@ -10,6 +10,14 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelpracticals.h"
+#include "alavatarsubjectpicker.h"
+#include "alprojectortracker.h"
+#include "llagent.h"
+#include "llfloaterdirector.h"
+#include "llprismlens.h"
+#include "lldirectorcast.h"
+#include "llmenugl.h"
+#include "llvoavatar.h"
 
 #include "aluirefresh.h"
 #include "llbutton.h"
@@ -29,6 +37,58 @@ static LLPanelInjector<ALPanelPracticals> t_panel_practicals("panel_practicals")
 
 bool ALPanelPracticals::postBuild()
 {
+    mTrack = getChild<LLCheckBoxCtrl>("sl_track");
+    mTrackJoint = getChild<LLComboBox>("sl_track_joint");
+    mTrackMode = getChild<LLComboBox>("sl_track_mode");
+    mTrackSmoothing = getChild<LLSliderCtrl>("sl_track_smoothing");
+    mTrackCapture = getChild<LLButton>("sl_track_capture");
+    mTrackChoose = getChild<LLButton>("sl_track_subject_choose");
+    mTrackSelected = getChild<LLButton>("sl_track_subject_selected");
+    mTrackYou = getChild<LLButton>("sl_track_subject_you");
+    mTrackClear = getChild<LLButton>("sl_track_subject_clear");
+    mTrackSubject = getChild<LLTextBox>("sl_track_subject_name");
+    mTrackStatus = getChild<LLTextBox>("sl_track_status");
+    mTrack->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        ALProjectorTracker::instance().enable(mLastId, mTrack->getValue().asBoolean());
+        refreshTracking(true);
+    });
+    for (LLUICtrl* control : {static_cast<LLUICtrl*>(mTrackJoint),
+            static_cast<LLUICtrl*>(mTrackMode), static_cast<LLUICtrl*>(mTrackSmoothing)})
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTrackingChanged(); });
+    mTrackCapture->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { ALProjectorTracker::instance().capture(mLastId); });
+    mTrackChoose->setCommitCallback([this](LLUICtrl* anchor, const LLSD&)
+    {
+        const LLUUID projector = mLastId;
+        ALAvatarSubjectPicker::choose(anchor, this, mTrackMenu, true,
+            [this, projector](const LLUUID& id) { assignTrackingSubject(projector, id, true); });
+    });
+    mTrackSelected->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto* avatar = ALAvatarSubjectPicker::fromSelection();
+        if (ALAvatarSubjectPicker::valid(avatar, true))
+        {
+            assignTrackingSubject(mLastId, avatar->getID(), true);
+            return;
+        }
+        // The projector must remain the world selection. A cast-row selection
+        // is independent, so Use selected can still assign an actor here.
+        for (LLView* parent = getParent(); parent; parent = parent->getParent())
+        {
+            auto* director = dynamic_cast<LLFloaterDirector*>(parent);
+            if (!director) continue;
+            const auto selected = director->currentCastSelection();
+            if (!selected.empty() && ALAvatarSubjectPicker::valid(
+                    LLDirectorCast::instance().resolve(selected.front()), true))
+                assignTrackingSubject(mLastId, selected.front(), true);
+            break;
+        }
+    });
+    mTrackYou->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { assignTrackingSubject(mLastId, gAgentID, true); });
+    mTrackClear->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { assignTrackingSubject(mLastId, LLUUID::null, false); });
     mCastShadows = getChild<LLCheckBoxCtrl>("sl_cast_shadows");
     mVolumetric = getChild<LLCheckBoxCtrl>("sl_volumetric");
     mCapture = getChild<LLButton>("sl_capture");
@@ -85,6 +145,7 @@ void ALPanelPracticals::refreshFromSelection()
     const bool identity_changed = selected_id != mLastId || is_projector != mLastProjector;
     mLastId = selected_id;
     mLastProjector = is_projector;
+    refreshTracking(identity_changed);
     const bool force_ctrl = identity_changed;
 
     setEnabledIfChanged(mCastShadows, is_projector);
@@ -222,4 +283,73 @@ void ALPanelPracticals::onGoboChanged()
     gobo.mPatternParams.mV[2] = static_cast<F32>(mGoboSoft->getValue().asReal());
     gobo.mPatternParams.mV[3] = mGoboInvert->get() ? 1.f : 0.f;
     LLPipeline::setGoboOverride(object->getID(), gobo);
+}
+
+ALPanelPracticals::~ALPanelPracticals()
+{
+    ALAvatarSubjectPicker::cancelFor(this);
+    if (auto* menu = mTrackMenu.get()) delete menu;
+}
+
+void ALPanelPracticals::assignTrackingSubject(const LLUUID& projector, const LLUUID& subject, bool has_subject)
+{
+    auto& tracker = ALProjectorTracker::instance();
+    const auto s = tracker.state(projector);
+    tracker.configure(projector, LLDirectorCast::canonicalActorId(subject), has_subject,
+        s.joint, s.mode, s.smoothing);
+    refreshTracking(true);
+}
+
+void ALPanelPracticals::onTrackingChanged()
+{
+    auto& tracker = ALProjectorTracker::instance();
+    const auto s = tracker.state(mLastId);
+    tracker.configure(mLastId, s.subject, s.hasSubject, mTrackJoint->getValue().asInteger(),
+        static_cast<ALProjectorTracker::Mode>(mTrackMode->getValue().asInteger()),
+        static_cast<F32>(mTrackSmoothing->getValue().asReal()));
+    refreshTracking(true);
+}
+
+void ALPanelPracticals::refreshTracking(bool force)
+{
+    auto& tracker = ALProjectorTracker::instance();
+    auto& cast = LLDirectorCast::instance();
+    if (!force && mTrackRevision == tracker.revision() && mTrackCastRevision == cast.getCastRevision() &&
+        mTrackVCamRevision == LLPrismLens::configurationRevision()) return;
+    mTrackRevision = tracker.revision();
+    mTrackCastRevision = cast.getCastRevision();
+    mTrackVCamRevision = LLPrismLens::configurationRevision();
+    auto* object = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    const bool enabled = ALProjectorTracker::eligible(object);
+    const auto& s = tracker.state(mLastId);
+    for (LLUICtrl* control : {static_cast<LLUICtrl*>(mTrackJoint), static_cast<LLUICtrl*>(mTrackMode),
+            static_cast<LLUICtrl*>(mTrackSmoothing), static_cast<LLUICtrl*>(mTrackChoose),
+            static_cast<LLUICtrl*>(mTrackSelected), static_cast<LLUICtrl*>(mTrackYou), static_cast<LLUICtrl*>(mTrackClear)})
+        setEnabledIfChanged(control, enabled);
+    setEnabledIfChanged(mTrack, enabled && s.hasSubject);
+    setEnabledIfChanged(mTrackCapture, enabled && s.enabled && s.mode == ALProjectorTracker::FOLLOW);
+    setValueIfChanged(mTrack, LLSD(enabled && s.enabled), true);
+    setValueIfChanged(mTrackJoint, LLSD(s.joint), force);
+    setValueIfChanged(mTrackMode, LLSD(static_cast<S32>(s.mode)), force);
+    setValueIfChanged(mTrackSmoothing, LLSD(s.smoothing), force);
+    std::string name = "Choose a subject";
+    if (s.hasSubject)
+    {
+        if (LLDirectorCast::isSelf(s.subject)) name = "You";
+        else if (auto* member = cast.getMember(s.subject)) name = member->mLastName;
+        else if (auto* avatar = cast.resolve(s.subject)) name = avatar->getFullname();
+        else name = "Subject unavailable";
+    }
+    setTextIfChanged(mTrackSubject, name, true);
+    setTextIfChanged(mTrackStatus, enabled ? (s.status.empty() ? "Track off" : s.status) : "Select a projector", true);
+}
+
+void ALPanelPracticals::onVisibilityChange(bool visible)
+{
+    if (!visible)
+    {
+        ALAvatarSubjectPicker::cancelFor(this);
+        if (auto* menu = mTrackMenu.get()) menu->hide();
+    }
+    LLPanel::onVisibilityChange(visible);
 }

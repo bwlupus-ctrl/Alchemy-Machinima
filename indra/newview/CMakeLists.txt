@@ -392,6 +392,8 @@ set(viewer_SOURCE_FILES
     alghoststudio.cpp
     alghostanimassetindex.cpp
     alworldoverlayviz.cpp
+    alavatarsubjectpicker.cpp
+    alprojectortracker.cpp
     alobjectpathmover.cpp
     alpanelghoststudio.cpp
     alpanelpropmover.cpp
@@ -1356,6 +1358,9 @@ set(viewer_HEADER_FILES
     alworldoverlayviz.h
     alscrollfocus.h
     alscrollfit.h # [ScrollFit]
+    alavatarsubjectpicker.h
+    alprojectortracker.h
+    alprojectortrackmath.h
     alobjectpathmover.h
     alpanelghoststudio.h
     aluiperfselftest.h
@@ -2953,6 +2958,7 @@ if (BUILD_TESTING)
   # instead of inventing a production .cpp solely for the per-source macro.
   LL_ADD_INTEGRATION_TEST(alrelightmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alreflectmath "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alprojectortrackmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alghostanimmirror "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alvramrecovery "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alavataranimationtime "" "${test_libs};llcharacter" "${test_project}")

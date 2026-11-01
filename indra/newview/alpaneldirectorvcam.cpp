@@ -5,6 +5,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpaneldirectorvcam.h"
+#include "llfloaterdirector.h"
 #include "llprismgate.h"
 
 #include "alkitcard.h"
@@ -787,7 +788,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                                                 mModel.selectedProjector());
             projectors.push_back({projector.mHandle, name,
                 projectorState(projector),
-                selected});
+                selected, projector.mObjectId});
             if (selected) selected_projector_name = name;
         }
     mProjectorList->setItems(projectors);
@@ -1653,6 +1654,11 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
             const LLPrismLens::ProjectorDefinition& projector =
                 mModel.registry().mProjectors[index];
             if (projector.mHandle.mId != id) continue;
+            if (value["action"].asString() == "track")
+            {
+                LLFloaterDirector::showProjectorTrack(projector.mObjectId);
+                break;
+            }
             if (value["action"].asString() == "select")
             {
                 mModel.setSelectedProjector(projector.mHandle);

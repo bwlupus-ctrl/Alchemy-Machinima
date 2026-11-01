@@ -28,6 +28,7 @@
 
 // file include
 #include "llpanelobject.h"
+#include "alprojectortracker.h"
 
 // linden library includes
 #include "llerror.h"
@@ -424,10 +425,12 @@ void LLPanelObject::getState( )
     mCtrlPosZ->setMinValue(is_attachment ? -MAX_ATTACHMENT_DIST : min_height);
     mCtrlPosZ->setMaxValue(is_attachment ? MAX_ATTACHMENT_DIST : max_height);
 
+    ALProjectorTrackMath::Pose server_edit;
+    const bool tracked_transform = ALProjectorTracker::instance().serverEditTransform(objectp, server_edit);
     LLVector3 vec;
     if (enable_move)
     {
-        vec = objectp->getPositionEdit();
+        vec = tracked_transform ? server_edit.position : objectp->getPositionEdit();
         mCtrlPosX->set( vec.mV[VX] );
         mCtrlPosY->set( vec.mV[VY] );
         mCtrlPosZ->set( vec.mV[VZ] );
@@ -481,7 +484,7 @@ void LLPanelObject::getState( )
     mCtrlScaleY->setEnabled( enable_scale );
     mCtrlScaleZ->setEnabled( enable_scale );
 
-    LLQuaternion object_rot = objectp->getRotationEdit();
+    LLQuaternion object_rot = tracked_transform ? server_edit.rotation : objectp->getRotationEdit();
     object_rot.getEulerAngles(&(mCurEulerDegrees.mV[VX]), &(mCurEulerDegrees.mV[VY]), &(mCurEulerDegrees.mV[VZ]));
     mCurEulerDegrees *= RAD_TO_DEG;
     mCurEulerDegrees.mV[VX] = fmod(ll_round(mCurEulerDegrees.mV[VX], OBJECT_ROTATION_PRECISION) + 360.f, 360.f);
@@ -1785,6 +1788,23 @@ void LLPanelObject::getVolumeParams(LLVolumeParams& volume_params)
 // BUG: Make work with multiple objects
 void LLPanelObject::sendRotation(bool btn_down)
 {
+    // Discard the first commit's cached preview values and refresh all axes
+    // from the restored server pose; the next edit operates on that baseline.
+    if (ALProjectorTracker::instance().pauseSelectionForEdit())
+    {
+        getState();
+        // set() preserves focused editor text; force a fresh value as well so
+        // a later focus-loss commit cannot replay the discarded preview text.
+        for (auto* spin : {mCtrlPosX, mCtrlPosY, mCtrlPosZ, mCtrlRotX, mCtrlRotY, mCtrlRotZ,
+                           mCtrlScaleX, mCtrlScaleY, mCtrlScaleZ})
+        {
+            const LLSD value = spin->getValue();
+            spin->clear();
+            spin->forceSetValue(value);
+            spin->resetDirty();
+        }
+        return;
+    }
     if (mObject.isNull()) return;
 
     LLVector3 new_rot(mCtrlRotX->get(), mCtrlRotY->get(), mCtrlRotZ->get());
@@ -1842,6 +1862,23 @@ void LLPanelObject::sendRotation(bool btn_down)
 // BUG: Make work with multiple objects
 void LLPanelObject::sendScale(bool btn_down)
 {
+    // Discard the first commit's cached preview values and refresh all axes
+    // from the restored server pose; the next edit operates on that baseline.
+    if (ALProjectorTracker::instance().pauseSelectionForEdit())
+    {
+        getState();
+        // set() preserves focused editor text; force a fresh value as well so
+        // a later focus-loss commit cannot replay the discarded preview text.
+        for (auto* spin : {mCtrlPosX, mCtrlPosY, mCtrlPosZ, mCtrlRotX, mCtrlRotY, mCtrlRotZ,
+                           mCtrlScaleX, mCtrlScaleY, mCtrlScaleZ})
+        {
+            const LLSD value = spin->getValue();
+            spin->clear();
+            spin->forceSetValue(value);
+            spin->resetDirty();
+        }
+        return;
+    }
     if (mObject.isNull()) return;
 
     LLVector3 newscale(mCtrlScaleX->get(), mCtrlScaleY->get(), mCtrlScaleZ->get());
@@ -1879,6 +1916,23 @@ void LLPanelObject::sendScale(bool btn_down)
 
 void LLPanelObject::sendPosition(bool btn_down)
 {
+    // Discard the first commit's cached preview values and refresh all axes
+    // from the restored server pose; the next edit operates on that baseline.
+    if (ALProjectorTracker::instance().pauseSelectionForEdit())
+    {
+        getState();
+        // set() preserves focused editor text; force a fresh value as well so
+        // a later focus-loss commit cannot replay the discarded preview text.
+        for (auto* spin : {mCtrlPosX, mCtrlPosY, mCtrlPosZ, mCtrlRotX, mCtrlRotY, mCtrlRotZ,
+                           mCtrlScaleX, mCtrlScaleY, mCtrlScaleZ})
+        {
+            const LLSD value = spin->getValue();
+            spin->clear();
+            spin->forceSetValue(value);
+            spin->resetDirty();
+        }
+        return;
+    }
     if (mObject.isNull()) return;
 
     LLVector3 newpos(mCtrlPosX->get(), mCtrlPosY->get(), mCtrlPosZ->get());

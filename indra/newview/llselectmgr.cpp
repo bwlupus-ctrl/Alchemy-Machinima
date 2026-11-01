@@ -29,6 +29,7 @@
 // file include
 #define LLSELECTMGR_CPP
 #include "llselectmgr.h"
+#include "alprojectortracker.h"
 #include "llcinematiccamera.h"
 #include "llmaterialmgr.h"
 
@@ -4802,6 +4803,8 @@ struct LLDuplicateData
 
 void LLSelectMgr::selectDuplicate(const LLVector3& offset, bool select_copy)
 {
+    // Duplicate baselines are reused by later transform sends; never cache a driven pose.
+    ALProjectorTracker::instance().pauseSelectionForEdit();
 //  if (mSelectedObjects->isAttachment())
 // [RLVa:KB] - Checked: 2010-03-24 (RLVa-1.2.0e) | Added: RLVa-1.2.0a
     if ( (mSelectedObjects->isAttachment()) || ((rlv_handler_t::isEnabled()) && (!rlvCanDeleteOrReturn())) )
@@ -4896,6 +4899,8 @@ void LLSelectMgr::selectDuplicate(const LLVector3& offset, bool select_copy)
 
 void LLSelectMgr::repeatDuplicate()
 {
+    // Duplicate baselines are reused by later transform sends; never cache a driven pose.
+    ALProjectorTracker::instance().pauseSelectionForEdit();
     if (mSelectedObjects->isAttachment())
     {
         //RN: do not duplicate attachments
@@ -5066,6 +5071,8 @@ void LLSelectMgr::packDuplicateOnRayHead(void *user_data)
 void LLSelectMgr::sendMultipleUpdate(U32 type)
 {
     if (type == UPD_NONE) return;
+    // Last-resort barrier: an unhooked editor must never send a tracked pose.
+    if (ALProjectorTracker::instance().pauseSelectionForEdit()) return;
     // Client-only local previews are moved/rotated/scaled purely locally; never
     // send their transforms to the sim.
     if (selectionAllLocalPreview(mSelectedObjects)) return;
@@ -5789,6 +5796,10 @@ void LLSelectMgr::saveSelectedObjectTextures()
 // also need to know to which simulator to send update message
 void LLSelectMgr::saveSelectedObjectTransform(EActionType action_type)
 {
+    // PICK is selection/bookkeeping only. A real manip edit restores before
+    // taking its drag baseline, including counter-moved child prims.
+    if (action_type != SELECT_ACTION_TYPE_PICK)
+        ALProjectorTracker::instance().pauseSelectionForEdit();
     if (mSelectedObjects->isEmpty())
     {
         // nothing selected, so nothing to save
@@ -6011,6 +6022,7 @@ void LLSelectMgr::packObjectID(LLSelectNode* node, void *user_data)
 
 void LLSelectMgr::packObjectIDAndRotation(LLSelectNode* node, void *user_data)
 {
+    ALProjectorTracker::instance().pauseObjectForEdit(node->getObject());
     gMessageSystem->nextBlockFast(_PREHASH_ObjectData);
     gMessageSystem->addU32Fast(_PREHASH_ObjectLocalID, node->getObject()->getLocalID() );
     gMessageSystem->addQuatFast(_PREHASH_Rotation, node->getObject()->getRotation());
@@ -9106,6 +9118,7 @@ bool LLSelectMgr::selectionMove(const LLVector3& displ,
         return false;
     }
 
+    ALProjectorTracker::instance().pauseSelectionForEdit();
     LLVector3 displ_global;
     bool update_success = true;
     bool update_position = update_type & UPD_POSITION;
@@ -9230,6 +9243,7 @@ bool LLSelectMgr::selectionMove(const LLVector3& displ,
 
 void LLSelectMgr::sendSelectionMove()
 {
+    if (ALProjectorTracker::instance().pauseSelectionForEdit()) return;
     LLSelectNode *node = mSelectedObjects->getFirstRootNode();
     if (node == NULL)
     {

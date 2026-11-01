@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerobjectlist.h"
+#include "alprojectortracker.h"
 
 #include "message.h"
 #include "llfasttimer.h"
@@ -257,6 +258,7 @@ void LLViewerObjectList::processUpdateCore(LLViewerObject* objectp,
         }
     }
 
+    ALProjectorTracker::instance().beforeObjectUpdate(objectp);
     objectp->processUpdateMessage(msg, user_data, i, update_type, dpp);
 
     if (objectp->isDead())
@@ -1468,6 +1470,7 @@ bool LLViewerObjectList::killObject(LLViewerObject *objectp)
         // and object being NULLed while inside it's own function won't be pretty
         // so create a pointer to make sure object will stay alive untill markDead() finishes
         LLPointer<LLViewerObject> sp(objectp);
+        ALProjectorTracker::instance().drop(objectp->getID());
         sp->markDead(); // does the right thing if object already dead
         return true;
     }

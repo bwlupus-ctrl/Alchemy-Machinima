@@ -1680,6 +1680,8 @@ void extendProbeReach(ALProbeReach::Views& views);
 // bound point lights return a viewer-local 60-degree cone. UI/build code must
 // continue to query LLVOVolume directly so the object remains untouched.
 bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params);
+// Session binding identity, independent of feed demand or master enable.
+bool hasProjectorBinding(const LLUUID& object_id);
 
 using revision_connection_t = boost::signals2::connection;
 revision_connection_t connectConfigurationChanged(

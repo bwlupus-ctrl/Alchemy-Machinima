@@ -79,7 +79,8 @@
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
-#include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
+#include "alobjectpathmover.h"
+#include "alprojectortracker.h" // post-animation projector drives
 #include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
 #include "alavatarstaging.h"    // staged avatar/ghost transforms (idle tick/logout)
 #include "aldanceball.h"        // client-only multi-avatar dance playback
@@ -1938,6 +1939,7 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
+    ALProjectorTracker::instance().clear();
     ALColorChart::shutdownSession(); // release chart GL resources before context shutdown
     ALMediaFile::beginShutdown(gSavedSettings.getBOOL("VCamMediaCacheKeepBetweenSessions"));
     LLPrismLens::shutdownMediaFiles();
@@ -5610,6 +5612,9 @@ void LLAppViewer::idle()
     // opening chat.
     gViewerWindow->updateUI();
 
+    if (gDisconnected || gTeleportDisplay || logoutRequestSent())
+        ALProjectorTracker::instance().clear();
+
     if (gDisconnected)
     {
         return;
@@ -5786,6 +5791,9 @@ void LLAppViewer::idle()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_APP("world update"); //LL_RECORD_BLOCK_TIME(FTM_WORLD_UPDATE);
         gPipeline.updateMove();
+        // Skeletons (including Ghost mirrors) and parent drawables now have
+        // their final pose. The tracker resolves its own moved drawables now.
+        ALProjectorTracker::instance().update(dt_raw);
     }
 
     // [BDMerge B3] Freeze World: hold the particle simulation while the world
@@ -6083,6 +6091,7 @@ void LLAppViewer::idleShutdown()
 
 void LLAppViewer::sendLogoutRequest()
 {
+    ALProjectorTracker::instance().clear();
     if(!mLogoutRequestSent && gMessageSystem)
     {
         //Set internal status variables and marker files before actually starting the logout process

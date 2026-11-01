@@ -30,6 +30,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerobject.h"
+#include "alprojectortracker.h"
 
 #include "llaudioengine.h"
 #include "indra_constants.h"
@@ -2299,6 +2300,7 @@ U32 LLViewerObject::processUpdateMessage(LLMessageSystem *mesgsys,
     }
 
     new_rot.normQuat();
+    const LLVector3 server_position = new_pos_parent;
 
     if (sPingInterpolate && mesgsys != NULL)
     {
@@ -2335,6 +2337,15 @@ U32 LLViewerObject::processUpdateMessage(LLMessageSystem *mesgsys,
         return retval;
     }
     mLatestRecvPacketID = packet_id;
+    }
+
+    // Track only accepted packets, before ping extrapolation / target omega.
+    if (server_position.isFinite() && new_rot.isFinite())
+    {
+        mLastServerPosition = server_position;
+        mLastServerRotation = new_rot;
+        mHasServerTransform = true;
+        ALProjectorTracker::instance().receivedServerPose(this, server_position, new_rot);
     }
 
     // Set the change flags for scale

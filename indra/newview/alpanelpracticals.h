@@ -19,6 +19,7 @@
 #include "llpanel.h"
 #include "lluuid.h"
 
+class LLContextMenu;
 class LLButton;
 class LLCheckBoxCtrl;
 class LLColorSwatchCtrl;
@@ -30,10 +31,11 @@ class ALPanelPracticals final : public LLPanel
 {
 public:
     ALPanelPracticals() = default;
-    ~ALPanelPracticals() override = default;
+    ~ALPanelPracticals() override;
 
     bool postBuild() override;
     void draw() override;
+    void onVisibilityChange(bool visible) override;
 
 private:
     void refreshFromSelection();
@@ -42,6 +44,24 @@ private:
     void onCaptureOverride();
     void onClearOverride();
     void onGoboChanged();
+    void refreshTracking(bool force);
+    void onTrackingChanged();
+    void assignTrackingSubject(const LLUUID& projector, const LLUUID& subject, bool has_subject);
+    LLCheckBoxCtrl* mTrack = nullptr;
+    LLComboBox* mTrackJoint = nullptr;
+    LLComboBox* mTrackMode = nullptr;
+    LLSliderCtrl* mTrackSmoothing = nullptr;
+    LLButton* mTrackCapture = nullptr;
+    LLButton* mTrackChoose = nullptr;
+    LLButton* mTrackSelected = nullptr;
+    LLButton* mTrackYou = nullptr;
+    LLButton* mTrackClear = nullptr;
+    LLTextBox* mTrackSubject = nullptr;
+    LLTextBox* mTrackStatus = nullptr;
+    LLHandle<LLContextMenu> mTrackMenu;
+    U64 mTrackRevision = 0;
+    U64 mTrackCastRevision = 0;
+    U64 mTrackVCamRevision = 0;
 
     LLCheckBoxCtrl*    mCastShadows = nullptr;
     LLCheckBoxCtrl*    mVolumetric = nullptr;

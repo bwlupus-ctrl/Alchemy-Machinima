@@ -308,6 +308,7 @@ public:
         std::string mName;
         std::string mMeta;
         bool mSelected = false;
+        LLUUID mObjectId;
     };
     void setItems(const std::vector<Item>& items);
     void draw() override;

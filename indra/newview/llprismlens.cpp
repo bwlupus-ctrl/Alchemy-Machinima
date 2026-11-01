@@ -8488,6 +8488,11 @@ public:
         return report;
     }
 
+    bool hasProjectorBinding(const LLUUID& object_id) const
+    {
+        return findProjectorIdentity(object_id) >= 0;
+    }
+
 private:
     S32 findCaptureById(const LLUUID& id) const
     {
@@ -10699,6 +10704,11 @@ void extendProbeReach(ALProbeReach::Views& views)
 S32 activeAreaFeedSlot()
 {
     return PrismLensRegistry::instance().activeCaptureSlot();
+}
+
+bool hasProjectorBinding(const LLUUID& object_id)
+{
+    return instanceExists() && PrismLensRegistry::instance().hasProjectorBinding(object_id);
 }
 
 bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params)

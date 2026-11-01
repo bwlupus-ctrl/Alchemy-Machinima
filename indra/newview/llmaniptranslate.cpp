@@ -29,6 +29,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alprojectortracker.h"
 
 #include "llmaniptranslate.h"
 
@@ -319,6 +320,13 @@ bool LLManipTranslate::handleMouseDownOnPart( S32 x, S32 y, MASK mask )
     if (!can_move)
     {
         return false;
+    }
+
+    if (ALProjectorTracker::instance().pauseSelectionForEdit())
+    {
+        // The manipulator was hit against the preview pose. Reacquire it on
+        // the restored server pose instead of applying that stale drag anchor.
+        return true;
     }
 
     highlightManipulators(x, y);

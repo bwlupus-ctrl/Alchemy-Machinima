@@ -30,6 +30,7 @@
 #include "alpanelweathersettings.h"
 
 #include "llagent.h"
+#include "alprojectortracker.h"
 #include "alreflectanim.h"
 
 #include "pipeline.h"
@@ -1086,6 +1087,8 @@ void LLAgent::setRegion(LLViewerRegion *regionp)
     llassert(regionp);
     if (mRegionp != regionp)
     {
+        // Restore before the agent coordinate frame / region origin changes.
+        ALProjectorTracker::instance().clear();
         gPipeline.resetShadowSlotTimers();
         if (!mRegionp || gDisconnected || getTeleportState() != TELEPORT_NONE)
             ALPanelWeatherSettings::suspendLibraryWeather();
@@ -4782,6 +4785,7 @@ void LLAgent::setTeleportState(ETeleportState state)
                           << LL_ENDL;
     if (state != TELEPORT_NONE)
         ALPanelWeatherSettings::suspendLibraryWeather();
+    if (state != TELEPORT_NONE) ALProjectorTracker::instance().clear();
     mTeleportState = state;
     if (mTeleportState > TELEPORT_NONE && gSavedSettings.getBOOL("FreezeTime"))
     {

@@ -488,6 +488,17 @@ public:
     F32 peekLinksetCost() const { return mLinksetCost; }
     F32 peekPhysicsCost() const { return mPhysicsCost; }
 
+    // Latest accepted ObjectUpdate, before ping/omega extrapolation. A local
+    // render override must restore these values, including when it starts on
+    // an already moving prim. This cache is never serialized or sent.
+    bool getLastServerTransform(LLVector3& position, LLQuaternion& rotation) const
+    {
+        if (!mHasServerTransform) return false;
+        position = mLastServerPosition;
+        rotation = mLastServerRotation;
+        return true;
+    }
+
     void sendShapeUpdate();
 
 // [RLVa:KB] - Checked: 2010-02-27 (RLVa-1.2.0a) | Added: RLVa-1.2.0a
@@ -1049,6 +1060,9 @@ protected:
     F32             mRotTime;                   // Amount (in seconds) that object has rotated according to angular velocity (llSetTargetOmega)
     LLQuaternion    mAngularVelocityRot;        // accumulated rotation from the angular velocity computations
     LLQuaternion    mPreviousRotation;
+    LLVector3       mLastServerPosition;
+    LLQuaternion    mLastServerRotation;
+    bool            mHasServerTransform = false;
 
     U8              mAttachmentState;   // this encodes the attachment id in a somewhat complex way. 0 if not an attachment.
     LLViewerObjectMedia* mMedia;    // NULL if no media associated

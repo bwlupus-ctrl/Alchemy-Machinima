@@ -1,0 +1,209 @@
+#include "llviewerprecompiledheaders.h"
+#include "alavatarsubjectpicker.h"
+#include "alghoststudio.h"
+#include "alkitmenu.h"
+#include "lldirectorcast.h"
+#include "llfocusmgr.h"
+#include "llmenugl.h"
+#include "lluictrlfactory.h"
+#include "llselectmgr.h"
+#include "lltool.h"
+#include "lltoolmgr.h"
+#include "llviewerobjectlist.h"
+#include "llviewerwindow.h"
+#include "llvoavatar.h"
+#include <set>
+#include "llviewermenu.h"
+#include "llagent.h"
+
+namespace ALAvatarSubjectPicker
+{
+enum { SUBJECT_A, SUBJECT_B, SUBJECT_C, SUBJECT_D };
+bool valid(const LLVOAvatar* avatar, bool ghosts)
+{
+    return avatar && !avatar->isDead() && !avatar->isControlAvatar() &&
+        (!avatar->mIsDummy || (ghosts && avatar->isGhostAvatar())) &&
+        (ghosts || !avatar->isGhostAvatar());
+}
+
+LLVOAvatar* fromObject(LLViewerObject* object)
+{
+    if (!object) return nullptr;
+    if (auto* avatar = object->asAvatar()) return avatar;
+    // Walk attachments to the wearer even for animated attachments, whose
+    // getAvatar() can otherwise return their own animesh control avatar.
+    if (object->isAttachment())
+    {
+        LLViewerObject* parent = (LLViewerObject*)object->getParent();
+        while (parent && !parent->asAvatar()) parent = (LLViewerObject*)parent->getParent();
+        return parent ? parent->asAvatar() : nullptr;
+    }
+    return object->getAvatar();
+}
+
+// Wearer resolution belongs only to the new avatar assignment controls.
+// Existing selection consumers must keep CineCam's getAvatar() semantics.
+LLVOAvatar* fromSelection()
+{
+    return fromObject(
+        LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+}
+
+// Same asynchronous lifecycle as VCam's MediaFacePickTool: one outstanding
+// pick, generation invalidation on deselect, and a weak owner on completion.
+class CameraSubjectPickTool final : public LLTool
+{
+public:
+    CameraSubjectPickTool() : LLTool("Director avatar target") {}
+    static CameraSubjectPickTool& instance() { static CameraSubjectPickTool tool; return tool; }
+    void begin(LLView* owner, bool ghosts, std::function<void(const LLUUID&)> picked)
+    {
+        ++mGeneration;
+        mGhosts = ghosts;
+        mOwner = owner->getHandle();
+        mPicked = std::move(picked);
+        gFocusMgr.setKeyboardFocus(nullptr);
+    }
+    void cancelFor(LLView* owner)
+    {
+        if (mOwner.get() == owner && LLToolMgr::getInstance()->getCurrentTool() == this)
+            LLToolMgr::getInstance()->clearTransientTool();
+    }
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override
+    {
+        if (mPickPending) return true;
+        mPickPending = true;
+        mPendingGeneration = mGeneration;
+        gViewerWindow->pickAsync(x, y, mask, [](const LLPickInfo& pick)
+        {
+            auto& tool = instance();
+            tool.mPickPending = false;
+            if (tool.mPendingGeneration != tool.mGeneration ||
+                LLToolMgr::getInstance()->getCurrentTool() != &tool) return;
+            LLViewerObject* object = pick.getObject();
+            LLVOAvatar* avatar = fromObject(object);
+            const LLUUID id = valid(avatar, tool.mGhosts) ? avatar->getID() : LLUUID::null;
+            const auto owner = tool.mOwner;
+            const auto callback = std::move(tool.mPicked);
+            LLToolMgr::getInstance()->clearTransientTool();
+            if (owner.get() && owner.get()->isInVisibleChain() && callback && id.notNull()) callback(id);
+        }, false, true); // include rigged avatar mesh and worn attachments
+        return true;
+    }
+    bool handleHover(S32, S32, MASK) override
+    {
+        gViewerWindow->setCursor(UI_CURSOR_TOOLPICKOBJECT3);
+        return true;
+    }
+    bool handleKey(KEY key, MASK mask) override
+    {
+        if (key != KEY_ESCAPE || mask != MASK_NONE) return false;
+        LLToolMgr::getInstance()->clearTransientTool();
+        return true;
+    }
+    bool handleRightMouseDown(S32, S32, MASK) override
+    {
+        LLToolMgr::getInstance()->clearTransientTool();
+        return true;
+    }
+    void handleDeselect() override
+    {
+        ++mGeneration;
+        // App focus loss deselects without removing the transient tool. Keep
+        // its callback/owner armed, but discard any pick started before blur.
+        // A real tool change updates the selected tool before calling us.
+        if (LLToolMgr::getInstance()->getCurrentTool() == this) return;
+        mPicked = {};
+        mOwner.markDead();
+    }
+private:
+    LLHandle<LLView> mOwner;
+    std::function<void(const LLUUID&)> mPicked;
+    U64 mGeneration = 1;
+    U64 mPendingGeneration = 0;
+    bool mPickPending = false;
+    bool mGhosts = false;
+};
+
+void choose(LLUICtrl* anchor, LLView* owner, LLHandle<LLContextMenu>& menu_handle,
+            bool ghosts, std::function<void(const LLUUID&)> picked)
+{
+    if (!anchor || !gMenuHolder) return;
+    if (LLContextMenu* old = menu_handle.get())
+    {
+        old->hide();
+        delete old;
+    }
+    LLContextMenu::Params params;
+    params.name = "director_camera_subject_menu";
+    params.visible = false;
+    auto* menu = LLUICtrlFactory::create<LLContextMenu>(params);
+    menu_handle = menu->getHandle();
+    gMenuHolder->addChild(menu);
+    auto add = [menu](const std::string& name, const std::string& label,
+                      bool enabled, std::function<void()> action)
+    {
+        LLMenuItemCallGL::Params item;
+        item.name = name;
+        item.label = label;
+        item.enabled = enabled;
+        item.on_click.function = [action](LLUICtrl*, const LLSD&) { if (action) action(); };
+        menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+    };
+    const auto handle = owner->getHandle();
+    add("pick_world", "Click avatar in world", true, [handle, ghosts, picked]()
+    {
+        auto* self = handle.get();
+        if (!self || !self->isInVisibleChain()) return;
+        auto& tool = CameraSubjectPickTool::instance();
+        LLToolMgr::getInstance()->setTransientTool(&tool);
+        tool.begin(self, ghosts, [handle, ghosts, picked](const LLUUID& id)
+        {
+            if (handle.get()) picked(id);
+        });
+    });
+    auto& cast = LLDirectorCast::instance();
+    std::set<LLUUID> emitted;
+    auto add_avatar = [&](const LLUUID& id, const std::string& name, bool in_cast)
+    {
+        LLVOAvatar* avatar = cast.resolve(id);
+        if (avatar && !valid(avatar, ghosts)) return;
+        if (!avatar)
+        {
+            // Preserve away cast entries as read-only choices. A live avatar is
+            // required to assign here; known props and Studio clones are omitted.
+            const auto& studio = ALGhostStudio::instance();
+            if (!in_cast || gObjectList.findObject(id) || studio.getInstance(id) ||
+                studio.findInstanceByRuntime(id)) return;
+        }
+        if (!emitted.insert(LLDirectorCast::canonicalActorId(id)).second) return;
+        std::string label = id == gAgentID ? "You" :
+            !name.empty() ? name : avatar ? avatar->getFullname() : id.asString();
+        const S32 mark = cast.getSubjectA() == id ? SUBJECT_A :
+            cast.getSubjectB() == id ? SUBJECT_B : cast.getSubjectC() == id ? SUBJECT_C :
+            cast.getSubjectD() == id ? SUBJECT_D : -1;
+        label += mark >= SUBJECT_A ? llformat(" - Subject %c", 'A' + mark - SUBJECT_A) :
+            (in_cast ? " - cast" : " - nearby");
+        if (!avatar) label += " (away)";
+        add("avatar_" + id.asString(), label, avatar != nullptr, [handle, picked, id]()
+        {
+            if (handle.get()) picked(id);
+        });
+    };
+    for (const auto& member : cast.getCast()) add_avatar(member.mId, member.mLastName, true);
+    // Same live-avatar source and filters as Light rig > Add avatar. Only on open.
+    for (LLCharacter* character : LLCharacter::sInstances)
+        if (auto* avatar = dynamic_cast<LLVOAvatar*>(character); valid(avatar, ghosts))
+            add_avatar(avatar->getID(), avatar->getFullname(), false);
+    if (emitted.empty()) add("no_avatars", "No live avatars nearby", false, {});
+    menu->buildDrawLabels();
+    ALKitMenu::showContextMenu(anchor, menu, 0, 0);
+}
+
+void cancelFor(LLView* owner) { CameraSubjectPickTool::instance().cancelFor(owner); }
+bool handleKey(KEY key, MASK mask)
+{
+    auto& tool = CameraSubjectPickTool::instance();
+    return LLToolMgr::getInstance()->getCurrentTool() == &tool && tool.handleKey(key, mask);
+}
+}

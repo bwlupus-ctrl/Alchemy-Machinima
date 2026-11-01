@@ -5,6 +5,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alvcammonitorstrip.h"
+#include "alprojectortracker.h"
 
 #include "alkitstyle.h"
 #include "alkitcard.h"
@@ -1106,6 +1107,7 @@ ALVCamProjectorList::ALVCamProjectorList(const Params& p)
       mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get())
 {
     setMouseOpaque(true);
+    setToolTip(std::string("Select a feed, Track... to open its joint tracking controls, or Remove to unbind it."));
 }
 
 void ALVCamProjectorList::setItems(const std::vector<Item>& items)
@@ -1147,9 +1149,11 @@ void ALVCamProjectorList::draw()
                                       mAccentColor.mV[2], .18f), true);
         gl_rect_2d(rect, mItems[row].mSelected ? mAccentColor : mBorderColor, false);
         drawText(mFont, mItems[row].mName, 7, top - 15, mTextColor,
-                 llmax(1, content_right - 78));
+                 llmax(1, content_right - 150));
         drawText(mFont, mItems[row].mMeta, 7, top - 29, mMutedColor,
-                 llmax(1, content_right - 78));
+                 llmax(1, content_right - 150));
+        drawText(mFont, ALProjectorTracker::instance().tracked(mItems[row].mObjectId) ? "Tracking" : "Track...",
+                 content_right - 137, top - 22, mTextColor, 70);
         drawText(mFont, "Remove", content_right - 61, top - 22,
                  mTextColor, 55);
     }
@@ -1185,7 +1189,7 @@ bool ALVCamProjectorList::handleMouseDown(S32 x, S32 y, MASK)
     const S32 row = rowAt(y);
     if (row < 0) return false;
     LLSD value;
-    value["action"] = x >= content_right - 70 ? "remove" : "select";
+    value["action"] = x >= content_right - 70 ? "remove" : x >= content_right - 145 ? "track" : "select";
     value["projector"] = mItems[row].mHandle.mId;
     setValue(value);
     onCommit();

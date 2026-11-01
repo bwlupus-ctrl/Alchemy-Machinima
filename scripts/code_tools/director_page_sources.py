@@ -101,7 +101,7 @@ PAGE_OWNER_CLASSES = {
     "cine_light_rig_tab": {"ALPanelCineLightRig"},
     "light_rim_tab": {"ALPanelCineLightRig", "ALPanelRigRim", "ALRigRimController"},
     "exposure_tab": {"ALPanelExposureHub", "LLFloaterDirector", "ALPanelExposurePage"},
-    "practicals_tab": {"ALFloaterLightBox"},
+    "practicals_tab": {"ALFloaterLightBox", "ALPanelPracticals"},
     "actors_tab": {"ALPanelAvatarLightResponse", "ALFloaterLightBox", "LLFloaterDirector"},
     "light_cues_tab": {"ALFloaterCineLightCues"},
     "image_tab": {"ALFloaterLightBox"},
@@ -147,7 +147,7 @@ KIT_ACTION_OVERRIDES = {
 
 def model_binding_override(page: str, widget: str) -> dict | None:
     def binding(file_name: str, line: int, class_name: str, function: str, pattern: str | None = None) -> dict:
-        if class_name in ("ALPanelGhostStudio", "LLPipeline", "ALPanelWeatherSettings"):
+        if class_name in ("ALPanelGhostStudio", "LLPipeline", "ALPanelWeatherSettings", "ALProjectorTracker"):
             source = (ROOT / file_name).read_text(encoding="utf-8")
             match = re.search(r"(?m)^.*\b" + re.escape(class_name + "::" + function) + r"\s*\(", source)
             if match is None:
@@ -159,6 +159,23 @@ def model_binding_override(page: str, widget: str) -> dict | None:
             "pattern": pattern, "wiring_only": False, "text": "explicit scoped model binding",
         }
 
+    if page == "practicals_tab" and widget in {
+        "sl_track", "sl_track_subject", "sl_track_joint", "sl_track_mode",
+        "sl_track_smoothing", "sl_track_capture", "sl_track_status"
+    }:
+        # These generated-only controls have inline/looped callbacks rather
+        # than legacy Lightbox widgets. Require the actual control and consumer
+        # evidence before attaching the model operation to the report row.
+        source = (ROOT / "indra/newview/alpanelpracticals.cpp").read_text(encoding="utf-8")
+        control = "sl_track_subject_choose" if widget == "sl_track_subject" else widget
+        command = {"sl_track": "enable", "sl_track_capture": "capture",
+                   "sl_track_status": "state"}.get(widget, "configure")
+        if ('"' + control + '"') not in source or ("." + command + "(") not in source:
+            raise RuntimeError(f"missing projector tracking consumer: {widget}")
+        hit = binding("indra/newview/alprojectortracker.cpp", 0, "ALProjectorTracker", command)
+        hit.update(wired_class="ALPanelPracticals", wired_function="postBuild",
+                   text="session-only prim tracking; generated Practicals adapter")
+        return hit
     if page == "weather_tab" and widget in {
         "weather_library_preset", "weather_library_apply", "weather_library_stop",
         "weather_surface_apply", "weather_surface_clear"
