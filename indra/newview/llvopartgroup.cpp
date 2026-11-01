@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alderenderlist.h"
 
 #include "llvopartgroup.h"
 
@@ -333,7 +334,9 @@ bool LLVOPartGroup::updateGeometry(LLDrawable *drawable)
         const F32 NEAR_PART_DIST_SQ = 5.f*5.f;  // Only discard particles > 5 m from the camera
         const F32 MIN_PART_AREA = .005f*.005f;  // only less than 5 mm x 5 mm at 1 m from camera
 
-        if (camera_dist_squared > NEAR_PART_DIST_SQ && area < MIN_PART_AREA)
+        if ((part->mPartSourcep.notNull() &&
+             ALDerenderList::isHiddenObject(part->mPartSourcep->mSourceObjectp)) ||
+            (camera_dist_squared > NEAR_PART_DIST_SQ && area < MIN_PART_AREA))
         {
             facep->setSize(0, 0);
             continue;
@@ -408,6 +411,9 @@ bool LLVOPartGroup::lineSegmentIntersect(const LLVector4a& start, const LLVector
     for (U32 idx = 0; idx < mViewerPartGroupp->mParticles.size(); ++idx)
     {
         const LLViewerPart &part = *((LLViewerPart*) (mViewerPartGroupp->mParticles[idx]));
+
+        if (part.mPartSourcep.notNull() &&
+            ALDerenderList::isHiddenObject(part.mPartSourcep->mSourceObjectp)) continue;
 
         LLVector4a v[4];
         LLStrider<LLVector4a> verticesp;

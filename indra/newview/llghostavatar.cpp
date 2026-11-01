@@ -1006,6 +1006,22 @@ LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegi
 // virtual
 LLGhostAvatar::~LLGhostAvatar()
 {
+    releaseSourceReference();
+}
+
+std::map<LLUUID, U32> LLGhostAvatar::sLiveSourceCounts;
+
+bool LLGhostAvatar::hasLiveSource(const LLUUID& id)
+{
+    return sLiveSourceCounts.find(id) != sLiveSourceCounts.end();
+}
+
+void LLGhostAvatar::releaseSourceReference()
+{
+    auto found = sLiveSourceCounts.find(mAnimationSourceId);
+    if (found != sLiveSourceCounts.end() && --found->second == 0)
+        sLiveSourceCounts.erase(found);
+    mAnimationSourceId.setNull();
 }
 
 // virtual
@@ -2490,7 +2506,12 @@ bool LLGhostAvatar::cloneAppearanceFrom(LLVOAvatar* source)
     // A synthetic ghost never receives AvatarAnimation messages addressed to
     // its UUID. Remember the real avatar whose already-received animation
     // state we should mirror locally from idleUpdate().
-    mAnimationSourceId = source->getID();
+    if (mAnimationSourceId != source->getID())
+    {
+        releaseSourceReference();
+        mAnimationSourceId = source->getID();
+        ++sLiveSourceCounts[mAnimationSourceId];
+    }
     return true;
 }
 
@@ -3859,6 +3880,7 @@ void LLGhostAvatar::markForDeath()
 // virtual
 void LLGhostAvatar::markDead()
 {
+    releaseSourceReference();
     if (ALCineLightRigManager::instanceExists())
         ALCineLightRigManager::instance().removeMirror(getID());
     // Cover object-list/region teardown as well as Studio-initiated removal.

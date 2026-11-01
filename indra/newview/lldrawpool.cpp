@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alderenderlist.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 
 #include "lldrawpool.h"
@@ -1075,6 +1076,7 @@ bool shared_actor_fx_style_suppresses(
 // static
 bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
 {
+    if (ALDerenderList::isHiddenSource(actor_id)) return true;
     const LLDirectorCast::ActorStyle& style =
         LLDirectorCast::instance().getActorStyle(actor_id);
     if (shared_actor_fx_zero_cover_context() &&
@@ -1099,6 +1101,9 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
 bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
                                                 bool depth_only)
 {
+    if (ALDerenderList::keepsAvatarLive(params.mAvatar) ||
+        ALDerenderList::isHiddenSource(params.mActorFxOwner) ||
+        ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner)) return true;
     if (params.mActorFxOwner.isNull())
     {
         return false;
@@ -1135,6 +1140,9 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
 bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
                                                    bool depth_only)
 {
+    if (ALDerenderList::keepsAvatarLive(params.mAvatar) ||
+        ALDerenderList::isHiddenSource(params.mActorFxOwner) ||
+        ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner)) return true;
     if (params.mActorFxOwner.isNull())
     {
         return false;
@@ -1804,7 +1812,7 @@ bool LLRenderPass::uploadVelocityMatrixPalettes(LLVOAvatar* avatar, LLMeshSkinIn
     llassert(skinInfo);
     llassert(LLGLSLShader::sCurBoundShaderPtr);
 
-    if (!avatar)
+    if (!avatar || ALDerenderList::keepsAvatarLive(avatar))
     {
         return false;
     }
@@ -2173,7 +2181,7 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
 
-    if (!avatar)
+    if (!avatar || ALDerenderList::keepsAvatarLive(avatar))
     {
         return false;
     }
@@ -2202,7 +2210,7 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
     llassert(skinInfo);
     llassert(LLGLSLShader::sCurBoundShaderPtr);
 
-    if (!avatar)
+    if (!avatar || ALDerenderList::keepsAvatarLive(avatar))
     {
         return false;
     }
@@ -2239,7 +2247,7 @@ bool LLRenderPass::uploadMatrixPalette(LLVOAvatar* avatar, LLMeshSkinInfo* skinI
     llassert(skinInfo);
     llassert(LLGLSLShader::sCurBoundShaderPtr);
 
-    if (!avatar)
+    if (!avatar || ALDerenderList::keepsAvatarLive(avatar))
     {
         return false;
     }

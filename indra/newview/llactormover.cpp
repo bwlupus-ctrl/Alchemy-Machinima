@@ -48,6 +48,7 @@
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
 #include "llghostavatar.h"          // clone eye-motion lifecycle for procedural gaze
+#include "alderenderlist.h"
 #include "llmaterial.h"             // legacy alpha-mode classification (static ghost faces)
 #include "noise.h"                  // classic cloth ripple matches the stock avatar pass
 #include "llcinematiccamera.h"      // camera-gaze feedback interlock
@@ -15727,6 +15728,7 @@ void LLActorMover::renderStudioGhosts()
 bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
                                              const LLUUID& style_id) const
 {
+    if (ALDerenderList::keepsAvatarLive(avatar)) return false;
     if (!avatar || avatar->isDead() || avatar->isControlAvatar()
         || avatar->isUIAvatar() || avatar->mDrawable.isNull()
         || avatar->isHardVisualMute()
@@ -15769,6 +15771,7 @@ bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
 // inferred from the suppression recorder. Mirror them conservatively here.
 bool LLActorMover::actorMaskAvatarEligible(LLVOAvatar* avatar)
 {
+    if (ALDerenderList::keepsAvatarLive(avatar)) return false;
     if (!avatar || avatar->isDead() || avatar->mDrawable.isNull() ||
         !avatar->isFullyLoaded() || avatar->isHardVisualMute() ||
         avatar->getOverallAppearance() != LLVOAvatar::AOA_NORMAL ||
@@ -16817,6 +16820,7 @@ void LLActorMover::buildSharedActorStyleQueue()
 
     auto actor_visible_in_main_cull = [&](LLVOAvatar* avatar) -> bool
     {
+        if (ALDerenderList::keepsAvatarLive(avatar)) return false;
         if (!avatar || avatar->isDead() || !avatar->getRootJoint()
             || avatar->isUIAvatar() || avatar->mDrawable.isNull()
             || !avatar->mDrawable->isVisible() || !avatar->isVisible()
@@ -18808,7 +18812,8 @@ bool LLActorMover::renderSharedActorLegacyGlowCommands(
 bool LLActorMover::renderSharedActorStyleProxyItem(
     SharedActorStyleProxy& proxy, bool depth_only)
 {
-    if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead())
+    if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||
+        ALDerenderList::keepsAvatarLive(proxy.mAvatar))
     {
         return false;
     }

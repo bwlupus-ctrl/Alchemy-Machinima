@@ -29,6 +29,7 @@
 
 #include "lldrawpoolavatar.h"
 #include "llghostavatar.h"
+#include "alderenderlist.h"
 #include "lldirectorcast.h"
 #include "llactormover.h"
 #include "llskinningutil.h"
@@ -85,13 +86,16 @@ extern bool gUseGLPick;
 // faces can remain enrolled after their object drawables are FORCE_INVISIBLE.
 // Honor the viewer-local state at the pool entry point as well.  An animated
 // attachment renders through its LLControlAvatar, so inherit the state from
-// that control avatar's attached (owning) ghost.
+// that control avatar's attached (owning) ghost. Derendered live sources use
+// this same draw-only gate without adopting mute/impostor update behavior.
 static bool is_hidden_entity_clone(const LLVOAvatar* avatarp)
 {
     if (!avatarp)
     {
         return false;
     }
+
+    if (ALDerenderList::keepsAvatarLive(avatarp)) return true;
 
     const LLVOAvatar* owner = avatarp->isGhostAvatar()
         ? avatarp : avatarp->getAttachedAvatar();

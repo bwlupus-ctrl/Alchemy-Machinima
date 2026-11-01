@@ -29,6 +29,7 @@
 
 #include "llsingleton.h"
 #include "lluuid.h"
+#include <set>
 
 // ============================================================================
 // Forward declarations
@@ -37,6 +38,7 @@
 class LLSelectNode;
 class LLVOCacheEntry;
 class LLViewerObject;
+class LLVOAvatar;
 
 // ============================================================================
 // LLDerenderEntry
@@ -190,16 +192,24 @@ public:
     // file. Called when the session ends so a relog starts clean.
     void purgeSessionEntries();
 
-    // Add a live avatar to the derender list (radar port). Kills the current
-    // LLVOAvatar instance immediately if present; whether the avatar stays
+    // Add a live avatar to the derender list. Live clone sources are hidden
+    // without unloading; other avatars are killed immediately. Whether they stay
     // gone across future object updates for this session is enforced by a
     // matching check in LLViewerObjectList::processObjectUpdate(). Returns
     // false if the avatar is already derendered or is the agent's own avatar.
     bool addAvatar(const LLUUID& idAvatar, const std::string& strName, bool fPersist);
     // An update arrived for this avatar. Returns true (suppress it) when the
-    // avatar is derendered, and records its current region and local ID so that
+    // avatar is derendered (except a kept-live source), and records its current region and local ID so that
     // removing the entry can re-request it, also for an entry loaded from disk.
     bool processAvatarUpdate(U64 idRegion, const LLUUID& idAvatar, U32 idLocal);
+    // Render-only derender for sources that were live when derender was requested.
+    // Separate from the blacklist: creating a clone never resurrects an entry.
+    static bool isHiddenSource(const LLUUID& id)
+    {
+        return !sHiddenSources.empty() && sHiddenSources.count(id) != 0;
+    }
+    static bool isHiddenObject(const LLViewerObject* object);
+    static bool keepsAvatarLive(const LLVOAvatar* avatar);
 protected:
     entry_list_t::iterator findEntry(ALDerenderEntry::EEntryType eType, const LLUUID& idEntry);
     entry_list_t::iterator findObjectEntry(U64 idRegion, const LLUUID& idObject, U32 idRootLocal);
@@ -228,6 +238,9 @@ public:
 
 protected:
     entry_list_t m_Entries;
+    static std::set<LLUUID> sHiddenSources;
+    static void rebuildHiddenSource(const LLUUID& id);
+    boost::signals2::scoped_connection mTeleportConnection;
 
     static change_signal_t  s_ChangeSignal;
     static std::string      s_PersistFilename;

@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llhudtext.h"
+#include "alderenderlist.h"
 
 #include "llrender.h"
 
@@ -113,7 +114,7 @@ void LLHUDText::render()
 
 void LLHUDText::renderText()
 {
-    if (!mVisible || mHidden)
+    if (!mVisible || mHidden || ALDerenderList::isHiddenObject(mSourceObject))
     {
         return;
     }
@@ -353,7 +354,7 @@ void LLHUDText::updateVisibility()
     }
 
     // Not visible if parent object is dead
-    if (mSourceObject->isDead())
+    if (mSourceObject->isDead() || ALDerenderList::isHiddenObject(mSourceObject))
     {
         mVisible = false;
         return;

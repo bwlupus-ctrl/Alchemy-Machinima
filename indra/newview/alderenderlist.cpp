@@ -21,11 +21,15 @@
 #include "alderenderlist.h"
 
 #include "llagent.h"
+#include "llghostavatar.h"
+#include "lldrawable.h"
+#include "llspatialpartition.h"
 #include "llsdserialize.h"
 #include "llselectmgr.h"
 #include "lltrans.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "llviewerparcelmgr.h"
 #include "llviewerregion.h"
 #include "llvocache.h"
 #include "llvoavatarself.h"
@@ -152,14 +156,72 @@ LLSD ALDerenderObject::toLLSD() const
 
 ALDerenderList::change_signal_t ALDerenderList::s_ChangeSignal;
 std::string ALDerenderList::s_PersistFilename = "derender_list.llsd";
+std::set<LLUUID> ALDerenderList::sHiddenSources;
 
 ALDerenderList::ALDerenderList()
 {
     load();
+    mTeleportConnection = LLViewerParcelMgr::getInstance()->setTeleportFinishedCallback(
+        [this](const LLVector3d&, const bool&)
+        {
+            uuid_vec_t restore;
+            for (const auto& entry : m_Entries)
+                if (entry->getType() == ALDerenderEntry::TYPE_AVATAR &&
+                    !entry->isPersistent() && isHiddenSource(entry->getID()))
+                    restore.push_back(entry->getID());
+            if (!restore.empty()) removeObjects(ALDerenderEntry::TYPE_AVATAR, restore);
+        });
 }
 
 ALDerenderList::~ALDerenderList()
 {
+    sHiddenSources.clear();
+}
+
+bool ALDerenderList::isHiddenObject(const LLViewerObject* object)
+{
+    if (sHiddenSources.empty()) return false;
+    // Walk only this object's ancestry, never the clone list. Seated avatars
+    // stop at the wearer; their seat and its other occupants stay visible.
+    for (const LLViewerObject* current = object; current;
+         current = static_cast<const LLViewerObject*>(current->getParent()))
+    {
+        if (current->isAvatar())
+            return keepsAvatarLive(static_cast<const LLVOAvatar*>(current));
+    }
+    return false;
+}
+
+bool ALDerenderList::keepsAvatarLive(const LLVOAvatar* avatar)
+{
+    if (sHiddenSources.empty() || !avatar || avatar->isSelf()) return false;
+    if (isHiddenSource(avatar->getID())) return true;
+    const LLVOAvatar* wearer = avatar->getAttachedAvatar();
+    return wearer && !wearer->isSelf() && isHiddenSource(wearer->getID());
+}
+
+void ALDerenderList::rebuildHiddenSource(const LLUUID& id)
+{
+    // Reuse the FORCE_INVISIBLE volume rebuild gate, with a separate policy
+    // predicate so simulator updates cannot clear it and Restore cannot clear
+    // someone else's FORCE_INVISIBLE flag. Late attachments inherit by ancestry.
+    std::vector<LLViewerObject*> pending;
+    if (LLViewerObject* avatar = gObjectList.findObject(id)) pending.push_back(avatar);
+    while (!pending.empty())
+    {
+        LLViewerObject* object = pending.back();
+        pending.pop_back();
+        if (object->mDrawable.notNull())
+        {
+            gPipeline.markRebuild(object->mDrawable, LLDrawable::REBUILD_ALL);
+            if (LLSpatialGroup* group = object->mDrawable->getSpatialGroup())
+            {
+                group->dirtyGeom();
+                gPipeline.markRebuild(group);
+            }
+        }
+        for (const auto& child : object->getChildren()) pending.push_back(child.get());
+    }
 }
 
 void ALDerenderList::load()
@@ -270,6 +332,11 @@ void ALDerenderList::removeObjects(ALDerenderEntry::EEntryType eType, const uuid
                 break;
             case ALDerenderEntry::TYPE_AVATAR:
                 {
+                    if (sHiddenSources.erase(idObject))
+                    {
+                        rebuildHiddenSource(idObject);
+                        break; // It was never unloaded; no simulator re-request needed.
+                    }
                     // Same as objects: ask the simulator to send the avatar and all of its
                     // attachment prims again so they return without waiting for a relog.
                     // idRegion is 0 only for an entry loaded from disk whose avatar has not
@@ -312,6 +379,9 @@ void ALDerenderList::removeObjects(ALDerenderEntry::EEntryType eType, const uuid
 
 void ALDerenderList::purgeSessionEntries()
 {
+    for (const auto& entry : m_Entries)
+        if (!entry->isPersistent() && sHiddenSources.erase(entry->getID()))
+            rebuildHiddenSource(entry->getID());
     // Session entries are never written to the file, so this does not save.
     const size_t nBefore = m_Entries.size();
     m_Entries.remove_if([](const std::unique_ptr<ALDerenderEntry>& e) { return !e->isPersistent(); });
@@ -340,6 +410,16 @@ bool ALDerenderList::addSelection(bool fPersist, std::vector<LLUUID>* pIdList)
         const LLSelectNode* pNode = *itObj++;
         if (!canAdd(pNode->getObject()))
             continue;
+
+        // The generic selection action can also receive an avatar. Funnel live
+        // clone sources through the same TYPE_AVATAR policy as radar/context UI.
+        LLViewerObject* selected = pNode->getObject();
+        if (selected->isAvatar() && LLGhostAvatar::hasLiveSource(selected->getID()))
+        {
+            if (addAvatar(selected->getID(), pNode->mName, fPersist) && pIdList)
+                pIdList->push_back(selected->getID());
+            continue;
+        }
 
         auto uniqueEntry = std::make_unique<ALDerenderObject>(pNode, fPersist);
         if (!uniqueEntry || (isDerendered(uniqueEntry->getID())) || (gAgentID == uniqueEntry->getID()) )
@@ -385,7 +465,9 @@ bool ALDerenderList::addAvatar(const LLUUID& idAvatar, const std::string& strNam
     auto pEntry = std::make_unique<ALDerenderAvatar>(idAvatar, strName, fPersist);
 
     LLViewerObject* pObj = gObjectList.findObject(idAvatar);
-    uuid_vec_t idsKilled; // the avatar's attachment prims, deselected below along with the avatar
+    const bool keep_source = pObj && !pObj->isDead() && pObj->isAvatar() &&
+        LLGhostAvatar::hasLiveSource(idAvatar);
+    uuid_vec_t idsDeselected; // attachment prims, deselected for either policy
     if (pObj)
     {
         // Remember where the avatar and ALL of its descendant prims are (attachment roots
@@ -407,7 +489,7 @@ bool ALDerenderList::addAvatar(const LLUUID& idAvatar, const std::string& strNam
                 continue;
             if (pEntry->idRegion)
                 pEntry->idsChildLocal.push_back(pDesc->getLocalID());
-            idsKilled.push_back(pDesc->getID());
+            idsDeselected.push_back(pDesc->getID());
             for (const auto& pSub : pDesc->getChildren())
                 stack.push_back(pSub.get());
         }
@@ -416,14 +498,22 @@ bool ALDerenderList::addAvatar(const LLUUID& idAvatar, const std::string& strNam
 
     if (pObj)
     {
-        if (gShowObjectUpdates)
-            gPipeline.addDebugBlip(pObj->getPositionAgent(), LLColor4(0.f, 1.f, 0.f, 1.f));
-        gObjectList.killObject(pObj);
+        if (keep_source)
+        {
+            sHiddenSources.insert(idAvatar);
+            rebuildHiddenSource(idAvatar);
+        }
+        else
+        {
+            if (gShowObjectUpdates)
+                gPipeline.addDebugBlip(pObj->getPositionAgent(), LLColor4(0.f, 1.f, 0.f, 1.f));
+            gObjectList.killObject(pObj);
+        }
         LLSelectMgr::getInstance()->removeObjectFromSelections(idAvatar);
-        // killObject() killed the attachments with it: drop them from the selection too,
-        // or a selected attachment stays behind as a dead node.
-        for (const LLUUID& idKilled : idsKilled)
-            LLSelectMgr::getInstance()->removeObjectFromSelections(idKilled);
+        // Drop hidden attachments too, so selection outlines cannot reveal them
+        // and selecting an attachment cannot keep its source's motions paused.
+        for (const LLUUID& id : idsDeselected)
+            LLSelectMgr::getInstance()->removeObjectFromSelections(id);
     }
 
     if (fPersist)
@@ -451,7 +541,7 @@ bool ALDerenderList::processAvatarUpdate(U64 idRegion, const LLUUID& idAvatar, U
         // Attachment prim IDs recorded for an earlier region/local ID no longer apply.
         pAvEntry->idsChildLocal.clear();
     }
-    return true;
+    return !isHiddenSource(idAvatar);
 }
 
 bool ALDerenderList::canAdd(const LLViewerObject* pObj)
