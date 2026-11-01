@@ -1734,13 +1734,13 @@ Computed logic class: **code-driven**; 0/23 rows setting-bound, 22 rows referenc
 | `sel` / Light cone | `sl_volumetric` | `toggle` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6438` `floater_lightbox_settings`/check_box | `ALPanelPracticals::onVolumetric indra/newview/alpanelpracticals.cpp:109`, `ALFloaterLightBox::onSelLightVolumetric indra/newview/alfloaterlightbox.cpp:91` | — | — |
 | `sel` / Capture shaft | `sl_capture` | `button` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6441` `floater_lightbox_settings`/button | `ALPanelPracticals::onCaptureOverride indra/newview/alpanelpracticals.cpp:110`, `ALFloaterLightBox::onSelLightCaptureOverride indra/newview/alfloaterlightbox.cpp:92` | — | — |
 | `sel` / Clear | `sl_clear` | `button` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6444` `floater_lightbox_settings`/button | `ALPanelPracticals::onClearOverride indra/newview/alpanelpracticals.cpp:111`, `ALFloaterLightBox::onSelLightClearOverride indra/newview/alfloaterlightbox.cpp:93` | — | — |
-| `track` / Track | `sl_track` | `toggle` | — | — | `ALProjectorTracker::asBoolean indra/newview/alpanelpracticals.cpp:51`, `ALProjectorTracker::enable indra/newview/alprojectortracker.cpp:257` | — | — |
-| `track` / Subject | `sl_track_subject` | `custom` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:143` | — | — |
-| `track` / Joint | `sl_track_joint` | `combo` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:143` | — | — |
-| `track` / Mode | `sl_track_mode` | `combo` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:143` | — | — |
-| `track` / Smoothing | `sl_track_smoothing` | `slider` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:143` | — | — |
-| `track` / Offset | `sl_track_capture` | `button` | — | — | `ALProjectorTracker::capture indra/newview/alpanelpracticals.cpp:59`, `ALProjectorTracker::capture indra/newview/alprojectortracker.cpp:283` | — | — |
-| `track` / Track status | `sl_track_status` | `readout` | — | — | `ALProjectorTracker::state indra/newview/alprojectortracker.cpp:89` | — | — |
+| `track` / Track | `sl_track` | `toggle` | — | — | `ALProjectorTracker::asBoolean indra/newview/alpanelpracticals.cpp:51`, `ALProjectorTracker::enable indra/newview/alprojectortracker.cpp:285` | — | — |
+| `track` / Subject | `sl_track_subject` | `custom` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:164` | — | — |
+| `track` / Joint | `sl_track_joint` | `combo` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:164` | — | — |
+| `track` / Mode | `sl_track_mode` | `combo` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:164` | — | — |
+| `track` / Smoothing | `sl_track_smoothing` | `slider` | — | — | `ALProjectorTracker::configure indra/newview/alprojectortracker.cpp:164` | — | — |
+| `track` / Offset | `sl_track_capture` | `button` | — | — | `ALProjectorTracker::capture indra/newview/alpanelpracticals.cpp:59`, `ALProjectorTracker::capture indra/newview/alprojectortracker.cpp:311` | — | — |
+| `track` / Track status | `sl_track_status` | `readout` | — | — | `ALProjectorTracker::state indra/newview/alprojectortracker.cpp:110` | — | — |
 | `gobo` / Pattern | `sl_gobo` | `combo` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6449` `floater_lightbox_settings`/combo_box | `ALFloaterLightBox::onSelGoboChanged indra/newview/alfloaterlightbox.cpp:94` | — | — |
 | `gobo` / Animation | `sl_gobo_animmode` | `combo` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6467` `floater_lightbox_settings`/combo_box | `ALFloaterLightBox::onSelGoboChanged indra/newview/alfloaterlightbox.cpp:95` | — | — |
 | `gobo` / Speed | `sl_gobo_speed` | `slider` | — | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6478` `floater_lightbox_settings`/slider | `ALFloaterLightBox::onSelGoboChanged indra/newview/alfloaterlightbox.cpp:96` | — | — |

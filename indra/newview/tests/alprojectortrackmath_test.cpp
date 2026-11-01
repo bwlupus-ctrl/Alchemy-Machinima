@@ -150,4 +150,41 @@ template<> template<> void projector_track_object::test<9>()
     const LLQuaternion body = LLQuaternion(.2f, LLVector3::x_axis) * yaw;
     sameRotation(bodyYaw(body), yaw);
 }
+
+template<> template<> void projector_track_object::test<10>()
+{
+    ensure("installed override uses snapshot", needsServerPose(true, false));
+    ensure("pending restore stays guarded", needsServerPose(false, true));
+    ensure("pending installed override stays guarded", needsServerPose(true, true));
+    ensure("restored pause uses live edit", !needsServerPose(false, false));
+    const Pose packet{{10,2,3}, LLQuaternion()};
+    Pose dragged{{20,2,3}, LLQuaternion(.4f, LLVector3::z_axis)};
+    auto edit = [&](const Pose& live, bool overridden)
+    {
+        return needsServerPose(overridden, false) ? packet : live;
+    };
+    Pose spinner = edit(dragged, false);
+    spinner.position.mV[VZ] = 7.f;
+    expectVector("Z-only commit keeps dragged X", spinner.position, LLVector3(20,2,7));
+    expectVector("copy after drag uses live value", edit(dragged, false).position, dragged.position);
+    sameRotation(edit(dragged, false).rotation, dragged.rotation);
+    const Pose child{{1,0,0}, LLQuaternion()};
+    expectVector("linked part composes edited paused root", apply(child, edit(dragged, false)).position,
+        dragged.position + child.position * dragged.rotation);
+    expectVector("linked part hides installed root override", apply(child, edit(dragged, true)).position,
+        packet.position + child.position * packet.rotation);
+}
+template<> template<> void projector_track_object::test<11>()
+{
+    const Pose preview{{20,30,4}, LLQuaternion(.7f, LLVector3::z_axis)};
+    const Pose server{{2,3,4}, LLQuaternion(-.3f, LLVector3::x_axis)};
+    const LLVector3 material(.2f,-.5f,.7f);
+    const LLVector3 picked = preview.position + material * preview.rotation;
+    expectVector("touch transports material point", transportPoint(picked, preview, server),
+        server.position + material * server.rotation);
+    expectVector("restored touch is identity", transportPoint(picked, preview, preview), picked);
+    const LLVector3 normal = LLVector3::y_axis * preview.rotation;
+    expectVector("touch transports normal without translation", normal * (~preview.rotation * server.rotation),
+        LLVector3::y_axis * server.rotation);
+}
 }

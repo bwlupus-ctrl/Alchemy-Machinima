@@ -206,6 +206,33 @@ void LLToolGrabBase::pickCallback(const LLPickInfo& pick_info)
 
 namespace
 {
+// Map a real picked material point to the authoritative edit frame without
+// disturbing a touch-only tracked light. Synthetic requestTouch picks have no
+// object ID/real intersection and keep their supplied surface data unchanged.
+bool transportTouchPick(LLViewerObject* object, LLPickInfo& pick)
+{
+    auto& tracker = ALProjectorTracker::instance();
+    if (!tracker.canUseTransform(object)) return false;
+    if (pick.mObjectID.notNull() && pick.mObjectID != object->getID())
+    {
+        // Menu Touch can outlive the pie pick. No surface is preferable to
+        // sending another object's (possibly driven) material point.
+        pick = LLPickInfo();
+        return true;
+    }
+    ALProjectorTrackMath::Pose server;
+    if (pick.mObjectID.isNull() || pick.mObjectFace < 0 ||
+        !tracker.serverEditTransform(object, server)) return true;
+    server.position = object->getRegion()->getPosAgentFromRegion(server.position);
+    const ALProjectorTrackMath::Pose preview{object->getRenderPosition(), object->getRenderRotation()};
+    const LLQuaternion delta = ~preview.rotation * server.rotation;
+    pick.mIntersection = ALProjectorTrackMath::transportPoint(pick.mIntersection, preview, server);
+    pick.mPosGlobal = gAgent.getPosGlobalFromAgent(pick.mIntersection);
+    pick.mNormal = pick.mNormal * delta;
+    pick.mBinormal = pick.mBinormal * delta;
+    return true;
+}
+
 // Preserve the material point in prim coordinates as the linkset is restored.
 // A ray repick could miss a Follow light that returned to its real fixture.
 bool restoreGrabPick(LLViewerObject* object, LLPickInfo& pick)
@@ -216,7 +243,8 @@ bool restoreGrabPick(LLViewerObject* object, LLPickInfo& pick)
     if (changed)
     {
         const LLQuaternion delta = ~old.rotation * object->getRenderRotation();
-        pick.mIntersection = (pick.mIntersection - old.position) * delta + object->getRenderPosition();
+        pick.mIntersection = ALProjectorTrackMath::transportPoint(pick.mIntersection, old,
+            {object->getRenderPosition(), object->getRenderRotation()});
         pick.mPosGlobal = gAgent.getPosGlobalFromAgent(pick.mIntersection);
         pick.mNormal = pick.mNormal * delta;
         pick.mBinormal = pick.mBinormal * delta;
@@ -251,8 +279,7 @@ bool LLToolGrabBase::handleObjectHit(const LLPickInfo& info)
         return true;
     }
 
-    if (!restoreGrabPick(objectp, mGrabPick)) return false;
-    ALProjectorTracker::instance().beginGrab(objectp);
+    if (!ALProjectorTracker::instance().canUseTransform(objectp)) return false;
     setMouseCapture( true );
 
     // Grabs always start from the root
@@ -431,23 +458,35 @@ void LLToolGrabBase::startGrab()
         return;
     }
 
-    if (!restoreGrabPick(objectp, mGrabPick)) return;
-    ALProjectorTracker::instance().beginGrab(objectp);
+    if (mMode == GRAB_ACTIVE_CENTER)
+    {
+        if (!restoreGrabPick(objectp, mGrabPick)) return;
+        ALProjectorTracker::instance().beginGrab(objectp);
+    }
+    else if (!ALProjectorTracker::instance().canUseTransform(objectp)) return;
     LLViewerObject *root = (LLViewerObject *)objectp->getRoot();
 
-    // drag from center
+    // Keep the existing grab frame for ordinary objects and real drags.
     LLVector3d grab_start_global = root->getPositionGlobal();
-
-    // Where the grab starts, relative to the center of the root object of the set.
-    // JC - This code looks wonky, but I believe it does the right thing.
-    // Otherwise, when you grab a linked object set, it "pops" on the start
-    // of the drag.
-    LLVector3d grab_offsetd = root->getPositionGlobal() - objectp->getPositionGlobal();
-
+    LLVector3d object_global = objectp->getPositionGlobal();
+    LLQuaternion rotation = root->getRotation();
+    if (mMode != GRAB_ACTIVE_CENTER)
+    {
+        // A touch cannot move the sim object, but its root offset must still
+        // come from the authoritative frame, never from a Follow preview.
+        ALProjectorTrackMath::Pose pose;
+        if (ALProjectorTracker::instance().serverEditTransform(root, pose))
+        {
+            grab_start_global = root->getRegion()->getPosGlobalFromRegion(pose.position);
+            rotation = pose.rotation;
+        }
+        if (ALProjectorTracker::instance().serverEditTransform(objectp, pose))
+            object_global = objectp->getRegion()->getPosGlobalFromRegion(pose.position);
+    }
+    LLVector3d grab_offsetd = grab_start_global - object_global;
     LLVector3 grab_offset;
     grab_offset.setVec(grab_offsetd);
 
-    LLQuaternion rotation = root->getRotation();
     rotation.conjQuat();
     grab_offset = grab_offset * rotation;
 
@@ -930,6 +969,8 @@ void LLToolGrabBase::handleHoverNonPhysical(S32 x, S32 y, MASK mask)
 
     if (changed_since_last_update && !objectp->isLocalOnly())
     {
+        LLPickInfo surface = pick;
+        if (!transportTouchPick(objectp, surface)) return;
         LLMessageSystem *msg = gMessageSystem;
         msg->newMessageFast(_PREHASH_ObjectGrabUpdate);
         msg->nextBlockFast(_PREHASH_AgentData);
@@ -941,12 +982,12 @@ void LLToolGrabBase::handleHoverNonPhysical(S32 x, S32 y, MASK mask)
         msg->addVector3Fast(_PREHASH_GrabPosition, grab_pos_region );
         msg->addU32Fast(_PREHASH_TimeSinceLast, dt_milliseconds );
         msg->nextBlockFast(_PREHASH_SurfaceInfo);
-        msg->addVector3Fast(_PREHASH_UVCoord, LLVector3(pick.mUVCoords));
-        msg->addVector3Fast(_PREHASH_STCoord, LLVector3(pick.mSTCoords));
-        msg->addS32Fast(_PREHASH_FaceIndex, pick.mObjectFace);
-        msg->addVector3Fast(_PREHASH_Position, pick.mIntersection);
-        msg->addVector3Fast(_PREHASH_Normal, pick.mNormal);
-        msg->addVector3Fast(_PREHASH_Binormal, pick.mBinormal);
+        msg->addVector3Fast(_PREHASH_UVCoord, LLVector3(surface.mUVCoords));
+        msg->addVector3Fast(_PREHASH_STCoord, LLVector3(surface.mSTCoords));
+        msg->addS32Fast(_PREHASH_FaceIndex, surface.mObjectFace);
+        msg->addVector3Fast(_PREHASH_Position, surface.mIntersection);
+        msg->addVector3Fast(_PREHASH_Normal, surface.mNormal);
+        msg->addVector3Fast(_PREHASH_Binormal, surface.mBinormal);
 
         msg->sendMessage( objectp->getRegion()->getHost() );
 
@@ -1152,8 +1193,12 @@ void LLToolGrabBase::stopGrab()
 
     LLPickInfo pick = mGrabPick;
 
-    if (mMode == GRAB_NONPHYSICAL)
+    if (mMode == GRAB_NONPHYSICAL || (mMode == GRAB_LOCKED &&
+        (ALProjectorTracker::instance().tracked(objectp->getID()) ||
+         ALProjectorTracker::instance().tracked(objectp->getRootEdit()->getID()))))
     {
+        // For touch-only tracked lights, repick the current driven surface;
+        // the mouse-down pick may now be in a previous frame's position.
         // for non-physical (touch) grabs,
         // gather surface info for this degrab (mouse-up)
         S32 x = gViewerWindow->getCurrentMouseX();
@@ -1226,7 +1271,8 @@ void send_ObjectGrab_message(LLViewerObject* object, LLPickInfo & pick, const LL
 {
     // Client-only local previews have no sim object; localid 0 means nothing there.
     if (!object || object->isLocalOnly()) return;
-    if (!restoreGrabPick(object, pick)) return;
+    LLPickInfo surface = pick;
+    if (!transportTouchPick(object, surface)) return;
 
     LLMessageSystem *msg = gMessageSystem;
 
@@ -1238,12 +1284,12 @@ void send_ObjectGrab_message(LLViewerObject* object, LLPickInfo & pick, const LL
     msg->addU32Fast(    _PREHASH_LocalID, object->mLocalID);
     msg->addVector3Fast(_PREHASH_GrabOffset, grab_offset);
     msg->nextBlockFast(_PREHASH_SurfaceInfo);
-    msg->addVector3Fast(_PREHASH_UVCoord, LLVector3(pick.mUVCoords));
-    msg->addVector3Fast(_PREHASH_STCoord, LLVector3(pick.mSTCoords));
-    msg->addS32Fast(_PREHASH_FaceIndex, pick.mObjectFace);
-    msg->addVector3Fast(_PREHASH_Position, pick.mIntersection);
-    msg->addVector3Fast(_PREHASH_Normal, pick.mNormal);
-    msg->addVector3Fast(_PREHASH_Binormal, pick.mBinormal);
+    msg->addVector3Fast(_PREHASH_UVCoord, LLVector3(surface.mUVCoords));
+    msg->addVector3Fast(_PREHASH_STCoord, LLVector3(surface.mSTCoords));
+    msg->addS32Fast(_PREHASH_FaceIndex, surface.mObjectFace);
+    msg->addVector3Fast(_PREHASH_Position, surface.mIntersection);
+    msg->addVector3Fast(_PREHASH_Normal, surface.mNormal);
+    msg->addVector3Fast(_PREHASH_Binormal, surface.mBinormal);
     msg->sendMessage( object->getRegion()->getHost());
 
     /*  Diagnostic code
@@ -1264,6 +1310,8 @@ void send_ObjectGrab_message(LLViewerObject* object, LLPickInfo & pick, const LL
 void send_ObjectDeGrab_message(LLViewerObject* object, const LLPickInfo & pick)
 {
     if (!object || object->isLocalOnly()) return;
+    LLPickInfo surface = pick;
+    if (!transportTouchPick(object, surface)) return;
 
     LLMessageSystem *msg = gMessageSystem;
 
@@ -1274,12 +1322,12 @@ void send_ObjectDeGrab_message(LLViewerObject* object, const LLPickInfo & pick)
     msg->nextBlockFast(_PREHASH_ObjectData);
     msg->addU32Fast(_PREHASH_LocalID, object->mLocalID);
     msg->nextBlockFast(_PREHASH_SurfaceInfo);
-    msg->addVector3Fast(_PREHASH_UVCoord, LLVector3(pick.mUVCoords));
-    msg->addVector3Fast(_PREHASH_STCoord, LLVector3(pick.mSTCoords));
-    msg->addS32Fast(_PREHASH_FaceIndex, pick.mObjectFace);
-    msg->addVector3Fast(_PREHASH_Position, pick.mIntersection);
-    msg->addVector3Fast(_PREHASH_Normal, pick.mNormal);
-    msg->addVector3Fast(_PREHASH_Binormal, pick.mBinormal);
+    msg->addVector3Fast(_PREHASH_UVCoord, LLVector3(surface.mUVCoords));
+    msg->addVector3Fast(_PREHASH_STCoord, LLVector3(surface.mSTCoords));
+    msg->addS32Fast(_PREHASH_FaceIndex, surface.mObjectFace);
+    msg->addVector3Fast(_PREHASH_Position, surface.mIntersection);
+    msg->addVector3Fast(_PREHASH_Normal, surface.mNormal);
+    msg->addVector3Fast(_PREHASH_Binormal, surface.mBinormal);
     msg->sendMessage(object->getRegion()->getHost());
 }
 

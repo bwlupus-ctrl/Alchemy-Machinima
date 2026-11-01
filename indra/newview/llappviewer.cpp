@@ -5791,9 +5791,6 @@ void LLAppViewer::idle()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_APP("world update"); //LL_RECORD_BLOCK_TIME(FTM_WORLD_UPDATE);
         gPipeline.updateMove();
-        // Skeletons (including Ghost mirrors) and parent drawables now have
-        // their final pose. The tracker resolves its own moved drawables now.
-        ALProjectorTracker::instance().update(dt_raw);
     }
 
     // [BDMerge B3] Freeze World: hold the particle simulation while the world
@@ -5978,6 +5975,12 @@ void LLAppViewer::idle()
             LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();
         }
     }
+
+    // applyHeld above is the final render-only skeleton writer (including
+    // boil/smear and held root yaw). Sample/capture and place projectors here,
+    // then finish their drawable/bounds/child mesh work before display() can
+    // enter its earliest hero, mirror or cube-probe render pass.
+    ALProjectorTracker::instance().update(dt_raw);
 
     // Handle shutdown process, for example,
     // wait for floaters to close, send quit message,

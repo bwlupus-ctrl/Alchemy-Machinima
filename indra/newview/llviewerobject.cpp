@@ -2357,6 +2357,15 @@ U32 LLViewerObject::processUpdateMessage(LLMessageSystem *mesgsys,
         ALProjectorTracker::instance().receivedServerPose(this, server_position, new_rot);
     }
 
+    // Terse packets have no scale: never cache a local manip preview as a
+    // server scale. Keep the last accepted full scale for canceled edits.
+    if ((update_type == OUT_FULL || update_type == OUT_FULL_COMPRESSED ||
+         update_type == OUT_FULL_CACHED) && new_scale.isFinite())
+    {
+        mLastServerScale = new_scale;
+        mHasServerScale = true;
+    }
+
     // Set the change flags for scale
     if (new_scale != getScale())
     {

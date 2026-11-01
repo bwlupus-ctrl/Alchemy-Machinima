@@ -1402,6 +1402,8 @@ void LLViewerObjectList::clearDebugText()
 void LLViewerObjectList::cleanupReferences(LLViewerObject *objectp)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_NETWORK;
+    // Includes recursive child markDead calls, which bypass killObject.
+    ALProjectorTracker::instance().drop(objectp->getID());
 
     bool new_dead_object = true;
     if (mDeadObjects.find(objectp->mID) != mDeadObjects.end())
@@ -1470,7 +1472,6 @@ bool LLViewerObjectList::killObject(LLViewerObject *objectp)
         // and object being NULLed while inside it's own function won't be pretty
         // so create a pointer to make sure object will stay alive untill markDead() finishes
         LLPointer<LLViewerObject> sp(objectp);
-        ALProjectorTracker::instance().drop(objectp->getID());
         sp->markDead(); // does the right thing if object already dead
         return true;
     }

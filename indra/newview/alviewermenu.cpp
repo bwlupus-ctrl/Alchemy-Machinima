@@ -259,7 +259,6 @@ namespace
 
     bool is_powerful_wizard_object()
     {
-        ALProjectorTracker::instance().pauseSelectionForEdit();
         LLViewerObject* objpos = LLSelectMgr::getInstance()->getSelection()->getFirstRootObject();
         if (objpos)
         {
@@ -295,6 +294,7 @@ namespace
 
     void object_destroy()
     {
+        ALProjectorTracker::instance().pauseSelectionForEdit();
         LLViewerObject* objpos = LLSelectMgr::getInstance()->getSelection()->getFirstRootObject();
         if (objpos)
         {
@@ -304,6 +304,8 @@ namespace
                 return;
             }
 
+            // Reject an unresolved restore before temp-on-rez or any mutation.
+            if (!ALProjectorTracker::instance().canUseTransform(objpos)) return;
             LLNotificationsUtil::add("AlchemyDestroyObject", LLSD());
 
             /*

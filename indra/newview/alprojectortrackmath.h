@@ -8,6 +8,11 @@
 namespace ALProjectorTrackMath
 {
 struct Pose { LLVector3 position; LLQuaternion rotation; };
+// Paused/restored objects contain legitimate edit previews, not drive poses.
+inline bool needsServerPose(bool overridden, bool restore_pending)
+{
+    return overridden || restore_pending;
+}
 inline Pose relative(const Pose& world, const Pose& frame)
 {
     return { (world.position - frame.position) * ~frame.rotation,
@@ -17,6 +22,11 @@ inline Pose apply(const Pose& offset, const Pose& frame)
 {
     return { frame.position + offset.position * frame.rotation,
              offset.rotation * frame.rotation };
+}
+// SurfaceInfo positions are agent-space material points, not object origins.
+inline LLVector3 transportPoint(const LLVector3& point, const Pose& from, const Pose& to)
+{
+    return (point - from.position) * (~from.rotation * to.rotation) + to.position;
 }
 // Roots can change region origin; child locals require the packet's parent.
 inline bool restorableFrame(bool packet_child, bool resolved_child, bool same_parent)

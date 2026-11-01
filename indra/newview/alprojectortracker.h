@@ -32,6 +32,7 @@ public:
         bool paused = false;
         bool overridden = false;
         bool restorePending = false;
+        bool capturePending = false;
     };
     static ALProjectorTracker& instance();
     const State& state(const LLUUID& id) const;
@@ -60,6 +61,8 @@ public:
     // Read-only Build display: never seed a spinner or clipboard with a fake
     // tracked transform, even if Track is switched off before the next commit.
     bool serverEditTransform(LLViewerObject* object, ALProjectorTrackMath::Pose& pose) const;
+    // Only true synchronously inside render-only placement of this linkset.
+    static bool isTrackingMove(const LLViewerObject* object);
     static const char* jointName(S32 index);
 private:
     void stop(const LLUUID& id, const std::string& status);

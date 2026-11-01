@@ -49,6 +49,7 @@
 #include "llworld.h"
 #include "pipeline.h"
 #include "alprobedirty.h" // [ProbeOnDemand]
+#include "alprojectortracker.h"
 #include "llspatialpartition.h"
 #include "llviewerobjectlist.h"
 #include "llviewerwindow.h"
@@ -61,6 +62,20 @@ const F32 MAX_INTERPOLATE_DISTANCE_SQUARED = 10.f * 10.f;
 const F32 OBJECT_DAMPING_TIME_CONSTANT = 0.06f;
 
 extern bool gShiftFrame;
+
+namespace
+{
+// Only the rigid-motion rebuild sites use this helper. Scale changes and
+// REBUILD_VOLUME/ALL retain their genuine silhouette invalidations.
+void markPositionRebuild(LLDrawable* drawable)
+{
+    LLViewerObject* object = drawable->getVObj();
+    const bool dirty = object->isChanged(LLXform::SILHOUETTE);
+    gPipeline.markRebuild(drawable, LLDrawable::REBUILD_POSITION);
+    if (!dirty && ALProjectorTracker::isTrackingMove(object))
+        object->clearChanged(LLXform::SILHOUETTE);
+}
+}
 
 
 ////////////////////////
@@ -714,7 +729,7 @@ F32 LLDrawable::updateXform(bool undamped)
             || (1.f - dot(old_rot, target_rot)) > 0.f))
     { //fix for BUG-840, MAINT-2275, MAINT-1742, MAINT-2247
         mVObjp->shrinkWrap();
-        gPipeline.markRebuild(this, LLDrawable::REBUILD_POSITION);
+        markPositionRebuild(this);
     }
     else if (!getVOVolume() && !isAvatar())
     {
@@ -865,7 +880,7 @@ void LLDrawable::updatePartition()
     else
     {
         //a child prim moved and needs its verts regenerated
-        gPipeline.markRebuild(this, LLDrawable::REBUILD_POSITION);
+        markPositionRebuild(this);
     }
 }
 

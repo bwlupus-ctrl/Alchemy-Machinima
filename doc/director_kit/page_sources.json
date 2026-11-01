@@ -176449,7 +176449,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 257,
+              "line": 285,
               "class": "ALProjectorTracker",
               "function": "enable",
               "wired_class": "ALPanelPracticals",
@@ -176516,7 +176516,7 @@
           "cpp": [
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 143,
+              "line": 164,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176589,7 +176589,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 143,
+              "line": 164,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176657,7 +176657,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 143,
+              "line": 164,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176722,7 +176722,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 143,
+              "line": 164,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176798,7 +176798,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 283,
+              "line": 311,
               "class": "ALProjectorTracker",
               "function": "capture",
               "wired_class": "ALPanelPracticals",
@@ -176863,7 +176863,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 89,
+              "line": 110,
               "class": "ALProjectorTracker",
               "function": "state",
               "wired_class": "ALPanelPracticals",

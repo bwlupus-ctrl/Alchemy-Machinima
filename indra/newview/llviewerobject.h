@@ -493,6 +493,12 @@ public:
     // an already moving prim. This cache is never serialized or sent.
     bool hasLastServerTransform() const { return mHasServerTransform; }
     bool getLastServerTransform(LLVector3& position, LLQuaternion& rotation) const;
+    bool getLastServerScale(LLVector3& scale) const
+    {
+        if (!mHasServerScale) return false;
+        scale = mLastServerScale;
+        return true;
+    }
 
     void sendShapeUpdate();
 
@@ -1060,6 +1066,8 @@ protected:
     U32             mLastServerParentLocalID = 0;
     U64             mLastServerRegionHandle = 0;
     LLVector3       mLastServerPosition;
+    LLVector3       mLastServerScale;
+    bool            mHasServerScale = false;
     LLQuaternion    mLastServerRotation;
     bool            mHasServerTransform = false;
 
