@@ -36,6 +36,8 @@ public:
         // "global" = state with no selected subject. Subject rows use widget_history=false.
         Optional<std::string> undo_scope;
         Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected, fill_width, action_row, label_wrap;
+        // Authored readout/action geometry, validated by xui_layout_check; no runtime packing.
+        Optional<bool> fixed_actions;
         Optional<S32>  row_height, decimals;
         Optional<F32>  min_val, max_val, increment;
         Params();

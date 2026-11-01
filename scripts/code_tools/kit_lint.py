@@ -15,7 +15,7 @@ printed.  An empty tree lints clean.
 
 Error rules (exit 1): kit-geometry, bottom-attr, kit-row-control, kit-kind-tag,
 setting-graph, widget-name, section-cards, setting-home, selector-value,
-generated-header.  Warning rules (exit stays 0): help-audit-term, help-empty,
+generated-header, kit-fixed-actions.  Warning rules (exit stays 0): help-audit-term, help-empty,
 pending-wp (only from an explicit, cited, expiring gate_policy.json entry).
 Exit 2 is for command-line, XML or input errors.  Standard library only.
 
@@ -51,6 +51,9 @@ from pathlib import Path
 from typing import Iterator
 from xml.etree import ElementTree
 from xml.parsers import expat
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import xui_layout_check as layout_check  # noqa: E402 (shared fixed-action geometry contract)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -435,11 +438,25 @@ def check_rows(tree: Tree) -> list[Finding]:
             out.append(err(tree, node, "kit-row-control",
                            f"kind '{kind}' needs {expected} control child(ren), found {len(node.children)}"))
         allowed = KIND_TAGS[kind]
+        fixed_actions = node.attrs.get("fixed_actions") == "true"
+        if fixed_actions and kind != "custom":
+            out.append(err(tree, node, "kit-row-control", "fixed_actions requires kind='custom'"))
         for child in node.children:
             if expected and allowed is not None and child.tag not in allowed:
                 out.append(err(tree, child, "kit-kind-tag",
                                f"kind '{kind}' expects control <{'/'.join(sorted(allowed))}>, found <{child.tag}>"))
             stripped = [attr for attr in ROW_STRIPPED_ATTRS if attr in child.attrs]
+            if fixed_actions and kind == "custom" and child.tag == "panel":
+                # The explicit base rect is required by LLView follows. Validate
+                # the whole fixed layout before accepting its width and height.
+                def layout_node(source: Node) -> layout_check.Node:
+                    result = layout_check.Node(source.tag, source.attrs, source.line)
+                    result.children = [layout_node(item) for item in source.children]
+                    return result
+
+                issues = layout_check.kit_fixed_action_findings(layout_node(node), layout_node(child))
+                out.extend(Finding(tree.name, issue.line, "error", issue.kind, issue.message) for issue in issues)
+                stripped = [attr for attr in stripped if attr not in {"width", "height"}]
             if child.tag in LABEL_STRIPPED_TAGS and "label" in child.attrs:
                 stripped.append("label")
             for attr in stripped:
@@ -948,6 +965,19 @@ def run_selftest(as_json: bool) -> int:
             ok = any(f.rule == rule and f.severity == severity for f in report.findings)
             detail = f"{len(report.findings)} finding(s), expects {severity} {rule}"
         record(name, ok, detail)
+
+    fixed_payload = (Path(__file__).with_name("xui_fixtures") / "kit_fixed_actions.xml").read_bytes()
+    for name, before, after, expected_rule in (
+        ("fixed actions pattern", None, None, None),
+        ("fixed actions overlap", b'left="74" top="38"', b'left="60" top="38"', "kit-fixed-actions"),
+        ("fixed actions outside track", b'left="74" top="38"', b'left="75" top="38"', "kit-fixed-actions"),
+        ("fixed actions right follows", b'follows="left|top"', b'follows="left|right|top"', "kit-fixed-actions"),
+        ("fixed actions unmarked", b' fixed_actions="true"', b'', "kit-row-control"),
+    ):
+        payload = fixed_payload if before is None else fixed_payload.replace(before, after, 1)
+        findings = check_rows(Tree("fixed_actions.xml", parse_bytes(payload, "fixed_actions.xml"), "fixture", None))
+        record(name, not findings if expected_rule is None else any(f.rule == expected_rule for f in findings),
+               f"{len(findings)} finding(s)")
 
     probe_node = Node("kit_card", {}, 7, None)
     probe_tree = Tree("policy_fixture.xml", probe_node, "fixture_tab", None)

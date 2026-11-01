@@ -198,6 +198,7 @@ ALKitRow::Params::Params() :
     unconnected("unconnected", false),
     fill_width("fill_width", false),
     action_row("action_row", false),
+    fixed_actions("fixed_actions", false),
     label_wrap("label_wrap", false),
     row_height("row_height", 28),
     decimals("decimals", 3),

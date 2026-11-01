@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<panel name="fixed_actions_fixture">
+  <kit_card name="targets" kind="rows">
+    <kit_option value="10">
+      <kit_row kind="custom" widget="target" label="Target" fixed_actions="true" row_height="96">
+        <panel name="target" width="156" height="96">
+          <text name="readout" layout="topleft" left="0" top="0" width="156" height="36" follows="left|right|top" word_wrap="true">You - fallback</text>
+          <button name="choose" layout="topleft" left="0" top="38" width="70" height="24" follows="left|top" />
+          <button name="selected" layout="topleft" left="74" top="38" width="82" height="24" follows="left|top" />
+          <button name="you" layout="topleft" left="0" top="66" width="70" height="24" follows="left|top" />
+          <button name="clear" layout="topleft" left="74" top="66" width="82" height="24" follows="left|top" />
+        </panel>
+      </kit_row>
+    </kit_option>
+  </kit_card>
+</panel>

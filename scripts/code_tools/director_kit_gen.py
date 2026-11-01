@@ -811,8 +811,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
     # two authored button lines. ALKitRow's ordinary custom-panel reshape
     # stretches the readout via follows; action_row would instead sort by X
     # and repack all buttons over the readout with a different (6 px) gap.
-    if row.get("actions") and not row.get("readout"):
-        attrs["action_row"] = "true"
+    if row.get("actions"):
+        attrs["fixed_actions" if row.get("readout") else "action_row"] = "true"
     if row.get("fill_width"):
         attrs["fill_width"] = "true"
     if row.get("label_wrap"):
@@ -2130,9 +2130,15 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        for node in ET.fromstring(payload).iter("kit_row")
                        if node.get("widget") in target_widgets]
         target_layout_ok = {row.get("widget") for row in target_rows} == target_widgets
+        marked_widgets = [node.get("widget") for path, payload in outputs.items()
+                          if path.name.startswith("panel_dpage_")
+                          for node in ET.fromstring(payload).iter("kit_row")
+                          if node.get("fixed_actions") == "true"]
+        target_layout_ok &= len(marked_widgets) == 5 and set(marked_widgets) == target_widgets
         for row in target_rows:
             panel = row.find("panel")
             target_layout_ok &= (row.get("action_row", "false") == "false"
+                                 and row.get("fixed_actions") == "true"
                                  and row.get("kind") == "custom" and row.get("row_height") == "96")
             if panel is None:
                 target_layout_ok = False
@@ -2545,7 +2551,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            find_named(ghosts, row.get("widget")).get("tool_tip") ==
                            find_named(ghost_legacy, row.get("widget")).get("tool_tip") == row.get("help")
                            for row in animation_rows) and
-                       any(row.get("keywords") == "mirror animation flip left right clone directed"
+                       any(row.get("keywords") == "mirror true mirror animation flip pose left right clone directed frozen reflect placement"
                            for row in animation_rows) and
                        any("animation name" in row.get("keywords", "") for row in animation_rows)))
         rotation_rows = [row for row in ghosts.iter("kit_row") if row.get("widget") in

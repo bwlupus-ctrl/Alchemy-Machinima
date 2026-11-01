@@ -1651,20 +1651,90 @@ class KitSourcePins:
         )
 
 
+@functools.lru_cache(maxsize=None)
+def kit_fixed_action_track() -> int:
+    """Minimum labelled custom-panel span, from layoutRow and the kit constants."""
+    style = ALKIT_STYLE_H.read_text(encoding="utf-8")
+    source = ALKIT_ROW_CPP.read_text(encoding="utf-8")
+    value = lambda key: _read_const(style, key, ALKIT_STYLE_H)
+    # body_w - 2*ROW_INSET - LABEL_W - VALUE_W - RESET_W - kFavoriteW
+    # - 4*COL_GAP, then span = cw + COL_GAP + VALUE_W.
+    return (value("CARD_MIN_W") - value("CARD_PAD_L") - value("CARD_PAD_R")
+            - 2 * value("ROW_INSET") - value("LABEL_W") - value("RESET_W")
+            - _read_const(source, "kFavoriteW", ALKIT_ROW_CPP) - 3 * value("COL_GAP"))
+
+
+def kit_fixed_action_findings(row: Node, control: Node) -> list[Finding]:
+    """Validate the explicit readout/actions ownership mode, including hidden rows.
+
+    Only absolute top-left rectangles are supported. Model the ordinary custom
+    panel reshape at the minimum track; no overlap allowances or visibility
+    exemptions apply to this contract.
+    """
+    findings: list[Finding] = []
+
+    def fail(node: Node, detail: str) -> None:
+        findings.append(Finding("kit-fixed-actions", node.line, f"{row.name}: {detail}"))
+
+    if row.attrs.get("action_row", "false") != "false":
+        fail(row, "fixed_actions and action_row ownership conflict")
+    if control.tag != "panel" or control.name != row.attrs.get("widget"):
+        fail(control, "fixed actions require an ordinary panel")
+    dimensions = (row.attrs.get("row_height", ""), control.attrs.get("height", ""),
+                  control.attrs.get("width", ""))
+    if not all(re.fullmatch(r"[1-9][0-9]*", part) for part in dimensions):
+        fail(control, "panel width/height and row_height must be explicit positive integers")
+        return findings
+    row_height, height, width = map(int, dimensions)
+    if row_height < 28 or height != row_height:
+        fail(control, "panel height must equal a fixed row_height of at least 28px")
+    readouts = [child for child in control.children if child.tag == "text"]
+    if (len(readouts) != 1 or not any(child.tag == "button" for child in control.children)
+            or any(child.tag not in {"text", "button"} or child.children for child in control.children)):
+        fail(control, "panel must contain exactly one text readout and direct buttons only")
+    panel = Rect(0, 0, kit_fixed_action_track(), row_height)
+    rects: list[tuple[Node, Rect]] = []
+    for child in control.children:
+        follows = {part.strip() for part in child.attrs.get("follows", "").split("|")}
+        expected = {"left", "top"} if child.tag == "button" else {"left", "right", "top"}
+        if follows != expected:
+            fail(child, f"{child.name} must follow {'|'.join(sorted(expected))} only")
+        if (child.attrs.get("layout") != "topleft"
+                or any(key in child.attrs for key in (
+                    "right", "bottom", "left_pad", "left_delta", "top_pad", "top_delta", "bottom_delta"))
+                or not all(re.fullmatch(r"[0-9]+", child.attrs.get(key, ""))
+                           for key in ("left", "top", "width", "height"))):
+            fail(child, f"{child.name} requires explicit nonnegative top-left geometry")
+            continue
+        rect = Rect(*(int(child.attrs[key]) for key in ("left", "top", "width", "height")))
+        reshape_for_follows(rect, child, (width, height), (panel.width, panel.height))
+        if rect.width <= 0 or rect.height <= 0 or not rect.inside(panel):
+            fail(child, f"{child.name} {rect} lies outside the {panel.width}px fixed panel {panel}")
+        for other, other_rect in rects:
+            if rect.intersects(other_rect):
+                fail(child, f"{child.name} overlaps {other.name} at the {panel.width}px track")
+        rects.append((child, rect))
+    return findings
+
+
 def kit_source_pin_findings(root: Node, rules: KitSourcePins | None = None) -> list[Finding]:
-    """Pin row ownership/reflow source contracts; make no geometry claims."""
+    """Pin runtime ownership/reflow; measure explicitly owned fixed actions."""
     if rules is None:
         rules = KitSourcePins.from_source(ALKIT_ROW_CPP.read_text(encoding="utf-8"))
     findings: list[Finding] = []
     for card in (node for node in (root, *descendants(root)) if node.tag == "kit_card"):
-        rows = [node for node in card.children if node.tag == "kit_row"]
+        rows = [node for node in descendants(card) if node.tag == "kit_row"]
         if rows and not rules.card_stacks_rows:
             findings.append(Finding("kit-source-stacking", card.line, f"{card.name}: measured-height stacking source pin missing"))
         for row in rows:
             control = next((child for child in row.children if child.name == row.attrs.get("widget")), None)
             buttons = [] if control is None else [child for child in control.children if child.tag == "button"]
-            if row.attrs.get("kind") == "custom" and buttons:
-                if row.attrs.get("action_row", "false") != "true" or not rules.nested_actions:
+            if row.attrs.get("kind") == "custom" and (buttons or row.attrs.get("fixed_actions") == "true"):
+                if row.attrs.get("fixed_actions") == "true" and control is None:
+                    findings.append(Finding("kit-fixed-actions", row.line, f"{row.name}: fixed actions require a hosted panel"))
+                elif row.attrs.get("fixed_actions", "false") == "true":
+                    findings.extend(kit_fixed_action_findings(row, control))
+                elif row.attrs.get("action_row", "false") != "true" or not rules.nested_actions:
                     findings.append(Finding("kit-source-actions", row.line, f"{row.name}: action ownership source pin missing"))
             if row.attrs.get("kind") == "readout" and control is not None and control.attrs.get("word_wrap") == "true":
                 if not rules.atomic_row_resize:
@@ -1905,6 +1975,49 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if unmanaged_passed else 'FAIL'} kit media missing action ownership: "
               f"{len(unmanaged)} finding(s)")
+    # Mutate the real readout + two button-pairs pattern inside a kit_option:
+    # option rows must obey the same ownership gate as direct card children.
+    fixed_fixture = (fixture_dir / "kit_fixed_actions.xml").read_text(encoding="utf-8")
+    fixed_cases = (
+        ("authored pattern", None, None, None),
+        ("overlapping buttons", 'left="74" top="38"', 'left="60" top="38"', "kit-fixed-actions"),
+        ("outside minimum track", 'left="74" top="38"', 'left="75" top="38"', "kit-fixed-actions"),
+        ("right-follows button", 'follows="left|top"', 'follows="left|right|top"', "kit-fixed-actions"),
+        ("bottom-follows button", 'follows="left|top"', 'follows="left|top|bottom"', "kit-fixed-actions"),
+        ("unmarked ownership", ' fixed_actions="true"', '', "kit-source-actions"),
+        ("readout overlap", 'height="36"', 'height="40"', "kit-fixed-actions"),
+        ("readout outside panel", 'width="156" height="36"', 'width="157" height="36"', "kit-fixed-actions"),
+        ("missing fixed height", ' row_height="96"', '', "kit-fixed-actions"),
+        ("mismatched panel height", 'width="156" height="96"', 'width="156" height="95"', "kit-fixed-actions"),
+        ("conflicting owners", 'fixed_actions="true"', 'fixed_actions="true" action_row="true"', "kit-fixed-actions"),
+        ("missing hosted panel", '<panel name="target"', '<panel name="wrong"', "kit-fixed-actions"),
+    )
+    with tempfile.TemporaryDirectory(prefix="xui_fixed_actions_") as directory:
+        path = Path(directory) / "fixed_actions.xml"
+        for name, before, after, expected_kind in fixed_cases:
+            payload = fixed_fixture if before is None else fixed_fixture.replace(before, after, 1)
+            path.write_text(payload, encoding="utf-8")
+            findings = check_file(path)
+            case_passed = (not findings if expected_kind is None else
+                           any(item.kind == expected_kind for item in findings))
+            passed = passed and case_passed
+            reports.append({"fixture": f"kit fixed actions: {name}", "passed": case_passed,
+                            "count": len(findings)})
+            if not json_output:
+                print(f"{'PASS' if case_passed else 'FAIL'} kit fixed actions: {name}: {len(findings)} finding(s)")
+    target_widgets = {"shot_target", "shot_ots_second", "shot_two_second", "moves_target", "moves_second"}
+    marked_widgets: list[str] = []
+    generated_passed = True
+    for name in ("camera_shot", "camera_moves"):
+        generated, _ = parse_xml(default_xui_dir() / f"panel_dpage_{name}.xml")
+        marked_widgets.extend(node.attrs.get("widget", "") for node in descendants(generated)
+                              if node.tag == "kit_row" and node.attrs.get("fixed_actions") == "true")
+        generated_passed = generated_passed and not kit_source_pin_findings(generated)
+    generated_passed = generated_passed and len(marked_widgets) == 5 and set(marked_widgets) == target_widgets
+    passed = passed and generated_passed
+    reports.append({"fixture": "five generated fixed action panels", "passed": generated_passed})
+    if not json_output:
+        print(f"{'PASS' if generated_passed else 'FAIL'} five generated fixed action panels")
     alias_source = (fixture_dir / "visibility_alias_fixture.cpp").read_text(encoding="utf-8")
     alias_passed = dynamic_visibility_names(alias_source) == {"member_alternate"}
     passed = passed and alias_passed
