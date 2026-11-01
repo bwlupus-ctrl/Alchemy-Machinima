@@ -1,12 +1,12 @@
 # Moves — Director Kit page contract
 
 Page key: `moves_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (11/14 setting-bound rows; 3 C++-referenced rows).
+Computed class: **code-driven** (11/16 setting-bound rows; 5 C++-referenced rows).
 
 ## Real owners
 
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (14 matching rows).
-- Referencing classes: `LLFloaterDirector` (9).
+- Referencing classes: `LLFloaterDirector` (11).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,28 +20,31 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `ots` / `btn_build_ots_pair` (Build OTS) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1153` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickBuildOtsPair()` (`indra/newview/llfloaterdirector.cpp:1658`) | none |
-| `ots` / `prism_ots_shoulder` (Shoulder) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1158` | kit `number` ↔ `PrismOtsShoulderOffset` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:12` `prism_ots_shoulder` |
-| `ots` / `prism_ots_distance` (Distance) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1162` | kit `number` ↔ `PrismOtsCameraDistance` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:15` `prism_ots_distance` |
-| `ots` / `prism_ots_fov` (Lens FOV) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1166` | kit `number` ↔ `PrismOtsVerticalFovDeg` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:18` `prism_ots_fov` |
-| `ots` / `prism_ots_height_bias` (Height bias) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1170` | kit `number` ↔ `PrismOtsHeightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:21` `prism_ots_height_bias` |
-| `dolly_zoom` / `btn_start_zolly` (Start Zolly) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1172` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickZolly()` (`indra/newview/llfloaterdirector.cpp:1660`) | none |
-| `dolly_zoom` / `zolly_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1177` | kit `number` ↔ `CinematicCamVertigoDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:547` `CinematicCamVertigoDuration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:29` `zolly_duration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:125` `CinematicCamVertigoDuration` |
-| `dolly_zoom` / `zolly_direction` (Direction) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1180` | kit `combo` ↔ `CinematicCamVertigoDirection` `S32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:32` `zolly_direction`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:143` `CinematicCamVertigoDirection` |
-| `hero_arc` / `btn_start_hero_arc` (Start Arc) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1185` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickHeroArc()` (`indra/newview/llfloaterdirector.cpp:1662`) | none |
-| `hero_arc` / `hero_arc_angle` (Angle) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1190` | kit `number` ↔ `CinematicCamArcGeneratorAngle` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:45` `hero_arc_angle`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:301` `CinematicCamArcGeneratorAngle` |
-| `hero_arc` / `hero_arc_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1194` | kit `number` ↔ `CinematicCamArcDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:764` `CinematicCamArcDuration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:48` `hero_arc_duration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:283` `CinematicCamArcDuration` |
-| `hero_arc` / `hero_arc_height_drift` (Height drift) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1198` | kit `number` ↔ `CinematicCamArcHeightDrift` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:51` `hero_arc_height_drift`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:304` `CinematicCamArcHeightDrift` |
-| `hero_arc` / `hero_arc_speed_ramp` (Speed ramp) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1201` | kit `toggle` ↔ `CinematicCamSpeedRampEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:54` `hero_arc_speed_ramp` |
-| `hero_arc` / `hero_arc_ramp_strength` (Ramp strength) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1206` | kit `number` ↔ `CinematicCamSpeedRampStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:57` `hero_arc_ramp_strength` |
+| `ots` / `moves_second` (Second) | none | `ALCameraMoveKitAdapter` command/model binding → behavior `LLFloaterDirector::bindCameraSubjectRows()` (`indra/newview/llfloaterdirector.cpp:7660`) | none |
+| `ots` / `btn_build_ots_pair` (Build OTS) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1153` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickBuildOtsPair()` (`indra/newview/llfloaterdirector.cpp:1769`) | none |
+| `ots` / `prism_ots_shoulder` (Shoulder) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1158` | kit `number` ↔ `PrismOtsShoulderOffset` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:21` `prism_ots_shoulder` |
+| `ots` / `prism_ots_distance` (Distance) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1162` | kit `number` ↔ `PrismOtsCameraDistance` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:24` `prism_ots_distance` |
+| `ots` / `prism_ots_fov` (Lens FOV) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1166` | kit `number` ↔ `PrismOtsVerticalFovDeg` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:27` `prism_ots_fov` |
+| `ots` / `prism_ots_height_bias` (Height bias) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1170` | kit `number` ↔ `PrismOtsHeightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:30` `prism_ots_height_bias` |
+| `move_target` / `moves_target` (Target) | none | `ALCameraMoveKitAdapter` command/model binding → behavior `LLFloaterDirector::bindCameraSubjectRows()` (`indra/newview/llfloaterdirector.cpp:7659`) | none |
+| `dolly_zoom` / `btn_start_zolly` (Start Zolly) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1172` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickZolly()` (`indra/newview/llfloaterdirector.cpp:1771`) | none |
+| `dolly_zoom` / `zolly_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1177` | kit `number` ↔ `CinematicCamVertigoDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:547` `CinematicCamVertigoDuration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:49` `zolly_duration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:134` `CinematicCamVertigoDuration` |
+| `dolly_zoom` / `zolly_direction` (Direction) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1180` | kit `combo` ↔ `CinematicCamVertigoDirection` `S32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:52` `zolly_direction`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:152` `CinematicCamVertigoDirection` |
+| `hero_arc` / `btn_start_hero_arc` (Start Arc) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1185` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickHeroArc()` (`indra/newview/llfloaterdirector.cpp:1773`) | none |
+| `hero_arc` / `hero_arc_angle` (Angle) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1190` | kit `number` ↔ `CinematicCamArcGeneratorAngle` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:65` `hero_arc_angle`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:319` `CinematicCamArcGeneratorAngle` |
+| `hero_arc` / `hero_arc_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1194` | kit `number` ↔ `CinematicCamArcDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:764` `CinematicCamArcDuration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:68` `hero_arc_duration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:301` `CinematicCamArcDuration` |
+| `hero_arc` / `hero_arc_height_drift` (Height drift) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1198` | kit `number` ↔ `CinematicCamArcHeightDrift` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:71` `hero_arc_height_drift`, `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml:322` `CinematicCamArcHeightDrift` |
+| `hero_arc` / `hero_arc_speed_ramp` (Speed ramp) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1201` | kit `toggle` ↔ `CinematicCamSpeedRampEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:74` `hero_arc_speed_ramp` |
+| `hero_arc` / `hero_arc_ramp_strength` (Ramp strength) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1206` | kit `number` ↔ `CinematicCamSpeedRampStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:77` `hero_arc_ramp_strength` |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLFloaterDirector::onClickBuildOtsPair()` — `indra/newview/llfloaterdirector.cpp:1658` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onClickHeroArc()` — `indra/newview/llfloaterdirector.cpp:1662` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onClickZolly()` — `indra/newview/llfloaterdirector.cpp:1660` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::bindCameraSubjectRows()` — `indra/newview/llfloaterdirector.cpp:7659, 7660` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onClickBuildOtsPair()` — `indra/newview/llfloaterdirector.cpp:1769` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onClickHeroArc()` — `indra/newview/llfloaterdirector.cpp:1773` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onClickZolly()` — `indra/newview/llfloaterdirector.cpp:1771` | Move model-facing work into `ALCameraMoveKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -52,7 +55,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **12 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **14 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -61,6 +64,8 @@ Manifest size: **12 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `size-1141x720` | Default data at the wide non-round shell size. |
 | `card-ots-tallest-850` | Only `ots` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-ots-tallest-1160` | Only `ots` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-move_target-tallest-850` | Only `move_target` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-move_target-tallest-1160` | Only `move_target` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `card-dolly_zoom-tallest-850` | Only `dolly_zoom` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-dolly_zoom-tallest-1160` | Only `dolly_zoom` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `zolly_direction-option-0` | Only `zolly_direction` selects `Dolly out`; other selectors remain default. |
@@ -82,7 +87,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-14 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+16 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
