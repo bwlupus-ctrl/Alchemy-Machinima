@@ -154,6 +154,14 @@ LLVOAvatar* camera_subject_from_object(LLViewerObject* object)
     return object->getAvatar();
 }
 
+// Wearer resolution belongs only to the new avatar assignment controls.
+// Existing selection consumers must keep CineCam's getAvatar() semantics.
+LLVOAvatar* camera_subject_from_selection()
+{
+    return camera_subject_from_object(
+        LLSelectMgr::getInstance()->getSelection()->getPrimaryObject());
+}
+
 // Same asynchronous lifecycle as VCam's MediaFacePickTool: one outstanding
 // pick, generation invalidation on deselect, and a weak owner on completion.
 class CameraSubjectPickTool final : public LLTool
@@ -210,7 +218,16 @@ public:
         LLToolMgr::getInstance()->clearTransientTool();
         return true;
     }
-    void handleDeselect() override { ++mGeneration; mPicked = {}; mOwner.markDead(); }
+    void handleDeselect() override
+    {
+        ++mGeneration;
+        // App focus loss deselects without removing the transient tool. Keep
+        // its callback/owner armed, but discard any pick started before blur.
+        // A real tool change updates the selected tool before calling us.
+        if (LLToolMgr::getInstance()->getCurrentTool() == this) return;
+        mPicked = {};
+        mOwner.markDead();
+    }
 private:
     LLHandle<LLFloater> mOwner;
     std::function<void(const LLUUID&)> mPicked;
@@ -7661,9 +7678,8 @@ void LLFloaterDirector::bindCameraSubjectRows(LLView* root)
             { showCameraSubjectMenu(anchor, subject); });
         selected->setCommitCallback([this, subject](LLUICtrl*, const LLSD&)
         {
-            const LLUUID id = avatarFromSelection();
-            if (id.notNull() && camera_subject_avatar(LLDirectorCast::instance().resolve(id)))
-                onClickSetSubjectFromSelection(subject);
+            if (LLVOAvatar* avatar = camera_subject_from_selection(); camera_subject_avatar(avatar))
+                assignCameraSubject(subject, avatar->getID());
         });
         you->setCommitCallback([this, subject](LLUICtrl*, const LLSD&)
             { assignCameraSubject(subject, gAgentID); });
@@ -7770,8 +7786,7 @@ void LLFloaterDirector::refreshCameraSubjectRows()
     if (!mCameraSubjectClock.due()) return;
     mCameraSubjectsDirty = false;
     auto& cast = LLDirectorCast::instance();
-    const LLUUID selected = avatarFromSelection();
-    const bool have_selected = selected.notNull() && camera_subject_avatar(cast.resolve(selected));
+    const bool have_selected = camera_subject_avatar(camera_subject_from_selection());
     for (const auto& row : mCameraSubjectRows)
     {
         auto* name = row.mName.get();
@@ -7808,7 +7823,7 @@ LLUUID LLFloaterDirector::avatarFromSelection()
     LLViewerObject* obj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     if (obj)
     {
-        LLVOAvatar* av = camera_subject_from_object(obj);
+        LLVOAvatar* av = obj->getAvatar();
         if (av && !av->isDead())
         {
             return av->getID();
