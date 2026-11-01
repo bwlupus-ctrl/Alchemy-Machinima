@@ -307,7 +307,10 @@ void ALKitPopover::show()
     {
         return;
     }
-    shell->closePopover();
+    // Refresh an already-open popup in place. Replacing another popup is also
+    // layout work, not a search dismissal.
+    if (!getVisible())
+        shell->hidePopover();
     if (!place(true))
     {
         return;

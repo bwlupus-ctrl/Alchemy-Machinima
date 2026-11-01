@@ -83,12 +83,14 @@ public:
     void                        startSearchLoad();
     void                        clearSearch();
     bool                        handleSearchKey(KEY key);
-    // Results popup gate: disarming ends the search and restores page filters.
+    // Results popup gate: disarming dismisses search after any mouse gesture.
     void                        setSearchPopupArmed(LLLineEditor* editor, bool armed);
     bool                        cycleChip(S32 delta);
     bool                        cyclePage(S32 delta);
     bool                        cycleGroup(S32 delta);
     bool                        closePopover();
+    // Internal hide/replacement never dismisses the active search.
+    bool                        hidePopover();
     // True once after a press on `popover`'s own anchor closed it, so toggle() does not reopen it.
     bool                        consumeAnchorClose(ALKitPopover* popover);
     bool                        isFavorite(const std::string&, const std::string&) const;
@@ -133,6 +135,8 @@ private:
     void                                                 pageBuilt(const std::string&, LLPanel*);
     void                                                 runSearch(const std::string&);
     void                                                 queueSearch(const std::string&);
+    void                                                 hideSearchPopup();
+    void                                                 searchFocusLost();
     void                                                 updateSearchResults(const ALKitSearch::Hits&, ALKitPage*);
     void                                                 activateSearchResult();
     void                                                 activateSearchResult(const ALKitSearch::Hit&);
@@ -199,6 +203,8 @@ private:
     LLEventTimer::weak_t                                 mSearchDebounce;
     std::string                                          mPendingQuery;
     std::unordered_map<std::string, S32>                  mSearchScrollPositions;
+    U32                                                  mSearchDismissGeneration = 0;
+    bool                                                 mClearingSearch = false;
     bool                                                 mRailLabels    = true;
     bool                                                 mWideHelp      = true;
     bool                                                 mSearchStarted = false;
