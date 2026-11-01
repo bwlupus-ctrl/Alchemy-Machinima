@@ -298,15 +298,18 @@ ALGhostAnimAssetIndex::find(const LLUUID& asset_id) const
 
 void ALGhostAnimAssetIndex::requestMetadata(const LLUUID& asset_id)
 {
-    const Entry* indexed = find(asset_id);
-    if (!indexed || indexed->mAvailability != AVAILABLE_PENDING ||
-        mMetadata.find(asset_id) != mMetadata.end() || !gAssetStorage)
+    if (asset_id.isNull() || mMetadata.find(asset_id) != mMetadata.end() ||
+        !gAssetStorage)
     {
         return;
     }
+    const Entry* indexed = find(asset_id);
+    Entry pending;
+    if (indexed) pending = *indexed;
+    else pending.mAssetId = asset_id; // Direct UUIDs need no inventory item.
     const std::string previous_name = sessionName(asset_id);
-    mMetadata[asset_id] = *indexed; // pending also deduplicates requests
-    if (ALGhostAnimNames::hasDisplayName(indexed->mName) && indexed->mName != previous_name)
+    mMetadata.emplace(asset_id, pending); // pending also deduplicates requests
+    if (ALGhostAnimNames::hasDisplayName(pending.mName) && pending.mName != previous_name)
         ++mMetadataRevision; // names change here; timing/failure receipts do not
     gAssetStorage->getAssetData(asset_id, LLAssetType::AT_ANIMATION,
                                 onAssetLoaded, nullptr, false);

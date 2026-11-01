@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alderenderlist.h"
 #include "alavataranimspeed.h"
 #include "llcontrolavatar.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion for animesh
@@ -410,6 +411,7 @@ void LLControlAvatar::markDead()
 bool LLControlAvatar::computeNeedsUpdate()
 {
     computeUpdatePeriod();
+    if (ALDerenderList::keepsAvatarLive(this)) return true;
 
     // Animesh attachments are a special case. Should have the same update cadence as their attached parent avatar.
     LLVOAvatar *attached_av = getAttachedAvatar();

@@ -27,6 +27,7 @@
 // A "volume" is a box, cylinder, sphere, or other primitive shape.
 
 #include "llviewerprecompiledheaders.h"
+#include "alderenderlist.h"
 #include "alsteppedanimruntime.h"
 
 #include "llvovolume.h"
@@ -797,6 +798,17 @@ void LLVOVolume::updateTextureVirtualSize(bool forced)
     if (mDrawable.isNull() || gCubeSnapshot)
     {
         return;
+    }
+
+    if (ALDerenderList::isHiddenObject(this))
+    {
+        // Hidden source faces never enter a draw batch, but all material
+        // channels must retain fetch demand for appearance/attachment cloning.
+        forced = true;
+        for (S32 i = 0; i < mDrawable->getNumFaces(); ++i)
+            for (U32 channel = 0; channel < LLRender::NUM_TEXTURE_CHANNELS; ++channel)
+                if (LLViewerTexture* texture = mDrawable->getFace(i)->getTexture(channel))
+                    texture->addTextureStats(llmax(65536.f, mDrawable->getFace(i)->getVirtualSize()));
     }
 
     if(!forced)
@@ -4965,7 +4977,8 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
 {
     // Shelter rays count only visible surfaces: client-only FORCE_INVISIBLE helpers
     // (rig emitters, catchlight, live probe, manipulator proxies) never shelter rain.
-    if ((!mbCanSelect && !ALWeatherShelter::VisibleSurfaceRay::active())
+    if (ALDerenderList::isHiddenObject(this) ||
+        (!mbCanSelect && !ALWeatherShelter::VisibleSurfaceRay::active())
         || mDrawable->isDead()
         || (ALWeatherShelter::VisibleSurfaceRay::active() && mDrawable->isState(LLDrawable::FORCE_INVISIBLE))
         || !gPipeline.hasRenderType(mDrawable->getRenderType()))
@@ -6387,7 +6400,7 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
         {
             LLDrawable* drawablep = (LLDrawable*)(*drawable_iter)->getDrawable();
 
-            if (!drawablep || drawablep->isDead() || drawablep->isState(LLDrawable::FORCE_INVISIBLE) )
+            if (!drawablep || drawablep->isDead() || drawablep->isState(LLDrawable::FORCE_INVISIBLE))
             {
                 continue;
             }
@@ -6398,6 +6411,7 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
             {
                 continue;
             }
+            const bool hidden_source = ALDerenderList::isHiddenObject(vobj);
 
             // HACK -- brute force this check every time a drawable gets rebuilt
             S32 num_tex = llmin(vobj->getNumTEs(), drawablep->getNumFaces());
@@ -6552,7 +6566,9 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                     }
                 }
 
-                if (cur_total > max_total || facep->getIndicesCount() <= 0 || facep->getGeomCount() <= 0)
+                // Preserve material fetches, animesh controllers, attachment
+                // joint overrides and face setup above; omit only draw geometry.
+                if (hidden_source || cur_total > max_total || facep->getIndicesCount() <= 0 || facep->getGeomCount() <= 0)
                 {
                     facep->clearVertexBuffer();
                     continue;

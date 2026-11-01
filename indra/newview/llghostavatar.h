@@ -34,6 +34,7 @@
 #include <memory> // [AutoAnimate]
 
 #include <set>
+#include <map>
 
 class LLVOVolume;
 class ALGhostStudio;
@@ -187,6 +188,9 @@ public:
     void applyReflectStamp(const LLVector3& plane_normal);
     LLVOAvatar* reflectSource() const;
     const LLUUID& getAnimationSourceId() const { return mAnimationSourceId; }
+    // All live runtimes, including disabled/frozen clones. Updated only when
+    // appearance acquires a source, changes source, or the runtime dies.
+    static bool hasLiveSource(const LLUUID& id);
 
     virtual bool isImpostor() { return false; }
     virtual bool isBuddy() const { return false; }
@@ -242,6 +246,7 @@ public:
     static S32 clearTestHarnessGhosts();
 
 private:
+    void publishGhostTransform();
     void applyDesiredGhostFootPosition();
     // While Actor Mover drives this ghost (applyOverride() returned true) it
     // writes the skeleton ROOT JOINT only -- chase the viewer-object/drawable
@@ -333,6 +338,8 @@ private:
     // entity mirrors. The UUID is resolved through gObjectList each frame so
     // the ghost never owns or extends the source avatar's lifetime.
     LLUUID mAnimationSourceId;
+    void releaseSourceReference();
+    static std::map<LLUUID, U32> sLiveSourceCounts;
     // Positive-isolation ledger for avatar animations.  Neither map is the
     // inherited simulator animation state; synchronization can only call the
     // LLCharacter motion-controller API on this clone.

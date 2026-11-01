@@ -1,4 +1,4 @@
-/** Pure Directed-mirror ownership and pose publication rules. */
+/** Pure pose-flip ownership and pose publication rules. */
 #ifndef AL_ALGHOSTANIMMIRRORMATH_H
 #define AL_ALGHOSTANIMMIRRORMATH_H
 
@@ -12,15 +12,21 @@ namespace ALGhostAnimMirrorMath
 {
 // Kept index-parallel with ALGhostStudio::EDriveMode by static assertions there.
 enum Drive : S32 { DRIVE_MIRROR, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR, DRIVE_REFLECT };
+inline constexpr bool poseFlipDrive(S32 drive)
+{
+    return drive == DRIVE_MIRROR || drive == DRIVE_DIRECTED || drive == DRIVE_TRUE_MIRROR;
+}
 inline constexpr bool directedMirrorActive(S32 drive, S32 resume_drive, bool mirror)
 {
-    return mirror && (drive == DRIVE_DIRECTED ||
-        (drive == DRIVE_FROZEN && resume_drive == DRIVE_DIRECTED));
+    return mirror && (poseFlipDrive(drive) ||
+        (drive == DRIVE_FROZEN && poseFlipDrive(resume_drive)));
 }
 inline constexpr bool eligible(S32 authored, S32 resume_drive, bool mirror, S32 runtime)
 {
+    // Do not flip a temporary Director performance borrowed by another drive.
+    // Retain the existing Directed -> Director Freeze presentation contract.
     return directedMirrorActive(authored, resume_drive, mirror) &&
-        (runtime == DRIVE_DIRECTED || runtime == DRIVE_FROZEN);
+        (runtime == authored || (authored == DRIVE_DIRECTED && runtime == DRIVE_FROZEN));
 }
 enum GazeJoint : U32
 {

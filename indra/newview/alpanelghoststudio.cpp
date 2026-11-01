@@ -435,6 +435,13 @@ bool ALPanelGhostStudio::postBuild()
         studio.invalidateReflectPlane(studio.getSelected());
     });
     mDirectedAnimEdit = getChild<LLLineEditor>("directed_anim_editor");
+    // Both hosts prefill this field. Select the old UUID so Ctrl+V or the
+    // editor's Paste replaces it, and leave room for clipboard whitespace.
+    mDirectedAnimEdit->setSelectAllonFocusReceived(true);
+    mDirectedAnimEdit->setMaxTextLength(256);
+    mDirectedAnimEdit->setReplaceNewlinesWithSpaces(true);
+    mDirectedAnimEdit->setShowContextMenu(true);
+    mDirectedAnimEdit->setReturnCallback([this]() { onDirectedAnimCommit(); });
     mDirectedMirrorCheck = getChild<LLCheckBoxCtrl>("directed_anim_mirror_check");
     mSourceAnimationsCombo = getChild<LLComboBox>("source_animations_combo");
     mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
@@ -2821,7 +2828,8 @@ void ALPanelGhostStudio::onDriveModeCommit()
     // already use.
     const ALGhostStudio::EDriveMode mode =
         (ALGhostStudio::EDriveMode)mDriveModeCombo->getValue().asInteger();
-    LLUUID anim(mDirectedAnimEdit->getText());
+    LLUUID anim;
+    LLUUID::parseUUID(mDirectedAnimEdit->getText(), &anim);
     ALGhostStudio& studio = ALGhostStudio::instance();
     for (const LLUUID& id : selectedInstances())
     {
@@ -2967,11 +2975,13 @@ void ALPanelGhostStudio::onDirectedAnimCommit()
 {
     // See onDriveModeCommit(): apply to every member of a selected group, not
     // just the representative.
-    LLUUID anim(mDirectedAnimEdit->getText());
-    if (anim.isNull())
+    LLUUID anim;
+    if (!LLUUID::parseUUID(mDirectedAnimEdit->getText(), &anim) || anim.isNull())
     {
         return;
     }
+    mDirectedAnimEdit->setText(anim.asString());
+    ALGhostAnimAssetIndex::instance().requestMetadata(anim);
     ALGhostStudio& studio = ALGhostStudio::instance();
     for (const LLUUID& id : selectedInstances())
     {

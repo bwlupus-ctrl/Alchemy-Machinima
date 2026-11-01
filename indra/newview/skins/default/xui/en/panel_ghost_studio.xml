@@ -282,10 +282,10 @@
            tool_tip="Animations in your own inventory only. Metadata loads asynchronously. Use Refresh after adding animations to inventory" />
           <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_anim_library_refresh" right="-8" top="302" visible="false"
            tool_tip="Re-scan your inventory for animations. The list is not polled automatically" width="64" />
-          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-98" top="330" visible="false"
+          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-140" top="330" visible="false"
            tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" />
-          <check_box follows="top|right" height="18" label="Mirror" layout="topleft" name="directed_anim_mirror_check" right="-8" top="332" visible="false"
-           tool_tip="Flip this clone's own Directed animation left/right in place. Pause holds mirror. Gaze keeps aiming correctly: head and eyes follow the target under mirrored parents and blend in and out smoothly. Face morph expressions are not flipped. Asymmetric rigs or shape distortions may deform; skin weights stay on the original bones. Session only." width="82" />
+          <check_box follows="top|right" height="18" label="Flip pose L/R" layout="topleft" name="directed_anim_mirror_check" right="-8" top="332" visible="false"
+           tool_tip="Swap left/right of this clone's pose in Mirror, True mirror or Directed, including Frozen from those drives. Keeps facing and placement; use Reflect for mirror-plane placement. Gaze keeps aiming at its target. Face morph expressions are not flipped; skin weights stay on the original bones. Session only." width="124" />
           <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="source_animations_combo" right="-8" top="356" visible="false"
            tool_tip="Source avatar animations known locally. Choose an animation name to assign its UUID to every selected Directed clone." />
           <text follows="left|top|right" height="50" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="384" visible="false">Metadata pending...</text>

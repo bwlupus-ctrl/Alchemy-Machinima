@@ -136,6 +136,7 @@
 #include "llviewertexturelist.h"
 #include "llviewerobject.h"
 #include "llviewerobjectlist.h"
+#include "alderenderlist.h" // hidden clone-source beacon gate
 #include "llviewerparcelmgr.h"
 #include "llviewerregion.h" // for audio debugging.
 #include "llviewerwindow.h" // For getSpinAxis
@@ -5921,7 +5922,7 @@ void renderMOAPBeacons(LLDrawable *drawablep)
 {
     LLViewerObject *vobj = drawablep->getVObj();
 
-    if (!vobj || vobj->isAvatar())
+    if (!vobj || vobj->isAvatar() || ALDerenderList::isHiddenObject(vobj))
         return;
 
     bool beacon  = false;
@@ -5962,7 +5963,7 @@ void renderParticleBeacons(LLDrawable *drawablep)
 {
     // Look for attachments, objects, etc.
     LLViewerObject *vobj = drawablep->getVObj();
-    if (vobj && vobj->isParticleSource())
+    if (vobj && vobj->isParticleSource() && !ALDerenderList::isHiddenObject(vobj))
     {
         if (gPipeline.sRenderBeacons)
         {

@@ -1408,8 +1408,16 @@ bool ALKitRow::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     return LLPanel::handleScrollWheel(x, y, delta);
 }
 
-bool ALKitRow::handleRightMouseDown(S32 x, S32 y, MASK)
+bool ALKitRow::handleRightMouseDown(S32 x, S32 y, MASK mask)
 {
+    // Text editors own clipboard operations and their selection. The row
+    // menu's binding-based Paste can be unavailable for code-bound fields.
+    if (dynamic_cast<LLLineEditor*>(mControl) && mControl->getEnabled() &&
+        mControl->getRect().pointInRect(x, y) &&
+        LLPanel::handleRightMouseDown(x, y, mask))
+    {
+        return true;
+    }
     showContextMenu(x, y);
     return true;
 }

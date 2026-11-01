@@ -51,6 +51,7 @@
 #include "lloctree.h"
 #include "llphysicsshapebuilderutil.h"
 #include "llvoavatar.h"
+#include "alderenderlist.h" // hidden clone-source debug draw gate
 #include "llvolumemgr.h"
 #include "llviewershadermgr.h"
 #include "llcontrolavatar.h"
@@ -3293,6 +3294,10 @@ public:
             }
 
             LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(drawable->getVObj().get());
+            if (avatar && ALDerenderList::keepsAvatarLive(avatar))
+            {
+                avatar = nullptr; // a hidden clone source draws no debug geometry
+            }
 
             if (avatar && gPipeline.hasRenderDebugMask(LLPipeline::RENDER_DEBUG_AVATAR_VOLUME))
             {

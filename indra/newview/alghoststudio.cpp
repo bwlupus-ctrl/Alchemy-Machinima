@@ -2404,7 +2404,10 @@ void ALGhostStudio::updatePostObjectList()
                     inst.mReflectPlaneValid = false;
                     inst.mReflectWasDriven = false;
                 }
-                if (inst.mDriveMode == DRIVE_TRUE_MIRROR) ghost->applyTrueMirrorStamp(); // original eligibility and implementation
+                if (inst.mDriveMode == DRIVE_TRUE_MIRROR) ghost->applyTrueMirrorStamp();
+                // Flip the clone's evaluated pose in place: after its controller
+                // for Mirror/Directed, or after the source stamp for True mirror.
+                // Matching runtime ownership leaves Director overrides in charge.
                 if (ALGhostAnimMirrorMath::eligible(inst.mDriveMode,
                         inst.mDirectedMirrorFreezeDrive, inst.mDirectedMirror, mode))
                     ghost->applyDirectedMirrorStamp(inst.mDriveMode, inst.mDirectedMirrorFreezeDrive);

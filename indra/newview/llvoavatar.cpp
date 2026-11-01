@@ -55,6 +55,7 @@
 #include "llagentdata.h"           // [ClientHeight] gAgentID
 #include "alghoststudio.h"         // [ClientHeight] ghost instance revision
 #include "llghostavatar.h"         // [ClientHeight] stamped clone key
+#include "alderenderlist.h"
 #include "alcinelightrigmanager.h" // [ActorMask]
 #include "aoengine.h"
 #include "llagent.h" //  Get state values from here
@@ -2015,7 +2016,8 @@ bool LLVOAvatar::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
                                       LLVector4a* normal,
                                       LLVector4a* tangent)
 {
-    if ((isSelf() && !gAgent.needsRenderAvatar()) || !LLPipeline::sPickAvatar)
+    if (ALDerenderList::keepsAvatarLive(this) ||
+        (isSelf() && !gAgent.needsRenderAvatar()) || !LLPipeline::sPickAvatar)
     {
         return false;
     }
@@ -2122,7 +2124,8 @@ LLViewerObject* LLVOAvatar::lineSegmentIntersectRiggedAttachments(const LLVector
                                       LLVector4a* normal,
                                       LLVector4a* tangent)
 {
-    if (isSelf() && !gAgent.needsRenderAvatar())
+    if (ALDerenderList::keepsAvatarLive(this) ||
+        (isSelf() && !gAgent.needsRenderAvatar()))
     {
         return NULL;
     }
@@ -2805,7 +2808,7 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         && !isControlAvatar()
         && !isSelf()
         && !isBuddy()
-        && !isGhostAvatar())   // a client-only clone is not a resident to filter
+        && !isGhostAvatar() && !ALDerenderList::keepsAvatarLive(this))
     {
         if (mNameText)
         {
@@ -2825,7 +2828,7 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 
     static LLCachedControl<bool> disable_all_render_types(gSavedSettings, "DisableAllRenderTypes");
     if (!(gPipeline.hasRenderType(mIsControlAvatar ? LLPipeline::RENDER_TYPE_CONTROL_AV : LLPipeline::RENDER_TYPE_AVATAR))
-        && !disable_all_render_types && !isSelf())
+        && !disable_all_render_types && !isSelf() && !ALDerenderList::keepsAvatarLive(this))
     {
         if (!mIsControlAvatar && !isGhostAvatar())
         {
@@ -3026,7 +3029,7 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 
 void LLVOAvatar::idleUpdateVoiceVisualizer(bool voice_enabled, const LLVector3 &position)
 {
-    bool render_visualizer = voice_enabled;
+    bool render_visualizer = voice_enabled && !ALDerenderList::keepsAvatarLive(this);
 
     // Don't render the user's own voice visualizer when in mouselook, or when opening the mic is disabled.
     if(isSelf())
@@ -4201,6 +4204,7 @@ void LLVOAvatar::slamPosition()
 
 bool LLVOAvatar::isVisuallyMuted()
 {
+    if (ALDerenderList::keepsAvatarLive(this)) return false;
     bool muted = false;
 
     // Priority order (highest priority first)
@@ -4662,7 +4666,7 @@ void LLVOAvatar::computeUpdatePeriod()
     // Ghost clones and styled cinematic actors always update their authored
     // skeleton every frame. Actor FX cannot use temporally throttled jelly or
     // impostor state without visibly freezing animation and attachments.
-    if (isGhostAvatar() || hasEffectiveActorFx())
+    if (isGhostAvatar() || hasEffectiveActorFx() || ALDerenderList::keepsAvatarLive(this))
     {
         mUpdatePeriod = 1;
         return;
@@ -6271,6 +6275,9 @@ void LLVOAvatar::updateVisibility()
         }
     }
 
+    // Render suppression must not release the source mesh or pause fetch callbacks.
+    if (ALDerenderList::keepsAvatarLive(this)) visible = true;
+
     if (!visible && mVisible)
     {
         mMeshInvisibleTime.reset();
@@ -6903,7 +6910,7 @@ void LLVOAvatar::updateTextures()
             return ;//do not update for invisible avatar.
         }
 
-        render_avatar = !mCulled; //visible and not culled.
+        render_avatar = !mCulled || ALDerenderList::keepsAvatarLive(this);
     }
 
     std::vector<bool> layer_baked;
@@ -6962,7 +6969,9 @@ void LLVOAvatar::updateTextures()
         {
             const S32 boost_level = getAvatarBakedBoostLevel();
             imagep = LLViewerTextureManager::staticCastToFetchedTexture(getImage(texture_index,0), true);
-            addBakedTextureStats( imagep, mPixelArea, texel_area_ratio, boost_level );
+            const F32 texture_area = ALDerenderList::keepsAvatarLive(this)
+                ? llmax(mPixelArea, 65536.f) : mPixelArea;
+            addBakedTextureStats(imagep, texture_area, texel_area_ratio, boost_level);
         }
     }
 
@@ -9694,6 +9703,8 @@ bool LLVOAvatar::shouldRenderRigged() const
 // Maybe better naming could make this clearer?
 bool LLVOAvatar::isVisible() const
 {
+    // This is update visibility. Actual draws/picks are gated independently.
+    if (mDrawable.notNull() && ALDerenderList::keepsAvatarLive(this)) return true;
     static LLCachedControl<bool> friends_only(gSavedSettings, "RenderAvatarFriendsOnly", false);
     return mDrawable.notNull()
         && (!mOrphaned || isSelf())
@@ -12513,7 +12524,8 @@ void LLVOAvatar::cullAvatarsByPixelArea()
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* inst = (LLVOAvatar*)character;
-        bool culled = !inst->isSelf() && !inst->isGhostAvatar() && !inst->isFullyBaked();
+        bool culled = !inst->isSelf() && !inst->isGhostAvatar() &&
+            !ALDerenderList::keepsAvatarLive(inst) && !inst->isFullyBaked();
 
         if (inst->mCulled != culled)
         {
@@ -12944,6 +12956,7 @@ bool LLVOAvatar::hasEffectiveActorFx() const
 // virtual
 bool LLVOAvatar::isImpostor()
 {
+    if (ALDerenderList::keepsAvatarLive(this)) return false;
     const bool visually_muted = isVisuallyMuted();
 
     // Actor FX is evaluated on live geometry. Keep a styled cinematic actor
@@ -12967,6 +12980,7 @@ bool LLVOAvatar::isImpostor()
 
 bool LLVOAvatar::shouldImpostor(const F32 rank_factor)
 {
+    if (ALDerenderList::keepsAvatarLive(this)) return false;
     if (isSelf() || isGhostAvatar())
     {
         return false;
@@ -13652,6 +13666,8 @@ void LLVOAvatar::updateOverallAppearanceAnimations()
 LLVOAvatar::AvatarOverallAppearance LLVOAvatar::getOverallAppearance() const
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    // Keep the data path normal; the separate render gate hides every surface.
+    if (ALDerenderList::keepsAvatarLive(this)) return AOA_NORMAL;
     AvatarOverallAppearance result = AOA_NORMAL;
 
     // Priority order (highest priority first)
