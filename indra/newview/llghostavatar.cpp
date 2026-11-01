@@ -1052,9 +1052,36 @@ void LLGhostAvatar::ghostSlamPosition(const LLVector3& pos_agent)
     setChanged(TRANSLATED);
     if (mDrawable.notNull())
     {
+        // A foot/rotation edit or the mover can place us again after an
+        // earlier move in this frame. updateMoveNormalAsync otherwise ignores
+        // EARLY_MOVE, leaving getRenderPosition() at the old placement. The
+        // next avatar update would evaluate root/animation constraints there
+        // before the trailing foot lock snaps the skeleton to the new root.
+        mDrawable->clearState(LLDrawable::EARLY_MOVE);
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
+    publishGhostTransform();
+}
+
+void LLGhostAvatar::publishGhostTransform()
+{
+    // Placement may run after avatar evaluation or picking has already read
+    // this frame's pose. Keep the animated LOCAL joints and controller time;
+    // publish only the new world transform to skinning and attachments.
     mRoot->updateWorldMatrixChildren();
+    markStepAnimPoseChanged();
+    for (auto& item : mMatrixPaletteCache)
+    {
+        MatrixPaletteCache& entry = item.second;
+        if (entry.mFrame == gFrameCount)
+        {
+            entry.mFrame = gFrameCount - 1;
+            entry.mRebuildNoRoll = true; // retain the actual previous-frame palette
+        }
+    }
+    // A late gizmo/foot-lock write also has to propagate rigid children and
+    // animesh roots, whose drawables may already have moved this frame.
+    syncStepAnimAttachmentMatrices();
 }
 
 void LLGhostAvatar::setGhostPosition(const LLVector3& pos_agent)
@@ -1196,10 +1223,12 @@ void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
     mTiltRotationValid = false; // [GhostMotionModes] an ordinary placement ends any tilt
     setRotation(rotation, false);
     mRoot->setWorldRotation(rotation);
-    mRoot->updateWorldMatrixChildren();
+    publishGhostTransform();
     setChanged(ROTATED);
     if (mDrawable.notNull())
     {
+        // Foot placement may already have moved the drawable this frame.
+        mDrawable->clearState(LLDrawable::EARLY_MOVE);
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
 }
@@ -1226,12 +1255,13 @@ void LLGhostAvatar::setGhostTiltRotation(const LLQuaternion& rotation)
     }
     setRotation(LLQuaternion(mTiltHeadingYaw, LLVector3::z_axis), false);
     mRoot->setWorldRotation(rotation);
-    mRoot->updateWorldMatrixChildren();
+    publishGhostTransform();
     mTiltRotation = rotation;
     mTiltRotationValid = true;
     setChanged(ROTATED);
     if (mDrawable.notNull())
     {
+        mDrawable->clearState(LLDrawable::EARLY_MOVE);
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
 }
@@ -1246,7 +1276,7 @@ void LLGhostAvatar::reassertTiltRotation()
     // matrices so rigged palettes and attachment moves later this frame read
     // the tilted root.
     mRoot->setWorldRotation(mTiltRotation);
-    mRoot->updateWorldMatrixChildren();
+    publishGhostTransform();
 }
 
 void LLGhostAvatar::setFormationAnimations(const std::vector<LLUUID>& anims)

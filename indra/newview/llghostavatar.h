@@ -242,6 +242,7 @@ public:
     static S32 clearTestHarnessGhosts();
 
 private:
+    void publishGhostTransform();
     void applyDesiredGhostFootPosition();
     // While Actor Mover drives this ghost (applyOverride() returned true) it
     // writes the skeleton ROOT JOINT only -- chase the viewer-object/drawable
