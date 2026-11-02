@@ -32,10 +32,12 @@ class Runner:
         self.gl = g = G.GL()
         self.definitions = {}
         self.width, self.height = width, height
+        self.scene_copies = self.displaced_sweeps = 0
         self.projection_x = .7 * height / width
         for cap in (0x0B71, 0x0BE2, 0x0C11, 0x8DB9, 0x0B44, 0x0BD0):
             g.disable(cap)
         self.clear = g.fn('glClearBufferfv', None, g.U, g.I, C.POINTER(g.F))
+        g.enable = g.fn('glEnable', None, g.U)
         self.disable_attr = g.fn('glDisableVertexAttribArray', None, g.U)
         self.attr4 = g.fn('glVertexAttrib4f', None, g.U, g.F, g.F, g.F, g.F)
         self.attri = g.fn('glVertexAttribI1i', None, g.U, g.I)
@@ -46,7 +48,17 @@ class Runner:
         g.bind_fbo(0x8D40, self.fbo)
         self.target = self.texture(None, width, height, 0x8814)
         g.fbo_tex(0x8D40, 0x8CE0, 0x0DE1, self.target, 0)
+        self.depth = g.U()
+        g.fn('glGenRenderbuffers',None,g.I,C.POINTER(g.U))(1,C.byref(self.depth))
+        g.fn('glBindRenderbuffer',None,g.U,g.U)(0x8D41,self.depth)
+        g.fn('glRenderbufferStorage',None,g.U,g.U,g.I,g.I)(0x8D41,0x81A6,width,height)
+        g.fn('glFramebufferRenderbuffer',None,g.U,g.U,g.U,g.U)(0x8D40,0x8D00,0x8D41,self.depth)
         assert g.fbo_status(0x8D40) == 0x8CD5
+        self.scene = self.texture(None, width, height, 0x8058, 'linear')
+        y, x = np.mgrid[:height, :width]
+        check = ((x // max(1, width//24) + y // max(1, height//24)) % 2).astype(np.float32)
+        self.background = np.stack((.08+.65*check, .15+.5*x/width,
+                                    .12+.6*y/height, np.ones_like(check)), -1).astype(np.float32)
         # Nearest-only poison fixture: whole transparent taps must contribute
         # no RGB. Filtered contamination is measured separately below.
         y, x = np.mgrid[:128, :128] / 127.0
@@ -142,7 +154,9 @@ class Runner:
         return pr
 
     def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
-               shift_y=0., rotation=0., slot=-1, adjacent_slots=False):
+               shift_y=0., rotation=0., slot=-1, adjacent_slots=False,
+               velocity=(0.,0.), displace=0., scene=False, composite=False, sweeps=False, timing=False,
+               occlude=False):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -169,6 +183,11 @@ class Runner:
         floats('ghostAlpha', 0. if opaque else 1., 1.)
         floats('ghostDistortParams', .4 if distort else 0., .5, .5, 0.)
         floats('ghostScreenSize', self.width, self.height)
+        floats('ghostScreenOrigin', 0., 0.)
+        floats('ghostVelocity', *velocity)
+        floats('ghostDisplace', displace)
+        g.ui(loc('ghostSceneValid'), int(scene))
+        g.ui(loc('ghostSceneMap'), 1)
         floats('ghostDissolveProgress', .28 if look == 10 else 0.)
         floats('ghostCoverageLayerStrength', -1.)
         floats('alrParams', 0., 0., 1., 0.)
@@ -220,8 +239,54 @@ class Runner:
                 self.disable_attr(ix); self.attri(ix,0)
         g.active(0x84C0); g.bind_tex(0x0DE1,self.diffuse); g.ui(loc('diffuseMap'),0)
         g.bind_fbo(0x8D40,self.fbo); g.viewport(0,0,self.width,self.height)
+        depth_mask = g.fn('glDepthMask',None,g.U)
+        if sweeps:
+            g.enable(0x0B71)
+            g.fn('glDepthFunc',None,g.U)(0x0203)  # production LEQUAL
+            depth_mask(1)
+            self.clear(0x1801,0,(g.F*1)(0. if occlude else 1.))
         self.clear(0x1800,0,(g.F*4)(0,0,0,0))
+        if composite or scene:
+            g.bind_tex(0x0DE1, self.target)
+            g.fn('glTexSubImage2D',None,g.U,g.I,g.I,g.I,g.I,g.I,g.U,g.U,C.c_void_p)(
+                0x0DE1,0,0,0,self.width,self.height,0x1908,0x1406,self.background.ctypes.data)
+            g.bind_tex(0x0DE1, self.diffuse)
+        if scene:
+            # Mirror the viewer operation: copy the composited DRAW target into
+            # an independent texture before any clone, never sample the target.
+            assert self.scene != self.target
+            g.active(0x84C1); g.bind_tex(0x0DE1,self.scene)
+            g.fn('glCopyTexSubImage2D',None,g.U,g.I,g.I,g.I,g.I,g.I,g.I,g.I)(
+                0x0DE1,0,0,0,0,0,self.width,self.height)
+            self.scene_copies += 1
+            g.active(0x84C0)
+        if composite:
+            g.enable(0x0BE2)
+            g.fn('glBlendFuncSeparate',None,g.U,g.U,g.U,g.U)(0x0302,0x0303,0,1)
         g.draw(0x0004,0,len(self.verts))
+        if sweeps and look in (68,72):
+            depth_mask(0)
+            g.enable(0x0BE2)
+            g.fn('glBlendFuncSeparate',None,g.U,g.U,g.U,g.U)(0x0302,1,0,1)
+            floats('ghostDisplace', 1. if look == 68 else 2.)
+            if timing:
+                query = g.U()
+                g.fn('glGenQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
+                g.fn('glBeginQuery',None,g.U,g.U)(0x88BF,query)
+            g.draw(0x0004,0,len(self.verts))
+            if timing:
+                g.fn('glEndQuery',None,g.U)(0x88BF)
+                elapsed = C.c_uint64()
+                g.fn('glGetQueryObjectui64v',None,g.U,g.U,C.POINTER(C.c_uint64))(query,0x8866,C.byref(elapsed))
+                self.last_sweep_ms = elapsed.value / 1e6
+                g.fn('glDeleteQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
+            floats('ghostDisplace', 0.)
+            self.displaced_sweeps += 1
+        g.disable(0x0BE2)
+        if sweeps:
+            depth_mask(1)
+            g.disable(0x0B71)
+        g.active(0x84C1); g.bind_tex(0x0DE1,0); g.active(0x84C0)
         result = np.empty((self.height,self.width,4),np.float32)
         g.read(0,0,self.width,self.height,0x1908,0x1406,result.ctypes.data)
         for ix in used: self.disable_attr(ix)
@@ -357,12 +422,124 @@ def datamosh_material_checks(runner, pr):
     return results
 
 
+def phase2_checks(runner, pr, out):
+    def save_raw(a, name):
+        rgb = a[...,:3] if np.all(a[...,3] > .99) else (
+            a[...,:3]*np.clip(a[...,3:4],0,1)+.12*(1-np.clip(a[...,3:4],0,1)))
+        Image.fromarray((np.clip(rgb[::-1],0,1)*255+.5).astype(np.uint8)).save(out/name)
+    glass = runner.render(pr,64,scene=True,composite=True)
+    class NoBend:
+        def read(self, path):
+            text = G.SourceTree('WORKTREE').read(path)
+            if path == F:
+                before = 'vec2 bend = n.xy * (1.0 - facing * 0.75) * 0.0167;'
+                assert text.count(before) == 1
+                text = text.replace(before, 'vec2 bend = vec2(0.0);')
+            return text
+    straight = runner.render(runner.program(NoBend()),64,scene=True,composite=True)
+    bend_error = float(np.max(np.abs(glass-straight)))
+    assert bend_error > .1, ('Glass did not bend background',bend_error)
+    save_raw(glass,'phase2_glass_refraction.png')
+    save_raw(straight,'phase2_glass_zero_bend_control.png')
+    Image.fromarray((runner.background[::-1,:,:3]*255+.5).astype(np.uint8)).save(out/'phase2_glass_background.png')
+    # Geometry control has no texture-alpha holes. Outside it, no fragment of
+    # the undisplaced clone can contribute: selected second sweeps must do so.
+    geometry = runner.render(runner.probe,1)[...,3] > 0
+    outside = ~geometry
+    results = dict(glass_bend_max_delta=bend_error, outside={})
+    for look,name,times in ((68,'ash',(0.,.45,.9,1.35,1.8)),
+                            (72,'arc',(1.95,2.,2.05,2.10))):
+        counts = []
+        for index,time in enumerate(times):
+            particles = runner.render(pr,look,time=time,displace=1. if look==68 else 2.)
+            energy = np.max(premultiplied(particles)[...,:3],axis=2)
+            count = int(np.count_nonzero(outside & (energy > .004)))
+            counts.append(count)
+            assert count > 10, (look,time,'no particles beyond silhouette',count)
+            composite = runner.render(pr,look,time=time,composite=True,sweeps=True)
+            visible_outside = np.max(np.abs(composite[...,:3]-runner.background[...,:3]),axis=2)
+            assert np.count_nonzero(outside & (visible_outside > .004)) > 10
+            save_raw(composite,'phase2_%s_%02d.png'%(name,index))
+            save_raw(particles,'phase2_%s_particles_%02d.png'%(name,index))
+        results['outside'][name] = counts
+        occluded = runner.render(pr,look,composite=True,sweeps=True,occlude=True)
+        assert np.max(np.abs(occluded-runner.background)) == 0., 'second sweep ignored depth'
+    # A linear UV ramp gives a directional oracle independent of the shader's
+    # offset code: +screen X trails towards lower red; +screen Y towards higher
+    # green (the fixture's V coordinate runs downward). Nearest sampling and
+    # broad interior averaging tolerate macroblock on/off and DC/chroma taps.
+    original = runner.diffuse
+    y,x = np.mgrid[:128,:128]/127.
+    ramp = np.stack((x,y,np.ones_like(x)*.5,np.ones_like(x)),-1).astype(np.float32)
+    runner.diffuse = runner.texture(ramp,128,128,0x8814,'linear')
+    try:
+        horizontal = runner.render(pr,75,velocity=(12.,0.),mask=False)
+        vertical = runner.render(pr,75,velocity=(0.,12.),mask=False)
+        save_raw(horizontal,'phase2_datamosh_velocity_right.png')
+        save_raw(vertical,'phase2_datamosh_velocity_up.png')
+        h,w = runner.height,runner.width
+        center = np.s_[h*3//8:h*5//8,w*7//16:w*9//16,:3]
+        delta = np.mean(horizontal[center]-vertical[center],axis=(0,1))
+        assert delta[0] < -.002 and delta[1] < -.002, ('smear did not follow motion',delta)
+        results['velocity_right_minus_up_rgb'] = delta.tolist()
+    finally:
+        runner.diffuse = original
+    # Feature-off scheduling: no scene request for Datamosh alone; no displaced
+    # sweep for any other look. The production C++ guard is checked separately.
+    copies,sweeps = runner.scene_copies,runner.displaced_sweeps
+    for look in range(78):
+        if look in (64,68,72): continue
+        runner.render(pr,look,sweeps=True)
+    assert (runner.scene_copies,runner.displaced_sweeps) == (copies,sweeps)
+    results['off_path_copy_and_sweep_delta'] = [0,0]
+    print('PASS phase 2: patterned refraction, outside embers/arcs, motion direction, inert off-path',flush=True)
+    return results
+
+
+def four_k_check(out):
+    r = Runner(3840,2160)
+    g = r.gl
+    pr = r.program(G.SourceTree('WORKTREE'))
+    glass = r.render(pr,64,scene=True,composite=True)
+    assert glass.shape == (2160,3840,4)
+    assert np.max(np.abs(glass-r.background)) > .1
+    Image.fromarray((np.clip(glass[::-1,:,:3],0,1)*255+.5).astype(np.uint8)).save(out/'phase2_glass_4k.png')
+    # TIME_ELAPSED excludes Python, upload/allocation and readback. Warm the copy
+    # first, then measure 32 copies (a bandwidth estimate, not frame latency).
+    g.active(0x84C1); g.bind_tex(0x0DE1,r.scene)
+    copy = g.fn('glCopyTexSubImage2D',None,g.U,g.I,g.I,g.I,g.I,g.I,g.I,g.I)
+    for _ in range(4): copy(0x0DE1,0,0,0,0,0,3840,2160)
+    query = g.U()
+    g.fn('glGenQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
+    g.fn('glBeginQuery',None,g.U,g.U)(0x88BF,query)
+    for _ in range(32): copy(0x0DE1,0,0,0,0,0,3840,2160)
+    g.fn('glEndQuery',None,g.U)(0x88BF)
+    elapsed = C.c_uint64()
+    g.fn('glGetQueryObjectui64v',None,g.U,g.U,C.POINTER(C.c_uint64))(query,0x8866,C.byref(elapsed))
+    copy_ms = elapsed.value/1e6/32
+    g.fn('glDeleteQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
+    g.active(0x84C0)
+    sweeps = {}
+    for look in (68,72):
+        r.render(pr,look,sweeps=True)  # warm-up
+        r.render(pr,look,sweeps=True,timing=True)
+        sweeps[str(look)] = r.last_sweep_ms
+    assert g.fn('glGetError',g.U)() == 0
+    result = dict(size=[3840,2160], renderer=g.renderer, copy_gpu_ms=copy_ms,
+                  displaced_sweep_gpu_ms=sweeps, vertices=len(r.verts),
+                  note='Synthetic single front hemisphere; excludes viewer scene, CPU submission, resize and readback')
+    print('PASS 4K copy/render; GPU timings:',json.dumps(result),flush=True)
+    return result
+
+
 def main():
+    from clone_looks_runtime_check import check as runtime_check
+    runtime_check()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--base', default='c5dd757d341')
     ap.add_argument('--width', type=int, default=768)
     ap.add_argument('--height', type=int, default=768)
-    ap.add_argument('--out', type=Path, default=ROOT/'.tmp/clone_looks_20261101/renders')
+    ap.add_argument('--out', type=Path, default=ROOT/'.tmp/looks2_20261102/renders')
     args = ap.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)
     runner = Runner(args.width,args.height)
@@ -393,10 +570,23 @@ def main():
             assert np.any(a[...,3] > .001), (label,look,'empty regression fixture')
             delta = float(np.max(np.abs(a-b)))
             worst = max(worst,delta)
-            assert delta <= 1/255, (label,look,delta)
+            assert delta == 0., (label,look,delta)
         stats['regressions'].append(dict(permutation=label,looks=maximum,max_error=worst))
         print('PASS compile/link + regression:',label,flush=True)
     pr = runner.program(tree)
+    phase1 = runner.program(G.SourceTree('24b2723dcd9'))
+    unchanged = [look for look in range(78) if look not in (64,68,72,75)]
+    parity = max(float(np.max(np.abs(runner.render(pr,look)-runner.render(phase1,look))))
+                 for look in unchanged)
+    assert parity == 0., ('phase 1 unchanged looks',parity)
+    stats['phase1_unchanged_max_error'] = parity
+    skin = runner.program(tree,('HAS_SKIN',))
+    skin_phase1 = runner.program(G.SourceTree('24b2723dcd9'),('HAS_SKIN',))
+    skin_parity = max(float(np.max(np.abs(runner.render(skin,look)-runner.render(skin_phase1,look))))
+                      for look in unchanged)
+    assert skin_parity == 0., ('phase 1 unchanged rigged looks',skin_parity)
+    stats['phase1_unchanged_rigged_max_error'] = skin_parity
+    print('PASS phase-1 parity: all 74 unaffected Studio ids, static + rigged max error',parity,skin_parity,flush=True)
     runner.probe = runner.program(tree, probe=True)
     def save(a,name):
         rgb = a[...,:3]*np.clip(a[...,3:4],0,1)+.12*(1-np.clip(a[...,3:4],0,1))
@@ -446,6 +636,7 @@ def main():
     valid=(a[...,3]>0)&(b[...,3]>0)
     assert np.max(np.abs(a[valid]-b[valid]))<1e-4, 'rest varying swims'
     stats['datamosh_materials'] = datamosh_material_checks(runner, pr)
+    stats['phase2'] = phase2_checks(runner, pr, args.out)
     # Pin fixed-lattice policy; a camera footprint may fade, never scale cells.
     source=tree.read(F)
     for look in (67,73):
@@ -462,6 +653,7 @@ def main():
             sheet.paste(im, (x+(400-im.width)//2, y+28+(256-im.height)//2))
             draw.text((x+10,y+8), '%d %s' % (look,name), fill='white')
     sheet.save(args.out/'contact_sheet.png')
+    stats['4k'] = four_k_check(args.out)
     (args.out/'metrics.json').write_text(json.dumps(stats,indent=2)+'\n',encoding='utf-8')
     print('PASS: all clone look GL checks; PNGs and metrics:',args.out,flush=True)
 

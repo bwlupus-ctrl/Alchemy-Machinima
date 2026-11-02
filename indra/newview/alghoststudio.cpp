@@ -1268,6 +1268,14 @@ bool ALGhostStudio::setEffectFps(const LLUUID& id, F32 fps)
     return true;
 }
 
+static F32 clone_capture_radius(LLVOAvatar* av, const LLVector3& pivot)
+{
+    const LLVector3* ext = av->getLastAnimExtents();
+    if (!ext[0].isFinite() || !ext[1].isFinite()) return 2.f;
+    return llmax(2.f, ((ext[0] + ext[1]) * 0.5f - pivot).length()
+                       + (ext[1] - ext[0]).length() * 0.5f);
+}
+
 bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
 {
     Instance* inst = getInstance(id);
@@ -1301,6 +1309,7 @@ bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
     }
     inst->mCadenceFootAgent.set(root.mV[VX], root.mV[VY],
                                 root.mV[VZ] - llmax(0.f, pelvis_to_foot));
+    inst->mCadenceBoundsRadius = clone_capture_radius(av, inst->mCadenceFootAgent);
     inst->mCadenceHeadValid = false;
     if (LLJoint* head = av->getJoint("mHead"))
     {
@@ -3743,6 +3752,7 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
     }
     foot.mV[VZ] -= llmax(0.f, pelvis_to_foot);
     inst->mFrozenFootAgent = foot;
+    inst->mFrozenBoundsRadius = clone_capture_radius(av, foot);
     inst->mFrozenHeadValid = false;
     if (LLJoint* head = av->getJoint("mHead"))
     {

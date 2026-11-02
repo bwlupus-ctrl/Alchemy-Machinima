@@ -27,6 +27,11 @@ uniform mat4 texture_matrix0;
 uniform mat4 modelview_matrix;
 uniform mat4 projection_matrix;
 uniform mat3 normal_matrix;
+#ifndef GHOST_WORLD_PASS
+uniform float ghostDisplace; // 0 base, 1 Ash, 2 Arc; Studio second sweep only
+uniform float ghostTime;
+uniform vec4 ghostAux;
+#endif
 invariant gl_Position; // [VelZFight] Match the main-view surface depth.
 
 in vec3 position;
@@ -65,6 +70,19 @@ void calcAtmospherics(vec3 inPositionEye);
 
 void main()
 {
+    vec3 ghost_position = position.xyz;
+#ifndef GHOST_WORLD_PASS
+    if (ghostDisplace > 0.0)
+    {
+        // A smooth shell avoids independent vertex hashes tearing long faces.
+        // Keep vary_object_position unchanged: particle seeds remain in rest space.
+        float age = fract(ghostTime * (ghostDisplace < 1.5 ? 0.65 : 6.0)
+                          + ghostAux.w * 0.15915494);
+        float seed = 0.65 + 0.35 * sin(dot(position.xyz, vec3(3.1, 5.7, 2.3)));
+        ghost_position += normal * (0.08 + age * 0.42) * seed;
+        ghost_position.z += ghostDisplace < 1.5 ? age * 0.70 : age * 0.10;
+    }
+#endif
 #ifdef HAS_SKIN
     // the rigged palette is world-space (invBind * joint world) -- the same
     // seam the ghost placement rides -- so modelview * skin takes the vertex
@@ -72,10 +90,10 @@ void main()
     // the normal through it and normalizing in the fragment shader is fine
     // for an FX rim term.
     mat4 mat = modelview_matrix * getObjectSkinnedTransform();
-    vec4 pos = mat * vec4(position.xyz, 1.0);
+    vec4 pos = mat * vec4(ghost_position, 1.0);
     vary_normal = (mat * vec4(normal.xyz, 0.0)).xyz;
 #else
-    vec4 pos = modelview_matrix * vec4(position.xyz, 1.0);
+    vec4 pos = modelview_matrix * vec4(ghost_position, 1.0);
     vary_normal = normal_matrix * normal;
 #endif
     vary_position = pos.xyz;

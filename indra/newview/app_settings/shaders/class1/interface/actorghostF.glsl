@@ -131,6 +131,14 @@ uniform int ghostGlowOnly;
 #endif
 // Whole-image pixel origin of the current tiled snapshot subregion.
 uniform vec2 ghostFragOffset;
+#ifndef GHOST_WORLD_PASS
+uniform sampler2D ghostSceneMap;
+uniform int ghostSceneValid;
+uniform vec2 ghostScreenSize; // actual viewport, including 4K / snapshot tiles
+uniform vec2 ghostScreenOrigin;
+uniform vec2 ghostVelocity; // screen pixels per frame, bottom-up; zero = fallback
+uniform float ghostDisplace;
+#endif
 #ifdef GHOST_WORLD_PASS
 // Full untiled render-target size. Shared Actor FX device motifs use this with
 // ghostFragOffset so their scope/tube/recorder field spans the whole frame
@@ -1247,6 +1255,18 @@ void main()
         vec3 tint = mix(vec3(1.0), color.rgb, 0.5);
         rgb   = tint * rimC * 1.7 + vec3(s1 * 1.2 + s2) + tex.rgb * 0.05 * facing;   // tiny body hint keeps a face readable
         alpha = color.a * tex.a * clamp(0.05 + F * 0.9 + s1 * 0.8 + s2, 0.0, 1.0);
+        if (ghostSceneValid != 0)
+        {
+            vec2 screenUv = (gl_FragCoord.xy - ghostScreenOrigin) / ghostScreenSize;
+            // Fixed 18px at 1080p, proportional at 4K. Separate scene texture:
+            // never sample the framebuffer attachment this sweep writes into.
+            vec2 bend = n.xy * (1.0 - facing * 0.75) * 0.0167;
+            vec2 halfTexel = 0.5 / ghostScreenSize;
+            vec3 behind = texture(ghostSceneMap, clamp(screenUv + bend,
+                                  halfTexel, vec2(1.0) - halfTexel)).rgb;
+            rgb = behind * tint * (1.0 - F * 0.65) + rgb * 0.65;
+            alpha = color.a * tex.a;
+        }
     }
     else if (ghostLook == 71) // Studio: Sumi-e
     {
@@ -1464,7 +1484,7 @@ void main()
         bolt *= smoothstep(0.2, 1.0, 0.010 / max(fw, 1e-5));
         float seg  = step(0.62, ghost_hash(floor(q * 1.5) + beat));         // only some segments light per beat
         float env  = pow(1.0 - fract(t), 2.5);                              // decay within the beat
-        float arc  = bolt * seg * env * 1.0;
+        float arc  = bolt * seg * env * 2.0;
         vec3  ac   = mix(vec3(0.6, 0.8, 1.0), color.rgb, 0.3);
         rgb   = color.rgb * 0.12 * (1.0 + lum) + ac * (arc * 3.0 + edge * (0.3 + 0.9 * arc));
         alpha = color.a * tex.a * clamp(0.35 + arc * 2.0 + edge * 0.4, 0.0, 1.0);
@@ -1506,6 +1526,15 @@ void main()
                         ghost_hash(blk + ep + ghostAux.w + 4.0)) * 2.0 - 1.0;
         vec2  px   = max(uvPx, vec2(1e-6));                                          // UV per screen pixel
         vec2  o    = dir * px * (8.0 + 40.0 * ghost_hash(blk + ep + 6.0));
+        float speed = length(ghostVelocity);
+        if (speed > 0.25)
+        {
+            // Screen-space direction -> material UV, preserving orientation
+            // even on rotated/mirrored islands. Sample backwards along motion.
+            vec2 motion = -ghostVelocity / speed;
+            o = (uvDx * motion.x + uvDy * motion.y)
+                * min(48.0, 8.0 + speed * 3.0);
+        }
         // Explicit gradients were captured before slot/alpha discards. Offsets
         // retain the source footprint, including at macroblock boundaries.
         // Alpha weights describe coverage only for MASK/BLEND materials.
@@ -1676,6 +1705,37 @@ void main()
             suit, rgain * 0.30 * worldRimCore
                   + sgain * (seams.x * 0.90 + seams.y * 0.60));
         alpha = color.a * tex.a;
+    }
+#endif
+#ifndef GHOST_WORLD_PASS
+    if (ghostDisplace > 0.0 && (ghostLook == 68 || ghostLook == 72))
+    {
+        float age = fract(ghostTime * (ghostLook == 68 ? 0.65 : 6.0)
+                          + ghostAux.w * 0.15915494);
+        float fade = smoothstep(0.0, 0.12, age) * (1.0 - age);
+        vec3 P = vary_object_position;
+        if (ghostLook == 68)
+        {
+            vec2 cells = P.xz * vec2(34.0, 25.0) + P.y * 7.0;
+            vec2 cell = floor(cells);
+            float seed = ghost_hash(cell + floor(ghostTime * 0.65) + ghostAux.w);
+            float dotSize = length(fract(cells) - vec2(0.5));
+            float ember = step(0.82, seed) * (1.0 - smoothstep(0.08, 0.24, dotSize));
+            rgb = mix(vec3(1.0, 0.32, 0.025), color.rgb, 0.22) * 3.0;
+            alpha = color.a * tex.a * ember * fade;
+        }
+        else
+        {
+            float beat = floor(ghostTime * 6.0 + ghostAux.w * 0.15915494);
+            vec2 q = P.xz * 4.5 + P.y * 1.7;
+            float path = q.x + sin(q.y * 5.0 + beat) * 0.18
+                         + sin(q.y * 13.0 - beat) * 0.06;
+            float line = abs(fract(path + beat * 0.37) - 0.5);
+            float filament = 1.0 - smoothstep(0.012, 0.045, line);
+            float segment = step(0.48, ghost_hash(vec2(floor(q.y * 2.0), beat)));
+            rgb = mix(vec3(0.55, 0.80, 1.0), color.rgb, 0.20) * 4.0;
+            alpha = color.a * tex.a * filament * segment * fade * (1.0 - age);
+        }
     }
 #endif
     if (ghostLook >= 5)

@@ -24,6 +24,7 @@
 #include <cmath>                    // std::isfinite
 #include <functional>               // bounded adaptive arc subdivision
 #include <limits>                   // bounded activation offset conversion
+#include <optional>                 // lazy Studio scene texture state scope
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
@@ -57,6 +58,7 @@
 #include "llkeyframemotion.h"       // loop metadata for distance-driven local sampling
 #include "llgl.h"
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
+#include "llimagegl.h"              // disposable Studio scene colour copy
 #include "lljoint.h"
 #include "llrender.h"               // gGL (heading preview)
 #include "llrendertarget.h"         // shared PBR HDR-only draw-buffer scope
@@ -11984,6 +11986,173 @@ static LLStaticHashedString sGhostWorldLinear("ghostWorldLinear");
 static LLStaticHashedString sGhostGlowOnly("ghostGlowOnly");
 static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
 static LLStaticHashedString sGhostScreenSize("ghostScreenSize");
+static LLStaticHashedString sGhostScreenOrigin("ghostScreenOrigin");
+static LLStaticHashedString sGhostSceneMap("ghostSceneMap");
+static LLStaticHashedString sGhostSceneValid("ghostSceneValid");
+static LLStaticHashedString sGhostVelocity("ghostVelocity");
+static LLStaticHashedString sGhostDisplace("ghostDisplace");
+
+// Studio-only transient inputs. Keep these out of shared/live Actor FX params.
+struct StudioLookFrame
+{
+    LLImageGL* mScene = nullptr;
+    GLint mViewport[4] = {0, 0, 1, 1};
+    LLVector2 mVelocity;
+};
+
+bool studio_scene_needed(S32 look, F32 alpha, bool visible)
+{
+    return look == GHOST_STYLE_GLASS && alpha > 0.f && visible;
+}
+
+F32 studio_displaced_sweep(S32 look, bool studio, F32 alpha, bool world, bool have_fx)
+{
+    if (!studio || world || !have_fx || !(alpha > 0.f)) return 0.f;
+    return look == GHOST_STYLE_ASH ? 1.f : look == GHOST_STYLE_ARC ? 2.f : 0.f;
+}
+
+struct StudioMotion
+{
+    U32 mFrame = ~0U;
+    LLUUID mSource;
+    const LLVOAvatar* mAvatar = nullptr;
+    F64 mTime = 0.0;
+    LLVector3d mFoot;
+    LLVector2 mScreen;
+    LLVector2 mVelocity;
+    GLint mViewport[4] = {};
+    bool mValid = false;
+};
+
+LLVector2 studio_screen_velocity(StudioMotion& previous, U32 frame, const LLUUID& source,
+    const LLVOAvatar* avatar, F64 now, const LLVector3d& foot, const LLVector2& screen,
+    const GLint (&viewport)[4], bool valid)
+{
+    const bool same_view = std::equal(viewport, viewport + 4, previous.mViewport);
+    if (previous.mFrame != frame)
+    {
+        LLVector2 velocity;
+        if (valid && previous.mValid && previous.mFrame + 1 == frame
+            && previous.mSource == source && previous.mAvatar == avatar
+            && now - previous.mTime >= 0.0 && now - previous.mTime < 0.25 && same_view
+            && (foot - previous.mFoot).lengthSquared() < 4.0)
+        {
+            velocity = screen - previous.mScreen;
+            const F32 speed = velocity.length();
+            // A camera cut / discontinuity is a fallback, not a trail.
+            if (!llfinite(speed) || speed > viewport[3] * 0.20f) velocity.clear();
+            else if (speed > 48.f) velocity *= 48.f / speed;
+            else if (speed <= 0.25f) velocity.clear();
+        }
+        previous.mVelocity = velocity;
+        previous.mFrame = frame;
+        previous.mSource = source;
+        previous.mAvatar = avatar;
+        previous.mTime = now;
+        previous.mFoot = foot;
+        previous.mScreen = screen;
+        previous.mValid = valid;
+        std::copy(viewport, viewport + 4, previous.mViewport);
+    }
+    // A second view in the same frame cannot borrow the first view's velocity.
+    return valid && std::equal(viewport, viewport + 4, previous.mViewport)
+        ? previous.mVelocity : LLVector2();
+}
+
+// Extra texture work must restore both the driver's binding and LLRender's
+// cache, including the active unit. No sampler/filter changes to saved textures.
+class ScopedStudioTexture
+{
+public:
+    explicit ScopedStudioTexture(U32 unit)
+        : mActive(gGL.getCurrentTexUnitIndex()), mUnit(gGL.getTexUnit(unit)),
+          mType(mUnit->getCurrType()), mTexture(mUnit->getCurrTexture()),
+          mMips(mUnit->hasMipMaps())
+    {
+        mUnit->activate();
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &mBinding2D);
+        gGL.getTexUnit(mActive)->activate();
+    }
+    ~ScopedStudioTexture()
+    {
+        mUnit->unbind(LLTexUnit::TT_TEXTURE);
+        if (mType == LLTexUnit::TT_NONE) mUnit->disable();
+        else
+        {
+            mUnit->enable(mType); // bindManual alone skips zero-name bindings
+            if (mTexture) mUnit->bindManual(mType, mTexture, mMips);
+            else mUnit->unbind(mType);
+        }
+        mUnit->setHasMipMaps(mMips);
+        // LLRender caches one target per unit; retain the inactive 2D binding
+        // too (unbind conventionally installs white when cache name is zero).
+        glBindTexture(GL_TEXTURE_2D, mBinding2D);
+        gGL.getTexUnit(mActive)->activate();
+    }
+private:
+    U32 mActive;
+    LLTexUnit* mUnit;
+    LLTexUnit::eTextureType mType;
+    U32 mTexture;
+    bool mMips;
+    GLint mBinding2D;
+};
+
+// Called only for a drawable, positive-alpha Glass in the camera frustum.
+// Current DRAW framebuffer is the final present + HUD composition, not screen
+// (the earlier HDR world target). Never attach the copy to the draw framebuffer.
+LLImageGL* studio_scene_copy(const GLint (&viewport)[4])
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Clone Glass scene copy");
+    LL_PROFILE_GPU_ZONE("Clone Glass scene copy");
+    static LLPointer<LLImageGL> scene;
+    static U32 copied_frame = ~0U;
+    static GLint copied_fbo = -1;
+    static GLint copied_viewport[4] = {};
+    const U32 frame = LLFrameTimer::getFrameCount();
+    GLint draw_fbo;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+    if (copied_frame == frame)
+    {
+        // Auxiliary/tiled views must never consume another view's scene.
+        return copied_fbo == draw_fbo
+            && std::equal(viewport, viewport + 4, copied_viewport) ? scene.get() : nullptr;
+    }
+    if (viewport[2] <= 0 || viewport[3] <= 0) return nullptr;
+    ScopedStudioTexture texture(0);
+    if (!scene || !scene->getHasGLTexture()
+        || scene->getWidth() != viewport[2] || scene->getHeight() != viewport[3])
+    {
+        // Empty-name LLImageGL participates in context destruction, but does
+        // not save/read back this disposable frame on a GL restart. Manual
+        // allocation accepts exact NPOT viewport sizes, including 3840x2160.
+        scene = new LLImageGL(false, false);
+        scene->setSize(viewport[2], viewport[3], 4);
+        if (!scene->createGLTexture()) return nullptr;
+        gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, scene->getTexName());
+        LLImageGL::setManualImage(GL_TEXTURE_2D, 0, GL_RGBA8, viewport[2], viewport[3],
+                                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr, false);
+        gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_BILINEAR);
+        gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+    }
+    gGL.flush();
+    GLint read_fbo, read_buffer, source_read_buffer, draw_buffer;
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+    glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+    glGetIntegerv(GL_DRAW_BUFFER0, &draw_buffer);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, draw_fbo);
+    glGetIntegerv(GL_READ_BUFFER, &source_read_buffer);
+    glReadBuffer(draw_buffer);
+    gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, scene->getTexName());
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport[0], viewport[1], viewport[2], viewport[3]);
+    glReadBuffer(source_read_buffer);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
+    glReadBuffer(read_buffer);
+    copied_frame = frame;
+    copied_fbo = draw_fbo;
+    std::copy(viewport, viewport + 4, copied_viewport);
+    return scene.get();
+}
 static LLStaticHashedString sGhostDissolveProgress("ghostDissolveProgress");
 static LLStaticHashedString sGhostCoverageLayerStrength(
     "ghostCoverageLayerStrength");
@@ -12483,7 +12652,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                       S32 style,
                       const LLActorMover::GhostDrawParams& gp = LLActorMover::GhostDrawParams(),
                       const std::vector<LLActorMover::GhostStaticFace>* static_faces = nullptr,
-                      bool* out_complete = nullptr)
+                      bool* out_complete = nullptr,
+                      const StudioLookFrame* studio_frame = nullptr)
 {
     bool complete = true;
     const bool coverage_mode = gp.mSilCoverPhase != 0;
@@ -12613,6 +12783,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)
         : actor_ghost_studio_frame_time(gp.mEffectFps);
     bool glow_only = false;
+    F32 studio_displace = 0.f;
 
     // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
     // Supply its bottom-up whole-image pixel origin so scanlines, noise and
@@ -12675,6 +12846,18 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
             }
             sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);
+            if (!gp.mWorldLinear)
+            {
+                sh->uniform1f(sGhostDisplace, studio_displace);
+                sh->uniform2f(sGhostVelocity, studio_frame ? studio_frame->mVelocity.mV[VX] : 0.f,
+                              studio_frame ? studio_frame->mVelocity.mV[VY] : 0.f);
+                sh->uniform1i(sGhostSceneValid, studio_frame && studio_frame->mScene ? 1 : 0);
+                sh->uniform1i(sGhostSceneMap, 1); // Studio program: diffuseMap owns unit 0
+                sh->uniform2f(sGhostScreenSize, studio_frame ? studio_frame->mViewport[2] : 1.f,
+                              studio_frame ? studio_frame->mViewport[3] : 1.f);
+                sh->uniform2f(sGhostScreenOrigin, studio_frame ? studio_frame->mViewport[0] : 0.f,
+                              studio_frame ? studio_frame->mViewport[1] : 0.f);
+            }
             if (gp.mWorldLinear)
             {
                 sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);
@@ -13925,6 +14108,31 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         }
         break;
     }
+    }
+
+    const F32 displaced_sweep = studio_displaced_sweep(style, studio_frame != nullptr,
+                                                       alpha, gp.mWorldLinear, have_fx);
+    if (displaced_sweep > 0.f)
+    {
+        LL_PROFILE_GPU_ZONE("Clone displaced sweep");
+        ScopedStudioTexture texture(0);
+        LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+        LLRender::eBlendFactor cs, cd, as, ad;
+        gGL.getBlendFunc(cs, cd, as, ad);
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable blend(GL_BLEND);
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                      LLRender::BF_ZERO, LLRender::BF_ONE);
+        studio_displace = displaced_sweep;
+        draw_batches(SWEEP_SOLID, true, false, true);
+        draw_static(SWEEP_SOLID, true, false, true);
+        studio_displace = 0.f;
+        // Uniforms are per program: clear BOTH variants before leaving.
+        apply_program(static_shader);
+        apply_program(shader);
+        gGL.blendFunc(cs, cd, as, ad);
+        if (saved_shader) saved_shader->bind();
+        else LLGLSLShader::unbind();
     }
 
     // Shared live Actor FX beauty clears/attenuates HDR alpha deliberately, so
@@ -15624,6 +15832,65 @@ void LLActorMover::renderStudioGhosts()
         return;
     }
 
+    // New work is restricted to these Studio looks. In particular Datamosh
+    // never requests a scene copy, and all historical looks skip this block.
+    const bool phase2 = std::any_of(items.begin(), items.end(), [](const StudioItem& item)
+    {
+        const S32 look = item.mInst->mStyle;
+        return item.mInst->mAlpha > 0.f && (look == GHOST_STYLE_GLASS
+            || look == GHOST_STYLE_ASH || look == GHOST_STYLE_ARC || look == GHOST_STYLE_DATAMOSH);
+    });
+    StudioLookFrame look_frame;
+    if (phase2) glGetIntegerv(GL_VIEWPORT, look_frame.mViewport);
+    // Conservative clone-foot sphere from the animated source extents. It is
+    // rotation invariant and includes offscreen feet with onscreen upper bodies.
+    // Only the new work is culled: other looks retain their exact old draws.
+    const auto phase2_visible = [](const StudioItem& item)
+    {
+        if (!(item.mInst->mAlpha > 0.f) || !item.mAv->getRootJoint()) return false;
+        const LLVector3* ext = item.mAv->getLastAnimExtents();
+        LLVector3 pivot = item.mAv->getRootJoint()->getWorldPosition();
+        const F32 p2f = item.mAv->getPelvisToFoot();
+        pivot.mV[VZ] -= llfinite(p2f) ? llmax(0.f, p2f) : 0.f;
+        F32 radius = 2.f;
+        if (item.mInst->mPose == ALGhostStudio::POSE_FROZEN && !item.mInst->mFrozenPalettes.empty())
+        {
+            pivot = item.mInst->mFrozenFootAgent;
+            radius = llmax(radius, item.mInst->mFrozenBoundsRadius);
+        }
+        else if (item.mInst->mPoseRateHz > 0.f && !item.mInst->mCadencePalettes.empty())
+        {
+            pivot = item.mInst->mCadenceFootAgent;
+            radius = llmax(radius, item.mInst->mCadenceBoundsRadius);
+        }
+        if (ext[0].isFinite() && ext[1].isFinite())
+        {
+            radius = llmax(radius, ((ext[0] + ext[1]) * 0.5f - pivot).length()
+                                   + (ext[1] - ext[0]).length() * 0.5f);
+        }
+        radius = (radius + 0.8f) * llclamp(item.mInst->mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
+        return item.mFootAgent.isFinite()
+            && LLViewerCamera::getInstance()->sphereInFrustum(item.mFootAgent, radius) != 0;
+    };
+    if (phase2 && std::any_of(items.begin(), items.end(), [&](const StudioItem& item)
+        { return studio_scene_needed(item.mInst->mStyle, item.mInst->mAlpha, phase2_visible(item)); }))
+    {
+        look_frame.mScene = studio_scene_copy(look_frame.mViewport);
+    }
+    // Scene lives on a dedicated unit, restored when this overlay call exits.
+    // Construct only while needed: feature-off does no texture/copy GL work.
+    std::optional<ScopedStudioTexture> scene_binding;
+    if (look_frame.mScene)
+    {
+        scene_binding.emplace(1);
+        gGL.getTexUnit(1)->bindManual(LLTexUnit::TT_TEXTURE, look_frame.mScene->getTexName());
+        gGL.getTexUnit(0)->activate();
+    }
+    static std::map<LLUUID, StudioMotion> motion;
+    const U32 frame = LLFrameTimer::getFrameCount();
+    const glm::mat4 clip_from_agent = phase2
+        ? gGL.getProjectionMatrix() * gGL.getModelviewMatrix() : glm::mat4(1.f);
+
     // same overlay idiom as the path preview: UI shader, no depth vs the world
     LLGLSUIDefault gls_ui;
     gUIProgram.bind();
@@ -15716,11 +15983,31 @@ void LLActorMover::renderStudioGhosts()
         gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]
         gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;
 
+        StudioLookFrame instance_frame = look_frame;
+        const bool new_work = phase2 && (inst.mStyle == GHOST_STYLE_GLASS
+            || inst.mStyle == GHOST_STYLE_ASH || inst.mStyle == GHOST_STYLE_ARC
+            || inst.mStyle == GHOST_STYLE_DATAMOSH) && phase2_visible(item);
+        if (inst.mStyle == GHOST_STYLE_DATAMOSH && new_work)
+        {
+            StudioMotion& previous = motion[inst.mId];
+            const glm::vec4 clip = clip_from_agent * glm::vec4(item.mFootAgent.mV[VX],
+                item.mFootAgent.mV[VY], item.mFootAgent.mV[VZ], 1.f);
+            const bool valid = std::isfinite(clip.x) && std::isfinite(clip.y)
+                && std::isfinite(clip.w) && clip.w > 0.0001f;
+            LLVector2 screen;
+            if (valid) screen.set(clip.x / clip.w * look_frame.mViewport[2] * 0.5f,
+                                  clip.y / clip.w * look_frame.mViewport[3] * 0.5f);
+            instance_frame.mVelocity = studio_screen_velocity(previous, frame, item.mAv->getID(),
+                item.mAv, pose_now, inst.mFootGlobal, screen, look_frame.mViewport, valid);
+        }
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                           llclamp(inst.mAlpha, 0.f, 1.f),
                           ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,
-                          item.mStatic);
+                          item.mStatic, nullptr, new_work ? &instance_frame : nullptr);
     }
+    for (auto it = motion.begin(); it != motion.end(); )
+        if (it->second.mFrame != frame) it = motion.erase(it);
+        else ++it;
 
     // leave clean UI-overlay state for whoever draws next
     gUIProgram.bind();
