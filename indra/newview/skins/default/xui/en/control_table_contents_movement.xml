@@ -215,4 +215,7 @@
          name="lst_action"
          value="Toggle Viewfinder" />
     </rows>
+    <rows name="pov_eye_blink" value="pov_eye_blink">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action" value="POV Eye Blink" />
+    </rows>
 </contents>

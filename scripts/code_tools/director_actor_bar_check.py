@@ -36,8 +36,23 @@ def main():
         assert ET.parse(xui / path).find(".//*[@widget='" + widget + "']") is not None
         assert "\t" + widget + "\t" in index
     import subprocess
+    # Permit ONLY the four exact POV presentation hooks. Strip them before
+    # retaining the original actor-renderer byte guard; arbitrary edits still fail.
+    import hashlib, json
+    blink_bytes = (Path(__file__).parent / 'pov_blink_pipeline_hunks.json').read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(blink_bytes).hexdigest() == "888d974fc8c49d79d449f30fbdbc8ef402d0ed1efb9b8943a55c64a97845b9f1"
+    blink = json.loads(blink_bytes)
+    blink_base = subprocess.check_output(["git", "show", blink["base"] + ":indra/newview/pipeline.cpp"]).decode("utf-8").replace("\r\n", "\n")
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
-        assert (nv / path).read_bytes().replace(b"\r\n", b"\n") == subprocess.check_output(
+        current = (nv / path).read_bytes().replace(b"\r\n", b"\n")
+        if path == "pipeline.cpp":
+            text = current.decode("utf-8")
+            for hunk in blink["hunks"]:
+                assert blink_base.count(hunk["before"]) == 1
+                assert text.count(hunk["after"]) == 1
+                text = text.replace(hunk["after"], hunk["before"], 1)
+            current = text.encode("utf-8")
+        assert current == subprocess.check_output(
             ["git", "show", "c5dd757d341:indra/newview/" + path]).replace(b"\r\n", b"\n"), path
     # D1 includes the subject display adapter, not just rows and renderer reads.
     kit = (nv / "alkitpage.cpp").read_text()

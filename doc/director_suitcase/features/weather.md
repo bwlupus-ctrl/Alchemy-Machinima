@@ -293,98 +293,97 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 360, "text": "alavatarlightresponse.cpp # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1301, "text": "alavatarlightresponse.h # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 199, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2848, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 208, "text": "alkithistory.cpp", "source": "indra/newview/alkithistory.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 210, "text": "alkitpage.cpp", "source": "indra/newview/alkitpage.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 212, "text": "alkitpresets.cpp", "source": "indra/newview/alkitpresets.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 398, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 437, "text": "alpanelweathersettings.cpp", "source": "indra/newview/alpanelweathersettings.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1433, "text": "alpanelweathersettings.h", "source": "indra/newview/alpanelweathersettings.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 429, "text": "alprobedirty.cpp # [ProbeOnDemand]", "source": "indra/newview/alprobedirty.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 222, "text": "alrigrimcontroller.cpp", "source": "indra/newview/alrigrimcontroller.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 357, "text": "alrotoink.cpp", "source": "indra/newview/alrotoink.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 354, "text": "alsettingsundohistory.cpp", "source": "indra/newview/alsettingsundohistory.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 358, "text": "altron.cpp", "source": "indra/newview/altron.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 375, "text": "alweatherbridge.cpp", "source": "indra/newview/alweatherbridge.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2854, "text": "alweatherbridge.cpp", "source": "indra/newview/alweatherbridge.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2878, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherbridge.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2879, "text": "set_source_files_properties(alweatherbridge.cpp PROPERTIES", "source": "indra/newview/alweatherbridge.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2882, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherbridge.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1321, "text": "alweatherbridge.h", "source": "indra/newview/alweatherbridge.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 379, "text": "alweatherclock.cpp", "source": "indra/newview/alweatherclock.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2856, "text": "alweatherclock.cpp", "source": "indra/newview/alweatherclock.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2878, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherclock.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2880, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherclock.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2882, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherclock.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1326, "text": "alweatherclock.h", "source": "indra/newview/alweatherclock.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1324, "text": "alweathercovercache.h", "source": "indra/newview/alweathercovercache.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 373, "text": "alweathermodel.cpp", "source": "indra/newview/alweathermodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2852, "text": "alweathermodel.cpp", "source": "indra/newview/alweathermodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2878, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweathermodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2880, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweathermodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2882, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweathermodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1319, "text": "alweathermodel.h", "source": "indra/newview/alweathermodel.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 377, "text": "alweatherparticles.cpp", "source": "indra/newview/alweatherparticles.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1323, "text": "alweatherparticles.h", "source": "indra/newview/alweatherparticles.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 376, "text": "alweatherresources.cpp", "source": "indra/newview/alweatherresources.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1322, "text": "alweatherresources.h", "source": "indra/newview/alweatherresources.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 378, "text": "alweathershelter.cpp", "source": "indra/newview/alweathershelter.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2855, "text": "alweathershelter.cpp", "source": "indra/newview/alweathershelter.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2877, "text": "set_source_files_properties(alweathershelter.cpp PROPERTIES", "source": "indra/newview/alweathershelter.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1325, "text": "alweathershelter.h", "source": "indra/newview/alweathershelter.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 380, "text": "alweatheruimodel.cpp", "source": "indra/newview/alweatheruimodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2857, "text": "alweatheruimodel.cpp", "source": "indra/newview/alweatheruimodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2881, "text": "set_source_files_properties(alweatheruimodel.cpp PROPERTIES", "source": "indra/newview/alweatheruimodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1327, "text": "alweatheruimodel.h", "source": "indra/newview/alweatheruimodel.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2297, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2298, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 338, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 301, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 317, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 479, "text": "lldrawpool.cpp", "source": "indra/newview/lldrawpool.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1380, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 684, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 896, "text": "llprismlens.cpp", "source": "indra/newview/llprismlens.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 904, "text": "llreflectionmapmanager.cpp", "source": "indra/newview/llreflectionmapmanager.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1892, "text": "llreflectionmapmanager.h", "source": "indra/newview/llreflectionmapmanager.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 911, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 949, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 987, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2012, "text": "llviewercamera.h", "source": "indra/newview/llviewercamera.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1019, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1021, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1031, "text": "llviewerjoint.cpp", "source": "indra/newview/llviewerjoint.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1042, "text": "llviewermessage.cpp", "source": "indra/newview/llviewermessage.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2040, "text": "llvieweroctree.h", "source": "indra/newview/llvieweroctree.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1055, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2050, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1080, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1084, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1104, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2098, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1108, "text": "rlveffects.cpp", "source": "indra/newview/rlveffects.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1111, "text": "rlvhandler.cpp", "source": "indra/newview/rlvhandler.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1114, "text": "rlvlocks.cpp", "source": "indra/newview/rlvlocks.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 374, "text": "slweather.cpp", "source": "indra/newview/slweather.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2853, "text": "slweather.cpp", "source": "indra/newview/slweather.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2878, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2880, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2882, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1320, "text": "slweather.h", "source": "indra/newview/slweather.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 361, "text": "alavatarlightresponse.cpp # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1304, "text": "alavatarlightresponse.h # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 200, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2851, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 209, "text": "alkithistory.cpp", "source": "indra/newview/alkithistory.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 211, "text": "alkitpage.cpp", "source": "indra/newview/alkitpage.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 213, "text": "alkitpresets.cpp", "source": "indra/newview/alkitpresets.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 399, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 438, "text": "alpanelweathersettings.cpp", "source": "indra/newview/alpanelweathersettings.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1436, "text": "alpanelweathersettings.h", "source": "indra/newview/alpanelweathersettings.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 430, "text": "alprobedirty.cpp # [ProbeOnDemand]", "source": "indra/newview/alprobedirty.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 223, "text": "alrigrimcontroller.cpp", "source": "indra/newview/alrigrimcontroller.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 358, "text": "alrotoink.cpp", "source": "indra/newview/alrotoink.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 355, "text": "alsettingsundohistory.cpp", "source": "indra/newview/alsettingsundohistory.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 359, "text": "altron.cpp", "source": "indra/newview/altron.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 376, "text": "alweatherbridge.cpp", "source": "indra/newview/alweatherbridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2857, "text": "alweatherbridge.cpp", "source": "indra/newview/alweatherbridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2881, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherbridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2882, "text": "set_source_files_properties(alweatherbridge.cpp PROPERTIES", "source": "indra/newview/alweatherbridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2885, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherbridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1324, "text": "alweatherbridge.h", "source": "indra/newview/alweatherbridge.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 380, "text": "alweatherclock.cpp", "source": "indra/newview/alweatherclock.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2859, "text": "alweatherclock.cpp", "source": "indra/newview/alweatherclock.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2881, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherclock.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2883, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherclock.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2885, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweatherclock.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1329, "text": "alweatherclock.h", "source": "indra/newview/alweatherclock.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1327, "text": "alweathercovercache.h", "source": "indra/newview/alweathercovercache.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 374, "text": "alweathermodel.cpp", "source": "indra/newview/alweathermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2855, "text": "alweathermodel.cpp", "source": "indra/newview/alweathermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2881, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweathermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2883, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweathermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2885, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/alweathermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1322, "text": "alweathermodel.h", "source": "indra/newview/alweathermodel.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 378, "text": "alweatherparticles.cpp", "source": "indra/newview/alweatherparticles.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1326, "text": "alweatherparticles.h", "source": "indra/newview/alweatherparticles.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 377, "text": "alweatherresources.cpp", "source": "indra/newview/alweatherresources.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1325, "text": "alweatherresources.h", "source": "indra/newview/alweatherresources.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 379, "text": "alweathershelter.cpp", "source": "indra/newview/alweathershelter.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2858, "text": "alweathershelter.cpp", "source": "indra/newview/alweathershelter.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2880, "text": "set_source_files_properties(alweathershelter.cpp PROPERTIES", "source": "indra/newview/alweathershelter.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1328, "text": "alweathershelter.h", "source": "indra/newview/alweathershelter.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 381, "text": "alweatheruimodel.cpp", "source": "indra/newview/alweatheruimodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2860, "text": "alweatheruimodel.cpp", "source": "indra/newview/alweatheruimodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2884, "text": "set_source_files_properties(alweatheruimodel.cpp PROPERTIES", "source": "indra/newview/alweatheruimodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1330, "text": "alweatheruimodel.h", "source": "indra/newview/alweatheruimodel.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2300, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2301, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 339, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 302, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 318, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 480, "text": "lldrawpool.cpp", "source": "indra/newview/lldrawpool.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 490, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 493, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 508, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 409, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1383, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 617, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 685, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 687, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 690, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 725, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 746, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 897, "text": "llprismlens.cpp", "source": "indra/newview/llprismlens.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 905, "text": "llreflectionmapmanager.cpp", "source": "indra/newview/llreflectionmapmanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1895, "text": "llreflectionmapmanager.h", "source": "indra/newview/llreflectionmapmanager.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 912, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 950, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 988, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2015, "text": "llviewercamera.h", "source": "indra/newview/llviewercamera.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1020, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1022, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1032, "text": "llviewerjoint.cpp", "source": "indra/newview/llviewerjoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1043, "text": "llviewermessage.cpp", "source": "indra/newview/llviewermessage.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1047, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2043, "text": "llvieweroctree.h", "source": "indra/newview/llvieweroctree.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1056, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2053, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1081, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1085, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1105, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2101, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1109, "text": "rlveffects.cpp", "source": "indra/newview/rlveffects.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1112, "text": "rlvhandler.cpp", "source": "indra/newview/rlvhandler.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1115, "text": "rlvlocks.cpp", "source": "indra/newview/rlvlocks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 375, "text": "slweather.cpp", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2856, "text": "slweather.cpp", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2881, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2883, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2885, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1323, "text": "slweather.h", "source": "indra/newview/slweather.h"}
 
 ## kit wiring pages
 

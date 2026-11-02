@@ -33,6 +33,8 @@
 #include "alflycamweighted.h"
 #include "alpresetlook.h"
 #include "alxinputmath.h"
+#include "alpovblink.h"
+#include "alpovblinkmath.h"
 #include "llflycamdrone.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -3307,6 +3309,7 @@ void LLViewerJoystick::setDeviceListDirty()
 
 void LLViewerJoystick::invalidateXInput(bool rescan)
 {
+    ALPOVBlink::setPadHeld(false);
     stopRumble(); // [XInputRumble] BEFORE the slot is cleared; uses mXIRumbleSlot
     mXIAssociated = false;
     mXIGuid = LLSD();
@@ -3465,6 +3468,12 @@ void LLViewerJoystick::beginMainLoop()
     {
         mXILevelPending = false;
     }
+    // A missing scan, lost focus, suspension or disabled pad must release lids.
+    // Previous-loop samples are allowed here; current polling refreshes the hold.
+    if (!mJoystickEnabled || !xInputAssociated() || !gFocusMgr.getAppHasFocus() ||
+        gViewerInput.worldInputSuspended() || !mXISampleValid ||
+        mXILoopGeneration - mXISampleGeneration > 1)
+        ALPOVBlink::setPadHeld(false);
     updateXInputTakeover();
     updateXInputRumble(); // [XInputRumble] advance pattern; also stops on focus loss / setting off
 }
@@ -3575,6 +3584,13 @@ void LLViewerJoystick::pollXInputState()
     const bool prime = ALXInput::primeSample(mXIPrime, focused, mXIWasFocused,
                                             mXILoopGeneration, mXILastScanGeneration);
     mXIEdges = ALXInput::edges(raw, mXIPrevRaw, prime, focused);
+    static LLCachedControl<U32> blink_button(gSavedSettings, "POVBlinkPadTap", 64U);
+    static LLCachedControl<U32> hold_button(gSavedSettings, "POVBlinkPadHold", 64U);
+    static ALPOVBlinkMath::PadGesture blink_gesture;
+    const bool blink_tap = blink_gesture.sample(LLTimer::getTotalSeconds(), raw,
+        (U16)blink_button(), (U16)hold_button(), prime, focused);
+    ALPOVBlink::setPadHeld(blink_gesture.held);
+    if (blink_tap) ALPOVBlink::blink();
     mXIPrevRaw = raw; // raw history is never overwritten by focus policy
     mXIPrime = false;
     mXIWasFocused = focused;

@@ -1,0 +1,21 @@
+{
+  "base": "3a64bb9c5c4",
+  "hunks": [
+    {
+      "before": "\n#include \"llviewerprecompiledheaders.h\"\n#include \"alcolorchart.h\"\n#include \"alpanelweathersettings.h\"\n",
+      "after": "\n#include \"llviewerprecompiledheaders.h\"\n#include \"alpovblink.h\"\n#include \"alcolorchart.h\"\n#include \"alpanelweathersettings.h\"\n"
+    },
+    {
+      "before": "void LLPipeline::releaseScreenBuffers()\n{\n    releaseSensorTargets();\n    mSensorFailed = false;\n",
+      "after": "void LLPipeline::releaseScreenBuffers()\n{\n    ALPOVBlink::releaseGL();\n    releaseSensorTargets();\n    mSensorFailed = false;\n"
+    },
+    {
+      "before": "    }\n\n    // Present the screen target.\n    {\n",
+      "after": "    }\n\n    // POV eyelids intercept only the LIVE main presentation, independent of UI\n    // visibility. Captures/auxiliary cameras never sample or advance this state.\n    // Redirect present while active so vignette/CVD/grain/dither cannot grade lids.\n    F32 blink_amount = 0.f;\n    LLRenderTarget* blink_target = nullptr;\n    if (mRT == &mMainRT && !gSnapshot && !gCubeSnapshot && !sPrismLensRender &&\n        !sPrismPreviewRender && !sReflectionRender && !sImpostorRender && !sRenderingHUDs)\n        blink_target = ALPOVBlink::beginPresentation(gGLViewport[2], gGLViewport[3], blink_amount);\n\n    // Present the screen target.\n    {\n"
+    },
+    {
+      "before": "        present_program.unbind();\n    }\n\n    // [RelightQ] Show the current selected channel after all post/present effects.\n",
+      "after": "        present_program.unbind();\n    }\n\n    if (blink_target) ALPOVBlink::endPresentation(mScreenTriangleVB, blink_amount);\n\n    // [RelightQ] Show the current selected channel after all post/present effects.\n"
+    }
+  ]
+}

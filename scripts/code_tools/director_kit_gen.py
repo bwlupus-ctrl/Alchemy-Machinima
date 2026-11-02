@@ -354,8 +354,9 @@ def validate_data(data: dict) -> None:
     # Sensor noise on/off row on Light > Exposure, 2397 -> 2398.
     # Crowd axes: +4 Width, Depth, Columns and Rows controls; 2398 -> 2402.
     # Unified shell Actor: remove four per-page actor choices; add two Gaze scope rows, 2402 -> 2400.
-    if len(pages) != 38 or row_count != 2400:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2400")
+    # POV eye blink: exactly 15 Lens > Filters rows (13 workflow + 2 XInput mappings), 2400 -> 2415 (11/02).
+    if len(pages) != 38 or row_count != 2415:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2415")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

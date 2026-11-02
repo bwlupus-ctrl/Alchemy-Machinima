@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <keys xml_version="1">
   <first_person>
+    <binding key="F9" mask="NONE" command="pov_eye_blink"/>
     <binding key="V" mask="CTL_ALT" command="toggle_viewfinder"/>
     <binding key="A" mask="NONE" command="slide_left"/>
     <binding key="D" mask="NONE" command="slide_right"/>
@@ -41,6 +42,7 @@
     <binding key="" mask="NONE" mouse="LMB" command="script_trigger_lbutton"/>
   </first_person>
   <third_person>
+    <binding key="F9" mask="NONE" command="pov_eye_blink"/>
     <binding key="V" mask="CTL_ALT" command="toggle_viewfinder"/>
     <binding key="A" mask="NONE" command="turn_left"/>
     <binding key="D" mask="NONE" command="turn_right"/>
@@ -124,6 +126,7 @@
     <binding key="E" mask="CTL_SHIFT" command="roll_reset"/>
   </third_person>
   <sitting>
+    <binding key="F9" mask="NONE" command="pov_eye_blink"/>
     <binding key="V" mask="CTL_ALT" command="toggle_viewfinder"/>
     <binding key="A" mask="ALT" command="spin_around_cw"/>
     <binding key="D" mask="ALT" command="spin_around_ccw"/>
@@ -214,6 +217,7 @@
     <binding key="Subtract" mask="NONE" command="move_backward_sitting"/>
   </sitting>
   <edit_avatar>
+    <binding key="F9" mask="NONE" command="pov_eye_blink"/>
     <binding key="V" mask="CTL_ALT" command="toggle_viewfinder"/>
     <!--Avatar editing camera controls-->
     <binding key="A" mask="NONE" command="edit_avatar_spin_cw"/>
