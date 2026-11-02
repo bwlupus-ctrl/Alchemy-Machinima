@@ -463,12 +463,15 @@ void main()
     // Existing looks neither evaluate nor consume these derivatives.
     vec3 oPx = vec3(0.0), oPy = vec3(0.0);
     vec2 uvPx = vec2(0.0);
+    vec2 uvDx = vec2(0.0), uvDy = vec2(0.0);
     float fz = 0.0;
     if (ghostLook >= 64)
     {
         oPx = dFdx(vary_object_position);
         oPy = dFdy(vary_object_position);
-        uvPx = fwidth(vary_texcoord0);
+        uvDx = dFdx(vary_texcoord0);
+        uvDy = dFdy(vary_texcoord0);
+        uvPx = abs(uvDx) + abs(uvDy);
         fz = fwidth(-vary_position.z);
     }
     vec3 fwP = abs(oPx) + abs(oPy);
@@ -1313,7 +1316,13 @@ void main()
         float r   = length(tg);
         float dotR = max(cs * 0.18, fw * 1.4);                                 // ≥1.4 px radius
         float detail = 1.0 - smoothstep(cs / 6.0, cs / 3.0, fw);
-        float m = mix(0.20, 1.0 - smoothstep(max(0.0, dotR - fw), dotR + fw + 1e-6, r), detail);
+        // Projected centres can jump at 3-D cell faces. Fade to zero at
+        // those faces over a captured pixel footprint, before selecting a new
+        // centre, so fractional camera motion cannot pop a clipped dot.
+        vec3 cellEdge = min(fract(P / cs), 1.0 - fract(P / cs));
+        vec3 cellAA = smoothstep(vec3(0.0), max(2.0 * fwP / cs, vec3(1e-5)), cellEdge);
+        float cellMask = cellAA.x * cellAA.y * cellAA.z;
+        float m = mix(0.20, (1.0 - smoothstep(max(0.0, dotR - fw), dotR + fw + 1e-6, r)) * cellMask, detail);
         float h   = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
         float sweep = fract(ghostTime * 0.3 + ghostAux.w * 0.159);
         float sw  = 1.0 - smoothstep(0.0, 0.05, abs(h - sweep));
@@ -1368,7 +1377,8 @@ void main()
         float cs = 0.085; // Keep cell identity fixed under camera motion.
         float detail = 1.0 - smoothstep(cs / 14.0, cs / 8.0, max(fwP.x, max(fwP.y, fwP.z)));  // ≥10 px facets
         vec3  q  = P / cs;  q.xy += q.z * 0.37;  q.yz += q.x * 0.21;              // skew: kills axis-aligned cubes
-        vec3  c  = floor(q + ghostAux.w);
+        q += ghostAux.w;
+        vec3  c  = floor(q);
         vec3  d  = vec3(ghost_hash3(c), ghost_hash3(c + 17.1), ghost_hash3(c + 41.7)) * 2.0 - 1.0;
         vec3  nf = normalize(n + d * (0.55 * detail));                          // per-cell flat normal
         float fF = pow(1.0 - clamp(dot(nf, v), 0.0, 1.0), 3.0);
@@ -1378,7 +1388,11 @@ void main()
         vec3  body  = mix(color.rgb * 0.55, color.rgb, mix(0.5, ghost_hash3(c + 3.3), detail));     // per-facet brightness
         // facet edge lines from the cell lattice
         vec3 fq = abs(fract(q) - 0.5);
-        vec3 qfw = fwP / cs;
+        // Apply the same skew to both captured derivatives before taking abs.
+        vec3 qdx = oPx / cs, qdy = oPy / cs;
+        qdx.xy += qdx.z * 0.37; qdx.yz += qdx.x * 0.21;
+        qdy.xy += qdy.z * 0.37; qdy.yz += qdy.x * 0.21;
+        vec3 qfw = abs(qdx) + abs(qdy);
         float aa = max(max(qfw.x, qfw.y), qfw.z);
         float edgeLine = smoothstep(0.46 - aa, 0.49 + aa, max(fq.x, max(fq.y, fq.z))) * detail;
         rgb   = body * (0.35 + fF * 0.9) + disp * flash * 1.6 + edgeLine * color.rgb * 0.6 + edge * 0.4;
@@ -1473,9 +1487,11 @@ void main()
         vec2  sub   = floor(cf * vec2(3.0, 5.0));
         float bit   = step(0.5, ghost_hash(ci + sub * 0.173 + epoch * 0.013));
         vec2  inset = smoothstep(vec2(0.0), max(fw2 / cell * vec2(3.0, 5.0), vec2(1e-5)), min(fract(cf * vec2(3.0,5.0)), 1.0 - fract(cf * vec2(3.0,5.0))));
-        float glyph = bit * inset.x * inset.y * step(0.08, cf.x) * step(cf.x, 0.92);   // gutter between columns
+        float gutterAA = max(fw2.x / cell.x, 1e-5);
+        float gutter = smoothstep(0.0, 2.0 * gutterAA, min(cf.x, 1.0 - cf.x));
+        float glyph = bit * inset.x * inset.y * gutter;
         float lod   = smoothstep(5.0, 9.0, cell.x / max(fw2.x, 1e-6));          // <5 px: solid column bars
-        float ink   = mix(0.55, glyph, lod) * trail;
+        float ink   = mix(0.55 * gutter, glyph, lod) * trail;
         float isHead = 1.0 - smoothstep(0.0, 0.08, below);
         vec3  green = mix(vec3(0.15, 1.0, 0.35), color.rgb, 0.35);
         rgb   = vec3(0.01, 0.02, 0.01) + green * ink * 1.6 + vec3(1.0) * isHead * glyph * 1.2 + green * edge * 0.25;
@@ -1490,21 +1506,29 @@ void main()
                         ghost_hash(blk + ep + ghostAux.w + 4.0)) * 2.0 - 1.0;
         vec2  px   = max(uvPx, vec2(1e-6));                                          // UV per screen pixel
         vec2  o    = dir * px * (8.0 + 40.0 * ghost_hash(blk + ep + 6.0));
-        // Every extra tap honours alpha: transparent RGB must never darken hair/lace.
+        // Explicit gradients were captured before slot/alpha discards. Offsets
+        // retain the source footprint, including at macroblock boundaries.
+        // Alpha weights describe coverage only for MASK/BLEND materials.
+        // Filtering can already mix hidden RGB into a tap; weighting cannot
+        // undo that upstream contamination (use alpha-safe source mipmaps).
+        vec3 authoredRGB = activeMaterialFactor.rgb * vary_vertex_color.rgb;
         vec3 smear = vec3(0.0);
         float wsum = 0.0;
         for (int i = 0; i < 5; ++i)
         {
-            vec4 s = GHOST_DIFFUSE_SAMPLE(uv + o * (float(i) * 0.25));
-            smear += s.rgb * s.a;
-            wsum += s.a;
+            vec4 s = textureGrad(diffuseMap, uv + o * (float(i) * 0.25), uvDx, uvDy);
+            float weight = activeGhostAlpha.x > 0.5 ? s.a : 1.0;
+            smear += s.rgb * weight;
+            wsum += weight;
         }
-        smear = wsum > 1e-5 ? smear / wsum : tex.rgb;
+        smear = wsum > 1e-5 ? smear / wsum * authoredRGB : tex.rgb;
         vec2 dcuv = (floor(uv / (px * 16.0)) + 0.5) * px * 16.0;
-        vec4 dc = GHOST_DIFFUSE_SAMPLE(dcuv);
-        vec3 mosh = mix(smear, mix(smear, dc.rgb, dc.a), ghost_hash(blk + ep + 8.0) * 0.6);
-        vec4 chroma = GHOST_DIFFUSE_SAMPLE(uv + o * 1.3);
-        mosh.r = mix(mosh.r, chroma.r, chroma.a);
+        vec4 dc = textureGrad(diffuseMap, dcuv, uvDx, uvDy);
+        float dcWeight = activeGhostAlpha.x > 0.5 ? dc.a : 1.0;
+        vec3 mosh = mix(smear, mix(smear, dc.rgb * authoredRGB, dcWeight), ghost_hash(blk + ep + 8.0) * 0.6);
+        vec4 chroma = textureGrad(diffuseMap, uv + o * 1.3, uvDx, uvDy);
+        float chromaWeight = activeGhostAlpha.x > 0.5 ? chroma.a : 1.0;
+        mosh.r = mix(mosh.r, chroma.r * authoredRGB.r, chromaWeight);
         rgb   = mix(tex.rgb, mosh, on) * color.rgb;
         alpha = color.a * tex.a;
     }

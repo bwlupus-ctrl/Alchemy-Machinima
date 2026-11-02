@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import relight_3d_gl as G
 
@@ -47,12 +47,13 @@ class Runner:
         self.target = self.texture(None, width, height, 0x8814)
         g.fbo_tex(0x8D40, 0x8CE0, 0x0DE1, self.target, 0)
         assert g.fbo_status(0x8D40) == 0x8CD5
-        # Fully transparent texels deliberately carry black: Datamosh must
-        # ignore their RGB. Opaque regions have a nonconstant colour pattern.
+        # Nearest-only poison fixture: whole transparent taps must contribute
+        # no RGB. Filtered contamination is measured separately below.
         y, x = np.mgrid[:128, :128] / 127.0
         tex = np.stack((.25 + .65*x, .2 + .6*y, .3 + .2*np.sin(x*30),
                         np.where((x > .44) & (x < .56) & (y > .25) & (y < .75), 0., 1.)), -1).astype(np.float32)
         tex[tex[..., 3] == 0, :3] = 0
+        self.source_pixels = tex.copy()
         self.diffuse = self.texture(tex, 128, 128, 0x8814)
         alternate = tex.copy()
         alternate[alternate[...,3] == 0, :3] = (19., 7., 31.)
@@ -71,11 +72,17 @@ class Runner:
                 for a, b in ((i,j),(i+1,j),(i,j+1),(i,j+1),(i+1,j),(i+1,j+1)):
                     verts.append(point(a,b))
         self.verts = np.array(verts, np.float32)
+        # Adjacent scalar slots on triangle boundaries, as Studio slot replay.
+        self.slot_vbo = g.U()
+        g.gen_buf(1, C.byref(self.slot_vbo))
+        g.bind_buf(0x8892, self.slot_vbo)
+        slots = np.repeat((self.verts.reshape(-1,3,8)[...,0].mean(axis=1) > 0).astype(np.int32), 3)
+        g.buffer_data(0x8892, slots.nbytes, slots.ctypes.data, 0x88E4)
         g.gen_buf(1, C.byref(self.vbo))
         g.bind_buf(0x8892, self.vbo)
         g.buffer_data(0x8892, self.verts.nbytes, self.verts.ctypes.data, 0x88E4)
 
-    def texture(self, data, w, h, fmt):
+    def texture(self, data, w, h, fmt, filtering="nearest"):
         g = self.gl
         tex = g.U()
         g.gen_tex(1, C.byref(tex))
@@ -83,9 +90,12 @@ class Runner:
         g.teximage(0x0DE1, 0, fmt, w, h, 0, 0x1908, 0x1406,
                    None if data is None else data.ctypes.data)
         for key in (0x2800, 0x2801):
-            g.param(0x0DE1, key, 0x2600)
+            g.param(0x0DE1, key, 0x2600 if filtering == "nearest" else 0x2601)
         for key in (0x2802, 0x2803):
             g.param(0x0DE1, key, 0x812F)
+        if filtering == "mip":
+            g.fn("glGenerateMipmap", None, g.U)(0x0DE1)
+            g.param(0x0DE1, 0x2801, 0x2703)  # LINEAR_MIPMAP_LINEAR
         return tex.value
 
     def program(self, tree, defs=(), vertex=V, probe=False):
@@ -131,7 +141,8 @@ class Runner:
         self.definitions[pr] = (defs, vertex)
         return pr
 
-    def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True):
+    def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
+               shift_y=0., rotation=0., slot=-1, adjacent_slots=False):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -144,7 +155,7 @@ class Runner:
         loc = lambda name: g.loc(pr, name.encode())
         def floats(name, *v):
             g.uf[len(v)](loc(name), *v)
-        for name, value in dict(ghostLook=look, ghostIsClone=0, ghostSlot=-1,
+        for name, value in dict(ghostLook=look, ghostIsClone=0, ghostSlot=slot,
                                 ghostDistort=distort, ghostUseVertexAlpha=1,
                                 ghostAlphaCutoffMode=1,
                                 ghostWorldLinear=int('GHOST_WORLD_PASS' in defs)).items():
@@ -155,7 +166,7 @@ class Runner:
         floats('ghostParams', 0., 1., 0., 8.)
         floats('ghostAux', .5 if mask else 0., 1., 0., phase)
         floats('ghostFx', 0., 0., 0., 1.)
-        floats('ghostAlpha', 1., 1.)
+        floats('ghostAlpha', 0. if opaque else 1., 1.)
         floats('ghostDistortParams', .4 if distort else 0., .5, .5, 0.)
         floats('ghostScreenSize', self.width, self.height)
         floats('ghostDissolveProgress', .28 if look == 10 else 0.)
@@ -169,6 +180,10 @@ class Runner:
             g.ui(loc('ghostIndexedUseVertexAlpha[%d]' % i), 1)
             g.ui(loc('ghostIndexedAlphaCutoffMode[%d]' % i), 1)
         view = np.array([[1,0,0,shift],[0,0,1,0],[0,-1,0,-4],[0,0,0,1]],np.float32)
+        # Camera roll and zoom also exercise transformed pattern footprints.
+        co, si = np.cos(rotation), np.sin(rotation)
+        roll = np.array([[co,-si,0,0],[si,co,0,shift_y],[0,0,1,0],[0,0,0,1]], np.float32)
+        view = roll @ view
         # Orthographic camera allows exact integer-pixel reprojection tests.
         proj = np.diag([scale*self.projection_x, scale*.85, -.1, 1.]).astype(np.float32)
         for name, mat in (('modelview_matrix', view), ('projection_matrix', proj),
@@ -191,13 +206,18 @@ class Runner:
             if ix >= 0:
                 g.enable_attr(ix); used.append(ix)
                 g.attr_ptr(ix,count,0x1406,0,32,C.c_void_p(offset))
-        for name, value in (('diffuse_color',(1,1,1,1)),('weight4',(.25,.25,.25,.25)),('weight',(0,0,0,0))):
+        for name, value in (('diffuse_color',tint),('weight4',(.25,.25,.25,.25)),('weight',(0,0,0,0))):
             ix = g.attr_loc(pr,name.encode())
             if ix >= 0:
                 self.disable_attr(ix); self.attr4(ix,*value)
         ix = g.attr_loc(pr,b'texture_index')
         if ix >= 0:
-            self.disable_attr(ix); self.attri(ix,0)
+            if adjacent_slots:
+                g.bind_buf(0x8892, self.slot_vbo)
+                g.enable_attr(ix); used.append(ix)
+                g.fn('glVertexAttribIPointer',None,g.U,g.I,g.U,g.I,C.c_void_p)(ix,1,0x1404,4,None)
+            else:
+                self.disable_attr(ix); self.attri(ix,0)
         g.active(0x84C0); g.bind_tex(0x0DE1,self.diffuse); g.ui(loc('diffuseMap'),0)
         g.bind_fbo(0x8D40,self.fbo); g.viewport(0,0,self.width,self.height)
         self.clear(0x1800,0,(g.F*4)(0,0,0,0))
@@ -208,6 +228,133 @@ class Runner:
         assert g.fn('glGetError',g.U)() == 0, 'OpenGL render error'
         assert np.isfinite(result).all(), 'nonfinite pixels'
         return result
+
+
+def premultiplied(a):
+    """Compare visible energy AND coverage, including partially covered details."""
+    b = a.copy()
+    b[..., :3] *= b[..., 3:4]
+    return b
+
+
+def fractional_camera_check(runner, pr, look):
+    # A 4x4 stratified pixel-area reference uses the production shader with the
+    # SAME footprint/LOD. Jitter integrates its residual sample-phase variation;
+    # no image interpolation hides partial dots/glyphs/facets. Fixed time keeps
+    # intentional Arc/Datamosh epoch changes out of the spatial measurement.
+    dx = 2 / (runner.projection_x * runner.width)
+    dy = 2 / (.85 * runner.height)
+    results = []
+    for phase, angle, zoom in ((.25, 0., 1.), (.5, .012, 1.015), (.75, -.009, .985)):
+        options = dict(shift=phase*dx/zoom, shift_y=phase*dy/zoom,
+                       rotation=angle, scale=zoom)
+        actual = premultiplied(runner.render(pr, look, **options))
+        reference = np.zeros_like(actual)
+        for y in (-.375, -.125, .125, .375):
+            for x in (-.375, -.125, .125, .375):
+                sample = dict(options, shift=options['shift']+x*dx/(zoom*np.cos(angle)),
+                              shift_y=options['shift_y']+y*dy/zoom-x*dx*np.tan(angle)/zoom)
+                reference += premultiplied(runner.render(pr, look, **sample)) / 16
+        # Include low/partial effect coverage, but omit silhouette/mask boundary
+        # pixels where a single-sample geometry rasterizer cannot integrate area.
+        geometry = runner.render(runner.probe, look, **options)[..., 3] > .99
+        geometry &= runner.render(pr, 75, **options)[..., 3] > .8
+        for axis in (0, 1):
+            geometry &= np.roll(geometry, 2, axis) & np.roll(geometry, -2, axis)
+        valid = geometry & ((actual[...,3] > .01) | (reference[...,3] > .01))
+        error = np.abs(actual[valid] - reference[valid])
+        p99, rms = float(np.quantile(error, .99)), float(np.sqrt(np.mean(error**2)))
+        results.append(dict(phase=phase, rotation=angle, zoom=zoom, p99=p99, rms=rms,
+                            samples=int(valid.sum())))
+        assert valid.any() and p99 < .12 and rms < .025, (look, 'fractional camera alias', results[-1])
+    return results
+
+
+def datamosh_material_checks(runner, pr):
+    g = runner.gl
+    original = runner.diffuse
+    allocated = []
+    results = {}
+    def make(pixels, filtering):
+        tex = runner.texture(pixels, 128, 128, 0x8814, filtering)
+        allocated.append(tex)
+        return tex
+    def render(tex, **kw):
+        runner.diffuse = tex
+        return runner.render(pr, 75, **kw)
+    try:
+        # Constant white isolates authored MAP_COLOR/vertex RGB from texture RGB.
+        white = make(np.ones((128,128,4),np.float32), 'mip')
+        tint = (.1,.2,.3,1.)
+        a = render(white, tint=tint)
+        valid = a[...,3] > 0
+        expected = np.array(tint[:3]) * (.42,.72,.94)
+        error = float(np.max(np.abs(a[valid,:3] - expected)))
+        assert error < 1e-5, ('Datamosh authored RGB lost',error)
+        results['authored_tint_max_error'] = error
+        for filtering in ('nearest','linear','mip'):
+            clean = runner.source_pixels.copy()
+            poison = clean.copy()
+            poison[poison[...,3] == 0,:3] = (19.,7.,31.)
+            full_alpha = clean.copy(); full_alpha[...,3] = 1
+            clean_id, poison_id, full_id = [make(p, filtering) for p in (clean,poison,full_alpha)]
+            # Minification selects mip levels in the mip case; fractional motion
+            # puts bilinear taps between texel centres in both filtered cases.
+            opts = dict(scale=.2*768/runner.height if filtering == 'mip' else 1., shift=.0031)
+            a, b = render(clean_id, **opts), render(poison_id, **opts)
+            delta = float(np.max(np.abs(a-b)))
+            assert np.array_equal(a[...,3],b[...,3]), 'hidden RGB changed mask coverage'
+            if filtering == 'nearest':
+                assert delta <= 1/255, 'Datamosh nearest transparent RGB bleed'
+            else:
+                assert delta > 1/255, ('filtered poison fixture missed edges',filtering)
+            # Raw straight-RGB filtering IS poison-sensitive. Record this instead
+            # of claiming alpha weights undo contamination inside a filtered tap.
+            # An alpha-safe premultiplied reference first zeros hidden RGB, filters
+            # colour*coverage and coverage together, then unpremultiplies. For a
+            # constant visible colour its straight RGB is constant at every mip.
+            reference = clean.copy(); reference[...,:3] = (.3,.5,.7)
+            ref_id = make(reference, filtering)
+            ref = render(ref_id, tint=tint, **opts)
+            covered = ref[...,3] > 0
+            ref_error = float(np.max(np.abs(ref[covered,:3] - np.array((.3,.5,.7))*expected)))
+            assert ref_error < 1e-5, ('filtered constant-colour reference',filtering,ref_error)
+            # Compare extra-tap edge energy against that analytical premultiplied
+            # reference, with identical visible RGB and coverage in both inputs.
+            black_edge = reference.copy()
+            black_edge[black_edge[...,3] == 0,:3] = 0
+            poison_edge = black_edge.copy()
+            poison_edge[poison_edge[...,3] == 0,:3] = (19.,7.,31.)
+            black_image = render(make(black_edge,filtering), tint=tint, **opts)
+            poison_image = render(make(poison_edge,filtering), tint=tint, **opts)
+            edge_errors = [float(np.max(np.abs(premultiplied(image)-premultiplied(ref))))
+                           for image in (black_image,poison_image)]
+            if filtering == 'nearest':
+                assert max(edge_errors) < 1e-5
+            else:
+                assert edge_errors[1] > 1/255, 'poison/reference comparison missed filtered edge'
+            # OPAQUE ignores unused base-colour alpha under every filter/LOD.
+            a = render(clean_id, opaque=True, mask=False, **opts)
+            b = render(full_id, opaque=True, mask=False, **opts)
+            opaque_error = float(np.max(np.abs(a-b)))
+            assert opaque_error < 1e-6, ('OPAQUE alpha weighted colour',filtering,opaque_error)
+            # Scalar slot replay: both selected and rejected adjacent triangles.
+            selected = render(ref_id, slot=0, adjacent_slots=True, **opts)
+            other = render(ref_id, slot=1, adjacent_slots=True, **opts)
+            whole = render(ref_id, adjacent_slots=True, **opts)
+            assert np.any(selected[...,3] > 0) and np.any(other[...,3] > 0)
+            slot_error = float(np.max(np.abs(selected + other - whole)))
+            assert slot_error < 1e-5, ('scalar material slot replay',filtering,slot_error)
+            results[filtering] = dict(raw_hidden_rgb_max_delta=delta,
+                                     premultiplied_reference_max_error=ref_error,
+                                     black_edge_reference_max_error=edge_errors[0],
+                                     poison_edge_reference_max_error=edge_errors[1],
+                                     opaque_alpha_max_error=opaque_error, slot_replay_max_error=slot_error)
+    finally:
+        runner.diffuse = original
+        delete = g.fn('glDeleteTextures', None, g.I, C.POINTER(g.U))
+        delete(len(allocated), (g.U * len(allocated))(*allocated))
+    return results
 
 
 def main():
@@ -250,6 +397,7 @@ def main():
         stats['regressions'].append(dict(permutation=label,looks=maximum,max_error=worst))
         print('PASS compile/link + regression:',label,flush=True)
     pr = runner.program(tree)
+    runner.probe = runner.program(tree, probe=True)
     def save(a,name):
         rgb = a[...,:3]*np.clip(a[...,3:4],0,1)+.12*(1-np.clip(a[...,3:4],0,1))
         Image.fromarray((np.clip(rgb[::-1],0,1)*255+.5).astype(np.uint8)).save(args.out/name)
@@ -272,6 +420,7 @@ def main():
         if look in (65,66,67,69,72,73,74,76):
             assert interior.any(), (look,'no camera comparison samples')
             assert camera < .03, (look,'body field camera swim',camera)
+        fractional = fractional_camera_check(runner, pr, look) if look in (65,66,67,69,72,73,74,76) else []
         # Exercise all independent distortion modes with each look.
         for distort in range(1,9):
             d = runner.render(pr,look,distort=distort)
@@ -286,7 +435,7 @@ def main():
         stem = '%02d_%s' % (look,name.lower().replace(' ','_'))
         for data,suffix in ((a,''),(b,'_next'),(c,'_camera'),(far,'_far')):
             save(data,stem+suffix+'.png')
-        stats['looks'][str(look)] = dict(name=name,temporal_p99=temporal,camera_p99=camera,alpha_pixels=int(np.count_nonzero(a[...,3])),png=stem+'.png')
+        stats['looks'][str(look)] = dict(name=name,fractional_camera=fractional,temporal_p99=temporal,camera_p99=camera,alpha_pixels=int(np.count_nonzero(a[...,3])),png=stem+'.png')
         print('PASS render/mask/time/camera/distort/LOD:',look,name,flush=True)
     for look in (0,1,9,10,27):
         save(runner.render(pr,look),'regression_%02d.png'%look)
@@ -296,18 +445,23 @@ def main():
     b=np.roll(runner.render(probe,66,shift=2/(runner.projection_x*args.width)),-1,axis=1)
     valid=(a[...,3]>0)&(b[...,3]>0)
     assert np.max(np.abs(a[valid]-b[valid]))<1e-4, 'rest varying swims'
-    # RGB in fully transparent source texels must not contaminate ANY extra tap.
-    a = runner.render(pr,75)
-    original = runner.diffuse
-    runner.diffuse = runner.alternate
-    b = runner.render(pr,75)
-    runner.diffuse = original
-    assert np.max(np.abs(a-b)) <= 1/255, 'Datamosh transparent RGB bleed'
+    stats['datamosh_materials'] = datamosh_material_checks(runner, pr)
     # Pin fixed-lattice policy; a camera footprint may fade, never scale cells.
     source=tree.read(F)
     for look in (67,73):
         branch=source.split('else if (ghostLook == %d)'%look)[1].split('else if')[0]
         assert re.search(r'float cs\s*=\s*0\.',branch), 'camera-dependent lattice'
+    # Regenerate contact sheets from this run, never from stale thumbnails.
+    sheet = Image.new('RGB', (1600, 4*292), '#1f1f1f')
+    draw = ImageDraw.Draw(sheet)
+    for index, (look, name) in enumerate(zip(range(64,78), NAMES)):
+        stem = '%02d_%s' % (look,name.lower().replace(' ','_'))
+        with Image.open(args.out/(stem+'.png')) as im:
+            im.thumbnail((384,256), Image.Resampling.LANCZOS)
+            x, y = (index%4)*400, (index//4)*292
+            sheet.paste(im, (x+(400-im.width)//2, y+28+(256-im.height)//2))
+            draw.text((x+10,y+8), '%d %s' % (look,name), fill='white')
+    sheet.save(args.out/'contact_sheet.png')
     (args.out/'metrics.json').write_text(json.dumps(stats,indent=2)+'\n',encoding='utf-8')
     print('PASS: all clone look GL checks; PNGs and metrics:',args.out,flush=True)
 
