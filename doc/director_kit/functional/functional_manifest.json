@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "91166a6ffa48cfde9326f5d58956a6e164b685e20c636e1e74ff06ee7e2080a0",
+  "csv_sha256": "6702c7a1d18b6c76e06977d885ffcecee38f9e9eb5ec90c7b4bea01273400cc4",
   "interactive_rows": 2076,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -48,7 +48,7 @@
   "entries": 4591,
   "pages": 38,
   "settings_declared": 3841,
-  "xui_files": 844,
+  "xui_files": 845,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -5929,7 +5929,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:326 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:340 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -5977,7 +5977,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:327 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:341 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6030,7 +6030,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:329 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:343 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6080,7 +6080,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:333 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:347 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6125,7 +6125,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:334 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:348 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6175,7 +6175,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:335 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:349 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6226,7 +6226,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:330 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:344 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6278,7 +6278,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:331 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:345 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Overlay clone",
@@ -6339,7 +6339,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:332 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:346 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6389,7 +6389,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:468 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:482 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6439,7 +6439,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:469 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:483 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6489,7 +6489,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:470 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:484 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6537,7 +6537,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:339 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:353 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6585,7 +6585,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:340 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:354 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6633,7 +6633,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:341 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:355 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6681,7 +6681,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:343 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:357 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6729,7 +6729,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:342 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:356 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6779,7 +6779,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:344 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:358 ALPanelGhostStudio::postBuild",
    "probe": "clone_rotation",
    "prereq": "ghost_selected_formation",
    "enable_when": "clone selected"
@@ -6832,7 +6832,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:345 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:359 ALPanelGhostStudio::postBuild",
    "probe": "clone_rotation",
    "prereq": "ghost_selected_formation",
    "enable_when": "clone selected"
@@ -6883,7 +6883,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:346 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:360 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6933,7 +6933,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:471 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:485 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6983,7 +6983,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:462 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:476 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7034,7 +7034,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:463 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:477 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7084,7 +7084,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:464 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:478 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7134,7 +7134,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:465 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:479 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7184,7 +7184,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:466 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:480 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7235,7 +7235,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:472 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:486 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7285,7 +7285,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:473 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:487 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7333,7 +7333,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:474 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:488 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7383,7 +7383,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:467 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:481 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7435,7 +7435,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:476 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:490 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Ghost",
@@ -7548,6 +7548,62 @@
     {
      "label": "Hologram Echo",
      "value": "27"
+    },
+    {
+     "label": "Glass",
+     "value": "64"
+    },
+    {
+     "label": "Mercury",
+     "value": "65"
+    },
+    {
+     "label": "Marble",
+     "value": "66"
+    },
+    {
+     "label": "Crystal",
+     "value": "67"
+    },
+    {
+     "label": "Ash Drift",
+     "value": "68"
+    },
+    {
+     "label": "Magma",
+     "value": "69"
+    },
+    {
+     "label": "Void",
+     "value": "70"
+    },
+    {
+     "label": "Sumi-e",
+     "value": "71"
+    },
+    {
+     "label": "Arc",
+     "value": "72"
+    },
+    {
+     "label": "Lidar",
+     "value": "73"
+    },
+    {
+     "label": "Code Rain",
+     "value": "74"
+    },
+    {
+     "label": "Datamosh",
+     "value": "75"
+    },
+    {
+     "label": "Scan Build",
+     "value": "76"
+    },
+    {
+     "label": "Contour",
+     "value": "77"
     }
    ],
    "test_value_resolved": "1"
@@ -7569,7 +7625,7 @@
    "card_title": "Clone look",
    "row_label": "Distortion",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 164,
+   "xui_line": 178,
    "widget_name": "distort_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -7602,7 +7658,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:484 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:498 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Distort: None",
@@ -7660,7 +7716,7 @@
    "card_title": "Clone look",
    "row_label": "Distort amt",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 196,
+   "xui_line": 210,
    "widget_name": "distort_amount_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -7689,7 +7745,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:485 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:499 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7708,7 +7764,7 @@
    "card_title": "Colour & tint",
    "row_label": "Actor hue",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 176,
+   "xui_line": 190,
    "widget_name": "actor_tint_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -7737,7 +7793,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:477 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:491 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7756,7 +7812,7 @@
    "card_title": "Colour & tint",
    "row_label": "Hue",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 178,
+   "xui_line": 192,
    "widget_name": "hue_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -7785,7 +7841,7 @@
    "increment": 5.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:478 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:492 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7804,7 +7860,7 @@
    "card_title": "Colour & tint",
    "row_label": "Alpha",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 181,
+   "xui_line": 195,
    "widget_name": "alpha_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -7833,7 +7889,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:479 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:493 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7852,7 +7908,7 @@
    "card_title": "Colour & tint",
    "row_label": "Brightness",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 199,
+   "xui_line": 213,
    "widget_name": "brightness_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -7881,7 +7937,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:486 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:500 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7900,7 +7956,7 @@
    "card_title": "Shimmer & glitch",
    "row_label": "Pixelate",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 184,
+   "xui_line": 198,
    "widget_name": "pixel_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -7929,7 +7985,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:482 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:496 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7948,7 +8004,7 @@
    "card_title": "Shimmer & glitch",
    "row_label": "Shimmer",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 190,
+   "xui_line": 204,
    "widget_name": "shimmer_amount_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -7977,7 +8033,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:481 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:495 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7996,7 +8052,7 @@
    "card_title": "Shimmer & glitch",
    "row_label": "Shimmer Hz",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 187,
+   "xui_line": 201,
    "widget_name": "shimmer_speed_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -8025,7 +8081,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:480 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:494 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8044,7 +8100,7 @@
    "card_title": "Shimmer & glitch",
    "row_label": "Glitch",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 193,
+   "xui_line": 207,
    "widget_name": "glitch_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -8073,7 +8129,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:483 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:497 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8092,7 +8148,7 @@
    "card_title": "Shimmer & glitch",
    "row_label": "Effect fps",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 202,
+   "xui_line": 216,
    "widget_name": "effect_fps_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -8121,7 +8177,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:487 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:501 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8140,7 +8196,7 @@
    "card_title": "Pose & drive",
    "row_label": "Grab pose",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 217,
+   "xui_line": 231,
    "widget_name": "btn_freeze",
    "widget_type": "button",
    "csv_kind": "button",
@@ -8171,7 +8227,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:514 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:528 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8190,7 +8246,7 @@
    "card_title": "Pose & drive",
    "row_label": "Follow live",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 219,
+   "xui_line": 233,
    "widget_name": "btn_live",
    "widget_type": "button",
    "csv_kind": "button",
@@ -8221,7 +8277,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:519 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:533 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8240,7 +8296,7 @@
    "card_title": "Pose & drive",
    "row_label": "Drive",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 226,
+   "xui_line": 240,
    "widget_name": "drive_mode_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -8273,7 +8329,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:366 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:380 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Mirror",
@@ -8315,7 +8371,7 @@
    "card_title": "Pose & drive",
    "row_label": "Hold on change",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 221,
+   "xui_line": 235,
    "widget_name": "mirror_hold_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -8365,7 +8421,7 @@
    "card_title": "Pose & drive",
    "row_label": "Repeat held",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 223,
+   "xui_line": 237,
    "widget_name": "mirror_repeat_held_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -8415,7 +8471,7 @@
    "card_title": "Reflect",
    "row_label": "Orientation",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 239,
+   "xui_line": 253,
    "widget_name": "reflect_orientation_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -8448,7 +8504,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:368 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:382 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Wall",
@@ -8478,7 +8534,7 @@
    "card_title": "Reflect",
    "row_label": "Plane",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 244,
+   "xui_line": 258,
    "widget_name": "reflect_plane_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -8511,7 +8567,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:367 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:381 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Plane: Fixed",
@@ -8541,7 +8597,7 @@
    "card_title": "Reflect",
    "row_label": "Mirror position",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 249,
+   "xui_line": 263,
    "widget_name": "reflect_position_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -8570,7 +8626,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:373 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:387 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8589,7 +8645,7 @@
    "card_title": "Reflect",
    "row_label": "Mirror light rig",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 255,
+   "xui_line": 269,
    "widget_name": "mirror_light_rig_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -8618,7 +8674,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:374 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:388 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8637,7 +8693,7 @@
    "card_title": "Reflect",
    "row_label": "Face pair",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 251,
+   "xui_line": 265,
    "widget_name": "btn_reflect_pair",
    "widget_type": "button",
    "csv_kind": "button",
@@ -8668,7 +8724,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:388 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:402 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8687,7 +8743,7 @@
    "card_title": "Reflect",
    "row_label": "Distance (m)",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 252,
+   "xui_line": 266,
    "widget_name": "reflect_distance_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -8720,7 +8776,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "setting GhostReflectFacePairDistance (settings.xml); literal-only alpanelghoststudio.cpp:842 ALPanelGhostStudio::postBuild"
+   "evidence": "setting GhostReflectFacePairDistance (settings.xml); literal-only alpanelghoststudio.cpp:856 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8739,7 +8795,7 @@
    "card_title": "Reflect",
    "row_label": "Recapture plane",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 250,
+   "xui_line": 264,
    "widget_name": "btn_reflect_recapture",
    "widget_type": "button",
    "csv_kind": "button",
@@ -8770,7 +8826,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:389 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:403 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8789,7 +8845,7 @@
    "card_title": "Chaos & speed",
    "row_label": "Chaos amount",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 236,
+   "xui_line": 250,
    "widget_name": "chaos_slider",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -8818,7 +8874,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:348 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:362 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8837,7 +8893,7 @@
    "card_title": "Chaos & speed",
    "row_label": "Anim speed",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 265,
+   "xui_line": 279,
    "widget_name": "anim_speed_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -8866,7 +8922,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:349 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:363 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8885,7 +8941,7 @@
    "card_title": "Clone behaviour",
    "row_label": "Render look",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 256,
+   "xui_line": 270,
    "widget_name": "entity_look_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -8918,7 +8974,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:488 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:502 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Normal",
@@ -8964,7 +9020,7 @@
    "card_title": "Clone behaviour",
    "row_label": "Physics",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 268,
+   "xui_line": 282,
    "widget_name": "physics_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -8993,7 +9049,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:363 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:377 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9012,7 +9068,7 @@
    "card_title": "Clone behaviour",
    "row_label": "On finish",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 270,
+   "xui_line": 284,
    "widget_name": "anim_loop_mode_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -9045,7 +9101,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:449 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:463 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Loop (re-trigger)",
@@ -9075,7 +9131,7 @@
    "card_title": "Playback",
    "row_label": "Pause",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 275,
+   "xui_line": 289,
    "widget_name": "btn_anim_pause",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9106,7 +9162,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:364 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:378 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9125,7 +9181,7 @@
    "card_title": "Playback",
    "row_label": "Resume",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 277,
+   "xui_line": 291,
    "widget_name": "btn_anim_resume",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9156,7 +9212,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:365 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:379 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9175,7 +9231,7 @@
    "card_title": "Playback",
    "row_label": "Sync",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 279,
+   "xui_line": 293,
    "widget_name": "btn_anim_sync",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9206,7 +9262,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:450 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:464 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9225,7 +9281,7 @@
    "card_title": "Animation asset",
    "row_label": "Flip pose L/R",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 287,
+   "xui_line": 301,
    "widget_name": "directed_anim_mirror_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -9254,7 +9310,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:445 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:459 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9273,7 +9329,7 @@
    "card_title": "Animation asset",
    "row_label": "Source playing",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 289,
+   "xui_line": 303,
    "widget_name": "source_animations_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -9305,7 +9361,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:446 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:460 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9324,7 +9380,7 @@
    "card_title": "Animation asset",
    "row_label": "Inventory",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 281,
+   "xui_line": 295,
    "widget_name": "animation_library_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -9358,7 +9414,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:447 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:461 ALPanelGhostStudio::postBuild",
    "enable_when": "entity clone selected"
   },
   {
@@ -9378,7 +9434,7 @@
    "card_title": "Animation asset",
    "row_label": "Refresh",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 283,
+   "xui_line": 297,
    "widget_name": "btn_anim_library_refresh",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9409,7 +9465,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:448 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:462 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9428,7 +9484,7 @@
    "card_title": "Auto-animate",
    "row_label": "Learn (s)",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 295,
+   "xui_line": 309,
    "widget_name": "autoanim_window_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -9457,7 +9513,7 @@
    "increment": 15.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:352 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:366 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9476,7 +9532,7 @@
    "card_title": "Auto-animate",
    "row_label": "Go autonomous",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 300,
+   "xui_line": 314,
    "widget_name": "btn_autoanim_go",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9507,7 +9563,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:355 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:369 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9526,7 +9582,7 @@
    "card_title": "Auto-animate",
    "row_label": "Follow source",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 301,
+   "xui_line": 315,
    "widget_name": "btn_autoanim_follow",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9557,7 +9613,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:354 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:368 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9576,7 +9632,7 @@
    "card_title": "Auto-animate",
    "row_label": "Stop now",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 297,
+   "xui_line": 311,
    "widget_name": "btn_autoanim_stop",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9607,7 +9663,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:361 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:375 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9626,7 +9682,7 @@
    "card_title": "Auto-animate",
    "row_label": "Relearn",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 298,
+   "xui_line": 312,
    "widget_name": "btn_autoanim_relearn",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9657,7 +9713,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:357 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:371 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9676,7 +9732,7 @@
    "card_title": "Auto-animate",
    "row_label": "Reseed",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 299,
+   "xui_line": 313,
    "widget_name": "btn_autoanim_reseed",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9707,7 +9763,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:358 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:372 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9726,7 +9782,7 @@
    "card_title": "Auto-animate",
    "row_label": "Save...",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 302,
+   "xui_line": 316,
    "widget_name": "btn_autoanim_save",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9752,7 +9808,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:360 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:374 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9771,7 +9827,7 @@
    "card_title": "Auto-animate",
    "row_label": "Load...",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 303,
+   "xui_line": 317,
    "widget_name": "btn_autoanim_load",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9802,7 +9858,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:356 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:370 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9821,7 +9877,7 @@
    "card_title": "Head gaze",
    "row_label": "Gaze on",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 308,
+   "xui_line": 322,
    "widget_name": "btn_lens_gaze_selection",
    "widget_type": "button",
    "csv_kind": "button",
@@ -9853,7 +9909,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:452 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:466 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9872,7 +9928,7 @@
    "card_title": "Head gaze",
    "row_label": "Target",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 313,
+   "xui_line": 327,
    "widget_name": "lens_gaze_target_mode",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -9905,7 +9961,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:454 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:468 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Travel tangent",
@@ -9943,7 +9999,7 @@
    "card_title": "Head gaze",
    "row_label": "Cast member",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 320,
+   "xui_line": 334,
    "widget_name": "lens_gaze_cast_target",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -9975,7 +10031,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:455 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:469 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9994,7 +10050,7 @@
    "card_title": "Head gaze",
    "row_label": "Torso",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 310,
+   "xui_line": 324,
    "widget_name": "lens_gaze_torso",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -10023,7 +10079,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:453 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:467 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10042,7 +10098,7 @@
    "card_title": "Head gaze",
    "row_label": "Head / eyes",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 322,
+   "xui_line": 336,
    "widget_name": "lens_gaze_head_eye",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -10071,7 +10127,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:456 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:470 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10090,7 +10146,7 @@
    "card_title": "Head gaze",
    "row_label": "Intensity",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 325,
+   "xui_line": 339,
    "widget_name": "lens_gaze_intensity",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -10119,7 +10175,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:457 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:471 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10138,7 +10194,7 @@
    "card_title": "Head gaze",
    "row_label": "Smoothing",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 328,
+   "xui_line": 342,
    "widget_name": "lens_gaze_smoothing",
    "widget_type": "slider",
    "csv_kind": "slider",
@@ -10167,7 +10223,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:458 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:472 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10186,7 +10242,7 @@
    "card_title": "Crowd pattern",
    "row_label": "Line",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 355,
+   "xui_line": 369,
    "widget_name": "btn_array_line",
    "widget_type": "button",
    "csv_kind": "button",
@@ -10217,7 +10273,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:531 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:545 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10236,7 +10292,7 @@
    "card_title": "Crowd pattern",
    "row_label": "Ring",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 357,
+   "xui_line": 371,
    "widget_name": "btn_array_ring",
    "widget_type": "button",
    "csv_kind": "button",
@@ -10267,7 +10323,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:532 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:546 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10286,7 +10342,7 @@
    "card_title": "Crowd pattern",
    "row_label": "Formation",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 359,
+   "xui_line": 373,
    "widget_name": "array_formation_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -10319,7 +10375,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:533 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:547 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Line",
@@ -10441,7 +10497,7 @@
    "card_title": "Crowd pattern",
    "row_label": "Count",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 349,
+   "xui_line": 363,
    "widget_name": "array_count_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -10470,7 +10526,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:524 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:538 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10489,7 +10545,7 @@
    "card_title": "Crowd pattern",
    "row_label": "Spacing (m)",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 352,
+   "xui_line": 366,
    "widget_name": "array_spacing_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -10518,7 +10574,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:525 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:539 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10717,7 +10773,7 @@
    "card_title": "Layout & heading",
    "row_label": "Edge gap",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 405,
+   "xui_line": 419,
    "widget_name": "formation_edge_gap_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -10746,7 +10802,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:542 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:556 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10765,7 +10821,7 @@
    "card_title": "Layout & heading",
    "row_label": "Jitter",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 407,
+   "xui_line": 421,
    "widget_name": "formation_jitter_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -10794,7 +10850,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:537 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:551 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10813,7 +10869,7 @@
    "card_title": "Layout & heading",
    "row_label": "Seed",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 413,
+   "xui_line": 427,
    "widget_name": "formation_seed_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -10842,7 +10898,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:536 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:550 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10861,7 +10917,7 @@
    "card_title": "Layout & heading",
    "row_label": "Snap to ground",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 402,
+   "xui_line": 416,
    "widget_name": "formation_terrain_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -10890,7 +10946,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:550 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:564 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10909,7 +10965,7 @@
    "card_title": "Layout & heading",
    "row_label": "Heading",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 420,
+   "xui_line": 434,
    "widget_name": "formation_facing_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -10942,7 +10998,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:549 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:563 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Rotate with formation",
@@ -11028,7 +11084,7 @@
    "card_title": "Layout & heading",
    "row_label": "Facing offset",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 448,
+   "xui_line": 462,
    "widget_name": "facing_yaw_offset_spinner",
    "widget_type": "spinner",
    "csv_kind": "dial",
@@ -11057,7 +11113,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:551 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:565 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11076,7 +11132,7 @@
    "card_title": "Layout & heading",
    "row_label": "Pick facing",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 445,
+   "xui_line": 459,
    "widget_name": "btn_pick_facing_target",
    "widget_type": "button",
    "csv_kind": "button",
@@ -11108,7 +11164,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:557 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:571 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11127,7 +11183,7 @@
    "card_title": "Layout & heading",
    "row_label": "Source tilt",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 450,
+   "xui_line": 464,
    "widget_name": "preserve_source_tilt_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -11156,7 +11212,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:553 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:567 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11175,7 +11231,7 @@
    "card_title": "Guide & names",
    "row_label": "Guide",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 394,
+   "xui_line": 408,
    "widget_name": "formation_guide_shape_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -11208,7 +11264,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:539 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:553 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Guide: Off",
@@ -11242,7 +11298,7 @@
    "card_title": "Guide & names",
    "row_label": "Guide size",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 400,
+   "xui_line": 414,
    "widget_name": "formation_guide_size_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -11271,7 +11327,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:541 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:555 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11290,7 +11346,7 @@
    "card_title": "Guide & names",
    "row_label": "Copies as",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 387,
+   "xui_line": 401,
    "widget_name": "crowd_copies_as_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -11323,7 +11379,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:554 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:568 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Copies as: Select clone",
@@ -11357,7 +11413,7 @@
    "card_title": "Guide & names",
    "row_label": "Create as",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 439,
+   "xui_line": 453,
    "widget_name": "crowd_create_mode_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -11390,7 +11446,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:555 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:569 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Create: Separate",
@@ -11424,7 +11480,7 @@
    "card_title": "Guide & names",
    "row_label": "Names",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 475,
+   "xui_line": 489,
    "widget_name": "nameplate_mode_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -11457,7 +11513,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:564 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:578 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Names: Off",
@@ -11491,7 +11547,7 @@
    "card_title": "Guide & names",
    "row_label": "Marker colour",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 461,
+   "xui_line": 475,
    "widget_name": "formation_overlay_palette_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -11568,772 +11624,8 @@
    "card_title": "Preview & create",
    "row_label": "Preview",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 453,
+   "xui_line": 467,
    "widget_name": "btn_array_build",
-   "widget_type": "button",
-   "csv_kind": "button",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "page acts on in-world actor/object/selection",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "click",
-   "test_value": null,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "note": "close any floater opened; undo state the action creates"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:558 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:240",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:btn_crowd_confirm:240",
-   "csv_index": 240,
-   "card": "crowd_preview",
-   "card_title": "Preview & create",
-   "row_label": "Confirm",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 455,
-   "widget_name": "btn_crowd_confirm",
-   "widget_type": "button",
-   "csv_kind": "button",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "page acts on in-world actor/object/selection",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "click",
-   "test_value": null,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "note": "close any floater opened; undo state the action creates"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:559 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:241",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:btn_crowd_unpin:241",
-   "csv_index": 241,
-   "card": "crowd_preview",
-   "card_title": "Preview & create",
-   "row_label": "Unpin",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 457,
-   "widget_name": "btn_crowd_unpin",
-   "widget_type": "button",
-   "csv_kind": "button",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "page acts on in-world actor/object/selection",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "click",
-   "test_value": null,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "note": "close any floater opened; undo state the action creates"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:560 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:242",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:btn_crowd_cancel:242",
-   "csv_index": 242,
-   "card": "crowd_preview",
-   "card_title": "Preview & create",
-   "row_label": "Cancel",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 459,
-   "widget_name": "btn_crowd_cancel",
-   "widget_type": "button",
-   "csv_kind": "button",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "page acts on in-world actor/object/selection",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "click",
-   "test_value": null,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "note": "close any floater opened; undo state the action creates"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:561 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:245",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:group_edit_members_check:245",
-   "csv_index": 245,
-   "card": "group_members",
-   "card_title": "Group members",
-   "row_label": "Edit members",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 481,
-   "widget_name": "group_edit_members_check",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:566 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:246",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:lock_mode_combo:246",
-   "csv_index": 246,
-   "card": "group_members",
-   "card_title": "Group members",
-   "row_label": "Group lock",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 483,
-   "widget_name": "lock_mode_combo",
-   "widget_type": "combo",
-   "csv_kind": "combo",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "select_item",
-   "test_value": {
-    "item_index": 1,
-    "label": "Selected group: Rigid",
-    "value": "1"
-   },
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:556 ALPanelGhostStudio::postBuild",
-   "options": [
-    {
-     "label": "Selected group: Off",
-     "value": "0"
-    },
-    {
-     "label": "Selected group: Rigid",
-     "value": "1"
-    },
-    {
-     "label": "Selected group: Move+Face",
-     "value": "2"
-    }
-   ],
-   "test_value_resolved": "1"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:247",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:group_member_pinned_check:247",
-   "csv_index": 247,
-   "card": "group_members",
-   "card_title": "Group members",
-   "row_label": "Pin offset",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 489,
-   "widget_name": "group_member_pinned_check",
-   "widget_type": "toggle",
-   "csv_kind": "toggle",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:568 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:248",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:btn_group_member_reset:248",
-   "csv_index": 248,
-   "card": "group_members",
-   "card_title": "Group members",
-   "row_label": "Reset member",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 491,
-   "widget_name": "btn_group_member_reset",
-   "widget_type": "button",
-   "csv_kind": "button",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "page acts on in-world actor/object/selection",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "click",
-   "test_value": null,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "note": "close any floater opened; undo state the action creates"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": null,
-   "max": null,
-   "increment": null,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:569 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:249",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:brigade_columns_spinner:249",
-   "csv_index": 249,
-   "card": "crowd_brigade",
-   "card_title": "Military brigade",
-   "row_label": "Files",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 416,
-   "widget_name": "brigade_columns_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "requires crowd draft active",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "set_value",
-   "test_value": 2.0,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 1.0,
-   "max": 256.0,
-   "increment": 1.0,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:543 ALPanelGhostStudio::postBuild",
-   "enable_when": "crowd draft active"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:250",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:brigade_rows_spinner:250",
-   "csv_index": 250,
-   "card": "crowd_brigade",
-   "card_title": "Military brigade",
-   "row_label": "Ranks",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 417,
-   "widget_name": "brigade_rows_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "requires crowd draft active",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "set_value",
-   "test_value": 2.0,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 1.0,
-   "max": 256.0,
-   "increment": 1.0,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:544 ALPanelGhostStudio::postBuild",
-   "enable_when": "crowd draft active"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:251",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:brigade_file_spacing_spinner:251",
-   "csv_index": 251,
-   "card": "crowd_brigade",
-   "card_title": "Military brigade",
-   "row_label": "File gap",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 415,
-   "widget_name": "brigade_file_spacing_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "requires crowd draft active",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "set_value",
-   "test_value": 0.11,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 0.01,
-   "max": 100.0,
-   "increment": 0.1,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:546 ALPanelGhostStudio::postBuild",
-   "enable_when": "crowd draft active"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:252",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:brigade_rank_spacing_spinner:252",
-   "csv_index": 252,
-   "card": "crowd_brigade",
-   "card_title": "Military brigade",
-   "row_label": "Rank gap",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 418,
-   "widget_name": "brigade_rank_spacing_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "requires crowd draft active",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "set_value",
-   "test_value": 0.11,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 0.01,
-   "max": 100.0,
-   "increment": 0.1,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:548 ALPanelGhostStudio::postBuild",
-   "enable_when": "crowd draft active"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:253",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:array_parameter_spinner:253",
-   "csv_index": 253,
-   "card": "crowd_brigade",
-   "card_title": "Military brigade",
-   "row_label": "Parameter",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 410,
-   "widget_name": "array_parameter_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "DEFER_INWORLD",
-   "reason": "requires crowd draft active",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [
-    "requires_world"
-   ],
-   "exercise": "set_value",
-   "test_value": 1.0,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 0.0,
-   "max": 256.0,
-   "increment": 1.0,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:534 ALPanelGhostStudio::postBuild",
-   "enable_when": "crowd draft active"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:254",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:strip_count_spinner:254",
-   "csv_index": 254,
-   "card": "pose_strip",
-   "card_title": "Pose strip",
-   "row_label": "Frames",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 498,
-   "widget_name": "strip_count_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "set_value",
-   "test_value": 2.0,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 1.0,
-   "max": 64.0,
-   "increment": 1.0,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:570 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:255",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:strip_interval_spinner:255",
-   "csv_index": 255,
-   "card": "pose_strip",
-   "card_title": "Pose strip",
-   "row_label": "Interval (s)",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 501,
-   "widget_name": "strip_interval_spinner",
-   "widget_type": "spinner",
-   "csv_kind": "number",
-   "wiring_status": "WIRED_CPP",
-   "resolution": "xui",
-   "action": "RUN",
-   "reason": "",
-   "known_gap": false,
-   "suspect": false,
-   "hazards": [],
-   "exercise": "set_value",
-   "test_value": 0.06,
-   "expect": {
-    "callback": "ALPanelGhostStudio::postBuild",
-    "commit": true
-   },
-   "restore": {
-    "ui": "restore the widget's pre-test value (no bound setting)"
-   },
-   "setting": null,
-   "setting_source": null,
-   "setting_type": null,
-   "default": null,
-   "min": 0.01,
-   "max": 60.0,
-   "increment": 0.05,
-   "callbacks": null,
-   "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:571 ALPanelGhostStudio::postBuild"
-  },
-  {
-   "page": "ghosts_tab",
-   "page_label": "Clones",
-   "group": "cast_group",
-   "version": "v1",
-   "source": "csv:256",
-   "host": {
-    "floater": "director",
-    "page_view": "ghosts_tab",
-    "via": "tab"
-   },
-   "id": "v1:ghosts_tab:btn_strip_start:256",
-   "csv_index": 256,
-   "card": "pose_strip",
-   "card_title": "Pose strip",
-   "row_label": "Capture",
-   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 504,
-   "widget_name": "btn_strip_start",
    "widget_type": "button",
    "csv_kind": "button",
    "wiring_status": "WIRED_CPP",
@@ -12370,20 +11662,20 @@
    "page_label": "Clones",
    "group": "cast_group",
    "version": "v1",
-   "source": "csv:257",
+   "source": "csv:240",
    "host": {
     "floater": "director",
     "page_view": "ghosts_tab",
     "via": "tab"
    },
-   "id": "v1:ghosts_tab:btn_strip_cancel:257",
-   "csv_index": 257,
-   "card": "pose_strip",
-   "card_title": "Pose strip",
-   "row_label": "Cancel",
+   "id": "v1:ghosts_tab:btn_crowd_confirm:240",
+   "csv_index": 240,
+   "card": "crowd_preview",
+   "card_title": "Preview & create",
+   "row_label": "Confirm",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 506,
-   "widget_name": "btn_strip_cancel",
+   "xui_line": 469,
+   "widget_name": "btn_crowd_confirm",
    "widget_type": "button",
    "csv_kind": "button",
    "wiring_status": "WIRED_CPP",
@@ -12420,6 +11712,770 @@
    "page_label": "Clones",
    "group": "cast_group",
    "version": "v1",
+   "source": "csv:241",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:btn_crowd_unpin:241",
+   "csv_index": 241,
+   "card": "crowd_preview",
+   "card_title": "Preview & create",
+   "row_label": "Unpin",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 471,
+   "widget_name": "btn_crowd_unpin",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "page acts on in-world actor/object/selection",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "note": "close any floater opened; undo state the action creates"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:574 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:242",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:btn_crowd_cancel:242",
+   "csv_index": 242,
+   "card": "crowd_preview",
+   "card_title": "Preview & create",
+   "row_label": "Cancel",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 473,
+   "widget_name": "btn_crowd_cancel",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "page acts on in-world actor/object/selection",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "note": "close any floater opened; undo state the action creates"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:575 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:245",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:group_edit_members_check:245",
+   "csv_index": 245,
+   "card": "group_members",
+   "card_title": "Group members",
+   "row_label": "Edit members",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 495,
+   "widget_name": "group_edit_members_check",
+   "widget_type": "toggle",
+   "csv_kind": "toggle",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "toggle",
+   "test_value": true,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:580 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:246",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:lock_mode_combo:246",
+   "csv_index": 246,
+   "card": "group_members",
+   "card_title": "Group members",
+   "row_label": "Group lock",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 497,
+   "widget_name": "lock_mode_combo",
+   "widget_type": "combo",
+   "csv_kind": "combo",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "select_item",
+   "test_value": {
+    "item_index": 1,
+    "label": "Selected group: Rigid",
+    "value": "1"
+   },
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:570 ALPanelGhostStudio::postBuild",
+   "options": [
+    {
+     "label": "Selected group: Off",
+     "value": "0"
+    },
+    {
+     "label": "Selected group: Rigid",
+     "value": "1"
+    },
+    {
+     "label": "Selected group: Move+Face",
+     "value": "2"
+    }
+   ],
+   "test_value_resolved": "1"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:247",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:group_member_pinned_check:247",
+   "csv_index": 247,
+   "card": "group_members",
+   "card_title": "Group members",
+   "row_label": "Pin offset",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 503,
+   "widget_name": "group_member_pinned_check",
+   "widget_type": "toggle",
+   "csv_kind": "toggle",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "toggle",
+   "test_value": true,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:582 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:248",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:btn_group_member_reset:248",
+   "csv_index": 248,
+   "card": "group_members",
+   "card_title": "Group members",
+   "row_label": "Reset member",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 505,
+   "widget_name": "btn_group_member_reset",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "page acts on in-world actor/object/selection",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "note": "close any floater opened; undo state the action creates"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:583 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:249",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:brigade_columns_spinner:249",
+   "csv_index": 249,
+   "card": "crowd_brigade",
+   "card_title": "Military brigade",
+   "row_label": "Files",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 430,
+   "widget_name": "brigade_columns_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "requires crowd draft active",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "set_value",
+   "test_value": 2.0,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 1.0,
+   "max": 256.0,
+   "increment": 1.0,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:557 ALPanelGhostStudio::postBuild",
+   "enable_when": "crowd draft active"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:250",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:brigade_rows_spinner:250",
+   "csv_index": 250,
+   "card": "crowd_brigade",
+   "card_title": "Military brigade",
+   "row_label": "Ranks",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 431,
+   "widget_name": "brigade_rows_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "requires crowd draft active",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "set_value",
+   "test_value": 2.0,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 1.0,
+   "max": 256.0,
+   "increment": 1.0,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:558 ALPanelGhostStudio::postBuild",
+   "enable_when": "crowd draft active"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:251",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:brigade_file_spacing_spinner:251",
+   "csv_index": 251,
+   "card": "crowd_brigade",
+   "card_title": "Military brigade",
+   "row_label": "File gap",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 429,
+   "widget_name": "brigade_file_spacing_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "requires crowd draft active",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "set_value",
+   "test_value": 0.11,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 0.01,
+   "max": 100.0,
+   "increment": 0.1,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:560 ALPanelGhostStudio::postBuild",
+   "enable_when": "crowd draft active"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:252",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:brigade_rank_spacing_spinner:252",
+   "csv_index": 252,
+   "card": "crowd_brigade",
+   "card_title": "Military brigade",
+   "row_label": "Rank gap",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 432,
+   "widget_name": "brigade_rank_spacing_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "requires crowd draft active",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "set_value",
+   "test_value": 0.11,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 0.01,
+   "max": 100.0,
+   "increment": 0.1,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:562 ALPanelGhostStudio::postBuild",
+   "enable_when": "crowd draft active"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:253",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:array_parameter_spinner:253",
+   "csv_index": 253,
+   "card": "crowd_brigade",
+   "card_title": "Military brigade",
+   "row_label": "Parameter",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 424,
+   "widget_name": "array_parameter_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "requires crowd draft active",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "set_value",
+   "test_value": 1.0,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 0.0,
+   "max": 256.0,
+   "increment": 1.0,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:548 ALPanelGhostStudio::postBuild",
+   "enable_when": "crowd draft active"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:254",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:strip_count_spinner:254",
+   "csv_index": 254,
+   "card": "pose_strip",
+   "card_title": "Pose strip",
+   "row_label": "Frames",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 512,
+   "widget_name": "strip_count_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 2.0,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 1.0,
+   "max": 64.0,
+   "increment": 1.0,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:584 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:255",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:strip_interval_spinner:255",
+   "csv_index": 255,
+   "card": "pose_strip",
+   "card_title": "Pose strip",
+   "row_label": "Interval (s)",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 515,
+   "widget_name": "strip_interval_spinner",
+   "widget_type": "spinner",
+   "csv_kind": "number",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "RUN",
+   "reason": "",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [],
+   "exercise": "set_value",
+   "test_value": 0.06,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "ui": "restore the widget's pre-test value (no bound setting)"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": 0.01,
+   "max": 60.0,
+   "increment": 0.05,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:585 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:256",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:btn_strip_start:256",
+   "csv_index": 256,
+   "card": "pose_strip",
+   "card_title": "Pose strip",
+   "row_label": "Capture",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 518,
+   "widget_name": "btn_strip_start",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "page acts on in-world actor/object/selection",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "note": "close any floater opened; undo state the action creates"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:586 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
+   "source": "csv:257",
+   "host": {
+    "floater": "director",
+    "page_view": "ghosts_tab",
+    "via": "tab"
+   },
+   "id": "v1:ghosts_tab:btn_strip_cancel:257",
+   "csv_index": 257,
+   "card": "pose_strip",
+   "card_title": "Pose strip",
+   "row_label": "Cancel",
+   "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+   "xui_line": 520,
+   "widget_name": "btn_strip_cancel",
+   "widget_type": "button",
+   "csv_kind": "button",
+   "wiring_status": "WIRED_CPP",
+   "resolution": "xui",
+   "action": "DEFER_INWORLD",
+   "reason": "page acts on in-world actor/object/selection",
+   "known_gap": false,
+   "suspect": false,
+   "hazards": [
+    "requires_world"
+   ],
+   "exercise": "click",
+   "test_value": null,
+   "expect": {
+    "callback": "ALPanelGhostStudio::postBuild",
+    "commit": true
+   },
+   "restore": {
+    "note": "close any floater opened; undo state the action creates"
+   },
+   "setting": null,
+   "setting_source": null,
+   "setting_type": null,
+   "default": null,
+   "min": null,
+   "max": null,
+   "increment": null,
+   "callbacks": null,
+   "owner": "ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:587 ALPanelGhostStudio::postBuild"
+  },
+  {
+   "page": "ghosts_tab",
+   "page_label": "Clones",
+   "group": "cast_group",
+   "version": "v1",
    "source": "csv:259",
    "host": {
     "floater": "director",
@@ -12432,7 +12488,7 @@
    "card_title": "Formation motion",
    "row_label": "Motion",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 509,
+   "xui_line": 523,
    "widget_name": "formation_motion_combo",
    "widget_type": "combo",
    "csv_kind": "combo",
@@ -12467,7 +12523,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:575 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:589 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Off",
@@ -12546,7 +12602,7 @@
    "card_title": "Formation motion",
    "row_label": "Speed",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 526,
+   "xui_line": 540,
    "widget_name": "formation_motion_speed",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -12575,7 +12631,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:576 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:590 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -12594,7 +12650,7 @@
    "card_title": "Formation motion",
    "row_label": "Amp",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 529,
+   "xui_line": 543,
    "widget_name": "formation_motion_amplitude",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -12623,7 +12679,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:577 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:591 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -12642,7 +12698,7 @@
    "card_title": "Formation motion",
    "row_label": "Apply",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 532,
+   "xui_line": 546,
    "widget_name": "btn_formation_motion_apply",
    "widget_type": "button",
    "csv_kind": "button",
@@ -12673,7 +12729,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:578 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:592 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -12692,7 +12748,7 @@
    "card_title": "Formation motion",
    "row_label": "Pose fps",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 538,
+   "xui_line": 552,
    "widget_name": "pose_rate_spinner",
    "widget_type": "spinner",
    "csv_kind": "number",
@@ -12721,7 +12777,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:581 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:595 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -12740,7 +12796,7 @@
    "card_title": "Formation motion",
    "row_label": "Motion animations",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 540,
+   "xui_line": 554,
    "widget_name": "motion_animations_check",
    "widget_type": "toggle",
    "csv_kind": "toggle",
@@ -12790,7 +12846,7 @@
    "card_title": "Group as one unit",
    "row_label": "Group",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 534,
+   "xui_line": 548,
    "widget_name": "btn_group_unit",
    "widget_type": "button",
    "csv_kind": "button",
@@ -12821,7 +12877,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:579 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:593 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -12840,7 +12896,7 @@
    "card_title": "Group as one unit",
    "row_label": "Ungroup",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 536,
+   "xui_line": 550,
    "widget_name": "btn_ungroup_unit",
    "widget_type": "button",
    "csv_kind": "button",
@@ -12871,7 +12927,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:580 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:594 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -12890,7 +12946,7 @@
    "card_title": "Diagnostics",
    "row_label": "Refresh",
    "xui_file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-   "xui_line": 334,
+   "xui_line": 348,
    "widget_name": "btn_rig_diag_refresh",
    "widget_type": "button",
    "csv_kind": "button",
@@ -12921,7 +12977,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:522 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:536 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "dance_tab",
@@ -162771,6 +162827,62 @@
     {
      "label": "Hologram Echo",
      "value": "27"
+    },
+    {
+     "label": "Glass",
+     "value": "64"
+    },
+    {
+     "label": "Mercury",
+     "value": "65"
+    },
+    {
+     "label": "Marble",
+     "value": "66"
+    },
+    {
+     "label": "Crystal",
+     "value": "67"
+    },
+    {
+     "label": "Ash Drift",
+     "value": "68"
+    },
+    {
+     "label": "Magma",
+     "value": "69"
+    },
+    {
+     "label": "Void",
+     "value": "70"
+    },
+    {
+     "label": "Sumi-e",
+     "value": "71"
+    },
+    {
+     "label": "Arc",
+     "value": "72"
+    },
+    {
+     "label": "Lidar",
+     "value": "73"
+    },
+    {
+     "label": "Code Rain",
+     "value": "74"
+    },
+    {
+     "label": "Datamosh",
+     "value": "75"
+    },
+    {
+     "label": "Scan Build",
+     "value": "76"
+    },
+    {
+     "label": "Contour",
+     "value": "77"
     }
    ],
    "binding": "code",
@@ -260968,31 +261080,45 @@
    "spin_axis_z",
    "spin_speed_spin",
    "spin_up_seconds",
+   "st_arc",
+   "st_ash",
    "st_blueprint",
    "st_chrome",
    "st_clone",
+   "st_coderain",
+   "st_contour",
+   "st_crystal",
    "st_damage",
+   "st_datamosh",
    "st_dissolve",
    "st_ectoplasm",
    "st_frost",
    "st_ghost",
+   "st_glass",
    "st_gold",
    "st_halftone",
    "st_holo_echo",
    "st_hologram",
    "st_killcam",
+   "st_lidar",
+   "st_magma",
+   "st_marble",
+   "st_mercury",
    "st_negative",
    "st_neon",
    "st_night",
    "st_nv_tube",
    "st_oil_slick",
    "st_prism",
+   "st_scanbuild",
    "st_silhouette",
    "st_sonar",
+   "st_sumie",
    "st_thermal",
    "st_thermal_scope",
    "st_toon",
    "st_vaporwave",
+   "st_void",
    "st_wallhack",
    "st_wireframe",
    "st_xray",

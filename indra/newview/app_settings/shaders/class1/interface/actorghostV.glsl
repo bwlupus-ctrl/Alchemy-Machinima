@@ -52,11 +52,9 @@ out vec3 vary_normal;       // eye space; normalized in the fragment shader
 flat out int vary_texture_index;
 #endif
 out vec4 vary_vertex_color;
-#ifdef GHOST_SHARED_DISSOLVE
 // Stable pre-skin/local position shared with native Actor FX dissolve. Using
 // eye/world position here would make the field swim when the actor animates.
 out vec3 vary_object_position;
-#endif
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -96,7 +94,5 @@ void main()
     vary_texture_index = texture_index;
 #endif
     vary_vertex_color = diffuse_color;
-#ifdef GHOST_SHARED_DISSOLVE
     vary_object_position = position.xyz;
-#endif
 }

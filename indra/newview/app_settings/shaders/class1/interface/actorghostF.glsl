@@ -156,13 +156,11 @@ uniform vec4 ghostTronParams;
 uniform vec4 ghostTronParams2;
 uniform vec4 ghostTronColor;
 #endif
-#ifdef GHOST_SHARED_DISSOLVE
 // Classic Actor FX uses the same authored progress and the same raw/rest-space
 // field as native beauty + shadow. Ghost Studio keeps its historical automatic
 // dissolve when this world-only permutation is absent.
 uniform float ghostDissolveProgress;
 in vec3 vary_object_position;
-#endif
 // [R2-2] indexed-batch slot filter: >= 0 draws ONLY fragments whose
 // per-vertex material slot matches (the clone re-draws a multi-material
 // batch once per slot with that slot's texture bound); -1 = no filtering.
@@ -249,6 +247,18 @@ float ghost_fbm(vec2 p)
     v += 0.125 * ghost_noise(p);
     return v / 0.875;
 }
+
+// Studio-only procedural helpers; existing look arithmetic stays untouched.
+#ifndef GHOST_WORLD_PASS
+float ghost_hash3(vec3 p)
+{
+    return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+}
+float ghost_ridge(vec2 p)
+{
+    return 1.0 - abs(ghost_fbm(p) - 0.5) * 2.0;
+}
+#endif
 
 vec3 heat_lut(float x)
 {
@@ -448,6 +458,24 @@ void main()
 {
     vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
     float ghostDissolveEdge = 0.0;
+#ifndef GHOST_WORLD_PASS
+    // Studio footprints follow the TronT2 rule: uniform flow BEFORE any discard.
+    // Existing looks neither evaluate nor consume these derivatives.
+    vec3 oPx = vec3(0.0), oPy = vec3(0.0);
+    vec2 uvPx = vec2(0.0);
+    vec2 uvDx = vec2(0.0), uvDy = vec2(0.0);
+    float fz = 0.0;
+    if (ghostLook >= 64)
+    {
+        oPx = dFdx(vary_object_position);
+        oPy = dFdy(vary_object_position);
+        uvDx = dFdx(vary_texcoord0);
+        uvDy = dFdy(vary_texcoord0);
+        uvPx = abs(uvDx) + abs(uvDy);
+        fz = fwidth(-vary_position.z);
+    }
+    vec3 fwP = abs(oPx) + abs(oPy);
+#endif
 #ifdef GHOST_SHARED_DISSOLVE
     // [TronT2 fix] Tron Suit seam footprint, taken here in uniform control
     // flow (ghostLook is a uniform) BEFORE the slot / alpha-cutoff / Dissolve
@@ -1197,6 +1225,314 @@ void main()
 #endif
         alpha = color.a * tex.a * (0.55 + edge * 0.45);
     }
+#ifndef GHOST_WORLD_PASS
+    else if (ghostLook == 70) // Studio: Void
+    {
+        vec2 sm = vary_object_position.yz * 5.0;
+
+        float smoke = ghost_fbm(sm + vec2(ghostAux.w, ghostTime * 0.5));
+        float rimV  = pow(1.0 - facing, 3.5) * (0.5 + 1.1 * smoke) * 1.0;
+        float stars = pow(ghost_hash(floor(fragCoord / 2.0) + floor(ghostAux.w * 7.0)), 60.0) * 0.08;  // static
+        rgb   = color.rgb * rimV * 1.8 + vec3(stars);
+        alpha = color.a * tex.a;                      // body stays opaque: black is the point
+    }
+    else if (ghostLook == 64) // Studio: Glass
+    {
+        float F  = pow(1.0 - facing, 5.0);
+        vec3  rimC = vec3(pow(1.0-facing, 4.2), pow(1.0-facing, 5.0), pow(1.0-facing, 6.2)); // dispersion-ish fringe
+        const vec3 L1 = normalize(vec3( 0.35, 0.60, 0.72));  // fixed eye-space "studio lamps"
+        const vec3 L2 = normalize(vec3(-0.55, 0.15, 0.80));
+        float s1 = pow(max(dot(n, normalize(L1 + v)), 0.0), 120.0);
+        float s2 = pow(max(dot(n, normalize(L2 + v)), 0.0),  28.0) * 0.25;
+        vec3 tint = mix(vec3(1.0), color.rgb, 0.5);
+        rgb   = tint * rimC * 1.7 + vec3(s1 * 1.2 + s2) + tex.rgb * 0.05 * facing;   // tiny body hint keeps a face readable
+        alpha = color.a * tex.a * clamp(0.05 + F * 0.9 + s1 * 0.8 + s2, 0.0, 1.0);
+    }
+    else if (ghostLook == 71) // Studio: Sumi-e
+    {
+        const vec3 L = normalize(vec3(0.35, 0.6, 0.72));
+        float shade = 0.5 * max(dot(n, L), 0.0) + 0.5 * lum;                  // where ink goes (dark = inked)
+        float grain = ghost_noise(fragCoord / 3.5) * 0.5 + ghost_noise(fragCoord / 11.0) * 0.5;  // paper, screen-locked
+        float wash  = 1.0 - shade + (grain - 0.5) * 0.22;
+        float t1 = smoothstep(0.30, 0.42, wash), t2 = smoothstep(0.52, 0.64, wash), t3 = smoothstep(0.74, 0.86, wash);
+        float inkAmt = (t1 * 0.35 + t2 * 0.35 + t3 * 0.30) * 1.0;
+        // dry-brush outline: silhouette thickened, broken by streaky noise
+        float streak = ghost_noise(vec2(fragCoord.x * 0.07, fragCoord.y * 0.9));
+        float outline = smoothstep(0.22, 0.55, edge + (streak - 0.5) * 0.3) * step(0.25, streak);
+        inkAmt = max(inkAmt, outline * 0.95);
+        inkAmt *= 1.0 - 0.25 * grain * (1.0 - inkAmt);                      // granulation where thin
+        vec3 ink   = mix(vec3(0.03, 0.035, 0.05), color.rgb * 0.25, 0.3);
+        vec3 paper = vec3(0.95, 0.92, 0.85);
+        rgb   = mix(paper, ink, inkAmt);
+        alpha = color.a * tex.a * mix(inkAmt, 1.0, 1.0);
+    }
+    else if (ghostLook == 77) // Studio: Contour
+    {
+        float z   = -vary_position.z;                                        // eye depth, metres
+        float sp = 0.02; // Fixed depth planes; footprint changes coverage, never phase.
+        float depthPx = fz + 1e-6;                                        // take in E-B block
+        float q   = z / sp + ghostTime * 0.15 + ghostAux.w;
+        float iso = abs(fract(q) - 0.5);
+        float unresolved = smoothstep(0.18, 0.45, depthPx / sp);
+        float width = clamp((depthPx / sp) * 1.5, 1e-5, 0.48);
+        float line = mix(1.0 - smoothstep(0.0, width, iso), 0.45, unresolved);
+        float major = mix(1.0 - step(0.5, mod(floor(q), 5.0)), 0.2, unresolved);
+        vec3 lc = mix(vec3(0.3, 1.0, 0.8), color.rgb, 0.4);
+        rgb   = color.rgb * 0.06 * (1.0 + lum) + lc * (line * (0.9 + major * 0.8) + edge * 0.35);
+        alpha = color.a * tex.a * clamp(0.25 + line * 0.75 + edge * 0.3, 0.0, 1.0);
+    }
+    else if (ghostLook == 66) // Studio: Marble
+    {
+        vec3  P    = vary_object_position + vec3(cos(ghostAux.w), sin(ghostAux.w), 0.3*ghostAux.w) * 0.37;
+        float warp = ghost_fbm(P.xz * 1.9 + P.y * 0.6);
+        float v1   = ghost_ridge(P.xy * 3.1 + warp * 1.6);                  // broad veins
+        float v2 = 0.0;
+        if (max(fwP.x, max(fwP.y, fwP.z)) < 0.006)
+            v2 = ghost_ridge(vec2(P.z, P.x) * 7.5 - warp * 0.9)
+                * (1.0 - smoothstep(0.003, 0.006, max(fwP.x, max(fwP.y, fwP.z)))) ;        // fine veins
+        float vein = pow(v1, 9.0) * 0.85 + pow(v2, 14.0) * 0.45;
+        // AA: fade veins when their width approaches the pixel footprint
+        vein *= smoothstep(0.25, 1.0, 1.0 / (1.0 + 40.0 * max(fwP.x, max(fwP.y, fwP.z))));
+        const vec3 L = normalize(vec3(0.35, 0.6, 0.72));
+        float lam  = 0.35 + 0.65 * max(dot(n, L), 0.0);                    // wrapped lambert
+        float sss  = pow(1.0 - facing, 3.0) * 0.35;                        // warm grazing glow
+        vec3 stone = mix(vec3(0.93, 0.91, 0.87), color.rgb, 0.15);
+        stone *= 0.85 + 0.15 * lum;                                        // keep face/cloth folds
+        rgb = mix(stone, vec3(0.28, 0.33, 0.30), clamp(vein, 0.0, 1.0)) * lam
+            + vec3(0.35, 0.22, 0.14) * sss;
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 73) // Studio: Lidar
+    {
+        vec3  P   = vary_object_position;
+        vec3  nb  = (cross(oPx, oPy) / max(length(cross(oPx, oPy)), 1e-8));                                // rest-space surface normal
+        float fw  = max(length(oPx), length(oPy));
+        float cs = 0.022; // Fixed rest lattice: LOD must not reseed cells on camera moves.                   // ≥4 px between dots
+        vec3  c   = floor(P / cs);
+        vec3  jit = (vec3(ghost_hash3(c), ghost_hash3(c + 5.1), ghost_hash3(c + 9.7)) - 0.5) * 0.35;
+        vec3  cc  = (c + 0.5 + jit) * cs;
+        vec3  dl  = P - cc;
+        vec3  tg  = dl - nb * dot(dl, nb);                                     // distance in the surface plane
+        float r   = length(tg);
+        float dotR = max(cs * 0.18, fw * 1.4);                                 // ≥1.4 px radius
+        float detail = 1.0 - smoothstep(cs / 6.0, cs / 3.0, fw);
+        // Projected centres can jump at 3-D cell faces. Fade to zero at
+        // those faces over a captured pixel footprint, before selecting a new
+        // centre, so fractional camera motion cannot pop a clipped dot.
+        vec3 cellEdge = min(fract(P / cs), 1.0 - fract(P / cs));
+        vec3 cellAA = smoothstep(vec3(0.0), max(2.0 * fwP / cs, vec3(1e-5)), cellEdge);
+        float cellMask = cellAA.x * cellAA.y * cellAA.z;
+        float m = mix(0.20, (1.0 - smoothstep(max(0.0, dotR - fw), dotR + fw + 1e-6, r)) * cellMask, detail);
+        float h   = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
+        float sweep = fract(ghostTime * 0.3 + ghostAux.w * 0.159);
+        float sw  = 1.0 - smoothstep(0.0, 0.05, abs(h - sweep));
+        vec3  col = 0.0 > 0.5 ? ghost_rainbow(clamp(-vary_position.z / 8.0, 0.0, 0.7))   // by camera depth
+                               : ghost_rainbow(h * 0.7);                                     // by height
+        col = mix(col, color.rgb, 0.2);
+        rgb   = col * (0.9 + sw * 2.2) * m + color.rgb * sw * 0.15;
+        alpha = color.a * tex.a * clamp(m * (0.85 + sw * 0.15) + sw * 0.08, 0.0, 1.0);
+    }
+    else if (ghostLook == 76) // Studio: Scan Build
+    {
+        vec3  P = vary_object_position;
+        float h = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
+        float prog = ghostDissolveProgress > 0.0 ? ghostDissolveProgress
+                   : 0.5 + 0.5 * sin(ghostTime * 0.3 + ghostAux.w);
+        float front = prog * 1.15 - 0.07;                                    // overshoot so 0/1 are fully built/empty
+        float d     = h - front;                                             // <0 built, >0 pending
+        float fwz = fwP.z + 1e-6;
+        float band  = 1.0 - smoothstep(0.0, 0.012 + fwz * (2.0 / 2.25), abs(d));     // footprint-aware hot line
+        // print layers: rest-space horizontal slices, only in a thin zone above the front
+        float layers = 0.5 + 0.5 * sin(P.z * 180.0 * 1.0);
+        layers = smoothstep(0.6, 0.9, layers) * smoothstep(3.0, 6.0, (6.2831853 / 180.0) / fwz)   // >3 px pitch or drop
+               * (1.0 - smoothstep(0.0, 0.08, d)) * step(0.0, d);
+        float lattice = (edge * 0.9 + layers * 0.7) * (1.0 - smoothstep(0.08, 0.6, d)) * step(0.0, d);
+        vec3 bodyC = tex.rgb * color.rgb;
+        vec3 planC = mix(vec3(1.0), color.rgb, 0.35);
+        rgb   = bodyC * step(d, 0.0) + planC * (band * 3.0 + lattice * 0.6);
+        alpha = color.a * tex.a * clamp(step(d, 0.0) + band + lattice * 0.55, 0.0, 1.0);
+    }
+    else if (ghostLook == 69) // Studio: Magma
+    {
+        vec3 P = vary_object_position + vec3(ghostAux.w * 0.31, -ghostAux.w * 0.17, 0.0);
+        vec2 q1 = P.xz * 3.6 + P.y * 1.1, q2 = P.yz * 8.0 - P.x * 0.7;
+        float c1 = pow(ghost_ridge(q1), 22.0), c2 = 0.0;
+        if (max(fwP.x, max(fwP.y, fwP.z)) < 0.006)
+            c2 = pow(ghost_ridge(q2), 30.0) * 0.6
+                * (1.0 - smoothstep(0.003, 0.006, max(fwP.x, max(fwP.y, fwP.z))));
+        float fw = max(fwP.x, max(fwP.y, fwP.z));
+        float crack = (c1 + c2) * smoothstep(0.2, 1.0, 0.012 / max(fw, 1e-5));   // fade hairlines at distance
+        float pulse = 0.55 + 0.45 * ghost_fbm(q1 * 0.35 + vec2(ghostTime * 0.12, -ghostTime * 0.07));
+        float heat  = clamp(crack * pulse * 1.0 + edge * crack * 0.8, 0.0, 1.0);
+        vec3 lava   = mix(vec3(0.55, 0.03, 0.0), vec3(1.0, 0.55, 0.05), smoothstep(0.2, 0.8, heat));
+        lava        = mix(lava, vec3(1.0, 0.95, 0.6), smoothstep(0.85, 1.0, heat));
+        const vec3 L = normalize(vec3(0.35, 0.6, 0.72));
+        float rock  = (0.04 + 0.05 * mix(0.5, ghost_noise(P.xy * 22.0), 1.0 - smoothstep(0.003, 0.006, max(fwP.x, max(fwP.y, fwP.z))))) * (0.5 + 0.5 * max(dot(n, L), 0.0));
+        rgb   = vec3(rock) * (1.0 + lum * 0.4) + lava * heat * 2.2 + lava * crack * 0.25;
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 67) // Studio: Crystal
+    {
+        vec3  P  = vary_object_position;
+        float cs = 0.085; // Keep cell identity fixed under camera motion.
+        float detail = 1.0 - smoothstep(cs / 14.0, cs / 8.0, max(fwP.x, max(fwP.y, fwP.z)));  // ≥10 px facets
+        vec3  q  = P / cs;  q.xy += q.z * 0.37;  q.yz += q.x * 0.21;              // skew: kills axis-aligned cubes
+        q += ghostAux.w;
+        vec3  c  = floor(q);
+        vec3  d  = vec3(ghost_hash3(c), ghost_hash3(c + 17.1), ghost_hash3(c + 41.7)) * 2.0 - 1.0;
+        vec3  nf = normalize(n + d * (0.55 * detail));                          // per-cell flat normal
+        float fF = pow(1.0 - clamp(dot(nf, v), 0.0, 1.0), 3.0);
+        const vec3 L = normalize(vec3(0.35, 0.6, 0.72));
+        float flash = pow(max(dot(reflect(-v, nf), L), 0.0), 48.0);
+        vec3  disp  = ghost_rainbow(dot(nf, v) * 1.3 + mix(0.5, ghost_hash3(c), detail) * 0.5);
+        vec3  body  = mix(color.rgb * 0.55, color.rgb, mix(0.5, ghost_hash3(c + 3.3), detail));     // per-facet brightness
+        // facet edge lines from the cell lattice
+        vec3 fq = abs(fract(q) - 0.5);
+        // Apply the same skew to both captured derivatives before taking abs.
+        vec3 qdx = oPx / cs, qdy = oPy / cs;
+        qdx.xy += qdx.z * 0.37; qdx.yz += qdx.x * 0.21;
+        qdy.xy += qdy.z * 0.37; qdy.yz += qdy.x * 0.21;
+        vec3 qfw = abs(qdx) + abs(qdy);
+        float aa = max(max(qfw.x, qfw.y), qfw.z);
+        float edgeLine = smoothstep(0.46 - aa, 0.49 + aa, max(fq.x, max(fq.y, fq.z))) * detail;
+        rgb   = body * (0.35 + fF * 0.9) + disp * flash * 1.6 + edgeLine * color.rgb * 0.6 + edge * 0.4;
+        alpha = color.a * tex.a * clamp(0.45 + fF * 0.5 + flash, 0.0, 1.0);
+    }
+    else if (ghostLook == 65) // Studio: Mercury
+    {
+        vec3  P   = vary_object_position;
+        float t   = ghostTime * 0.35 + ghostAux.w;
+        // drip field: stretched along z, scrolling down the body
+        float drip = ghost_fbm(vec2(P.x * 7.0 + P.y * 2.0, P.z * 1.6 - t * 1.4));
+        float pool = ghost_fbm(P.xz * 2.4 + vec2(t * 0.25, -t * 0.4));
+        // perturb the eye-space normal with the field gradient (finite difference, 2 extra fbm calls)
+        float e = 0.02;
+        vec2 g = vec2(0.0);
+        if (max(fwP.x, fwP.z) < 0.01)
+            g = vec2(ghost_fbm(P.xz*2.4 + vec2(e,0) + vec2(t*0.25,-t*0.4)) - pool,
+                      ghost_fbm(P.xz*2.4 + vec2(0,e) + vec2(t*0.25,-t*0.4)) - pool) / e;
+        g *= 1.0 - smoothstep(0.005, 0.01, max(fwP.x, fwP.z));
+        vec3 n2 = normalize(n + vec3(g * 0.18 * 1.0, 0.0) + vec3(0.0, (drip-0.5)*0.25, 0.0));
+        vec3 r   = reflect(-v, n2);
+        float stripes = 0.5 + 0.5 * sin((r.y * 2.4 + r.x) * 3.1415927 + pool * 2.5);
+        float glint   = pow(max(dot(n2, normalize(vec3(0.35,0.6,0.72) + v)), 0.0), 90.0);
+        float dripLine = pow(drip, 6.0);                              // bright drip highlights
+        rgb = mix(vec3(0.04, 0.05, 0.07), vec3(0.92, 0.95, 1.0), stripes);
+        rgb = mix(rgb, color.rgb, 0.12) + glint * 0.9 + dripLine * 0.5 + edge * 0.3;
+        rgb *= 0.85; // Fixed default liquid-metal exposure.
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 68) // Studio: Ash Drift
+    {
+        vec3  P = vary_object_position;
+        float h = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
+        float prog = ghostDissolveProgress > 0.0 ? ghostDissolveProgress
+                   : 0.5 + 0.5 * sin(ghostTime * 0.25 + ghostAux.w);   // free-run ping-pong
+        float dir  = 1.0 >= 0.5 ? (1.0 - h) : h;          // burn from top (default) or from feet
+        float field = ghost_fbm(P.xy * 4.0 + P.z * 1.3 + vec2(ghostAux.w)) ;
+        float dfront = (dir + (field - 0.5) * 0.55) - prog * 1.35 + 0.17;   // >0 intact, <0 gone
+        float charr  = 1.0 - smoothstep(0.0, 0.18, dfront);                 // darkens ahead of front
+        float glowE  = 1.0 - smoothstep(0.0, 0.035, abs(dfront));           // incandescent line
+        vec3 emberCol = mix(vec3(1.0, 0.42, 0.06), color.rgb, 0.3);
+        if (dfront >= 0.0)
+        {
+            rgb   = tex.rgb * color.rgb * (1.0 - charr * 0.85) + vec3(0.08,0.06,0.05) * charr
+                  + emberCol * glowE * 2.4;
+            alpha = color.a * tex.a;
+        }
+        else
+        {
+            // burnt region: geometry still exists, so draw drifting embers inside the silhouette
+            vec2 e  = vec2(fragCoord.x / 14.0, fragCoord.y / 14.0 - ghostTime * 4.0);
+            vec2 ec = floor(e); vec2 ef = fract(e) - 0.5;
+            float keep = step(0.86 - 0.3 * glowE, ghost_hash(ec + fract(ghostAux.w)));  // sparse, denser near front
+            float r = length(ef + (vec2(ghost_hash(ec+1.3), ghost_hash(ec+7.7)) - 0.5) * 0.5);
+            float ember = keep * (1.0 - smoothstep(0.08, 0.22, r));
+            ember *= 1.0 - smoothstep(0.0, 0.35, -dfront);                 // fade with distance behind front
+            rgb   = emberCol * ember * 2.0;
+            alpha = color.a * tex.a * ember;
+        }
+    }
+    else if (ghostLook == 72) // Studio: Arc
+    {
+        vec3 P = vary_object_position;
+        float t   = ghostTime * 6.0 + ghostAux.w;
+        float beat = floor(t);
+        vec2  q   = P.xz * 3.2 + P.y * 1.4 + vec2(ghost_hash(vec2(beat, 1.0)), ghost_hash(vec2(beat, 2.0))) * 0.6; // re-seed per flash
+        float bolt = pow(ghost_ridge(q), 26.0);
+        float fw   = max(fwP.x, max(fwP.y, fwP.z));
+        bolt *= smoothstep(0.2, 1.0, 0.010 / max(fw, 1e-5));
+        float seg  = step(0.62, ghost_hash(floor(q * 1.5) + beat));         // only some segments light per beat
+        float env  = pow(1.0 - fract(t), 2.5);                              // decay within the beat
+        float arc  = bolt * seg * env * 1.0;
+        vec3  ac   = mix(vec3(0.6, 0.8, 1.0), color.rgb, 0.3);
+        rgb   = color.rgb * 0.12 * (1.0 + lum) + ac * (arc * 3.0 + edge * (0.3 + 0.9 * arc));
+        alpha = color.a * tex.a * clamp(0.35 + arc * 2.0 + edge * 0.4, 0.0, 1.0);
+    }
+    else if (ghostLook == 74) // Studio: Code Rain
+    {
+        vec3 P = vary_object_position; vec3 nb = abs((cross(oPx, oPy) / max(length(cross(oPx, oPy)), 1e-8)));
+        // pick the dominant projection so glyphs don't stretch: xz for front/back, yz for sides
+        vec2 p2 = nb.y >= nb.x ? P.xz : vec2(P.y, P.z);  vec2 fw2 = nb.y >= nb.x ? fwP.xz : fwP.yz;
+        vec2 cell = vec2(0.03, 0.03 * 1.45);
+        vec2 ci = floor(p2 / cell), cf = fract(p2 / cell);
+        float colSeed = ghost_hash(vec2(ci.x, ghostAux.w));
+        float speed   = 0.6 + 1.2 * colSeed;                                   // rows/sec per column
+        float head    = fract(ghostTime * speed * 0.12 + colSeed * 3.0);        // 0..1 down the body (h-space)
+        float h       = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
+        float below   = fract(head - (1.0 - h));                                // 0 at head, grows below it
+        float trail   = pow(1.0 - clamp(below / 0.35, 0.0, 1.0), 1.8);
+        // glyph: 3x5 bits; mutates per cell at its own epoch
+        float epoch = floor(ghostTime * 2.5 + ghost_hash(ci) * 9.0);
+        vec2  sub   = floor(cf * vec2(3.0, 5.0));
+        float bit   = step(0.5, ghost_hash(ci + sub * 0.173 + epoch * 0.013));
+        vec2  inset = smoothstep(vec2(0.0), max(fw2 / cell * vec2(3.0, 5.0), vec2(1e-5)), min(fract(cf * vec2(3.0,5.0)), 1.0 - fract(cf * vec2(3.0,5.0))));
+        float gutterAA = max(fw2.x / cell.x, 1e-5);
+        float gutter = smoothstep(0.0, 2.0 * gutterAA, min(cf.x, 1.0 - cf.x));
+        float glyph = bit * inset.x * inset.y * gutter;
+        float lod   = smoothstep(5.0, 9.0, cell.x / max(fw2.x, 1e-6));          // <5 px: solid column bars
+        float ink   = mix(0.55 * gutter, glyph, lod) * trail;
+        float isHead = 1.0 - smoothstep(0.0, 0.08, below);
+        vec3  green = mix(vec3(0.15, 1.0, 0.35), color.rgb, 0.35);
+        rgb   = vec3(0.01, 0.02, 0.01) + green * ink * 1.6 + vec3(1.0) * isHead * glyph * 1.2 + green * edge * 0.25;
+        alpha = color.a * tex.a;
+    }
+    else if (ghostLook == 75) // Studio: Datamosh
+    {
+        vec2  blk  = floor(fragCoord / 16.0);
+        float ep   = floor(ghostTime * 4.0 + ghost_hash(blk) * 3.0);               // sticky per-block epoch
+        float on   = step(1.0 - 0.45, ghost_hash(blk + ep + fract(ghostAux.w)));
+        vec2 dir = vec2(ghost_hash(blk + ep + ghostAux.w + 2.0),
+                        ghost_hash(blk + ep + ghostAux.w + 4.0)) * 2.0 - 1.0;
+        vec2  px   = max(uvPx, vec2(1e-6));                                          // UV per screen pixel
+        vec2  o    = dir * px * (8.0 + 40.0 * ghost_hash(blk + ep + 6.0));
+        // Explicit gradients were captured before slot/alpha discards. Offsets
+        // retain the source footprint, including at macroblock boundaries.
+        // Alpha weights describe coverage only for MASK/BLEND materials.
+        // Filtering can already mix hidden RGB into a tap; weighting cannot
+        // undo that upstream contamination (use alpha-safe source mipmaps).
+        vec3 authoredRGB = activeMaterialFactor.rgb * vary_vertex_color.rgb;
+        vec3 smear = vec3(0.0);
+        float wsum = 0.0;
+        for (int i = 0; i < 5; ++i)
+        {
+            vec4 s = textureGrad(diffuseMap, uv + o * (float(i) * 0.25), uvDx, uvDy);
+            float weight = activeGhostAlpha.x > 0.5 ? s.a : 1.0;
+            smear += s.rgb * weight;
+            wsum += weight;
+        }
+        smear = wsum > 1e-5 ? smear / wsum * authoredRGB : tex.rgb;
+        vec2 dcuv = (floor(uv / (px * 16.0)) + 0.5) * px * 16.0;
+        vec4 dc = textureGrad(diffuseMap, dcuv, uvDx, uvDy);
+        float dcWeight = activeGhostAlpha.x > 0.5 ? dc.a : 1.0;
+        vec3 mosh = mix(smear, mix(smear, dc.rgb * authoredRGB, dcWeight), ghost_hash(blk + ep + 8.0) * 0.6);
+        vec4 chroma = textureGrad(diffuseMap, uv + o * 1.3, uvDx, uvDy);
+        float chromaWeight = activeGhostAlpha.x > 0.5 ? chroma.a : 1.0;
+        mosh.r = mix(mosh.r, chroma.r * authoredRGB.r, chromaWeight);
+        rgb   = mix(tex.rgb, mosh, on) * color.rgb;
+        alpha = color.a * tex.a;
+    }
+#endif
 #ifdef GHOST_WORLD_PASS
     else if (ghostLook == 28) // Live Actor: Rim Noir
     {
