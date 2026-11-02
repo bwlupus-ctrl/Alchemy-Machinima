@@ -10,7 +10,74 @@
       "OWNED": 884,
       "TOOLING": 362
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/alkitpresets.cpp",
+      "indra/newview/alpovblink.cpp",
+      "indra/newview/alpovblink.h",
+      "indra/newview/alpovblinkmath.h",
+      "indra/newview/app_settings/key_bindings.xml",
+      "indra/newview/app_settings/settings.xml",
+      "indra/newview/app_settings/shaders/class1/deferred/povBlinkF.glsl",
+      "indra/newview/llfloaterdirector.cpp",
+      "indra/newview/llfloaterdirector.h",
+      "indra/newview/llkeyconflict.cpp",
+      "indra/newview/llviewerdisplay.cpp",
+      "indra/newview/llviewerinput.cpp",
+      "indra/newview/llviewerjoystick.cpp",
+      "indra/newview/llviewerjoystick.h",
+      "indra/newview/llviewershadermgr.cpp",
+      "indra/newview/pipeline.cpp",
+      "indra/newview/skins/default/xui/en/control_table_contents_movement.xml",
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit/kit_pages.json",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/pov_blink_check.py",
+      "scripts/code_tools/pov_blink_pipeline_hunks.json"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,14 +90,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "a482c9a5597d3afbbaf8be8629d08c3fb15af5ea66fbfa75733e79c9dcf1757a",
+        "csv_sha256": "793e900675237ad1d20078e2ff05fb93317b0cb4fe5ffc725a806099fcc95553",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 39,
           "popovers": 6
         },
-        "entries": 4620,
+        "entries": 4650,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -71,9 +138,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2484,
+        "generated_kit_rows": 2499,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2090,
+        "interactive_rows": 2105,
         "pages": 38,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -116,7 +183,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3854,
+        "settings_declared": 3867,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -126,7 +193,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 845
+        "xui_files": 844
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -181,19 +248,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2208,
+        "independent_json_rows": 2223,
         "multi_page_settings": 21,
         "owner_roots": 35,
         "pages": 38,
-        "rows": 2208,
-        "unresolved_rows": 57
+        "rows": 2223,
+        "unresolved_rows": 59
       },
-      "wiring_rows": 2208
+      "wiring_rows": 2223
     },
     "head_source_tree": "7b421045878582269911004adf71b42692db9c4f",
     "hook_files": 498,
     "hunks": 3014,
-    "input_sha256": "543f3bc16fe12b9bc764d28ee475b8741a8a5261168e8c9338108f3fa631d096",
+    "input_sha256": "7018da6c2d6e56c9279461f366f771b3785d26d95f53c7e57487decfe63ab0f2",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2009
   },

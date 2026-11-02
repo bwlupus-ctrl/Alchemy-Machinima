@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2208,
+    "rows": 2223,
     "owner_roots": 35,
-    "unresolved_rows": 57,
+    "unresolved_rows": 59,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2208
+    "independent_json_rows": 2223
   },
   "setting_conflicts": [
     {
@@ -36782,6 +36782,370 @@
       "writable_home": null
     },
     {
+      "setting": "POVBlinkAuto",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 253,
+          "widget": "pov_Auto",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32133,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkBlur",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 240,
+          "widget": "pov_Blur",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32119,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkCloseMs",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 211,
+          "widget": "pov_CloseMs",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32070,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkCurve",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 225,
+          "widget": "pov_Curve",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32098,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkDarken",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 235,
+          "widget": "pov_Darken",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32112,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkDepth",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 220,
+          "widget": "pov_Depth",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32091,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkHoldMs",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 214,
+          "widget": "pov_HoldMs",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32077,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkOpenMs",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 217,
+          "widget": "pov_OpenMs",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32084,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkPadHold",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 270,
+          "widget": "pov_PadHold",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32154,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkPadTap",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 259,
+          "widget": "pov_PadTap",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32147,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkRate",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 256,
+          "widget": "pov_Rate",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32140,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkSoftness",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 230,
+          "widget": "pov_Softness",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32105,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "POVBlinkStyle",
+      "pages": [
+        "filters_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+          "line": 245,
+          "widget": "pov_Style",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+            "tag": "panel",
+            "name": "filters_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32126,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
       "setting": "PathGhostDistort",
       "pages": [
         "path_tab"
@@ -40174,7 +40538,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 38,
+          "line": 39,
           "widget": "gradnd_angle_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40224,7 +40588,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 23,
+          "line": 24,
           "widget": "gradnd_density_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40285,7 +40649,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 58,
+          "line": 59,
           "widget": "grad_nd_flip_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40313,7 +40677,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 28,
+          "line": 29,
           "widget": "gradnd_pos_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40363,7 +40727,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 10,
+          "line": 11,
           "widget": "gradnd_preset_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40413,7 +40777,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 43,
+          "line": 44,
           "widget": "gradnd_confine_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40463,7 +40827,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 33,
+          "line": 34,
           "widget": "gradnd_soft_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40513,7 +40877,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 53,
+          "line": 54,
           "widget": "gradnd_sunr_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40563,7 +40927,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 48,
+          "line": 49,
           "widget": "gradnd_sunw_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40613,7 +40977,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 64,
+          "line": 65,
           "widget": "gradnd_tint_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40652,7 +41016,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 61,
+          "line": 62,
           "widget": "gradnd_tint_swatch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40691,7 +41055,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 158,
+          "line": 159,
           "widget": "ir_mode",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40730,7 +41094,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 166,
+          "line": 167,
           "widget": "ir_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40780,7 +41144,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 137,
+          "line": 138,
           "widget": "lens_filter_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -40819,7 +41183,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 122,
+          "line": 123,
           "widget": "lens_filter_preset",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41572,7 +41936,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 112,
+          "line": 113,
           "widget": "polarizer_auto_band_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41600,7 +41964,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 115,
+          "line": 116,
           "widget": "pol_bandrad_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41650,7 +42014,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 107,
+          "line": 108,
           "widget": "pol_glaredepth_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41700,7 +42064,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 87,
+          "line": 88,
           "widget": "pol_glare_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41750,7 +42114,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 102,
+          "line": 103,
           "widget": "pol_glarethr_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41800,7 +42164,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 71,
+          "line": 72,
           "widget": "polarizer_preset_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41850,7 +42214,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 92,
+          "line": 93,
           "widget": "pol_skydark_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41900,7 +42264,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 97,
+          "line": 98,
           "widget": "pol_skysat_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -41950,7 +42314,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 82,
+          "line": 83,
           "widget": "pol_strength_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -43292,7 +43656,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 197,
+          "line": 198,
           "widget": "softedge_blur",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -43342,7 +43706,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-          "line": 189,
+          "line": 190,
           "widget": "softedge_blur_type",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -51820,7 +52184,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1478,
+              "line": 1498,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -51831,7 +52195,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2720,
+              "line": 2756,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -51925,7 +52289,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1487,
+              "line": 1507,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -51936,7 +52300,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1492,
+              "line": 1512,
               "class": "LLFloaterDirector",
               "function": "onCommitGroupDelay",
               "wired_class": "LLFloaterDirector",
@@ -51947,7 +52311,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2724,
+              "line": 2760,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -51958,7 +52322,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2734,
+              "line": 2770,
               "class": "LLFloaterDirector",
               "function": "onCommitGroupDelay",
               "wired_class": "LLFloaterDirector",
@@ -52041,7 +52405,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1479,
+              "line": 1499,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -52052,7 +52416,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1481,
+              "line": 1501,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -52063,7 +52427,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2721,
+              "line": 2757,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -52074,7 +52438,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2731,
+              "line": 2767,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -52157,7 +52521,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1480,
+              "line": 1500,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -52168,7 +52532,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1482,
+              "line": 1502,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -52179,7 +52543,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2722,
+              "line": 2758,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -52190,7 +52554,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2732,
+              "line": 2768,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -52277,7 +52641,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1486,
+              "line": 1506,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -52288,7 +52652,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1491,
+              "line": 1511,
               "class": "LLFloaterDirector",
               "function": "onGroupsListSelect",
               "wired_class": "LLFloaterDirector",
@@ -52299,7 +52663,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2723,
+              "line": 2759,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -52310,7 +52674,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2733,
+              "line": 2769,
               "class": "LLFloaterDirector",
               "function": "onGroupsListSelect",
               "wired_class": "LLFloaterDirector",
@@ -52393,7 +52757,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1488,
+              "line": 1508,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -52404,7 +52768,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1493,
+              "line": 1513,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -52415,7 +52779,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2725,
+              "line": 2761,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -52426,7 +52790,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2735,
+              "line": 2771,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -52509,7 +52873,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1489,
+              "line": 1509,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -52520,7 +52884,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1494,
+              "line": 1514,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -52531,7 +52895,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2726,
+              "line": 2762,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -52542,7 +52906,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2736,
+              "line": 2772,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -52625,7 +52989,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1490,
+              "line": 1510,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -52636,7 +53000,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1495,
+              "line": 1515,
               "class": "LLFloaterDirector",
               "function": "onClickGroupDissolve",
               "wired_class": "LLFloaterDirector",
@@ -52647,7 +53011,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2727,
+              "line": 2763,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -52658,7 +53022,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2737,
+              "line": 2773,
               "class": "LLFloaterDirector",
               "function": "onClickGroupDissolve",
               "wired_class": "LLFloaterDirector",
@@ -52806,7 +53170,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2675,
+              "line": 2711,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -52817,7 +53181,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2671,
+              "line": 2707,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -52885,7 +53249,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2678,
+              "line": 2714,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -52896,7 +53260,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2671,
+              "line": 2707,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -52964,7 +53328,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2676,
+              "line": 2712,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -52975,7 +53339,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2671,
+              "line": 2707,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -53043,7 +53407,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2707,
+              "line": 2743,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -53054,7 +53418,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2671,
+              "line": 2707,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -53122,7 +53486,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2710,
+              "line": 2746,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -53133,7 +53497,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2671,
+              "line": 2707,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -53201,7 +53565,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2677,
+              "line": 2713,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -60553,7 +60917,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1395,
+              "line": 1415,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -60566,7 +60930,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1407,
+              "line": 1427,
               "class": "LLFloaterDirector",
               "function": "onCastRemove",
               "wired_class": "LLFloaterDirector",
@@ -60579,7 +60943,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1904,
+              "line": 1924,
               "class": "LLFloaterDirector",
               "function": "bindChrome",
               "wired_class": "LLFloaterDirector",
@@ -60592,7 +60956,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1915,
+              "line": 1935,
               "class": "LLFloaterDirector",
               "function": "onCastRemove",
               "wired_class": "LLFloaterDirector",
@@ -77952,7 +78316,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1648,
+              "line": 1668,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "LLFloaterDirector",
@@ -77963,7 +78327,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3134,
+              "line": 3170,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -84976,7 +85340,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1573,
+              "line": 1593,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -84987,7 +85351,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2960,
+              "line": 2996,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85060,7 +85424,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1574,
+              "line": 1594,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85071,7 +85435,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2961,
+              "line": 2997,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85165,7 +85529,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1579,
+              "line": 1599,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85176,7 +85540,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1594,
+              "line": 1614,
               "class": "LLFloaterDirector",
               "function": "onAnimCopyUUID",
               "wired_class": "LLFloaterDirector",
@@ -85187,7 +85551,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2963,
+              "line": 2999,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85198,7 +85562,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3013,
+              "line": 3049,
               "class": "LLFloaterDirector",
               "function": "onAnimCopyUUID",
               "wired_class": "LLFloaterDirector",
@@ -85266,7 +85630,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1580,
+              "line": 1600,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85277,7 +85641,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1595,
+              "line": 1615,
               "class": "LLFloaterDirector",
               "function": "onAnimSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -85288,7 +85652,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2964,
+              "line": 3000,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85299,7 +85663,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3014,
+              "line": 3050,
               "class": "LLFloaterDirector",
               "function": "onAnimSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -85367,7 +85731,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1581,
+              "line": 1601,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85378,7 +85742,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1596,
+              "line": 1616,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85389,7 +85753,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2965,
+              "line": 3001,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85400,7 +85764,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3015,
+              "line": 3051,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85468,7 +85832,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1582,
+              "line": 1602,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85479,7 +85843,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1597,
+              "line": 1617,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85490,7 +85854,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2966,
+              "line": 3002,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85501,7 +85865,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3016,
+              "line": 3052,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85569,7 +85933,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1575,
+              "line": 1595,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85580,7 +85944,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2962,
+              "line": 2998,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85704,7 +86068,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1583,
+              "line": 1603,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85715,7 +86079,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2967,
+              "line": 3003,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85794,7 +86158,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1584,
+              "line": 1604,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85805,7 +86169,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1598,
+              "line": 1618,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85816,7 +86180,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2968,
+              "line": 3004,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85827,7 +86191,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3017,
+              "line": 3053,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85895,7 +86259,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1585,
+              "line": 1605,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -85906,7 +86270,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1599,
+              "line": 1619,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85917,7 +86281,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2969,
+              "line": 3005,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -85928,7 +86292,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3018,
+              "line": 3054,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -85996,7 +86360,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1586,
+              "line": 1606,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86007,7 +86371,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1600,
+              "line": 1620,
               "class": "LLFloaterDirector",
               "function": "onPasteSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -86018,7 +86382,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2970,
+              "line": 3006,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86029,7 +86393,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3019,
+              "line": 3055,
               "class": "LLFloaterDirector",
               "function": "onPasteSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -86188,7 +86552,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1587,
+              "line": 1607,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86199,7 +86563,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1602,
+              "line": 1622,
               "class": "LLFloaterDirector",
               "function": "onLocomotionRoleChanged",
               "wired_class": "LLFloaterDirector",
@@ -86210,7 +86574,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2971,
+              "line": 3007,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86221,7 +86585,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3021,
+              "line": 3057,
               "class": "LLFloaterDirector",
               "function": "onLocomotionRoleChanged",
               "wired_class": "LLFloaterDirector",
@@ -86289,7 +86653,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1588,
+              "line": 1608,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86300,7 +86664,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2972,
+              "line": 3008,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86379,7 +86743,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1589,
+              "line": 1609,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86390,7 +86754,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2973,
+              "line": 3009,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86469,7 +86833,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1590,
+              "line": 1610,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86480,7 +86844,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2974,
+              "line": 3010,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86559,7 +86923,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1592,
+              "line": 1612,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86570,7 +86934,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2975,
+              "line": 3011,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86638,7 +87002,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1593,
+              "line": 1613,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -86649,7 +87013,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1601,
+              "line": 1621,
               "class": "LLFloaterDirector",
               "function": "onClickClearLoco",
               "wired_class": "LLFloaterDirector",
@@ -86660,7 +87024,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2976,
+              "line": 3012,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86671,7 +87035,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3020,
+              "line": 3056,
               "class": "LLFloaterDirector",
               "function": "onClickClearLoco",
               "wired_class": "LLFloaterDirector",
@@ -86739,7 +87103,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1610,
+              "line": 1630,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "LLFloaterDirector",
@@ -86750,7 +87114,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3032,
+              "line": 3068,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -86898,7 +87262,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2977,
+              "line": 3013,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -92802,7 +93166,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1645,
+              "line": 1665,
               "class": "LLFloaterDirector",
               "function": "onOpenActorGaze",
               "wired_class": "LLFloaterDirector",
@@ -92813,7 +93177,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3121,
+              "line": 3157,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -99658,7 +100022,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1650,
+              "line": 1670,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "LLFloaterDirector",
@@ -99669,7 +100033,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3138,
+              "line": 3174,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -101440,7 +101804,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7620,
+              "line": 7656,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -106162,7 +106526,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7621,
+              "line": 7657,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -109187,7 +109551,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7622,
+              "line": 7658,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -125126,7 +125490,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4257,
+              "line": 4293,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125230,7 +125594,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4258,
+              "line": 4294,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125334,7 +125698,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4259,
+              "line": 4295,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125438,7 +125802,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4260,
+              "line": 4296,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125542,7 +125906,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4261,
+              "line": 4297,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125646,7 +126010,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4262,
+              "line": 4298,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125750,7 +126114,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4263,
+              "line": 4299,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125854,7 +126218,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4264,
+              "line": 4300,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125958,7 +126322,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4265,
+              "line": 4301,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -127343,7 +127707,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3172,
+              "line": 3208,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -127433,7 +127797,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3176,
+              "line": 3212,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -127753,7 +128117,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1629,
+              "line": 1649,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -127764,7 +128128,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1637,
+              "line": 1657,
               "class": "LLFloaterDirector",
               "function": "onClickSetSubjectFromSelection",
               "wired_class": "LLFloaterDirector",
@@ -127775,7 +128139,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3108,
+              "line": 3144,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -127843,7 +128207,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1633,
+              "line": 1653,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -127854,7 +128218,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1641,
+              "line": 1661,
               "class": "LLFloaterDirector",
               "function": "onClickClearSubject",
               "wired_class": "LLFloaterDirector",
@@ -127865,7 +128229,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3112,
+              "line": 3148,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -127933,7 +128297,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1630,
+              "line": 1650,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -127944,7 +128308,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1638,
+              "line": 1658,
               "class": "LLFloaterDirector",
               "function": "onClickSetSubjectFromSelection",
               "wired_class": "LLFloaterDirector",
@@ -127955,7 +128319,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3109,
+              "line": 3145,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -128023,7 +128387,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1634,
+              "line": 1654,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -128034,7 +128398,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1642,
+              "line": 1662,
               "class": "LLFloaterDirector",
               "function": "onClickClearSubject",
               "wired_class": "LLFloaterDirector",
@@ -128045,7 +128409,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3113,
+              "line": 3149,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -128113,7 +128477,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1631,
+              "line": 1651,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -128124,7 +128488,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1639,
+              "line": 1659,
               "class": "LLFloaterDirector",
               "function": "onClickSetSubjectFromSelection",
               "wired_class": "LLFloaterDirector",
@@ -128135,7 +128499,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3110,
+              "line": 3146,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -128203,7 +128567,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1635,
+              "line": 1655,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -128214,7 +128578,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1643,
+              "line": 1663,
               "class": "LLFloaterDirector",
               "function": "onClickClearSubject",
               "wired_class": "LLFloaterDirector",
@@ -128225,7 +128589,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3114,
+              "line": 3150,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -128293,7 +128657,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1632,
+              "line": 1652,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -128304,7 +128668,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1640,
+              "line": 1660,
               "class": "LLFloaterDirector",
               "function": "onClickSetSubjectFromSelection",
               "wired_class": "LLFloaterDirector",
@@ -128315,7 +128679,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3111,
+              "line": 3147,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -128383,7 +128747,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1636,
+              "line": 1656,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -128394,7 +128758,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1644,
+              "line": 1664,
               "class": "LLFloaterDirector",
               "function": "onClickClearSubject",
               "wired_class": "LLFloaterDirector",
@@ -128405,7 +128769,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3115,
+              "line": 3151,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -132539,7 +132903,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7624,
+              "line": 7660,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -132607,7 +132971,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1663,
+              "line": 1683,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -132618,7 +132982,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1668,
+              "line": 1688,
               "class": "LLFloaterDirector",
               "function": "onClickBuildOtsPair",
               "wired_class": "LLFloaterDirector",
@@ -132629,7 +132993,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3155,
+              "line": 3191,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -132995,7 +133359,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7623,
+              "line": 7659,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -133063,7 +133427,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1664,
+              "line": 1684,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -133074,7 +133438,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1670,
+              "line": 1690,
               "class": "LLFloaterDirector",
               "function": "onClickZolly",
               "wired_class": "LLFloaterDirector",
@@ -133085,7 +133449,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3160,
+              "line": 3196,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -133356,7 +133720,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1665,
+              "line": 1685,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -133367,7 +133731,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1672,
+              "line": 1692,
               "class": "LLFloaterDirector",
               "function": "onClickHeroArc",
               "wired_class": "LLFloaterDirector",
@@ -133378,7 +133742,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3165,
+              "line": 3201,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -133993,7 +134357,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3208,
+              "line": 3244,
               "class": "LLFloaterDirector",
               "function": "bindOperatorPage",
               "wired_class": "LLFloaterDirector",
@@ -135760,7 +136124,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4280,
+              "line": 4316,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140395,7 +140759,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3235,
+              "line": 3271,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -141407,7 +141771,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3228,
+              "line": 3264,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -141580,7 +141944,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3291,
+              "line": 3327,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -141953,7 +142317,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3299,
+              "line": 3335,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -142057,7 +142421,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3300,
+              "line": 3336,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -142161,7 +142525,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3301,
+              "line": 3337,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -142265,7 +142629,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3302,
+              "line": 3338,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -142563,7 +142927,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4268,
+              "line": 4304,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142654,7 +143018,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4273,
+              "line": 4309,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142745,7 +143109,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4270,
+              "line": 4306,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142836,7 +143200,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4274,
+              "line": 4310,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142927,7 +143291,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4271,
+              "line": 4307,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143018,7 +143382,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4269,
+              "line": 4305,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143109,7 +143473,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4272,
+              "line": 4308,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143499,7 +143863,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2093,
+              "line": 2113,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -143708,7 +144072,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llviewerjoystick.cpp",
-              "line": 993,
+              "line": 995,
               "class": "LLViewerJoystick",
               "function": "LLViewerJoystick",
               "wired_class": "LLViewerJoystick",
@@ -143855,7 +144219,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2098,
+              "line": 2118,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -145714,7 +146078,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1661,
+              "line": 1681,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -145725,7 +146089,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3146,
+              "line": 3182,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -145791,7 +146155,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1662,
+              "line": 1682,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -145802,7 +146166,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1666,
+              "line": 1686,
               "class": "LLFloaterDirector",
               "function": "onClickManagePrism",
               "wired_class": "LLFloaterDirector",
@@ -145813,7 +146177,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3150,
+              "line": 3186,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -146208,7 +146572,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2368,
+              "line": 2404,
               "class": "LLFloaterDirector",
               "function": "bindLensFocusPage",
               "wired_class": "LLFloaterDirector",
@@ -147320,7 +147684,7 @@
       "label": "Filters",
       "group": "lens_group",
       "group_label": "Lens",
-      "row_count": 29,
+      "row_count": 44,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_lens_looks.xml",
@@ -147347,12 +147711,12 @@
       ],
       "classification": {
         "logic_class": "code-driven",
-        "setting_bound_rows": 26,
-        "setting_coverage": 0.896552,
+        "setting_bound_rows": 39,
+        "setting_coverage": 0.886364,
         "cpp_referenced_rows": 3,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
-      "unresolved_row_count": 0,
+      "unresolved_row_count": 2,
       "rows": [
         {
           "card": "gradnd",
@@ -147412,7 +147776,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 10,
+              "line": 11,
               "tag": "combo_box",
               "control_name": "RenderGradNDPreset",
               "callbacks": [],
@@ -147442,7 +147806,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 10,
+              "line": 11,
               "widget": "gradnd_preset_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -147515,7 +147879,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 23,
+              "line": 24,
               "tag": "slider",
               "control_name": "RenderGradNDDensity",
               "callbacks": [],
@@ -147532,7 +147896,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 23,
+              "line": 24,
               "widget": "gradnd_density_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -147617,7 +147981,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 28,
+              "line": 29,
               "tag": "slider",
               "control_name": "RenderGradNDPosition",
               "callbacks": [],
@@ -147634,7 +147998,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 28,
+              "line": 29,
               "widget": "gradnd_pos_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -147707,7 +148071,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 33,
+              "line": 34,
               "tag": "slider",
               "control_name": "RenderGradNDSoftness",
               "callbacks": [],
@@ -147724,7 +148088,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 33,
+              "line": 34,
               "widget": "gradnd_soft_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -147797,7 +148161,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 38,
+              "line": 39,
               "tag": "slider",
               "control_name": "RenderGradNDAngle",
               "callbacks": [],
@@ -147814,7 +148178,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 38,
+              "line": 39,
               "widget": "gradnd_angle_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -147887,7 +148251,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 43,
+              "line": 44,
               "tag": "slider",
               "control_name": "RenderGradNDSkyConfine",
               "callbacks": [],
@@ -147904,7 +148268,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 43,
+              "line": 44,
               "widget": "gradnd_confine_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -147977,7 +148341,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 48,
+              "line": 49,
               "tag": "slider",
               "control_name": "RenderGradNDSunWeight",
               "callbacks": [],
@@ -147994,7 +148358,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 48,
+              "line": 49,
               "widget": "gradnd_sunw_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148067,7 +148431,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 53,
+              "line": 54,
               "tag": "slider",
               "control_name": "RenderGradNDSunRadius",
               "callbacks": [],
@@ -148084,7 +148448,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 53,
+              "line": 54,
               "widget": "gradnd_sunr_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148143,7 +148507,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 58,
+              "line": 59,
               "tag": "kit_switch",
               "control_name": "RenderGradNDFlip",
               "callbacks": [],
@@ -148160,7 +148524,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 58,
+              "line": 59,
               "widget": "grad_nd_flip_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148221,7 +148585,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 61,
+              "line": 62,
               "tag": "color_swatch",
               "control_name": "RenderGradNDTintColor",
               "callbacks": [],
@@ -148238,7 +148602,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 61,
+              "line": 62,
               "widget": "gradnd_tint_swatch",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148299,7 +148663,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 64,
+              "line": 65,
               "tag": "slider",
               "control_name": "RenderGradNDTintAmount",
               "callbacks": [],
@@ -148316,7 +148680,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 64,
+              "line": 65,
               "widget": "gradnd_tint_amount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148383,7 +148747,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 71,
+              "line": 72,
               "tag": "combo_box",
               "control_name": "RenderPolarizerPreset",
               "callbacks": [],
@@ -148413,7 +148777,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 71,
+              "line": 72,
               "widget": "polarizer_preset_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148486,7 +148850,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 82,
+              "line": 83,
               "tag": "slider",
               "control_name": "RenderPolarizerStrength",
               "callbacks": [],
@@ -148503,7 +148867,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 82,
+              "line": 83,
               "widget": "pol_strength_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148588,7 +148952,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 87,
+              "line": 88,
               "tag": "slider",
               "control_name": "RenderPolarizerGlareStrength",
               "callbacks": [],
@@ -148605,7 +148969,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 87,
+              "line": 88,
               "widget": "pol_glare_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148678,7 +149042,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 92,
+              "line": 93,
               "tag": "slider",
               "control_name": "RenderPolarizerSkyDarken",
               "callbacks": [],
@@ -148695,7 +149059,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 92,
+              "line": 93,
               "widget": "pol_skydark_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148768,7 +149132,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 97,
+              "line": 98,
               "tag": "slider",
               "control_name": "RenderPolarizerSkySaturation",
               "callbacks": [],
@@ -148785,7 +149149,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 97,
+              "line": 98,
               "widget": "pol_skysat_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148858,7 +149222,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 102,
+              "line": 103,
               "tag": "slider",
               "control_name": "RenderPolarizerGlareThreshold",
               "callbacks": [],
@@ -148875,7 +149239,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 102,
+              "line": 103,
               "widget": "pol_glarethr_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -148948,7 +149312,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 107,
+              "line": 108,
               "tag": "slider",
               "control_name": "RenderPolarizerGlareMaxDepth",
               "callbacks": [],
@@ -148965,7 +149329,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 107,
+              "line": 108,
               "widget": "pol_glaredepth_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149024,7 +149388,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 112,
+              "line": 113,
               "tag": "kit_switch",
               "control_name": "RenderPolarizerAutoBand",
               "callbacks": [],
@@ -149041,7 +149405,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 112,
+              "line": 113,
               "widget": "polarizer_auto_band_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149102,7 +149466,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 115,
+              "line": 116,
               "tag": "slider",
               "control_name": "RenderPolarizerBandRadius",
               "callbacks": [],
@@ -149119,7 +149483,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 115,
+              "line": 116,
               "widget": "pol_bandrad_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149202,7 +149566,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 122,
+              "line": 123,
               "tag": "combo_box",
               "control_name": "RenderLensFilterPreset",
               "callbacks": [],
@@ -149232,7 +149596,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 122,
+              "line": 123,
               "widget": "lens_filter_preset",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149293,7 +149657,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 137,
+              "line": 138,
               "tag": "slider",
               "control_name": "RenderLensFilterAmount",
               "callbacks": [],
@@ -149310,7 +149674,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 137,
+              "line": 138,
               "widget": "lens_filter_amount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149383,7 +149747,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 144,
+              "line": 145,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -149398,7 +149762,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2319,
+              "line": 2355,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -149464,7 +149828,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 158,
+              "line": 159,
               "tag": "combo_box",
               "control_name": "RenderInfraredMode",
               "callbacks": [],
@@ -149481,7 +149845,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 158,
+              "line": 159,
               "widget": "ir_mode",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149542,7 +149906,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 166,
+              "line": 167,
               "tag": "slider",
               "control_name": "RenderInfraredStrength",
               "callbacks": [],
@@ -149559,7 +149923,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 166,
+              "line": 167,
               "widget": "ir_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149646,7 +150010,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 171,
+              "line": 172,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -149661,7 +150025,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2335,
+              "line": 2371,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -149735,7 +150099,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 176,
+              "line": 177,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -149750,7 +150114,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2327,
+              "line": 2363,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -149816,7 +150180,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 189,
+              "line": 190,
               "tag": "combo_box",
               "control_name": "RenderSoftEdgeBlurType",
               "callbacks": [],
@@ -149833,7 +150197,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 189,
+              "line": 190,
               "widget": "softedge_blur_type",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149894,7 +150258,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 197,
+              "line": 198,
               "tag": "slider",
               "control_name": "RenderSoftEdgeBlur",
               "callbacks": [],
@@ -149911,7 +150275,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-              "line": 197,
+              "line": 198,
               "widget": "softedge_blur",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -149930,6 +150294,1019 @@
                 "tag": "panel",
                 "name": "panel_exposure_hub",
                 "line": 2
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Blink now",
+          "kind": "button",
+          "widget": "pov_blink_now",
+          "matched_widget": "pov_blink_now",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 205,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2340,
+              "class": "LLFloaterDirector",
+              "function": "bindLensFiltersPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindLensFiltersPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "if (LLButton* blink = root->findChild<LLButton>(\"pov_blink_now\"))"
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Hold closed",
+          "kind": "toggle",
+          "widget": "pov_blink_held",
+          "matched_widget": "pov_blink_held",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 208,
+              "tag": "kit_switch",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2338,
+              "class": "ALKitBindingRegistry",
+              "function": "add",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindLensFiltersPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "ALKitBindingRegistry::instance().add(root, \"pov_blink_held\","
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2342,
+              "class": "LLFloaterDirector",
+              "function": "bindLensFiltersPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindLensFiltersPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "if (LLUICtrl* hold = root->findChild<LLUICtrl>(\"pov_blink_held\"))"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2353,
+              "class": "LLFloaterDirector",
+              "function": "bindLensFiltersPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindLensFiltersPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mPOVBlinkHeld = root->findChild<LLUICtrl>(\"pov_blink_held\");"
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Close (ms)",
+          "kind": "number",
+          "widget": "pov_CloseMs",
+          "matched_widget": "pov_CloseMs",
+          "declared_setting": "POVBlinkCloseMs",
+          "resolved_setting": "POVBlinkCloseMs",
+          "setting_candidates": [
+            "POVBlinkCloseMs"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32070,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 211,
+              "tag": "spinner",
+              "control_name": "POVBlinkCloseMs",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 211,
+              "widget": "pov_CloseMs",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Hold (ms)",
+          "kind": "number",
+          "widget": "pov_HoldMs",
+          "matched_widget": "pov_HoldMs",
+          "declared_setting": "POVBlinkHoldMs",
+          "resolved_setting": "POVBlinkHoldMs",
+          "setting_candidates": [
+            "POVBlinkHoldMs"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32077,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 214,
+              "tag": "spinner",
+              "control_name": "POVBlinkHoldMs",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 214,
+              "widget": "pov_HoldMs",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Open (ms)",
+          "kind": "number",
+          "widget": "pov_OpenMs",
+          "matched_widget": "pov_OpenMs",
+          "declared_setting": "POVBlinkOpenMs",
+          "resolved_setting": "POVBlinkOpenMs",
+          "setting_candidates": [
+            "POVBlinkOpenMs"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32084,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 217,
+              "tag": "spinner",
+              "control_name": "POVBlinkOpenMs",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 217,
+              "widget": "pov_OpenMs",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 5,
+          "label": "Depth",
+          "kind": "slider",
+          "widget": "pov_Depth",
+          "matched_widget": "pov_Depth",
+          "declared_setting": "POVBlinkDepth",
+          "resolved_setting": "POVBlinkDepth",
+          "setting_candidates": [
+            "POVBlinkDepth"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32091,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 220,
+              "tag": "slider",
+              "control_name": "POVBlinkDepth",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 220,
+              "widget": "pov_Depth",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
+          "label": "Lid curve",
+          "kind": "slider",
+          "widget": "pov_Curve",
+          "matched_widget": "pov_Curve",
+          "declared_setting": "POVBlinkCurve",
+          "resolved_setting": "POVBlinkCurve",
+          "setting_candidates": [
+            "POVBlinkCurve"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32098,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 225,
+              "tag": "slider",
+              "control_name": "POVBlinkCurve",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 225,
+              "widget": "pov_Curve",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 7,
+          "label": "Softness",
+          "kind": "slider",
+          "widget": "pov_Softness",
+          "matched_widget": "pov_Softness",
+          "declared_setting": "POVBlinkSoftness",
+          "resolved_setting": "POVBlinkSoftness",
+          "setting_candidates": [
+            "POVBlinkSoftness"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32105,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 230,
+              "tag": "slider",
+              "control_name": "POVBlinkSoftness",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 230,
+              "widget": "pov_Softness",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "Darken",
+          "kind": "slider",
+          "widget": "pov_Darken",
+          "matched_widget": "pov_Darken",
+          "declared_setting": "POVBlinkDarken",
+          "resolved_setting": "POVBlinkDarken",
+          "setting_candidates": [
+            "POVBlinkDarken"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32112,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 235,
+              "tag": "slider",
+              "control_name": "POVBlinkDarken",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 235,
+              "widget": "pov_Darken",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
+          "label": "Blur",
+          "kind": "slider",
+          "widget": "pov_Blur",
+          "matched_widget": "pov_Blur",
+          "declared_setting": "POVBlinkBlur",
+          "resolved_setting": "POVBlinkBlur",
+          "setting_candidates": [
+            "POVBlinkBlur"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32119,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 240,
+              "tag": "slider",
+              "control_name": "POVBlinkBlur",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 240,
+              "widget": "pov_Blur",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 10,
+          "label": "Style",
+          "kind": "combo",
+          "widget": "pov_Style",
+          "matched_widget": "pov_Style",
+          "declared_setting": "POVBlinkStyle",
+          "resolved_setting": "POVBlinkStyle",
+          "setting_candidates": [
+            "POVBlinkStyle"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32126,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Dark",
+            "Warm"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 245,
+              "tag": "combo_box",
+              "control_name": "POVBlinkStyle",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 245,
+              "widget": "pov_Style",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 11,
+          "label": "Auto blink",
+          "kind": "toggle",
+          "widget": "pov_Auto",
+          "matched_widget": "pov_Auto",
+          "declared_setting": "POVBlinkAuto",
+          "resolved_setting": "POVBlinkAuto",
+          "setting_candidates": [
+            "POVBlinkAuto"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32133,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 253,
+              "tag": "kit_switch",
+              "control_name": "POVBlinkAuto",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 253,
+              "widget": "pov_Auto",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 12,
+          "label": "Rate / min",
+          "kind": "number",
+          "widget": "pov_Rate",
+          "matched_widget": "pov_Rate",
+          "declared_setting": "POVBlinkRate",
+          "resolved_setting": "POVBlinkRate",
+          "setting_candidates": [
+            "POVBlinkRate"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32140,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 256,
+              "tag": "spinner",
+              "control_name": "POVBlinkRate",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 256,
+              "widget": "pov_Rate",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 13,
+          "label": "Pad blink",
+          "kind": "combo",
+          "widget": "pov_PadTap",
+          "matched_widget": "pov_PadTap",
+          "declared_setting": "POVBlinkPadTap",
+          "resolved_setting": "POVBlinkPadTap",
+          "setting_candidates": [
+            "POVBlinkPadTap"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32147,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Off",
+            "Back / View",
+            "Start / Menu",
+            "Left stick",
+            "Right stick"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 259,
+              "tag": "combo_box",
+              "control_name": "POVBlinkPadTap",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2351,
+              "class": "LLFloaterDirector",
+              "function": "bindLensFiltersPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindLensFiltersPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mPOVBlinkPadTap = root->findChild<LLUICtrl>(\"pov_PadTap\");"
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 259,
+              "widget": "pov_PadTap",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            }
+          ]
+        },
+        {
+          "card": "pov_eye_blink",
+          "card_title": "Eye blink",
+          "option_index": null,
+          "option_label": null,
+          "index": 14,
+          "label": "Pad hold",
+          "kind": "combo",
+          "widget": "pov_PadHold",
+          "matched_widget": "pov_PadHold",
+          "declared_setting": "POVBlinkPadHold",
+          "resolved_setting": "POVBlinkPadHold",
+          "setting_candidates": [
+            "POVBlinkPadHold"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32154,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Off",
+            "Back / View",
+            "Start / Menu",
+            "Left stick",
+            "Right stick"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 270,
+              "tag": "combo_box",
+              "control_name": "POVBlinkPadHold",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2352,
+              "class": "LLFloaterDirector",
+              "function": "bindLensFiltersPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindLensFiltersPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mPOVBlinkPadHold = root->findChild<LLUICtrl>(\"pov_PadHold\");"
+            }
+          ],
+          "unresolved": [],
+          "other_writers": [
+            {
+              "kind": "xui",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+              "line": 270,
+              "widget": "pov_PadHold",
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+                "tag": "panel",
+                "name": "filters_tab_logic",
+                "line": 3
               }
             }
           ]
@@ -171411,7 +172788,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2003,
+              "line": 2023,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -171852,7 +173229,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2025,
+              "line": 2045,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -171907,7 +173284,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2028,
+              "line": 2048,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -171939,7 +173316,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 29690,
+              "line": 29692,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -171974,7 +173351,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2030,
+              "line": 2050,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -172006,7 +173383,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25005,
+              "line": 25007,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -172041,7 +173418,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2045,
+              "line": 2065,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -172073,7 +173450,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25017,
+              "line": 25019,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -172108,7 +173485,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2048,
+              "line": 2068,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -172227,7 +173604,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2021,
+              "line": 2041,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -172240,7 +173617,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3607,
+              "line": 3643,
               "class": "LLFloaterDirector",
               "function": "refreshLauncherCards",
               "wired_class": "LLFloaterDirector",
@@ -172295,7 +173672,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2023,
+              "line": 2043,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176656,7 +178033,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1652,
+              "line": 1672,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "LLFloaterDirector",
@@ -176667,7 +178044,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3142,
+              "line": 3178,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -178978,7 +180355,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8199,
+              "line": 8250,
               "class": "LLFloaterDirector",
               "function": "showProjectorTrack",
               "wired_class": "LLFloaterDirector",
@@ -185095,7 +186472,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1997,
+              "line": 2017,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -185442,7 +186819,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2228,
+              "line": 2248,
               "class": "LLFloaterDirector",
               "function": "bindLightActorsPage",
               "wired_class": "LLFloaterDirector",
@@ -185509,7 +186886,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2234,
+              "line": 2254,
               "class": "LLFloaterDirector",
               "function": "bindLightActorsPage",
               "wired_class": "LLFloaterDirector",
@@ -186011,7 +187388,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1654,
+              "line": 1674,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "LLFloaterDirector",
@@ -186022,7 +187399,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2222,
+              "line": 2242,
               "class": "LLFloaterDirector",
               "function": "bindLightActorsPage",
               "wired_class": "LLFloaterDirector",
@@ -187568,7 +188945,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3176,
+              "line": 3212,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -189447,7 +190824,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2290,
+              "line": 2310,
               "class": "LLFloaterDirector",
               "function": "bindImagePage",
               "wired_class": "LLFloaterDirector",
@@ -189802,7 +191179,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1797,
+              "line": 1817,
               "class": "LLFloaterDirector",
               "function": "postBuildV2",
               "wired_class": "LLFloaterDirector",
@@ -189815,7 +191192,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2276,
+              "line": 2296,
               "class": "LLFloaterDirector",
               "function": "bindImagePage",
               "wired_class": "LLFloaterDirector",
@@ -189828,7 +191205,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3373,
+              "line": 3409,
               "class": "LLFloaterDirector",
               "function": "onOpen",
               "wired_class": "LLFloaterDirector",
@@ -196161,7 +197538,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2153,
+              "line": 2173,
               "class": "LLFloaterDirector",
               "function": "bindRotoInkPage",
               "wired_class": "LLFloaterDirector",
@@ -203597,7 +204974,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2191,
+              "line": 2211,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -203681,7 +205058,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2203,
+              "line": 2223,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -203765,7 +205142,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2163,
+              "line": 2183,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -207107,7 +208484,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2170,
+              "line": 2190,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -207203,7 +208580,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2181,
+              "line": 2201,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -212894,7 +214271,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2186,
+              "line": 2206,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -218032,7 +219409,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1545,
+              "line": 1565,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218043,7 +219420,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2903,
+              "line": 2939,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218122,7 +219499,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1544,
+              "line": 1564,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218133,7 +219510,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1569,
+              "line": 1589,
               "class": "LLFloaterDirector",
               "function": "onActorStyleReset",
               "wired_class": "LLFloaterDirector",
@@ -218144,7 +219521,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2902,
+              "line": 2938,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218155,7 +219532,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2953,
+              "line": 2989,
               "class": "LLFloaterDirector",
               "function": "onActorStyleReset",
               "wired_class": "LLFloaterDirector",
@@ -218367,7 +219744,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1531,
+              "line": 1551,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218378,7 +219755,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2889,
+              "line": 2925,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218460,7 +219837,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1530,
+              "line": 1550,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218471,7 +219848,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2888,
+              "line": 2924,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218550,7 +219927,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1534,
+              "line": 1554,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218561,7 +219938,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2892,
+              "line": 2928,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218640,7 +220017,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1535,
+              "line": 1555,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218651,7 +220028,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2893,
+              "line": 2929,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218794,7 +220171,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1532,
+              "line": 1552,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218805,7 +220182,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2890,
+              "line": 2926,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218884,7 +220261,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1533,
+              "line": 1553,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218895,7 +220272,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2891,
+              "line": 2927,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -218974,7 +220351,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1542,
+              "line": 1562,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -218985,7 +220362,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2900,
+              "line": 2936,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219064,7 +220441,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1538,
+              "line": 1558,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219075,7 +220452,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2896,
+              "line": 2932,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219154,7 +220531,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1537,
+              "line": 1557,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219165,7 +220542,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2895,
+              "line": 2931,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219244,7 +220621,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1539,
+              "line": 1559,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219255,7 +220632,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2897,
+              "line": 2933,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219334,7 +220711,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1543,
+              "line": 1563,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219345,7 +220722,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2901,
+              "line": 2937,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219434,7 +220811,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1540,
+              "line": 1560,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219445,7 +220822,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2898,
+              "line": 2934,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219524,7 +220901,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1541,
+              "line": 1561,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219535,7 +220912,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2899,
+              "line": 2935,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219614,7 +220991,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1536,
+              "line": 1556,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -219625,7 +221002,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2894,
+              "line": 2930,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -219752,7 +221129,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2650,
+              "line": 2686,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -219831,7 +221208,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2544,
+              "line": 2580,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -219961,7 +221338,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2411,
+              "line": 2447,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -220616,7 +221993,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2476,
+              "line": 2512,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -220813,7 +222190,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2497,
+              "line": 2533,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -220878,7 +222255,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2520,
+              "line": 2556,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -220943,7 +222320,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2536,
+              "line": 2572,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -221008,7 +222385,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2646,
+              "line": 2682,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -222069,7 +223446,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20934,
+              "line": 20936,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222160,7 +223537,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20951,
+              "line": 20953,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222407,7 +223784,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20953,
+              "line": 20955,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222576,7 +223953,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20956,
+              "line": 20958,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222667,7 +224044,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20957,
+              "line": 20959,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222758,7 +224135,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20958,
+              "line": 20960,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222849,7 +224226,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20959,
+              "line": 20961,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222940,7 +224317,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20960,
+              "line": 20962,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223031,7 +224408,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20961,
+              "line": 20963,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223122,7 +224499,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20962,
+              "line": 20964,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223291,7 +224668,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20969,
+              "line": 20971,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223382,7 +224759,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20971,
+              "line": 20973,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223785,7 +225162,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21423,
+              "line": 21425,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223944,7 +225321,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2444,
+              "line": 2480,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -223955,7 +225332,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2540,
+              "line": 2576,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -224133,7 +225510,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21424,
+              "line": 21426,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224224,7 +225601,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21422,
+              "line": 21424,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224381,7 +225758,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2433,
+              "line": 2469,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -224482,7 +225859,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2434,
+              "line": 2470,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -224581,7 +225958,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21418,
+              "line": 21420,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224984,7 +226361,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21434,
+              "line": 21436,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225309,7 +226686,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21441,
+              "line": 21443,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225363,7 +226740,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2551,
+              "line": 2587,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225439,7 +226816,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2551,
+              "line": 2587,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225515,7 +226892,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2552,
+              "line": 2588,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225591,7 +226968,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2552,
+              "line": 2588,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225667,7 +227044,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2553,
+              "line": 2589,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225743,7 +227120,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2553,
+              "line": 2589,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225819,7 +227196,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2554,
+              "line": 2590,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225895,7 +227272,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2554,
+              "line": 2590,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225975,7 +227352,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2555,
+              "line": 2591,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226051,7 +227428,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2555,
+              "line": 2591,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226118,7 +227495,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2528,
+              "line": 2564,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226129,7 +227506,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2556,
+              "line": 2592,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226194,7 +227571,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2532,
+              "line": 2568,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226205,7 +227582,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2556,
+              "line": 2592,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226270,7 +227647,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2642,
+              "line": 2678,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -226333,7 +227710,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2417,
+              "line": 2453,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226344,7 +227721,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2583,
+              "line": 2619,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226424,7 +227801,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2426,
+              "line": 2462,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226435,7 +227812,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2583,
+              "line": 2619,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226511,7 +227888,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2584,
+              "line": 2620,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226587,7 +227964,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2584,
+              "line": 2620,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226663,7 +228040,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2585,
+              "line": 2621,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226739,7 +228116,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2585,
+              "line": 2621,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226815,7 +228192,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2586,
+              "line": 2622,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226891,7 +228268,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2586,
+              "line": 2622,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -226967,7 +228344,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2587,
+              "line": 2623,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -227034,7 +228411,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2418,
+              "line": 2454,
               "class": "LLFloaterDirector",
               "function": "setU32",
               "wired_class": "LLFloaterDirector",
@@ -227045,7 +228422,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2630,
+              "line": 2666,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -227761,7 +229138,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2637,
+              "line": 2673,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -228905,7 +230282,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2616,
+              "line": 2652,
               "class": "LLFloaterDirector",
               "function": "bindAtmospherePage",
               "wired_class": "LLFloaterDirector",
@@ -229153,7 +230530,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2620,
+              "line": 2656,
               "class": "LLFloaterDirector",
               "function": "bindAtmospherePage",
               "wired_class": "LLFloaterDirector",
@@ -229622,7 +230999,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2658,
+              "line": 2694,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -230094,7 +231471,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2663,
+              "line": 2699,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -237424,7 +238801,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2108,
+              "line": 2128,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -237478,7 +238855,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2109,
+              "line": 2129,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -237532,7 +238909,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2114,
+              "line": 2134,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -237652,7 +239029,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2133,
+              "line": 2153,
               "class": "LLNotifications",
               "function": "setIgnored",
               "wired_class": "LLFloaterDirector",
@@ -237713,7 +239090,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2121,
+              "line": 2141,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",

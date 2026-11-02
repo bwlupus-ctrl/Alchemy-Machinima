@@ -157,6 +157,15 @@ std::vector<std::string> pageSettings(const std::string& page)
     if (page == "lens_group/filters_tab")
     {
         add(owned(INFRARED)); add(owned(SOFT_EDGE)); add(owned(GRAD_ND)); add(owned(POLARIZER)); add(owned(LENS_FILTER));
+        // Own the complete blink look. Cadence/master and gamepad bindings are
+        // user preferences; live blink/hold gestures have no saved settings.
+        for (const std::string& name : select({"POVBlink"},
+            {"POVBlinkAuto", "POVBlinkRate", "POVBlinkPad"}))
+        {
+            LLControlVariable* control = gSavedSettings.getControl(name);
+            if (control && control->getComment().find("Shot key") == std::string::npos)
+                keys.push_back(name);
+        }
         add(infraredGrainSettings()); // opt-in IR grain hint
     }
     if (page == "camera_group/operator_tab") add(owned(SHAKE));

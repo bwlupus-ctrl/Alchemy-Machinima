@@ -192,6 +192,7 @@ set(viewer_SOURCE_FILES
     alavatarstaging.cpp
     alavatarstagingmodel.cpp
     allocalfogmanager.cpp
+    alpovblink.cpp
     aldirectorhotkeys.cpp
     aldirectorswitcher.cpp
     aldirectorswitchermodel.cpp
@@ -1139,6 +1140,8 @@ set(viewer_HEADER_FILES
     alavatarstaging.h
     alavatarstagingmodel.h
     allocalfogmanager.h
+    alpovblink.h
+    alpovblinkmath.h
     aldirectorhotkeys.h
     aldirectorswitcher.h
     aldirectorswitchermodel.h

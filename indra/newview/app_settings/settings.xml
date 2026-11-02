@@ -32067,5 +32067,96 @@
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>0</integer>
     </map>
+    <key>POVBlinkCloseMs</key>
+    <map>
+        <key>Comment</key><string>Time to close the lids in milliseconds. Quintic easing starts and ends smoothly.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>90</real>
+    </map>
+    <key>POVBlinkHoldMs</key>
+    <map>
+        <key>Comment</key><string>Time at maximum blink depth before opening. Hold closed stays shut until released.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>40</real>
+    </map>
+    <key>POVBlinkOpenMs</key>
+    <map>
+        <key>Comment</key><string>Time to reopen the lids in milliseconds, slower than closure by default.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>180</real>
+    </map>
+    <key>POVBlinkDepth</key>
+    <map>
+        <key>Comment</key><string>Maximum closure: 1 completely covers the frame; lower values leave a droopy opening.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>1</real>
+    </map>
+    <key>POVBlinkCurve</key>
+    <map>
+        <key>Comment</key><string>Arch of the top and bottom lid edges. Aspect-correct in units of frame height.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.35</real>
+    </map>
+    <key>POVBlinkSoftness</key>
+    <map>
+        <key>Comment</key><string>Feather width at the lid edges. Fully closed Dark lids always cover the whole frame.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.02</real>
+    </map>
+    <key>POVBlinkDarken</key>
+    <map>
+        <key>Comment</key><string>Darkens the remaining image as the lids close, especially near the gap.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.35</real>
+    </map>
+    <key>POVBlinkBlur</key>
+    <map>
+        <key>Comment</key><string>Cheap four-tap blur near the lid edges and across the closing image. Only runs during a blink.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>0.4</real>
+    </map>
+    <key>POVBlinkStyle</key>
+    <map>
+        <key>Comment</key><string>Dark gives soft dark lids and a subtle lash shadow. Warm transmits a faint red-orange glow and a little scene colour.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>U32</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>POVBlinkAuto</key>
+    <map>
+        <key>Comment</key><string>Blink naturally at random intervals. At least 650 ms fully open between blinks.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+    <key>POVBlinkRate</key>
+    <map>
+        <key>Comment</key><string>Target blinks per minute. Natural random intervals and a fully open refractory gap can reduce the actual rate.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>F32</string>
+        <key>Value</key><real>15</real>
+    </map>
+    <key>POVBlinkPadTap</key>
+    <map>
+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>U32</string>
+        <key>Value</key><integer>64</integer>
+    </map>
+    <key>POVBlinkPadHold</key>
+    <map>
+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>U32</string>
+        <key>Value</key><integer>64</integer>
+    </map>
 </map>
 </llsd>

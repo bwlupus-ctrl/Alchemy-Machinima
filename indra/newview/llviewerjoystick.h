@@ -132,6 +132,7 @@ public:
     void moveFlycam(bool reset = false);
     F32 getJoystickAxis(U32 axis) const;
     U32 getJoystickButton(U32 button) const;
+    std::string povBlinkPadConflict(U32 mask) const;
     bool isJoystickInitialized() const {return (mDriverState==JDS_INITIALIZED);}
     bool isLikeSpaceNavigator() const;
     void setNeedsReset(bool reset = true) { mResetFlag = reset; }

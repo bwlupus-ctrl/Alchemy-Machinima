@@ -281,6 +281,7 @@ LLGLSLShader            gSMAABlendWeightsProgram[4];
 LLGLSLShader            gSMAANeighborhoodBlendProgram[4];
 LLGLSLShader            gCASProgram;
 LLGLSLShader            gCineFisheyeProgram;
+LLGLSLShader            gPOVBlinkProgram;
 // [Ultimate Diopter] pass 1 gather (quality tap tiers) + pass 2 composite
 LLGLSLShader            gUltimateDiopterGatherProgram[4];
 LLGLSLShader            gUltimateDiopterProgram;
@@ -757,6 +758,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gTronWorldProgram); // [TronT1]
     mShaderList.push_back(&gTronTrailProgram); // [TronT3]
     mShaderList.push_back(&gCineFisheyeProgram);
+    mShaderList.push_back(&gPOVBlinkProgram);
     // [Ultimate Diopter]
     for (U32 i = 0; i < 4; ++i)
     {
@@ -2094,6 +2096,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gCASProgram.unload();
         gCineFisheyeProgram.unload();
+        gPOVBlinkProgram.unload();
         // [Ultimate Diopter]
         for (U32 i = 0; i < 4; ++i)
         {
@@ -4723,6 +4726,19 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             LL_WARNS() << "Failed to create shader '" << gTronTrailProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
+    }
+
+    if (success)
+    {
+        gPOVBlinkProgram.mName = "POV Eye Blink";
+        gPOVBlinkProgram.mFeatures.isDeferred = true;
+        gPOVBlinkProgram.mShaderFiles.clear();
+        gPOVBlinkProgram.clearPermutations();
+        gPOVBlinkProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gPOVBlinkProgram.mShaderFiles.push_back(make_pair("deferred/povBlinkF.glsl", GL_FRAGMENT_SHADER));
+        gPOVBlinkProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        if (!gPOVBlinkProgram.createShader())
+            LL_WARNS() << "POV eye blink unavailable: optional shader failed" << LL_ENDL;
     }
 
     if (success)

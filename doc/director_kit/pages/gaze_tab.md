@@ -200,7 +200,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelLensGaze::onVariationCommit()` — `indra/newview/alpanellensgaze.cpp:594` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::refreshEditActorCombo()` — `indra/newview/alpanellensgaze.cpp:437` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterReg::toggleInstance()` — `indra/newview/alpanellensgaze.cpp:603` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onOpenActorGaze()` — `indra/newview/llfloaterdirector.cpp:1645` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onOpenActorGaze()` — `indra/newview/llfloaterdirector.cpp:1665` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

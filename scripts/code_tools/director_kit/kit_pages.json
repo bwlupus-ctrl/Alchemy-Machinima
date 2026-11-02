@@ -612,7 +612,7 @@
   "camera_group/frame_orbit_tab": {"scope": "global"},
   "camera_group/takes_tab": {"scope": "global"},
   "lens_group/focus_tab": {"scope": "global"},
-  "lens_group/filters_tab": {"scope": "global"},
+  "lens_group/filters_tab": {"scope": "global", "no_history_rows": ["pov_blink_held"]},
   "settings_group/director_settings_tab": {"scope": "global"},
   "light_group/cine_light_rig_tab": {"history": "page"},
   "light_group/light_cues_tab": {"no_history_rows": ["cue_rows"]},

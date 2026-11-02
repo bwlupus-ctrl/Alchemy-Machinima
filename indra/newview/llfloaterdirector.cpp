@@ -50,6 +50,7 @@
 #include "alkitpresets.h"
 #include "alpanelcinelightrig.h"
 #include "alcinehaze.h"                // Atmosphere > Depth Haze reset and reference height
+#include "alpovblink.h"
 #include "allenslooks.h"               // Lens > Filters infrared and soft-edge preset actions
 #include "alpanelweathersettings.h"    // World > Weather strike and reset-all
 #include "alweatheruimodel.h"
@@ -134,6 +135,25 @@
 
 namespace
 {
+// A typed boolean default is required: kit XML scalar defaults are strings,
+// and LLSD("false").asBoolean() is true. Keep this gesture out of saved settings.
+class POVBlinkHoldBinding final : public ALKitBinding
+{
+public:
+    LLSD get() const override { return LLSD(ALPOVBlink::uiHeld()); }
+    LLSD getDefault() const override { return LLSD(false); }
+    void set(const LLSD& value) override
+    {
+        ALPOVBlink::setUIHeld(value.asBoolean());
+        mChanged();
+    }
+    boost::signals2::connection connectChanged(std::function<void()> cb) override
+        { return mChanged.connect(std::move(cb)); }
+    std::string describe() const override { return "POV eye blink hold"; }
+private:
+    boost::signals2::signal<void()> mChanged;
+};
+
 // cast-row status glyphs (existing skin icons, poser iconography rule)
 constexpr char ICON_MOVING[]   = "Move_Walk_Off";
 constexpr char ICON_IDLE[]     = "Profile_Friend_Online";
@@ -2315,6 +2335,22 @@ void LLFloaterDirector::bindImagePage(LLView* root)
 // action combo back to its "Choose preset..." entry (value 0).
 void LLFloaterDirector::bindLensFiltersPage(LLView* root)
 {
+    ALKitBindingRegistry::instance().add(root, "pov_blink_held",
+        [] { return std::make_unique<POVBlinkHoldBinding>(); });
+    if (LLButton* blink = root->findChild<LLButton>("pov_blink_now"))
+        blink->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPOVBlink::blink(); });
+    if (LLUICtrl* hold = root->findChild<LLUICtrl>("pov_blink_held"))
+    {
+        hold->setValue(ALPOVBlink::uiHeld());
+        hold->setCommitCallback([](LLUICtrl* control, const LLSD&)
+        {
+            ALPOVBlink::setUIHeld(control->getValue().asBoolean());
+            ALKitRow::notifyValueChanged(control);
+        });
+    }
+    mPOVBlinkPadTap = root->findChild<LLUICtrl>("pov_PadTap");
+    mPOVBlinkPadHold = root->findChild<LLUICtrl>("pov_PadHold");
+    mPOVBlinkHeld = root->findChild<LLUICtrl>("pov_blink_held");
     ALLensLooks::bindFilterPresets(root);
     if (LLComboBox* ir = root->findChild<LLComboBox>("ir_preset_action"))
     {
@@ -8052,6 +8088,21 @@ void LLFloaterDirector::refreshPrismDependents()
 void LLFloaterDirector::refreshStatusStrip()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshStatusStrip"); // [DirFix] D9
+    if (mPOVBlinkPadTap && mPOVBlinkPadTap->isInVisibleChain() &&
+        mPOVBlinkRefreshTimer.getElapsedTimeF32() >= .25f)
+    {
+        mPOVBlinkRefreshTimer.reset();
+        static LLCachedControl<U32> tap(gSavedSettings, "POVBlinkPadTap", 64U);
+        static LLCachedControl<U32> hold(gSavedSettings, "POVBlinkPadHold", 64U);
+        auto tooltip = [](U32 button)
+        {
+            std::string conflict = LLViewerJoystick::instance().povBlinkPadConflict(button);
+            return conflict.empty() ? std::string("Free with your current joystick mappings. Same tap/hold button: click to blink, hold 180 ms to close. F9 or pad blink releases UI Hold.") : conflict;
+        };
+        setToolTipIfChanged(mPOVBlinkPadTap, tooltip(tap()));
+        if (mPOVBlinkPadHold) setToolTipIfChanged(mPOVBlinkPadHold, tooltip(hold()));
+        if (mPOVBlinkHeld) setValueIfChanged(mPOVBlinkHeld, LLSD(ALPOVBlink::uiHeld()));
+    }
     static LLCachedControl<bool> cam_enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  cam_mode(gSavedSettings, "CinematicCamMode", 0);
     static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);

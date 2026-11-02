@@ -28,6 +28,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpovblink.h"
 #include "alcolorchart.h"
 #include "alpanelweathersettings.h"
 #include "alflareenergy.h"
@@ -3191,6 +3192,7 @@ void LLPipeline::releaseShadowBuffers()
 
 void LLPipeline::releaseScreenBuffers()
 {
+    ALPOVBlink::releaseGL();
     releaseSensorTargets();
     mSensorFailed = false;
     if (mAreaShadowQueries[0])

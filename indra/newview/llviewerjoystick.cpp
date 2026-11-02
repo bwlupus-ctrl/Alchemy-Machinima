@@ -33,6 +33,8 @@
 #include "alflycamweighted.h"
 #include "alpresetlook.h"
 #include "alxinputmath.h"
+#include "alpovblink.h"
+#include "alpovblinkmath.h"
 #include "llflycamdrone.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -1496,6 +1498,40 @@ F32 LLViewerJoystick::getJoystickAxis(U32 axis) const
 }
 
 // -----------------------------------------------------------------------------
+// Same DI indices as this fork's Xbox defaults. Do not consume or alter the
+// legacy action: suppress only the conflicting blink mapping.
+std::string LLViewerJoystick::povBlinkPadConflict(U32 mask) const
+{
+    S32 button = -1;
+    const char* label = "";
+    switch (mask)
+    {
+    case 16: button = 7; label = "Start"; break;
+    case 32: button = 6; label = "Back"; break;
+    case 64: button = 8; label = "L3"; break;
+    case 128: button = 9; label = "R3"; break;
+    default: return "";
+    }
+    static LLCachedControl<bool> dragon(gSavedSettings, "BlackDragonControls", false);
+    static const char* names[MAX_BUTTONS] = {"Roll left", "Roll right", "Roll reset",
+        "Zoom in", "Zoom out", "Zoom reset", "Jump", "Crouch", "Fly", "Mouselook",
+        "Flycam toggle", "Run toggle"};
+    for (int i = 0; i < MAX_BUTTONS; ++i)
+    {
+        // Flycam mappings remain reserved while avatar controls are active:
+        // entering flycam must not silently turn a free blink into two actions.
+        // Disabled modules cannot dispatch; refreshed settings are checked each poll.
+        const bool active = (mFlycamEnabled && (i <= CROUCH || i == FLYCAM)) ||
+            (mAvatarEnabled && dragon() && (i == JUMP || i == CROUCH ||
+                i == FLY || i == MOUSELOOK || i == TOGGLE_RUN)) ||
+            (mBuildEnabled && dragon() && (i == ROLL_LEFT || i == ROLL_RIGHT ||
+                i == JUMP || i == CROUCH));
+        if (active && mMappedButtons[i] == button)
+            return std::string(label) + " is used by " + names[i] + " - pick another button";
+    }
+    return "";
+}
+
 U32 LLViewerJoystick::getJoystickButton(U32 button) const
 {
     if (button < 16)
@@ -3307,6 +3343,7 @@ void LLViewerJoystick::setDeviceListDirty()
 
 void LLViewerJoystick::invalidateXInput(bool rescan)
 {
+    ALPOVBlink::setPadHeld(false);
     stopRumble(); // [XInputRumble] BEFORE the slot is cleared; uses mXIRumbleSlot
     mXIAssociated = false;
     mXIGuid = LLSD();
@@ -3465,6 +3502,12 @@ void LLViewerJoystick::beginMainLoop()
     {
         mXILevelPending = false;
     }
+    // A missing scan, lost focus, suspension or disabled pad must release lids.
+    // Previous-loop samples are allowed here; current polling refreshes the hold.
+    if (!mJoystickEnabled || !xInputAssociated() || !gFocusMgr.getAppHasFocus() ||
+        gViewerInput.worldInputSuspended() || !mXISampleValid ||
+        mXILoopGeneration - mXISampleGeneration > 1)
+        ALPOVBlink::setPadHeld(false);
     updateXInputTakeover();
     updateXInputRumble(); // [XInputRumble] advance pattern; also stops on focus loss / setting off
 }
@@ -3575,6 +3618,14 @@ void LLViewerJoystick::pollXInputState()
     const bool prime = ALXInput::primeSample(mXIPrime, focused, mXIWasFocused,
                                             mXILoopGeneration, mXILastScanGeneration);
     mXIEdges = ALXInput::edges(raw, mXIPrevRaw, prime, focused);
+    static LLCachedControl<U32> blink_button(gSavedSettings, "POVBlinkPadTap", 64U);
+    static LLCachedControl<U32> hold_button(gSavedSettings, "POVBlinkPadHold", 64U);
+    static ALPOVBlinkMath::PadGesture blink_gesture;
+    const bool blink_tap = blink_gesture.sample(LLTimer::getTotalSeconds(), raw,
+        povBlinkPadConflict(blink_button()).empty() ? (U16)blink_button() : 0,
+        povBlinkPadConflict(hold_button()).empty() ? (U16)hold_button() : 0, prime, focused);
+    ALPOVBlink::setPadHeld(blink_gesture.held);
+    if (blink_tap) ALPOVBlink::blink();
     mXIPrevRaw = raw; // raw history is never overwritten by focus policy
     mXIPrime = false;
     mXIWasFocused = focused;

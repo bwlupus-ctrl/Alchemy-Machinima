@@ -55,6 +55,16 @@ def main():
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
         guarded = (nv / path).read_text(encoding="utf-8")
         if path == "pipeline.cpp":
+            # Remove only the two pinned blink hooks before reversing clone QoL.
+            import hashlib, json
+            blink_bytes = (Path(__file__).parent / "pov_blink_pipeline_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+            assert hashlib.sha256(blink_bytes).hexdigest() == "acdd6aced21f50d2cae538d9746cffbfa77e51dd38af76988c48201b4f9fb2ee", "blink allowance pin"
+            blink = json.loads(blink_bytes)
+            blink_base = subprocess.check_output(["git", "show", blink["base"] + ":indra/newview/pipeline.cpp"]).decode("utf-8").replace("\r\n", "\n")
+            for hunk in blink["hunks"]:
+                assert blink_base.count(hunk["before"]) == 1, "blink baseline hunk"
+                assert guarded.count(hunk["after"]) == 1, "blink exact feature hunk"
+                guarded = guarded.replace(hunk["after"], hunk["before"], 1)
             guarded = reverse_qol_allowance("indra/newview/" + path, guarded)
         assert guarded.encode() == subprocess.check_output(
             ["git", "show", "c5dd757d341:indra/newview/" + path]).replace(b"\r\n", b"\n"), path

@@ -1,0 +1,13 @@
+{
+  "base": "3a64bb9c5c4",
+  "hunks": [
+    {
+      "before": "\n#include \"llviewerprecompiledheaders.h\"\n#include \"alcolorchart.h\"\n#include \"alpanelweathersettings.h\"\n",
+      "after": "\n#include \"llviewerprecompiledheaders.h\"\n#include \"alpovblink.h\"\n#include \"alcolorchart.h\"\n#include \"alpanelweathersettings.h\"\n"
+    },
+    {
+      "before": "void LLPipeline::releaseScreenBuffers()\n{\n    releaseSensorTargets();\n    mSensorFailed = false;\n",
+      "after": "void LLPipeline::releaseScreenBuffers()\n{\n    ALPOVBlink::releaseGL();\n    releaseSensorTargets();\n    mSensorFailed = false;\n"
+    }
+  ]
+}

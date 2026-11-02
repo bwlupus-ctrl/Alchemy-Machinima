@@ -1,7 +1,7 @@
 # Filters — Director Kit page contract
 
 Page key: `filters_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (26/29 setting-bound rows; 3 C++-referenced rows).
+Computed class: **code-driven** (39/44 setting-bound rows; 3 C++-referenced rows).
 
 ## Real owners
 
@@ -20,35 +20,50 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `gradnd` / `gradnd_preset_combo` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:26` | kit `combo` ↔ `RenderGradNDPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:10` `gradnd_preset_combo`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:80` `exp_gnd_preset` |
-| `gradnd` / `gradnd_density_slider` (Strength) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:38` | kit `slider` ↔ `RenderGradNDDensity` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:23` `gradnd_density_slider`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:89` `exp_gnd_density`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:40` `gradnd_density_spinner` |
-| `gradnd` / `gradnd_pos_slider` (Position) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:62` | kit `slider` ↔ `RenderGradNDPosition` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:28` `gradnd_pos_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:64` `gradnd_pos_spinner` |
-| `gradnd` / `gradnd_soft_slider` (Softness) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:68` | kit `slider` ↔ `RenderGradNDSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:33` `gradnd_soft_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:70` `gradnd_soft_spinner` |
-| `gradnd` / `gradnd_angle_slider` (Angle) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:74` | kit `slider` ↔ `RenderGradNDAngle` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:38` `gradnd_angle_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:76` `gradnd_angle_spinner` |
-| `gradnd` / `gradnd_confine_slider` (Sky only) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:44` | kit `slider` ↔ `RenderGradNDSkyConfine` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:43` `gradnd_confine_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:46` `gradnd_confine_spinner` |
-| `gradnd` / `gradnd_sunw_slider` (Sun weight) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:50` | kit `slider` ↔ `RenderGradNDSunWeight` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:48` `gradnd_sunw_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:52` `gradnd_sunw_spinner` |
-| `gradnd` / `gradnd_sunr_slider` (Sun radius) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:56` | kit `slider` ↔ `RenderGradNDSunRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:53` `gradnd_sunr_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:58` `gradnd_sunr_spinner` |
-| `gradnd` / `grad_nd_flip_check` (Darken bottom) | none | kit `toggle` ↔ `RenderGradNDFlip` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:58` `grad_nd_flip_check` |
-| `gradnd` / `gradnd_tint_swatch` (Tint) | `color_swatch` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:82` | kit `color` ↔ `RenderGradNDTintColor` `Color3` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:61` `gradnd_tint_swatch` |
-| `gradnd` / `gradnd_tint_amount` (Tint amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:83` | kit `slider` ↔ `RenderGradNDTintAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:64` `gradnd_tint_amount` |
-| `polarizer` / `polarizer_preset_combo` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:101` | kit `combo` ↔ `RenderPolarizerPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:71` `polarizer_preset_combo`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:94` `exp_pol_preset` |
-| `polarizer` / `pol_strength_slider` (Strength) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:111` | kit `slider` ↔ `RenderPolarizerStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:82` `pol_strength_slider`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:101` `exp_pol_strength`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:113` `pol_strength_spinner` |
-| `polarizer` / `pol_glare_slider` (Glare cut) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:117` | kit `slider` ↔ `RenderPolarizerGlareStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:87` `pol_glare_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:119` `pol_glare_spinner` |
-| `polarizer` / `pol_skydark_slider` (Sky darken) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:141` | kit `slider` ↔ `RenderPolarizerSkyDarken` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:92` `pol_skydark_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:143` `pol_skydark_spinner` |
-| `polarizer` / `pol_skysat_slider` (Sky saturation) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:135` | kit `slider` ↔ `RenderPolarizerSkySaturation` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:97` `pol_skysat_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:137` `pol_skysat_spinner` |
-| `polarizer` / `pol_glarethr_slider` (Glare level) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:123` | kit `slider` ↔ `RenderPolarizerGlareThreshold` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:102` `pol_glarethr_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:125` `pol_glarethr_spinner` |
-| `polarizer` / `pol_glaredepth_slider` (Glare depth) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:129` | kit `slider` ↔ `RenderPolarizerGlareMaxDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:107` `pol_glaredepth_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:131` `pol_glaredepth_spinner` |
-| `polarizer` / `polarizer_auto_band_check` (Ease by sun) | none | kit `toggle` ↔ `RenderPolarizerAutoBand` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:112` `polarizer_auto_band_check` |
-| `polarizer` / `pol_bandrad_slider` (Band size) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:151` | kit `slider` ↔ `RenderPolarizerBandRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:115` `pol_bandrad_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:153` `pol_bandrad_spinner` |
-| `lens_filter` / `lens_filter_preset` (Filter) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:85` | kit `combo` ↔ `RenderLensFilterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:122` `lens_filter_preset` |
-| `lens_filter` / `lens_filter_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:86` | kit `slider` ↔ `RenderLensFilterAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:137` `lens_filter_amount` |
+| `gradnd` / `gradnd_preset_combo` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:26` | kit `combo` ↔ `RenderGradNDPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:11` `gradnd_preset_combo`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:80` `exp_gnd_preset` |
+| `gradnd` / `gradnd_density_slider` (Strength) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:38` | kit `slider` ↔ `RenderGradNDDensity` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:24` `gradnd_density_slider`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:89` `exp_gnd_density`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:40` `gradnd_density_spinner` |
+| `gradnd` / `gradnd_pos_slider` (Position) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:62` | kit `slider` ↔ `RenderGradNDPosition` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:29` `gradnd_pos_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:64` `gradnd_pos_spinner` |
+| `gradnd` / `gradnd_soft_slider` (Softness) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:68` | kit `slider` ↔ `RenderGradNDSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:34` `gradnd_soft_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:70` `gradnd_soft_spinner` |
+| `gradnd` / `gradnd_angle_slider` (Angle) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:74` | kit `slider` ↔ `RenderGradNDAngle` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:39` `gradnd_angle_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:76` `gradnd_angle_spinner` |
+| `gradnd` / `gradnd_confine_slider` (Sky only) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:44` | kit `slider` ↔ `RenderGradNDSkyConfine` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:44` `gradnd_confine_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:46` `gradnd_confine_spinner` |
+| `gradnd` / `gradnd_sunw_slider` (Sun weight) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:50` | kit `slider` ↔ `RenderGradNDSunWeight` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:49` `gradnd_sunw_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:52` `gradnd_sunw_spinner` |
+| `gradnd` / `gradnd_sunr_slider` (Sun radius) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:56` | kit `slider` ↔ `RenderGradNDSunRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:54` `gradnd_sunr_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:58` `gradnd_sunr_spinner` |
+| `gradnd` / `grad_nd_flip_check` (Darken bottom) | none | kit `toggle` ↔ `RenderGradNDFlip` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:59` `grad_nd_flip_check` |
+| `gradnd` / `gradnd_tint_swatch` (Tint) | `color_swatch` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:82` | kit `color` ↔ `RenderGradNDTintColor` `Color3` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:62` `gradnd_tint_swatch` |
+| `gradnd` / `gradnd_tint_amount` (Tint amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:83` | kit `slider` ↔ `RenderGradNDTintAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:65` `gradnd_tint_amount` |
+| `polarizer` / `polarizer_preset_combo` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:101` | kit `combo` ↔ `RenderPolarizerPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:72` `polarizer_preset_combo`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:94` `exp_pol_preset` |
+| `polarizer` / `pol_strength_slider` (Strength) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:111` | kit `slider` ↔ `RenderPolarizerStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:83` `pol_strength_slider`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:101` `exp_pol_strength`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:113` `pol_strength_spinner` |
+| `polarizer` / `pol_glare_slider` (Glare cut) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:117` | kit `slider` ↔ `RenderPolarizerGlareStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:88` `pol_glare_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:119` `pol_glare_spinner` |
+| `polarizer` / `pol_skydark_slider` (Sky darken) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:141` | kit `slider` ↔ `RenderPolarizerSkyDarken` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:93` `pol_skydark_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:143` `pol_skydark_spinner` |
+| `polarizer` / `pol_skysat_slider` (Sky saturation) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:135` | kit `slider` ↔ `RenderPolarizerSkySaturation` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:98` `pol_skysat_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:137` `pol_skysat_spinner` |
+| `polarizer` / `pol_glarethr_slider` (Glare level) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:123` | kit `slider` ↔ `RenderPolarizerGlareThreshold` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:103` `pol_glarethr_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:125` `pol_glarethr_spinner` |
+| `polarizer` / `pol_glaredepth_slider` (Glare depth) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:129` | kit `slider` ↔ `RenderPolarizerGlareMaxDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:108` `pol_glaredepth_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:131` `pol_glaredepth_spinner` |
+| `polarizer` / `polarizer_auto_band_check` (Ease by sun) | none | kit `toggle` ↔ `RenderPolarizerAutoBand` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:113` `polarizer_auto_band_check` |
+| `polarizer` / `pol_bandrad_slider` (Band size) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:151` | kit `slider` ↔ `RenderPolarizerBandRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:116` `pol_bandrad_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:153` `pol_bandrad_spinner` |
+| `lens_filter` / `lens_filter_preset` (Filter) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:85` | kit `combo` ↔ `RenderLensFilterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:123` `lens_filter_preset` |
+| `lens_filter` / `lens_filter_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:86` | kit `slider` ↔ `RenderLensFilterAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:138` `lens_filter_amount` |
 | `infrared` / `ir_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:158` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applyInfraredPreset()` (`indra/newview/alpanellenslooks.cpp:48`) | none |
-| `infrared` / `ir_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:160` | kit `combo` ↔ `RenderInfraredMode` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:158` `ir_mode` |
-| `infrared` / `ir_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:162` | kit `slider` ↔ `RenderInfraredStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:166` `ir_strength`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:120` `exp_ir_strength` |
+| `infrared` / `ir_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:160` | kit `combo` ↔ `RenderInfraredMode` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:159` `ir_mode` |
+| `infrared` / `ir_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:162` | kit `slider` ↔ `RenderInfraredStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:167` `ir_strength`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:120` `exp_ir_strength` |
 | `infrared` / `ir_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:164` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanellenslooks.cpp:60`) | none |
 | `softedge` / `softedge_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:169` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applySoftEdgePreset()` (`indra/newview/alpanellenslooks.cpp:54`) | none |
-| `softedge` / `softedge_blur_type` (Type) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:171` | kit `combo` ↔ `RenderSoftEdgeBlurType` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:189` `softedge_blur_type` |
-| `softedge` / `softedge_blur` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:173` | kit `slider` ↔ `RenderSoftEdgeBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:197` `softedge_blur`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` `exp_softedge_blur` |
+| `softedge` / `softedge_blur_type` (Type) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:171` | kit `combo` ↔ `RenderSoftEdgeBlurType` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:190` `softedge_blur_type` |
+| `softedge` / `softedge_blur` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:173` | kit `slider` ↔ `RenderSoftEdgeBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:198` `softedge_blur`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` `exp_softedge_blur` |
+| `pov_eye_blink` / `pov_blink_now` (Blink now) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `pov_eye_blink` / `pov_blink_held` (Hold closed) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `pov_eye_blink` / `pov_CloseMs` (Close (ms)) | none | kit `number` ↔ `POVBlinkCloseMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:211` `pov_CloseMs` |
+| `pov_eye_blink` / `pov_HoldMs` (Hold (ms)) | none | kit `number` ↔ `POVBlinkHoldMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:214` `pov_HoldMs` |
+| `pov_eye_blink` / `pov_OpenMs` (Open (ms)) | none | kit `number` ↔ `POVBlinkOpenMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:217` `pov_OpenMs` |
+| `pov_eye_blink` / `pov_Depth` (Depth) | none | kit `slider` ↔ `POVBlinkDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:220` `pov_Depth` |
+| `pov_eye_blink` / `pov_Curve` (Lid curve) | none | kit `slider` ↔ `POVBlinkCurve` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:225` `pov_Curve` |
+| `pov_eye_blink` / `pov_Softness` (Softness) | none | kit `slider` ↔ `POVBlinkSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:230` `pov_Softness` |
+| `pov_eye_blink` / `pov_Darken` (Darken) | none | kit `slider` ↔ `POVBlinkDarken` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:235` `pov_Darken` |
+| `pov_eye_blink` / `pov_Blur` (Blur) | none | kit `slider` ↔ `POVBlinkBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:240` `pov_Blur` |
+| `pov_eye_blink` / `pov_Style` (Style) | none | kit `combo` ↔ `POVBlinkStyle` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:245` `pov_Style` |
+| `pov_eye_blink` / `pov_Auto` (Auto blink) | none | kit `toggle` ↔ `POVBlinkAuto` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:253` `pov_Auto` |
+| `pov_eye_blink` / `pov_Rate` (Rate / min) | none | kit `number` ↔ `POVBlinkRate` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:256` `pov_Rate` |
+| `pov_eye_blink` / `pov_PadTap` (Pad blink) | none | kit `combo` ↔ `POVBlinkPadTap` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:259` `pov_PadTap` |
+| `pov_eye_blink` / `pov_PadHold` (Pad hold) | none | kit `combo` ↔ `POVBlinkPadHold` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:270` `pov_PadHold` |
 
 ## Adapter extraction
 
@@ -67,7 +82,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **55 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **71 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -126,6 +141,22 @@ Manifest size: **55 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `softedge_preset_action-option-6` | Only `softedge_preset_action` selects `Nightmare Edge`; other selectors remain default. |
 | `softedge_blur_type-option-0` | Only `softedge_blur_type` selects `Diffusion`; other selectors remain default. |
 | `softedge_blur_type-option-1` | Only `softedge_blur_type` selects `Defocus (needs DoF)`; other selectors remain default. |
+| `card-pov_eye_blink-tallest-850` | Only `pov_eye_blink` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-pov_eye_blink-tallest-1160` | Only `pov_eye_blink` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `pov_blink_held-on` | Only `pov_blink_held` is on; dependent visibility is measured. |
+| `pov_Style-option-0` | Only `pov_Style` selects `Dark`; other selectors remain default. |
+| `pov_Style-option-1` | Only `pov_Style` selects `Warm`; other selectors remain default. |
+| `pov_Auto-on` | Only `pov_Auto` is on; dependent visibility is measured. |
+| `pov_PadTap-option-0` | Only `pov_PadTap` selects `Off`; other selectors remain default. |
+| `pov_PadTap-option-1` | Only `pov_PadTap` selects `Back / View`; other selectors remain default. |
+| `pov_PadTap-option-2` | Only `pov_PadTap` selects `Start / Menu`; other selectors remain default. |
+| `pov_PadTap-option-3` | Only `pov_PadTap` selects `Left stick`; other selectors remain default. |
+| `pov_PadTap-option-4` | Only `pov_PadTap` selects `Right stick`; other selectors remain default. |
+| `pov_PadHold-option-0` | Only `pov_PadHold` selects `Off`; other selectors remain default. |
+| `pov_PadHold-option-1` | Only `pov_PadHold` selects `Back / View`; other selectors remain default. |
+| `pov_PadHold-option-2` | Only `pov_PadHold` selects `Start / Menu`; other selectors remain default. |
+| `pov_PadHold-option-3` | Only `pov_PadHold` selects `Left stick`; other selectors remain default. |
+| `pov_PadHold-option-4` | Only `pov_PadHold` selects `Right stick`; other selectors remain default. |
 
 ## Parity check
 
@@ -140,7 +171,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-35 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+56 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
@@ -148,7 +179,8 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 
 ## Unresolved and pending-decision items
 
-None in the current evidence index.
+- `pov_blink_now` (Blink now): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `pov_blink_held` (Hold closed): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 
 ## Risks
 

@@ -453,10 +453,10 @@ void LLKeyConflictHandler::saveToSettings(bool temporary)
         }
 
         LLViewerInput::Keys keys;
-        LLSimpleXUIParser parser;
 
-        if (parser.readXUI(filename, keys)
-            && keys.validateBlock())
+        // loadKeysXML materializes eligible defaults in EVERY provided mode
+        // before replacing the edited mode or acknowledging the global marker.
+        if (LLViewerInput::loadKeysXML(filename, keys))
         {
             // replace category we edited
 
@@ -581,7 +581,7 @@ void LLKeyConflictHandler::saveToSettings(bool temporary)
                     fclose(fp);
                     if (!temporary)
                     {
-                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 2);
+                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 3);
                     }
                 }
             }

@@ -518,6 +518,10 @@ private:
     LLButton*  mClearDBtn = nullptr;
     LLButton*  mAssignSubjectsBtn = nullptr;
     LLTextBox* mPrismSummaryText = nullptr;
+    LLUICtrl* mPOVBlinkPadTap = nullptr;
+    LLUICtrl* mPOVBlinkPadHold = nullptr;
+    LLUICtrl* mPOVBlinkHeld = nullptr;
+    LLFrameTimer mPOVBlinkRefreshTimer;
     LLButton*  mPrismManageBtn = nullptr;
     LLButton*  mOtsPairBtn = nullptr;
     LLButton*  mZollyBtn = nullptr;

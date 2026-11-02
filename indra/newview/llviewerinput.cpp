@@ -29,6 +29,7 @@
 #include "llviewerinput.h"
 
 #include "alchatbar.h"
+#include "alpovblink.h"
 #include "llappviewer.h"
 #include "llfloaterreg.h"
 #include "llmath.h"
@@ -979,6 +980,12 @@ bool toggle_sit(EKeystate s)
     return true;
 }
 
+bool pov_eye_blink(EKeystate s)
+{
+    if (s == KEYSTATE_DOWN) ALPOVBlink::blink();
+    return true;
+}
+
 bool toggle_viewfinder(EKeystate s)
 {
     if (KEYSTATE_DOWN != s) return true;
@@ -1164,6 +1171,7 @@ REGISTER_KEYBOARD_ACTION("roll_left", camera_roll_left);
 REGISTER_KEYBOARD_ACTION("roll_right", camera_roll_right);
 REGISTER_KEYBOARD_ACTION("roll_reset", camera_roll_reset);
 REGISTER_KEYBOARD_ACTION("toggle_viewfinder", toggle_viewfinder);
+REGISTER_KEYBOARD_ACTION("pov_eye_blink", pov_eye_blink);
 // [Machinima] Actor Gaze look-at-camera toggles. Regular (NOT global) actions:
 // the regular key path debounces OS auto-repeat via gKeyboard->getKeyRepeated so
 // a held key toggles exactly once, whereas the global-binds path fires
@@ -1594,12 +1602,12 @@ namespace
 void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMode& defaults, S32 migration_version, S32 binding_count,
     LLViewerInput::KeyMode* additions = nullptr)
 {
-    if (binding_count == 0 || migration_version >= 2) return;
+    if (binding_count == 0 || migration_version >= 3) return;
     static const struct
     {
         S32 version;
         const char* command;
-    } introduced[] = {{2, "toggle_viewfinder"}};
+    } introduced[] = {{2, "toggle_viewfinder"}, {3, "pov_eye_blink"}};
 
     for (const auto& binding : defaults.bindings)
     {
@@ -1634,7 +1642,7 @@ void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMo
 void LLViewerInput::migrateKeysXML(const std::string& filename, Keys& keys, S32 binding_count, Keys* additions)
 {
     const S32 migration_version = gSavedSettings.getS32("KeyBindingsMigrationVersion");
-    if (binding_count == 0 || migration_version >= 2) return;
+    if (binding_count == 0 || migration_version >= 3) return;
 
     const std::string defaults_filename = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "key_bindings.xml");
     if (filename == defaults_filename) return;
@@ -1643,7 +1651,7 @@ void LLViewerInput::migrateKeysXML(const std::string& filename, Keys& keys, S32 
     LLSimpleXUIParser defaults_parser;
     if (!defaults_parser.readXUI(defaults_filename, defaults) || !defaults.validateBlock()) return;
 
-    // Only Viewfinder additions; omitted modes and all file-version semantics stay intact.
+    // Only introduced camera actions; omitted modes and all file-version semantics stay intact.
     if (keys.first_person.isProvided()) migrateBindingMode(keys.first_person, defaults.first_person, migration_version, binding_count, additions ? &additions->first_person : nullptr);
     if (keys.third_person.isProvided()) migrateBindingMode(keys.third_person, defaults.third_person, migration_version, binding_count, additions ? &additions->third_person : nullptr);
     if (keys.sitting.isProvided()) migrateBindingMode(keys.sitting, defaults.sitting, migration_version, binding_count, additions ? &additions->sitting : nullptr);
