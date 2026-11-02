@@ -34,7 +34,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2546 classified paths.
+`inventory.csv` / `inventory.json` contain 2551 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -64,14 +64,14 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 84 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 308 | 53 | 197 |
-| [actor-bar](features/actor-bar.md) | 3 | 63 | 13 | 0 |
-| [actor-path](features/actor-path.md) | 3 | 100 | 33 | 32 |
-| [camera](features/camera.md) | 3 | 76 | 31 | 489 |
+| [director-shell](features/director-shell.md) | 2 | 308 | 55 | 198 |
+| [actor-bar](features/actor-bar.md) | 3 | 64 | 14 | 0 |
+| [actor-path](features/actor-path.md) | 3 | 101 | 33 | 32 |
+| [camera](features/camera.md) | 3 | 77 | 31 | 490 |
 | [composition](features/composition.md) | 3 | 40 | 23 | 12 |
-| [gaze](features/gaze.md) | 3 | 53 | 18 | 87 |
+| [gaze](features/gaze.md) | 3 | 55 | 21 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 26 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 171 | 77 | 68 |
+| [clones](features/clones.md) | 4 | 172 | 77 | 68 |
 | [crowd](features/crowd.md) | 4 | 49 | 10 | 10 |
 | [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 226 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 66 | 58 | 17 |
@@ -209,8 +209,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2209 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2209, "multi_page_settings": 21, "owner_roots": 35, "pages": 38, "rows": 2209, "unresolved_rows": 68}`.
+Existing evidence: 2214 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2214, "multi_page_settings": 21, "owner_roots": 35, "pages": 38, "rows": 2214, "unresolved_rows": 72}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
@@ -236,7 +236,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 498 shared files / 3014 canonical
+The generated hook map covers 498 shared files / 3015 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and

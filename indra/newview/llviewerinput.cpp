@@ -1646,13 +1646,13 @@ namespace
 void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMode& defaults, S32 migration_version, S32 binding_count,
     LLViewerInput::KeyMode* additions = nullptr)
 {
-    if (binding_count == 0 || migration_version >= 3) return;
+    if (binding_count == 0 || migration_version >= 4) return;
     static const struct
     {
         S32 version;
         const char* command;
-    } introduced[] = {{2, "toggle_viewfinder"}, {3, "director_hot_gaze_1"},
-        {3, "director_hot_gaze_2"}, {3, "director_hot_gaze_3"}, {3, "director_hot_gaze_4"}};
+    } introduced[] = {{2, "toggle_viewfinder"}, {4, "director_hot_gaze_1"},
+        {4, "director_hot_gaze_2"}, {4, "director_hot_gaze_3"}, {4, "director_hot_gaze_4"}};
 
     for (const auto& binding : defaults.bindings)
     {
@@ -1687,7 +1687,7 @@ void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMo
 void LLViewerInput::migrateKeysXML(const std::string& filename, Keys& keys, S32 binding_count, Keys* additions)
 {
     const S32 migration_version = gSavedSettings.getS32("KeyBindingsMigrationVersion");
-    if (binding_count == 0 || migration_version >= 3) return;
+    if (binding_count == 0 || migration_version >= 4) return;
 
     const std::string defaults_filename = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "key_bindings.xml");
     if (filename == defaults_filename) return;
@@ -1921,7 +1921,8 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
     {
         if (binding[i].mKey == key)
         {
-            if ((binding[i].mMask & mask) == binding[i].mMask)
+            const bool hot_gaze = binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0;
+            if (hot_gaze ? binding[i].mMask == mask : (binding[i].mMask & mask) == binding[i].mMask)
             {
                 bool res = false;
                 if (key_down && !repeat)

@@ -1721,6 +1721,24 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/algazehot.h",
+    "dependency": "indra/newview/algazemath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/algazehotslots.h",
+    "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/algazemotor.h",
     "dependency": "indra/newview/algazeblink.h",
     "excluded": false,
@@ -4710,6 +4728,24 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alpanellensgaze.cpp",
+    "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "base-owned",
+    "consumer": "indra/newview/alpanellensgaze.cpp",
+    "dependency": "indra/newview/alobjectproperties.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at base"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanellensgaze.cpp",
     "dependency": "indra/newview/llactormover.h",
     "excluded": false,
     "origin": "fork-added",
@@ -7140,6 +7176,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.h",
+    "dependency": "indra/newview/algazehot.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.h",
     "dependency": "indra/newview/algazemotor.h",
     "excluded": false,
     "origin": "fork-added",
@@ -7978,6 +8023,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/lldirectorcast.h",
     "dependency": "indra/newview/algazemath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.h",
+    "dependency": "indra/newview/algazehotslots.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -10596,6 +10650,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llviewerinput.cpp",
+    "dependency": "indra/newview/lldirectorcast.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerjoystick.cpp",
     "dependency": "indra/newview/lldirectorcast.h",
     "excluded": false,
     "origin": "fork-added",

@@ -71,7 +71,8 @@ private:
     void commitHotControls();
     S32 mHotSlotIndex = 0, mHotButtonSlot = -1;
     LLComboBox *mHotSlot = nullptr, *mHotWho = nullptr, *mHotTarget = nullptr, *mHotActor = nullptr;
-    LLComboBox *mHotAfter = nullptr, *mHotMode = nullptr;
+    LLComboBox *mHotAfter = nullptr, *mHotMode = nullptr, *mHotSpot = nullptr;
+    LLSpinCtrl *mHotX = nullptr, *mHotY = nullptr, *mHotZ = nullptr;
     LLSpinCtrl *mHotSnap = nullptr, *mHotDwell = nullptr, *mHotReturn = nullptr;
     LLSliderCtrl *mHotHead = nullptr, *mHotEyes = nullptr, *mHotTorso = nullptr;
     LLTextBox* mHotName = nullptr;

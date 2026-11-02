@@ -2461,12 +2461,6 @@ void ALGhostStudio::updatePostObjectList()
             if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
                 ghost->refreshVisualBounds();
     }
-    // Live hot gaze is the final presentation override, including True Mirror and Reflect clones.
-    if (LLActorMover::instance().hasHotGazes())
-        for (const Instance& inst : mInstances)
-            if (inst.mKind == BACKING_ENTITY_CLONE)
-                if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId); ghost && ghost->isPoseStampDriven())
-                    LLActorMover::instance().applyHotGaze(ghost);
 }
 
 void ALGhostStudio::stepAllTurns()

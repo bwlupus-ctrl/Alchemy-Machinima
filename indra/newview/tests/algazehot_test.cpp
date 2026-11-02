@@ -1,7 +1,9 @@
 /** Native contract for live hot gaze envelopes and scene-owned slot data. */
 #ifndef AL_HOT_GAZE_STANDALONE
 #include "linden_common.h"
+#ifndef AL_HOT_GAZE_NATIVE_MAIN
 #include "../test/lltut.h"
+#endif
 #include "../algazehot.h"
 #include "../algazehotslots.h"
 #endif
@@ -48,15 +50,21 @@ void hotGazeContract()
     const LLUUID recovered = LLUUID::generateNewID(), object = LLUUID::generateNewID();
     slots[0].mWho = actor; slots[0].mTarget.mMode = LLActorMover::GazeTarget::OBJECT;
     slots[0].mTarget.mObjectRef = object; slots[0].mTargetName = "Moving fist";
+    slots[0].mTarget.mPickedSpot = true; slots[0].mTarget.mObjectOffset = LLVector3(.1f, .2f, .3f);
+    slots[0].mTarget.mObjectJoint = "mWristLeft";
     slots[0].mHasTarget = true; slots[0].mSnap = .3f; slots[0].mEyes = .7f;
     slots[1].mGroup = "Fighters"; slots[1].mHold = true; slots[1].mStay = true;
     slots[1].mTarget.mMode = LLActorMover::GazeTarget::FIXED_POINT;
+    slots[1].mTarget.mPointNudge = LLVector3(-.2f, .3f, .4f);
     slots[1].mTarget.mFixedPoint = LLVector3d(4, 5, 6); slots[1].mHasTarget = true;
     slots[2].mWho = clone; slots[2].mTarget.mMode = LLActorMover::GazeTarget::CAST_MEMBER;
     slots[2].mTarget.mCastRef = clone; slots[2].mHasTarget = true;
     const LLSD saved = ALGazeHot::writeSlots(slots, [&](const LLUUID& id) { return id != clone; });
     const auto loaded = ALGazeHot::readSlots(saved);
     hotRequire(loaded[0].mWho == actor && loaded[0].mTarget.mObjectRef == object);
+    hotRequire(loaded[0].mTarget.mPickedSpot && loaded[0].mTarget.mObjectOffset == LLVector3(.1f, .2f, .3f));
+    hotRequire(loaded[0].mTarget.mObjectJoint == "mWristLeft");
+    hotRequire(loaded[1].mTarget.mPointNudge == LLVector3(-.2f, .3f, .4f));
     hotRequire(loaded[0].mTargetName == "Moving fist" && hotNear(loaded[0].mEyes, .7f));
     hotRequire(loaded[1].mGroup == "Fighters" && loaded[1].mHold && loaded[1].mStay);
     hotRequire(loaded[1].mTarget.mFixedPoint == LLVector3d(4, 5, 6));
@@ -70,7 +78,13 @@ void hotGazeContract()
 }
 }
 
-#ifndef AL_HOT_GAZE_STANDALONE
+#if defined(AL_HOT_GAZE_NATIVE_MAIN)
+int main()
+{
+    hotGazeContract();
+    return 0;
+}
+#elif !defined(AL_HOT_GAZE_STANDALONE)
 namespace tut
 {
 struct algazehot_data {};

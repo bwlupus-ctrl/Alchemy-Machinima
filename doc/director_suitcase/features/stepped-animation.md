@@ -35,12 +35,12 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@240,11", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1189,13", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@2942,179"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14140"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@240,11", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1189,13", "indra/newview/CMakeLists.txt@1283,162", "indra/newview/CMakeLists.txt@2944,185"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,14127"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@913,14", "indra/newview/llappviewer.cpp@1714,11", "indra/newview/llappviewer.cpp@5334,24", "indra/newview/llappviewer.cpp@5967,21"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@360,7"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@24,23", "indra/newview/llvoavatar.cpp@1348,7", "indra/newview/llvoavatar.cpp@3379,12", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@7361,14", "indra/newview/llvoavatar.cpp@7389,9", "indra/newview/llvoavatar.cpp@9011,7", "indra/newview/llvoavatar.cpp@11597,27", "indra/newview/llvoavatar.cpp@11656,282"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@24,23", "indra/newview/llvoavatar.cpp@1348,7", "indra/newview/llvoavatar.cpp@3379,12", "indra/newview/llvoavatar.cpp@5216,596", "indra/newview/llvoavatar.cpp@7366,14", "indra/newview/llvoavatar.cpp@7394,9", "indra/newview/llvoavatar.cpp@9016,7", "indra/newview/llvoavatar.cpp@11602,27", "indra/newview/llvoavatar.cpp@11661,282"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@213,33", "indra/newview/llvoavatar.h@977,21"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@27,11", "indra/newview/llvovolume.cpp@622,26"]}
 - {"path": "indra/llcharacter/CMakeLists.txt", "hunks": ["indra/llcharacter/CMakeLists.txt@30,9"]}

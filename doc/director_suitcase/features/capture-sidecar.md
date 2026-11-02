@@ -75,8 +75,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@906,7", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@1894,8"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@28445,2122", "indra/newview/app_settings/settings.xml@30568,1104"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@906,7", "indra/newview/CMakeLists.txt@1283,162", "indra/newview/CMakeLists.txt@1896,8"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6556,14127", "indra/newview/app_settings/settings.xml@28453,2122", "indra/newview/app_settings/settings.xml@30576,1104"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@5334,24"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1207,11", "indra/newview/llviewercontrol.cpp@1279,33"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2760,10", "indra/newview/app_settings/settings_alchemy.xml@2771,233"]}
@@ -86,7 +86,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llspatialpartition.h", "hunks": ["indra/newview/llspatialpartition.h@102,21"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@99,11", "indra/newview/llviewerdisplay.cpp@1188,82", "indra/newview/llviewerdisplay.cpp@1855,10"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@898,37", "indra/newview/llvoavatar.cpp@1631,21", "indra/newview/llvoavatar.cpp@6322,49", "indra/newview/llvoavatar.cpp@6543,9"]}
+- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@1845,1987"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@898,37", "indra/newview/llvoavatar.cpp@1631,21", "indra/newview/llvoavatar.cpp@6327,49", "indra/newview/llvoavatar.cpp@6548,9"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@287,25"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@1569,18", "indra/newview/llvovolume.cpp@1613,26", "indra/newview/llvovolume.cpp@5690,87", "indra/newview/llvovolume.cpp@5835,10", "indra/newview/llvovolume.cpp@5993,8", "indra/newview/llvovolume.cpp@6090,24", "indra/newview/llvovolume.cpp@6155,15"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@120,11", "indra/newview/pipeline.cpp@327,106", "indra/newview/pipeline.cpp@951,88", "indra/newview/pipeline.cpp@1362,61", "indra/newview/pipeline.cpp@1427,15", "indra/newview/pipeline.cpp@1555,106", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@30948,430", "indra/newview/pipeline.cpp@31781,695"]}
@@ -97,7 +98,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@95,154", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496"]}
 - {"path": "indra/newview/llagent.cpp", "hunks": ["indra/newview/llagent.cpp@70,7", "indra/newview/llagent.cpp@4329,11"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@314,439", "indra/newview/lldrawpoolalpha.cpp@1164,157", "indra/newview/lldrawpoolalpha.cpp@1349,116", "indra/newview/lldrawpoolalpha.cpp@1662,65", "indra/newview/lldrawpoolalpha.cpp@1817,27", "indra/newview/lldrawpoolalpha.cpp@1872,34"]}
-- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@1844,1983"]}
 - {"path": "indra/newview/llviewerpartsim.cpp", "hunks": ["indra/newview/llviewerpartsim.cpp@840,35"]}
 - {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@338,32", "indra/newview/llviewershadermgr.cpp@373,20", "indra/newview/llviewershadermgr.cpp@435,143", "indra/newview/llviewershadermgr.cpp@1562,18", "indra/newview/llviewershadermgr.cpp@1596,14", "indra/newview/llviewershadermgr.cpp@2148,40", "indra/newview/llviewershadermgr.cpp@2491,28", "indra/newview/llviewershadermgr.cpp@2803,312", "indra/newview/llviewershadermgr.cpp@3915,67", "indra/newview/llviewershadermgr.cpp@5480,299"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@434,34", "indra/newview/llviewershadermgr.h@477,7"]}

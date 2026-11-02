@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 38,
-    "rows": 2209,
+    "rows": 2214,
     "owner_roots": 35,
-    "unresolved_rows": 68,
+    "unresolved_rows": 72,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2209
+    "independent_json_rows": 2214
   },
   "setting_conflicts": [
     {
@@ -6342,7 +6342,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 343,
+          "line": 363,
           "widget": "gaze_breakoff_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31190,7 +31190,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 255,
+          "line": 275,
           "widget": "gaze_easing_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31229,7 +31229,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 268,
+          "line": 288,
           "widget": "gaze_random_interval_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31268,7 +31268,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 265,
+          "line": 285,
           "widget": "gaze_random_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31307,7 +31307,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 649,
+          "line": 669,
           "widget": "gaze_restraint_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31346,7 +31346,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 512,
+          "line": 532,
           "widget": "gaze_soft_recruit_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31385,7 +31385,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 644,
+          "line": 664,
           "widget": "gaze_stillness_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31424,7 +31424,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 250,
+          "line": 270,
           "widget": "gaze_transition_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31463,7 +31463,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 136,
+          "line": 156,
           "widget": "hot_gamepad",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31541,7 +31541,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 315,
+          "line": 335,
           "widget": "look_at_camera_ease_time",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31580,7 +31580,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 297,
+          "line": 317,
           "widget": "look_at_camera_head_eye",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31619,7 +31619,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 305,
+          "line": 325,
           "widget": "look_at_camera_smoothing",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31658,7 +31658,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 294,
+          "line": 314,
           "widget": "look_at_camera_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31697,7 +31697,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 302,
+          "line": 322,
           "widget": "look_at_camera_torso",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -31736,7 +31736,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-          "line": 310,
+          "line": 330,
           "widget": "look_at_camera_torso_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -57568,7 +57568,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1899,
+              "line": 1900,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -57581,7 +57581,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1999,
+              "line": 2000,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -57741,7 +57741,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1900,
+              "line": 1901,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -57754,7 +57754,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2001,
+              "line": 2002,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -57881,7 +57881,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1901,
+              "line": 1902,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -57894,7 +57894,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2003,
+              "line": 2004,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58021,7 +58021,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1902,
+              "line": 1903,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58034,7 +58034,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2005,
+              "line": 2006,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58207,7 +58207,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1906,
+              "line": 1907,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58220,7 +58220,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2013,
+              "line": 2014,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58347,7 +58347,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1903,
+              "line": 1904,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58360,7 +58360,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2007,
+              "line": 2008,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58487,7 +58487,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1904,
+              "line": 1905,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58500,7 +58500,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2009,
+              "line": 2010,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58627,7 +58627,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1905,
+              "line": 1906,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58640,7 +58640,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2011,
+              "line": 2012,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -87861,14 +87861,14 @@
       "label": "Gaze",
       "group": "performance_group",
       "group_label": "Performance",
-      "row_count": 143,
+      "row_count": 148,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
           "tag": "panel",
           "name": "panel_lens_gaze",
           "line": 7,
-          "matched_rows": 140,
+          "matched_rows": 145,
           "evidence": "row-widget match"
         },
         {
@@ -87883,15 +87883,19 @@
       "owner_classes": [
         {
           "class": "ALPanelLensGaze",
-          "reference_count": 193
-        },
-        {
-          "class": "LLDirectorCast",
-          "reference_count": 2
+          "reference_count": 198
         },
         {
           "class": "LLFloaterDirector",
           "reference_count": 2
+        },
+        {
+          "class": "LLActorMover",
+          "reference_count": 1
+        },
+        {
+          "class": "LLDirectorCast",
+          "reference_count": 1
         },
         {
           "class": "LLFloaterReg",
@@ -87905,11 +87909,11 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 15,
-        "setting_coverage": 0.104895,
-        "cpp_referenced_rows": 125,
+        "setting_coverage": 0.101351,
+        "cpp_referenced_rows": 130,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
-      "unresolved_row_count": 11,
+      "unresolved_row_count": 15,
       "rows": [
         {
           "card": "gaze_subjects",
@@ -87933,7 +87937,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 442,
+              "line": 446,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -87944,7 +87948,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 444,
+              "line": 448,
               "class": "ALPanelLensGaze",
               "function": "refreshEditActorCombo",
               "wired_class": "ALPanelLensGaze",
@@ -87998,7 +88002,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 443,
+              "line": 447,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88009,7 +88013,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 447,
+              "line": 451,
               "class": "ALPanelLensGaze",
               "function": "<inline callback>",
               "wired_class": "ALPanelLensGaze",
@@ -88077,7 +88081,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 451,
+              "line": 455,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88088,7 +88092,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 537,
+              "line": 541,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88156,7 +88160,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 452,
+              "line": 456,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88167,7 +88171,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 538,
+              "line": 542,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88235,7 +88239,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 453,
+              "line": 457,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88246,7 +88250,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 539,
+              "line": 543,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88314,7 +88318,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 454,
+              "line": 458,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88325,7 +88329,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 540,
+              "line": 544,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88393,7 +88397,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 455,
+              "line": 459,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88404,7 +88408,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 541,
+              "line": 545,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88472,7 +88476,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 440,
+              "line": 444,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88601,7 +88605,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2333,
+              "line": 2388,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -88612,7 +88616,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2342,
+              "line": 2399,
               "class": "ALPanelLensGaze",
               "function": "asInteger",
               "wired_class": "ALPanelLensGaze",
@@ -88680,7 +88684,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2335,
+              "line": 2390,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -88756,7 +88760,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2335,
+              "line": 2390,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -88826,7 +88830,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2336,
+              "line": 2391,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -88896,7 +88900,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2341,
+              "line": 2396,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -88907,7 +88911,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2348,
+              "line": 2411,
               "class": "ALPanelLensGaze",
               "function": "asInteger",
               "wired_class": "ALPanelLensGaze",
@@ -88975,7 +88979,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2340,
+              "line": 2395,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89016,6 +89020,357 @@
           "option_index": null,
           "option_label": null,
           "index": 6,
+          "label": "Object aim",
+          "kind": "combo",
+          "widget": "hot_spot",
+          "matched_widget": "hot_spot",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [
+            "Centre",
+            "Picked spot"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+              "line": 866,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+                "tag": "panel",
+                "name": "panel_lens_gaze",
+                "line": 7
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanellensgaze.cpp",
+              "line": 2397,
+              "class": "ALPanelLensGaze",
+              "function": "buildHotControls",
+              "wired_class": "ALPanelLensGaze",
+              "wired_function": "buildHotControls",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mHotSpot = getChild<LLComboBox>(\"hot_spot\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+              "line": 87,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+                "tag": "panel",
+                "name": "gaze_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "hot_targets",
+          "card_title": "Hot targets",
+          "option_index": null,
+          "option_label": null,
+          "index": 7,
+          "label": "Nudge X (m)",
+          "kind": "number",
+          "widget": "hot_x",
+          "matched_widget": "hot_x",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+              "line": 868,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+                "tag": "panel",
+                "name": "panel_lens_gaze",
+                "line": 7
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanellensgaze.cpp",
+              "line": 2398,
+              "class": "ALPanelLensGaze",
+              "function": "buildHotControls",
+              "wired_class": "ALPanelLensGaze",
+              "wired_function": "buildHotControls",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mHotX = getChild<LLSpinCtrl>(\"hot_x\"); mHotY = getChild<LLSpinCtrl>(\"hot_y\"); mHotZ = getChild<LLSpinCtrl>(\"hot_z\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+              "line": 95,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+                "tag": "panel",
+                "name": "gaze_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "hot_targets",
+          "card_title": "Hot targets",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "Nudge Y (m)",
+          "kind": "number",
+          "widget": "hot_y",
+          "matched_widget": "hot_y",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+              "line": 870,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+                "tag": "panel",
+                "name": "panel_lens_gaze",
+                "line": 7
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanellensgaze.cpp",
+              "line": 2398,
+              "class": "ALPanelLensGaze",
+              "function": "buildHotControls",
+              "wired_class": "ALPanelLensGaze",
+              "wired_function": "buildHotControls",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mHotX = getChild<LLSpinCtrl>(\"hot_x\"); mHotY = getChild<LLSpinCtrl>(\"hot_y\"); mHotZ = getChild<LLSpinCtrl>(\"hot_z\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+              "line": 98,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+                "tag": "panel",
+                "name": "gaze_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "hot_targets",
+          "card_title": "Hot targets",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
+          "label": "Nudge Z (m)",
+          "kind": "number",
+          "widget": "hot_z",
+          "matched_widget": "hot_z",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+              "line": 872,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+                "tag": "panel",
+                "name": "panel_lens_gaze",
+                "line": 7
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanellensgaze.cpp",
+              "line": 2398,
+              "class": "ALPanelLensGaze",
+              "function": "buildHotControls",
+              "wired_class": "ALPanelLensGaze",
+              "wired_function": "buildHotControls",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mHotX = getChild<LLSpinCtrl>(\"hot_x\"); mHotY = getChild<LLSpinCtrl>(\"hot_y\"); mHotZ = getChild<LLSpinCtrl>(\"hot_z\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+              "line": 101,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+                "tag": "panel",
+                "name": "gaze_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "hot_targets",
+          "card_title": "Hot targets",
+          "option_index": null,
+          "option_label": null,
+          "index": 10,
+          "label": "Reset nudge",
+          "kind": "button",
+          "widget": "hot_nudge_reset",
+          "matched_widget": "hot_nudge_reset",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+              "line": 874,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+                "tag": "panel",
+                "name": "panel_lens_gaze",
+                "line": 7
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanellensgaze.cpp",
+              "line": 2406,
+              "class": "ALPanelLensGaze",
+              "function": "setHotGazeSlot",
+              "wired_class": "ALPanelLensGaze",
+              "wired_function": "buildHotControls",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "getChild<LLButton>(\"hot_nudge_reset\")->setClickedCallback([this](LLUICtrl*, const LLSD&) {"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+              "line": 104,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+                "tag": "panel",
+                "name": "gaze_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "hot_targets",
+          "card_title": "Hot targets",
+          "option_index": null,
+          "option_label": null,
+          "index": 11,
           "label": "Clear",
           "kind": "button",
           "widget": "hot_clear",
@@ -89043,7 +89398,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2353,
+              "line": 2416,
               "class": "ALPanelLensGaze",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -89063,7 +89418,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 87,
+              "line": 107,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -89083,7 +89438,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 7,
+          "index": 12,
           "label": "Snap (s)",
           "kind": "number",
           "widget": "hot_snap",
@@ -89111,7 +89466,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2337,
+              "line": 2392,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89131,7 +89486,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 90,
+              "line": 110,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -89153,7 +89508,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 8,
+          "index": 13,
           "label": "Head",
           "kind": "slider",
           "widget": "hot_head",
@@ -89181,7 +89536,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2339,
+              "line": 2394,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89201,7 +89556,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 93,
+              "line": 113,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -89223,7 +89578,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 9,
+          "index": 14,
           "label": "Eyes",
           "kind": "slider",
           "widget": "hot_eyes",
@@ -89251,7 +89606,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2339,
+              "line": 2394,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89271,7 +89626,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 98,
+              "line": 118,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -89293,7 +89648,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 10,
+          "index": 15,
           "label": "Torso",
           "kind": "slider",
           "widget": "hot_torso",
@@ -89321,7 +89676,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2340,
+              "line": 2395,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89341,7 +89696,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 103,
+              "line": 123,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -89363,7 +89718,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 11,
+          "index": 16,
           "label": "After",
           "kind": "combo",
           "widget": "hot_after",
@@ -89394,7 +89749,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2336,
+              "line": 2391,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89414,7 +89769,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 108,
+              "line": 128,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -89436,7 +89791,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 12,
+          "index": 17,
           "label": "Dwell (s)",
           "kind": "number",
           "widget": "hot_dwell",
@@ -89464,7 +89819,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2338,
+              "line": 2393,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89484,7 +89839,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 116,
+              "line": 136,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -89506,7 +89861,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 13,
+          "index": 18,
           "label": "Return (s)",
           "kind": "number",
           "widget": "hot_return",
@@ -89534,7 +89889,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2338,
+              "line": 2393,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89554,7 +89909,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 119,
+              "line": 139,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -89576,7 +89931,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 14,
+          "index": 19,
           "label": "Key mode",
           "kind": "combo",
           "widget": "hot_mode",
@@ -89607,7 +89962,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2337,
+              "line": 2392,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89627,7 +89982,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 122,
+              "line": 142,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -89649,7 +90004,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 15,
+          "index": 20,
           "label": "Fire",
           "kind": "button",
           "widget": "hot_fire",
@@ -89677,7 +90032,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2361,
+              "line": 2426,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -89688,8 +90043,8 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2365,
-              "class": "LLDirectorCast",
+              "line": 2430,
+              "class": "LLActorMover",
               "function": "hotGazeInput",
               "wired_class": "ALPanelLensGaze",
               "wired_function": "buildHotControls",
@@ -89708,7 +90063,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 130,
+              "line": 150,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -89728,7 +90083,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 16,
+          "index": 21,
           "label": "Reset slot",
           "kind": "button",
           "widget": "hot_reset",
@@ -89756,7 +90111,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2358,
+              "line": 2422,
               "class": "LLDirectorCast",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -89776,7 +90131,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 133,
+              "line": 153,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -89796,7 +90151,7 @@
           "card_title": "Hot targets",
           "option_index": null,
           "option_label": null,
-          "index": 17,
+          "index": 22,
           "label": "Gamepad D-pad",
           "kind": "toggle",
           "widget": "hot_gamepad",
@@ -89841,7 +90196,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 136,
+              "line": 156,
               "tag": "kit_switch",
               "control_name": "DirectorHotGazeGamepad",
               "callbacks": [],
@@ -89858,7 +90213,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 136,
+              "line": 156,
               "widget": "hot_gamepad",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -89908,7 +90263,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 458,
+              "line": 462,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89919,7 +90274,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 544,
+              "line": 548,
               "class": "ALPanelLensGaze",
               "function": "onTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89939,7 +90294,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 141,
+              "line": 161,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -89995,7 +90350,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 459,
+              "line": 463,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90006,7 +90361,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 545,
+              "line": 549,
               "class": "ALPanelLensGaze",
               "function": "onEyeTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90026,7 +90381,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 152,
+              "line": 172,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -90077,7 +90432,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 464,
+              "line": 468,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90088,7 +90443,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 550,
+              "line": 554,
               "class": "ALPanelLensGaze",
               "function": "onTargetDetailScopeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90108,7 +90463,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 165,
+              "line": 185,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -90161,7 +90516,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 465,
+              "line": 469,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90172,7 +90527,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 552,
+              "line": 556,
               "class": "ALPanelLensGaze",
               "function": "onCastCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90192,7 +90547,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 173,
+              "line": 193,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -90266,7 +90621,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 466,
+              "line": 470,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90277,7 +90632,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 553,
+              "line": 557,
               "class": "ALPanelLensGaze",
               "function": "onSetPoint",
               "wired_class": "ALPanelLensGaze",
@@ -90297,7 +90652,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 179,
+              "line": 199,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -90345,7 +90700,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 467,
+              "line": 471,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90356,7 +90711,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 554,
+              "line": 558,
               "class": "ALPanelLensGaze",
               "function": "onPickObject",
               "wired_class": "ALPanelLensGaze",
@@ -90376,7 +90731,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 182,
+              "line": 202,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -90424,7 +90779,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 468,
+              "line": 472,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90435,7 +90790,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 555,
+              "line": 559,
               "class": "ALPanelLensGaze",
               "function": "onClearObject",
               "wired_class": "ALPanelLensGaze",
@@ -90455,7 +90810,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 185,
+              "line": 205,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -90503,7 +90858,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 616,
+              "line": 620,
               "class": "ALPanelLensGaze",
               "function": "onTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90523,7 +90878,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 188,
+              "line": 208,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -90571,7 +90926,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 622,
+              "line": 626,
               "class": "ALPanelLensGaze",
               "function": "onEyeTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90591,7 +90946,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 191,
+              "line": 211,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -90639,7 +90994,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 471,
+              "line": 475,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90650,7 +91005,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 558,
+              "line": 562,
               "class": "ALPanelLensGaze",
               "function": "onIntensityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90670,7 +91025,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 196,
+              "line": 216,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -90718,7 +91073,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 469,
+              "line": 473,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90729,7 +91084,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 556,
+              "line": 560,
               "class": "ALPanelLensGaze",
               "function": "onBlendCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90749,7 +91104,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 201,
+              "line": 221,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -90797,7 +91152,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 470,
+              "line": 474,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90808,7 +91163,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 557,
+              "line": 561,
               "class": "ALPanelLensGaze",
               "function": "onTorsoCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90828,7 +91183,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 206,
+              "line": 226,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -90876,7 +91231,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 502,
+              "line": 506,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90887,7 +91242,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 588,
+              "line": 592,
               "class": "ALPanelLensGaze",
               "function": "onSmoothingCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90907,7 +91262,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 211,
+              "line": 231,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -90955,7 +91310,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 474,
+              "line": 478,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90986,7 +91341,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 216,
+              "line": 236,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -91034,7 +91389,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 475,
+              "line": 479,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91045,7 +91400,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 561,
+              "line": 565,
               "class": "ALPanelLensGaze",
               "function": "onInfluenceSet",
               "wired_class": "ALPanelLensGaze",
@@ -91065,7 +91420,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 221,
+              "line": 241,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91113,7 +91468,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 476,
+              "line": 480,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91124,7 +91479,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 562,
+              "line": 566,
               "class": "ALPanelLensGaze",
               "function": "onInfluenceDelete",
               "wired_class": "ALPanelLensGaze",
@@ -91144,7 +91499,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 224,
+              "line": 244,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91192,7 +91547,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 660,
+              "line": 664,
               "class": "ALPanelLensGaze",
               "function": "onIntensityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91212,7 +91567,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 227,
+              "line": 247,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91260,7 +91615,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 648,
+              "line": 652,
               "class": "ALPanelLensGaze",
               "function": "onBlendCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91280,7 +91635,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 230,
+              "line": 250,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91328,7 +91683,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 654,
+              "line": 658,
               "class": "ALPanelLensGaze",
               "function": "onTorsoCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91348,7 +91703,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 233,
+              "line": 253,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91396,7 +91751,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 666,
+              "line": 670,
               "class": "ALPanelLensGaze",
               "function": "onSmoothingCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91416,7 +91771,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 236,
+              "line": 256,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91466,7 +91821,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 514,
+              "line": 518,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91477,7 +91832,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 592,
+              "line": 596,
               "class": "ALPanelLensGaze",
               "function": "onPerformanceCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91497,7 +91852,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 241,
+              "line": 261,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -91545,7 +91900,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 628,
+              "line": 632,
               "class": "ALPanelLensGaze",
               "function": "onResetPerformance",
               "wired_class": "ALPanelLensGaze",
@@ -91565,7 +91920,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 247,
+              "line": 267,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -91630,7 +91985,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 250,
+              "line": 270,
               "tag": "slider",
               "control_name": "DirectorGazeTransitionSec",
               "callbacks": [],
@@ -91647,7 +92002,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 250,
+              "line": 270,
               "widget": "gaze_transition_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -91713,7 +92068,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 255,
+              "line": 275,
               "tag": "combo_box",
               "control_name": "DirectorGazeEasing",
               "callbacks": [],
@@ -91730,7 +92085,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 255,
+              "line": 275,
               "widget": "gaze_easing_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -91791,7 +92146,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 265,
+              "line": 285,
               "tag": "kit_switch",
               "control_name": "DirectorGazeRandomMode",
               "callbacks": [],
@@ -91808,7 +92163,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 265,
+              "line": 285,
               "widget": "gaze_random_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -91869,7 +92224,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 268,
+              "line": 288,
               "tag": "slider",
               "control_name": "DirectorGazeRandomInterval",
               "callbacks": [],
@@ -91886,7 +92241,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 268,
+              "line": 288,
               "widget": "gaze_random_interval_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -91976,7 +92331,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 275,
+              "line": 295,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -92037,7 +92392,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 610,
+              "line": 614,
               "class": "LLFloaterReg",
               "function": "toggleInstance",
               "wired_class": "ALPanelLensGaze",
@@ -92057,7 +92412,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 278,
+              "line": 298,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -92105,7 +92460,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 521,
+              "line": 525,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92116,7 +92471,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 609,
+              "line": 613,
               "class": "ALPanelLensGaze",
               "function": "onGazeCues",
               "wired_class": "ALPanelLensGaze",
@@ -92136,7 +92491,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 281,
+              "line": 301,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -92187,7 +92542,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 520,
+              "line": 524,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92198,7 +92553,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 608,
+              "line": 612,
               "class": "ALPanelLensGaze",
               "function": "onModeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92218,7 +92573,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 286,
+              "line": 306,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -92283,7 +92638,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 294,
+              "line": 314,
               "tag": "spinner",
               "control_name": "DirectorLookAtCameraStrength",
               "callbacks": [],
@@ -92300,7 +92655,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 294,
+              "line": 314,
               "widget": "look_at_camera_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -92361,7 +92716,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 297,
+              "line": 317,
               "tag": "slider",
               "control_name": "DirectorLookAtCameraHeadEye",
               "callbacks": [],
@@ -92378,7 +92733,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 297,
+              "line": 317,
               "widget": "look_at_camera_head_eye",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -92439,7 +92794,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 302,
+              "line": 322,
               "tag": "kit_switch",
               "control_name": "DirectorLookAtCameraTorso",
               "callbacks": [],
@@ -92456,7 +92811,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 302,
+              "line": 322,
               "widget": "look_at_camera_torso",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -92517,7 +92872,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 305,
+              "line": 325,
               "tag": "slider",
               "control_name": "DirectorLookAtCameraSmoothing",
               "callbacks": [],
@@ -92534,7 +92889,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 305,
+              "line": 325,
               "widget": "look_at_camera_smoothing",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -92595,7 +92950,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 310,
+              "line": 330,
               "tag": "slider",
               "control_name": "DirectorLookAtCameraTorsoAmount",
               "callbacks": [],
@@ -92612,7 +92967,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 310,
+              "line": 330,
               "widget": "look_at_camera_torso_amount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -92673,7 +93028,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 315,
+              "line": 335,
               "tag": "slider",
               "control_name": "DirectorLookAtCameraEaseTime",
               "callbacks": [],
@@ -92690,7 +93045,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 315,
+              "line": 335,
               "widget": "look_at_camera_ease_time",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -92734,7 +93089,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 756,
+              "line": 760,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -92754,7 +93109,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 320,
+              "line": 340,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -92802,7 +93157,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 512,
+              "line": 516,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92813,7 +93168,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 590,
+              "line": 594,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92833,7 +93188,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 325,
+              "line": 345,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -92881,7 +93236,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 513,
+              "line": 517,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92892,7 +93247,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 591,
+              "line": 595,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92912,7 +93267,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 330,
+              "line": 350,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -92960,7 +93315,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 518,
+              "line": 522,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92971,7 +93326,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 606,
+              "line": 610,
               "class": "ALPanelLensGaze",
               "function": "onCameraRollCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92991,7 +93346,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 335,
+              "line": 355,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -93039,7 +93394,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 510,
+              "line": 514,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93050,7 +93405,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 589,
+              "line": 593,
               "class": "ALPanelLensGaze",
               "function": "onBreakoffCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93070,7 +93425,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 340,
+              "line": 360,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -93127,7 +93482,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 511,
+              "line": 515,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93147,7 +93502,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 343,
+              "line": 363,
               "tag": "spinner",
               "control_name": "BDMergeGazeBehindAngle",
               "callbacks": [],
@@ -93164,7 +93519,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 343,
+              "line": 363,
               "widget": "gaze_breakoff_spinner",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -93208,7 +93563,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 672,
+              "line": 676,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93228,7 +93583,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 346,
+              "line": 366,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -93276,7 +93631,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 678,
+              "line": 682,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93296,7 +93651,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 349,
+              "line": 369,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -93344,7 +93699,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 744,
+              "line": 748,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93364,7 +93719,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 352,
+              "line": 372,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -93412,7 +93767,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 507,
+              "line": 511,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93423,7 +93778,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 603,
+              "line": 607,
               "class": "ALPanelLensGaze",
               "function": "onEaseAcquireCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93443,7 +93798,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 357,
+              "line": 377,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -93491,7 +93846,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 508,
+              "line": 512,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93502,7 +93857,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 604,
+              "line": 608,
               "class": "ALPanelLensGaze",
               "function": "onEaseReleaseCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93522,7 +93877,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 360,
+              "line": 380,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -93570,7 +93925,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 509,
+              "line": 513,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93581,7 +93936,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 605,
+              "line": 609,
               "class": "ALPanelLensGaze",
               "function": "onDeadZoneCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93601,7 +93956,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 363,
+              "line": 383,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -93649,7 +94004,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 705,
+              "line": 709,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93669,7 +94024,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 366,
+              "line": 386,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -93717,7 +94072,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 711,
+              "line": 715,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93737,7 +94092,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 369,
+              "line": 389,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -93785,7 +94140,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 717,
+              "line": 721,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93805,7 +94160,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 372,
+              "line": 392,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -93858,7 +94213,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 460,
+              "line": 464,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93869,7 +94224,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 546,
+              "line": 550,
               "class": "ALPanelLensGaze",
               "function": "onPriorityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93889,7 +94244,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 377,
+              "line": 397,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -93948,7 +94303,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 463,
+              "line": 467,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93959,7 +94314,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 549,
+              "line": 553,
               "class": "ALPanelLensGaze",
               "function": "onIkLeanCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93979,7 +94334,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 387,
+              "line": 407,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -94036,7 +94391,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 461,
+              "line": 465,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94047,7 +94402,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 547,
+              "line": 551,
               "class": "ALPanelLensGaze",
               "function": "onAnimPriorityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94067,7 +94422,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 403,
+              "line": 423,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -94119,7 +94474,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 472,
+              "line": 476,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94130,7 +94485,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 559,
+              "line": 563,
               "class": "ALPanelLensGaze",
               "function": "onCompositionCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94150,7 +94505,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 417,
+              "line": 437,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -94198,7 +94553,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 477,
+              "line": 481,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94209,7 +94564,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 563,
+              "line": 567,
               "class": "ALPanelLensGaze",
               "function": "onChestShareCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94229,7 +94584,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 426,
+              "line": 446,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -94277,7 +94632,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 473,
+              "line": 477,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94288,7 +94643,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 560,
+              "line": 564,
               "class": "ALPanelLensGaze",
               "function": "onCompositionMixCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94308,7 +94663,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 431,
+              "line": 451,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -94356,7 +94711,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 723,
+              "line": 727,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94376,7 +94731,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 436,
+              "line": 456,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -94424,7 +94779,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 742,
+              "line": 746,
               "class": "ALPanelLensGaze",
               "function": "LLSD",
               "wired_class": "ALPanelLensGaze",
@@ -94444,7 +94799,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 439,
+              "line": 459,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -94492,7 +94847,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 729,
+              "line": 733,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94512,7 +94867,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 442,
+              "line": 462,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -94560,7 +94915,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 766,
+              "line": 770,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94580,7 +94935,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 445,
+              "line": 465,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -94628,7 +94983,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 772,
+              "line": 776,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94648,7 +95003,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 448,
+              "line": 468,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -94696,7 +95051,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 778,
+              "line": 782,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94716,7 +95071,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 451,
+              "line": 471,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -94773,7 +95128,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 462,
+              "line": 466,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94784,7 +95139,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 548,
+              "line": 552,
               "class": "ALPanelLensGaze",
               "function": "onRangePresetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94804,7 +95159,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 456,
+              "line": 476,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -94856,7 +95211,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 478,
+              "line": 482,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94867,7 +95222,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 564,
+              "line": 568,
               "class": "ALPanelLensGaze",
               "function": "onLimitModeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94887,7 +95242,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 470,
+              "line": 490,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -94935,7 +95290,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 519,
+              "line": 523,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94946,7 +95301,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 607,
+              "line": 611,
               "class": "ALPanelLensGaze",
               "function": "onExaggerateCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94966,7 +95321,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 479,
+              "line": 499,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -95014,7 +95369,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 740,
+              "line": 744,
               "class": "ALPanelLensGaze",
               "function": "LLSD",
               "wired_class": "ALPanelLensGaze",
@@ -95034,7 +95389,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 484,
+              "line": 504,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95082,7 +95437,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 784,
+              "line": 788,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -95102,7 +95457,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 487,
+              "line": 507,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95150,7 +95505,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 750,
+              "line": 754,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -95170,7 +95525,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 490,
+              "line": 510,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95221,7 +95576,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 498,
+              "line": 502,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95232,7 +95587,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 584,
+              "line": 588,
               "class": "ALPanelLensGaze",
               "function": "onLeanCurveCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95252,7 +95607,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 495,
+              "line": 515,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -95300,7 +95655,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 499,
+              "line": 503,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95311,7 +95666,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 585,
+              "line": 589,
               "class": "ALPanelLensGaze",
               "function": "onLeanThresholdCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95331,7 +95686,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 503,
+              "line": 523,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -95379,7 +95734,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 500,
+              "line": 504,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95390,7 +95745,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 586,
+              "line": 590,
               "class": "ALPanelLensGaze",
               "function": "onLeanSoftnessCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95410,7 +95765,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 506,
+              "line": 526,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -95458,7 +95813,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 501,
+              "line": 505,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95469,7 +95824,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 587,
+              "line": 591,
               "class": "ALPanelLensGaze",
               "function": "onLeanMaxCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95489,7 +95844,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 509,
+              "line": 529,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -95554,7 +95909,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 512,
+              "line": 532,
               "tag": "spinner",
               "control_name": "DirectorGazeSoftRecruitDeg",
               "callbacks": [],
@@ -95571,7 +95926,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 512,
+              "line": 532,
               "widget": "gaze_soft_recruit_spinner",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -95615,7 +95970,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 800,
+              "line": 804,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -95635,7 +95990,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 515,
+              "line": 535,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95683,7 +96038,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 806,
+              "line": 810,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -95703,7 +96058,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 518,
+              "line": 538,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95751,7 +96106,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 812,
+              "line": 816,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -95771,7 +96126,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 521,
+              "line": 541,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95819,7 +96174,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 818,
+              "line": 822,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -95839,7 +96194,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 524,
+              "line": 544,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -95887,7 +96242,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 479,
+              "line": 483,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95898,7 +96253,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 565,
+              "line": 569,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95918,7 +96273,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 529,
+              "line": 549,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -95966,7 +96321,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 482,
+              "line": 486,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95977,7 +96332,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 568,
+              "line": 572,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95997,7 +96352,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 532,
+              "line": 552,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96045,7 +96400,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 485,
+              "line": 489,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96056,7 +96411,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 571,
+              "line": 575,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96076,7 +96431,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 535,
+              "line": 555,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96124,7 +96479,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 488,
+              "line": 492,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96135,7 +96490,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 574,
+              "line": 578,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96155,7 +96510,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 538,
+              "line": 558,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96203,7 +96558,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 491,
+              "line": 495,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96214,7 +96569,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 577,
+              "line": 581,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96234,7 +96589,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 541,
+              "line": 561,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96282,7 +96637,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 480,
+              "line": 484,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96293,7 +96648,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 566,
+              "line": 570,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96313,7 +96668,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 544,
+              "line": 564,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96361,7 +96716,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 481,
+              "line": 485,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96372,7 +96727,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 567,
+              "line": 571,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96392,7 +96747,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 547,
+              "line": 567,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96440,7 +96795,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 483,
+              "line": 487,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96451,7 +96806,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 569,
+              "line": 573,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96471,7 +96826,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 550,
+              "line": 570,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96519,7 +96874,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 484,
+              "line": 488,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96530,7 +96885,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 570,
+              "line": 574,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96550,7 +96905,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 553,
+              "line": 573,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96598,7 +96953,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 486,
+              "line": 490,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96609,7 +96964,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 572,
+              "line": 576,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96629,7 +96984,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 556,
+              "line": 576,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96677,7 +97032,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 487,
+              "line": 491,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96688,7 +97043,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 573,
+              "line": 577,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96708,7 +97063,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 559,
+              "line": 579,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96756,7 +97111,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 489,
+              "line": 493,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96767,7 +97122,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 575,
+              "line": 579,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96787,7 +97142,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 562,
+              "line": 582,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96835,7 +97190,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 490,
+              "line": 494,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96846,7 +97201,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 576,
+              "line": 580,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96866,7 +97221,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 565,
+              "line": 585,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96914,7 +97269,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 492,
+              "line": 496,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96925,7 +97280,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 578,
+              "line": 582,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96945,7 +97300,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 568,
+              "line": 588,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -96993,7 +97348,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 493,
+              "line": 497,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97004,7 +97359,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 579,
+              "line": 583,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97024,7 +97379,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 571,
+              "line": 591,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -97072,7 +97427,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 497,
+              "line": 501,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97083,7 +97438,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 583,
+              "line": 587,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97103,7 +97458,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 574,
+              "line": 594,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -97151,7 +97506,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 494,
+              "line": 498,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97162,7 +97517,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 580,
+              "line": 584,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97182,7 +97537,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 577,
+              "line": 597,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -97230,7 +97585,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 495,
+              "line": 499,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97241,7 +97596,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 581,
+              "line": 585,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97261,7 +97616,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 580,
+              "line": 600,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -97309,7 +97664,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 496,
+              "line": 500,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97320,7 +97675,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 582,
+              "line": 586,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97340,7 +97695,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 583,
+              "line": 603,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -97396,7 +97751,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 586,
+              "line": 606,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -97452,7 +97807,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 589,
+              "line": 609,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -97508,7 +97863,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 592,
+              "line": 612,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -97556,7 +97911,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 790,
+              "line": 794,
               "class": "ALGazeMath",
               "function": "AnatomicalLimitProfile",
               "wired_class": "ALPanelLensGaze",
@@ -97576,7 +97931,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 595,
+              "line": 615,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -97624,7 +97979,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 515,
+              "line": 519,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97635,7 +97990,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 593,
+              "line": 597,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97655,7 +98010,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 600,
+              "line": 620,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -97703,7 +98058,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 516,
+              "line": 520,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97714,7 +98069,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 594,
+              "line": 598,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97734,7 +98089,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 605,
+              "line": 625,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -97782,7 +98137,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 517,
+              "line": 521,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97793,7 +98148,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 595,
+              "line": 599,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97813,7 +98168,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 610,
+              "line": 630,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -97861,7 +98216,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 630,
+              "line": 634,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97881,7 +98236,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 615,
+              "line": 635,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -97929,7 +98284,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 636,
+              "line": 640,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97949,7 +98304,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 618,
+              "line": 638,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -97997,7 +98352,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 642,
+              "line": 646,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98017,7 +98372,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 621,
+              "line": 641,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -98065,7 +98420,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 503,
+              "line": 507,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98076,7 +98431,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 599,
+              "line": 603,
               "class": "ALPanelLensGaze",
               "function": "onMicroLifeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98096,7 +98451,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 626,
+              "line": 646,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -98144,7 +98499,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 504,
+              "line": 508,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98155,7 +98510,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 600,
+              "line": 604,
               "class": "ALPanelLensGaze",
               "function": "onBlinksCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98175,7 +98530,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 631,
+              "line": 651,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -98223,7 +98578,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 505,
+              "line": 509,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98234,7 +98589,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 601,
+              "line": 605,
               "class": "ALPanelLensGaze",
               "function": "onVariationCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98254,7 +98609,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 634,
+              "line": 654,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -98302,7 +98657,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 506,
+              "line": 510,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98313,7 +98668,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 602,
+              "line": 606,
               "class": "ALPanelLensGaze",
               "function": "onBreakFreqCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98333,7 +98688,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 639,
+              "line": 659,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -98398,7 +98753,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 644,
+              "line": 664,
               "tag": "slider",
               "control_name": "DirectorGazeStillness",
               "callbacks": [],
@@ -98415,7 +98770,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 644,
+              "line": 664,
               "widget": "gaze_stillness_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -98476,7 +98831,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 649,
+              "line": 669,
               "tag": "slider",
               "control_name": "DirectorGazeRestraint",
               "callbacks": [],
@@ -98493,7 +98848,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 649,
+              "line": 669,
               "widget": "gaze_restraint_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
@@ -98537,7 +98892,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 687,
+              "line": 691,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98557,7 +98912,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 654,
+              "line": 674,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -98605,7 +98960,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 693,
+              "line": 697,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98625,7 +98980,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 657,
+              "line": 677,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -98673,7 +99028,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 699,
+              "line": 703,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98693,7 +99048,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-              "line": 660,
+              "line": 680,
               "tag": "button",
               "control_name": null,
               "callbacks": [],

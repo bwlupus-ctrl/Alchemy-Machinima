@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import subprocess
 from relight_area_policy_check import method
+from native_check_tools import check_directory, vcvars64
 
 
 def check():
@@ -67,6 +68,7 @@ using uuid_vec_t=std::vector<LLUUID>;
 struct LLSD {LLUUID id; double number=0; LLSD(LLUUID v={}):id(v){} LLUUID asUUID()const{return id;} double asReal()const{return number;}};
 struct Spinner {LLSD value; LLSD getValue(){return value;}};
 struct ALPanelPathEditor {LLUUID mActor; Spinner spinner; Spinner* mFollowOffset=&spinner; void onFollowOffsetCommit();};
+struct LLPresentationTime{struct Frame{double presentation_time=50;};static Frame& currentFrame(){static Frame f;return f;}};
 struct LLActorMover {
  enum {GAZE_TANGENT=0,GAZE_CAST=2,GAZE_OBJECT=4};
  struct GazeTarget {
@@ -75,7 +77,7 @@ struct LLActorMover {
  };
  struct Path {LLUUID mArrivalTarget; int mArrivalFacingMode=0;};
  struct EditHistory{std::vector<Path> mUndo,mRedo;};
- struct Gaze {LLUUID mCastTarget,mObjectTarget; int mTarget=0;
+ struct Gaze {LLUUID mCastTarget,mObjectTarget; int mTarget=0;int mGazeMotor=0;U32 mHotGeneration=0;
   struct {GazeTarget mAuthored;} mParamTransition;
   bool invalidated=false;
  };
@@ -96,7 +98,10 @@ struct LLActorMover {
  U64 mGazeRevision=0;
  static LLActorMover& instance(){static LLActorMover m;return m;}
  static bool rewriteGazeTarget(GazeTarget&,const LLUUID&,const LLUUID&);
- void rewriteHotGazeReferences(const LLUUID&,const LLUUID&){}
+ struct HotGaze{bool mRekeyMotorPending=false;struct State{double mRelease=-1;void release(double t){mRelease=t;}}mState;DirectorGaze mPaint;GazeTarget mTarget;};
+ std::map<LLUUID,HotGaze> mHotGazes;
+ void restoreDirectorLookAtPose(LLVOAvatar*,DirectorGaze&){}
+ void rewriteHotGazeReferences(const LLUUID&,const LLUUID&);
  bool rewriteActorReferences(const LLUUID&,const LLUUID&);
  static void invalidateGazeCache(Gaze& g,bool){g.invalidated=true;}
  void clearDirectorLookAtRuntime(LLUUID){}
@@ -232,6 +237,7 @@ struct LLDirectorCast {
  int sceneTouches=0; void rebuildMemberIndex(){} void touchScene(){++sceneTouches;}
 };
 '''
+    fixture += method(nv / 'llactormover.cpp', 'void LLActorMover::rewriteHotGazeReferences(') + '\n'
     fixture += 'namespace ALGazeHot {\n' + method(nv / 'algazehotslots.h', 'inline bool rewrite(') + '\n}\n'
     fixture += r'''
 namespace ALAvatarSubjectPicker {
@@ -368,9 +374,15 @@ int main(){
  ALKitHistory history;actorReferenceHistories().insert(&history);
  history.mUndo={{{{rewrite_snapshot}}}};history.mRedo=history.mUndo;
  history.mOpen=std::make_unique<ALKitHistory::Step>(history.mUndo.front());
+ auto& liveHot=LLActorMover::instance().mHotGazes[R];liveHot.mTarget=target(R);
+ liveHot.mPaint.mGaze.mGazeMotor=73;liveHot.mPaint.mGaze.mHotGeneration=8;
  cast.mHotGazeSlots[0].mWho=R;
  cast.mHotGazeSlots[0].mTarget=target(R);
  auto verify=[&](LLUUID id){
+  auto& live=LLActorMover::instance().mHotGazes;
+  if(id.notNull()){assert(live.count(id)==1);assert(live.at(id).mTarget.mCastRef==id);
+    assert(live.at(id).mPaint.mGaze.mGazeMotor==73 && live.at(id).mPaint.mGaze.mHotGeneration==8);}
+  else assert(live.empty());
   assert(cast.mHotGazeSlots[0].mWho==id && cast.mHotGazeSlots[0].mTarget.mCastRef==id);
   if(id.isNull()) assert(!cast.mHotGazeSlots[0].mHasTarget);
   assert(cast.mCast.front().mGazeTarget.mCastRef==id);
@@ -518,11 +530,10 @@ int main(){
  std::cout<<"PASS: production clone reference transaction R -> parked S -> N; Head/Eyes/self/cues/runtime/Hot-slot Who+Target; path undo+redo; tracker/camera/Studio targets; custom history; deletion; collision and unenrolled branches\n";
 }
 '''
-    directory = Path(".tmp/rekey_20261102/contract").resolve()
+    directory = check_directory("clone_rekey")
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "rekey.cpp").write_text(fixture, encoding="utf-8")
-    vcvars = next((Path(os.environ["ProgramFiles"]) / "Microsoft Visual Studio").glob(
-        "*/Community/VC/Auxiliary/Build/vcvars64.bat"))
+    vcvars = vcvars64()
     command = directory / "compile.cmd"
     command.write_text(
         f'@echo off\ncall "{vcvars}" >nul\n'

@@ -69,19 +69,21 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/llprismlens.cpp`
 - `indra/newview/skins/default/xui/en/floater_director.xml`
 - `indra/newview/skins/default/xui/en/menu_director_cast.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@2837,31", "indra/newview/CMakeLists.txt@2942,179"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1283,162", "indra/newview/CMakeLists.txt@2839,31", "indra/newview/CMakeLists.txt@2944,185"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@5656,48", "indra/newview/llappviewer.cpp@6457,45"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@201,9", "indra/newview/llstartup.cpp@2648,19"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@411,26"]}
 - {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@68,82", "indra/newview/lldrawpool.cpp@496,1373"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,13", "indra/newview/lldrawpoolavatar.cpp@82,97"]}
-- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@39,14", "indra/newview/llviewerinput.cpp@504,71"]}
+- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@36,18", "indra/newview/llviewerinput.cpp@505,115"]}
+- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,22", "indra/newview/llviewerjoystick.cpp@4106,242"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@4663,27", "indra/newview/llvoavatar.cpp@12825,163"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@4663,27", "indra/newview/llvoavatar.cpp@12830,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@5690,87"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@30948,430"]}
@@ -101,6 +103,7 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/floater_director_v2.xml`
 - `indra/newview/skins/default/xui/en/menu_director_cast.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
 
 ## generated runtime
 
@@ -187,6 +190,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 945, "text": "llstartup.cpp", "source": "indra/newview/llstartup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1035, "text": "llviewerinput.cpp", "source": "indra/newview/llviewerinput.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1031, "text": "llviewerjoint.cpp", "source": "indra/newview/llviewerjoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1034, "text": "llviewerjoystick.cpp", "source": "indra/newview/llviewerjoystick.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1060, "text": "llviewertexture.cpp", "source": "indra/newview/llviewertexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1070, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2067, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}

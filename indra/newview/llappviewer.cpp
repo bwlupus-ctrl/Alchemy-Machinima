@@ -1714,6 +1714,7 @@ bool LLAppViewer::doFrame()
             }
         }
 
+        LLActorMover::instance().restoreHotGazes();
         if (ALSteppedAnimRuntime::sHasOverlay)
         {
             ALSteppedAnimRuntime::instance().endFrameRestore();
@@ -5976,7 +5977,9 @@ void LLAppViewer::idle()
         }
     }
 
-    // applyHeld above is the final render-only skeleton writer (including
+    LLActorMover::instance().applyHotGazes();
+
+    // applyHeld above is the stepped base skeleton writer (including
     // boil/smear and held root yaw). Sample/capture and place projectors here,
     // then finish their drawable/bounds/child mesh work before display() can
     // enter its earliest hero, mirror or cube-probe render pass.

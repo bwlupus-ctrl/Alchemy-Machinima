@@ -1200,6 +1200,10 @@ void LLDirectorCast::remove(const LLUUID& id)
         return;
     }
     const std::string group = it->mGroup;
+    for (S32 i = 0; i < 4; ++i)
+        if (mHotGazeSlots[i].mWho == actor_id ||
+            (!group.empty() && mHotGazeSlots[i].mGroup == group))
+            LLActorMover::instance().releaseHotGazeSlot(i);
     LLActorMover::instance().clearDirectorLookAtRuntime(actor_id);
     mCast.erase(it);
     ++mGazeCueRevision;
@@ -2065,6 +2069,10 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
         m->mGroup = name;   // "" = ungroup; no registry to keep in sync
         if (old != name)
         {
+            for (S32 i = 0; i < 4; ++i)
+                if ((!old.empty() && mHotGazeSlots[i].mGroup == old) ||
+                    (!name.empty() && mHotGazeSlots[i].mGroup == name))
+                    LLActorMover::instance().releaseHotGazeSlot(i);
             pruneGroupData(old);   // retagging the last member retires the group
             ++mCastRevision;       // group pickers and their representatives
             touchScene();
@@ -2167,6 +2175,13 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
             any = true;
         }
     }
+    for (S32 i = 0; i < 4; ++i)
+        if (mHotGazeSlots[i].mGroup == name)
+        {
+            LLActorMover::instance().releaseHotGazeSlot(i);
+            mHotGazeSlots[i].mGroup.clear(); mHotGazeSlots[i].mWho.setNull();
+            ++mHotGazeRevision; any = true;
+        }
     mGroupDelays.erase(name);
     mGroupRates.erase(name);
     if (any)
@@ -2223,7 +2238,14 @@ void LLDirectorCast::pruneGroupData(const std::string& name)
 {
     if (!name.empty() && membersInGroup(name).empty())
     {
-        mGroupDelays.erase(name);
+        for (S32 i = 0; i < 4; ++i)
+        if (mHotGazeSlots[i].mGroup == name)
+        {
+            LLActorMover::instance().releaseHotGazeSlot(i);
+            mHotGazeSlots[i].mGroup.clear(); mHotGazeSlots[i].mWho.setNull();
+            ++mHotGazeRevision;
+        }
+    mGroupDelays.erase(name);
         ALSteppedAnim::pruneGroupRate(mGroupRates, name, false);
     }
 }
@@ -3044,9 +3066,16 @@ void LLDirectorCast::cut()
     LL_INFOS("DirectorCast") << "CUT" << LL_ENDL;
 }
 
+void LLDirectorCast::setHotGazeTargetName(S32 index, const std::string& name)
+{
+    if (index < 0 || index >= 4 || mHotGazeSlots[index].mTargetName == name) return;
+    mHotGazeSlots[index].mTargetName = name; ++mHotGazeRevision;
+}
+
 void LLDirectorCast::setHotGazeSlot(S32 index, const ALGazeHot::Slot& slot)
 {
     if (index < 0 || index >= 4) return;
+    LLActorMover::instance().releaseHotGazeSlot(index);
     mHotGazeSlots[index] = slot;
     if (slot.mWho.notNull()) mHotGazeSlots[index].mWho = canonicalActorId(slot.mWho);
     if (slot.mTarget.mCastRef.notNull())

@@ -50,6 +50,10 @@ LLSD writeSlots(const Slots& slots, Persistable persistable)
         s["mode"] = static_cast<S32>(slot.mTarget.mMode);
         s["cast_ref"] = slot.mTarget.mCastRef; s["object_ref"] = slot.mTarget.mObjectRef;
         s["point"] = ll_sd_from_vector3d(slot.mTarget.mFixedPoint);
+        s["picked_spot"] = slot.mTarget.mPickedSpot;
+        s["object_offset"] = ll_sd_from_vector3(slot.mTarget.mObjectOffset);
+        s["object_joint"] = slot.mTarget.mObjectJoint;
+        s["point_nudge"] = ll_sd_from_vector3(slot.mTarget.mPointNudge);
         s["snap"] = slot.mSnap; s["head"] = slot.mHead; s["eyes"] = slot.mEyes;
         s["torso"] = slot.mTorso; s["dwell"] = slot.mDwell; s["return"] = slot.mReturn;
         s["hold"] = slot.mHold; s["stay"] = slot.mStay;
@@ -79,6 +83,12 @@ inline Slots readSlots(const LLSD& data)
         else slot.mTarget.mMode = static_cast<LLActorMover::GazeTarget::EMode>(mode);
         slot.mTarget.mCastRef = s["cast_ref"].asUUID(); slot.mTarget.mObjectRef = s["object_ref"].asUUID();
         slot.mTarget.mFixedPoint = ll_vector3d_from_sd(s["point"]);
+        slot.mTarget.mPickedSpot = s["picked_spot"].asBoolean();
+        slot.mTarget.mObjectOffset = ll_vector3_from_sd(s["object_offset"]);
+        slot.mTarget.mObjectJoint = s["object_joint"].asString();
+        slot.mTarget.mPointNudge = ll_vector3_from_sd(s["point_nudge"]);
+        if (!slot.mTarget.mObjectOffset.isFinite() || !slot.mTarget.mPointNudge.isFinite() ||
+            !slot.mTarget.mFixedPoint.isFinite()) slot.mHasTarget = false;
         slot.mSnap = number(s, "snap", .12f, 1.5f);
         slot.mHead = number(s, "head", 1.f, 1.f); slot.mEyes = number(s, "eyes", 1.f, 1.f);
         slot.mTorso = number(s, "torso", .2f, 1.f); slot.mDwell = number(s, "dwell", 2.f, 3600.f);

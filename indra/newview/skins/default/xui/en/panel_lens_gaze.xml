@@ -2,7 +2,7 @@
 <panel
  background_visible="false"
  border="false"
- height="2374"
+ height="2504"
  layout="topleft"
  name="panel_lens_gaze"
  width="516">
@@ -857,9 +857,19 @@
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_mode_label" top="2270" width="124">Key mode</text>
 <combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_mode" top="2270" width="336" tool_tip="Tap fires and a second tap releases early. Hold stays while pressed and returns on release. Re-press during return restarts acquisition."><combo_box.item label="Tap" value="0" /><combo_box.item label="Hold" value="1" /></combo_box>
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_fire_label" top="2296" width="124">Fire</text>
-<button follows="left|top" height="20" layout="topleft" left="140" name="hot_fire" top="2296" width="336" tool_tip="Test this slot. Tap clicks fire; Hold mode uses press and hold, returning on mouse release." label="Fire" />
+<button follows="left|top" height="20" layout="topleft" left="140" name="hot_fire" commit_on_capture_lost="true" top="2296" width="336" tool_tip="Test this slot. Tap clicks fire; Hold mode uses press and hold, returning on mouse release." label="Fire" />
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_reset_label" top="2322" width="124">Reset slot</text>
 <button follows="left|top" height="20" layout="topleft" left="140" name="hot_reset" top="2322" width="336" tool_tip="Reset the selected slot including target and Who to empty, with default reaction timing and strengths." label="Reset slot" />
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_gamepad_label" top="2348" width="124">Gamepad D-pad</text>
 <check_box follows="left|top" height="20" layout="topleft" left="140" name="hot_gamepad" top="2348" width="336" tool_tip="Opt in to reserve XInput D-pad Up/Right/Down/Left for Slot 1/2/3/4. Replaces camera D-pad actions; off by default." label="Gamepad D-pad" control_name="DirectorHotGazeGamepad" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_spot_label" top="2374" width="124">Object aim</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_spot" top="2374" width="336" tool_tip="Choose the object centre or the picked surface spot. The spot follows the picked prim or nearest avatar joint position and rotation." ><combo_box.item label="Centre" value="0" /><combo_box.item label="Picked spot" value="1" /></combo_box>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_x_label" top="2400" width="124">Nudge X (m)</text>
+<spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_x" top="2400" width="336" tool_tip="Nudge the picked Point east or west in metres. The point stays in global coordinates." min_val="-4096" max_val="4096" increment="0.01" decimal_digits="2"></spinner>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_y_label" top="2426" width="124">Nudge Y (m)</text>
+<spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_y" top="2426" width="336" tool_tip="Nudge the picked Point north or south in metres. The point stays in global coordinates." min_val="-4096" max_val="4096" increment="0.01" decimal_digits="2"></spinner>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_z_label" top="2452" width="124">Nudge Z (m)</text>
+<spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_z" top="2452" width="336" tool_tip="Nudge the picked Point up or down in metres. The point stays in global coordinates." min_val="-4096" max_val="4096" increment="0.01" decimal_digits="2"></spinner>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_nudge_reset_label" top="2478" width="124">Reset nudge</text>
+<button follows="left|top" height="20" layout="topleft" left="140" name="hot_nudge_reset" top="2478" width="336" tool_tip="Reset Point X, Y and Z nudges to zero; release this slot reaction smoothly." label="Reset nudge"></button>
 </panel>

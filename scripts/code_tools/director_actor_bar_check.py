@@ -1,5 +1,6 @@
 """Exercise the production session actor setter and Cast synchronization without a viewer build."""
 from pathlib import Path
+from native_check_tools import check_directory, vcvars64
 import os
 import re
 import subprocess
@@ -14,7 +15,7 @@ def hot_gaze_baseline(source, name):
     import hashlib
     import json
     data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes()
-    assert hashlib.sha256(data).hexdigest() == "1c9f82103e7805216c0b14e3f547d416572b9d3a8f5be5942ae42b3e763045e0"
+    assert hashlib.sha256(data).hexdigest() == "3148b2d2b78248c88d18e3900d0bf3955f417f17ed0476be752bc9da00e71fb6"
     allowed = json.loads(data)
     if name not in allowed["files"]:
         return source
@@ -32,7 +33,7 @@ def method(path, signature):
     # the extended clone transaction fixture, without broadening old stubs.
     if path.name in ("llactormover.cpp", "lldirectorcast.cpp") and path.parent.name == "newview":
         source = hot_gaze_baseline(path.read_text(encoding="utf-8"), path.name)
-        baseline = Path(".tmp/hotgaze_20261102/actorbar_baseline") / path.name
+        baseline = check_directory("actorbar_baseline") / path.name
         baseline.parent.mkdir(parents=True, exist_ok=True)
         baseline.write_text(source, encoding="utf-8")
         return source_method(baseline, signature)
@@ -149,7 +150,7 @@ def main():
         looks_new = normalize(subprocess.check_output(["git", "show", "ba1e2f1e0bb:indra/newview/llactormover.cpp"]).decode())
         extra = changed(normalize(base_mover), guarded_mover) - changed(looks_old, looks_new)
         assert not extra, sorted(extra)[:10]
-    baseline = Path(".tmp/actorbar_20261101/actor_round2_cast.cpp")
+    baseline = check_directory("actorbar_baseline") / "actor_round2_cast.cpp"
     baseline.parent.mkdir(parents=True, exist_ok=True)
     baseline.write_text(base_cast, encoding="utf-8")
     for signature in ('void LLDirectorCast::touchScene()', 'LLSD LLDirectorCast::sceneData() const',
@@ -883,11 +884,10 @@ int main() {
     std::cout << "PASS: live/parked scene round trips, live loaded stable alias refresh/despawn/delete, wholesale alias winner with path/history/defaults, parked Studio animation speed\n";
 }
 '''
-    directory = Path(".tmp/actorbar_20261101/contract").resolve()
+    directory = check_directory("actorbar")
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "actor.cpp").write_text(fixture, encoding="utf-8")
-    vcvars = next((Path(os.environ["ProgramFiles"]) / "Microsoft Visual Studio").glob(
-        "*/Community/VC/Auxiliary/Build/vcvars64.bat"))
+    vcvars = vcvars64()
     (directory / "compile.cmd").write_text(
         f'@echo off\ncall "{vcvars}" >nul\n'
         f'cl /nologo /std:c++17 /EHsc /Fo"{directory / "actor.obj"}" '

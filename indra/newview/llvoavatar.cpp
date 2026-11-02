@@ -5304,7 +5304,7 @@ void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt, bool big_dt)
 // propagation of the REAL joint transforms into the copies, solve, readback).
 // Contact inference (when/where a foot is locked) is the pure ALContactStab
 // module; this function only wires it to the skeleton. Writes ONLY hip/knee/
-// ankle LOCAL rotations, blended by a ramped correction weight — never mRoot,
+// ankle LOCAL rotations, blended by a ramped correction weight â€” never mRoot,
 // never sim position, never joint positions.
 void ALPosePolish::runContact(LLVOAvatar* av, F32 dt, bool big_dt)
 {
@@ -5541,7 +5541,7 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt, bool big_dt)
         leg.mIK->solve();
         // Preserve the ANIMATED foot orientation: counter-rotate the ankle copy
         // so the hip/knee correction never swivels the foot (we deliberately do
-        // not re-aim to the ground normal in v1 — gentler than stand motion).
+        // not re-aim to the ground normal in v1 â€” gentler than stand motion).
         leg.mCopyAnkle->setWorldRotation(foot_world_rot);
 
         // Read the solved LOCAL rotations back and blend them onto the real
@@ -5559,11 +5559,11 @@ void ALPosePolish::runContact(LLVOAvatar* av, F32 dt, bool big_dt)
 
 // [Machinima] M6 procedural secondary motion: subtle ambient life (breath +
 // idle weight-shift sway) layered ADDITIVELY on the post-blend pose. The math
-// is the pure ALPoseSecondary::evalSecondary() (alposesecondary.h) — a
-// deterministic function of the driving clock — so this wiring only advances
+// is the pure ALPoseSecondary::evalSecondary() (alposesecondary.h) â€” a
+// deterministic function of the driving clock â€” so this wiring only advances
 // the clock and composes the tiny rotation deltas over the current joint
 // rotations (delta * current, same additive-over-animation discipline as the
-// gaze overlay). Rotation-only, chest/torso only — never mRoot, never pelvis
+// gaze overlay). Rotation-only, chest/torso only â€” never mRoot, never pelvis
 // translation, never sim state.
 void ALPosePolish::runSecondary(LLVOAvatar* av, const ALAvatarAnimationTime::Delta& dt)
 {
@@ -5841,8 +5841,6 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
         // otherwise a deselection/safety change can leave its root and local
         // turn motion owned until the next detailed impostor update.
         actor_mover.applyDirectorLookAt(this);
-        if (!isGhostAvatar() || !static_cast<LLGhostAvatar*>(this)->isPoseStampDriven())
-            actor_mover.applyHotGaze(this);
         return false;
     }
 
@@ -5946,9 +5944,6 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     {
         actor_mover.applyGaze(this);
     }
-    if (!isGhostAvatar() || !static_cast<LLGhostAvatar*>(this)->isPoseStampDriven())
-        actor_mover.applyHotGaze(this);
-
     // Special handling for sitting on ground.
     if (!getParent() && (isSitting() || was_sit_ground_constrained))
     {
@@ -11998,7 +11993,7 @@ void LLVOAvatar::onBakedTextureMasksLoaded( bool success, LLViewerFetchedTexture
             gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, gl_name);
             stop_glerror();
 
-            // setManualImage rewrites GL_ALPHA8 / GL_ALPHA → GL_R8 / GL_RED
+            // setManualImage rewrites GL_ALPHA8 / GL_ALPHA â†’ GL_R8 / GL_RED
             // for core-profile compatibility but no longer writes the
             // swizzle attribute itself. Apply the matching mask via the
             // LLImageGL helper so {0,0,0,A} sample semantics are preserved.

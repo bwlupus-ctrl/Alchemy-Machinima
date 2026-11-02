@@ -355,8 +355,9 @@ def validate_data(data: dict) -> None:
     # Crowd axes: +4 Width, Depth, Columns and Rows controls; 2398 -> 2402.
     # Unified shell Actor: remove four per-page actor choices; add two Gaze scope rows, 2402 -> 2400.
     # Hot targets: one selected-slot editor, +18 rows, 2400 -> 2418 (11/02).
-    if len(pages) != 38 or row_count != 2418:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2418")
+    # Fix round 1: Object Centre / Picked spot, Point XYZ and reset nudge: +5, 2418 -> 2423.
+    if len(pages) != 38 or row_count != 2423:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2423")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

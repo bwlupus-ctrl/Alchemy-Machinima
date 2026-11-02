@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llviewerregion.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
@@ -6910,6 +6911,7 @@ void LLActorMover::clearDirectorLookAtRuntime(const LLUUID& avatar_id)
     // removal funnels through here, so a cue preview for this actor can never outlive any of
     // them. Erase before the runtime early-out: a preview can exist with no runtime yet.
     mGazeCuePreviews.erase(avatar_id);
+    if (LLVOAvatar* body = LLDirectorCast::instance().resolve(avatar_id)) restoreHotGazePose(body);
     auto it = mDirectorGazes.find(avatar_id);
     if (it == mDirectorGazes.end())
     {
@@ -6923,6 +6925,7 @@ void LLActorMover::clearDirectorLookAtRuntime(const LLUUID& avatar_id)
 
 void LLActorMover::clearAllDirectorLookAtRuntime()
 {
+    clearHotGazes();
     for (auto& entry : mDirectorGazes)
     {
         LLVOAvatar* av = LLDirectorCast::instance().resolve(entry.first);
@@ -7876,7 +7879,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 break;
             }
             case GazeTarget::FIXED_POINT:
-                if (!from.mFixedPoint.isExactlyZero())
+                if (g.mHotSnap >= 0.f || !from.mFixedPoint.isExactlyZero())
                 {
                     target = gAgent.getPosAgentFromGlobal(from.mFixedPoint);
                     use_point = true;
@@ -8139,7 +8142,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 break;
             }
             case GAZE_POINT:
-                if (!g.mPoint.isExactlyZero())
+                if (g.mHotSnap >= 0.f || !g.mPoint.isExactlyZero())
                 {
                     target   = gAgent.getPosAgentFromGlobal(g.mPoint);
                     usePoint = true;
@@ -8173,6 +8176,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 break;
         }
 
+        if (g.mHotSnap >= 0.f && (!usePoint ||
+            (target - headPos).magVecSquared() < GAZE_MIN_DIST * GAZE_MIN_DIST)) return;
         if (usePoint)
         {
             dir = target - headPos;
@@ -8251,7 +8256,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     dir, up_axis, eyeline_yaw, eyeline_pitch);
             }
 
-            // Natural breaks within range (§B3): glance away periodically
+            // Natural breaks within range (ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§B3): glance away periodically
             dir.normVec();
             haveDir = true;
         }
@@ -8289,7 +8294,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // ---- solve + apply (LLHeadRotMotion + LLEyeMotion math, weighted) ---------
     // eased envelope * intensity = overall paint weight; the head/eyes blend gates
     // the body chain (torso/neck/head) so blend=0 is eyes-only.
-    const F32 env_eased = g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
+    const F32 env_eased = g.mHotSnap >= 0.f ? g.mEnv : g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
     // [Machinima] Goal 3b: the keyframed influence multiplies the FINAL legacy
     // write envelope. At influence 1 (empty track) this is the EXACT original
     // assignment (execution-path byte-identical, not a reorganized *1.f); a
@@ -8618,7 +8623,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // (paired with in.mAcquire below). raw_yaw/raw_pitch already reflect the
     // true target because the direction smoother was snapped above. Guarded by
     // motor_acquire (gate-on only), so gate-off stays byte-identical.
-    if (motor_acquire)
+    if (motor_acquire || g.mHotSnap >= 0.f)
     {
         g.mBodyAimPitch = raw_pitch;
         g.mBodyAimYaw   = raw_yaw;
@@ -8818,7 +8823,9 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             }
         }
         ALGazeMotor::GazeMotorPose pose;
-        ALGazeMotor::step(g.mGazeMotor, in, pose);
+        if (g.mHotSnap >= 0.f)
+            ALGazeHot::stepMotor(g.mGazeMotor, in, g.mHotFixated, g.mSmoothDir, pose);
+        else ALGazeMotor::step(g.mGazeMotor, in, pose);
 
         // Fix 2 (gate-transition, byte-identical-whenever-off): the legacy
         // applied-aim stage below is skipped on this branch. Snapping
@@ -9391,6 +9398,29 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     }
                 }
             }
+            if (g.mHotSnap >= 0.f)
+            {
+                LLJoint* neck = g.mJoints[Gaze::J_NECK];
+                LLJoint* parent = neck ? neck->getParent() : head->getParent();
+                ALGazeMotor::GazeMotorPose face;
+                ALGazeHot::recruitFace(g.mGazeMotor, in,
+                    parent ? parent->getWorldRotation() : root->getWorldRotation(), face);
+                // Write neutral endpoints too, but Head=0 leaves the base pose.
+                if (wCueHead > 0.f)
+                {
+                    if (neck)
+                    {
+                        LLQuaternion target;
+                        target.setEulerAngles(0.f, face.mNeckPitch, face.mNeckYaw);
+                        set_gaze_rotation(neck, nlerp(wCueHead, neck->getRotation(), target), wCueHead, target);
+                    }
+                    LLQuaternion target;
+                    target.setEulerAngles(0.f, face.mHeadPitch, face.mHeadYaw);
+                    set_gaze_rotation(head, nlerp(wCueHead, head->getRotation(), target), wCueHead, target);
+                }
+            }
+            else
+            {
             if (head_priority_active ||
                 (wCueHead > 0.001f &&
                  (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
@@ -9825,6 +9855,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                     }
                 }
             }
+            }
         }
 
         // Eyes: solve the eye-in-head AFTER the recruited head/neck were just
@@ -9856,6 +9887,13 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             eye_target && eye_target->mMode == GazeTarget::NEAR_LENS;
         LLVector3 eye_world_gaze = pose.mDesiredWorldGaze;
         F32 eye_target_distance = targetDistance;
+        if (g.mHotFixated)
+        {
+            // Neck/head paint can translate the head origin. Fixate the point
+            // from its final rendered origin, not the pre-chain sampled ray.
+            eye_world_gaze = gAgent.getPosAgentFromGlobal(g.mPoint) - gazeRenderedJointPosition(av, head);
+            eye_target_distance = eye_world_gaze.normVec();
+        }
         if (eye_target && !eye_relaxed && !eye_near_lens)
         {
             LLVector3 split_eye_look;
@@ -9938,7 +9976,10 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
             }
             else
             {
-                ALGazePolicy::eyeInHeadFromWorldGaze(
+                if (g.mHotFixated) ALGazeHot::fixatedEyeInHead(
+                    eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
+                    eye_yaw, eye_pitch, comfort_pitch_up_deg);
+                else ALGazePolicy::eyeInHeadFromWorldGaze(
                     eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
                     eye_yaw, eye_pitch, comfort_pitch_up_deg);
                 eye_yaw += pose.mEyeYawMicro;
@@ -10453,7 +10494,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     g.mClockSafety.mNaturalBreaks = allow_natural_break;
     g.mClockSafety.mMotor = false;
 
-    // Micro-life evaluation (§B1)
+    // Micro-life evaluation (ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§B1)
     const ALGazeMath::MicroLifeOffsets micro =
         ALGazeMath::evalMicroLife(
             seed, life_sec, life_params.mMicroLife,
@@ -19672,12 +19713,96 @@ void LLActorMover::renderSharedProxySilCover(U32 phase)
 // Live HOT TARGETS: normal gaze has already painted this frame. Capture that
 // result and paint a weighted replacement through the ordinary coordinated
 // motor. Restore in reverse order before next frame's animation evaluation.
+LLVector3 LLActorMover::hotGazeJointPosition(LLVOAvatar* avatar, LLJoint* joint)
+{
+    return gazeRenderedJointPosition(avatar, joint);
+}
+
+bool LLActorMover::resolveHotGazeTarget(LLVOAvatar* actor, const GazeTarget& target, LLVector3d& point)
+{
+    if (!actor || actor->isDead()) return false;
+    LLVector3 agent_point;
+    switch (target.mMode)
+    {
+    case GazeTarget::CAMERA:
+        agent_point = LLViewerCamera::getInstance()->getOrigin();
+        break;
+    case GazeTarget::FIXED_POINT:
+        point = target.mFixedPoint + LLVector3d(target.mPointNudge);
+        if (!point.isFinite() || !gAgent.getRegion() || !gAgent.getRegion()->pointInRegionGlobal(point)) return false;
+        agent_point = gAgent.getPosAgentFromGlobal(point);
+        break;
+    case GazeTarget::CAST_MEMBER:
+    {
+        LLVOAvatar* body = LLDirectorCast::instance().resolve(target.mCastRef);
+        if (!body || body == actor || body->isDead() || body->getRegion() != gAgent.getRegion()) return false;
+        LLJoint* head = body->getJoint("mHead");
+        if (!head) return false;
+        agent_point = gazeRenderedJointPosition(body, head);
+        break;
+    }
+    case GazeTarget::OBJECT:
+    {
+        LLViewerObject* object = gObjectList.findObject(target.mObjectRef);
+        if (!object || object->isDead() || object->getRegion() != gAgent.getRegion()) return false;
+        LLVOAvatar* body = object->asAvatar();
+        if (!body) body = object->getAvatarAncestor();
+        if (!body) body = object->getRootEdit()->getControlAvatar();
+        if (body == actor) return false;
+        if (target.mPickedSpot)
+        {
+            if (!target.mObjectJoint.empty())
+            {
+                LLJoint* joint = body ? body->getJoint(target.mObjectJoint) : nullptr;
+                if (!joint) return false;
+                agent_point = gazeRenderedJointPosition(body, joint) +
+                    (target.mObjectOffset * joint->getWorldRotation()) * llmax(fabsf(body->getUniformScale()), .001f);
+            }
+            else agent_point = object->getRenderPosition() + target.mObjectOffset * object->getRenderRotation();
+        }
+        else if (!resolveGazeObjectCenter(target.mObjectRef, agent_point)) return false;
+        break;
+    }
+    default: return false;
+    }
+    LLJoint* head = actor->getJoint("mHead");
+    if (!head || !agent_point.isFinite() ||
+        (agent_point - gazeRenderedJointPosition(actor, head)).magVecSquared() < GAZE_MIN_DIST * GAZE_MIN_DIST) return false;
+    point = gAgent.getPosGlobalFromAgent(agent_point);
+    return true;
+}
+
+void LLActorMover::releaseHotGazeSlot(S32 slot)
+{
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    for (auto& entry : mHotGazes)
+        if (entry.second.mState.mSlot == slot) entry.second.mState.release(now);
+}
+
+void LLActorMover::restoreHotGazes()
+{
+    for (auto& entry : mHotGazes)
+        restoreHotGazePose(LLDirectorCast::instance().resolve(entry.first));
+}
+
+void LLActorMover::applyHotGazes()
+{
+    for (auto it = mHotGazes.begin(); it != mHotGazes.end();)
+    {
+        const LLUUID id = (it++)->first; // apply may erase a completed reaction
+        LLVOAvatar* body = LLDirectorCast::instance().resolve(id);
+        if (body) applyHotGaze(body);
+        else if (mHotGazes.at(id).mState.finished(LLPresentationTime::currentFrame().presentation_time)) mHotGazes.erase(id);
+    }
+}
+
 void LLActorMover::fireHotGaze(const LLUUID& actor, S32 slot, const GazeTarget& target,
     F32 snap, F32 dwell, F32 back, bool hold, bool stay, F32 head, F32 eyes, F32 torso)
 {
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
     LLVOAvatar* body = LLDirectorCast::instance().resolve(actor);
-    if (!body) return;
+    LLVector3d point;
+    if (!body || !resolveHotGazeTarget(body, target, point)) return;
     HotGaze& hot = mHotGazes[body->getID()];
     ensureDirectorOwner(body, hot.mPaint);
     if (hot.mState.finished(now)) hot.mPaint.mGaze.mGazeMotor = {};
@@ -19691,6 +19816,7 @@ void LLActorMover::fireHotGaze(const LLUUID& actor, S32 slot, const GazeTarget& 
     { hot.mFromHead = head; hot.mFromEyes = eyes; hot.mFromTorso = torso; }
     hot.mState.fire(slot, now, snap, dwell, back, hold, stay);
     ++hot.mPaint.mGaze.mHotGeneration;
+    hot.mLastPoint = point;
     hot.mTarget = target; hot.mHead = head; hot.mEyes = eyes; hot.mTorso = torso;
     if (snap == 0.f) hot.mPaint.mGaze.resetHotAim();
 }
@@ -19708,7 +19834,11 @@ void LLActorMover::restoreHotGazePose(LLVOAvatar* av)
 {
     if (mHotGazes.empty() || !av) return;
     const auto it = mHotGazes.find(av->getID());
-    if (it != mHotGazes.end()) restoreDirectorLookAtPose(av, it->second.mPaint);
+    if (it != mHotGazes.end())
+    {
+        restoreDirectorLookAtPose(av, it->second.mPaint);
+        av->invalidateSkinPalettesAfterOverlay();
+    }
 }
 
 void LLActorMover::applyHotGaze(LLVOAvatar* av)
@@ -19722,16 +19852,27 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
     { restoreDirectorLookAtPose(av, hot.mPaint); mHotGazes.erase(it); return; }
     if (!av->getRootJoint() || !gazeCameraSafe(av, false)) return;
     auto& paint = hot.mPaint;
-    ensureDirectorOwner(av, paint);
+    if (hot.mRekeyMotorPending)
+    {
+        const auto motor = paint.mGaze.mGazeMotor;
+        ensureDirectorOwner(av, paint);
+        paint.mGaze.mGazeMotor = motor;
+        hot.mRekeyMotorPending = false;
+    }
+    else ensureDirectorOwner(av, paint);
     Gaze& g = paint.mGaze;
     const F32 dt = LLPresentationTime::presentationDelta();
     g.mAnimationClock.mTime = now; g.mLifeClock.mTime = now;
     const bool advance = g.mLastFrame != LLFrameTimer::getFrameCount();
     g.mLastFrame = LLFrameTimer::getFrameCount();
+    if (!resolveHotGazeTarget(av, hot.mTarget, hot.mLastPoint)) hot.mState.release(now);
     g.mEnabled = true; g.mHotSnap = hot.mState.mAcquire;
-    g.mTarget = static_cast<S32>(hot.mTarget.mMode);
-    g.mCastTarget = hot.mTarget.mCastRef; g.mObjectTarget = hot.mTarget.mObjectRef;
-    g.mPoint = hot.mTarget.mFixedPoint;
+    g.mHotFixated = now >= hot.mState.mStart + hot.mState.mAcquire;
+    // Resolve once before painting. A missing/self target releases toward the
+    // base pose using its last valid world point, never the tangent fallback.
+    g.mTarget = GAZE_POINT;
+    g.mCastTarget.setNull(); g.mObjectTarget.setNull();
+    g.mPoint = hot.mLastPoint;
     g.mEnv = hot.mState.weight(now); g.mIntensity = 1.f;
     const F32 acquire = hot.mState.acquireFraction(now);
     g.mHeadEyeBlend = 1.f;
@@ -19742,14 +19883,19 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
     g.mGazePriorityOverride = GAZE_PRIORITY_BLEND;
     g.mCompositionOverride = GAZE_COMPOSE_REPLACE; g.mAnimPriorityOverride = -1;
     g.mDirValid = g.mBodyAimValid = g.mAppliedValid = false;
-    if (g.mHotSnap == 0.f) g.resetHotAim();
+    if (g.mHotFixated) g.resetHotAim();
     paint.mCueOverride = true;
-    paint.mCueFromTarget = hot.mTarget; paint.mCueTargetBlend = 1.f;
+    paint.mCueFromTarget = {}; paint.mCueFromTarget.mMode = GazeTarget::FIXED_POINT;
+    paint.mCueFromTarget.mFixedPoint = hot.mLastPoint; paint.mCueTargetBlend = 1.f;
     paint.mCueEyeWeight = hot.mFromEyes + (hot.mEyes - hot.mFromEyes) * acquire;
     paint.mCueHeadWeight = hot.mFromHead + (hot.mHead - hot.mFromHead) * acquire;
     paint.mCueBodyWeight = 1.f;
     captureDirectorLookAtPose(av, paint, false);
-    gazePaint(av, g, nullptr, dt, advance, true, false, &paint);
+    gazePaint(av, g, nullptr, dt, advance, false, false, &paint);
+    av->getRootJoint()->updateWorldMatrixChildren();
+    av->markStepAnimPoseChanged();
+    av->invalidateSkinPalettesForOverlay();
+    av->syncStepAnimAttachmentMatrices();
 }
 
 void LLActorMover::clearHotGazes()
@@ -19765,10 +19911,15 @@ void LLActorMover::rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& 
     if (actor != mHotGazes.end())
     {
         restoreDirectorLookAtPose(LLDirectorCast::instance().resolve(old_id), actor->second.mPaint);
-        if (new_id.notNull() && LLDirectorCast::instance().resolve(new_id))
+        if (new_id.notNull())
         {
             auto saved = actor->second;
+            auto motor = saved.mPaint.mGaze.mGazeMotor;
+            const U32 generation = saved.mPaint.mGaze.mHotGeneration;
             saved.mPaint = {}; // joint pointers and captures belong to the old incarnation
+            saved.mRekeyMotorPending = true;
+            saved.mPaint.mGaze.mHotGeneration = generation;
+            saved.mPaint.mGaze.mGazeMotor = motor; // preserve the live acquire trajectory
             mHotGazes.erase(new_id);
             mHotGazes.emplace(new_id, std::move(saved));
         }

@@ -354,6 +354,7 @@ public:
 
     const ALGazeHot::Slots& getHotGazeSlots() const { return mHotGazeSlots; }
     U64 getHotGazeRevision() const { return mHotGazeRevision; }
+    void setHotGazeTargetName(S32 index, const std::string& name);
     void setHotGazeSlot(S32 index, const ALGazeHot::Slot& slot);
     void hotGazeInput(S32 index, bool down);
 

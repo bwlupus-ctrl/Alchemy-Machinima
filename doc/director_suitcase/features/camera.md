@@ -82,11 +82,12 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/skins/default/xui/en/panel_director_switcher.xml`
 - `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml`
 - `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@240,11", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1189,13", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@2837,31", "indra/newview/CMakeLists.txt@2874,20", "indra/newview/CMakeLists.txt@2942,179", "indra/newview/CMakeLists.txt@3182,40"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@3453,1044", "indra/newview/app_settings/settings.xml@4498,839", "indra/newview/app_settings/settings.xml@5338,175", "indra/newview/app_settings/settings.xml@5569,186", "indra/newview/app_settings/settings.xml@5756,21", "indra/newview/app_settings/settings.xml@5778,10", "indra/newview/app_settings/settings.xml@5789,21", "indra/newview/app_settings/settings.xml@5811,65", "indra/newview/app_settings/settings.xml@5877,21", "indra/newview/app_settings/settings.xml@5899,527", "indra/newview/app_settings/settings.xml@6427,120", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@27066,274", "indra/newview/app_settings/settings.xml@27570,193", "indra/newview/app_settings/settings.xml@30568,1104"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@240,11", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1189,13", "indra/newview/CMakeLists.txt@1283,162", "indra/newview/CMakeLists.txt@2839,31", "indra/newview/CMakeLists.txt@2876,20", "indra/newview/CMakeLists.txt@2944,185", "indra/newview/CMakeLists.txt@3190,40"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@3461,1044", "indra/newview/app_settings/settings.xml@4506,839", "indra/newview/app_settings/settings.xml@5346,175", "indra/newview/app_settings/settings.xml@5577,186", "indra/newview/app_settings/settings.xml@5764,21", "indra/newview/app_settings/settings.xml@5786,10", "indra/newview/app_settings/settings.xml@5797,21", "indra/newview/app_settings/settings.xml@5819,65", "indra/newview/app_settings/settings.xml@5885,21", "indra/newview/app_settings/settings.xml@5907,648", "indra/newview/app_settings/settings.xml@6556,14127", "indra/newview/app_settings/settings.xml@27074,274", "indra/newview/app_settings/settings.xml@27578,193", "indra/newview/app_settings/settings.xml@30576,1104"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@379,60", "indra/newview/llappviewer.cpp@1621,8", "indra/newview/llappviewer.cpp@1939,24", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@4574,17", "indra/newview/llappviewer.cpp@5793,119", "indra/newview/llappviewer.cpp@5914,44"]}
 - {"path": "indra/newview/llfloaterjoystick.cpp", "hunks": ["indra/newview/llfloaterjoystick.cpp@36,7", "indra/newview/llfloaterjoystick.cpp@45,10", "indra/newview/llfloaterjoystick.cpp@83,7", "indra/newview/llfloaterjoystick.cpp@98,9", "indra/newview/llfloaterjoystick.cpp@112,204", "indra/newview/llfloaterjoystick.cpp@323,79", "indra/newview/llfloaterjoystick.cpp@410,44", "indra/newview/llfloaterjoystick.cpp@562,15", "indra/newview/llfloaterjoystick.cpp@583,11", "indra/newview/llfloaterjoystick.cpp@595,19", "indra/newview/llfloaterjoystick.cpp@696,7", "indra/newview/llfloaterjoystick.cpp@716,72", "indra/newview/llfloaterjoystick.cpp@820,14"]}
 - {"path": "indra/newview/llfloaterjoystick.h", "hunks": ["indra/newview/llfloaterjoystick.h@27,34", "indra/newview/llfloaterjoystick.h@71,29", "indra/newview/llfloaterjoystick.h@117,30"]}
@@ -94,6 +95,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2,182"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@375,11", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
+- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,22", "indra/newview/llviewerjoystick.cpp@51,21", "indra/newview/llviewerjoystick.cpp@79,8", "indra/newview/llviewerjoystick.cpp@90,413", "indra/newview/llviewerjoystick.cpp@537,144", "indra/newview/llviewerjoystick.cpp@708,7", "indra/newview/llviewerjoystick.cpp@756,11", "indra/newview/llviewerjoystick.cpp@776,7", "indra/newview/llviewerjoystick.cpp@786,7", "indra/newview/llviewerjoystick.cpp@809,35", "indra/newview/llviewerjoystick.cpp@858,7", "indra/newview/llviewerjoystick.cpp@876,7", "indra/newview/llviewerjoystick.cpp@888,9", "indra/newview/llviewerjoystick.cpp@900,169", "indra/newview/llviewerjoystick.cpp@1075,25", "indra/newview/llviewerjoystick.cpp@1154,10", "indra/newview/llviewerjoystick.cpp@1175,7", "indra/newview/llviewerjoystick.cpp@1185,13", "indra/newview/llviewerjoystick.cpp@1209,95", "indra/newview/llviewerjoystick.cpp@1338,10", "indra/newview/llviewerjoystick.cpp@1352,10", "indra/newview/llviewerjoystick.cpp@1373,10", "indra/newview/llviewerjoystick.cpp@1388,7", "indra/newview/llviewerjoystick.cpp@1417,7", "indra/newview/llviewerjoystick.cpp@1427,14", "indra/newview/llviewerjoystick.cpp@1449,33", "indra/newview/llviewerjoystick.cpp@1512,8", "indra/newview/llviewerjoystick.cpp@1582,14", "indra/newview/llviewerjoystick.cpp@1621,8", "indra/newview/llviewerjoystick.cpp@1646,7", "indra/newview/llviewerjoystick.cpp@1657,133", "indra/newview/llviewerjoystick.cpp@1796,6", "indra/newview/llviewerjoystick.cpp@1824,18", "indra/newview/llviewerjoystick.cpp@1845,1987", "indra/newview/llviewerjoystick.cpp@3840,41", "indra/newview/llviewerjoystick.cpp@4009,7", "indra/newview/llviewerjoystick.cpp@4024,7", "indra/newview/llviewerjoystick.cpp@4034,7", "indra/newview/llviewerjoystick.cpp@4044,23", "indra/newview/llviewerjoystick.cpp@4106,242"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@50,7", "indra/newview/llviewermenu.cpp@10937,40"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
 - {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@118,22"]}
@@ -112,8 +114,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llagentcamera.cpp", "hunks": ["indra/newview/llagentcamera.cpp@24,18", "indra/newview/llagentcamera.cpp@44,8", "indra/newview/llagentcamera.cpp@222,12", "indra/newview/llagentcamera.cpp@1294,32", "indra/newview/llagentcamera.cpp@1573,85", "indra/newview/llagentcamera.cpp@1776,93", "indra/newview/llagentcamera.cpp@2105,29"]}
 - {"path": "indra/newview/llagentcamera.h", "hunks": ["indra/newview/llagentcamera.h@127,15"]}
 - {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@29,8", "indra/newview/llselectmgr.cpp@6617,7"]}
-- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,21", "indra/newview/llviewerjoystick.cpp@50,21", "indra/newview/llviewerjoystick.cpp@78,8", "indra/newview/llviewerjoystick.cpp@89,413", "indra/newview/llviewerjoystick.cpp@536,144", "indra/newview/llviewerjoystick.cpp@707,7", "indra/newview/llviewerjoystick.cpp@755,11", "indra/newview/llviewerjoystick.cpp@775,7", "indra/newview/llviewerjoystick.cpp@785,7", "indra/newview/llviewerjoystick.cpp@808,35", "indra/newview/llviewerjoystick.cpp@857,7", "indra/newview/llviewerjoystick.cpp@875,7", "indra/newview/llviewerjoystick.cpp@887,9", "indra/newview/llviewerjoystick.cpp@899,169", "indra/newview/llviewerjoystick.cpp@1074,25", "indra/newview/llviewerjoystick.cpp@1153,10", "indra/newview/llviewerjoystick.cpp@1174,7", "indra/newview/llviewerjoystick.cpp@1184,13", "indra/newview/llviewerjoystick.cpp@1208,95", "indra/newview/llviewerjoystick.cpp@1337,10", "indra/newview/llviewerjoystick.cpp@1351,10", "indra/newview/llviewerjoystick.cpp@1372,10", "indra/newview/llviewerjoystick.cpp@1387,7", "indra/newview/llviewerjoystick.cpp@1416,7", "indra/newview/llviewerjoystick.cpp@1426,14", "indra/newview/llviewerjoystick.cpp@1448,33", "indra/newview/llviewerjoystick.cpp@1511,8", "indra/newview/llviewerjoystick.cpp@1581,14", "indra/newview/llviewerjoystick.cpp@1620,8", "indra/newview/llviewerjoystick.cpp@1645,7", "indra/newview/llviewerjoystick.cpp@1656,133", "indra/newview/llviewerjoystick.cpp@1795,6", "indra/newview/llviewerjoystick.cpp@1823,18", "indra/newview/llviewerjoystick.cpp@1844,1983", "indra/newview/llviewerjoystick.cpp@3835,41", "indra/newview/llviewerjoystick.cpp@4004,7", "indra/newview/llviewerjoystick.cpp@4019,7", "indra/newview/llviewerjoystick.cpp@4029,7", "indra/newview/llviewerjoystick.cpp@4039,23", "indra/newview/llviewerjoystick.cpp@4101,218"]}
-- {"path": "indra/newview/llviewerjoystick.h", "hunks": ["indra/newview/llviewerjoystick.h@28,11", "indra/newview/llviewerjoystick.h@51,78", "indra/newview/llviewerjoystick.h@141,19", "indra/newview/llviewerjoystick.h@170,81", "indra/newview/llviewerjoystick.h@260,46"]}
+- {"path": "indra/newview/llviewerjoystick.h", "hunks": ["indra/newview/llviewerjoystick.h@28,11", "indra/newview/llviewerjoystick.h@51,78", "indra/newview/llviewerjoystick.h@141,19", "indra/newview/llviewerjoystick.h@170,83", "indra/newview/llviewerjoystick.h@262,46"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_joystick.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_joystick.xml@1,787"]}
 - {"path": "indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml@222,76"]}
 
@@ -430,6 +431,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `DirectorArmCamera`
 - `DirectorArmRecorderCapture`
 - `DirectorArmRecorderPlay`
+- `DirectorHotGazeGamepad`
 - `DirectorSwitcherArmed`
 - `DirectorSwitcherAuto`
 - `DirectorSwitcherBank`
@@ -640,8 +642,10 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
 - `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml`
 - `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
 - `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml`
 - `indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml`
 
@@ -654,6 +658,7 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
 
 ## cmake entries
 

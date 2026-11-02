@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3014 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3015 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (150)
 
@@ -157,7 +157,7 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 
-## Unknown hunk features (1513)
+## Unknown hunk features (1512)
 
 - `indra/llui/llfloater.cpp@2180,30`
 - `indra/llui/llfloater.cpp@2311,18`
@@ -202,57 +202,57 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@522,7`
 - `indra/newview/CMakeLists.txt@816,8`
 - `indra/newview/CMakeLists.txt@1226,20`
-- `indra/newview/CMakeLists.txt@1520,7`
-- `indra/newview/CMakeLists.txt@1807,8`
-- `indra/newview/CMakeLists.txt@2333,7`
-- `indra/newview/CMakeLists.txt@2613,38`
-- `indra/newview/CMakeLists.txt@2708,7`
-- `indra/newview/CMakeLists.txt@2748,7`
-- `indra/newview/app_settings/settings.xml@20774,7`
-- `indra/newview/app_settings/settings.xml@21169,17`
-- `indra/newview/app_settings/settings.xml@21218,515`
-- `indra/newview/app_settings/settings.xml@21734,21`
-- `indra/newview/app_settings/settings.xml@21756,164`
-- `indra/newview/app_settings/settings.xml@23271,21`
-- `indra/newview/app_settings/settings.xml@23557,10`
-- `indra/newview/app_settings/settings.xml@23568,10`
-- `indra/newview/app_settings/settings.xml@23579,131`
-- `indra/newview/app_settings/settings.xml@23865,32`
-- `indra/newview/app_settings/settings.xml@23898,21`
-- `indra/newview/app_settings/settings.xml@23920,87`
-- `indra/newview/app_settings/settings.xml@24008,21`
-- `indra/newview/app_settings/settings.xml@24030,32`
-- `indra/newview/app_settings/settings.xml@24063,21`
-- `indra/newview/app_settings/settings.xml@24085,263`
-- `indra/newview/app_settings/settings.xml@24349,190`
-- `indra/newview/app_settings/settings.xml@24540,109`
-- `indra/newview/app_settings/settings.xml@24650,297`
-- `indra/newview/app_settings/settings.xml@24948,54`
-- `indra/newview/app_settings/settings.xml@25003,142`
-- `indra/newview/app_settings/settings.xml@25146,191`
-- `indra/newview/app_settings/settings.xml@25338,450`
-- `indra/newview/app_settings/settings.xml@26725,10`
-- `indra/newview/app_settings/settings.xml@26736,10`
-- `indra/newview/app_settings/settings.xml@26945,10`
-- `indra/newview/app_settings/settings.xml@27341,10`
-- `indra/newview/app_settings/settings.xml@27484,85`
-- `indra/newview/app_settings/settings.xml@27764,21`
-- `indra/newview/app_settings/settings.xml@27786,98`
-- `indra/newview/app_settings/settings.xml@27885,32`
-- `indra/newview/app_settings/settings.xml@27918,141`
-- `indra/newview/app_settings/settings.xml@28060,21`
-- `indra/newview/app_settings/settings.xml@28082,98`
-- `indra/newview/app_settings/settings.xml@28181,10`
-- `indra/newview/app_settings/settings.xml@28192,32`
-- `indra/newview/app_settings/settings.xml@28225,21`
-- `indra/newview/app_settings/settings.xml@28247,32`
-- `indra/newview/app_settings/settings.xml@28280,54`
-- `indra/newview/app_settings/settings.xml@28335,43`
-- `indra/newview/app_settings/settings.xml@28379,10`
-- `indra/newview/app_settings/settings.xml@28390,10`
-- `indra/newview/app_settings/settings.xml@28401,21`
-- `indra/newview/app_settings/settings.xml@28423,10`
-- `indra/newview/app_settings/settings.xml@28434,10`
+- `indra/newview/CMakeLists.txt@1522,7`
+- `indra/newview/CMakeLists.txt@1809,8`
+- `indra/newview/CMakeLists.txt@2335,7`
+- `indra/newview/CMakeLists.txt@2615,38`
+- `indra/newview/CMakeLists.txt@2710,7`
+- `indra/newview/CMakeLists.txt@2750,7`
+- `indra/newview/app_settings/settings.xml@20782,7`
+- `indra/newview/app_settings/settings.xml@21177,17`
+- `indra/newview/app_settings/settings.xml@21226,515`
+- `indra/newview/app_settings/settings.xml@21742,21`
+- `indra/newview/app_settings/settings.xml@21764,164`
+- `indra/newview/app_settings/settings.xml@23279,21`
+- `indra/newview/app_settings/settings.xml@23565,10`
+- `indra/newview/app_settings/settings.xml@23576,10`
+- `indra/newview/app_settings/settings.xml@23587,131`
+- `indra/newview/app_settings/settings.xml@23873,32`
+- `indra/newview/app_settings/settings.xml@23906,21`
+- `indra/newview/app_settings/settings.xml@23928,87`
+- `indra/newview/app_settings/settings.xml@24016,21`
+- `indra/newview/app_settings/settings.xml@24038,32`
+- `indra/newview/app_settings/settings.xml@24071,21`
+- `indra/newview/app_settings/settings.xml@24093,263`
+- `indra/newview/app_settings/settings.xml@24357,190`
+- `indra/newview/app_settings/settings.xml@24548,109`
+- `indra/newview/app_settings/settings.xml@24658,297`
+- `indra/newview/app_settings/settings.xml@24956,54`
+- `indra/newview/app_settings/settings.xml@25011,142`
+- `indra/newview/app_settings/settings.xml@25154,191`
+- `indra/newview/app_settings/settings.xml@25346,450`
+- `indra/newview/app_settings/settings.xml@26733,10`
+- `indra/newview/app_settings/settings.xml@26744,10`
+- `indra/newview/app_settings/settings.xml@26953,10`
+- `indra/newview/app_settings/settings.xml@27349,10`
+- `indra/newview/app_settings/settings.xml@27492,85`
+- `indra/newview/app_settings/settings.xml@27772,21`
+- `indra/newview/app_settings/settings.xml@27794,98`
+- `indra/newview/app_settings/settings.xml@27893,32`
+- `indra/newview/app_settings/settings.xml@27926,141`
+- `indra/newview/app_settings/settings.xml@28068,21`
+- `indra/newview/app_settings/settings.xml@28090,98`
+- `indra/newview/app_settings/settings.xml@28189,10`
+- `indra/newview/app_settings/settings.xml@28200,32`
+- `indra/newview/app_settings/settings.xml@28233,21`
+- `indra/newview/app_settings/settings.xml@28255,32`
+- `indra/newview/app_settings/settings.xml@28288,54`
+- `indra/newview/app_settings/settings.xml@28343,43`
+- `indra/newview/app_settings/settings.xml@28387,10`
+- `indra/newview/app_settings/settings.xml@28398,10`
+- `indra/newview/app_settings/settings.xml@28409,21`
+- `indra/newview/app_settings/settings.xml@28431,10`
+- `indra/newview/app_settings/settings.xml@28442,10`
 - `indra/newview/llappviewer.cpp@558,16`
 - `indra/newview/llappviewer.cpp@667,12`
 - `indra/newview/llappviewer.cpp@774,7`
@@ -393,11 +393,10 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerfloaterreg.cpp@886,7`
 - `indra/newview/llviewerfloaterreg.cpp@900,7`
 - `indra/newview/llviewerfloaterreg.cpp@912,7`
-- `indra/newview/llviewerinput.cpp@1283,7`
-- `indra/newview/llviewerinput.cpp@1322,16`
-- `indra/newview/llviewerinput.cpp@1344,10`
-- `indra/newview/llviewerinput.cpp@1361,10`
-- `indra/newview/llviewerinput.cpp@1923,7`
+- `indra/newview/llviewerinput.cpp@1332,7`
+- `indra/newview/llviewerinput.cpp@1396,10`
+- `indra/newview/llviewerinput.cpp@1413,10`
+- `indra/newview/llviewerinput.cpp@1989,7`
 - `indra/newview/llviewerinput.h@75,20`
 - `indra/newview/llviewerinput.h@201,7`
 - `indra/newview/llviewerinput.h@228,15`
@@ -484,23 +483,23 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llvoavatar.cpp@3227,18`
 - `indra/newview/llvoavatar.cpp@4845,16`
 - `indra/newview/llvoavatar.cpp@4893,18`
-- `indra/newview/llvoavatar.cpp@5980,108`
-- `indra/newview/llvoavatar.cpp@6162,13`
-- `indra/newview/llvoavatar.cpp@6275,9`
-- `indra/newview/llvoavatar.cpp@6910,7`
-- `indra/newview/llvoavatar.cpp@6969,9`
-- `indra/newview/llvoavatar.cpp@7314,12`
-- `indra/newview/llvoavatar.cpp@7419,38`
-- `indra/newview/llvoavatar.cpp@7809,7`
-- `indra/newview/llvoavatar.cpp@7983,7`
-- `indra/newview/llvoavatar.cpp@8238,7`
-- `indra/newview/llvoavatar.cpp@8267,7`
-- `indra/newview/llvoavatar.cpp@8536,12`
-- `indra/newview/llvoavatar.cpp@10103,18`
-- `indra/newview/llvoavatar.cpp@10125,7`
-- `indra/newview/llvoavatar.cpp@12989,12`
-- `indra/newview/llvoavatar.cpp@13666,8`
-- `indra/newview/llvoavatar.cpp@14003,3`
+- `indra/newview/llvoavatar.cpp@5985,108`
+- `indra/newview/llvoavatar.cpp@6167,13`
+- `indra/newview/llvoavatar.cpp@6280,9`
+- `indra/newview/llvoavatar.cpp@6915,7`
+- `indra/newview/llvoavatar.cpp@6974,9`
+- `indra/newview/llvoavatar.cpp@7319,12`
+- `indra/newview/llvoavatar.cpp@7424,38`
+- `indra/newview/llvoavatar.cpp@7814,7`
+- `indra/newview/llvoavatar.cpp@7988,7`
+- `indra/newview/llvoavatar.cpp@8243,7`
+- `indra/newview/llvoavatar.cpp@8272,7`
+- `indra/newview/llvoavatar.cpp@8541,12`
+- `indra/newview/llvoavatar.cpp@10108,18`
+- `indra/newview/llvoavatar.cpp@10130,7`
+- `indra/newview/llvoavatar.cpp@12994,12`
+- `indra/newview/llvoavatar.cpp@13671,8`
+- `indra/newview/llvoavatar.cpp@14008,3`
 - `indra/newview/llvoavatar.h@31,7`
 - `indra/newview/llvoavatar.h@326,7`
 - `indra/newview/llvoavatar.h@525,17`
@@ -1673,7 +1672,7 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 
-## Unknown/non-function contexts (1079)
+## Unknown/non-function contexts (1078)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -1730,100 +1729,99 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@1133,54`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1189,13`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1226,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1283,160`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1520,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1549,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1651,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1662,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1807,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1878,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1894,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2093,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2333,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2613,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2708,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2748,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2837,31`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2874,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2942,179`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3182,40`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/app_settings/settings.xml@2,3450`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@3453,1044`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@4498,839`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5338,175`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5514,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5547,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5569,186`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5756,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5778,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5789,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5811,65`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5877,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@5899,527`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@6427,120`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@6548,14140`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@20774,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@20854,69`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@21169,17`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@21218,515`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@21734,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@21756,164`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@21921,837`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@22759,511`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23271,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23293,87`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23381,175`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23557,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23568,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23579,131`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23711,153`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23865,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23898,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@23920,87`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24008,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24030,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24063,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24085,263`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24349,190`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24540,109`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24650,297`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@24948,54`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@25003,142`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@25146,191`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@25338,450`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@25789,935`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@26725,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@26736,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@26747,164`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@26912,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@26945,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@26956,109`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27066,274`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27341,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27352,131`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27484,85`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27570,193`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27764,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27786,98`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27885,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@27918,141`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28060,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28082,98`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28181,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28192,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28225,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28247,32`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28280,54`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28335,43`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28379,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28390,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28401,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28423,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28434,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@28445,2122`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@30568,1104`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@31673,209`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings.xml@31883,98`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/CMakeLists.txt@1283,162`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1522,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1551,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1653,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1664,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1809,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1880,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1896,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2095,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2335,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2615,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2710,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2750,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2839,31`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2876,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2944,185`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3190,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/app_settings/settings.xml@2,3458`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@3461,1044`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@4506,839`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5346,175`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5522,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5555,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5577,186`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5764,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5786,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5797,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5819,65`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5885,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5907,648`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@6556,14127`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@20782,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@20862,69`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21177,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21226,515`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21742,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21764,164`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21929,837`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@22767,511`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23279,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23301,87`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23389,175`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23565,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23576,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23587,131`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23719,153`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23873,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23906,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23928,87`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24016,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24038,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24071,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24093,263`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24357,190`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24548,109`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24658,297`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24956,54`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25011,142`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25154,191`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25346,450`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25797,935`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26733,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26744,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26755,164`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26920,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26953,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26964,109`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27074,274`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27349,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27360,131`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27492,85`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27578,193`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27772,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27794,98`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27893,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27926,141`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28068,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28090,98`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28189,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28200,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28233,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28255,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28288,54`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28343,43`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28387,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28398,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28409,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28431,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28442,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28453,2122`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@30576,1104`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@31681,209`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@31891,98`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llappviewer.cpp@25,19`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llappviewer.cpp@72,33`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llappviewer.cpp@154,7`: unknown/non-function (declaration, XML, build list or global scope)
@@ -1876,6 +1874,10 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/alviewermenu.cpp@62,9`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/commands.xml@421,43`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/commands.xml@489,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@1,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@46,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@134,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@229,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@2,182`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@1308,411`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@1789,13`: unknown/non-function (declaration, XML, build list or global scope)
@@ -1924,9 +1926,13 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerfloaterreg.cpp@30,46`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerfloaterreg.cpp@87,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerfloaterreg.cpp@115,17`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerinput.cpp@39,14`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerinput.cpp@1163,22`: unknown/non-function (REGISTER_KEYBOARD_ACTION(script_mouse_handler_name, script_trigger_lbutton);)
+- `indra/newview/llviewerinput.cpp@36,18`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerinput.cpp@1208,26`: unknown/non-function (REGISTER_KEYBOARD_ACTION(script_mouse_handler_name, script_trigger_lbutton);)
 - `indra/newview/llviewerinput.h@201,7`: unknown/non-function (private:)
+- `indra/newview/llviewerjoystick.cpp@27,22`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@51,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@79,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@888,9`: unknown/non-function (LLViewerJoystick::LLViewerJoystick())
 - `indra/newview/llviewermenu.cpp@25,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewermenu.cpp@50,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewermenu.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
@@ -1950,7 +1956,7 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llvoavatar.cpp@24,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.cpp@49,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.cpp@743,7`: unknown/non-function (LLVOAvatar::LLVOAvatar(const LLUUID& id,)
-- `indra/newview/llvoavatar.cpp@14003,3`: unknown/non-function (bool LLVOAvatar::isBuddy() const)
+- `indra/newview/llvoavatar.cpp@14008,3`: unknown/non-function (bool LLVOAvatar::isBuddy() const)
 - `indra/newview/llvoavatar.h@31,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.h@56,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.h@326,7`: unknown/non-function (public:)
@@ -2111,10 +2117,6 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llplugin/llpluginclassmedia.h@30,10`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llplugin/llpluginclassmedia.h@517,13`: unknown/non-function (protected:)
 - `indra/newview/alfloaterexploresounds.cpp@9,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/key_bindings.xml@1,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/key_bindings.xml@41,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/key_bindings.xml@124,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/key_bindings.xml@214,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@30,63`: unknown/non-function (uniform sampler2DShadow shadowMap0;)
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@24,42`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2143,15 +2145,11 @@ All 3014 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llselectmgr.cpp@106,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llselectmgr.cpp@9381,3`: unknown/non-function (bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas)
 - `indra/newview/llsurfacepatch.cpp@32,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerjoystick.cpp@27,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerjoystick.cpp@50,21`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerjoystick.cpp@78,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerjoystick.cpp@887,9`: unknown/non-function (LLViewerJoystick::LLViewerJoystick())
 - `indra/newview/llviewerjoystick.h@28,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerjoystick.h@51,78`: unknown/non-function (typedef enum e_joystick_driver_state)
 - `indra/newview/llviewerjoystick.h@141,19`: unknown/non-function (public:)
-- `indra/newview/llviewerjoystick.h@170,81`: unknown/non-function (protected:)
-- `indra/newview/llviewerjoystick.h@260,46`: unknown/non-function (private:)
+- `indra/newview/llviewerjoystick.h@170,83`: unknown/non-function (protected:)
+- `indra/newview/llviewerjoystick.h@262,46`: unknown/non-function (private:)
 - `indra/newview/llviewermessage.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewermessage.cpp@45,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewermessage.cpp@56,7`: unknown/non-function (declaration, XML, build list or global scope)

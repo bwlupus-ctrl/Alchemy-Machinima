@@ -7,26 +7,24 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
       "HOOK": 498,
-      "OWNED": 883,
-      "TOOLING": 359
+      "OWNED": 885,
+      "TOOLING": 362
     },
     "dirty_product_inputs": [
-      "indra/newview/CMakeLists.txt",
+      "indra/newview/algazehot.h",
+      "indra/newview/algazehotslots.h",
       "indra/newview/alghoststudio.cpp",
       "indra/newview/alpanellensgaze.cpp",
       "indra/newview/alpanellensgaze.h",
-      "indra/newview/app_settings/key_bindings.xml",
-      "indra/newview/app_settings/settings.xml",
+      "indra/newview/alsteppedanimruntime.cpp",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
+      "indra/newview/llappviewer.cpp",
       "indra/newview/lldirectorcast.cpp",
       "indra/newview/lldirectorcast.h",
       "indra/newview/llkeyconflict.cpp",
       "indra/newview/llviewerinput.cpp",
-      "indra/newview/llviewerjoystick.cpp",
-      "indra/newview/llviewerjoystick.h",
       "indra/newview/llvoavatar.cpp",
-      "indra/newview/skins/default/xui/en/control_table_contents_machinima.xml",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -69,11 +67,14 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
       "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+      "indra/newview/tests/algazehot_test.cpp",
       "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_clone_rekey_check.py",
+      "scripts/code_tools/director_gaze_hot_check.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
       "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/hot_gaze_mover_hunks.json",
       "scripts/code_tools/test_key_binding_migration.py"
     ],
     "evidence": {
@@ -88,14 +89,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "22ca83ee0a9939fd41989d412b57ec5a77b8e508cfe784a536413315938cb425",
+        "csv_sha256": "8bb86c10e8608b9ac45d197e2a8002a3c211d37d1efa50675ef17d540d9f8114",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 39,
           "popovers": 6
         },
-        "entries": 4622,
+        "entries": 4632,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -136,9 +137,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2485,
+        "generated_kit_rows": 2490,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2091,
+        "interactive_rows": 2096,
         "pages": 38,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -246,21 +247,21 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2209,
+        "independent_json_rows": 2214,
         "multi_page_settings": 21,
         "owner_roots": 35,
         "pages": 38,
-        "rows": 2209,
-        "unresolved_rows": 68
+        "rows": 2214,
+        "unresolved_rows": 72
       },
-      "wiring_rows": 2209
+      "wiring_rows": 2214
     },
-    "head_source_tree": "a5e71954d0465498e45b7d4594cc25e5187d005c",
+    "head_source_tree": "e5cbd8bb7790e9ab4d6e22bc6c79972992c55b46",
     "hook_files": 498,
-    "hunks": 3014,
-    "input_sha256": "4f128d1e5113adc09f3c2896086a2fd96f0ef9588aea0cfce666adfb44e936cd",
+    "hunks": 3015,
+    "input_sha256": "f3903d930d5f5387f8aa7e1cecd3ebfa6a61be1773783c970b6926d0c7ba749f",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 1996
+    "settings": 1997
   },
   "paths": [
     {
@@ -12278,6 +12279,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
+        "gaze",
         "vcam"
       ],
       "class": "HOOK",
@@ -14577,6 +14579,43 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/algazehot.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-path",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/algazehotslots.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
         "composition",
         "gaze",
         "roto-tron"
@@ -15196,7 +15235,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -19711,7 +19751,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "composition"
+        "composition",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -19719,10 +19760,12 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "composition"
+        "composition",
+        "director-shell",
+        "gaze"
       ],
       "git_status": "M",
-      "layer": 3,
+      "layer": 2,
       "path": "indra/newview/app_settings/key_bindings.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -19740,7 +19783,9 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "gaze"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -26072,7 +26117,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -26104,7 +26150,8 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -28382,7 +28429,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "composition"
+        "composition",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29859,7 +29907,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "composition"
+        "composition",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29983,7 +30032,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera"
+        "camera",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29992,22 +30042,26 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "actor-bar",
         "actor-path",
         "camera",
         "capture-sidecar",
         "clones",
+        "director-shell",
+        "gaze",
         "looks",
         "rig",
         "sensor"
       ],
       "git_status": "M",
-      "layer": 3,
+      "layer": 2,
       "path": "indra/newview/llviewerjoystick.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
       "candidate_features_from_subjects": [
-        "camera"
+        "camera",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -30016,7 +30070,8 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "camera"
+        "camera",
+        "gaze"
       ],
       "git_status": "M",
       "layer": 3,
@@ -30491,7 +30546,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -36143,6 +36199,8 @@
       ],
       "features": [
         "actor-bar",
+        "camera",
+        "clones",
         "composition",
         "director-shell",
         "gaze",
@@ -36479,6 +36537,9 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "actor-bar",
+        "camera",
+        "clones",
         "composition",
         "director-shell",
         "gaze"
@@ -37657,6 +37718,21 @@
       "git_status": "A",
       "layer": 3,
       "path": "indra/newview/tests/algazeblink_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/tests/algazehot_test.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -39092,6 +39168,22 @@
         "path/prefix"
       ],
       "features": [
+        "director-shell",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_gaze_hot_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
         "director-shell"
       ],
       "git_status": "A",
@@ -40225,6 +40317,21 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/env_only_signal_test.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "scripts/code_tools/hot_gaze_mover_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

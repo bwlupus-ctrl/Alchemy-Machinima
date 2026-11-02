@@ -531,6 +531,11 @@ public:
         LLUUID     mCastRef;
         LLVector3d mFixedPoint = LLVector3d::zero;
         LLUUID     mObjectRef;
+        // Hot target surface frame; joint name is used for avatar/attachment picks.
+        bool       mPickedSpot = false;
+        LLVector3  mObjectOffset;
+        std::string mObjectJoint;
+        LLVector3  mPointNudge; // metres; added to the region-independent global point
         // Per-subject expressive config. Neutral/default values preserve old
         // scenes; optional preset overrides use -1 as "inherit the base slider".
         F32        mPersonaDominance = 0.f;
@@ -647,6 +652,11 @@ public:
     void restoreHotGazePose(LLVOAvatar* av);
     void applyHotGaze(LLVOAvatar* av);
     void clearHotGazes();
+    void releaseHotGazeSlot(S32 slot);
+    void restoreHotGazes();
+    void applyHotGazes();
+    bool resolveHotGazeTarget(LLVOAvatar* actor, const GazeTarget& target, LLVector3d& point);
+    static LLVector3 hotGazeJointPosition(LLVOAvatar* avatar, LLJoint* joint);
     bool hasHotGazes() const { return !mHotGazes.empty(); }
     void rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id);
 
@@ -1374,6 +1384,7 @@ private:
             mBehindSweeping = false;
         }
         U32 mHotGeneration = 0;
+        bool mHotFixated = false;
         F32 mHotSnap = -1.f; // >=0: live override uses the shared motor with explicit timing
         F64 mClockShift = 0.0;
         bool mHeldMotorInputValid = false;
@@ -1788,6 +1799,8 @@ private:
         ALGazeHot::State mState;
         DirectorGaze mPaint;
         GazeTarget mTarget;
+        LLVector3d mLastPoint;
+        bool mRekeyMotorPending = false;
         F32 mHead = 1.f, mEyes = 1.f, mTorso = .2f;
         F32 mFromHead = 1.f, mFromEyes = 1.f, mFromTorso = .2f;
     };
