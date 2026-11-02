@@ -17,7 +17,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1283,159", "indra/newview/CMakeLists.txt@2941,178"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@2942,179"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@1939,24", "indra/newview/llappviewer.cpp@5612,9", "indra/newview/llappviewer.cpp@5967,21", "indra/newview/llappviewer.cpp@6094,7"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@294,7", "indra/newview/alviewermenu.cpp@304,8"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@6031,7"]}
@@ -56,8 +56,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 218, "text": "alpaneldirectorvcam.cpp", "source": "indra/newview/alpaneldirectorvcam.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 426, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alprojectortracker.cpp", "source": "indra/newview/alprojectortracker.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1362, "text": "alprojectortracker.h", "source": "indra/newview/alprojectortracker.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1363, "text": "alprojectortrackmath.h", "source": "indra/newview/alprojectortrackmath.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1363, "text": "alprojectortracker.h", "source": "indra/newview/alprojectortracker.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1364, "text": "alprojectortrackmath.h", "source": "indra/newview/alprojectortrackmath.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 274, "text": "altoolalign.cpp", "source": "indra/newview/altoolalign.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 219, "text": "alvcammonitorstrip.cpp", "source": "indra/newview/alvcammonitorstrip.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 277, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
@@ -65,7 +65,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 317, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 478, "text": "lldrawable.cpp", "source": "indra/newview/lldrawable.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1379, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1380, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 644, "text": "llfloatertools.cpp", "source": "indra/newview/llfloatertools.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 734, "text": "llmaniprotate.cpp", "source": "indra/newview/llmaniprotate.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 735, "text": "llmanipscale.cpp", "source": "indra/newview/llmanipscale.cpp"}

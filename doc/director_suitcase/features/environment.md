@@ -107,7 +107,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@551,7", "indra/newview/CMakeLists.txt@649,7", "indra/newview/CMakeLists.txt@1118,13", "indra/newview/CMakeLists.txt@1548,7", "indra/newview/CMakeLists.txt@1650,7"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@551,7", "indra/newview/CMakeLists.txt@649,7", "indra/newview/CMakeLists.txt@1118,13", "indra/newview/CMakeLists.txt@1549,7", "indra/newview/CMakeLists.txt@1651,7"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@26956,109", "indra/newview/app_settings/settings.xml@27352,131", "indra/newview/app_settings/settings.xml@30568,1104"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@27,39", "indra/newview/llfloaterenvironmentadjust.cpp@88,26", "indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@666,14", "indra/newview/llfloaterenvironmentadjust.cpp@767,14", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@103,99"]}
@@ -178,32 +178,32 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 347, "text": "alcinehaze.cpp", "source": "indra/newview/alcinehaze.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1401, "text": "alcinehaze.h", "source": "indra/newview/alcinehaze.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1402, "text": "alcinehaze.h", "source": "indra/newview/alcinehaze.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 234, "text": "alfloaterphototools.cpp", "source": "indra/newview/alfloaterphototools.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1183, "text": "alfloaterphototools.h", "source": "indra/newview/alfloaterphototools.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2289, "text": "app_settings/commands.xml", "source": "indra/newview/app_settings/commands.xml"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2296, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2297, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2290, "text": "app_settings/commands.xml", "source": "indra/newview/app_settings/commands.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2297, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2298, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 176, "text": "bdmergeenvlibrary.cpp", "source": "indra/newview/bdmergeenvlibrary.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1124, "text": "bdmergeenvlibrary.h", "source": "indra/newview/bdmergeenvlibrary.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 497, "text": "llenvironment.cpp", "source": "indra/newview/llenvironment.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1493, "text": "llenvironment.h", "source": "indra/newview/llenvironment.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1494, "text": "llenvironment.h", "source": "indra/newview/llenvironment.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 550, "text": "llfloatereditenvironmentbase.cpp", "source": "indra/newview/llfloatereditenvironmentbase.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 553, "text": "llfloaterenvironmentadjust.cpp", "source": "indra/newview/llfloaterenvironmentadjust.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1550, "text": "llfloaterenvironmentadjust.h", "source": "indra/newview/llfloaterenvironmentadjust.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1551, "text": "llfloaterenvironmentadjust.h", "source": "indra/newview/llfloaterenvironmentadjust.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 554, "text": "llfloaterenvironmentsettings.cpp", "source": "indra/newview/llfloaterenvironmentsettings.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1551, "text": "llfloaterenvironmentsettings.h", "source": "indra/newview/llfloaterenvironmentsettings.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1552, "text": "llfloaterenvironmentsettings.h", "source": "indra/newview/llfloaterenvironmentsettings.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 559, "text": "llfloaterfixedenvironment.cpp", "source": "indra/newview/llfloaterfixedenvironment.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1556, "text": "llfloaterfixedenvironment.h", "source": "indra/newview/llfloaterfixedenvironment.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1557, "text": "llfloaterfixedenvironment.h", "source": "indra/newview/llfloaterfixedenvironment.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 652, "text": "llfloaterwateradjust.cpp", "source": "indra/newview/llfloaterwateradjust.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1653, "text": "llfloaterwateradjust.h", "source": "indra/newview/llfloaterwateradjust.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1654, "text": "llfloaterwateradjust.h", "source": "indra/newview/llfloaterwateradjust.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 702, "text": "llinventorybridge.cpp", "source": "indra/newview/llinventorybridge.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 705, "text": "llinventorygallery.cpp", "source": "indra/newview/llinventorygallery.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 928, "text": "llsettingsvo.cpp", "source": "indra/newview/llsettingsvo.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1919, "text": "llsettingsvo.h", "source": "indra/newview/llsettingsvo.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1920, "text": "llsettingsvo.h", "source": "indra/newview/llsettingsvo.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1023, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1030, "text": "llviewerinventory.cpp", "source": "indra/newview/llviewerinventory.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1055, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}

@@ -7,12 +7,12 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
       "HOOK": 498,
-      "OWNED": 882,
-      "TOOLING": 354
+      "OWNED": 883,
+      "TOOLING": 356
     },
     "dirty_product_inputs": [],
     "evidence": {
-      "functional_csv_hash_matches": false,
+      "functional_csv_hash_matches": true,
       "functional_meta": {
         "actions": [
           "RUN",
@@ -190,10 +190,10 @@
       },
       "wiring_rows": 2195
     },
-    "head_source_tree": "aaaab007591fc70b760fa33b948183155a9b053c",
+    "head_source_tree": "1ff023951e4e7c718ce037cd5fb160a113519e0d",
     "hook_files": 498,
-    "hunks": 3009,
-    "input_sha256": "089c48a08afe11422eb45397edab20950a19339a627023fb8e7c737c65a1e2e8",
+    "hunks": 3011,
+    "input_sha256": "da85693b6d34e72130c7f7f7648f9f492216361b163fcc4495a6b6eb0696d1fb",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1996
   },
@@ -12210,6 +12210,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "vcam"
       ],
       "class": "HOOK",
@@ -14753,6 +14754,24 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alghostbounds.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
         "clones",
         "crowd"
       ],
@@ -14833,6 +14852,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "capture-sidecar",
         "clones",
         "crowd",
         "roto-tron"
@@ -14844,7 +14864,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
         "clones"
       ],
       "class": "OWNED",
@@ -15103,7 +15122,6 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "crowd",
         "director-shell",
         "gaze",
         "roto-tron"
@@ -30024,6 +30042,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "vcam"
       ],
       "class": "HOOK",
@@ -37694,6 +37713,36 @@
       "git_status": "A",
       "layer": 4,
       "path": "indra/newview/tests/alghostautoanimmodel_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/tests/alghostbounds_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/tests/alghostbounds_test.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

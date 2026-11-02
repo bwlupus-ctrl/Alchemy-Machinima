@@ -4707,6 +4707,7 @@
           "base_count": 6,
           "base_start": 118,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -4731,6 +4732,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -4745,10 +4750,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -4759,6 +4760,7 @@
           "base_count": 7,
           "base_start": 148,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -4784,6 +4786,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -4798,10 +4804,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -4812,6 +4814,7 @@
           "base_count": 15,
           "base_start": 158,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -4844,6 +4847,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -4858,10 +4865,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -4872,6 +4875,7 @@
           "base_count": 6,
           "base_start": 175,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -4897,6 +4901,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -4911,10 +4919,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -4925,6 +4929,7 @@
           "base_count": 15,
           "base_start": 202,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -4947,6 +4952,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -4961,10 +4970,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -4975,6 +4980,7 @@
           "base_count": 6,
           "base_start": 253,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5017,6 +5023,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5031,10 +5041,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5045,6 +5051,7 @@
           "base_count": 6,
           "base_start": 334,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -5067,6 +5074,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5081,10 +5092,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -5095,6 +5102,7 @@
           "base_count": 6,
           "base_start": 362,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5119,6 +5127,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5133,10 +5145,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5147,6 +5155,7 @@
           "base_count": 6,
           "base_start": 459,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5171,6 +5180,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5185,10 +5198,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5199,6 +5208,7 @@
           "base_count": 6,
           "base_start": 469,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5223,6 +5233,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5237,10 +5251,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5251,6 +5261,7 @@
           "base_count": 6,
           "base_start": 624,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -5273,6 +5284,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5287,10 +5302,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -5301,6 +5312,7 @@
           "base_count": 6,
           "base_start": 698,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5325,6 +5337,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5339,10 +5355,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5353,6 +5365,7 @@
           "base_count": 6,
           "base_start": 707,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5377,6 +5390,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5391,10 +5408,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5405,6 +5418,7 @@
           "base_count": 6,
           "base_start": 899,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5429,6 +5443,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5443,10 +5461,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5457,6 +5471,7 @@
           "base_count": 7,
           "base_start": 917,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5482,6 +5497,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5496,10 +5515,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -5510,6 +5525,7 @@
           "base_count": 15,
           "base_start": 926,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5542,6 +5558,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5556,10 +5576,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5570,6 +5586,7 @@
           "base_count": 6,
           "base_start": 943,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5595,6 +5612,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5609,10 +5630,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -5623,6 +5640,7 @@
           "base_count": 12,
           "base_start": 973,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -5645,6 +5663,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
             },
@@ -5659,10 +5681,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -5673,6 +5691,7 @@
           "base_count": 6,
           "base_start": 1022,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5706,14 +5725,18 @@
           "git_context": "set(viewer_HEADER_FILES",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 159,
-          "head_end": 1441,
+          "head_count": 160,
+          "head_end": 1442,
           "head_start": 1283,
-          "id": "indra/newview/CMakeLists.txt@1283,159",
-          "patch": "     llbox.h\n     llbuycurrencyhtml.h\n     llcallingcard.h\n+    llcameraoperator.h\n+    llactormaskeligibility.h # [ActorMask]\n+    alactormaskdiagnostics.h # [ActorMask] WP7\n+    llactormover.h\n+    alghostattachmentenumerator.h\n+    alghostmaterialresolver.h\n+    alghostspawnengine.h\n+    llclonefidelityaudit.h\n+    llghostcoverage.h\n+    llghostdeferreddiagnostics.h\n+    alformationsolver.h\n+    alcinelightrig.h\n+    alcinelightrigmanager.h\n+    alcinelightrigmodel.h\n+    alcineliveproberefresh.h # [LiveProbeRefresh]\n+    alavatarlightresponse.h # [AvatarLightResponse]\n+    alavatarlightresponsemodel.h # [AvatarLightResponse]\n+    alfloateravatarlightresponse.h # [AvatarLightResponse]\n+    alavatarkey.h # [ClientHeight]\n+    alclientheight.h # [ClientHeight]\n+    alclientheightmodel.h # [ClientHeight]\n+    aldiopterpresetbank.h\n+    aldiopterrelevance.h\n+    alfloatercinelightcues.h\n+    alfloaterultimatediopter.h\n+    alvcambonepov.h\n+    alcinecamobjectlock.h\n+    alcinecamobjectlockui.h\n+    alcinecampresentation.h\n+    alvcambonepovmath.h\n+    alvcamobjectpovsettings.h\n+    alvcamautovol.h\n+    alviewfinder.h\n+    alweathermodel.h\n+    slweather.h\n+    alweatherbridge.h\n+    alweatherresources.h\n+    alweatherparticles.h\n+    alweathercovercache.h\n+    alweathershelter.h\n+    alweatherclock.h\n+    alweatheruimodel.h\n+    alsensormodel.h\n+    alsensorsettings.h\n+    alghostgroupmodel.h\n+    alghostrotation.h\n+    alghostinteractionstate.h\n+    alghostplacementresolver.h\n+    alghostplacementadapter.h\n+    alghostmanipproxy.h\n+    alcolorchart.h\n+    alcolorchartdata.h\n+    alghostnameplates.h\n+    alghostautoanimmodel.h # [AutoAnimate]\n+    alareashadowmath.h\n+    alrelightmath.h\n+    alrelighttakerecord.h\n+    alrelighttakewriter.h\n+    alvramrecovery.h\n+    alavatarlifepolicy.h\n+    alghostanimnames.h\n+    alprobereach.h\n+    alshadowslotmath.h\n+    alhidecursor.h\n+    alshadowdepthmath.h\n+    alriggroupsubject.h\n+    alghostanimmirrormath.h\n+    alreflectmath.h\n+    alreflectanim.h\n+    alavataranimspeed.h\n+    alghoststudio.h\n+    alghostanimassetindex.h\n+    alworldoverlayviz.h\n+    alscrollfocus.h\n+    alscrollfit.h # [ScrollFit]\n+    alavatarsubjectpicker.h\n+    alprojectortracker.h\n+    alprojectortrackmath.h\n+    alobjectpathmover.h\n+    alpanelghoststudio.h\n+    aluiperfselftest.h\n+    aluirefresh.h # [GhostPanelPerf]\n+    alpanelpropmover.h\n+    altoolcrowdplace.h\n+    altoolfocuspick.h\n+    altoolghostedit.h\n+    altoolghostplace.h\n+    altoolpathedit.h\n+    llcinematiccamera.h\n+    lldirectorcast.h\n+    aldirectoractorchoice.h\n+    aldirectorcastui.h\n+    llfloateractormover.h\n+    llfloaterdirector.h\n+    alfloateractorgaze.h\n+    alfloatergazecues.h\n+    llfloaterprismmanager.h\n+    alfloatertemporalcapture.h\n+    alpaneltemporalcapture.h\n+    llpresentationtime.h\n+    alworldwinddown.h\n+    alworldwinddowncontrol.h\n+    lltemporalframecontext.h\n+    alpanelactormover.h\n+    alpanelanimpreview.h\n+    alpanelatmosphericvolumes.h\n+    alpanelavatarlightresponse.h\n+    alpaneldof.h\n+    alpanelexposurehub.h\n+    alpanelexposurepage.h\n+    alpanelgazecues.h\n+    alpanellenslooks.h\n+    alpanellightcues.h\n+    alpanelpracticals.h\n+    alpanelprojectorshafts.h\n+    alcinehaze.h\n+    alcinerigrim.h\n+    allenslooks.h\n+    allocallightsize.h\n+    alenvintensity.h\n+    alenvonlydiagnostics.h\n+    alenvintensitypresets.h\n+    alsettingsundohistory.h\n+    alsettingsundohistorymodel.h\n+    alfloaterenvintensitypresets.h\n+    alrotoink.h\n+    altron.h\n+    alpanelcinelightrig.h\n+    alprobedirty.h # [ProbeOnDemand]\n+    alprobeschedule.h # [ProbeOnDemand]\n+    alprojectorshaftlooks.h\n+    alprojectorshaftpresets.h\n+    alpanelcinecamparams.h\n+    algazemath.h\n+    alghostmotionmath.h # [GhostMotionModes]\n+    alpathgeometry.h\n+    altrajectory.h\n+    algazerecruit.h\n+    algazeblink.h\n+    algazenoise.h\n+    algazepolicy.h\n+    algazemotor.h\n+    alpanellensgaze.h\n+    alpaneldanceball.h\n+    alpaneldirectoranimswitcher.h\n+    alpaneldirectorswitcher.h\n+    alpanelweathersettings.h\n+    alpanelflycamorbit.h\n+    alpanelflycamrecorder.h\n+    alpanelpatheditor.h\n+    llflycamdrone.h\n+    llflycamrecorder.h\n+    llpathcamera.h\n     llcapabilityprovider.h\n     llcefaccelinterop.h\n     llcefsurfacereceiver.h\n",
+          "id": "indra/newview/CMakeLists.txt@1283,160",
+          "patch": "     llbox.h\n     llbuycurrencyhtml.h\n     llcallingcard.h\n+    llcameraoperator.h\n+    llactormaskeligibility.h # [ActorMask]\n+    alactormaskdiagnostics.h # [ActorMask] WP7\n+    llactormover.h\n+    alghostattachmentenumerator.h\n+    alghostmaterialresolver.h\n+    alghostspawnengine.h\n+    llclonefidelityaudit.h\n+    llghostcoverage.h\n+    llghostdeferreddiagnostics.h\n+    alformationsolver.h\n+    alcinelightrig.h\n+    alcinelightrigmanager.h\n+    alcinelightrigmodel.h\n+    alcineliveproberefresh.h # [LiveProbeRefresh]\n+    alavatarlightresponse.h # [AvatarLightResponse]\n+    alavatarlightresponsemodel.h # [AvatarLightResponse]\n+    alfloateravatarlightresponse.h # [AvatarLightResponse]\n+    alavatarkey.h # [ClientHeight]\n+    alclientheight.h # [ClientHeight]\n+    alclientheightmodel.h # [ClientHeight]\n+    aldiopterpresetbank.h\n+    aldiopterrelevance.h\n+    alfloatercinelightcues.h\n+    alfloaterultimatediopter.h\n+    alvcambonepov.h\n+    alcinecamobjectlock.h\n+    alcinecamobjectlockui.h\n+    alcinecampresentation.h\n+    alvcambonepovmath.h\n+    alvcamobjectpovsettings.h\n+    alvcamautovol.h\n+    alviewfinder.h\n+    alweathermodel.h\n+    slweather.h\n+    alweatherbridge.h\n+    alweatherresources.h\n+    alweatherparticles.h\n+    alweathercovercache.h\n+    alweathershelter.h\n+    alweatherclock.h\n+    alweatheruimodel.h\n+    alsensormodel.h\n+    alsensorsettings.h\n+    alghostgroupmodel.h\n+    alghostrotation.h\n+    alghostinteractionstate.h\n+    alghostplacementresolver.h\n+    alghostplacementadapter.h\n+    alghostmanipproxy.h\n+    alghostbounds.h\n+    alcolorchart.h\n+    alcolorchartdata.h\n+    alghostnameplates.h\n+    alghostautoanimmodel.h # [AutoAnimate]\n+    alareashadowmath.h\n+    alrelightmath.h\n+    alrelighttakerecord.h\n+    alrelighttakewriter.h\n+    alvramrecovery.h\n+    alavatarlifepolicy.h\n+    alghostanimnames.h\n+    alprobereach.h\n+    alshadowslotmath.h\n+    alhidecursor.h\n+    alshadowdepthmath.h\n+    alriggroupsubject.h\n+    alghostanimmirrormath.h\n+    alreflectmath.h\n+    alreflectanim.h\n+    alavataranimspeed.h\n+    alghoststudio.h\n+    alghostanimassetindex.h\n+    alworldoverlayviz.h\n+    alscrollfocus.h\n+    alscrollfit.h # [ScrollFit]\n+    alavatarsubjectpicker.h\n+    alprojectortracker.h\n+    alprojectortrackmath.h\n+    alobjectpathmover.h\n+    alpanelghoststudio.h\n+    aluiperfselftest.h\n+    aluirefresh.h # [GhostPanelPerf]\n+    alpanelpropmover.h\n+    altoolcrowdplace.h\n+    altoolfocuspick.h\n+    altoolghostedit.h\n+    altoolghostplace.h\n+    altoolpathedit.h\n+    llcinematiccamera.h\n+    lldirectorcast.h\n+    aldirectoractorchoice.h\n+    aldirectorcastui.h\n+    llfloateractormover.h\n+    llfloaterdirector.h\n+    alfloateractorgaze.h\n+    alfloatergazecues.h\n+    llfloaterprismmanager.h\n+    alfloatertemporalcapture.h\n+    alpaneltemporalcapture.h\n+    llpresentationtime.h\n+    alworldwinddown.h\n+    alworldwinddowncontrol.h\n+    lltemporalframecontext.h\n+    alpanelactormover.h\n+    alpanelanimpreview.h\n+    alpanelatmosphericvolumes.h\n+    alpanelavatarlightresponse.h\n+    alpaneldof.h\n+    alpanelexposurehub.h\n+    alpanelexposurepage.h\n+    alpanelgazecues.h\n+    alpanellenslooks.h\n+    alpanellightcues.h\n+    alpanelpracticals.h\n+    alpanelprojectorshafts.h\n+    alcinehaze.h\n+    alcinerigrim.h\n+    allenslooks.h\n+    allocallightsize.h\n+    alenvintensity.h\n+    alenvonlydiagnostics.h\n+    alenvintensitypresets.h\n+    alsettingsundohistory.h\n+    alsettingsundohistorymodel.h\n+    alfloaterenvintensitypresets.h\n+    alrotoink.h\n+    altron.h\n+    alpanelcinelightrig.h\n+    alprobedirty.h # [ProbeOnDemand]\n+    alprobeschedule.h # [ProbeOnDemand]\n+    alprojectorshaftlooks.h\n+    alprojectorshaftpresets.h\n+    alpanelcinecamparams.h\n+    algazemath.h\n+    alghostmotionmath.h # [GhostMotionModes]\n+    alpathgeometry.h\n+    altrajectory.h\n+    algazerecruit.h\n+    algazeblink.h\n+    algazenoise.h\n+    algazepolicy.h\n+    algazemotor.h\n+    alpanellensgaze.h\n+    alpaneldanceball.h\n+    alpaneldirectoranimswitcher.h\n+    alpaneldirectorswitcher.h\n+    alpanelweathersettings.h\n+    alpanelflycamorbit.h\n+    alpanelflycamrecorder.h\n+    alpanelpatheditor.h\n+    llflycamdrone.h\n+    llflycamrecorder.h\n+    llpathcamera.h\n     llcapabilityprovider.h\n     llcefaccelinterop.h\n     llcefsurfacereceiver.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -5729,10 +5752,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5743,6 +5762,7 @@
           "base_count": 6,
           "base_start": 1105,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -5757,13 +5777,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1525,
-          "head_start": 1519,
-          "id": "indra/newview/CMakeLists.txt@1519,7",
+          "head_end": 1526,
+          "head_start": 1520,
+          "id": "indra/newview/CMakeLists.txt@1520,7",
           "patch": "     llfloateravatartextures.h\n     llfloaterbanduration.h\n     llfloaterbeacons.h\n+    llfloaterbigpreview.h\n     llfloaterbuildoptions.h\n     llfloaterbulkpermission.h\n     llfloaterbulkupload.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -5779,10 +5803,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -5793,6 +5813,7 @@
           "base_count": 6,
           "base_start": 1133,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5809,13 +5830,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1554,
-          "head_start": 1548,
-          "id": "indra/newview/CMakeLists.txt@1548,7",
+          "head_end": 1555,
+          "head_start": 1549,
+          "id": "indra/newview/CMakeLists.txt@1549,7",
           "patch": "     llfloatereditextdaycycle.h\n     llfloateremojipicker.h\n     llfloaterenvironmentadjust.h\n+    llfloaterenvironmentsettings.h\n     llfloaterevent.h\n     llfloaterexperiencepicker.h\n     llfloaterexperienceprofile.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -5831,10 +5856,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5845,6 +5866,7 @@
           "base_count": 6,
           "base_start": 1234,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5861,13 +5883,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1656,
-          "head_start": 1650,
-          "id": "indra/newview/CMakeLists.txt@1650,7",
+          "head_end": 1657,
+          "head_start": 1651,
+          "id": "indra/newview/CMakeLists.txt@1651,7",
           "patch": "     llfloateruipreview.h\n     llfloaterurlentry.h\n     llfloatervoicevolume.h\n+    llfloaterwateradjust.h\n     llfloaterwebcontent.h\n     llfloaterwhitelistentry.h\n     llfloaterwindowsize.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -5883,10 +5909,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5897,6 +5919,7 @@
           "base_count": 6,
           "base_start": 1244,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -5913,13 +5936,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1667,
-          "head_start": 1661,
-          "id": "indra/newview/CMakeLists.txt@1661,7",
+          "head_end": 1668,
+          "head_start": 1662,
+          "id": "indra/newview/CMakeLists.txt@1662,7",
           "patch": "     llflyoutcombobtn.h\n     llgesturelistener.h\n     llgesturemgr.h\n+    llghostavatar.h\n     llgiveinventory.h\n     llgltffolderitem.h\n     llgltffoldermodel.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -5935,10 +5962,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -5949,6 +5972,7 @@
           "base_count": 6,
           "base_start": 1388,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -5963,13 +5987,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1813,
-          "head_start": 1806,
-          "id": "indra/newview/CMakeLists.txt@1806,8",
+          "head_end": 1814,
+          "head_start": 1807,
+          "id": "indra/newview/CMakeLists.txt@1807,8",
           "patch": "     llpanellandmedia.h\n     llpanellogin.h\n     llpanelloginlistener.h\n+    fsinventorycustomtabs.h\n+    fsinventorycustomtabmodel.h\n     llpanelmaininventory.h\n     llpanelmarketplaceinbox.h\n     llpanelmarketplaceinboxinventory.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -5985,10 +6013,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -5999,6 +6023,7 @@
           "base_count": 6,
           "base_start": 1457,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6015,13 +6040,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 1889,
-          "head_start": 1877,
-          "id": "indra/newview/CMakeLists.txt@1877,13",
+          "head_end": 1890,
+          "head_start": 1878,
+          "id": "indra/newview/CMakeLists.txt@1878,13",
           "patch": "     llpreviewscript.h\n     llpreviewsound.h\n     llpreviewtexture.h\n+    llprismgate.h\n+    llprismlens.h\n+    alvcammediafileio.h\n+    alvcammediafilecontainer.h\n+    alvcammediafilepolicy.h\n+    alvcammediafileposix.h\n+    llprismpreview.h\n     llproductinforequest.h\n     llprogressview.h\n     llrecentpeople.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6037,10 +6066,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -6051,6 +6076,7 @@
           "base_count": 6,
           "base_start": 1466,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6067,13 +6093,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1900,
-          "head_start": 1893,
-          "id": "indra/newview/CMakeLists.txt@1893,8",
+          "head_end": 1901,
+          "head_start": 1894,
+          "id": "indra/newview/CMakeLists.txt@1894,8",
           "patch": "     llregioninfomodel.h\n     llregionposition.h\n     llremoteparcelrequest.h\n+    llreshadebridge.h\n+    llreshadebridgeabi.h\n     llresourcedata.h\n     llrootview.h\n     llsaveoutfitcombobtn.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6089,10 +6119,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -6103,6 +6129,7 @@
           "base_count": 6,
           "base_start": 1663,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6119,13 +6146,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2098,
-          "head_start": 2092,
-          "id": "indra/newview/CMakeLists.txt@2092,7",
+          "head_end": 2099,
+          "head_start": 2093,
+          "id": "indra/newview/CMakeLists.txt@2093,7",
           "patch": "     llxmlrpclistener.h\n     llxmlrpctransaction.h\n     lutcube.h\n+    allpm.h\n     noise.h\n     pipeline.h\n     rlvactions.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6141,10 +6172,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -6155,6 +6182,7 @@
           "base_count": 6,
           "base_start": 1902,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -6169,13 +6197,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2338,
-          "head_start": 2332,
-          "id": "indra/newview/CMakeLists.txt@2332,7",
+          "head_end": 2339,
+          "head_start": 2333,
+          "id": "indra/newview/CMakeLists.txt@2333,7",
           "patch": " list(APPEND viewer_SOURCE_FILES ${viewer_CHARACTER_FILES})\n \n set(viewer_MISC_FILES\n+    stage_runtime_assets.cmake\n     viewer_manifest.py\n     )\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6191,10 +6223,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -6205,6 +6233,7 @@
           "base_count": 6,
           "base_start": 2181,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -6221,13 +6250,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 38,
-          "head_end": 2649,
-          "head_start": 2612,
-          "id": "indra/newview/CMakeLists.txt@2612,38",
+          "head_end": 2650,
+          "head_start": 2613,
+          "id": "indra/newview/CMakeLists.txt@2613,38",
           "patch": "   set(MANIFEST_PACKAGE_OUT_FILE ${product}.tar.xz)\n endif()\n \n+# Runtime settings and XUI are consumed from the staged tree, but the viewer\n+# manifest POST_BUILD command does not run when only an asset changes. Keep a\n+# lightweight, always-run dependency for Windows developer builds so direct\n+# viewer-target builds refresh those files without forcing a C++ relink.\n+set(RUNTIME_ASSET_PACKAGE_DEPENDENCIES)\n+if(WINDOWS)\n+  set(RUNTIME_ASSET_CONFIG\n+    \"$<IF:$<BOOL:${LL_GENERATOR_IS_MULTI_CONFIG}>,$<CONFIG>,default>\")\n+  set(RUNTIME_ASSET_INDEX\n+    \"${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.txt\")\n+  set(RUNTIME_ASSET_STAMP\n+    \"${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.sha256\")\n+  add_custom_target(stage_viewer_runtime_assets\n+    COMMAND ${CMAKE_COMMAND}\n+      \"-DRUNTIME_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}\"\n+      \"-DRUNTIME_DEST_DIR=${MANIFEST_DEST_DIR}\"\n+      \"-DRUNTIME_INDEX_FILE=${RUNTIME_ASSET_INDEX}\"\n+      \"-DRUNTIME_STAMP_FILE=${RUNTIME_ASSET_STAMP}\"\n+      -P ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake\n+    # The index is intentionally not a BYPRODUCT: preserving it across `clean`\n+    # retains deletion provenance for files staged before the clean. The stamp\n+    # is disposable and exists only to retrigger package/local-dist outputs.\n+    BYPRODUCTS ${RUNTIME_ASSET_STAMP}\n+    COMMENT \"Staging viewer runtime settings, shaders, dust, and XUI\"\n+    VERBATIM\n+    )\n+  add_dependencies(${VIEWER_BINARY_NAME} stage_viewer_runtime_assets)\n+  list(APPEND RUNTIME_ASSET_PACKAGE_DEPENDENCIES\n+    ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake\n+    ${RUNTIME_ASSET_STAMP})\n+endif()\n+\n # Viewer Manifest Copy\n add_custom_command(\n   TARGET ${VIEWER_BINARY_NAME} POST_BUILD\n",
           "purpose": "Edits LL_GENERATOR_IS_MULTI_CONFIG",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6243,10 +6276,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -6257,6 +6286,7 @@
           "base_count": 6,
           "base_start": 2244,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -6271,13 +6301,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2713,
-          "head_start": 2707,
-          "id": "indra/newview/CMakeLists.txt@2707,7",
+          "head_end": 2714,
+          "head_start": 2708,
+          "id": "indra/newview/CMakeLists.txt@2708,7",
           "patch": "       DEPENDS\n       ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py\n       ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt\n+      ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}\n       ${VIEWER_BINARY_NAME}\n       COMMENT \"Performing viewer_manifest local dist copy\"\n       )\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6293,10 +6327,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -6307,6 +6337,7 @@
           "base_count": 6,
           "base_start": 2283,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -6321,13 +6352,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2753,
-          "head_start": 2747,
-          "id": "indra/newview/CMakeLists.txt@2747,7",
+          "head_end": 2754,
+          "head_start": 2748,
+          "id": "indra/newview/CMakeLists.txt@2748,7",
           "patch": "       DEPENDS\n         ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py\n         ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt\n+        ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}\n         ${VIEWER_BINARY_NAME} # Prevents two copies of manifest from running at the same time\n     COMMENT \"Performing viewer_manifest package\"\n     )\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6343,10 +6378,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "unknown-review",
@@ -6357,6 +6388,7 @@
           "base_count": 7,
           "base_start": 2371,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6385,13 +6417,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 31,
-          "head_end": 2866,
-          "head_start": 2836,
-          "id": "indra/newview/CMakeLists.txt@2836,31",
+          "head_end": 2867,
+          "head_start": 2837,
+          "id": "indra/newview/CMakeLists.txt@2837,31",
           "patch": "   # This creates a separate test project per file listed.\n \n   SET(viewer_TEST_SOURCE_FILES\n+    fsinventorycustomtabmodel.cpp\n+    allocallightsize.cpp\n+    alghostautoanimmodel.cpp # [AutoAnimate]\n+    alformationsolver.cpp\n+    alcinelightrigmodel.cpp\n+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]\n+    aldirectorswitchermodel.cpp\n+    aldirectorqol.cpp\n+    aldirectortabmigration.cpp\n+    alprojectorshaftlooks.cpp\n+    aldanceballmodel.cpp\n+    alavatarstagingmodel.cpp\n+    alweathermodel.cpp\n+    slweather.cpp\n+    alweatherbridge.cpp\n+    alweathershelter.cpp\n+    alweatherclock.cpp\n+    alweatheruimodel.cpp\n+    alsensormodel.cpp\n+    alghostgroupmodel.cpp\n+    alghostinteractionstate.cpp\n+    alghostplacementresolver.cpp\n     alsceneexplorerpredicate.cpp\n+    alsettingsundohistorymodel.cpp\n+    llprismgate.cpp\n     llagentaccess.cpp\n     lldateutil.cpp\n #    llmediadataclient.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6407,10 +6443,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -6421,6 +6453,7 @@
           "base_count": 6,
           "base_start": 2384,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6439,13 +6472,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 20,
-          "head_end": 2892,
-          "head_start": 2873,
-          "id": "indra/newview/CMakeLists.txt@2873,20",
+          "head_end": 2893,
+          "head_start": 2874,
+          "id": "indra/newview/CMakeLists.txt@2874,20",
           "patch": "     llworldmipmap.cpp\n   )\n \n+  set_source_files_properties(alweathershelter.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+  set_source_files_properties(alweatherbridge.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+  set_source_files_properties(alweatheruimodel.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+\n+  set_source_files_properties(\n+    llprismgate.cpp\n+    PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES\n+    aldirectorswitchermodel.cpp\n+  )\n+\n   set_source_files_properties(\n     llworldmap.cpp\n     llworldmipmap.cpp\n",
           "purpose": "Edits LL_TEST_ADDITIONAL_SOURCE_FILES",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6461,10 +6498,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -6475,6 +6508,7 @@
           "base_count": 6,
           "base_start": 2438,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6501,14 +6535,18 @@
           "git_context": "if (BUILD_TESTING)",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 178,
-          "head_end": 3118,
-          "head_start": 2941,
-          "id": "indra/newview/CMakeLists.txt@2941,178",
-          "patch": " \n   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} \"${viewer_TEST_SOURCE_FILES}\")\n \n+  LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamclassic \"alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectorsubjectmapping \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alxinputmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alframelimiter \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alviewfinder \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitqol \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectortheme \"\" \"${test_libs}\" \"${test_project}\")\n+\n+  # ALGazeMath is deliberately header-only, so register its TUT directly\n+  # instead of inventing a production .cpp solely for the per-source macro.\n+  LL_ADD_INTEGRATION_TEST(alrelightmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alreflectmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprojectortrackmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimmirror \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alvramrecovery \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alavataranimationtime \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimnames \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprobereach \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowslotmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alhidecursor \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowdepthmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alriggroupsubject \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(algazemath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pose Polish math plus the real keyframe loop-seam update path.\n+  LL_ADD_INTEGRATION_TEST(alposepolish\n+    \"\"\n+    \"${test_libs};llcharacter\"\n+    \"${test_project}\"\n+  )\n+\n+  # [ClientHeight] The pure store / per-avatar resolve model is header-only\n+  # (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alclientheightmodel\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Character Mover exact path primitives are header-only pure geometry so the\n+  # runtime, preview and tests share one evaluator.\n+  LL_ADD_INTEGRATION_TEST(alpathgeometry\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [GhostMotionModes] Ghost Studio procedural motion (hover, jump, float, ...)\n+  # is a header-only pure evaluator; TUT registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alghostmotionmath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);\n+  # like ALGazeMath its TUT is registered directly against the header.\n+  LL_ADD_INTEGRATION_TEST(altrajectory\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Gaze life/feel/emotion pure leaf modules (gaze spec 2.2): soft anatomical\n+  # recruitment, asymmetric blink shape, band-limited fixation noise, and\n+  # oculomotor policy math. All header-only, TUTs registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazerecruit\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazeblink\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazenoise\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazepolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALGazeMotor is the header-only assembly core (gaze spec 6A) composing the\n+  # leaf modules above with ALTrajectory; TUT registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazemotor\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Bone POV math and selection normalization are pure/header-only, so their\n+  # regression tests need no viewer singleton or avatar fixture.\n+  LL_ADD_INTEGRATION_TEST(alvcambonepov\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pure envelope plus real LLControlVariable write-intent cancellation.\n+  LL_ADD_INTEGRATION_TEST(alworldwinddown\n+    \"\"\n+    \"${test_libs};llxml\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alcinecamobjectlock\n+    \"alcinecammodes.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alvcammediafilepolicy\n+    \"alvcammediafilepolicy.cpp\"\n+    \"${test_libs};ll::openssl\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only preview scheduler policy: no renderer/GL fixture required.\n+  LL_ADD_INTEGRATION_TEST(llprismpreviewpolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only VP1/VP2 projector schema and demand-policy contract.\n+  LL_ADD_INTEGRATION_TEST(llprismgate\n+    \"llprismgate.cpp;aldirectorswitchermodel.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(llprismprojector\n+    \"llprismgate.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Temporary volumetric ownership policy, also verified by static_assert.\n+  LL_ADD_INTEGRATION_TEST(alvcamautovol\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §2.3 relevance model: the 181-row sRelevance table,\n+  # its predicate helpers, and the S0-S8 sweep corpus asserted against the\n+  # committed consumed-set oracle (tests/aldiopterrelevance_oracle.llsd,\n+  # regenerated by tests/aldiopterrelevance_oracle.py). The model unit is\n+  # LLUI/gSavedSettings-free, so only the production .cpp is linked in.\n+  LL_ADD_INTEGRATION_TEST(aldiopterrelevance\n+    \"aldiopterrelevance.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n   #set(TEST_DEBUG on)\n   LL_ADD_INTEGRATION_TEST(cppfeatures\n     \"\"\n",
+          "head_count": 179,
+          "head_end": 3120,
+          "head_start": 2942,
+          "id": "indra/newview/CMakeLists.txt@2942,179",
+          "patch": " \n   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} \"${viewer_TEST_SOURCE_FILES}\")\n \n+  LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamclassic \"alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectorsubjectmapping \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alxinputmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alframelimiter \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alviewfinder \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitqol \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectortheme \"\" \"${test_libs}\" \"${test_project}\")\n+\n+  # ALGazeMath is deliberately header-only, so register its TUT directly\n+  # instead of inventing a production .cpp solely for the per-source macro.\n+  LL_ADD_INTEGRATION_TEST(alrelightmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alreflectmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprojectortrackmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimmirror \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostbounds \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alvramrecovery \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alavataranimationtime \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimnames \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprobereach \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowslotmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alhidecursor \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowdepthmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alriggroupsubject \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(algazemath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pose Polish math plus the real keyframe loop-seam update path.\n+  LL_ADD_INTEGRATION_TEST(alposepolish\n+    \"\"\n+    \"${test_libs};llcharacter\"\n+    \"${test_project}\"\n+  )\n+\n+  # [ClientHeight] The pure store / per-avatar resolve model is header-only\n+  # (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alclientheightmodel\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Character Mover exact path primitives are header-only pure geometry so the\n+  # runtime, preview and tests share one evaluator.\n+  LL_ADD_INTEGRATION_TEST(alpathgeometry\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [GhostMotionModes] Ghost Studio procedural motion (hover, jump, float, ...)\n+  # is a header-only pure evaluator; TUT registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alghostmotionmath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);\n+  # like ALGazeMath its TUT is registered directly against the header.\n+  LL_ADD_INTEGRATION_TEST(altrajectory\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Gaze life/feel/emotion pure leaf modules (gaze spec 2.2): soft anatomical\n+  # recruitment, asymmetric blink shape, band-limited fixation noise, and\n+  # oculomotor policy math. All header-only, TUTs registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazerecruit\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazeblink\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazenoise\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazepolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALGazeMotor is the header-only assembly core (gaze spec 6A) composing the\n+  # leaf modules above with ALTrajectory; TUT registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazemotor\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Bone POV math and selection normalization are pure/header-only, so their\n+  # regression tests need no viewer singleton or avatar fixture.\n+  LL_ADD_INTEGRATION_TEST(alvcambonepov\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pure envelope plus real LLControlVariable write-intent cancellation.\n+  LL_ADD_INTEGRATION_TEST(alworldwinddown\n+    \"\"\n+    \"${test_libs};llxml\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alcinecamobjectlock\n+    \"alcinecammodes.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alvcammediafilepolicy\n+    \"alvcammediafilepolicy.cpp\"\n+    \"${test_libs};ll::openssl\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only preview scheduler policy: no renderer/GL fixture required.\n+  LL_ADD_INTEGRATION_TEST(llprismpreviewpolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only VP1/VP2 projector schema and demand-policy contract.\n+  LL_ADD_INTEGRATION_TEST(llprismgate\n+    \"llprismgate.cpp;aldirectorswitchermodel.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(llprismprojector\n+    \"llprismgate.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Temporary volumetric ownership policy, also verified by static_assert.\n+  LL_ADD_INTEGRATION_TEST(alvcamautovol\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §2.3 relevance model: the 181-row sRelevance table,\n+  # its predicate helpers, and the S0-S8 sweep corpus asserted against the\n+  # committed consumed-set oracle (tests/aldiopterrelevance_oracle.llsd,\n+  # regenerated by tests/aldiopterrelevance_oracle.py). The model unit is\n+  # LLUI/gSavedSettings-free, so only the production .cpp is linked in.\n+  LL_ADD_INTEGRATION_TEST(aldiopterrelevance\n+    \"aldiopterrelevance.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n   #set(TEST_DEBUG on)\n   LL_ADD_INTEGRATION_TEST(cppfeatures\n     \"\"\n",
           "purpose": "Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6524,10 +6562,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -6538,6 +6572,7 @@
           "base_count": 4,
           "base_start": 2505,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -6554,13 +6589,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 40,
-          "head_end": 3219,
-          "head_start": 3180,
-          "id": "indra/newview/CMakeLists.txt@3180,40",
+          "head_end": 3221,
+          "head_start": 3182,
+          "id": "indra/newview/CMakeLists.txt@3182,40",
           "patch": "   )\n   LL_ADD_INTEGRATION_TEST(lltextureinfo \"${lltextureinfo_test_sources}\" \"${test_libs}\" \"${test_project}\")\n   #LL_ADD_INTEGRATION_TEST(lltextureinfodetails \"\" \"${test_libs}\" \"${test_project}\") test cases currently empty\n+\n+  set(llcameraoperator_test_sources\n+    llcameraoperator.cpp\n+    ../llxml/llcontrol.cpp\n+    ../llxml/llxmltree.cpp\n+    ../llxml/llxmlparser.cpp\n+    ../llcommon/commoncontrol.cpp\n+  )\n+  LL_ADD_INTEGRATION_TEST(llcameraoperator\n+    \"${llcameraoperator_test_sources}\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §6.3 Custom preset bank state machine (design doc\n+  # DIOPTER_SMART_UI_DESIGN.md). llcontrol/llxmltree/llxmlparser/commoncontrol\n+  # give a working LLControlGroup (same combination as llviewercontrollistener\n+  # and llcameraoperator above). test_libs already brings in `llfilesystem`,\n+  # which supplies the real LLDir/gDirUtilp (lldir.cpp/lldir_win32.cpp) --\n+  # aldiopterpresetbank_test_stubs.cpp must NOT also define those (Codex\n+  # review finding F1: doing so collided with the real symbols, LNK2005); it\n+  # stubs only LLNotificationsUtil::add, since the real llnotifications.cpp\n+  # needs the full LLNotifications singleton and is far too heavy here.\n+  set(aldiopterpresetbank_test_sources\n+    aldiopterpresetbank.cpp\n+    ../llxml/llcontrol.cpp\n+    ../llxml/llxmltree.cpp\n+    ../llxml/llxmlparser.cpp\n+    ../llcommon/commoncontrol.cpp\n+    tests/aldiopterpresetbank_test_stubs.cpp\n+  )\n+  LL_ADD_INTEGRATION_TEST(aldiopterpresetbank\n+    \"${aldiopterpresetbank_test_sources}\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n endif ()\n",
           "purpose": "Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
@@ -6576,10 +6615,6 @@
             {
               "commit": "3f73efc1e0c",
               "subject": "Wind-down: avatars truly freeze; optional \"Keep breathing while paused\""
-            },
-            {
-              "commit": "01507c686d3",
-              "subject": "VRAM: sliced emergency purge + capture-pin suspend latch (teleport F1)"
             }
           ],
           "scope": "creative-candidate",
@@ -84607,6 +84642,7 @@
           "base_count": 8,
           "base_start": 25,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -84633,6 +84669,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84647,10 +84687,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -84661,6 +84697,7 @@
           "base_count": 6,
           "base_start": 54,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -84685,6 +84722,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84699,10 +84740,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -84713,6 +84750,7 @@
           "base_count": 6,
           "base_start": 64,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -84735,6 +84773,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84749,10 +84791,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "unknown-review",
@@ -84763,6 +84801,7 @@
           "base_count": 6,
           "base_start": 72,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -84787,6 +84826,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84801,10 +84844,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -84815,6 +84854,7 @@
           "base_count": 6,
           "base_start": 96,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -84839,6 +84879,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84853,10 +84897,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -84867,6 +84907,7 @@
           "base_count": 6,
           "base_start": 115,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -84891,6 +84932,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84905,10 +84950,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -84919,6 +84960,7 @@
           "base_count": 6,
           "base_start": 211,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -84945,6 +84987,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -84959,10 +85005,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -84973,6 +85015,7 @@
           "base_count": 16,
           "base_start": 925,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85003,6 +85046,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85017,10 +85064,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85031,6 +85074,7 @@
           "base_count": 6,
           "base_start": 960,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85055,6 +85099,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85069,10 +85117,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85083,6 +85127,7 @@
           "base_count": 6,
           "base_start": 989,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85107,6 +85152,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85121,10 +85170,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85135,6 +85180,7 @@
           "base_count": 7,
           "base_start": 1292,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -85157,6 +85203,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85171,10 +85221,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "unknown-review",
@@ -85185,6 +85231,7 @@
           "base_count": 6,
           "base_start": 2244,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -85207,6 +85254,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85221,10 +85272,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "unknown-review",
@@ -85235,6 +85282,7 @@
           "base_count": 6,
           "base_start": 2282,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85263,6 +85311,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85277,10 +85329,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85291,6 +85339,7 @@
           "base_count": 7,
           "base_start": 2493,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85319,6 +85368,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85333,10 +85386,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85347,6 +85396,7 @@
           "base_count": 6,
           "base_start": 4497,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85375,6 +85425,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
             },
@@ -85389,10 +85443,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85403,27 +85453,37 @@
           "base_count": 6,
           "base_start": 4549,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
-          "feature_evidence": [],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
           "features": [
-            "unknown"
+            "clones"
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
             "LLViewerObject::getManipPivotPositionAgent"
           ],
           "git_context": "const LLVector3 LLViewerObject::getPivotPositionAgent() const",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 11,
-          "head_end": 4680,
+          "guard_evidence": [
+            "if (const auto* ghost = dynamic_cast<const LLGhostAvatar*>(this))",
+            "if (ghost->getVisualBounds(center, size)) return center;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 16,
+          "head_end": 4685,
           "head_start": 4670,
-          "id": "indra/newview/llviewerobject.cpp@4670,11",
-          "patch": "     return getRenderPosition();\n }\n \n+LLVector3 LLViewerObject::getManipPivotPositionAgent() const\n+{\n+    return getPivotPositionAgent();\n+}\n+\n const LLQuaternion LLViewerObject::getRenderRotation() const\n {\n     LLQuaternion ret;\n",
-          "purpose": "Edits LLVector3, LLViewerObject",
+          "id": "indra/newview/llviewerobject.cpp@4670,16",
+          "patch": "     return getRenderPosition();\n }\n \n+LLVector3 LLViewerObject::getManipPivotPositionAgent() const\n+{\n+    if (const auto* ghost = dynamic_cast<const LLGhostAvatar*>(this))\n+    {\n+        LLVector3 center, size;\n+        if (ghost->getVisualBounds(center, size)) return center;\n+    }\n+    return getPivotPositionAgent();\n+}\n+\n const LLQuaternion LLViewerObject::getRenderRotation() const\n {\n     LLQuaternion ret;\n",
+          "purpose": "Edits LLVector3, LLViewerObject, LLGhostAvatar",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85439,20 +85499,17 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
-          "scope": "unknown-review",
+          "scope": "creative-candidate",
           "settings_references": [],
-          "slice": 99
+          "slice": 4
         },
         {
           "base_count": 6,
           "base_start": 5078,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85494,13 +85551,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 211,
-          "head_end": 5414,
-          "head_start": 5204,
-          "id": "indra/newview/llviewerobject.cpp@5204,211",
+          "head_end": 5419,
+          "head_start": 5209,
+          "id": "indra/newview/llviewerobject.cpp@5209,211",
           "patch": "     msg->sendReliable( regionp->getHost() );\n }\n \n+void LLViewerObject::setGhostResolvedBakedTexture(\n+    const LLUUID& semantic_magic_id,\n+    LLViewerTexture* texture)\n+{\n+    if (!LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::\n+            isBakedImageId(semantic_magic_id) ||\n+        !texture ||\n+        texture->getID() == IMG_DEFAULT ||\n+        texture->getID() == semantic_magic_id ||\n+        texture->isMissingAsset())\n+    {\n+        return;\n+    }\n+    if (!mGhostResolvedMaterialState)\n+    {\n+        mGhostResolvedMaterialState =\n+            std::make_unique<GhostResolvedMaterialState>();\n+    }\n+    mGhostResolvedMaterialState->mBakedTextures[semantic_magic_id] =\n+        texture;\n+}\n+\n+LLViewerTexture* LLViewerObject::getGhostResolvedBakedTexture(\n+    const LLUUID& semantic_magic_id) const\n+{\n+    static LLCachedControl<bool> enabled(\n+        gSavedSettings, \"GhostUnifiedSourceResolvedMaterials\", false);\n+    if (!enabled)\n+    {\n+        return nullptr;\n+    }\n+    if (!mGhostResolvedMaterialState)\n+    {\n+        return nullptr;\n+    }\n+    auto found =\n+        mGhostResolvedMaterialState->mBakedTextures.find(\n+            semantic_magic_id);\n+    return found ==\n+               mGhostResolvedMaterialState->mBakedTextures.end()\n+        ? nullptr : found->second.get();\n+}\n+\n+void LLViewerObject::setGhostResolvedMaterialBinding(\n+    U8 te,\n+    const LLTextureEntry& semantic,\n+    const LLUUID& render_material_id,\n+    bool ready,\n+    LLViewerTexture* diffuse,\n+    LLViewerTexture* normal,\n+    LLViewerTexture* specular,\n+    LLViewerTexture* base_color,\n+    LLViewerTexture* pbr_normal,\n+    LLViewerTexture* metallic_roughness,\n+    LLViewerTexture* emissive)\n+{\n+    if (!mGhostResolvedMaterialState)\n+    {\n+        mGhostResolvedMaterialState =\n+            std::make_unique<GhostResolvedMaterialState>();\n+    }\n+    if (mGhostResolvedMaterialState->mBindings.size() <= te)\n+    {\n+        mGhostResolvedMaterialState->mBindings.resize(te + 1);\n+    }\n+    GhostResolvedMaterialState::Binding& binding =\n+        mGhostResolvedMaterialState->mBindings[te];\n+    binding.mActive = true;\n+    binding.mReady = ready;\n+    binding.mSemantic = semantic.asLLSD();\n+    binding.mLegacyMaterialId = semantic.getMaterialID();\n+    binding.mRenderMaterialId = render_material_id;\n+    binding.mDiffuse = diffuse;\n+    binding.mNormal = normal;\n+    binding.mSpecular = specular;\n+    binding.mBaseColor = base_color;\n+    binding.mPbrNormal = pbr_normal;\n+    binding.mMetallicRoughness = metallic_roughness;\n+    binding.mEmissive = emissive;\n+}\n+\n+bool LLViewerObject::hasGhostResolvedMaterialBinding(U8 te) const\n+{\n+    static LLCachedControl<bool> enabled(\n+        gSavedSettings, \"GhostUnifiedSourceResolvedMaterials\", false);\n+    return enabled &&\n+           mGhostResolvedMaterialState &&\n+           te < getNumTEs() &&\n+           te < mGhostResolvedMaterialState->mBindings.size() &&\n+           mGhostResolvedMaterialState->mBindings[te].mActive;\n+}\n+\n+bool LLViewerObject::isGhostResolvedMaterialBindingPending(U8 te) const\n+{\n+    return hasGhostResolvedMaterialBinding(te) &&\n+           !mGhostResolvedMaterialState->mBindings[te].mReady;\n+}\n+\n+S32 LLViewerObject::getGhostResolvedMaterialBindingCount() const\n+{\n+    return mGhostResolvedMaterialState\n+        ? static_cast<S32>(\n+              mGhostResolvedMaterialState->mBindings.size())\n+        : 0;\n+}\n+\n+bool LLViewerObject::ghostResolvedMaterialSemanticMatches(U8 te) const\n+{\n+    if (!hasGhostResolvedMaterialBinding(te) || te >= getNumTEs())\n+    {\n+        return false;\n+    }\n+    const GhostResolvedMaterialState::Binding& binding =\n+        mGhostResolvedMaterialState->mBindings[te];\n+    const LLTextureEntry* entry = getTE(te);\n+    return entry &&\n+           entry->asLLSD() == binding.mSemantic &&\n+           entry->getMaterialID() == binding.mLegacyMaterialId &&\n+           getRenderMaterialID(te) == binding.mRenderMaterialId;\n+}\n+\n+bool LLViewerObject::ghostResolvedMaterialBindingMatches(U8 te) const\n+{\n+    if (!ghostResolvedMaterialSemanticMatches(te))\n+    {\n+        return false;\n+    }\n+    const GhostResolvedMaterialState::Binding& binding =\n+        mGhostResolvedMaterialState->mBindings[te];\n+    if (!binding.mReady)\n+    {\n+        return false;\n+    }\n+    const LLTextureEntry* entry = getTE(te);\n+    if (mTEImages[te].get() != binding.mDiffuse.get() ||\n+        mTENormalMaps[te].get() != binding.mNormal.get() ||\n+        mTESpecularMaps[te].get() != binding.mSpecular.get())\n+    {\n+        return false;\n+    }\n+\n+    LLFetchedGLTFMaterial* material =\n+        dynamic_cast<LLFetchedGLTFMaterial*>(\n+            entry->getGLTFRenderMaterial());\n+    const bool expects_pbr =\n+        binding.mRenderMaterialId.notNull() ||\n+        binding.mBaseColor.notNull() ||\n+        binding.mPbrNormal.notNull() ||\n+        binding.mMetallicRoughness.notNull() ||\n+        binding.mEmissive.notNull();\n+    if (!material)\n+    {\n+        return !expects_pbr;\n+    }\n+    return material->mBaseColorTexture.get() ==\n+               binding.mBaseColor.get() &&\n+           material->mNormalTexture.get() ==\n+               binding.mPbrNormal.get() &&\n+           material->mMetallicRoughnessTexture.get() ==\n+               binding.mMetallicRoughness.get() &&\n+           material->mEmissiveTexture.get() ==\n+               binding.mEmissive.get();\n+}\n+\n+bool LLViewerObject::restoreGhostResolvedMaterialBinding(U8 te)\n+{\n+    static LLCachedControl<bool> enabled(\n+        gSavedSettings, \"GhostUnifiedSourceResolvedMaterials\", false);\n+    if (!enabled || !hasGhostResolvedMaterialBinding(te) ||\n+        !ghostResolvedMaterialSemanticMatches(te) ||\n+        isGhostResolvedMaterialBindingPending(te) ||\n+        te >= getNumTEs())\n+    {\n+        return false;\n+    }\n+\n+    const GhostResolvedMaterialState::Binding& binding =\n+        mGhostResolvedMaterialState->mBindings[te];\n+    mTEImages[te] = binding.mDiffuse;\n+    mTENormalMaps[te] = binding.mNormal;\n+    mTESpecularMaps[te] = binding.mSpecular;\n+\n+    LLTextureEntry* entry = getTE(te);\n+    LLFetchedGLTFMaterial* material = entry\n+        ? dynamic_cast<LLFetchedGLTFMaterial*>(\n+              entry->getGLTFRenderMaterial())\n+        : nullptr;\n+    if (material)\n+    {\n+        material->mBaseColorTexture =\n+            dynamic_cast<LLViewerFetchedTexture*>(\n+                binding.mBaseColor.get());\n+        material->mNormalTexture =\n+            dynamic_cast<LLViewerFetchedTexture*>(\n+                binding.mPbrNormal.get());\n+        material->mMetallicRoughnessTexture =\n+            dynamic_cast<LLViewerFetchedTexture*>(\n+                binding.mMetallicRoughness.get());\n+        material->mEmissiveTexture =\n+            dynamic_cast<LLViewerFetchedTexture*>(\n+                binding.mEmissive.get());\n+    }\n+    return true;\n+}\n+\n LLViewerTexture* LLViewerObject::getBakedTextureForMagicId(const LLUUID& id)\n {\n     if (!LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::isBakedImageId(id))\n",
           "purpose": "Edits LLViewerObject, LLUUID, LLViewerTexture, LLAvatarAppearanceDefines, LLAvatarAppearanceDictionary, LLCachedControl, gSavedSettings, LLTextureEntry, LLFetchedGLTFMaterial, LLViewerFetchedTexture",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85516,10 +85577,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85532,6 +85589,7 @@
           "base_count": 6,
           "base_start": 5085,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85550,13 +85608,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 5426,
-          "head_start": 5416,
-          "id": "indra/newview/llviewerobject.cpp@5416,11",
+          "head_end": 5431,
+          "head_start": 5421,
+          "id": "indra/newview/llviewerobject.cpp@5421,11",
           "patch": "         return NULL;\n     }\n \n+    if (LLViewerTexture* pinned = getGhostResolvedBakedTexture(id))\n+    {\n+        return pinned;\n+    }\n+\n     LLViewerObject *root = getRootEdit();\n     if (root && root->isAnimatedObject())\n     {\n",
           "purpose": "Edits LLViewerTexture",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85572,10 +85634,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85586,6 +85644,7 @@
           "base_count": 6,
           "base_start": 5141,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85604,13 +85663,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 5490,
-          "head_start": 5477,
-          "id": "indra/newview/llviewerobject.cpp@5477,14",
+          "head_end": 5495,
+          "head_start": 5482,
+          "id": "indra/newview/llviewerobject.cpp@5482,14",
           "patch": "     }\n \n     LLPrimitive::setTE(te, texture_entry);\n+    // A TE with a registered source-resolved binding must get a clone-private\n+    // render material before updateTEMaterialTextures writes fetched PBR\n+    // channels. initRenderMaterial is a no-op when uniqueness is unnecessary.\n+    if (hasGhostResolvedMaterialBinding(te) &&\n+        getTE(te) && getTE(te)->getGLTFMaterial())\n+    {\n+        initRenderMaterial(te);\n+    }\n \n     const LLUUID& image_id = getTE(te)->getID();\n     LLViewerTexture* bakedTexture = getBakedTextureForMagicId(image_id);\n",
           "purpose": "Comment evidence: A TE with a registered source-resolved binding must get a clone-private render material before updateTEMaterialTextures writes fetched PBR channels. initRenderMaterial is a no-op when uniqueness is unnecessary.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85626,10 +85689,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85640,6 +85699,7 @@
           "base_count": 10,
           "base_start": 5156,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85656,13 +85716,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 18,
-          "head_end": 5517,
-          "head_start": 5500,
-          "id": "indra/newview/llviewerobject.cpp@5500,18",
+          "head_end": 5522,
+          "head_start": 5505,
+          "id": "indra/newview/llviewerobject.cpp@5505,18",
           "patch": "     if (getTE(te)->getMaterialParams().notNull())\n     {\n         const LLUUID& norm_id = getTE(te)->getMaterialParams()->getNormalID();\n-        mTENormalMaps[te] = LLViewerTextureManager::getFetchedTexture(norm_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);\n+        LLViewerTexture* normal_texture =\n+            hasGhostResolvedMaterialBinding(te)\n+                ? getBakedTextureForMagicId(norm_id) : nullptr;\n+        mTENormalMaps[te] = normal_texture ? normal_texture :\n+            LLViewerTextureManager::getFetchedTexture(norm_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);\n \n         const LLUUID& spec_id = getTE(te)->getMaterialParams()->getSpecularID();\n-        mTESpecularMaps[te] = LLViewerTextureManager::getFetchedTexture(spec_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);\n+        LLViewerTexture* specular_texture =\n+            hasGhostResolvedMaterialBinding(te)\n+                ? getBakedTextureForMagicId(spec_id) : nullptr;\n+        mTESpecularMaps[te] = specular_texture ? specular_texture :\n+            LLViewerTextureManager::getFetchedTexture(spec_id, FTT_DEFAULT, true, LLGLTexture::BOOST_NONE, LLViewerTexture::LOD_TEXTURE);\n     }\n \n     LLFetchedGLTFMaterial* mat = (LLFetchedGLTFMaterial*) getTE(te)->getGLTFRenderMaterial();\n",
           "purpose": "Edits LLViewerTextureManager, LLGLTexture, LLViewerTexture",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85678,10 +85742,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85692,6 +85752,7 @@
           "base_count": 6,
           "base_start": 5176,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85710,13 +85771,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 5538,
-          "head_start": 5528,
-          "id": "indra/newview/llviewerobject.cpp@5528,11",
+          "head_end": 5543,
+          "head_start": 5533,
+          "id": "indra/newview/llviewerobject.cpp@5533,11",
           "patch": "                     LLViewerObject* obj = gObjectList.findObject(id);\n                     if (obj)\n                     {\n+                        // [ProbeOnDemand] H7: an async PBR material finished loading.\n+                        if (ALProbeDirty::recording() && obj->mDrawable.notNull())\n+                        {\n+                            ALProbeDirty::noteDrawable(obj->mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);\n+                        }\n                         obj->markForUpdate();\n                     }\n                 });\n",
           "purpose": "Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85732,10 +85797,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85746,6 +85807,7 @@
           "base_count": 6,
           "base_start": 5219,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85762,13 +85824,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 5582,
-          "head_start": 5576,
-          "id": "indra/newview/llviewerobject.cpp@5576,7",
+          "head_end": 5587,
+          "head_start": 5581,
+          "id": "indra/newview/llviewerobject.cpp@5581,7",
           "patch": "         mat->mMetallicRoughnessTexture = fetch_texture(mat->mTextureId[LLGLTFMaterial::GLTF_TEXTURE_INFO_METALLIC_ROUGHNESS]);\n         mat->mEmissiveTexture= fetch_texture(mat->mTextureId[LLGLTFMaterial::GLTF_TEXTURE_INFO_EMISSIVE]);\n     }\n+    restoreGhostResolvedMaterialBinding(te);\n }\n \n void LLViewerObject::refreshBakeTexture()\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85784,10 +85850,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85798,6 +85860,7 @@
           "base_count": 7,
           "base_start": 5588,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85814,13 +85877,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 5955,
-          "head_start": 5946,
-          "id": "indra/newview/llviewerobject.cpp@5946,10",
+          "head_end": 5960,
+          "head_start": 5951,
+          "id": "indra/newview/llviewerobject.cpp@5951,10",
           "patch": "     if (!base_material) { return 0; }\n     const LLGLTFMaterial* override_material = tep->getGLTFMaterialOverride();\n     LLFetchedGLTFMaterial* render_material = nullptr;\n-    bool need_render_material = override_material;\n+    // A managed ghost binding must never write pinned channels back into a\n+    // fetched base shared by source/world faces.\n+    bool need_render_material =\n+        override_material || hasGhostResolvedMaterialBinding(te);\n     if (!need_render_material)\n     {\n         for (const LLUUID& texture_id : base_material->mTextureId)\n",
           "purpose": "Comment evidence: A managed ghost binding must never write pinned channels back into a fetched base shared by source/world faces.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85836,10 +85903,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85850,6 +85913,7 @@
           "base_count": 7,
           "base_start": 5606,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85866,13 +85930,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 5976,
-          "head_start": 5967,
-          "id": "indra/newview/llviewerobject.cpp@5967,10",
+          "head_end": 5981,
+          "head_start": 5972,
+          "id": "indra/newview/llviewerobject.cpp@5972,10",
           "patch": "         if (override_material) { render_material->applyOverride(*override_material); }\n         render_material->clearFetchedTextures();\n     }\n-    return tep->setGLTFRenderMaterial(render_material);\n+    const S32 result = tep->setGLTFRenderMaterial(render_material);\n+    // Also covers asynchronous material-completion callbacks that re-init.\n+    restoreGhostResolvedMaterialBinding(te);\n+    return result;\n }\n \n S32 LLViewerObject::setTEGLTFMaterialOverride(U8 te, LLGLTFMaterial* override_mat)\n",
           "purpose": "Comment evidence: Also covers asynchronous material-completion callbacks that re-init.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85888,10 +85956,62 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 4
+        },
+        {
+          "base_count": 6,
+          "base_start": 5841,
+          "candidate_features_from_subjects": [
+            "clones",
+            "vcam"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "clones"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLViewerObject::getBoundingBoxAgent"
+          ],
+          "git_context": "void LLViewerObject::fitFaceTexture(const U8 face)",
+          "guard_evidence": [
+            "if (const auto* ghost = dynamic_cast<const LLGhostAvatar*>(this))",
+            "if (ghost->getVisualBounds(center, size))"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 12,
+          "head_end": 6221,
+          "head_start": 6210,
+          "id": "indra/newview/llviewerobject.cpp@6210,12",
+          "patch": " \n LLBBox LLViewerObject::getBoundingBoxAgent() const\n {\n+    if (const auto* ghost = dynamic_cast<const LLGhostAvatar*>(this))\n+    {\n+        LLVector3 center, size;\n+        if (ghost->getVisualBounds(center, size))\n+            return LLBBox(center, LLQuaternion(), size * -.5f, size * .5f);\n+    }\n     LLVector3 position_agent;\n     LLQuaternion rot;\n     LLViewerObject* avatar_parent = NULL;\n",
+          "purpose": "Edits LLGhostAvatar, LLVector3, LLBBox, LLQuaternion",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
             },
             {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
+              "commit": "b4b3135ae34",
+              "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
+            },
+            {
+              "commit": "4d4908fcc84",
+              "subject": "Projector tracking fix round 1: Build-selection pause, grab/spin and pipette guards, restore-pending safety"
+            },
+            {
+              "commit": "3694fb7d97c",
+              "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
+            },
+            {
+              "commit": "8f83ab5747e",
+              "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
             }
           ],
           "scope": "creative-candidate",
@@ -85902,6 +86022,7 @@
           "base_count": 7,
           "base_start": 7513,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85923,13 +86044,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 20,
-          "head_end": 7896,
-          "head_start": 7877,
-          "id": "indra/newview/llviewerobject.cpp@7877,20",
+          "head_end": 7907,
+          "head_start": 7888,
+          "id": "indra/newview/llviewerobject.cpp@7888,20",
           "patch": "             {\n                 LLViewerObject* obj = gObjectList.findObject(obj_id);\n                 if (!obj) { return; }\n-                obj->initRenderMaterial(te);\n+                // [ProbeOnDemand] H7: an async PBR material finished loading.\n+                if (ALProbeDirty::recording() && obj->mDrawable.notNull())\n+                {\n+                    ALProbeDirty::noteDrawable(obj->mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);\n+                }\n+                if (obj->hasGhostResolvedMaterialBinding(te))\n+                {\n+                    obj->initRenderMaterial(te);\n+                    obj->updateTEMaterialTextures(te);\n+                }\n+                else\n+                {\n+                    obj->initRenderMaterial(te);\n+                }\n             });\n         }\n     }\n",
           "purpose": "Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -85945,10 +86070,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -85959,6 +86080,7 @@
           "base_count": 6,
           "base_start": 7530,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [
@@ -85978,13 +86100,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 7917,
-          "head_start": 7907,
-          "id": "indra/newview/llviewerobject.cpp@7907,11",
+          "head_end": 7928,
+          "head_start": 7918,
+          "id": "indra/newview/llviewerobject.cpp@7918,11",
           "patch": "                 LLViewerObject* obj = gObjectList.findObject(obj_id);\n                 if (obj)\n                 {\n+                    // [ProbeOnDemand] H7: an async PBR material finished loading.\n+                    if (ALProbeDirty::recording() && obj->mDrawable.notNull())\n+                    {\n+                        ALProbeDirty::noteDrawable(obj->mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);\n+                    }\n                     obj->rebuildMaterial();\n                 }\n             });\n",
           "purpose": "Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -86000,10 +86126,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "creative-candidate",
@@ -86014,6 +86136,7 @@
           "base_count": 4,
           "base_start": 7775,
           "candidate_features_from_subjects": [
+            "clones",
             "vcam"
           ],
           "feature_evidence": [],
@@ -86028,13 +86151,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 3,
-          "head_end": 8159,
-          "head_start": 8157,
-          "id": "indra/newview/llviewerobject.cpp@8157,3",
+          "head_end": 8170,
+          "head_start": 8168,
+          "id": "indra/newview/llviewerobject.cpp@8168,3",
           "patch": " \n LLHTTPRegistration<ObjectPhysicsProperties>\n     gHTTPRegistrationObjectPhysicsProperties(\"/message/ObjectPhysicsProperties\");\n-\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "b4b3135ae34",
               "subject": "Projector tracking fix round 2: live paused edits, full rollback, final skeleton frame"
@@ -86050,10 +86177,6 @@
             {
               "commit": "8f83ab5747e",
               "subject": "Add per-avatar Anim speed (Black Dragon style) with Vary all"
-            },
-            {
-              "commit": "e5753680cbc",
-              "subject": "P1-lite round 8: face-blended direction taps (corner seams), plane guard, planner-fail-closed gate, cache/snapshot/teardown fixes"
             }
           ],
           "scope": "unknown-review",
@@ -104216,6 +104339,46 @@
       ],
       "hunks": [
         {
+          "base_count": 6,
+          "base_start": 27,
+          "candidate_features_from_subjects": [
+            "clones"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "clones"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 33,
+          "head_start": 27,
+          "id": "indra/newview/llmanip.cpp@27,7",
+          "patch": " #include \"llviewerprecompiledheaders.h\"\n \n #include \"llmanip.h\"\n+#include \"altoolghostedit.h\"\n \n #include \"llmath.h\"\n #include \"v3math.h\"\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
+            {
+              "commit": "f089298b750",
+              "subject": "Ghost Studio: raise edit-manip gizmo above the clone (fix buried handles)"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 4
+        },
+        {
           "base_count": 7,
           "base_start": 350,
           "candidate_features_from_subjects": [
@@ -104233,17 +104396,22 @@
           ],
           "git_context": "bool LLManip::nearestPointOnLineFromMouse( S32 x, S32 y, const LLVector3& b1, co",
           "guard_evidence": [
-            "if (obj && obj->isGhostManipProxy() && selection->getObjectCount() == 1)"
+            "if (obj && obj->isGhostManipProxy() && selection->getObjectCount() == 1)",
+            "if (ALToolGhostEdit::getInstance()->getManipProxy().usesBodyPivot(obj))"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 23,
-          "head_end": 372,
-          "head_start": 350,
-          "id": "indra/newview/llmanip.cpp@350,23",
-          "patch": " \n LLVector3 LLManip::getSavedPivotPoint() const\n {\n-    return LLSelectMgr::getInstance()->getSavedBBoxOfSelection().getCenterAgent();\n+    const LLVector3 saved_center = LLSelectMgr::getInstance()->getSavedBBoxOfSelection().getCenterAgent();\n+    // [GhostStudio] mirror getPivotPoint()'s raised manip pivot for the ghost proxy\n+    // so translate drag/snap deltas stay consistent -- a raised live pivot against a\n+    // bbox-centre saved pivot would jump the drag at start. Translation doesn't\n+    // change the proxy's rotation/scale, so the raise offset is drag-invariant and\n+    // can be applied to the saved bbox centre.\n+    // getFirstObject()/getObjectCount() are non-const; this method is const, so\n+    // query through LLSelectMgr's current selection handle (same selection the\n+    // saved/live bbox lookups above already use) rather than the const member.\n+    LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();\n+    LLViewerObject* obj = selection->getFirstObject();\n+    if (obj && obj->isGhostManipProxy() && selection->getObjectCount() == 1)\n+    {\n+        const LLVector3 live_center = LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();\n+        return saved_center + (obj->getManipPivotPositionAgent() - live_center);\n+    }\n+    return saved_center;\n }\n \n LLVector3 LLManip::getPivotPoint()\n",
+          "head_count": 25,
+          "head_end": 375,
+          "head_start": 351,
+          "id": "indra/newview/llmanip.cpp@351,25",
+          "patch": " \n LLVector3 LLManip::getSavedPivotPoint() const\n {\n-    return LLSelectMgr::getInstance()->getSavedBBoxOfSelection().getCenterAgent();\n+    const LLVector3 saved_center = LLSelectMgr::getInstance()->getSavedBBoxOfSelection().getCenterAgent();\n+    // [GhostStudio] mirror getPivotPoint()'s raised manip pivot for the ghost proxy\n+    // so translate drag/snap deltas stay consistent -- a raised live pivot against a\n+    // bbox-centre saved pivot would jump the drag at start. Translation doesn't\n+    // change the proxy's rotation/scale, so the raise offset is drag-invariant and\n+    // can be applied to the saved bbox centre.\n+    // getFirstObject()/getObjectCount() are non-const; this method is const, so\n+    // query through LLSelectMgr's current selection handle (same selection the\n+    // saved/live bbox lookups above already use) rather than the const member.\n+    LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();\n+    LLViewerObject* obj = selection->getFirstObject();\n+    if (obj && obj->isGhostManipProxy() && selection->getObjectCount() == 1)\n+    {\n+        if (ALToolGhostEdit::getInstance()->getManipProxy().usesBodyPivot(obj))\n+            return saved_center;\n+        const LLVector3 live_center = LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();\n+        return saved_center + (obj->getManipPivotPositionAgent() - live_center);\n+    }\n+    return saved_center;\n }\n \n LLVector3 LLManip::getPivotPoint()\n",
           "purpose": "Comment evidence: [GhostStudio] mirror getPivotPoint()'s raised manip pivot for the ghost proxy so translate drag/snap deltas stay consistent -- a raised live pivot against a bbox-centre saved pivot would jump the drag at start. Translation doesn't change the proxy's rotation/scale, so the raise o",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "f089298b750",
               "subject": "Ghost Studio: raise edit-manip gizmo above the clone (fix buried handles)"
@@ -104259,33 +104427,41 @@
           "candidate_features_from_subjects": [
             "clones"
           ],
-          "feature_evidence": [],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
           "features": [
-            "unknown"
+            "clones"
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
             "LLManip::getPivotPoint"
           ],
           "git_context": "LLVector3 LLManip::getPivotPoint()",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 7,
-          "head_end": 381,
-          "head_start": 375,
-          "id": "indra/newview/llmanip.cpp@375,7",
-          "patch": "     LLViewerObject* object = mObjectSelection->getFirstRootObject(true);\n     if (object && (mObjectSelection->getObjectCount() == 1 || editRootAxis) && mObjectSelection->getSelectType() != SELECT_TYPE_HUD)\n     {\n-        return mObjectSelection->getFirstObject()->getPivotPositionAgent();\n+        return mObjectSelection->getFirstObject()->getManipPivotPositionAgent();\n     }\n     return LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();\n }\n",
-          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "guard_evidence": [
+            "if (mObjectSelection->getObjectCount() == 1 &&"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 12,
+          "head_end": 389,
+          "head_start": 378,
+          "id": "indra/newview/llmanip.cpp@378,12",
+          "patch": "     LLViewerObject* object = mObjectSelection->getFirstRootObject(true);\n     if (object && (mObjectSelection->getObjectCount() == 1 || editRootAxis) && mObjectSelection->getSelectType() != SELECT_TYPE_HUD)\n     {\n-        return mObjectSelection->getFirstObject()->getPivotPositionAgent();\n+        // Only the owned proxy of a displaced ENTITY gets a body pivot. Other\n+        // proxies keep the historical raised manipulator origin unchanged.\n+        if (mObjectSelection->getObjectCount() == 1 &&\n+            ALToolGhostEdit::getInstance()->getManipProxy().usesBodyPivot(object))\n+            return LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();\n+        return mObjectSelection->getFirstObject()->getManipPivotPositionAgent();\n     }\n     return LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();\n }\n",
+          "purpose": "Comment evidence: Only the owned proxy of a displaced ENTITY gets a body pivot. Other proxies keep the historical raised manipulator origin unchanged.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "010160e504e",
+              "subject": "Entity clones: selection box/pivot fitted to the visible body for seated/displaced poses"
+            },
             {
               "commit": "f089298b750",
               "subject": "Ghost Studio: raise edit-manip gizmo above the clone (fix buried handles)"
             }
           ],
-          "scope": "unknown-review",
+          "scope": "creative-candidate",
           "settings_references": [],
-          "slice": 99
+          "slice": 4
         }
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",

@@ -1865,6 +1865,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alghostmanipproxy.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alghostmaterialresolver.cpp",
     "dependency": "indra/newview/alghostmaterialresolver.h",
     "excluded": false,
@@ -5897,6 +5906,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/altoolghostedit.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/altoolghostedit.h",
     "dependency": "indra/newview/alghostmanipproxy.h",
     "excluded": false,
@@ -8886,6 +8904,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llghostavatar.cpp",
+    "dependency": "indra/newview/alghostbounds.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llghostavatar.cpp",
     "dependency": "indra/newview/llghostavatar.h",
     "excluded": false,
     "origin": "fork-added",
@@ -9052,6 +9079,15 @@
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at base"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llmanip.cpp",
+    "dependency": "indra/newview/altoolghostedit.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
     "action": "carry/adapt fork source",
