@@ -29457,6 +29457,46 @@
   },
   {
     "change": "added",
+    "comment": "Appearance ramp for all new clones. Overlay opacity is multiplied; entities dissolve. Zero appears instantly. Session clones are never saved.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "clones"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioFadeIn",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Retire selected clones with an opacity ramp or entity dissolve. Deletion and reference retirement finish at the end; retiring clones cannot be selected. Teleport and logout remove immediately.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "clones"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioFadeOut",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
     "comment": "Formation preview stalk height in metres.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
@@ -29519,6 +29559,174 @@
     "scene_evidence": [],
     "scope": "review feature ownership",
     "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Random uses the crowd seed and stable clone ID. By row cycles looks using solver row indices. Non-row shapes fall back to slot order. Duplicate menu choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioLookSpread",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Single keeps the prototype look. Mix applies the non-None Look menus to overlay copies only. Switching back restores each clone’s prior single look.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "roto-tron"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioLooksMode",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-1",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioMixLook1",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-1",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioMixLook2",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-1",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioMixLook3",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-1",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioMixLook4",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-1",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioMixLook5",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-1",
+    "duplicate_note": "",
+    "features": [
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioMixLook6",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
   },
   {
     "change": "added",
@@ -29585,6 +29793,28 @@
   },
   {
     "change": "added",
+    "comment": "Front/back and left/right follow the formation heading. Centre out uses radial distance from its origin. Equal coordinates receive equal offsets.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "actor-path",
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioRippleFrom",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
     "comment": "Draw an in-world preview of the active crowd-placement draft -- numbered slot markers, guides, and an enclosing perimeter -- before you commit it. Costs nothing when no placement draft is active.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
@@ -29604,6 +29834,48 @@
     "scene_evidence": [],
     "scope": "review feature ownership",
     "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Off keeps current timing. Random hashes crowd seed and stable clone ID. Ripple orders slots in the formation frame. Changes rephase the current crowd immediately.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "actor-path",
+      "clones",
+      "crowd"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioStartMode",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
+    "comment": "Maximum animation phase offset. Live mirror poses are delayed into their 2-second history, capped to its available length.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0.8",
+    "duplicate_note": "",
+    "features": [
+      "clones"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GhostStudioStartSpread",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
   },
   {
     "change": "added",

@@ -59,7 +59,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@2837,31"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@22759,511", "indra/newview/app_settings/settings.xml@23381,175", "indra/newview/app_settings/settings.xml@28445,2122", "indra/newview/app_settings/settings.xml@30568,1104"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14231", "indra/newview/app_settings/settings.xml@22850,511", "indra/newview/app_settings/settings.xml@23472,175", "indra/newview/app_settings/settings.xml@28536,2122", "indra/newview/app_settings/settings.xml@30659,1104"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1789,13"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@2067,28"]}
@@ -77,9 +77,18 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `GhostStudioFormationPreviewHeight`
 - `GhostStudioFormationPreviewScale`
 - `GhostStudioGuideWidthPixels`
+- `GhostStudioLookSpread`
+- `GhostStudioMixLook1`
+- `GhostStudioMixLook2`
+- `GhostStudioMixLook3`
+- `GhostStudioMixLook4`
+- `GhostStudioMixLook5`
+- `GhostStudioMixLook6`
 - `GhostStudioOverlayPalette`
 - `GhostStudioRefreshAlways`
+- `GhostStudioRippleFrom`
 - `GhostStudioShowFormationPreview`
+- `GhostStudioStartMode`
 - `GhostTrueMirrorCopyFacing`
 
 ## shaders

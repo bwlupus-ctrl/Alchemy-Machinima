@@ -30,6 +30,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alcinelightrigmodel.h`
 - `indra/newview/alclientheight.h`
 - `indra/newview/alclientheightmodel.h`
+- `indra/newview/alcloneqol.h`
 - `indra/newview/aldanceball.cpp`
 - `indra/newview/aldanceball.h`
 - `indra/newview/aldiopterpresetbank.cpp`
@@ -126,6 +127,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/velocityCameraF.glsl`
@@ -181,7 +183,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@660,7", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@1662,7", "indra/newview/CMakeLists.txt@2837,31", "indra/newview/CMakeLists.txt@2942,179"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@31673,209"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14231", "indra/newview/app_settings/settings.xml@31764,209"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@5334,24", "indra/newview/llappviewer.cpp@5656,48", "indra/newview/llappviewer.cpp@5793,119", "indra/newview/llappviewer.cpp@6419,15", "indra/newview/llappviewer.cpp@6457,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@788,19", "indra/newview/llfloaterenvironmentadjust.cpp@810,33", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterhoverheight.cpp", "hunks": ["indra/newview/llfloaterhoverheight.cpp@29,50", "indra/newview/llfloaterhoverheight.cpp@228,216"]}
@@ -190,17 +192,17 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2771,233", "indra/newview/app_settings/settings_alchemy.xml@3131,175", "indra/newview/app_settings/settings_alchemy.xml@3307,135"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@247,21"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@496,1373"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,25", "indra/newview/lldrawpool.cpp@498,1376"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,13", "indra/newview/lldrawpoolavatar.cpp@82,97", "indra/newview/lldrawpoolavatar.cpp@528,8", "indra/newview/lldrawpoolavatar.cpp@538,122", "indra/newview/lldrawpoolavatar.cpp@884,158", "indra/newview/lldrawpoolavatar.cpp@1103,8", "indra/newview/lldrawpoolavatar.cpp@1140,29", "indra/newview/lldrawpoolavatar.cpp@1221,84"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@30,24", "indra/newview/llreflectionmapmanager.cpp@593,2064"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@29,20", "indra/newview/llviewerdisplay.cpp@906,14", "indra/newview/llviewerdisplay.cpp@994,17", "indra/newview/llviewerdisplay.cpp@1119,36", "indra/newview/llviewerdisplay.cpp@1170,16", "indra/newview/llviewerdisplay.cpp@1188,82", "indra/newview/llviewerdisplay.cpp@1882,22", "indra/newview/llviewerdisplay.cpp@2067,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@538,266"]}
 - {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@39,14", "indra/newview/llviewerinput.cpp@504,71"]}
 - {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@178,8", "indra/newview/llviewerwindow.cpp@3829,28", "indra/newview/llviewerwindow.cpp@4048,19"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@743,7", "indra/newview/llvoavatar.cpp@1039,7", "indra/newview/llvoavatar.cpp@1061,7", "indra/newview/llvoavatar.cpp@1124,7", "indra/newview/llvoavatar.cpp@2177,29", "indra/newview/llvoavatar.cpp@2439,14", "indra/newview/llvoavatar.cpp@2807,8", "indra/newview/llvoavatar.cpp@2828,9", "indra/newview/llvoavatar.cpp@2947,33", "indra/newview/llvoavatar.cpp@3015,8", "indra/newview/llvoavatar.cpp@3546,12", "indra/newview/llvoavatar.cpp@4212,8", "indra/newview/llvoavatar.cpp@4608,7", "indra/newview/llvoavatar.cpp@4663,27", "indra/newview/llvoavatar.cpp@4747,10", "indra/newview/llvoavatar.cpp@4863,8", "indra/newview/llvoavatar.cpp@4942,7", "indra/newview/llvoavatar.cpp@5000,19", "indra/newview/llvoavatar.cpp@5026,18", "indra/newview/llvoavatar.cpp@5059,21", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@6322,49", "indra/newview/llvoavatar.cpp@6607,7", "indra/newview/llvoavatar.cpp@7327,7", "indra/newview/llvoavatar.cpp@8734,106", "indra/newview/llvoavatar.cpp@9703,14", "indra/newview/llvoavatar.cpp@9869,7", "indra/newview/llvoavatar.cpp@9961,8", "indra/newview/llvoavatar.cpp@10076,12", "indra/newview/llvoavatar.cpp@10091,7", "indra/newview/llvoavatar.cpp@10138,12", "indra/newview/llvoavatar.cpp@10169,11", "indra/newview/llvoavatar.cpp@11309,101", "indra/newview/llvoavatar.cpp@11511,10", "indra/newview/llvoavatar.cpp@12501,7", "indra/newview/llvoavatar.cpp@12524,8", "indra/newview/llvoavatar.cpp@12538,10", "indra/newview/llvoavatar.cpp@12825,163", "indra/newview/llvoavatar.cpp@13084,7", "indra/newview/llvoavatar.cpp@13123,7", "indra/newview/llvoavatar.cpp@13676,7", "indra/newview/llvoavatar.cpp@13935,7", "indra/newview/llvoavatar.cpp@13950,7", "indra/newview/llvoavatar.cpp@13968,9"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@743,7", "indra/newview/llvoavatar.cpp@1039,7", "indra/newview/llvoavatar.cpp@1061,7", "indra/newview/llvoavatar.cpp@1124,7", "indra/newview/llvoavatar.cpp@2016,8", "indra/newview/llvoavatar.cpp@2124,8", "indra/newview/llvoavatar.cpp@2177,29", "indra/newview/llvoavatar.cpp@2439,14", "indra/newview/llvoavatar.cpp@2807,8", "indra/newview/llvoavatar.cpp@2828,9", "indra/newview/llvoavatar.cpp@2947,33", "indra/newview/llvoavatar.cpp@3015,8", "indra/newview/llvoavatar.cpp@3546,12", "indra/newview/llvoavatar.cpp@4212,8", "indra/newview/llvoavatar.cpp@4608,7", "indra/newview/llvoavatar.cpp@4663,27", "indra/newview/llvoavatar.cpp@4747,10", "indra/newview/llvoavatar.cpp@4863,8", "indra/newview/llvoavatar.cpp@4942,7", "indra/newview/llvoavatar.cpp@5000,19", "indra/newview/llvoavatar.cpp@5026,18", "indra/newview/llvoavatar.cpp@5059,21", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@6322,49", "indra/newview/llvoavatar.cpp@6607,7", "indra/newview/llvoavatar.cpp@7327,7", "indra/newview/llvoavatar.cpp@8734,106", "indra/newview/llvoavatar.cpp@9703,14", "indra/newview/llvoavatar.cpp@9869,7", "indra/newview/llvoavatar.cpp@9961,8", "indra/newview/llvoavatar.cpp@10076,12", "indra/newview/llvoavatar.cpp@10091,7", "indra/newview/llvoavatar.cpp@10138,12", "indra/newview/llvoavatar.cpp@10169,11", "indra/newview/llvoavatar.cpp@11309,101", "indra/newview/llvoavatar.cpp@11511,10", "indra/newview/llvoavatar.cpp@12501,7", "indra/newview/llvoavatar.cpp@12524,8", "indra/newview/llvoavatar.cpp@12538,10", "indra/newview/llvoavatar.cpp@12825,163", "indra/newview/llvoavatar.cpp@13084,7", "indra/newview/llvoavatar.cpp@13123,7", "indra/newview/llvoavatar.cpp@13676,7", "indra/newview/llvoavatar.cpp@13935,7", "indra/newview/llvoavatar.cpp@13950,7", "indra/newview/llvoavatar.cpp@13968,9"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@287,25", "indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@614,11", "indra/newview/llvoavatar.h@647,13", "indra/newview/llvoavatar.h@713,7", "indra/newview/llvoavatar.h@1024,12"]}
-- {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@1569,18", "indra/newview/llvovolume.cpp@1613,26", "indra/newview/llvovolume.cpp@1642,14", "indra/newview/llvovolume.cpp@1724,38", "indra/newview/llvovolume.cpp@4870,26"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@120,11", "indra/newview/pipeline.cpp@136,14", "indra/newview/pipeline.cpp@156,12", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31781,695", "indra/newview/pipeline.cpp@32611,222", "indra/newview/pipeline.cpp@33289,1054", "indra/newview/pipeline.cpp@38297,153"]}
+- {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@1569,18", "indra/newview/llvovolume.cpp@1613,26", "indra/newview/llvovolume.cpp@1642,14", "indra/newview/llvovolume.cpp@1724,38", "indra/newview/llvovolume.cpp@4870,26", "indra/newview/llvovolume.cpp@4975,12"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@120,11", "indra/newview/pipeline.cpp@136,14", "indra/newview/pipeline.cpp@156,12", "indra/newview/pipeline.cpp@1692,29164", "indra/newview/pipeline.cpp@31820,695", "indra/newview/pipeline.cpp@32650,222", "indra/newview/pipeline.cpp@33328,1054", "indra/newview/pipeline.cpp@38336,153"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@708,90", "indra/newview/pipeline.h@801,68", "indra/newview/pipeline.h@1108,67"]}
 - {"path": "indra/newview/skins/default/colors.xml", "hunks": ["indra/newview/skins/default/colors.xml@2,153"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243", "indra/newview/skins/default/xui/en/menu_viewer.xml@1249,19"]}
@@ -244,6 +246,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/lldrawpoolterrain.cpp", "hunks": ["indra/newview/lldrawpoolterrain.cpp@720,55"]}
 - {"path": "indra/newview/llface.cpp", "hunks": ["indra/newview/llface.cpp@2283,36", "indra/newview/llface.cpp@2413,25"]}
 - {"path": "indra/newview/llfloaterpay.cpp", "hunks": ["indra/newview/llfloaterpay.cpp@46,7", "indra/newview/llfloaterpay.cpp@404,15"]}
+- {"path": "indra/newview/llhudicon.cpp", "hunks": ["indra/newview/llhudicon.cpp@25,8", "indra/newview/llhudicon.cpp@83,7", "indra/newview/llhudicon.cpp@195,7"]}
+- {"path": "indra/newview/llhudnametag.cpp", "hunks": ["indra/newview/llhudnametag.cpp@26,8", "indra/newview/llhudnametag.cpp@117,7", "indra/newview/llhudnametag.cpp@234,7", "indra/newview/llhudnametag.cpp@560,7"]}
+- {"path": "indra/newview/llhudtext.cpp", "hunks": ["indra/newview/llhudtext.cpp@27,8", "indra/newview/llhudtext.cpp@115,7", "indra/newview/llhudtext.cpp@355,7"]}
 - {"path": "indra/newview/llmanip.cpp", "hunks": ["indra/newview/llmanip.cpp@27,7", "indra/newview/llmanip.cpp@351,25", "indra/newview/llmanip.cpp@378,12"]}
 - {"path": "indra/newview/llnearbyvoicemoderation.cpp", "hunks": ["indra/newview/llnearbyvoicemoderation.cpp@55,12"]}
 - {"path": "indra/newview/llspatialpartition.cpp", "hunks": ["indra/newview/llspatialpartition.cpp@44,14", "indra/newview/llspatialpartition.cpp@3294,10"]}
@@ -297,13 +302,26 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `GhostReflectVerify`
 - `GhostStudioCrowdHeightUnitsPerPixel`
 - `GhostStudioCrowdRotationStepDegrees`
+- `GhostStudioFadeIn`
+- `GhostStudioFadeOut`
 - `GhostStudioFormationPreviewHeight`
 - `GhostStudioFormationPreviewScale`
 - `GhostStudioGuideWidthPixels`
+- `GhostStudioLookSpread`
+- `GhostStudioLooksMode`
+- `GhostStudioMixLook1`
+- `GhostStudioMixLook2`
+- `GhostStudioMixLook3`
+- `GhostStudioMixLook4`
+- `GhostStudioMixLook5`
+- `GhostStudioMixLook6`
 - `GhostStudioNameplateMode`
 - `GhostStudioOverlayPalette`
 - `GhostStudioRefreshAlways`
+- `GhostStudioRippleFrom`
 - `GhostStudioShowFormationPreview`
+- `GhostStudioStartMode`
+- `GhostStudioStartSpread`
 - `GhostStudioTurnEase`
 - `GhostStudioTurnRate`
 - `GhostTrueMirrorCopyFace`
@@ -344,6 +362,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricTemporalF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/velocityCameraF.glsl`
@@ -678,6 +697,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 - `scripts/code_tools/clone_looks_gl_check.py`
 - `scripts/code_tools/clone_looks_runtime_check.py`
+- `scripts/code_tools/director_clone_qol_check.py`
 - `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`
 - `scripts/code_tools/test_clone_stamp_attachments.py`

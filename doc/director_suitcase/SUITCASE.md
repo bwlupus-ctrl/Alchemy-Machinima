@@ -34,7 +34,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2546 classified paths.
+`inventory.csv` / `inventory.json` contain 2550 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -66,14 +66,14 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [common-ui](features/common-ui.md) | 1 | 84 | 23 | 5 |
 | [director-shell](features/director-shell.md) | 2 | 308 | 53 | 197 |
 | [actor-bar](features/actor-bar.md) | 3 | 63 | 13 | 0 |
-| [actor-path](features/actor-path.md) | 3 | 100 | 33 | 32 |
+| [actor-path](features/actor-path.md) | 3 | 100 | 33 | 34 |
 | [camera](features/camera.md) | 3 | 76 | 31 | 489 |
 | [composition](features/composition.md) | 3 | 40 | 23 | 12 |
 | [gaze](features/gaze.md) | 3 | 53 | 18 | 87 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 26 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 171 | 77 | 68 |
-| [crowd](features/crowd.md) | 4 | 49 | 10 | 10 |
-| [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 226 |
+| [clones](features/clones.md) | 4 | 173 | 80 | 81 |
+| [crowd](features/crowd.md) | 4 | 49 | 10 | 19 |
+| [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 66 | 58 | 17 |
 | [rig](features/rig.md) | 7 | 168 | 56 | 250 |
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 62 | 24 | 104 |
@@ -212,7 +212,7 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 Existing evidence: 2208 wiring rows; page-source summary
 `{"ambiguous_rows": 0, "independent_json_rows": 2208, "multi_page_settings": 21, "owner_roots": 35, "pages": 38, "rows": 2208, "unresolved_rows": 57}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
-**False**. Existing manifests can still be stale
+**True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
 rows remain unresolved. They do not establish in-world behavior.
 
