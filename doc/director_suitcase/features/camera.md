@@ -1,0 +1,803 @@
+# camera: dependency evidence
+
+Landing layer 3. Arm/release, switch/ease, object/bone lock, orbit, operator modes and recording; restore main camera.
+
+Candidate associations require review. Includes/calls are discovery edges, not a complete call graph or proof of build closure.
+
+## owned
+
+- `indra/newview/alactormaskdiagnostics.cpp`
+- `indra/newview/alavatarsubjectpicker.cpp`
+- `indra/newview/alcameracurve.h`
+- `indra/newview/alcameradispatch.h`
+- `indra/newview/alcinecammodes.cpp`
+- `indra/newview/alcinecamobjectlock.h`
+- `indra/newview/alcinecamobjectlockui.h`
+- `indra/newview/alcinecampresentation.h`
+- `indra/newview/aldiopterrelevance.h`
+- `indra/newview/aldirectoranimswitcher.cpp`
+- `indra/newview/aldirectoranimswitcher.h`
+- `indra/newview/aldirectorhotkeys.cpp`
+- `indra/newview/aldirectorswitcher.cpp`
+- `indra/newview/aldirectorswitcher.h`
+- `indra/newview/aldirectorswitchermodel.cpp`
+- `indra/newview/aldirectorswitchermodel.h`
+- `indra/newview/alfloaterultimatediopter.cpp`
+- `indra/newview/alfloaterultimatediopter.h`
+- `indra/newview/alflycamclassic.cpp`
+- `indra/newview/alflycamclassic.h`
+- `indra/newview/alflycamweighted.cpp`
+- `indra/newview/alflycamweighted.h`
+- `indra/newview/alghoststudio.cpp`
+- `indra/newview/alghoststudio.h`
+- `indra/newview/alkitpresets.cpp`
+- `indra/newview/alpanelactormover.h`
+- `indra/newview/alpanelavatarlightresponse.cpp`
+- `indra/newview/alpanelcinecamparams.cpp`
+- `indra/newview/alpanelcinecamparams.h`
+- `indra/newview/alpaneldirectoranimswitcher.cpp`
+- `indra/newview/alpaneldirectorswitcher.cpp`
+- `indra/newview/alpaneldirectorswitcher.h`
+- `indra/newview/alpaneldof.cpp`
+- `indra/newview/alpanelexposurehub.cpp`
+- `indra/newview/alpanelflycamorbit.cpp`
+- `indra/newview/alpanelflycamorbit.h`
+- `indra/newview/alpanelflycamrecorder.cpp`
+- `indra/newview/alpanelflycamrecorder.h`
+- `indra/newview/alpanellensgaze.cpp`
+- `indra/newview/alpanellenslooks.cpp`
+- `indra/newview/alpanelpatheditor.cpp`
+- `indra/newview/alpanelpatheditor.h`
+- `indra/newview/alpanelprojectorshafts.cpp`
+- `indra/newview/alsteppedanimruntime.cpp`
+- `indra/newview/altron.cpp`
+- `indra/newview/alworldwinddown.h`
+- `indra/newview/alxinputmath.h`
+- `indra/newview/llactormover.cpp`
+- `indra/newview/llactormover.h`
+- `indra/newview/llcameraoperator.cpp`
+- `indra/newview/llcameraoperator.h`
+- `indra/newview/llcinematiccamera.cpp`
+- `indra/newview/llcinematiccamera.h`
+- `indra/newview/lldirectorcast.cpp`
+- `indra/newview/lldirectorcast.h`
+- `indra/newview/llfloaterdirector.cpp`
+- `indra/newview/llfloaterdirector.h`
+- `indra/newview/llflycamdrone.cpp`
+- `indra/newview/llflycamdrone.h`
+- `indra/newview/llflycamrecorder.cpp`
+- `indra/newview/llflycamrecorder.h`
+- `indra/newview/llpathcamera.cpp`
+- `indra/newview/llpathcamera.h`
+- `indra/newview/llpresentationtime.cpp`
+- `indra/newview/llreshadebridge.cpp`
+- `indra/newview/skins/default/xui/en/floater_cinematic_camera.xml`
+- `indra/newview/skins/default/xui/en/floater_director.xml`
+- `indra/newview/skins/default/xui/en/floater_flycam_orbit.xml`
+- `indra/newview/skins/default/xui/en/floater_flycam_recorder.xml`
+- `indra/newview/skins/default/xui/en/floater_ghost_studio.xml`
+- `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml`
+- `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml`
+- `indra/newview/skins/default/xui/en/panel_cinecam_params.xml`
+- `indra/newview/skins/default/xui/en/panel_director_switcher.xml`
+- `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml`
+- `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml`
+
+## hooks
+
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@240,11", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1189,13", "indra/newview/CMakeLists.txt@1283,159", "indra/newview/CMakeLists.txt@2836,31", "indra/newview/CMakeLists.txt@2873,20", "indra/newview/CMakeLists.txt@2941,178", "indra/newview/CMakeLists.txt@3180,40"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@3453,1044", "indra/newview/app_settings/settings.xml@4498,839", "indra/newview/app_settings/settings.xml@5338,175", "indra/newview/app_settings/settings.xml@5569,186", "indra/newview/app_settings/settings.xml@5756,21", "indra/newview/app_settings/settings.xml@5778,10", "indra/newview/app_settings/settings.xml@5789,21", "indra/newview/app_settings/settings.xml@5811,65", "indra/newview/app_settings/settings.xml@5877,21", "indra/newview/app_settings/settings.xml@5899,527", "indra/newview/app_settings/settings.xml@6427,120", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@27066,274", "indra/newview/app_settings/settings.xml@27570,193", "indra/newview/app_settings/settings.xml@30568,1104"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@379,60", "indra/newview/llappviewer.cpp@1621,8", "indra/newview/llappviewer.cpp@1939,24", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@4574,17", "indra/newview/llappviewer.cpp@5793,119", "indra/newview/llappviewer.cpp@5914,44"]}
+- {"path": "indra/newview/llfloaterjoystick.cpp", "hunks": ["indra/newview/llfloaterjoystick.cpp@36,7", "indra/newview/llfloaterjoystick.cpp@45,10", "indra/newview/llfloaterjoystick.cpp@83,7", "indra/newview/llfloaterjoystick.cpp@98,9", "indra/newview/llfloaterjoystick.cpp@112,204", "indra/newview/llfloaterjoystick.cpp@323,79", "indra/newview/llfloaterjoystick.cpp@410,44", "indra/newview/llfloaterjoystick.cpp@562,15", "indra/newview/llfloaterjoystick.cpp@583,11", "indra/newview/llfloaterjoystick.cpp@595,19", "indra/newview/llfloaterjoystick.cpp@696,7", "indra/newview/llfloaterjoystick.cpp@716,72", "indra/newview/llfloaterjoystick.cpp@820,14"]}
+- {"path": "indra/newview/llfloaterjoystick.h", "hunks": ["indra/newview/llfloaterjoystick.h@27,34", "indra/newview/llfloaterjoystick.h@71,29", "indra/newview/llfloaterjoystick.h@117,30"]}
+- {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@296,32", "indra/newview/llviewercontrol.cpp@1223,19"]}
+- {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
+- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2,182"]}
+- {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@375,11", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
+- {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@50,7", "indra/newview/llviewermenu.cpp@10937,40"]}
+- {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
+- {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@118,22"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@2425,11"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29125"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1926,270"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,203"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,193"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@114,209"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@298,193"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@22,249"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
+- {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@9277,24", "indra/newview/skins/default/xui/en/notifications.xml@13574,361"]}
+- {"path": "indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml@383,19"]}
+- {"path": "indra/newview/llagentcamera.cpp", "hunks": ["indra/newview/llagentcamera.cpp@24,18", "indra/newview/llagentcamera.cpp@44,8", "indra/newview/llagentcamera.cpp@222,12", "indra/newview/llagentcamera.cpp@1294,32", "indra/newview/llagentcamera.cpp@1573,85", "indra/newview/llagentcamera.cpp@1776,93", "indra/newview/llagentcamera.cpp@2105,29"]}
+- {"path": "indra/newview/llagentcamera.h", "hunks": ["indra/newview/llagentcamera.h@127,15"]}
+- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@29,8", "indra/newview/llselectmgr.cpp@6617,7"]}
+- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,21", "indra/newview/llviewerjoystick.cpp@50,21", "indra/newview/llviewerjoystick.cpp@78,8", "indra/newview/llviewerjoystick.cpp@89,413", "indra/newview/llviewerjoystick.cpp@536,144", "indra/newview/llviewerjoystick.cpp@707,7", "indra/newview/llviewerjoystick.cpp@755,11", "indra/newview/llviewerjoystick.cpp@775,7", "indra/newview/llviewerjoystick.cpp@785,7", "indra/newview/llviewerjoystick.cpp@808,35", "indra/newview/llviewerjoystick.cpp@857,7", "indra/newview/llviewerjoystick.cpp@875,7", "indra/newview/llviewerjoystick.cpp@887,9", "indra/newview/llviewerjoystick.cpp@899,169", "indra/newview/llviewerjoystick.cpp@1074,25", "indra/newview/llviewerjoystick.cpp@1153,10", "indra/newview/llviewerjoystick.cpp@1174,7", "indra/newview/llviewerjoystick.cpp@1184,13", "indra/newview/llviewerjoystick.cpp@1208,95", "indra/newview/llviewerjoystick.cpp@1337,10", "indra/newview/llviewerjoystick.cpp@1351,10", "indra/newview/llviewerjoystick.cpp@1372,10", "indra/newview/llviewerjoystick.cpp@1387,7", "indra/newview/llviewerjoystick.cpp@1416,7", "indra/newview/llviewerjoystick.cpp@1426,14", "indra/newview/llviewerjoystick.cpp@1448,33", "indra/newview/llviewerjoystick.cpp@1511,8", "indra/newview/llviewerjoystick.cpp@1581,14", "indra/newview/llviewerjoystick.cpp@1620,8", "indra/newview/llviewerjoystick.cpp@1645,7", "indra/newview/llviewerjoystick.cpp@1656,133", "indra/newview/llviewerjoystick.cpp@1795,6", "indra/newview/llviewerjoystick.cpp@1823,18", "indra/newview/llviewerjoystick.cpp@1844,1983", "indra/newview/llviewerjoystick.cpp@3835,41", "indra/newview/llviewerjoystick.cpp@4004,7", "indra/newview/llviewerjoystick.cpp@4019,7", "indra/newview/llviewerjoystick.cpp@4029,7", "indra/newview/llviewerjoystick.cpp@4039,23", "indra/newview/llviewerjoystick.cpp@4101,218"]}
+- {"path": "indra/newview/llviewerjoystick.h", "hunks": ["indra/newview/llviewerjoystick.h@28,11", "indra/newview/llviewerjoystick.h@51,78", "indra/newview/llviewerjoystick.h@141,19", "indra/newview/llviewerjoystick.h@170,81", "indra/newview/llviewerjoystick.h@260,46"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_joystick.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_joystick.xml@1,787"]}
+- {"path": "indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml@222,76"]}
+
+## settings
+
+- `AllowCameraFlipOnSit`
+- `BDMergeCameraQoL`
+- `BDMergeCameraStraightLift`
+- `BDMergeCineModeOnCinematicCam`
+- `BDMergeCineModeOnFlycam`
+- `BDMergeCineModeReleaseDelay`
+- `BDMergeFroxelFogBase`
+- `BDMergeFroxelFogBaseMode`
+- `BDMergeMouselookOffsetX`
+- `BDMergeMouselookOffsetY`
+- `BDMergeMouselookOffsetZ`
+- `BDMergeReShadeCutAngle`
+- `CameraFollowJoint`
+- `CameraMaxRoll`
+- `CameraMaxRollSitting`
+- `CameraShakeApplyActive`
+- `CineOutlineAnimFollowDirector`
+- `CinematicAutoFrameComposeLine`
+- `CinematicAutoFrameDistanceTrim`
+- `CinematicAutoFrameEnabled`
+- `CinematicAutoFrameFill`
+- `CinematicAutoFrameSettleBezierX1`
+- `CinematicAutoFrameSettleBezierX2`
+- `CinematicAutoFrameSettleBezierY1`
+- `CinematicAutoFrameSettleBezierY2`
+- `CinematicAutoFrameSettleCurve`
+- `CinematicAutoFrameSettleFeather`
+- `CinematicAutoFrameSettleMaxRatio`
+- `CinematicAutoFrameSettleMode`
+- `CinematicAutoFrameSettleSeconds`
+- `CinematicCamArcDistance`
+- `CinematicCamArcDuration`
+- `CinematicCamArcEndMode`
+- `CinematicCamArcFrom`
+- `CinematicCamArcGeneratorAngle`
+- `CinematicCamArcHeight`
+- `CinematicCamArcHeightDrift`
+- `CinematicCamArcTo`
+- `CinematicCamBarrelDistance`
+- `CinematicCamBarrelHeight`
+- `CinematicCamBarrelOscillate`
+- `CinematicCamBarrelRollAmplitude`
+- `CinematicCamBarrelRollPeriod`
+- `CinematicCamBarrelRollSpeed`
+- `CinematicCamBodyHelixDuration`
+- `CinematicCamBodyHelixEndOffset`
+- `CinematicCamBodyHelixRadius`
+- `CinematicCamBodyHelixRevolutions`
+- `CinematicCamBodyHelixStartOffset`
+- `CinematicCamBoneAimPitch`
+- `CinematicCamBoneAimRoll`
+- `CinematicCamBoneAimYaw`
+- `CinematicCamBoneHorizonLock`
+- `CinematicCamBoneLockBypassSmoothing`
+- `CinematicCamBoneOffsetForward`
+- `CinematicCamBoneOffsetLeft`
+- `CinematicCamBoneOffsetUp`
+- `CinematicCamBoomApex`
+- `CinematicCamBoomAxis`
+- `CinematicCamBoomDuration`
+- `CinematicCamBoomEndMode`
+- `CinematicCamBoomRadius`
+- `CinematicCamBoomSpan`
+- `CinematicCamBoostDistance`
+- `CinematicCamBoostDuration`
+- `CinematicCamBoostEndHeight`
+- `CinematicCamBoostEndMode`
+- `CinematicCamBoostHeading`
+- `CinematicCamBoostStartHeight`
+- `CinematicCamBreathingAmplitude`
+- `CinematicCamBreathingDistance`
+- `CinematicCamBreathingHeading`
+- `CinematicCamBreathingHeight`
+- `CinematicCamBreathingPeriod`
+- `CinematicCamCableDuration`
+- `CinematicCamCableHeading`
+- `CinematicCamCableHeight`
+- `CinematicCamCableLength`
+- `CinematicCamCableMissDistance`
+- `CinematicCamContraFovEnd`
+- `CinematicCamContraFovStart`
+- `CinematicCamContraHeight`
+- `CinematicCamContraRadius`
+- `CinematicCamContraSpeed`
+- `CinematicCamContraWarpPeriod`
+- `CinematicCamCorkDuration`
+- `CinematicCamCorkEndHeight`
+- `CinematicCamCorkEndMode`
+- `CinematicCamCorkEndRadius`
+- `CinematicCamCorkRollPerTurn`
+- `CinematicCamCorkStartHeight`
+- `CinematicCamCorkStartRadius`
+- `CinematicCamCorkTurns`
+- `CinematicCamCraneMaxHeight`
+- `CinematicCamCraneMinHeight`
+- `CinematicCamCraneRadius`
+- `CinematicCamCraneRisePeriod`
+- `CinematicCamCraneSpeed`
+- `CinematicCamCrashDuration`
+- `CinematicCamCrashZoom`
+- `CinematicCamDescentAboveHead`
+- `CinematicCamDescentDistance`
+- `CinematicCamDescentDuration`
+- `CinematicCamDescentFootOffset`
+- `CinematicCamDescentHeading`
+- `CinematicCamDetailBand`
+- `CinematicCamDetailDistance`
+- `CinematicCamDetailDuration`
+- `CinematicCamDetailFov`
+- `CinematicCamDetailLength`
+- `CinematicCamDutchAngle`
+- `CinematicCamECUDistance`
+- `CinematicCamECUDrift`
+- `CinematicCamECUZoom`
+- `CinematicCamEnabled`
+- `CinematicCamFigureEightHeading`
+- `CinematicCamFigureEightHeight`
+- `CinematicCamFigureEightPeriod`
+- `CinematicCamFigureEightRadius`
+- `CinematicCamFisheyeDuration`
+- `CinematicCamFisheyeEndMode`
+- `CinematicCamFisheyeFar`
+- `CinematicCamFisheyeFov`
+- `CinematicCamFisheyeHeight`
+- `CinematicCamFisheyeNear`
+- `CinematicCamFloatDistance`
+- `CinematicCamFloatDrift`
+- `CinematicCamFloatFov`
+- `CinematicCamFloatSpeed`
+- `CinematicCamFrameOffsetUp`
+- `CinematicCamHeroArc`
+- `CinematicCamHeroDistance`
+- `CinematicCamHeroHeading`
+- `CinematicCamHeroHeight`
+- `CinematicCamHeroPeriod`
+- `CinematicCamHoverDistance`
+- `CinematicCamHoverHeight`
+- `CinematicCamHoverSpeed`
+- `CinematicCamHoverWander`
+- `CinematicCamJoint`
+- `CinematicCamLeadDistance`
+- `CinematicCamLeadHeight`
+- `CinematicCamLeadSway`
+- `CinematicCamLongDistance`
+- `CinematicCamLongDrift`
+- `CinematicCamLongHeading`
+- `CinematicCamLongHeight`
+- `CinematicCamLongZoom`
+- `CinematicCamLookAtHead`
+- `CinematicCamMode`
+- `CinematicCamMotionDirection`
+- `CinematicCamMotionSeed`
+- `CinematicCamMotionStartMode`
+- `CinematicCamMotionStartOffsetDeg`
+- `CinematicCamOTSBack`
+- `CinematicCamOTSOut`
+- `CinematicCamOTSSide`
+- `CinematicCamOTSUp`
+- `CinematicCamObjectAimPitch`
+- `CinematicCamObjectAimYaw`
+- `CinematicCamObjectFollowPitch`
+- `CinematicCamObjectFollowRoll`
+- `CinematicCamObjectFollowYaw`
+- `CinematicCamObjectLockTarget`
+- `CinematicCamObjectOffsetForward`
+- `CinematicCamObjectOffsetLeft`
+- `CinematicCamObjectOffsetUp`
+- `CinematicCamObjectSmoothing`
+- `CinematicCamOrbitBob`
+- `CinematicCamOrbitHeight`
+- `CinematicCamOrbitRadius`
+- `CinematicCamOrbitSpeed`
+- `CinematicCamOverheadDuration`
+- `CinematicCamOverheadEnd`
+- `CinematicCamOverheadEndMode`
+- `CinematicCamOverheadSpin`
+- `CinematicCamOverheadStart`
+- `CinematicCamParallaxDistance`
+- `CinematicCamParallaxDuration`
+- `CinematicCamParallaxHeading`
+- `CinematicCamParallaxHeight`
+- `CinematicCamParallaxLength`
+- `CinematicCamPedestalDistance`
+- `CinematicCamPedestalDuration`
+- `CinematicCamPedestalEnd`
+- `CinematicCamPedestalHeading`
+- `CinematicCamPedestalStart`
+- `CinematicCamPedroBPM`
+- `CinematicCamPedroBob`
+- `CinematicCamPedroDistance`
+- `CinematicCamPedroFov`
+- `CinematicCamPedroHeight`
+- `CinematicCamPedroRoll`
+- `CinematicCamPedroSway`
+- `CinematicCamPendulumHeading`
+- `CinematicCamPendulumHeight`
+- `CinematicCamPendulumPeriod`
+- `CinematicCamPendulumRadius`
+- `CinematicCamPendulumSwing`
+- `CinematicCamPullDuration`
+- `CinematicCamPullEndDist`
+- `CinematicCamPullEndHeight`
+- `CinematicCamPullHeading`
+- `CinematicCamPullStartDist`
+- `CinematicCamPushDuration`
+- `CinematicCamPushEndDist`
+- `CinematicCamPushEndMode`
+- `CinematicCamPushHeading`
+- `CinematicCamPushHeight`
+- `CinematicCamPushStartDist`
+- `CinematicCamRevealAhead`
+- `CinematicCamRevealBehind`
+- `CinematicCamRevealDuration`
+- `CinematicCamRevealHighHeight`
+- `CinematicCamRevealLowHeight`
+- `CinematicCamSkimmerDistance`
+- `CinematicCamSkimmerHeading`
+- `CinematicCamSkimmerHeight`
+- `CinematicCamSkimmerLength`
+- `CinematicCamSkimmerSpeed`
+- `CinematicCamSlowZoomDuration`
+- `CinematicCamSlowZoomTarget`
+- `CinematicCamSmoothing`
+- `CinematicCamSpeedRampEnabled`
+- `CinematicCamSpeedRampStrength`
+- `CinematicCamSpiralDuration`
+- `CinematicCamSpiralEndHeight`
+- `CinematicCamSpiralEndRadius`
+- `CinematicCamSpiralSpeed`
+- `CinematicCamSpiralStartHeight`
+- `CinematicCamSpiralStartRadius`
+- `CinematicCamStaticCloseAimUp`
+- `CinematicCamStaticCloseCameraUp`
+- `CinematicCamStaticCloseDistance`
+- `CinematicCamStaticCloseFov`
+- `CinematicCamStaticCloseHeading`
+- `CinematicCamStaticFullAimUp`
+- `CinematicCamStaticFullCameraUp`
+- `CinematicCamStaticFullDistance`
+- `CinematicCamStaticFullFov`
+- `CinematicCamStaticFullHeading`
+- `CinematicCamStaticHighAimUp`
+- `CinematicCamStaticHighCameraUp`
+- `CinematicCamStaticHighDistance`
+- `CinematicCamStaticHighFov`
+- `CinematicCamStaticHighHeading`
+- `CinematicCamStaticLowAimUp`
+- `CinematicCamStaticLowCameraUp`
+- `CinematicCamStaticLowDistance`
+- `CinematicCamStaticLowFov`
+- `CinematicCamStaticLowHeading`
+- `CinematicCamStaticMediumAimUp`
+- `CinematicCamStaticMediumCameraUp`
+- `CinematicCamStaticMediumDistance`
+- `CinematicCamStaticMediumFov`
+- `CinematicCamStaticMediumHeading`
+- `CinematicCamStaticProfileLAimUp`
+- `CinematicCamStaticProfileLCameraUp`
+- `CinematicCamStaticProfileLDistance`
+- `CinematicCamStaticProfileLFov`
+- `CinematicCamStaticProfileLHeading`
+- `CinematicCamStaticProfileRAimUp`
+- `CinematicCamStaticProfileRCameraUp`
+- `CinematicCamStaticProfileRDistance`
+- `CinematicCamStaticProfileRFov`
+- `CinematicCamStaticProfileRHeading`
+- `CinematicCamStaticWideAimUp`
+- `CinematicCamStaticWideCameraUp`
+- `CinematicCamStaticWideDistance`
+- `CinematicCamStaticWideFov`
+- `CinematicCamStaticWideHeading`
+- `CinematicCamSweepDistance`
+- `CinematicCamSweepHeading`
+- `CinematicCamSweepHeight`
+- `CinematicCamSweepLength`
+- `CinematicCamSweepPingPong`
+- `CinematicCamSweepSpeed`
+- `CinematicCamTiltWhipAmplitude`
+- `CinematicCamTiltWhipDistance`
+- `CinematicCamTiltWhipHeight`
+- `CinematicCamTiltWhipPeriod`
+- `CinematicCamTiltWhipSnap`
+- `CinematicCamTopSpinHeight`
+- `CinematicCamTopSpinOffset`
+- `CinematicCamTopSpinSpeed`
+- `CinematicCamTurntableMaxHeight`
+- `CinematicCamTurntableMinHeight`
+- `CinematicCamTurntablePeriod`
+- `CinematicCamTurntableRadius`
+- `CinematicCamTurntableSpeed`
+- `CinematicCamTwoShotHeight`
+- `CinematicCamTwoShotMinDist`
+- `CinematicCamTwoShotPad`
+- `CinematicCamTwoShotSide`
+- `CinematicCamUseOperator`
+- `CinematicCamUseSelected`
+- `CinematicCamVertigoDirection`
+- `CinematicCamVertigoDuration`
+- `CinematicCamVertigoEndDist`
+- `CinematicCamVertigoEndMode`
+- `CinematicCamVertigoHeading`
+- `CinematicCamVertigoHeight`
+- `CinematicCamVertigoStartDist`
+- `CinematicCamWhipDistance`
+- `CinematicCamWhipDuration`
+- `CinematicCamWhipFrom`
+- `CinematicCamWhipHeight`
+- `CinematicCamWhipTo`
+- `DirectorArmCamera`
+- `DirectorArmRecorderCapture`
+- `DirectorArmRecorderPlay`
+- `DirectorSwitcherArmed`
+- `DirectorSwitcherAuto`
+- `DirectorSwitcherBank`
+- `DirectorSwitcherEaseBezierX1`
+- `DirectorSwitcherEaseBezierX2`
+- `DirectorSwitcherEaseBezierY1`
+- `DirectorSwitcherEaseBezierY2`
+- `DirectorSwitcherEaseCurve`
+- `DirectorSwitcherEaseCuts`
+- `DirectorSwitcherEaseFeather`
+- `DirectorSwitcherEaseFreeze`
+- `DirectorSwitcherEaseSec`
+- `DirectorSwitcherEaseTimeFactor`
+- `DirectorSwitcherFreezeBezierX1`
+- `DirectorSwitcherFreezeBezierX2`
+- `DirectorSwitcherFreezeBezierY1`
+- `DirectorSwitcherFreezeBezierY2`
+- `DirectorSwitcherFreezeCurve`
+- `DirectorSwitcherFreezeFeather`
+- `DirectorSwitcherIntervalSec`
+- `DirectorSwitcherJitterSec`
+- `DirectorSwitcherOverridesFlycam`
+- `DirectorSwitcherSeed`
+- `DirectorSwitcherSequence`
+- `FlycamDpadModelA`
+- `FlycamDpadModelB`
+- `FlycamDroneClimb`
+- `FlycamDroneClimbTime`
+- `FlycamDroneCoastTime`
+- `FlycamDroneCruise`
+- `FlycamDroneExpoGimbal`
+- `FlycamDroneExpoMove`
+- `FlycamDroneExpoYaw`
+- `FlycamDroneFreeFly`
+- `FlycamDroneGrip`
+- `FlycamDroneHighSpeedFloat`
+- `FlycamDroneHoldTime`
+- `FlycamDroneInvertLook`
+- `FlycamDroneLookDeadzone`
+- `FlycamDroneMoveDeadzone`
+- `FlycamDroneOnset`
+- `FlycamDronePreset`
+- `FlycamDroneRelease`
+- `FlycamDroneResumeMomentum`
+- `FlycamDroneSaturation`
+- `FlycamDroneSimulationHz`
+- `FlycamDroneStopDistance`
+- `FlycamDroneThrottleMode`
+- `FlycamDroneTiltRate`
+- `FlycamDroneTimeToTop`
+- `FlycamDroneTop`
+- `FlycamDroneTurnRate`
+- `FlycamDroneTurnWeight`
+- `FlycamFlightModel`
+- `FlycamOperatorAutoRunEnter`
+- `FlycamOperatorAutoRunEnterDwell`
+- `FlycamOperatorAutoRunExit`
+- `FlycamOperatorAutoRunExitDwell`
+- `FlycamOperatorAutoWalkEnter`
+- `FlycamOperatorAutoWalkEnterDwell`
+- `FlycamOperatorAutoWalkExit`
+- `FlycamOperatorAutoWalkExitDwell`
+- `FlycamOperatorBreathAmount`
+- `FlycamOperatorBreathFreq`
+- `FlycamOperatorBreathLift`
+- `FlycamOperatorCadenceDrive`
+- `FlycamOperatorDrag`
+- `FlycamOperatorEnabled`
+- `FlycamOperatorEnergyTrim`
+- `FlycamOperatorForceWalk`
+- `FlycamOperatorForwardWalkBias`
+- `FlycamOperatorGainFOV`
+- `FlycamOperatorGainHeave`
+- `FlycamOperatorGainPitch`
+- `FlycamOperatorGainRoll`
+- `FlycamOperatorGainSurge`
+- `FlycamOperatorGainSway`
+- `FlycamOperatorGainYaw`
+- `FlycamOperatorGaitCoupling`
+- `FlycamOperatorIdleIntensity`
+- `FlycamOperatorLateralStep`
+- `FlycamOperatorLateralWalkBias`
+- `FlycamOperatorLocomotionMode`
+- `FlycamOperatorMaster`
+- `FlycamOperatorModeBlendTime`
+- `FlycamOperatorMotionBreath`
+- `FlycamOperatorMotionCalm`
+- `FlycamOperatorMotionPan`
+- `FlycamOperatorMotionRoll`
+- `FlycamOperatorMotionTilt`
+- `FlycamOperatorOnset`
+- `FlycamOperatorPanAmount`
+- `FlycamOperatorPanMode`
+- `FlycamOperatorPanReactSmoothing`
+- `FlycamOperatorPanSmoothness`
+- `FlycamOperatorPanTiltFreq`
+- `FlycamOperatorProfile`
+- `FlycamOperatorProfileInfluence`
+- `FlycamOperatorReactCeiling`
+- `FlycamOperatorReactionLag`
+- `FlycamOperatorReactivity`
+- `FlycamOperatorRecomposeAmount`
+- `FlycamOperatorRecomposeInterval`
+- `FlycamOperatorRefAngularSpeed`
+- `FlycamOperatorRefLinearSpeed`
+- `FlycamOperatorRollAmount`
+- `FlycamOperatorRollDamping`
+- `FlycamOperatorRollFreq`
+- `FlycamOperatorSeed`
+- `FlycamOperatorSettle`
+- `FlycamOperatorSettleDecay`
+- `FlycamOperatorSettleFreq`
+- `FlycamOperatorSimulationHz`
+- `FlycamOperatorSmoothing`
+- `FlycamOperatorStepBob`
+- `FlycamOperatorStepRoll`
+- `FlycamOperatorStyle`
+- `FlycamOperatorTiltAmount`
+- `FlycamOperatorTimeSpeed`
+- `FlycamOperatorTremorDamping`
+- `FlycamOperatorWalkCadence`
+- `FlycamOrbitEnabled`
+- `FlycamOrbitLevel`
+- `FlycamOrbitMaxRadius`
+- `FlycamOrbitMinRadius`
+- `FlycamOrbitOffsetLeft`
+- `FlycamOrbitOffsetUp`
+- `FlycamOrbitSmoothing`
+- `FlycamOrbitZoom`
+- `FlycamRecAnchorMode`
+- `FlycamRecFollowAnchor`
+- `FlycamRecLoopMode`
+- `FlycamRecSampleRate`
+- `FlycamRecSmooth`
+- `FlycamRecSpeed`
+- `FlycamRecUseOperator`
+- `FlycamTriggerBrakeRotation`
+- `FlycamTriggerBrakeStopTime`
+- `FlycamTriggerGasResponse`
+- `FlycamTriggerMomentum`
+- `FlycamTriggerMomentumImpact`
+- `FlycamWeightedCurve`
+- `FlycamWeightedPoseGuardArmed`
+- `FlycamWeightedPreset`
+- `FlycamWeightedRotationShare`
+- `FlycamWeightedTauMax`
+- `FlycamWeightedWeight`
+- `JoystickAutoFlycamEnabled`
+- `JoystickInvertPitch`
+- `JoystickXInputDpadLeft`
+- `JoystickXInputDpadMigrationVersion`
+- `JoystickXInputDpadRight`
+- `JoystickXInputDpadUp`
+- `JoystickXInputEnabled`
+- `JoystickXInputRollShaped`
+- `JoystickXInputRumble`
+- `JoystickXInputRumbleStrength`
+- `JoystickXInputThrottleMax`
+- `JoystickXInputThrottleMin`
+- `JoystickXInputTriggerCurve`
+- `JoystickXInputTriggerDeadZone`
+- `JoystickXInputTriggerMode`
+- `MachinimaDebugLogging`
+- `TronAnimFollowDirector`
+- `UseCinematicCamera`
+- `BlackDragonControls`
+- `JoystickButtonCrouch`
+- `JoystickButtonFly`
+- `JoystickButtonFlycam`
+- `JoystickButtonJump`
+- `JoystickButtonMouselook`
+- `JoystickButtonRollDefault`
+- `JoystickButtonRollLeft`
+- `JoystickButtonRollRight`
+- `JoystickButtonRunToggle`
+- `JoystickButtonZoomDefault`
+- `JoystickButtonZoomIn`
+- `JoystickButtonZoomOut`
+
+## shaders
+
+None identified by local evidence; not a claim that none is needed.
+
+## xui
+
+- `indra/newview/skins/default/xui/en/director_kit_index.xml`
+- `indra/newview/skins/default/xui/en/floater_cinematic_camera.xml`
+- `indra/newview/skins/default/xui/en/floater_director.xml`
+- `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/floater_flycam_orbit.xml`
+- `indra/newview/skins/default/xui/en/floater_flycam_recorder.xml`
+- `indra/newview/skins/default/xui/en/floater_ghost_studio.xml`
+- `indra/newview/skins/default/xui/en/floater_joystick.xml`
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml`
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml`
+- `indra/newview/skins/default/xui/en/menu_attachment_self.xml`
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml`
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml`
+- `indra/newview/skins/default/xui/en/menu_object.xml`
+- `indra/newview/skins/default/xui/en/menu_viewer.xml`
+- `indra/newview/skins/default/xui/en/notifications.xml`
+- `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml`
+- `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml`
+- `indra/newview/skins/default/xui/en/panel_cinecam_params.xml`
+- `indra/newview/skins/default/xui/en/panel_director_switcher.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml`
+- `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml`
+- `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml`
+- `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml`
+- `indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml`
+
+## generated runtime
+
+- `indra/newview/skins/default/xui/en/director_kit_index.xml`
+- `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml`
+
+## cmake entries
+
+- {"file": "indra/newview/CMakeLists.txt", "line": 337, "text": "alactormaskdiagnostics.cpp # [ActorMask] WP7", "source": "indra/newview/alactormaskdiagnostics.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 395, "text": "alavatarsubjectpicker.cpp", "source": "indra/newview/alavatarsubjectpicker.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1198, "text": "alcameradispatch.h", "source": "indra/newview/alcameradispatch.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 371, "text": "alcinecammodes.cpp", "source": "indra/newview/alcinecammodes.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 3067, "text": "\"alcinecammodes.cpp\"", "source": "indra/newview/alcinecammodes.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1312, "text": "alcinecamobjectlock.h", "source": "indra/newview/alcinecamobjectlock.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1313, "text": "alcinecamobjectlockui.h", "source": "indra/newview/alcinecamobjectlockui.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1314, "text": "alcinecampresentation.h", "source": "indra/newview/alcinecampresentation.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1308, "text": "aldiopterrelevance.h", "source": "indra/newview/aldiopterrelevance.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 189, "text": "aldirectoranimswitcher.cpp", "source": "indra/newview/aldirectoranimswitcher.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1136, "text": "aldirectoranimswitcher.h", "source": "indra/newview/aldirectoranimswitcher.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 195, "text": "aldirectorhotkeys.cpp", "source": "indra/newview/aldirectorhotkeys.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 196, "text": "aldirectorswitcher.cpp", "source": "indra/newview/aldirectorswitcher.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1143, "text": "aldirectorswitcher.h", "source": "indra/newview/aldirectorswitcher.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 197, "text": "aldirectorswitchermodel.cpp", "source": "indra/newview/aldirectorswitchermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2845, "text": "aldirectorswitchermodel.cpp", "source": "indra/newview/aldirectorswitchermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2887, "text": "aldirectorswitchermodel.cpp", "source": "indra/newview/aldirectorswitchermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 3087, "text": "\"llprismgate.cpp;aldirectorswitchermodel.cpp\"", "source": "indra/newview/aldirectorswitchermodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1144, "text": "aldirectorswitchermodel.h", "source": "indra/newview/aldirectorswitchermodel.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 370, "text": "alfloaterultimatediopter.cpp", "source": "indra/newview/alfloaterultimatediopter.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1310, "text": "alfloaterultimatediopter.h", "source": "indra/newview/alfloaterultimatediopter.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 243, "text": "alflycamclassic.cpp", "source": "indra/newview/alflycamclassic.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2944, "text": "LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/alflycamclassic.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2945, "text": "LL_ADD_INTEGRATION_TEST(alflycamclassic \"alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/alflycamclassic.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2946, "text": "LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/alflycamclassic.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1192, "text": "alflycamclassic.h", "source": "indra/newview/alflycamclassic.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 244, "text": "alflycamweighted.cpp", "source": "indra/newview/alflycamweighted.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2946, "text": "LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/alflycamweighted.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1193, "text": "alflycamweighted.h", "source": "indra/newview/alflycamweighted.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 392, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1356, "text": "alghoststudio.h", "source": "indra/newview/alghoststudio.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 212, "text": "alkitpresets.cpp", "source": "indra/newview/alkitpresets.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1389, "text": "alpanelactormover.h", "source": "indra/newview/alpanelactormover.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 419, "text": "alpanelavatarlightresponse.cpp", "source": "indra/newview/alpanelavatarlightresponse.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 432, "text": "alpanelcinecamparams.cpp", "source": "indra/newview/alpanelcinecamparams.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1418, "text": "alpanelcinecamparams.h", "source": "indra/newview/alpanelcinecamparams.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 435, "text": "alpaneldirectoranimswitcher.cpp", "source": "indra/newview/alpaneldirectoranimswitcher.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 436, "text": "alpaneldirectorswitcher.cpp", "source": "indra/newview/alpaneldirectorswitcher.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1431, "text": "alpaneldirectorswitcher.h", "source": "indra/newview/alpaneldirectorswitcher.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 420, "text": "alpaneldof.cpp", "source": "indra/newview/alpaneldof.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 421, "text": "alpanelexposurehub.cpp", "source": "indra/newview/alpanelexposurehub.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 438, "text": "alpanelflycamorbit.cpp", "source": "indra/newview/alpanelflycamorbit.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1433, "text": "alpanelflycamorbit.h", "source": "indra/newview/alpanelflycamorbit.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 439, "text": "alpanelflycamrecorder.cpp", "source": "indra/newview/alpanelflycamrecorder.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1434, "text": "alpanelflycamrecorder.h", "source": "indra/newview/alpanelflycamrecorder.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 433, "text": "alpanellensgaze.cpp", "source": "indra/newview/alpanellensgaze.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 424, "text": "alpanellenslooks.cpp", "source": "indra/newview/alpanellenslooks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 440, "text": "alpanelpatheditor.cpp", "source": "indra/newview/alpanelpatheditor.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1435, "text": "alpanelpatheditor.h", "source": "indra/newview/alpanelpatheditor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 427, "text": "alpanelprojectorshafts.cpp", "source": "indra/newview/alpanelprojectorshafts.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 247, "text": "alsteppedanimruntime.cpp", "source": "indra/newview/alsteppedanimruntime.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 358, "text": "altron.cpp", "source": "indra/newview/altron.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 277, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1386, "text": "alworldwinddown.h", "source": "indra/newview/alworldwinddown.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 178, "text": "aoengine.cpp", "source": "indra/newview/aoengine.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2296, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2297, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniptranslatejoint.cpp", "source": "indra/newview/fsmaniptranslatejoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 286, "text": "fsposeranimator.cpp", "source": "indra/newview/fsposeranimator.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 338, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1289, "text": "llactormover.h", "source": "indra/newview/llactormover.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 304, "text": "llagentcamera.cpp", "source": "indra/newview/llagentcamera.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1256, "text": "llagentcamera.h", "source": "indra/newview/llagentcamera.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 312, "text": "llagentwearables.cpp", "source": "indra/newview/llagentwearables.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 317, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 335, "text": "llcameraoperator.cpp", "source": "indra/newview/llcameraoperator.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 3185, "text": "llcameraoperator.cpp", "source": "indra/newview/llcameraoperator.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1286, "text": "llcameraoperator.h", "source": "indra/newview/llcameraoperator.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "llcinematiccamera.cpp", "source": "indra/newview/llcinematiccamera.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1374, "text": "llcinematiccamera.h", "source": "indra/newview/llcinematiccamera.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 406, "text": "lldirectorcast.cpp", "source": "indra/newview/lldirectorcast.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1375, "text": "lldirectorcast.h", "source": "indra/newview/lldirectorcast.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1503, "text": "llfetchedgltfmaterial.h", "source": "indra/newview/llfetchedgltfmaterial.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1379, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 582, "text": "llfloaterjoystick.cpp", "source": "indra/newview/llfloaterjoystick.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1582, "text": "llfloaterjoystick.h", "source": "indra/newview/llfloaterjoystick.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 441, "text": "llflycamdrone.cpp", "source": "indra/newview/llflycamdrone.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2944, "text": "LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/llflycamdrone.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1436, "text": "llflycamdrone.h", "source": "indra/newview/llflycamdrone.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 442, "text": "llflycamrecorder.cpp", "source": "indra/newview/llflycamrecorder.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1437, "text": "llflycamrecorder.h", "source": "indra/newview/llflycamrecorder.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 679, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 684, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 702, "text": "llinventorybridge.cpp", "source": "indra/newview/llinventorybridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 742, "text": "llmediactrl.cpp", "source": "indra/newview/llmediactrl.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 790, "text": "llpaneleditwater.cpp", "source": "indra/newview/llpaneleditwater.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 443, "text": "llpathcamera.cpp", "source": "indra/newview/llpathcamera.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1438, "text": "llpathcamera.h", "source": "indra/newview/llpathcamera.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 414, "text": "llpresentationtime.cpp", "source": "indra/newview/llpresentationtime.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 909, "text": "llreshadebridge.cpp", "source": "indra/newview/llreshadebridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 911, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 925, "text": "llselectmgr.cpp", "source": "indra/newview/llselectmgr.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 939, "text": "llsnapshotlivepreview.cpp", "source": "indra/newview/llsnapshotlivepreview.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 949, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1940, "text": "llsurface.h", "source": "indra/newview/llsurface.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 959, "text": "lltexturefetch.cpp", "source": "indra/newview/lltexturefetch.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 963, "text": "lltextureview.cpp", "source": "indra/newview/lltextureview.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 987, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1019, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1023, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1030, "text": "llviewerinventory.cpp", "source": "indra/newview/llviewerinventory.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1031, "text": "llviewerjoint.cpp", "source": "indra/newview/llviewerjoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1034, "text": "llviewerjoystick.cpp", "source": "indra/newview/llviewerjoystick.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2027, "text": "llviewerjoystick.h", "source": "indra/newview/llviewerjoystick.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1040, "text": "llviewermenu.cpp", "source": "indra/newview/llviewermenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1042, "text": "llviewermessage.cpp", "source": "indra/newview/llviewermessage.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1060, "text": "llviewertexture.cpp", "source": "indra/newview/llviewertexture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2054, "text": "llviewertexture.h", "source": "indra/newview/llviewertexture.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2056, "text": "llviewertexturelist.h", "source": "indra/newview/llviewertexturelist.h"}
+- {"file": "indra/llwindow/CMakeLists.txt", "line": 107, "text": "# llviewerwindow.cpp's (guarded) include still resolves.", "source": "indra/newview/llviewerwindow.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1065, "text": "llviewerwindow.cpp", "source": "indra/newview/llviewerwindow.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1080, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2077, "text": "llvovolume.h", "source": "indra/newview/llvovolume.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2087, "text": "llworld.h", "source": "indra/newview/llworld.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1104, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2097, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1108, "text": "rlveffects.cpp", "source": "indra/newview/rlveffects.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1111, "text": "rlvhandler.cpp", "source": "indra/newview/rlvhandler.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1114, "text": "rlvlocks.cpp", "source": "indra/newview/rlvlocks.cpp"}
+
+## kit wiring pages
+
+- `frame_orbit_tab`
+- `moves_tab`
+- `operator_tab`
+- `shot_tab`
+- `takes_tab`
+
+## checks
+
+- `scripts/code_tools/test_cinecam_object_lock.py`
+
+Full include/call edges: ../features.json. Shared hooks: ../hooks.md. Setting values and save coverage: ../settings.csv.

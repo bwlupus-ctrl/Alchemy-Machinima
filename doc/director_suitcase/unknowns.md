@@ -1,0 +1,2760 @@
+# Manual adjudication queue
+
+No unknown is silently accepted as safe to port.
+
+All 3009 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+
+## Unknown product-path features (150)
+
+- `indra/llappearance/llavatarappearance.h` (HOOK)
+- `indra/llaudio/llaudiodecodemgr.cpp` (HOOK)
+- `indra/llaudio/llaudioengine.cpp` (HOOK)
+- `indra/llcharacter/lljoint.cpp` (HOOK)
+- `indra/llcharacter/lljoint.h` (HOOK)
+- `indra/llcharacter/lljointstate.h` (HOOK)
+- `indra/llcharacter/llmotion.cpp` (HOOK)
+- `indra/llcommon/llstring.h` (HOOK)
+- `indra/llcorehttp/httpcommon.cpp` (HOOK)
+- `indra/llcorehttp/httpcommon.h` (HOOK)
+- `indra/llfilesystem/lldir.cpp` (HOOK)
+- `indra/llfilesystem/lldir_mac.mm` (HOOK)
+- `indra/llmath/llcamera.cpp` (HOOK)
+- `indra/llmath/llcamera.h` (HOOK)
+- `indra/llrender/CMakeLists.txt` (HOOK)
+- `indra/llui/llbutton.h` (HOOK)
+- `indra/llui/llcombobox.h` (HOOK)
+- `indra/llui/llcontainerview.h` (HOOK)
+- `indra/llui/llfolderview.h` (HOOK)
+- `indra/llui/llfolderviewitem.cpp` (HOOK)
+- `indra/llui/llfolderviewitem.h` (HOOK)
+- `indra/llui/lllineeditor.h` (HOOK)
+- `indra/llui/lllocalcliprect.h` (HOOK)
+- `indra/llui/llnotifications.cpp` (HOOK)
+- `indra/llui/llnotifications.h` (HOOK)
+- `indra/llui/llscrollbar.h` (HOOK)
+- `indra/llui/llscrollcontainer.h` (HOOK)
+- `indra/llui/lltabcontainer.h` (HOOK)
+- `indra/llui/lltextbase.cpp` (HOOK)
+- `indra/llui/lltextbase.h` (HOOK)
+- `indra/llui/lluicolortable.h` (HOOK)
+- `indra/llui/llviewereventrecorder.h` (HOOK)
+- `indra/llui/llviewquery.cpp` (HOOK)
+- `indra/llwindow/llwindow.h` (HOOK)
+- `indra/llwindow/llwindowwin32.h` (HOOK)
+- `indra/llxml/llcontrol.cpp` (HOOK)
+- `indra/llxml/llcontrol.h` (HOOK)
+- `indra/newview/alflareenergy.h` (OWNED)
+- `indra/newview/alhidecursor.h` (OWNED)
+- `indra/newview/alpaneldof.h` (OWNED)
+- `indra/newview/alworldwinddowncontrol.h` (OWNED)
+- `indra/newview/aoengine.h` (HOOK)
+- `indra/newview/app_settings/dust/dust_volume_64_rgba8.ktx` (OWNED)
+- `indra/newview/app_settings/posestand.xml` (OWNED)
+- `indra/newview/app_settings/settings_per_account.xml` (HOOK)
+- `indra/newview/app_settings/shaders/class1/avatar/objectSkinV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/deferred/cineFisheyeF.glsl` (OWNED)
+- `indra/newview/app_settings/shaders/class1/deferred/impostorV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/deferred/materialF.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaF.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl` (OWNED)
+- `indra/newview/app_settings/shaders/class1/deferred/treeV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/environment/waterV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/debugV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/highlightNormV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/highlightSpecV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/highlightV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/normaldebugV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/pathfindingNoNormalV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/pathfindingV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/interface/solidcolorV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/objects/bumpV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/objects/impostorV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/objects/previewPhysicsV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class1/objects/simpleNoAtmosV.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightF.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightSSAOF.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflPostF.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class3/deferred/waterHazeF.glsl` (HOOK)
+- `indra/newview/app_settings/shaders/class3/environment/underWaterF.glsl` (HOOK)
+- `indra/newview/fsfloaterposestand.cpp` (OWNED)
+- `indra/newview/llaisapi.h` (HOOK)
+- `indra/newview/llfilepicker.cpp` (HOOK)
+- `indra/newview/llfilepicker.h` (HOOK)
+- `indra/newview/llfloaterbigpreview.cpp` (OWNED)
+- `indra/newview/llfloatercamerapresets.cpp` (HOOK)
+- `indra/newview/llimview.cpp` (HOOK)
+- `indra/newview/llimview.h` (HOOK)
+- `indra/newview/llinventorymodel.cpp` (HOOK)
+- `indra/newview/llinventorymodel.h` (HOOK)
+- `indra/newview/llinventorymodelbackgroundfetch.cpp` (HOOK)
+- `indra/newview/llinventorypanel.cpp` (HOOK)
+- `indra/newview/llpanellogin.h` (HOOK)
+- `indra/newview/llpanelmaininventory.h` (HOOK)
+- `indra/newview/llphysicsmotion.cpp` (HOOK)
+- `indra/newview/llpresetsmanager.h` (HOOK)
+- `indra/newview/llpreviewanim.h` (HOOK)
+- `indra/newview/lltoastpanel.cpp` (HOOK)
+- `indra/newview/lltoolgrab.h` (HOOK)
+- `indra/newview/llvelopack.cpp` (HOOK)
+- `indra/newview/llviewercontrol.h` (HOOK)
+- `indra/newview/llviewertextureanim.h` (HOOK)
+- `indra/newview/llviewerwindow.h` (HOOK)
+- `indra/newview/skins/default/textures/alchemy/alchemy_128.png` (HOOK)
+- `indra/newview/skins/default/textures/toolbar_icons/sky.png` (OWNED)
+- `indra/newview/skins/default/textures/toolbar_icons/water.png` (OWNED)
+- `indra/newview/skins/default/textures/windows/startup_logo.png` (HOOK)
+- `indra/newview/skins/default/textures/xbox/button_a.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/button_b.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/button_back.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/button_start.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/button_x.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/button_y.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/left_button.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/left_thumb.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/left_thumb_press.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/left_thumb_x.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/left_thumb_y.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/left_trigger.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/none.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/right_button.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/right_thumb.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/right_thumb_press.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/right_thumb_x.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/right_thumb_y.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/right_trigger.png` (OWNED)
+- `indra/newview/skins/default/textures/xbox/triggers.png` (OWNED)
+- `indra/newview/skins/default/xui/de/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/de/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/floater_big_preview.xml` (OWNED)
+- `indra/newview/skins/default/xui/en/floater_fs_posestand.xml` (OWNED)
+- `indra/newview/skins/default/xui/en/floater_pose_polish.xml` (OWNED)
+- `indra/newview/skins/default/xui/en/floater_preferences_view_advanced.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/menu_explore_sounds.xml` (OWNED)
+- `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/panel_presets_camera_pulldown.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/panel_prim_media_controls.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/panel_settings_water.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/panel_snapshot_local.xml` (HOOK)
+- `indra/newview/skins/default/xui/es/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/es/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/fr/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/fr/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/it/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/it/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/ja/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/ja/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/pl/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/pt/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/pt/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/ru/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/ru/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/tr/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/tr/strings.xml` (HOOK)
+- `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml` (HOOK)
+- `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
+
+## Unknown hunk features (1516)
+
+- `indra/llui/llfloater.cpp@2180,30`
+- `indra/llui/llfloater.cpp@2311,18`
+- `indra/llui/llfloater.cpp@3257,7`
+- `indra/llui/llfloater.h@499,10`
+- `indra/llui/llfloater.h@567,8`
+- `indra/llui/llfloater.h@696,3`
+- `indra/llui/llscrollbar.cpp@135,21`
+- `indra/llui/llscrollcontainer.cpp@512,17`
+- `indra/llui/llscrollcontainer.cpp@567,11`
+- `indra/llui/llscrollcontainer.cpp@587,9`
+- `indra/llui/llscrollcontainer.cpp@866,12`
+- `indra/llui/llslider.cpp@50,8`
+- `indra/llui/llslider.cpp@161,7`
+- `indra/llui/llslider.cpp@283,7`
+- `indra/llui/llslider.cpp@295,7`
+- `indra/llui/llslider.cpp@382,12`
+- `indra/llui/llslider.cpp@709,9`
+- `indra/llui/llslider.h@50,9`
+- `indra/llui/llsliderctrl.cpp@24,9`
+- `indra/llui/llsliderctrl.cpp@57,8`
+- `indra/llui/llsliderctrl.cpp@107,9`
+- `indra/llui/llsliderctrl.cpp@358,7`
+- `indra/llui/llsliderctrl.cpp@368,9`
+- `indra/llui/llsliderctrl.cpp@631,3`
+- `indra/llui/llsliderctrl.h@24,12`
+- `indra/llui/llsliderctrl.h@81,14`
+- `indra/llui/llsliderctrl.h@193,8`
+- `indra/llui/llsliderctrl.h@212,3`
+- `indra/llui/llspinctrl.cpp@152,22`
+- `indra/llui/llspinctrl.cpp@228,7`
+- `indra/llui/llspinctrl.cpp@270,7`
+- `indra/llui/llspinctrl.cpp@305,11`
+- `indra/llui/llspinctrl.cpp@374,12`
+- `indra/llui/llspinctrl.cpp@406,7`
+- `indra/llui/llspinctrl.cpp@580,3`
+- `indra/llui/llspinctrl.h@65,9`
+- `indra/llui/llspinctrl.h@111,7`
+- `indra/llui/llspinctrl.h@128,8`
+- `indra/newview/CMakeLists.txt@118,28`
+- `indra/newview/CMakeLists.txt@272,24`
+- `indra/newview/CMakeLists.txt@522,7`
+- `indra/newview/CMakeLists.txt@816,8`
+- `indra/newview/CMakeLists.txt@1226,20`
+- `indra/newview/CMakeLists.txt@1519,7`
+- `indra/newview/CMakeLists.txt@1806,8`
+- `indra/newview/CMakeLists.txt@2332,7`
+- `indra/newview/CMakeLists.txt@2612,38`
+- `indra/newview/CMakeLists.txt@2707,7`
+- `indra/newview/CMakeLists.txt@2747,7`
+- `indra/newview/app_settings/settings.xml@20774,7`
+- `indra/newview/app_settings/settings.xml@21169,17`
+- `indra/newview/app_settings/settings.xml@21218,515`
+- `indra/newview/app_settings/settings.xml@21734,21`
+- `indra/newview/app_settings/settings.xml@21756,164`
+- `indra/newview/app_settings/settings.xml@23271,21`
+- `indra/newview/app_settings/settings.xml@23557,10`
+- `indra/newview/app_settings/settings.xml@23568,10`
+- `indra/newview/app_settings/settings.xml@23579,131`
+- `indra/newview/app_settings/settings.xml@23865,32`
+- `indra/newview/app_settings/settings.xml@23898,21`
+- `indra/newview/app_settings/settings.xml@23920,87`
+- `indra/newview/app_settings/settings.xml@24008,21`
+- `indra/newview/app_settings/settings.xml@24030,32`
+- `indra/newview/app_settings/settings.xml@24063,21`
+- `indra/newview/app_settings/settings.xml@24085,263`
+- `indra/newview/app_settings/settings.xml@24349,190`
+- `indra/newview/app_settings/settings.xml@24540,109`
+- `indra/newview/app_settings/settings.xml@24650,297`
+- `indra/newview/app_settings/settings.xml@24948,54`
+- `indra/newview/app_settings/settings.xml@25003,142`
+- `indra/newview/app_settings/settings.xml@25146,191`
+- `indra/newview/app_settings/settings.xml@25338,450`
+- `indra/newview/app_settings/settings.xml@26725,10`
+- `indra/newview/app_settings/settings.xml@26736,10`
+- `indra/newview/app_settings/settings.xml@26945,10`
+- `indra/newview/app_settings/settings.xml@27341,10`
+- `indra/newview/app_settings/settings.xml@27484,85`
+- `indra/newview/app_settings/settings.xml@27764,21`
+- `indra/newview/app_settings/settings.xml@27786,98`
+- `indra/newview/app_settings/settings.xml@27885,32`
+- `indra/newview/app_settings/settings.xml@27918,141`
+- `indra/newview/app_settings/settings.xml@28060,21`
+- `indra/newview/app_settings/settings.xml@28082,98`
+- `indra/newview/app_settings/settings.xml@28181,10`
+- `indra/newview/app_settings/settings.xml@28192,32`
+- `indra/newview/app_settings/settings.xml@28225,21`
+- `indra/newview/app_settings/settings.xml@28247,32`
+- `indra/newview/app_settings/settings.xml@28280,54`
+- `indra/newview/app_settings/settings.xml@28335,43`
+- `indra/newview/app_settings/settings.xml@28379,10`
+- `indra/newview/app_settings/settings.xml@28390,10`
+- `indra/newview/app_settings/settings.xml@28401,21`
+- `indra/newview/app_settings/settings.xml@28423,10`
+- `indra/newview/app_settings/settings.xml@28434,10`
+- `indra/newview/llappviewer.cpp@558,16`
+- `indra/newview/llappviewer.cpp@667,12`
+- `indra/newview/llappviewer.cpp@774,7`
+- `indra/newview/llappviewer.cpp@829,8`
+- `indra/newview/llappviewer.cpp@872,8`
+- `indra/newview/llappviewer.cpp@1417,22`
+- `indra/newview/llappviewer.cpp@1480,49`
+- `indra/newview/llappviewer.cpp@1677,9`
+- `indra/newview/llappviewer.cpp@1694,14`
+- `indra/newview/llappviewer.cpp@1754,15`
+- `indra/newview/llappviewer.cpp@1775,12`
+- `indra/newview/llappviewer.cpp@1842,23`
+- `indra/newview/llappviewer.cpp@2107,9`
+- `indra/newview/llappviewer.cpp@2432,25`
+- `indra/newview/llappviewer.cpp@2495,25`
+- `indra/newview/llappviewer.cpp@2756,7`
+- `indra/newview/llappviewer.cpp@5062,9`
+- `indra/newview/llappviewer.cpp@5465,15`
+- `indra/newview/llfloaterenvironmentadjust.cpp@682,32`
+- `indra/newview/llfloaterhoverheight.cpp@149,31`
+- `indra/newview/llpanelmaininventory.cpp@145,8`
+- `indra/newview/llpanelmaininventory.cpp@327,11`
+- `indra/newview/llpanelmaininventory.cpp@341,9`
+- `indra/newview/llpanelmaininventory.cpp@611,43`
+- `indra/newview/llpanelmaininventory.cpp@658,7`
+- `indra/newview/llpanelmaininventory.cpp@675,7`
+- `indra/newview/llpanelmaininventory.cpp@753,7`
+- `indra/newview/llpanelmaininventory.cpp@842,7`
+- `indra/newview/llpanelmaininventory.cpp@879,10`
+- `indra/newview/llpanelmaininventory.cpp@895,8`
+- `indra/newview/llpanelmaininventory.cpp@947,8`
+- `indra/newview/llpanelmaininventory.cpp@957,14`
+- `indra/newview/llpanelmaininventory.cpp@981,20`
+- `indra/newview/llpanelmaininventory.cpp@1013,18`
+- `indra/newview/llpanelmaininventory.cpp@1053,17`
+- `indra/newview/llpanelmaininventory.cpp@1076,7`
+- `indra/newview/llpanelmaininventory.cpp@1359,8`
+- `indra/newview/llpanelmaininventory.cpp@1388,8`
+- `indra/newview/llpanelmaininventory.cpp@1539,11`
+- `indra/newview/llpanelmaininventory.cpp@1562,7`
+- `indra/newview/llpanelmaininventory.cpp@1583,7`
+- `indra/newview/llstartup.cpp@459,7`
+- `indra/newview/llstartup.cpp@930,16`
+- `indra/newview/llstartup.cpp@1029,7`
+- `indra/newview/llstartup.cpp@1130,7`
+- `indra/newview/llstartup.cpp@4292,3`
+- `indra/newview/llviewercontrol.cpp@93,7`
+- `indra/newview/llviewercontrol.cpp@114,7`
+- `indra/newview/llviewercontrol.cpp@219,19`
+- `indra/newview/llviewercontrol.cpp@413,35`
+- `indra/newview/llviewercontrol.cpp@1014,95`
+- `indra/newview/llviewercontrol.cpp@1460,12`
+- `indra/newview/llviewercontrol.cpp@1505,3`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@49,14`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@90,8`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@107,8`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@127,14`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@150,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@166,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@177,9`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@201,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@221,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@282,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@303,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@436,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@456,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@501,7`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@521,7`
+- `indra/llcommon/llmemory.cpp@55,10`
+- `indra/llcommon/llmemory.cpp@71,8`
+- `indra/llcommon/llmemory.cpp@107,33`
+- `indra/llcommon/llmemory.cpp@255,18`
+- `indra/llcommon/llmemory.cpp@279,18`
+- `indra/llui/lluicolortable.cpp@198,8`
+- `indra/llui/lluicolortable.cpp@223,41`
+- `indra/llui/lluicolortable.cpp@271,25`
+- `indra/llui/lluicolortable.cpp@343,13`
+- `indra/newview/alchatcommand.cpp@47,7`
+- `indra/newview/app_settings/settings_alchemy.xml@3561,91`
+- `indra/newview/fsfloaterposer.h@33,20`
+- `indra/newview/fsfloaterposer.h@67,8`
+- `indra/newview/fsfloaterposer.h@528,18`
+- `indra/newview/llcontrolavatar.cpp@384,20`
+- `indra/newview/llcontrolavatar.cpp@620,18`
+- `indra/newview/lldrawpool.cpp@60,7`
+- `indra/newview/lldrawpool.cpp@2181,12`
+- `indra/newview/lldrawpool.cpp@2210,7`
+- `indra/newview/lldrawpool.cpp@2247,7`
+- `indra/newview/lldrawpool.cpp@2276,22`
+- `indra/newview/lldrawpool.cpp@2299,16`
+- `indra/newview/lldrawpool.cpp@2334,10`
+- `indra/newview/lldrawpool.cpp@2353,10`
+- `indra/newview/lldrawpool.cpp@2380,11`
+- `indra/newview/lldrawpool.cpp@2406,11`
+- `indra/newview/lldrawpool.cpp@2473,20`
+- `indra/newview/lldrawpool.cpp@2532,11`
+- `indra/newview/lldrawpool.cpp@2775,3`
+- `indra/newview/lldrawpool.h@42,31`
+- `indra/newview/lldrawpool.h@504,7`
+- `indra/newview/lldrawpool.h@516,9`
+- `indra/newview/lldrawpoolavatar.cpp@72,8`
+- `indra/newview/lldrawpoolavatar.cpp@247,24`
+- `indra/newview/lldrawpoolavatar.cpp@274,20`
+- `indra/newview/lldrawpoolavatar.cpp@416,7`
+- `indra/newview/lldrawpoolavatar.cpp@444,7`
+- `indra/newview/lldrawpoolavatar.cpp@459,15`
+- `indra/newview/lldrawpoolavatar.cpp@481,7`
+- `indra/newview/lldrawpoolavatar.cpp@498,7`
+- `indra/newview/lldrawpoolavatar.cpp@506,16`
+- `indra/newview/lldrawpoolavatar.cpp@1379,3`
+- `indra/newview/llfloaterpreference.cpp@1155,7`
+- `indra/newview/llfloaterpreference.cpp@3310,7`
+- `indra/newview/llreflectionmapmanager.cpp@143,49`
+- `indra/newview/llreflectionmapmanager.cpp@456,7`
+- `indra/newview/llreflectionmapmanager.cpp@2923,52`
+- `indra/newview/llreflectionmapmanager.cpp@3087,7`
+- `indra/newview/llreflectionmapmanager.cpp@3266,10`
+- `indra/newview/llreflectionmapmanager.cpp@3714,25`
+- `indra/newview/llreflectionmapmanager.cpp@3742,7`
+- `indra/newview/llspatialpartition.h@43,8`
+- `indra/newview/llspatialpartition.h@126,14`
+- `indra/newview/llspatialpartition.h@147,13`
+- `indra/newview/llspatialpartition.h@178,7`
+- `indra/newview/llspatialpartition.h@296,92`
+- `indra/newview/llspatialpartition.h@484,9`
+- `indra/newview/llspatialpartition.h@594,14`
+- `indra/newview/llspatialpartition.h@904,3`
+- `indra/newview/llviewerdisplay.cpp@204,38`
+- `indra/newview/llviewerdisplay.cpp@466,9`
+- `indra/newview/llviewerdisplay.cpp@557,11`
+- `indra/newview/llviewerdisplay.cpp@711,13`
+- `indra/newview/llviewerdisplay.cpp@1352,102`
+- `indra/newview/llviewerdisplay.cpp@1519,40`
+- `indra/newview/llviewerdisplay.cpp@1824,11`
+- `indra/newview/llviewerdisplay.cpp@1936,31`
+- `indra/newview/llviewerfloaterreg.cpp@87,7`
+- `indra/newview/llviewerfloaterreg.cpp@400,8`
+- `indra/newview/llviewerfloaterreg.cpp@886,7`
+- `indra/newview/llviewerfloaterreg.cpp@900,7`
+- `indra/newview/llviewerfloaterreg.cpp@912,7`
+- `indra/newview/llviewerinput.cpp@1283,7`
+- `indra/newview/llviewerinput.cpp@1322,16`
+- `indra/newview/llviewerinput.cpp@1344,10`
+- `indra/newview/llviewerinput.cpp@1361,10`
+- `indra/newview/llviewerinput.cpp@1923,7`
+- `indra/newview/llviewerinput.h@75,20`
+- `indra/newview/llviewerinput.h@201,7`
+- `indra/newview/llviewerinput.h@228,15`
+- `indra/newview/llviewermenu.cpp@62,7`
+- `indra/newview/llviewermenu.cpp@76,7`
+- `indra/newview/llviewermenu.cpp@404,7`
+- `indra/newview/llviewermenu.cpp@654,17`
+- `indra/newview/llviewermenu.cpp@2098,13`
+- `indra/newview/llviewermenu.cpp@2112,7`
+- `indra/newview/llviewermenu.cpp@2124,7`
+- `indra/newview/llviewermenu.cpp@4766,11`
+- `indra/newview/llviewermenu.cpp@5124,10`
+- `indra/newview/llviewermenu.cpp@5239,18`
+- `indra/newview/llviewermenu.cpp@6678,19`
+- `indra/newview/llviewermenu.cpp@7044,33`
+- `indra/newview/llviewermenu.cpp@7104,7`
+- `indra/newview/llviewermenu.cpp@7179,30`
+- `indra/newview/llviewermenu.cpp@7785,7`
+- `indra/newview/llviewermenu.cpp@8075,7`
+- `indra/newview/llviewermenu.cpp@10135,25`
+- `indra/newview/llviewermenu.cpp@10225,16`
+- `indra/newview/llviewermenu.cpp@10355,43`
+- `indra/newview/llviewermenu.cpp@10539,8`
+- `indra/newview/llviewermenu.cpp@10925,7`
+- `indra/newview/llviewertexture.cpp@29,9`
+- `indra/newview/llviewertexture.cpp@50,7`
+- `indra/newview/llviewertexture.cpp@95,7`
+- `indra/newview/llviewertexture.cpp@112,20`
+- `indra/newview/llviewertexture.cpp@1152,69`
+- `indra/newview/llviewertexture.cpp@1251,12`
+- `indra/newview/llviewertexture.cpp@1280,8`
+- `indra/newview/llviewertexture.cpp@2184,9`
+- `indra/newview/llviewertexture.cpp@2376,11`
+- `indra/newview/llviewertexture.cpp@2392,7`
+- `indra/newview/llviewertexture.cpp@3688,12`
+- `indra/newview/llviewertexture.cpp@3705,7`
+- `indra/newview/llviewertexture.h@90,13`
+- `indra/newview/llviewertexture.h@238,23`
+- `indra/newview/llviewerwindow.cpp@76,7`
+- `indra/newview/llviewerwindow.cpp@251,7`
+- `indra/newview/llviewerwindow.cpp@1469,11`
+- `indra/newview/llviewerwindow.cpp@1502,22`
+- `indra/newview/llviewerwindow.cpp@1538,8`
+- `indra/newview/llviewerwindow.cpp@1556,7`
+- `indra/newview/llviewerwindow.cpp@1569,8`
+- `indra/newview/llviewerwindow.cpp@1580,21`
+- `indra/newview/llviewerwindow.cpp@1607,9`
+- `indra/newview/llviewerwindow.cpp@1994,7`
+- `indra/newview/llviewerwindow.cpp@2004,7`
+- `indra/newview/llviewerwindow.cpp@2034,7`
+- `indra/newview/llviewerwindow.cpp@2071,7`
+- `indra/newview/llviewerwindow.cpp@2088,7`
+- `indra/newview/llviewerwindow.cpp@2160,7`
+- `indra/newview/llviewerwindow.cpp@2181,7`
+- `indra/newview/llviewerwindow.cpp@2212,7`
+- `indra/newview/llviewerwindow.cpp@2245,7`
+- `indra/newview/llviewerwindow.cpp@2262,7`
+- `indra/newview/llviewerwindow.cpp@2273,7`
+- `indra/newview/llviewerwindow.cpp@2310,7`
+- `indra/newview/llviewerwindow.cpp@2369,31`
+- `indra/newview/llviewerwindow.cpp@2984,37`
+- `indra/newview/llviewerwindow.cpp@3460,28`
+- `indra/newview/llviewerwindow.cpp@3527,7`
+- `indra/newview/llviewerwindow.cpp@3566,12`
+- `indra/newview/llviewerwindow.cpp@3590,7`
+- `indra/newview/llviewerwindow.cpp@4279,21`
+- `indra/newview/llviewerwindow.cpp@4560,7`
+- `indra/newview/llviewerwindow.cpp@4651,7`
+- `indra/newview/llviewerwindow.cpp@4663,7`
+- `indra/newview/llviewerwindow.cpp@4731,17`
+- `indra/newview/llviewerwindow.cpp@4983,15`
+- `indra/newview/llviewerwindow.cpp@5207,11`
+- `indra/newview/llviewerwindow.cpp@5277,11`
+- `indra/newview/llviewerwindow.cpp@5737,15`
+- `indra/newview/llviewerwindow.cpp@5812,21`
+- `indra/newview/llviewerwindow.cpp@6472,7`
+- `indra/newview/llviewerwindow.cpp@7196,14`
+- `indra/newview/llvoavatar.cpp@2016,8`
+- `indra/newview/llvoavatar.cpp@2124,8`
+- `indra/newview/llvoavatar.cpp@2339,7`
+- `indra/newview/llvoavatar.cpp@3029,7`
+- `indra/newview/llvoavatar.cpp@3128,27`
+- `indra/newview/llvoavatar.cpp@3166,7`
+- `indra/newview/llvoavatar.cpp@3227,18`
+- `indra/newview/llvoavatar.cpp@4845,16`
+- `indra/newview/llvoavatar.cpp@4893,18`
+- `indra/newview/llvoavatar.cpp@5980,108`
+- `indra/newview/llvoavatar.cpp@6162,13`
+- `indra/newview/llvoavatar.cpp@6275,9`
+- `indra/newview/llvoavatar.cpp@6910,7`
+- `indra/newview/llvoavatar.cpp@6969,9`
+- `indra/newview/llvoavatar.cpp@7314,12`
+- `indra/newview/llvoavatar.cpp@7419,38`
+- `indra/newview/llvoavatar.cpp@7809,7`
+- `indra/newview/llvoavatar.cpp@7983,7`
+- `indra/newview/llvoavatar.cpp@8238,7`
+- `indra/newview/llvoavatar.cpp@8267,7`
+- `indra/newview/llvoavatar.cpp@8536,12`
+- `indra/newview/llvoavatar.cpp@10103,18`
+- `indra/newview/llvoavatar.cpp@10125,7`
+- `indra/newview/llvoavatar.cpp@12989,12`
+- `indra/newview/llvoavatar.cpp@13666,8`
+- `indra/newview/llvoavatar.cpp@14003,3`
+- `indra/newview/llvoavatar.h@31,7`
+- `indra/newview/llvoavatar.h@326,7`
+- `indra/newview/llvoavatar.h@525,17`
+- `indra/newview/llvoavatar.h@948,21`
+- `indra/newview/llvoavatar.h@1170,8`
+- `indra/newview/llvoavatar.h@1440,3`
+- `indra/newview/llvovolume.cpp@104,26`
+- `indra/newview/llvovolume.cpp@800,17`
+- `indra/newview/llvovolume.cpp@1705,15`
+- `indra/newview/llvovolume.cpp@2673,13`
+- `indra/newview/llvovolume.cpp@5535,8`
+- `indra/newview/llvovolume.cpp@5581,8`
+- `indra/newview/llvovolume.cpp@5861,7`
+- `indra/newview/llvovolume.cpp@5892,40`
+- `indra/newview/llvovolume.cpp@5941,24`
+- `indra/newview/llvovolume.cpp@5970,10`
+- `indra/newview/llvovolume.cpp@6004,17`
+- `indra/newview/llvovolume.cpp@6120,11`
+- `indra/newview/llvovolume.cpp@6218,16`
+- `indra/newview/llvovolume.cpp@6259,9`
+- `indra/newview/llvovolume.cpp@6400,7`
+- `indra/newview/llvovolume.cpp@6411,7`
+- `indra/newview/llvovolume.cpp@6566,9`
+- `indra/newview/llvovolume.cpp@6593,26`
+- `indra/newview/llvovolume.cpp@6707,8`
+- `indra/newview/llvovolume.cpp@6883,54`
+- `indra/newview/llvovolume.cpp@6988,11`
+- `indra/newview/llvovolume.cpp@7208,20`
+- `indra/newview/llvovolume.cpp@7236,8`
+- `indra/newview/llvovolume.cpp@7251,7`
+- `indra/newview/llvovolume.cpp@7292,7`
+- `indra/newview/llvovolume.cpp@7305,30`
+- `indra/newview/llvovolume.cpp@7336,7`
+- `indra/newview/llvovolume.cpp@7350,14`
+- `indra/newview/llvovolume.cpp@7372,9`
+- `indra/newview/llvovolume.cpp@7390,7`
+- `indra/newview/llvovolume.cpp@7621,7`
+- `indra/newview/llvovolume.cpp@7630,16`
+- `indra/newview/llvovolume.cpp@7648,13`
+- `indra/newview/llvovolume.cpp@7664,19`
+- `indra/newview/llvovolume.cpp@7685,7`
+- `indra/newview/llvovolume.cpp@7696,12`
+- `indra/newview/llvovolume.cpp@7717,9`
+- `indra/newview/llvovolume.cpp@7794,7`
+- `indra/newview/llvovolume.cpp@7821,7`
+- `indra/newview/llvovolume.cpp@7849,15`
+- `indra/newview/llvovolume.cpp@7934,7`
+- `indra/newview/llvovolume.cpp@7957,8`
+- `indra/newview/llvovolume.cpp@8055,7`
+- `indra/newview/pipeline.cpp@7,7`
+- `indra/newview/pipeline.cpp@453,7`
+- `indra/newview/pipeline.cpp@462,10`
+- `indra/newview/pipeline.cpp@476,60`
+- `indra/newview/pipeline.cpp@555,9`
+- `indra/newview/pipeline.cpp@661,23`
+- `indra/newview/pipeline.cpp@737,15`
+- `indra/newview/pipeline.cpp@819,7`
+- `indra/newview/pipeline.cpp@1297,16`
+- `indra/newview/pipeline.cpp@1475,48`
+- `indra/newview/pipeline.cpp@1533,13`
+- `indra/newview/pipeline.cpp@30891,11`
+- `indra/newview/pipeline.cpp@30929,13`
+- `indra/newview/pipeline.cpp@31450,6`
+- `indra/newview/pipeline.cpp@32507,7`
+- `indra/newview/pipeline.cpp@32535,13`
+- `indra/newview/pipeline.cpp@32569,15`
+- `indra/newview/pipeline.cpp@32893,7`
+- `indra/newview/pipeline.cpp@32901,11`
+- `indra/newview/pipeline.cpp@34361,9`
+- `indra/newview/pipeline.cpp@34380,48`
+- `indra/newview/pipeline.cpp@34446,9`
+- `indra/newview/pipeline.cpp@34485,19`
+- `indra/newview/pipeline.cpp@34505,11`
+- `indra/newview/pipeline.cpp@34521,7`
+- `indra/newview/pipeline.cpp@34533,15`
+- `indra/newview/pipeline.cpp@34556,7`
+- `indra/newview/pipeline.cpp@34567,15`
+- `indra/newview/pipeline.cpp@34594,7`
+- `indra/newview/pipeline.cpp@34610,7`
+- `indra/newview/pipeline.cpp@34639,7`
+- `indra/newview/pipeline.cpp@34943,11`
+- `indra/newview/pipeline.cpp@35042,7`
+- `indra/newview/pipeline.cpp@35053,8`
+- `indra/newview/pipeline.cpp@35069,41`
+- `indra/newview/pipeline.cpp@35195,54`
+- `indra/newview/pipeline.cpp@35365,9`
+- `indra/newview/pipeline.cpp@35430,265`
+- `indra/newview/pipeline.cpp@35715,9`
+- `indra/newview/pipeline.cpp@35742,26`
+- `indra/newview/pipeline.cpp@35780,11`
+- `indra/newview/pipeline.cpp@35853,7`
+- `indra/newview/pipeline.cpp@35891,18`
+- `indra/newview/pipeline.cpp@35936,8`
+- `indra/newview/pipeline.cpp@35967,8`
+- `indra/newview/pipeline.cpp@35987,18`
+- `indra/newview/pipeline.cpp@38223,15`
+- `indra/newview/pipeline.h@1005,7`
+- `indra/newview/pipeline.h@1021,7`
+- `indra/newview/pipeline.h@2268,18`
+- `indra/newview/pipeline.h@2288,8`
+- `indra/newview/pipeline.h@2503,14`
+- `indra/newview/pipeline.h@2819,24`
+- `indra/newview/skins/default/textures/textures.xml@909,26`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1974,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1,13`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@154,27`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@444,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@452,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@517,12`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@531,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@663,17`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@717,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@938,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@978,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1213,14`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1243,63`
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@392,24`
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,9`
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@403,24`
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,9`
+- `indra/newview/skins/default/xui/en/menu_object.xml@589,7`
+- `indra/newview/skins/default/xui/en/menu_object.xml@598,7`
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@767,19`
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@920,16`
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@997,17`
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@1431,32`
+- `indra/newview/skins/default/xui/en/notifications.xml@189,17`
+- `indra/newview/skins/default/xui/en/notifications.xml@9340,20`
+- `indra/newview/skins/default/xui/en/notifications.xml@9395,38`
+- `indra/newview/skins/default/xui/en/strings.xml@21,9`
+- `indra/newview/skins/default/xui/en/strings.xml@4543,28`
+- `indra/newview/viewer_manifest.py@76,12`
+- `indra/newview/viewer_manifest.py@91,6`
+- `indra/llcharacter/CMakeLists.txt@79,7`
+- `indra/llcharacter/llkeyframemotion.cpp@491,31`
+- `indra/llcharacter/llkeyframemotion.cpp@543,7`
+- `indra/llcharacter/llkeyframemotion.cpp@681,7`
+- `indra/llcharacter/llkeyframemotion.cpp@721,9`
+- `indra/llcharacter/llkeyframemotion.cpp@1416,10`
+- `indra/llcharacter/llkeyframemotion.cpp@2071,7`
+- `indra/llcharacter/llkeyframemotion.cpp@2950,7`
+- `indra/llcharacter/llkeyframemotion.cpp@2987,7`
+- `indra/llcharacter/llkeyframemotion.cpp@3024,7`
+- `indra/llcharacter/llkeyframemotion.cpp@3245,3`
+- `indra/llcharacter/llkeyframemotion.h@114,9`
+- `indra/llcharacter/llkeyframemotion.h@130,10`
+- `indra/llcharacter/llkeyframemotion.h@157,8`
+- `indra/llcharacter/llkeyframemotion.h@170,7`
+- `indra/llcharacter/llkeyframemotion.h@189,35`
+- `indra/llcharacter/llkeyframemotion.h@369,7`
+- `indra/llcharacter/llkeyframemotion.h@591,3`
+- `indra/llcharacter/llkeyframewalkmotion.cpp@189,24`
+- `indra/llcharacter/llkeyframewalkmotion.h@33,7`
+- `indra/llcharacter/llmotioncontroller.h@173,14`
+- `indra/llcharacter/llmotioncontroller.h@197,13`
+- `indra/llcharacter/llmotioncontroller.h@225,7`
+- `indra/llcharacter/llmotioncontroller.h@269,3`
+- `indra/llcharacter/llpose.cpp@253,11`
+- `indra/llcharacter/llpose.cpp@508,11`
+- `indra/llcharacter/llpose.cpp@526,12`
+- `indra/llcharacter/llpose.cpp@577,38`
+- `indra/llcharacter/llpose.cpp@636,3`
+- `indra/llcommon/llstring.cpp@828,7`
+- `indra/llcommon/llstring.cpp@1003,15`
+- `indra/llcommon/llstring.cpp@1032,14`
+- `indra/llcommon/llstring.cpp@1059,13`
+- `indra/llcommon/llstring.cpp@1085,13`
+- `indra/llcommon/llstring.cpp@1119,15`
+- `indra/llplugin/llpluginclassmedia.cpp@255,11`
+- `indra/llplugin/llpluginclassmedia.cpp@1401,7`
+- `indra/newview/alfloaterexploresounds.cpp@9,12`
+- `indra/newview/alfloaterexploresounds.cpp@74,12`
+- `indra/newview/alfloaterexploresounds.cpp@97,20`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@30,63`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@763,8`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@839,293`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1133,57`
+- `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@255,7`
+- `indra/newview/fsfloaterposer.cpp@45,7`
+- `indra/newview/fsfloaterposer.cpp@54,8`
+- `indra/newview/fsfloaterposer.cpp@99,14`
+- `indra/newview/fsfloaterposer.cpp@146,20`
+- `indra/newview/fsfloaterposer.cpp@202,12`
+- `indra/newview/fsfloaterposer.cpp@219,18`
+- `indra/newview/fsfloaterposer.cpp@324,7`
+- `indra/newview/fsfloaterposer.cpp@1121,9`
+- `indra/newview/fsfloaterposer.cpp@1329,7`
+- `indra/newview/fsfloaterposer.cpp@1432,14`
+- `indra/newview/fsfloaterposer.cpp@1592,10`
+- `indra/newview/llagent.cpp@815,24`
+- `indra/newview/llagentcamera.cpp@3526,3`
+- `indra/newview/llagentcamera.h@287,7`
+- `indra/newview/lldrawpoolalpha.cpp@64,11`
+- `indra/newview/lldrawpoolalpha.cpp@253,45`
+- `indra/newview/lldrawpoolalpha.cpp@762,8`
+- `indra/newview/lldrawpoolalpha.cpp@773,15`
+- `indra/newview/lldrawpoolalpha.cpp@1088,7`
+- `indra/newview/lldrawpoolalpha.cpp@1323,24`
+- `indra/newview/lldrawpoolalpha.cpp@1536,21`
+- `indra/newview/lldrawpoolalpha.cpp@1560,8`
+- `indra/newview/lldrawpoolalpha.cpp@1575,8`
+- `indra/newview/llfloaterhoverheight.h@29,21`
+- `indra/newview/llpreviewanim.cpp@58,13`
+- `indra/newview/llpreviewanim.cpp@204,9`
+- `indra/newview/llpreviewanim.cpp@223,16`
+- `indra/newview/llselectmgr.cpp@58,7`
+- `indra/newview/llselectmgr.cpp@130,10`
+- `indra/newview/llselectmgr.cpp@1288,14`
+- `indra/newview/llselectmgr.cpp@4929,7`
+- `indra/newview/llselectmgr.cpp@6193,7`
+- `indra/newview/llselectmgr.cpp@6207,7`
+- `indra/newview/llselectmgr.cpp@7239,10`
+- `indra/newview/llselectmgr.cpp@7305,10`
+- `indra/newview/llselectmgr.cpp@9381,3`
+- `indra/newview/llviewermessage.cpp@45,7`
+- `indra/newview/llviewermessage.cpp@395,11`
+- `indra/newview/llviewermessage.cpp@4351,19`
+- `indra/newview/llviewermessage.cpp@4493,17`
+- `indra/newview/llviewermessage.cpp@5049,42`
+- `indra/newview/llviewermessage.cpp@5144,11`
+- `indra/newview/llviewerobject.cpp@69,7`
+- `indra/newview/llviewerobject.cpp@1348,7`
+- `indra/newview/llviewerobject.cpp@2300,7`
+- `indra/newview/llviewerobject.cpp@4670,11`
+- `indra/newview/llviewerobject.cpp@8157,3`
+- `indra/newview/llviewerpartsim.cpp@45,16`
+- `indra/newview/llviewerpartsim.cpp@78,30`
+- `indra/newview/llviewerpartsim.cpp@344,14`
+- `indra/newview/llviewerpartsim.cpp@359,7`
+- `indra/newview/llviewerpartsim.cpp@584,7`
+- `indra/newview/llviewerpartsim.cpp@1063,7`
+- `indra/newview/llviewerpartsim.h@99,9`
+- `indra/newview/llviewerpartsim.h@128,12`
+- `indra/newview/llviewershadermgr.cpp@30,19`
+- `indra/newview/llviewershadermgr.cpp@76,10`
+- `indra/newview/llviewershadermgr.cpp@871,8`
+- `indra/newview/llviewershadermgr.cpp@904,20`
+- `indra/newview/llviewershadermgr.cpp@927,28`
+- `indra/newview/llviewershadermgr.cpp@963,8`
+- `indra/newview/llviewershadermgr.cpp@982,82`
+- `indra/newview/llviewershadermgr.cpp@1371,14`
+- `indra/newview/llviewershadermgr.cpp@2658,7`
+- `indra/newview/llviewershadermgr.cpp@2719,8`
+- `indra/newview/llviewershadermgr.cpp@4192,8`
+- `indra/newview/llviewershadermgr.cpp@6993,3`
+- `indra/newview/llviewershadermgr.h@35,11`
+- `indra/newview/llviewershadermgr.h@313,7`
+- `indra/llrender/llrender.cpp@38,7`
+- `indra/llrender/llrender.cpp@1425,173`
+- `indra/llrender/llrender.cpp@1639,9`
+- `indra/llrender/llrender.cpp@1664,9`
+- `indra/llrender/llrender.h@224,7`
+- `indra/llrender/llrender.h@616,22`
+- `indra/llrender/llrender.h@655,55`
+- `indra/llrender/llrendertarget.h@137,28`
+- `indra/llrender/llshadermgr.cpp@34,7`
+- `indra/llrender/llshadermgr.cpp@634,16`
+- `indra/llrender/llshadermgr.cpp@743,11`
+- `indra/llrender/llshadermgr.cpp@804,10`
+- `indra/llrender/llshadermgr.cpp@1064,26`
+- `indra/llrender/llshadermgr.cpp@1128,7`
+- `indra/llrender/llshadermgr.cpp@1162,7`
+- `indra/llrender/llshadermgr.cpp@1502,9`
+- `indra/llrender/llshadermgr.cpp@1686,16`
+- `indra/llrender/llshadermgr.cpp@2370,3`
+- `indra/llrender/llshadermgr.h@245,14`
+- `indra/llrender/llshadermgr.h@1021,9`
+- `indra/llwindow/llwindowwin32.cpp@205,43`
+- `indra/llwindow/llwindowwin32.cpp@718,21`
+- `indra/llwindow/llwindowwin32.cpp@805,11`
+- `indra/llwindow/llwindowwin32.cpp@1144,14`
+- `indra/llwindow/llwindowwin32.cpp@1295,50`
+- `indra/llwindow/llwindowwin32.cpp@2569,58`
+- `indra/llwindow/llwindowwin32.cpp@2631,17`
+- `indra/llwindow/llwindowwin32.cpp@2742,7`
+- `indra/llwindow/llwindowwin32.cpp@2842,14`
+- `indra/llwindow/llwindowwin32.cpp@2869,19`
+- `indra/llwindow/llwindowwin32.cpp@2896,10`
+- `indra/llwindow/llwindowwin32.cpp@2913,7`
+- `indra/llwindow/llwindowwin32.cpp@3432,7`
+- `indra/llwindow/llwindowwin32.cpp@3463,13`
+- `indra/llwindow/llwindowwin32.cpp@3535,8`
+- `indra/llwindow/llwindowwin32.cpp@3544,8`
+- `indra/llwindow/llwindowwin32.cpp@3553,8`
+- `indra/llwindow/llwindowwin32.cpp@4174,12`
+- `indra/llwindow/llwindowwin32.cpp@4193,15`
+- `indra/newview/alderenderlist.cpp@300,9`
+- `indra/newview/alderenderlist.cpp@316,45`
+- `indra/newview/alderenderlist.cpp@363,7`
+- `indra/newview/alderenderlist.cpp@377,20`
+- `indra/newview/alderenderlist.h@13,23`
+- `indra/newview/alderenderlist.h@38,7`
+- `indra/newview/alderenderlist.h@137,29`
+- `indra/newview/alderenderlist.h@238,9`
+- `indra/newview/alfloatersceneexplorer.cpp@552,7`
+- `indra/newview/alfloatersceneexplorer.cpp@1500,7`
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@690,7`
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@727,7`
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@949,19`
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1005,27`
+- `indra/newview/app_settings/shaders/class1/deferred/blurLightF.glsl@36,16`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@271,11`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@312,3`
+- `indra/newview/llagentlistener.cpp@254,12`
+- `indra/newview/llagentlistener.cpp@323,7`
+- `indra/newview/llagentlistener.cpp@817,7`
+- `indra/newview/lldrawable.cpp@729,7`
+- `indra/newview/lldrawable.cpp@880,7`
+- `indra/newview/lldrawable.cpp@1938,3`
+- `indra/newview/llface.cpp@54,7`
+- `indra/newview/llface.cpp@1191,23`
+- `indra/newview/llfloaterpay.cpp@362,7`
+- `indra/newview/llfloaterpay.cpp@558,11`
+- `indra/newview/llmanip.cpp@375,7`
+- `indra/newview/llspatialpartition.cpp@1032,8`
+- `indra/newview/llspatialpartition.cpp@3920,8`
+- `indra/newview/llspatialpartition.cpp@4229,3`
+- `indra/newview/lltoolcomp.cpp@755,12`
+- `indra/newview/lltoolcomp.h@252,10`
+- `indra/newview/llviewerjointmesh.cpp@291,13`
+- `indra/newview/llviewerjointmesh.cpp@320,11`
+- `indra/newview/llviewerjointmesh.cpp@336,26`
+- `indra/newview/llviewerjointmesh.cpp@367,6`
+- `indra/newview/llviewerobject.h@28,7`
+- `indra/newview/llviewerobject.h@488,18`
+- `indra/newview/llviewerobject.h@1061,15`
+- `indra/newview/llviewerobject.h@1215,3`
+- `indra/newview/llviewerobjectlist.cpp@369,15`
+- `indra/newview/llviewerobjectlist.cpp@531,7`
+- `indra/newview/llviewerobjectlist.cpp@663,16`
+- `indra/newview/llviewerobjectlist.cpp@685,11`
+- `indra/newview/llviewertextureanim.cpp@133,7`
+- `indra/newview/llworld.cpp@93,9`
+- `indra/newview/llworld.cpp@684,7`
+- `indra/newview/llworld.cpp@752,41`
+- `indra/llrender/llrendertarget.cpp@34,42`
+- `indra/llrender/llrendertarget.cpp@201,9`
+- `indra/llrender/llrendertarget.cpp@360,16`
+- `indra/llrender/llrendertarget.cpp@440,17`
+- `indra/llrender/llrendertarget.cpp@569,18`
+- `indra/llrender/llrendertarget.cpp@588,27`
+- `indra/llrender/llrendertarget.cpp@616,8`
+- `indra/llrender/llrendertarget.cpp@632,10`
+- `indra/llrender/llrendertarget.cpp@643,10`
+- `indra/llrender/llrendertarget.cpp@674,20`
+- `indra/llrender/llrendertarget.cpp@703,98`
+- `indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@461,64`
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@539,7`
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@551,7`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseIndexedF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@25,20`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@75,9`
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowF.glsl@36,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@51,27`
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@252,6`
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@574,11`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@1,4`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@310,7`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@336,9`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@458,17`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@534,7`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@727,10`
+- `indra/newview/app_settings/shaders/class3/environment/waterF.glsl@27,20`
+- `indra/newview/lldrawpoolavatar.h@35,7`
+- `indra/newview/lldrawpoolavatar.h@60,7`
+- `indra/newview/lldrawpoolavatar.h@73,8`
+- `indra/newview/lldrawpoolavatar.h@129,25`
+- `indra/newview/lldrawpoolbump.cpp@963,7`
+- `indra/newview/lldrawpoolbump.cpp@1139,3`
+- `indra/newview/app_settings/shaders/class3/deferred/multiPointLightF.glsl@282,12`
+- `indra/newview/llfloatertools.cpp@660,7`
+- `indra/newview/llmaniptranslate.cpp@271,8`
+- `indra/newview/llpanelobject.cpp@484,7`
+- `indra/newview/llpanelobject.cpp@2133,7`
+- `indra/newview/llpanelvolume.cpp@86,7`
+- `indra/newview/llpanelvolume.cpp@777,7`
+- `indra/newview/llpanelvolume.cpp@1043,18`
+- `indra/newview/llpanelvolume.cpp@1357,7`
+- `indra/newview/llpanelvolume.cpp@1545,7`
+- `indra/newview/llpanelvolume.cpp@1749,7`
+- `indra/newview/llpresetsmanager.cpp@27,13`
+- `indra/newview/llpresetsmanager.cpp@289,24`
+- `indra/newview/llpresetsmanager.cpp@333,7`
+- `indra/newview/llpresetsmanager.cpp@577,7`
+- `indra/newview/llpresetsmanager.cpp@591,13`
+- `indra/newview/llpresetsmanager.cpp@630,10`
+- `indra/newview/llpresetsmanager.cpp@721,76`
+- `indra/newview/llreflectionmap.h@111,10`
+- `indra/newview/llreflectionmap.h@142,10`
+- `indra/newview/llreflectionmapmanager.h@530,8`
+- `indra/newview/llreflectionmapmanager.h@554,3`
+- `indra/newview/lltoolgrab.cpp@969,8`
+- `indra/newview/lltoolgrab.cpp@982,12`
+- `indra/newview/lltoolgrab.cpp@1267,12`
+- `indra/newview/lltoolgrab.cpp@1284,12`
+- `indra/newview/lltoolgrab.cpp@1310,8`
+- `indra/newview/lltoolgrab.cpp@1322,12`
+- `indra/newview/llviewerregion.cpp@650,15`
+- `indra/newview/llviewerregion.cpp@856,33`
+- `indra/newview/llviewerregion.cpp@2824,7`
+- `indra/newview/llviewerregion.cpp@4039,3`
+- `indra/newview/llviewertexturelist.cpp@293,42`
+- `indra/newview/llviewertexturelist.cpp@952,9`
+- `indra/newview/llviewertexturelist.cpp@1085,11`
+- `indra/newview/llviewertexturelist.cpp@1285,11`
+- `indra/newview/llviewertexturelist.cpp@1303,26`
+- `indra/newview/llviewertexturelist.cpp@1347,18`
+- `indra/newview/llviewertexturelist.cpp@1368,30`
+- `indra/newview/llviewertexturelist.cpp@2007,3`
+- `indra/llrender/llglslshader.cpp@29,8`
+- `indra/llrender/llglslshader.cpp@57,7`
+- `indra/llrender/llglslshader.cpp@95,13`
+- `indra/llrender/llglslshader.cpp@359,17`
+- `indra/llrender/llglslshader.cpp@390,7`
+- `indra/llrender/llglslshader.cpp@422,21`
+- `indra/llrender/llglslshader.cpp@504,7`
+- `indra/llrender/llglslshader.cpp@512,7`
+- `indra/llrender/llglslshader.cpp@523,7`
+- `indra/llrender/llglslshader.cpp@540,20`
+- `indra/llrender/llglslshader.cpp@784,32`
+- `indra/llrender/llglslshader.cpp@876,7`
+- `indra/llrender/llglslshader.cpp@936,10`
+- `indra/llrender/llglslshader.cpp@968,8`
+- `indra/llrender/llglslshader.cpp@980,39`
+- `indra/llrender/llglslshader.cpp@1037,8`
+- `indra/llrender/llglslshader.cpp@1072,17`
+- `indra/llrender/llglslshader.cpp@1158,7`
+- `indra/llrender/llglslshader.cpp@1170,6`
+- `indra/llrender/llglslshader.cpp@1220,6`
+- `indra/llrender/llglslshader.cpp@2113,8`
+- `indra/llrender/llglslshader.cpp@2132,46`
+- `indra/llrender/llglslshader.h@37,12`
+- `indra/llrender/llglslshader.h@146,9`
+- `indra/llrender/llglslshader.h@184,7`
+- `indra/llrender/llglslshader.h@314,8`
+- `indra/newview/llenvironment.cpp@29,7`
+- `indra/newview/llenvironment.cpp@937,18`
+- `indra/newview/llenvironment.cpp@960,17`
+- `indra/newview/llenvironment.cpp@1552,8`
+- `indra/newview/llenvironment.cpp@1563,8`
+- `indra/newview/llenvironment.cpp@1574,8`
+- `indra/newview/llenvironment.cpp@1720,12`
+- `indra/newview/llenvironment.cpp@1781,18`
+- `indra/newview/llenvironment.cpp@3707,3`
+- `indra/newview/llenvironment.h@116,15`
+- `indra/newview/llenvironment.h@134,11`
+- `indra/newview/llenvironment.h@151,7`
+- `indra/newview/llenvironment.h@187,11`
+- `indra/newview/llenvironment.h@537,3`
+- `indra/newview/llfloatereditenvironmentbase.cpp@47,9`
+- `indra/newview/llfloaterfixedenvironment.cpp@741,15`
+- `indra/newview/llfloaterfixedenvironment.cpp@835,15`
+- `indra/newview/llfloaterfixedenvironment.h@39,8`
+- `indra/newview/skins/default/xui/en/floater_fixedenvironment.xml@59,7`
+- `indra/llplugin/llpluginprocessparent.cpp@44,9`
+- `indra/llplugin/llpluginprocessparent.cpp@122,14`
+- `indra/llplugin/llpluginprocessparent.cpp@226,7`
+- `indra/llplugin/llpluginprocessparent.cpp@343,25`
+- `indra/llplugin/llpluginprocessparent.cpp@1188,12`
+- `indra/llplugin/llpluginprocessparent.cpp@1260,9`
+- `indra/llplugin/llpluginprocessparent.cpp@1289,11`
+- `indra/llplugin/llpluginprocessparent.cpp@1313,7`
+- `indra/llplugin/llpluginprocessparent.cpp@1328,22`
+- `indra/llplugin/llpluginprocessparent.h@115,9`
+- `indra/llplugin/llpluginprocessparent.h@218,9`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@70,15`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@86,11`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@102,243`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@403,38`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@463,71`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@548,24`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@651,9`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@666,111`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@781,18`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@812,16`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@855,8`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@881,8`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@940,14`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@976,7`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@1061,87`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@1149,7`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@1180,7`
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@1206,7`
+- `indra/newview/llpanelface.cpp@95,7`
+- `indra/newview/llpanelface.cpp@579,7`
+- `indra/newview/llpanelface.h@741,3`
+- `indra/newview/llpanelvolume.h@109,9`
+- `indra/newview/lltexturectrl.cpp@59,7`
+- `indra/newview/lltexturectrl.cpp@1205,7`
+- `indra/newview/lltexturectrl.cpp@1929,7`
+- `indra/newview/lltexturectrl.cpp@2264,7`
+- `indra/newview/lltexturectrl.cpp@2272,9`
+- `indra/newview/lltexturectrl.cpp@2988,3`
+- `indra/newview/lltexturectrl.h@49,7`
+- `indra/newview/lltooldraganddrop.cpp@62,7`
+- `indra/newview/lltooldraganddrop.cpp@78,6`
+- `indra/newview/lltooldraganddrop.cpp@143,6`
+- `indra/newview/lltooldraganddrop.cpp@295,11`
+- `indra/newview/lltooldraganddrop.cpp@312,10`
+- `indra/newview/lltooldraganddrop.cpp@324,8`
+- `indra/newview/lltooldraganddrop.cpp@346,14`
+- `indra/newview/lltooldraganddrop.cpp@369,16`
+- `indra/newview/lltooldraganddrop.cpp@460,7`
+- `indra/newview/lltooldraganddrop.cpp@509,7`
+- `indra/newview/lltooldraganddrop.cpp@570,12`
+- `indra/newview/lltooldraganddrop.cpp@621,13`
+- `indra/newview/lltooldraganddrop.cpp@659,11`
+- `indra/newview/lltooldraganddrop.cpp@727,17`
+- `indra/newview/lltooldraganddrop.cpp@1797,11`
+- `indra/newview/llviewermedia.cpp@775,7`
+- `indra/newview/llviewermedia.cpp@860,7`
+- `indra/newview/llviewermedia.cpp@871,7`
+- `indra/newview/llviewermedia.cpp@1714,10`
+- `indra/newview/llviewermedia.cpp@1777,7`
+- `indra/newview/llviewermedia.cpp@1858,15`
+- `indra/newview/llviewermedia.cpp@2050,11`
+- `indra/newview/llviewermedia.cpp@2096,15`
+- `indra/newview/llviewermedia.cpp@2184,7`
+- `indra/newview/llviewermedia.cpp@2205,7`
+- `indra/newview/llviewermedia.cpp@2216,7`
+- `indra/newview/llviewermedia.cpp@2230,7`
+- `indra/newview/llviewermedia.cpp@2772,17`
+- `indra/newview/llviewermedia.cpp@3398,10`
+- `indra/newview/llviewermedia.cpp@3415,14`
+- `indra/newview/llviewermedia.cpp@3433,16`
+- `indra/newview/llviewermedia.cpp@3485,34`
+- `indra/newview/llviewermedia.cpp@3791,137`
+- `indra/newview/llviewermedia.cpp@4037,7`
+- `indra/newview/llviewermedia.cpp@4050,7`
+- `indra/newview/llviewermedia.cpp@4676,12`
+- `indra/newview/llviewermedia.cpp@4821,7`
+- `indra/newview/llviewermedia.cpp@4831,8`
+- `indra/newview/llviewermedia.cpp@4873,9`
+- `indra/newview/llviewermedia.h@350,7`
+- `indra/newview/llviewermedia.h@430,14`
+- `indra/newview/llviewermedia.h@498,11`
+- `indra/newview/llviewermedia.h@595,7`
+- `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@30,7`
+- `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@88,13`
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@79,3`
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@68,3`
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@143,3`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@25,6`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@56,9`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@54,3`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@143,3`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl@70,5`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@43,7`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@75,7`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@28,7`
+- `indra/newview/app_settings/shaders/class1/deferred/luminanceF.glsl@73,7`
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@31,7`
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@35,6`
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@60,6`
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@31,7`
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@146,17`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@36,6`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@65,6`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl@62,6`
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@95,5`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@71,16`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@29,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@147,3`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl@59,6`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@31,7`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@51,8`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@198,29`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@233,12`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@299,7`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@336,7`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@345,10`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@373,12`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@386,9`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@397,26`
+- `indra/newview/skins/default/xui/en/panel_status_bar.xml@65,17`
+- `indra/newview/skins/default/xui/en/panel_status_bar.xml@86,7`
+- `indra/llappearance/llavatarappearance.h@169,7`
+- `indra/llaudio/llaudiodecodemgr.cpp@659,9`
+- `indra/llaudio/llaudioengine.cpp@123,13`
+- `indra/llaudio/llaudioengine.cpp@1121,7`
+- `indra/llaudio/llaudioengine.cpp@2117,7`
+- `indra/llcharacter/lljoint.cpp@1026,3`
+- `indra/llcharacter/lljoint.h@303,3`
+- `indra/llcharacter/lljointstate.h@112,16`
+- `indra/llcharacter/llmotion.cpp@51,14`
+- `indra/llcharacter/llmotion.cpp@110,20`
+- `indra/llcharacter/llmotion.cpp@131,196`
+- `indra/llcharacter/llmotion.cpp@360,16`
+- `indra/llcharacter/llmotion.cpp@386,3`
+- `indra/llcharacter/llmotion.h@59,12`
+- `indra/llcharacter/llmotion.h@93,116`
+- `indra/llcharacter/llmotion.h@267,9`
+- `indra/llcharacter/llmotion.h@303,22`
+- `indra/llcharacter/llmotion.h@396,3`
+- `indra/llcharacter/llmotioncontroller.cpp@45,7`
+- `indra/llcharacter/llmotioncontroller.cpp@419,7`
+- `indra/llcharacter/llmotioncontroller.cpp@531,12`
+- `indra/llcharacter/llmotioncontroller.cpp@550,8`
+- `indra/llcharacter/llmotioncontroller.cpp@655,8`
+- `indra/llcharacter/llmotioncontroller.cpp@693,8`
+- `indra/llcharacter/llmotioncontroller.cpp@714,8`
+- `indra/llcharacter/llmotioncontroller.cpp@724,9`
+- `indra/llcharacter/llmotioncontroller.cpp@738,12`
+- `indra/llcharacter/llmotioncontroller.cpp@767,21`
+- `indra/llcharacter/llmotioncontroller.cpp@793,7`
+- `indra/llcharacter/llmotioncontroller.cpp@883,8`
+- `indra/llcharacter/llmotioncontroller.cpp@992,12`
+- `indra/llcommon/llmemory.h@422,23`
+- `indra/llcommon/llstring.h@672,28`
+- `indra/llcorehttp/httpcommon.cpp@31,7`
+- `indra/llcorehttp/httpcommon.cpp@345,12`
+- `indra/llcorehttp/httpcommon.h@496,9`
+- `indra/llfilesystem/lldir.cpp@367,7`
+- `indra/llfilesystem/lldir_mac.mm@92,7`
+- `indra/llmath/llcamera.cpp@63,7`
+- `indra/llmath/llcamera.cpp@135,7`
+- `indra/llmath/llcamera.h@45,9`
+- `indra/llrender/CMakeLists.txt@31,7`
+- `indra/llrender/llcubemap.cpp@95,7`
+- `indra/llrender/llcubemap.cpp@162,7`
+- `indra/llrender/llcubemap.cpp@219,7`
+- `indra/llrender/llcubemap.cpp@241,7`
+- `indra/llrender/llimagegl.cpp@70,76`
+- `indra/llrender/llimagegl.cpp@148,60`
+- `indra/llrender/llimagegl.cpp@209,13`
+- `indra/llrender/llimagegl.cpp@249,18`
+- `indra/llrender/llimagegl.cpp@705,8`
+- `indra/llrender/llimagegl.cpp@747,8`
+- `indra/llrender/llimagegl.cpp@946,11`
+- `indra/llrender/llimagegl.cpp@982,11`
+- `indra/llrender/llimagegl.cpp@1006,10`
+- `indra/llrender/llimagegl.cpp@1023,7`
+- `indra/llrender/llimagegl.cpp@1064,7`
+- `indra/llrender/llimagegl.cpp@1167,7`
+- `indra/llrender/llimagegl.cpp@1208,10`
+- `indra/llrender/llimagegl.cpp@1223,8`
+- `indra/llrender/llimagegl.cpp@1240,20`
+- `indra/llrender/llimagegl.cpp@1386,8`
+- `indra/llrender/llimagegl.cpp@1478,8`
+- `indra/llrender/llimagegl.cpp@1788,7`
+- `indra/llrender/llimagegl.cpp@1995,11`
+- `indra/llrender/llimagegl.cpp@2018,7`
+- `indra/llrender/llimagegl.cpp@2028,8`
+- `indra/llrender/llimagegl.cpp@2043,7`
+- `indra/llrender/llimagegl.cpp@2090,7`
+- `indra/llrender/llimagegl.cpp@2098,7`
+- `indra/llrender/llimagegl.cpp@2107,8`
+- `indra/llrender/llimagegl.cpp@2253,7`
+- `indra/llrender/llimagegl.cpp@2428,48`
+- `indra/llrender/llimagegl.cpp@2637,22`
+- `indra/llrender/llimagegl.cpp@2697,27`
+- `indra/llrender/llimagegl.cpp@2728,7`
+- `indra/llrender/llimagegl.cpp@2766,11`
+- `indra/llrender/llimagegl.cpp@3094,8`
+- `indra/llrender/llimagegl.cpp@3137,3`
+- `indra/llrender/llimagegl.h@40,7`
+- `indra/llrender/llimagegl.h@56,9`
+- `indra/llrender/llimagegl.h@73,14`
+- `indra/llrender/llimagegl.h@135,8`
+- `indra/llrender/llimagegl.h@189,7`
+- `indra/llrender/llimagegl.h@199,8`
+- `indra/llrender/llimagegl.h@234,9`
+- `indra/llrender/llimagegl.h@309,8`
+- `indra/llrender/llimagegl.h@396,11`
+- `indra/llrender/llvertexbuffer.cpp@29,7`
+- `indra/llrender/llvertexbuffer.cpp@331,8`
+- `indra/llrender/llvertexbuffer.cpp@536,18`
+- `indra/llrender/llvertexbuffer.cpp@706,7`
+- `indra/llrender/llvertexbuffer.cpp@925,7`
+- `indra/llrender/llvertexbuffer.cpp@938,7`
+- `indra/llrender/llvertexbuffer.cpp@952,7`
+- `indra/llrender/llvertexbuffer.cpp@990,16`
+- `indra/llrender/llvertexbuffer.h@120,11`
+- `indra/llrender/llvertexbuffer.h@335,7`
+- `indra/llui/llbutton.cpp@91,9`
+- `indra/llui/llbutton.cpp@154,11`
+- `indra/llui/llbutton.cpp@185,8`
+- `indra/llui/llbutton.cpp@438,10`
+- `indra/llui/llbutton.cpp@457,9`
+- `indra/llui/llbutton.cpp@477,9`
+- `indra/llui/llbutton.cpp@495,8`
+- `indra/llui/llbutton.cpp@587,8`
+- `indra/llui/llbutton.cpp@866,7`
+- `indra/llui/llbutton.cpp@888,12`
+- `indra/llui/llbutton.cpp@904,7`
+- `indra/llui/llbutton.cpp@1235,11`
+- `indra/llui/llbutton.cpp@1327,12`
+- `indra/llui/llbutton.h@97,9`
+- `indra/llui/llbutton.h@225,8`
+- `indra/llui/llbutton.h@237,9`
+- `indra/llui/llbutton.h@250,11`
+- `indra/llui/llbutton.h@280,9`
+- `indra/llui/llbutton.h@365,9`
+- `indra/llui/llbutton.h@406,8`
+- `indra/llui/llcombobox.cpp@73,14`
+- `indra/llui/llcombobox.cpp@94,14`
+- `indra/llui/llcombobox.cpp@687,9`
+- `indra/llui/llcombobox.cpp@964,16`
+- `indra/llui/llcombobox.h@72,8`
+- `indra/llui/llcombobox.h@89,13`
+- `indra/llui/llcombobox.h@244,7`
+- `indra/llui/llcombobox.h@261,7`
+- `indra/llui/llcombobox.h@271,7`
+- `indra/llui/llcontainerview.cpp@59,23`
+- `indra/llui/llcontainerview.h@83,7`
+- `indra/llui/llfolderview.cpp@43,7`
+- `indra/llui/llfolderview.cpp@164,7`
+- `indra/llui/llfolderview.cpp@325,16`
+- `indra/llui/llfolderview.cpp@353,22`
+- `indra/llui/llfolderview.cpp@654,7`
+- `indra/llui/llfolderview.cpp@700,12`
+- `indra/llui/llfolderview.cpp@744,13`
+- `indra/llui/llfolderview.cpp@1635,7`
+- `indra/llui/llfolderview.cpp@1765,41`
+- `indra/llui/llfolderview.cpp@1836,7`
+- `indra/llui/llfolderview.h@222,7`
+- `indra/llui/llfolderview.h@272,7`
+- `indra/llui/llfolderviewitem.cpp@686,7`
+- `indra/llui/llfolderviewitem.cpp@726,22`
+- `indra/llui/llfolderviewitem.cpp@782,7`
+- `indra/llui/llfolderviewitem.cpp@1283,12`
+- `indra/llui/llfolderviewitem.cpp@1343,6`
+- `indra/llui/llfolderviewitem.cpp@2340,7`
+- `indra/llui/llfolderviewitem.cpp@2365,7`
+- `indra/llui/llfolderviewitem.cpp@2734,3`
+- `indra/llui/llfolderviewitem.h@372,7`
+- `indra/llui/lllineeditor.cpp@132,7`
+- `indra/llui/lllineeditor.cpp@1809,14`
+- `indra/llui/lllineeditor.cpp@2003,8`
+- `indra/llui/lllineeditor.cpp@2066,18`
+- `indra/llui/lllineeditor.h@263,17`
+- `indra/llui/lllineeditor.h@297,11`
+- `indra/llui/lllineeditor.h@382,14`
+- `indra/llui/lllineeditor.h@437,8`
+- `indra/llui/lllocalcliprect.h@41,18`
+- `indra/llui/llmenugl.cpp@3990,16`
+- `indra/llui/llmenugl.h@897,7`
+- `indra/llui/llnotifications.cpp@64,7`
+- `indra/llui/llnotifications.cpp@188,7`
+- `indra/llui/llnotifications.cpp@201,7`
+- `indra/llui/llnotifications.cpp@1895,18`
+- `indra/llui/llnotifications.h@175,7`
+- `indra/llui/llnotifications.h@268,13`
+- `indra/llui/llnotifications.h@989,8`
+- `indra/llui/llpanel.cpp@200,7`
+- `indra/llui/llpanel.cpp@304,10`
+- `indra/llui/llscrollbar.h@126,10`
+- `indra/llui/llscrollcontainer.h@96,7`
+- `indra/llui/llscrollcontainer.h@105,7`
+- `indra/llui/llscrollcontainer.h@133,8`
+- `indra/llui/llscrollcontainer.h@158,7`
+- `indra/llui/llscrolllistcell.cpp@105,7`
+- `indra/llui/llscrolllistcell.cpp@118,7`
+- `indra/llui/llscrolllistcell.cpp@795,3`
+- `indra/llui/llscrolllistcell.h@67,8`
+- `indra/llui/llscrolllistcell.h@92,7`
+- `indra/llui/llscrolllistctrl.cpp@2081,11`
+- `indra/llui/llscrolllistctrl.h@297,9`
+- `indra/llui/llscrolllistctrl.h@406,9`
+- `indra/llui/llscrolllistctrl.h@482,13`
+- `indra/llui/lltabcontainer.cpp@1215,7`
+- `indra/llui/lltabcontainer.cpp@1299,8`
+- `indra/llui/lltabcontainer.cpp@1825,84`
+- `indra/llui/lltabcontainer.h@179,7`
+- `indra/llui/lltabcontainer.h@218,12`
+- `indra/llui/lltextbase.cpp@252,7`
+- `indra/llui/lltextbase.cpp@1055,7`
+- `indra/llui/lltextbase.cpp@2416,8`
+- `indra/llui/lltextbase.cpp@2462,71`
+- `indra/llui/lltextbase.cpp@2783,14`
+- `indra/llui/lltextbase.cpp@2799,11`
+- `indra/llui/lltextbase.cpp@2877,11`
+- `indra/llui/lltextbase.cpp@3557,7`
+- `indra/llui/lltextbase.cpp@3568,24`
+- `indra/llui/lltextbase.h@498,7`
+- `indra/llui/lltextbase.h@726,7`
+- `indra/llui/lltextbase.h@829,12`
+- `indra/llui/lluicolortable.h@27,10`
+- `indra/llui/lluicolortable.h@83,11`
+- `indra/llui/lluicolortable.h@98,12`
+- `indra/llui/lluicolortable.h@120,16`
+- `indra/llui/llview.cpp@49,8`
+- `indra/llui/llview.cpp@60,11`
+- `indra/llui/llview.cpp@74,7`
+- `indra/llui/llview.cpp@84,7`
+- `indra/llui/llview.cpp@261,26`
+- `indra/llui/llview.cpp@354,7`
+- `indra/llui/llview.cpp@665,11`
+- `indra/llui/llview.cpp@765,9`
+- `indra/llui/llview.cpp@830,7`
+- `indra/llui/llview.cpp@856,7`
+- `indra/llui/llview.cpp@916,7`
+- `indra/llui/llview.cpp@1287,10`
+- `indra/llui/llview.cpp@1305,15`
+- `indra/llui/llview.cpp@1335,10`
+- `indra/llui/llview.cpp@1623,11`
+- `indra/llui/llview.cpp@1723,18`
+- `indra/llui/llview.cpp@1742,11`
+- `indra/llui/llview.cpp@1755,20`
+- `indra/llui/llview.cpp@1810,12`
+- `indra/llui/llview.h@289,16`
+- `indra/llui/llview.h@545,11`
+- `indra/llui/llview.h@600,8`
+- `indra/llui/llview.h@679,15`
+- `indra/llui/llview.h@707,9`
+- `indra/llui/llviewereventrecorder.cpp@124,7`
+- `indra/llui/llviewereventrecorder.h@55,7`
+- `indra/llui/llviewquery.cpp@107,22`
+- `indra/llui/llviewquery.h@126,7`
+- `indra/llwindow/llwindow.h@155,8`
+- `indra/llwindow/llwindowwin32.h@38,8`
+- `indra/llwindow/llwindowwin32.h@79,7`
+- `indra/llwindow/llwindowwin32.h@145,41`
+- `indra/llwindow/llwindowwin32.h@285,22`
+- `indra/llxml/llcontrol.cpp@222,14`
+- `indra/llxml/llcontrol.cpp@267,7`
+- `indra/llxml/llcontrol.cpp@276,7`
+- `indra/llxml/llcontrol.cpp@300,12`
+- `indra/llxml/llcontrol.h@36,7`
+- `indra/llxml/llcontrol.h@75,7`
+- `indra/llxml/llcontrol.h@94,7`
+- `indra/llxml/llcontrol.h@115,15`
+- `indra/llxml/llcontrol.h@144,8`
+- `indra/newview/alfloaterblocked.cpp@411,9`
+- `indra/newview/alfloaterblocked.cpp@435,11`
+- `indra/newview/alfloaterexploresounds.h@9,12`
+- `indra/newview/alfloaterexploresounds.h@36,13`
+- `indra/newview/aoengine.cpp@496,33`
+- `indra/newview/aoengine.h@99,12`
+- `indra/newview/app_settings/settings_per_account.xml@1,13`
+- `indra/newview/app_settings/shaders/class1/avatar/objectSkinV.glsl@26,12`
+- `indra/newview/app_settings/shaders/class1/avatar/objectSkinV.glsl@76,46`
+- `indra/newview/app_settings/shaders/class1/deferred/impostorV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/deferred/materialF.glsl@30,11`
+- `indra/newview/app_settings/shaders/class1/deferred/materialF.glsl@53,3`
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaF.glsl@25,11`
+- `indra/newview/app_settings/shaders/class1/deferred/treeV.glsl@26,7`
+- `indra/newview/app_settings/shaders/class1/environment/waterV.glsl@26,7`
+- `indra/newview/app_settings/shaders/class1/interface/debugV.glsl@24,7`
+- `indra/newview/app_settings/shaders/class1/interface/highlightNormV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/interface/highlightSpecV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/interface/highlightV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/interface/normaldebugV.glsl@23,8`
+- `indra/newview/app_settings/shaders/class1/interface/pathfindingNoNormalV.glsl@24,7`
+- `indra/newview/app_settings/shaders/class1/interface/pathfindingV.glsl@24,7`
+- `indra/newview/app_settings/shaders/class1/interface/solidcolorV.glsl@24,7`
+- `indra/newview/app_settings/shaders/class1/objects/bumpV.glsl@26,7`
+- `indra/newview/app_settings/shaders/class1/objects/impostorV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/objects/previewPhysicsV.glsl@26,7`
+- `indra/newview/app_settings/shaders/class1/objects/simpleNoAtmosV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightF.glsl@34,23`
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightF.glsl@58,12`
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightSSAOF.glsl@30,7`
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightSSAOF.glsl@38,16`
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightSSAOF.glsl@55,12`
+- `indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflPostF.glsl@41,7`
+- `indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflPostF.glsl@57,11`
+- `indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflPostF.glsl@71,7`
+- `indra/newview/app_settings/shaders/class3/deferred/waterHazeF.glsl@36,8`
+- `indra/newview/app_settings/shaders/class3/deferred/waterHazeF.glsl@72,17`
+- `indra/newview/app_settings/shaders/class3/environment/underWaterF.glsl@23,20`
+- `indra/newview/app_settings/shaders/class3/environment/underWaterF.glsl@97,12`
+- `indra/newview/featuretable.txt@65,6`
+- `indra/newview/featuretable.txt@112,6`
+- `indra/newview/featuretable.txt@153,6`
+- `indra/newview/featuretable.txt@192,6`
+- `indra/newview/featuretable.txt@232,6`
+- `indra/newview/featuretable.txt@272,6`
+- `indra/newview/featuretable.txt@312,6`
+- `indra/newview/featuretable.txt@352,6`
+- `indra/newview/featuretable.txt@411,6`
+- `indra/newview/featuretable.txt@420,6`
+- `indra/newview/featuretable_linux.txt@65,6`
+- `indra/newview/featuretable_linux.txt@112,6`
+- `indra/newview/featuretable_linux.txt@153,6`
+- `indra/newview/featuretable_linux.txt@192,6`
+- `indra/newview/featuretable_linux.txt@232,6`
+- `indra/newview/featuretable_linux.txt@272,6`
+- `indra/newview/featuretable_linux.txt@312,6`
+- `indra/newview/featuretable_linux.txt@352,6`
+- `indra/newview/featuretable_linux.txt@411,6`
+- `indra/newview/featuretable_linux.txt@423,6`
+- `indra/newview/featuretable_mac.txt@62,6`
+- `indra/newview/featuretable_mac.txt@110,6`
+- `indra/newview/featuretable_mac.txt@151,6`
+- `indra/newview/featuretable_mac.txt@192,6`
+- `indra/newview/featuretable_mac.txt@232,6`
+- `indra/newview/featuretable_mac.txt@272,6`
+- `indra/newview/featuretable_mac.txt@312,6`
+- `indra/newview/featuretable_mac.txt@352,6`
+- `indra/newview/fsmaniptranslatejoint.cpp@231,8`
+- `indra/newview/fsposeranimator.cpp@32,19`
+- `indra/newview/fsposeranimator.cpp@1308,166`
+- `indra/newview/fsposeranimator.h@32,25`
+- `indra/newview/fsposeranimator.h@722,15`
+- `indra/newview/llagentwearables.cpp@1478,8`
+- `indra/newview/llaisapi.cpp@1061,18`
+- `indra/newview/llaisapi.cpp@1095,10`
+- `indra/newview/llaisapi.cpp@1825,3`
+- `indra/newview/llaisapi.h@109,7`
+- `indra/newview/llaisapi.h@162,7`
+- `indra/newview/lldrawable.h@182,8`
+- `indra/newview/lldrawable.h@284,14`
+- `indra/newview/lldrawpoolwater.cpp@109,16`
+- `indra/newview/lldrawpoolwater.cpp@185,9`
+- `indra/newview/lldrawpoolwater.cpp@214,20`
+- `indra/newview/lldynamictexture.cpp@203,30`
+- `indra/newview/lldynamictexture.cpp@250,34`
+- `indra/newview/llfetchedgltfmaterial.cpp@61,8`
+- `indra/newview/llfetchedgltfmaterial.cpp@74,19`
+- `indra/newview/llfetchedgltfmaterial.h@52,12`
+- `indra/newview/llfetchedgltfmaterial.h@90,3`
+- `indra/newview/llfilepicker.cpp@67,7`
+- `indra/newview/llfilepicker.cpp@234,9`
+- `indra/newview/llfilepicker.cpp@647,9`
+- `indra/newview/llfilepicker.cpp@1139,9`
+- `indra/newview/llfilepicker.h@80,8`
+- `indra/newview/llfloater360capture.cpp@25,10`
+- `indra/newview/llfloater360capture.cpp@838,12`
+- `indra/newview/llfloaterabout.cpp@131,6`
+- `indra/newview/llfloaterabout.cpp@200,6`
+- `indra/newview/llfloaterbuy.cpp@92,11`
+- `indra/newview/llfloaterbuycontents.cpp@89,11`
+- `indra/newview/llfloatercamerapresets.cpp@22,9`
+- `indra/newview/llfloatercamerapresets.cpp@95,7`
+- `indra/newview/llfloatercamerapresets.cpp@111,12`
+- `indra/newview/llfloatercamerapresets.cpp@132,9`
+- `indra/newview/llfloatercamerapresets.cpp@143,7`
+- `indra/newview/llfloatercamerapresets.cpp@169,39`
+- `indra/newview/llfloatercamerapresets.h@22,9`
+- `indra/newview/llfloatercamerapresets.h@67,13`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@38,7`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@52,7`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@111,27`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@171,12`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@202,92`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.h@38,7`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.h@52,8`
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.h@69,12`
+- `indra/newview/llfloaterreporter.cpp@321,11`
+- `indra/newview/llfloatersnapshot.cpp@24,30`
+- `indra/newview/llfloatersnapshot.cpp@267,12`
+- `indra/newview/llfloatersnapshot.cpp@347,15`
+- `indra/newview/llfloatersnapshot.cpp@775,31`
+- `indra/newview/llfloatersnapshot.cpp@1006,10`
+- `indra/newview/llfloatersnapshot.cpp@1045,22`
+- `indra/newview/llfloatersnapshot.cpp@1075,24`
+- `indra/newview/llfloatersnapshot.cpp@1223,50`
+- `indra/newview/llfloatersnapshot.cpp@1278,46`
+- `indra/newview/llfloatersnapshot.cpp@1332,16`
+- `indra/newview/llfloatersnapshot.h@24,11`
+- `indra/newview/llfloatersnapshot.h@40,7`
+- `indra/newview/llfloatersnapshot.h@158,7`
+- `indra/newview/llfloatersnapshot.h@166,11`
+- `indra/newview/llfloatersnapshot.h@183,10`
+- `indra/newview/llfolderviewmodelinventory.cpp@38,7`
+- `indra/newview/llhudeffectlookat.cpp@24,13`
+- `indra/newview/llhudeffectlookat.cpp@413,27`
+- `indra/newview/llhudeffecttrail.cpp@39,7`
+- `indra/newview/llhudeffecttrail.cpp@265,15`
+- `indra/newview/llhudicon.cpp@25,7`
+- `indra/newview/llhudicon.cpp@82,7`
+- `indra/newview/llhudicon.cpp@194,7`
+- `indra/newview/llhudnametag.cpp@26,7`
+- `indra/newview/llhudnametag.cpp@116,7`
+- `indra/newview/llhudnametag.cpp@233,7`
+- `indra/newview/llhudnametag.cpp@559,7`
+- `indra/newview/llhudtext.cpp@27,7`
+- `indra/newview/llhudtext.cpp@114,7`
+- `indra/newview/llhudtext.cpp@354,7`
+- `indra/newview/llimview.cpp@1040,9`
+- `indra/newview/llimview.cpp@1050,24`
+- `indra/newview/llimview.cpp@1311,7`
+- `indra/newview/llimview.cpp@1335,7`
+- `indra/newview/llimview.cpp@1371,7`
+- `indra/newview/llimview.cpp@1646,17`
+- `indra/newview/llimview.h@141,16`
+- `indra/newview/llinspectobject.cpp@216,11`
+- `indra/newview/llinventorybridge.cpp@59,7`
+- `indra/newview/llinventorybridge.cpp@96,8`
+- `indra/newview/llinventorybridge.cpp@116,139`
+- `indra/newview/llinventorybridge.cpp@1422,7`
+- `indra/newview/llinventorybridge.cpp@2672,18`
+- `indra/newview/llinventorybridge.cpp@2899,12`
+- `indra/newview/llinventorybridge.cpp@2938,46`
+- `indra/newview/llinventorybridge.cpp@3119,11`
+- `indra/newview/llinventorybridge.cpp@3138,7`
+- `indra/newview/llinventorybridge.cpp@3159,17`
+- `indra/newview/llinventorybridge.cpp@3180,7`
+- `indra/newview/llinventorybridge.cpp@3229,7`
+- `indra/newview/llinventorybridge.cpp@3497,17`
+- `indra/newview/llinventorybridge.cpp@5291,7`
+- `indra/newview/llinventorybridge.cpp@6489,57`
+- `indra/newview/llinventorybridge.cpp@7635,12`
+- `indra/newview/llinventorybridge.cpp@8019,15`
+- `indra/newview/llinventorybridge.h@41,9`
+- `indra/newview/llinventoryfunctions.cpp@1482,79`
+- `indra/newview/llinventoryfunctions.cpp@1586,40`
+- `indra/newview/llinventoryfunctions.cpp@4153,3`
+- `indra/newview/llinventorygallery.cpp@358,11`
+- `indra/newview/llinventorymodel.cpp@448,7`
+- `indra/newview/llinventorymodel.cpp@2297,7`
+- `indra/newview/llinventorymodel.cpp@5246,3`
+- `indra/newview/llinventorymodel.h@593,10`
+- `indra/newview/llinventorymodel.h@611,7`
+- `indra/newview/llinventorymodel.h@751,3`
+- `indra/newview/llinventorymodelbackgroundfetch.cpp@563,13`
+- `indra/newview/llinventorymodelbackgroundfetch.cpp@748,19`
+- `indra/newview/llinventorymodelbackgroundfetch.cpp@769,10`
+- `indra/newview/llinventorymodelbackgroundfetch.cpp@897,13`
+- `indra/newview/llinventorypanel.cpp@418,11`
+- `indra/newview/llinventorypanel.cpp@1626,7`
+- `indra/newview/llkeyconflict.cpp@303,8`
+- `indra/newview/llkeyconflict.cpp@579,10`
+- `indra/newview/lllocalmesh.cpp@1554,7`
+- `indra/newview/llmediactrl.cpp@844,12`
+- `indra/newview/llmeshrepository.cpp@29,8`
+- `indra/newview/llmeshrepository.cpp@2031,48`
+- `indra/newview/llmeshrepository.cpp@2430,10`
+- `indra/newview/llmeshrepository.cpp@4554,9`
+- `indra/newview/llpaneleditwater.cpp@33,8`
+- `indra/newview/llpaneleditwater.cpp@56,20`
+- `indra/newview/llpaneleditwater.cpp@119,16`
+- `indra/newview/llpaneleditwater.cpp@156,16`
+- `indra/newview/llpanellogin.cpp@77,8`
+- `indra/newview/llpanellogin.cpp@99,23`
+- `indra/newview/llpanellogin.cpp@725,63`
+- `indra/newview/llpanellogin.cpp@1501,7`
+- `indra/newview/llpanellogin.h@61,10`
+- `indra/newview/llpanelmaininventory.h@35,8`
+- `indra/newview/llpanelmaininventory.h@65,7`
+- `indra/newview/llpanelmaininventory.h@80,9`
+- `indra/newview/llpanelmaininventory.h@196,7`
+- `indra/newview/llpanelmaininventory.h@239,8`
+- `indra/newview/llpanelsnapshotlocal.cpp@24,11`
+- `indra/newview/llpanelsnapshotlocal.cpp@90,13`
+- `indra/newview/llphysicsmotion.cpp@105,7`
+- `indra/newview/llphysicsmotion.cpp@191,7`
+- `indra/newview/llphysicsmotion.cpp@231,13`
+- `indra/newview/llphysicsmotion.cpp@672,20`
+- `indra/newview/llpresetsmanager.h@24,11`
+- `indra/newview/llpresetsmanager.h@86,11`
+- `indra/newview/llpreviewanim.h@50,9`
+- `indra/newview/llscenemonitor.cpp@433,13`
+- `indra/newview/llscenemonitor.cpp@470,7`
+- `indra/newview/llselectmgr.h@245,10`
+- `indra/newview/llsnapshotlivepreview.cpp@25,11`
+- `indra/newview/llsnapshotlivepreview.cpp@118,7`
+- `indra/newview/llsnapshotlivepreview.cpp@141,7`
+- `indra/newview/llsurface.cpp@247,9`
+- `indra/newview/llsurface.cpp@1142,7`
+- `indra/newview/llsurface.cpp@1150,7`
+- `indra/newview/llsurface.cpp@1173,3`
+- `indra/newview/llsurface.h@118,7`
+- `indra/newview/lltexturecache.cpp@37,13`
+- `indra/newview/lltexturecache.cpp@250,117`
+- `indra/newview/lltexturecache.cpp@392,7`
+- `indra/newview/lltexturecache.cpp@570,63`
+- `indra/newview/lltexturecache.cpp@850,59`
+- `indra/newview/lltexturecache.cpp@1042,15`
+- `indra/newview/lltexturecache.cpp@1237,17`
+- `indra/newview/lltexturefetch.cpp@33,8`
+- `indra/newview/lltexturefetch.cpp@1136,25`
+- `indra/newview/lltexturefetch.cpp@1863,11`
+- `indra/newview/lltexturefetch.cpp@2524,8`
+- `indra/newview/lltexturefetch.cpp@2816,7`
+- `indra/newview/lltexturefetch.cpp@2830,7`
+- `indra/newview/lltexturefetch.cpp@2847,11`
+- `indra/newview/lltextureview.cpp@601,9`
+- `indra/newview/lltextureview.cpp@632,32`
+- `indra/newview/lltextureview.cpp@671,13`
+- `indra/newview/lltextureview.cpp@791,8`
+- `indra/newview/lltextureview.cpp@1177,3`
+- `indra/newview/lltoastpanel.cpp@198,8`
+- `indra/newview/lltoolgrab.h@41,7`
+- `indra/newview/lltoolgrab.h@86,10`
+- `indra/newview/lltoolpie.cpp@828,12`
+- `indra/newview/lltoolpie.cpp@987,30`
+- `indra/newview/lltoolpie.cpp@1430,7`
+- `indra/newview/llvelopack.cpp@914,7`
+- `indra/newview/llviewercontrol.h@43,8`
+- `indra/newview/llviewerinventory.cpp@739,7`
+- `indra/newview/llviewerjoint.cpp@30,7`
+- `indra/newview/llviewerjoint.cpp@95,8`
+- `indra/newview/llvieweroctree.cpp@361,14`
+- `indra/newview/llvieweroctree.cpp@392,7`
+- `indra/newview/llvieweroctree.cpp@776,8`
+- `indra/newview/llvieweroctree.h@149,9`
+- `indra/newview/llviewerregion.h@148,9`
+- `indra/newview/llviewerregion.h@373,9`
+- `indra/newview/llviewerregion.h@587,11`
+- `indra/newview/llviewertextureanim.h@40,7`
+- `indra/newview/llviewertextureanim.h@60,7`
+- `indra/newview/llviewertexturelist.h@28,7`
+- `indra/newview/llviewertexturelist.h@132,9`
+- `indra/newview/llviewertexturelist.h@236,7`
+- `indra/newview/llviewerwindow.h@151,12`
+- `indra/newview/llviewerwindow.h@193,21`
+- `indra/newview/llviewerwindow.h@516,7`
+- `indra/newview/llviewerwindow.h@601,10`
+- `indra/newview/llvopartgroup.cpp@25,7`
+- `indra/newview/llvopartgroup.cpp@334,9`
+- `indra/newview/llvopartgroup.cpp@412,9`
+- `indra/newview/llvovolume.h@55,9`
+- `indra/newview/llvovolume.h@147,7`
+- `indra/newview/llvovolume.h@397,11`
+- `indra/newview/llvovolume.h@500,19`
+- `indra/newview/llworld.h@35,7`
+- `indra/newview/llworld.h@154,7`
+- `indra/newview/llworld.h@211,7`
+- `indra/newview/llworld.h@237,9`
+- `indra/newview/rlveffects.cpp@329,15`
+- `indra/newview/rlvhandler.cpp@3297,8`
+- `indra/newview/rlvlocks.cpp@495,7`
+- `indra/newview/rlvlocks.cpp@523,8`
+- `indra/newview/skins/default/xui/de/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/de/strings.xml@31,9`
+- `indra/newview/skins/default/xui/en/floater_about.xml@39,23`
+- `indra/newview/skins/default/xui/en/floater_about.xml@79,30`
+- `indra/newview/skins/default/xui/en/floater_about.xml@110,83`
+- `indra/newview/skins/default/xui/en/floater_about.xml@195,8`
+- `indra/newview/skins/default/xui/en/floater_about.xml@206,7`
+- `indra/newview/skins/default/xui/en/floater_about.xml@214,14`
+- `indra/newview/skins/default/xui/en/floater_preferences_view_advanced.xml@315,7`
+- `indra/newview/skins/default/xui/en/floater_preferences_view_advanced.xml@328,7`
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@1,11`
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@66,36`
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@106,7`
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@144,9`
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml@84,30`
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml@225,20`
+- `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml@32,12`
+- `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml@39,25`
+- `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml@13,7`
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@60,7`
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@101,7`
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@151,16`
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@292,7`
+- `indra/newview/skins/default/xui/en/panel_presets_camera_pulldown.xml@378,7`
+- `indra/newview/skins/default/xui/en/panel_presets_camera_pulldown.xml@392,7`
+- `indra/newview/skins/default/xui/en/panel_prim_media_controls.xml@373,7`
+- `indra/newview/skins/default/xui/en/panel_settings_water.xml@144,31`
+- `indra/newview/skins/default/xui/en/panel_snapshot_local.xml@197,21`
+- `indra/newview/skins/default/xui/es/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/es/strings.xml@22,9`
+- `indra/newview/skins/default/xui/fr/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/fr/strings.xml@31,9`
+- `indra/newview/skins/default/xui/it/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/it/strings.xml@28,9`
+- `indra/newview/skins/default/xui/ja/floater_adjust_environment.xml@9,8`
+- `indra/newview/skins/default/xui/ja/floater_adjust_environment.xml@99,6`
+- `indra/newview/skins/default/xui/ja/strings.xml@37,9`
+- `indra/newview/skins/default/xui/pl/floater_adjust_environment.xml@1,7`
+- `indra/newview/skins/default/xui/pl/floater_adjust_environment.xml@85,6`
+- `indra/newview/skins/default/xui/pt/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/pt/strings.xml@22,9`
+- `indra/newview/skins/default/xui/ru/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/ru/strings.xml@31,9`
+- `indra/newview/skins/default/xui/tr/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/tr/strings.xml@31,9`
+- `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`
+- `indra/newview/skins/default/xui/zh/strings.xml@31,9`
+
+## Unknown/non-function contexts (1078)
+
+- `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
+- `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@92,7`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@117,7`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@193,8`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@222,7`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@306,7`: unknown/non-function (if(BUILD_TESTING))
+- `indra/llui/llfloater.cpp@58,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llfloater.cpp@300,7`: unknown/non-function (LLFloater::LLFloater(const LLSD& key, const LLFloater::Params& p))
+- `indra/llui/llfloater.h@499,10`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@557,7`: unknown/non-function (private:)
+- `indra/llui/llfloater.h@567,8`: unknown/non-function (private:)
+- `indra/llui/llfloater.h@578,12`: unknown/non-function (private:)
+- `indra/llui/llfloater.h@696,3`: unknown/non-function (private:)
+- `indra/llui/llscrollbar.cpp@35,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llscrollcontainer.cpp@32,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llslider.cpp@24,18`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llslider.cpp@50,8`: unknown/non-function (LLSlider::Params::Params())
+- `indra/llui/llslider.cpp@60,28`: unknown/non-function (LLSlider::Params::Params())
+- `indra/llui/llslider.h@24,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llslider.h@50,9`: unknown/non-function (public:)
+- `indra/llui/llslider.h@65,29`: unknown/non-function (public:)
+- `indra/llui/llslider.h@96,12`: unknown/non-function (protected:)
+- `indra/llui/llslider.h@172,19`: unknown/non-function (private:)
+- `indra/llui/llsliderctrl.cpp@24,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llsliderctrl.cpp@37,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llsliderctrl.cpp@57,8`: unknown/non-function (LLSliderCtrl::LLSliderCtrl(const LLSliderCtrl::Params& p))
+- `indra/llui/llsliderctrl.cpp@631,3`: unknown/non-function (void LLSliderCtrl::reportInvalidData())
+- `indra/llui/llsliderctrl.h@24,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llsliderctrl.h@51,19`: unknown/non-function (public:)
+- `indra/llui/llsliderctrl.h@81,14`: unknown/non-function (public:)
+- `indra/llui/llsliderctrl.h@155,17`: unknown/non-function (public:)
+- `indra/llui/llsliderctrl.h@193,8`: unknown/non-function (private:)
+- `indra/llui/llsliderctrl.h@212,3`: unknown/non-function (private:)
+- `indra/llui/llspinctrl.cpp@580,3`: unknown/non-function (bool LLSpinCtrl::handleKeyHere(KEY key, MASK mask))
+- `indra/llui/llspinctrl.h@111,7`: unknown/non-function (public:)
+- `indra/llui/llspinctrl.h@128,8`: unknown/non-function (private:)
+- `indra/newview/CMakeLists.txt@118,28`: unknown/non-function (execute_process()
+- `indra/newview/CMakeLists.txt@170,13`: unknown/non-function (endif ())
+- `indra/newview/CMakeLists.txt@186,52`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@240,11`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@272,24`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@332,115`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@522,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@551,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@649,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@660,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@816,8`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@892,11`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@906,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1099,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1118,13`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1133,54`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1189,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1226,20`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1283,159`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1519,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1548,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1650,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1661,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1806,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1877,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1893,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2092,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2332,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2612,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2707,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2747,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2836,31`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2873,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2941,178`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3180,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/app_settings/settings.xml@2,3450`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@3453,1044`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@4498,839`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5338,175`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5514,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5547,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5569,186`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5756,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5778,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5789,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5811,65`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5877,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@5899,527`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@6427,120`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@6548,14140`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@20774,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@20854,69`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21169,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21218,515`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21734,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21756,164`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@21921,837`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@22759,511`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23271,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23293,87`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23381,175`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23557,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23568,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23579,131`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23711,153`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23865,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23898,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@23920,87`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24008,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24030,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24063,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24085,263`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24349,190`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24540,109`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24650,297`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@24948,54`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25003,142`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25146,191`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25338,450`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@25789,935`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26725,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26736,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26747,164`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26912,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26945,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@26956,109`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27066,274`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27341,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27352,131`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27484,85`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27570,193`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27764,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27786,98`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27885,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@27918,141`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28060,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28082,98`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28181,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28192,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28225,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28247,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28280,54`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28335,43`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28379,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28390,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28401,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28423,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28434,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@28445,2122`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@30568,1104`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@31673,209`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings.xml@31883,98`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@25,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@72,33`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@154,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@273,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@829,8`: unknown/non-function (public:)
+- `indra/newview/llfloaterenvironmentadjust.cpp@27,39`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterenvironmentadjust.h@31,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterenvironmentadjust.h@60,19`: unknown/non-function (public:)
+- `indra/newview/llfloaterenvironmentadjust.h@103,99`: unknown/non-function (private:)
+- `indra/newview/llfloaterhoverheight.cpp@1,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterjoystick.cpp@36,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterjoystick.cpp@45,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterjoystick.cpp@98,9`: unknown/non-function (BOOL CALLBACK di8_list_devices_callback(LPCDIDEVICEINSTANCE device_instance_ptr,)
+- `indra/newview/llfloaterjoystick.h@27,34`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterjoystick.h@71,29`: unknown/non-function (private:)
+- `indra/newview/llfloaterjoystick.h@117,30`: unknown/non-function (private:)
+- `indra/newview/llpanelmaininventory.cpp@26,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llstartup.cpp@25,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llstartup.cpp@44,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llstartup.cpp@201,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llstartup.cpp@4292,3`: unknown/non-function (void handleLoadChatAlertSounds())
+- `indra/newview/llviewercontrol.cpp@28,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewercontrol.cpp@53,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewercontrol.cpp@93,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewercontrol.cpp@101,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewercontrol.cpp@114,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewercontrol.cpp@1505,3`: unknown/non-function (void test_cached_control())
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@4,44`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@49,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@90,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@107,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@127,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@150,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@166,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@177,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@201,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@221,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@282,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@303,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@436,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@456,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@501,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@521,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcommon/llmemory.cpp@55,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcommon/llmemory.cpp@71,8`: unknown/non-function (U32Kilobytes LLMemory::sMaxHeapSizeInKB(U32_MAX);)
+- `indra/newview/alchatcommand.cpp@30,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alchatcommand.cpp@47,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alviewermenu.cpp@18,36`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alviewermenu.cpp@62,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/commands.xml@421,43`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/commands.xml@489,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2,182`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@1308,411`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@1789,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@1944,82`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2027,65`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2093,236`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2760,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2771,233`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@3131,175`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@3307,135`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@3443,117`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@3561,91`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@3653,1119`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/toolbars.xml@9,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.h@33,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.h@67,8`: unknown/non-function (class FSFloaterPoser : public LLFloater, public LLEditMenuHandler)
+- `indra/newview/fsfloaterposer.h@246,21`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.h@528,18`: unknown/non-function (public:)
+- `indra/newview/llcontrolavatar.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@25,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@60,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@2775,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
+- `indra/newview/lldrawpool.h@42,31`: unknown/non-function (class LLGLSLShader;)
+- `indra/newview/lldrawpool.h@136,15`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@388,110`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@504,7`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@516,9`: unknown/non-function (public:)
+- `indra/newview/lldrawpoolavatar.cpp@25,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolavatar.cpp@46,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolavatar.cpp@72,8`: unknown/non-function (LLGLSLShader* LLDrawPoolAvatar::sVertexProgram = NULL;)
+- `indra/newview/lldrawpoolavatar.cpp@1379,3`: unknown/non-function (LLColor3 LLDrawPoolAvatar::getDebugColor() const)
+- `indra/newview/llfloaterpreference.cpp@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpopupview.cpp@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llreflectionmapmanager.cpp@30,24`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llspatialpartition.h@43,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llspatialpartition.h@102,21`: unknown/non-function (public:)
+- `indra/newview/llspatialpartition.h@126,14`: unknown/non-function (public:)
+- `indra/newview/llspatialpartition.h@147,13`: unknown/non-function (public:)
+- `indra/newview/llspatialpartition.h@178,7`: unknown/non-function (public:)
+- `indra/newview/llspatialpartition.h@484,9`: unknown/non-function (public:)
+- `indra/newview/llspatialpartition.h@594,14`: unknown/non-function (public:)
+- `indra/newview/llspatialpartition.h@904,3`: unknown/non-function (extern const F32 SG_MAX_OBJ_RAD;)
+- `indra/newview/llviewerdisplay.cpp@29,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerdisplay.cpp@64,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerdisplay.cpp@99,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerfloaterreg.cpp@30,46`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerfloaterreg.cpp@87,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerfloaterreg.cpp@115,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerinput.cpp@39,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerinput.cpp@1163,22`: unknown/non-function (REGISTER_KEYBOARD_ACTION(script_mouse_handler_name, script_trigger_lbutton);)
+- `indra/newview/llviewerinput.h@201,7`: unknown/non-function (private:)
+- `indra/newview/llviewermenu.cpp@25,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermenu.cpp@50,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermenu.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermenu.cpp@76,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermenu.cpp@404,7`: unknown/non-function (void initialize_menus();)
+- `indra/newview/llviewertexture.cpp@29,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewertexture.cpp@50,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewertexture.cpp@63,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewertexture.cpp@95,7`: unknown/non-function (S32 LLViewerTexture::sImageCount = 0;)
+- `indra/newview/llviewertexture.cpp@112,20`: unknown/non-function (F32 LLViewerTexture::sCurrentTime = 0.0f;)
+- `indra/newview/llviewertexture.h@90,13`: unknown/non-function (class LLTextureBar;)
+- `indra/newview/llviewertexture.h@118,22`: unknown/non-function (protected:)
+- `indra/newview/llviewertexture.h@238,23`: unknown/non-function (public:)
+- `indra/newview/llviewertexture.h@442,12`: unknown/non-function (public:)
+- `indra/newview/llviewerwindow.cpp@24,18`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@76,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@95,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@177,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@200,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@251,7`: unknown/non-function (extern bool gDisplaySwapBuffers;)
+- `indra/newview/llvoavatar.cpp@24,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvoavatar.cpp@49,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvoavatar.cpp@743,7`: unknown/non-function (LLVOAvatar::LLVOAvatar(const LLUUID& id,)
+- `indra/newview/llvoavatar.cpp@14003,3`: unknown/non-function (bool LLVOAvatar::isBuddy() const)
+- `indra/newview/llvoavatar.h@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvoavatar.h@56,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvoavatar.h@326,7`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@525,17`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@550,45`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@647,13`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@713,7`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@948,21`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@977,21`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@1024,12`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@1207,11`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@1259,17`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@1440,3`: unknown/non-function (void dump_sequential_xml(const std::string outprefix, const LLSD& content);)
+- `indra/newview/llvovolume.cpp@27,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvovolume.cpp@69,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvovolume.cpp@83,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@7,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@28,40`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@84,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@102,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@120,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@136,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@156,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@179,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@217,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@294,32`: unknown/non-function (bool LLPipeline::RenderDeferredAtmospheric;)
+- `indra/newview/pipeline.cpp@327,106`: unknown/non-function (F32 LLPipeline::CameraMaxCoF;)
+- `indra/newview/pipeline.cpp@453,7`: unknown/non-function (extern bool gDisplaySwapBuffers;)
+- `indra/newview/pipeline.cpp@462,10`: unknown/non-function (LLPipeline gPipeline;)
+- `indra/newview/pipeline.cpp@555,9`: unknown/non-function (bool    LLPipeline::sRenderSoundBeacons = false;)
+- `indra/newview/pipeline.h@39,29`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.h@85,46`: unknown/non-function (bool LLRayAABB(const LLVector3 &center, const LLVector3 &size, const LLVector3&)
+- `indra/newview/pipeline.h@146,12`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@171,39`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@708,90`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@878,67`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1005,7`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1021,7`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1108,67`: unknown/non-function (private:)
+- `indra/newview/pipeline.h@1353,31`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1406,20`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2216,34`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2268,18`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2299,58`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2457,14`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2503,14`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2582,32`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2615,194`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2819,24`: unknown/non-function (public:)
+- `indra/newview/skins/default/colors.xml@2,153`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/textures/textures.xml@134,31`: unknown/non-function (with the same filename but different name)
+- `indra/newview/skins/default/textures/textures.xml@184,10`: unknown/non-function (with the same filename but different name)
+- `indra/newview/skins/default/textures/textures.xml@909,26`: unknown/non-function (with the same filename but different name)
+- `indra/newview/skins/default/textures/textures.xml@1049,93`: unknown/non-function (with the same filename but different name)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1145,119`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1974,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1998,61`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1,27`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@34,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@156,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@342,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@368,40`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@413,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@433,33`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@467,36`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@504,35`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@543,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@577,66`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@644,33`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4189,56`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4246,56`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4303,56`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@154,27`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@182,41`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@444,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@452,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@517,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@531,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@663,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@717,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@830,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@938,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@978,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1013,22`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1213,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1243,63`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/fonts.xml@322,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/fonts.xml@663,26`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,203`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@392,24`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@507,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,193`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_self.xml@609,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@114,209`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@403,24`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@495,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@298,193`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@511,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_object.xml@22,249`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_object.xml@281,81`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_object.xml@589,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_object.xml@598,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@200,243`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@767,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@920,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@997,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@1249,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@1431,32`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_viewer.xml@1493,27`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/notifications.xml@189,17`: unknown/non-function (No tutorial is currently available.)
+- `indra/newview/skins/default/xui/en/notifications.xml@6490,31`: unknown/non-function (You cannot undo this action.)
+- `indra/newview/skins/default/xui/en/notifications.xml@9277,24`: unknown/non-function (Multiple SLurls were received from an untrusted browser within a short period.)
+- `indra/newview/skins/default/xui/en/notifications.xml@9340,20`: unknown/non-function (Failed to save snapshot to [PATH]: Disk is full. [NEED_MEMORY]KB is required but)
+- `indra/newview/skins/default/xui/en/notifications.xml@9395,38`: unknown/non-function (this preset or choose another name.)
+- `indra/newview/skins/default/xui/en/notifications.xml@13574,361`: unknown/non-function (Incoming instant messages from anyone who is not your friend will now be answere)
+- `indra/newview/skins/default/xui/en/panel_preferences_advanced.xml@234,39`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml@383,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/strings.xml@21,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/strings.xml@4233,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4283,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4324,9`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4543,28`: unknown/non-function (and report the problem.)
+- `indra/newview/viewer_manifest.py@76,12`: unknown/non-function (class ViewerManifest(LLManifest):)
+- `indra/newview/viewer_manifest.py@91,6`: unknown/non-function (class ViewerManifest(LLManifest):)
+- `indra/newview/viewer_manifest.py@108,12`: unknown/non-function (class ViewerManifest(LLManifest):)
+- `indra/llcharacter/CMakeLists.txt@30,9`: unknown/non-function (target_sources(llcharacter)
+- `indra/llcharacter/CMakeLists.txt@79,7`: unknown/non-function (if (BUILD_TESTING))
+- `indra/llcharacter/llheadrotmotion.cpp@24,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llheadrotmotion.h@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llheadrotmotion.h@124,9`: unknown/non-function (public:)
+- `indra/llcharacter/llheadrotmotion.h@214,11`: unknown/non-function (public:)
+- `indra/llcharacter/llheadrotmotion.h@228,12`: unknown/non-function (public:)
+- `indra/llcharacter/llkeyframemotion.cpp@35,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llkeyframemotion.cpp@50,38`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llkeyframemotion.cpp@457,17`: unknown/non-function (LLKeyframeMotion::LLKeyframeMotion(const LLUUID &id))
+- `indra/llcharacter/llkeyframemotion.cpp@3245,3`: unknown/non-function (LLKeyframeMotion::JointConstraint::~JointConstraint())
+- `indra/llcharacter/llkeyframemotion.h@32,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llkeyframemotion.h@130,10`: unknown/non-function (public:)
+- `indra/llcharacter/llkeyframemotion.h@369,7`: unknown/non-function (protected:)
+- `indra/llcharacter/llkeyframemotion.h@530,40`: unknown/non-function (protected:)
+- `indra/llcharacter/llkeyframemotion.h@591,3`: unknown/non-function (public:)
+- `indra/llcharacter/llkeyframewalkmotion.cpp@28,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llkeyframewalkmotion.h@33,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/llmotioncontroller.h@225,7`: unknown/non-function (protected:)
+- `indra/llcharacter/llmotioncontroller.h@269,3`: unknown/non-function (private:)
+- `indra/llcharacter/llpose.cpp@235,15`: unknown/non-function (bool LLJointStateBlender::addJointState(const LLPointer<LLJointState>& joint_sta)
+- `indra/llcharacter/llpose.cpp@636,3`: unknown/non-function (void LLPoseBlender::clearBlenders())
+- `indra/llcharacter/llpose.h@88,18`: unknown/non-function (protected:)
+- `indra/llcharacter/llpose.h@121,12`: unknown/non-function (protected:)
+- `indra/llcharacter/llpose.h@148,13`: unknown/non-function (public:)
+- `indra/llcharacter/lltargetingmotion.cpp@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llplugin/llpluginclassmedia.h@30,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llplugin/llpluginclassmedia.h@517,13`: unknown/non-function (protected:)
+- `indra/newview/alfloaterexploresounds.cpp@9,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@1,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@41,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@124,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/key_bindings.xml@214,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@30,63`: unknown/non-function (uniform sampler2DShadow shadowMap0;)
+- `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@24,42`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@84,49`: unknown/non-function (uniform vec4 light_position[8];)
+- `indra/newview/fsfloaterposer.cpp@25,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.cpp@45,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.cpp@54,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llagent.cpp@26,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llagent.cpp@70,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llagentcamera.cpp@24,18`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llagentcamera.cpp@44,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llagentcamera.cpp@3526,3`: unknown/non-function (void LLAgentCamera::loadCameraPosition())
+- `indra/newview/llagentcamera.h@127,15`: unknown/non-function (public:)
+- `indra/newview/lldrawpoolalpha.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolalpha.cpp@49,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolalpha.cpp@64,11`: unknown/non-function (bool LLDrawPoolAlpha::sShowDebugAlpha = false;)
+- `indra/newview/lldrawpoolalpha.cpp@161,9`: unknown/non-function (static void prepare_alpha_shader(LLGLSLShader* shader, bool deferredEnvironment,)
+- `indra/newview/llflexibleobject.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterhoverheight.h@1,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterhoverheight.h@29,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterhoverheight.h@56,37`: unknown/non-function (public:)
+- `indra/newview/llpreviewanim.cpp@27,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llselectmgr.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llselectmgr.cpp@58,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llselectmgr.cpp@106,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llselectmgr.cpp@9381,3`: unknown/non-function (bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas)
+- `indra/newview/llsurfacepatch.cpp@32,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@27,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@50,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@78,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.cpp@887,9`: unknown/non-function (LLViewerJoystick::LLViewerJoystick())
+- `indra/newview/llviewerjoystick.h@28,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerjoystick.h@51,78`: unknown/non-function (typedef enum e_joystick_driver_state)
+- `indra/newview/llviewerjoystick.h@141,19`: unknown/non-function (public:)
+- `indra/newview/llviewerjoystick.h@170,81`: unknown/non-function (protected:)
+- `indra/newview/llviewerjoystick.h@260,46`: unknown/non-function (private:)
+- `indra/newview/llviewermessage.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermessage.cpp@45,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermessage.cpp@56,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@58,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@69,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@78,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@103,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@123,27`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.cpp@8157,3`: unknown/non-function (public:)
+- `indra/newview/llviewerpartsim.cpp@25,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerpartsim.cpp@45,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerpartsim.cpp@359,7`: unknown/non-function (bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size))
+- `indra/newview/llviewerpartsim.h@27,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerpartsim.h@61,7`: unknown/non-function (public:)
+- `indra/newview/llviewerpartsim.h@99,9`: unknown/non-function (public:)
+- `indra/newview/llviewerpartsim.h@128,12`: unknown/non-function (public:)
+- `indra/newview/llviewerpartsim.h@157,11`: unknown/non-function (public:)
+- `indra/newview/llviewerpartsim.h@207,12`: unknown/non-function (protected:)
+- `indra/newview/llviewerpartsource.h@27,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerpartsource.h@79,13`: unknown/non-function (public:)
+- `indra/newview/llviewershadermgr.cpp@30,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewershadermgr.cpp@52,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewershadermgr.cpp@76,10`: unknown/non-function (using std::string;)
+- `indra/newview/llviewershadermgr.cpp@175,11`: unknown/non-function (LLGLSLShader            gPostScreenSpaceReflectionProgram;)
+- `indra/newview/llviewershadermgr.cpp@194,22`: unknown/non-function (LLGLSLShader            gDeferredTreeShadowProgram;)
+- `indra/newview/llviewershadermgr.cpp@244,32`: unknown/non-function (LLGLSLShader            gDeferredEmissiveProgram;)
+- `indra/newview/llviewershadermgr.cpp@280,46`: unknown/non-function (LLGLSLShader            gSMAAEdgeDetectProgram[4];)
+- `indra/newview/llviewershadermgr.cpp@338,32`: unknown/non-function (LLGLSLShader            gDeferredSkinnedFullbrightAlphaMaskAlphaProgram;)
+- `indra/newview/llviewershadermgr.cpp@373,20`: unknown/non-function (LLGLSLShader            gCGColorgradeGammaProgram;)
+- `indra/newview/llviewershadermgr.cpp@400,22`: unknown/non-function (LLGLSLShader            gDeferredSkinnedPBROpaqueProgram;)
+- `indra/newview/llviewershadermgr.cpp@6993,3`: unknown/non-function (LLViewerShaderMgr::shader_iter LLViewerShaderMgr::endShaders() const)
+- `indra/newview/llviewershadermgr.h@35,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewershadermgr.h@160,17`: unknown/non-function (public:)
+- `indra/newview/llviewershadermgr.h@187,13`: unknown/non-function (inline bool operator != (LLViewerShaderMgr::shader_iter const & a, LLViewerShade)
+- `indra/newview/llviewershadermgr.h@247,23`: unknown/non-function (extern LLGLSLShader         gBloomCompositeProgram;)
+- `indra/newview/llviewershadermgr.h@280,14`: unknown/non-function (extern LLGLSLShader         gPostScreenSpaceReflectionProgram;)
+- `indra/newview/llviewershadermgr.h@297,15`: unknown/non-function (extern LLGLSLShader         gDeferredBumpProgram;)
+- `indra/newview/llviewershadermgr.h@313,7`: unknown/non-function (extern LLGLSLShader         gHazeWaterProgram;)
+- `indra/newview/llviewershadermgr.h@324,26`: unknown/non-function (extern LLGLSLShader         gDeferredShadowGLTFAlphaBlendProgram;)
+- `indra/newview/llviewershadermgr.h@351,57`: unknown/non-function (extern LLGLSLShader         gSMAAEdgeDetectProgram[4];)
+- `indra/newview/llviewershadermgr.h@417,8`: unknown/non-function (extern LLGLSLShader         gDeferredFullbrightAlphaMaskAlphaProgram;)
+- `indra/newview/llviewershadermgr.h@434,34`: unknown/non-function (extern LLGLSLShader         gHUDFullbrightShinyProgram;)
+- `indra/newview/llviewershadermgr.h@477,7`: unknown/non-function (extern LLGLSLShader         gRlvSphereProgram;)
+- `indra/newview/llviewershadermgr.h@488,41`: unknown/non-function (extern LLGLSLShader         gDeferredPBROpaqueIndexedProgram; // multi-material)
+- `indra/newview/skins/default/xui/en/control_table_contents_movement.xml@205,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_edit_hover_height.xml@1,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_edit_hover_height.xml@17,127`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_joystick.xml@1,787`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml@222,76`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcharacter/lleditingmotion.cpp@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llrender.cpp@38,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llrender.h@262,9`: unknown/non-function (public:)
+- `indra/llrender/llrender.h@287,9`: unknown/non-function (protected:)
+- `indra/llrender/llrender.h@411,17`: unknown/non-function (public:)
+- `indra/llrender/llrender.h@588,12`: unknown/non-function (private:)
+- `indra/llrender/llrender.h@616,22`: unknown/non-function (private:)
+- `indra/llrender/llrendertarget.h@137,28`: unknown/non-function (public:)
+- `indra/llrender/llrendertarget.h@205,35`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.cpp@34,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llshadermgr.cpp@47,7`: unknown/non-function (using std::make_pair;)
+- `indra/llrender/llshadermgr.cpp@2370,3`: unknown/non-function (void LLShaderMgr::initAttribsAndUniforms())
+- `indra/llrender/llshadermgr.h@39,9`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@51,13`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@82,9`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@125,8`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@139,8`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@245,14`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@391,12`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@437,89`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@589,395`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@1021,9`: unknown/non-function (public:)
+- `indra/newview/alderenderlist.cpp@13,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alderenderlist.h@13,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alderenderlist.h@38,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alderenderlist.h@238,9`: unknown/non-function (public:)
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@4,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@200,26`: unknown/non-function (vec4 applyChromaticAberration(sampler2D tex, vec2 uv))
+- `indra/newview/app_settings/shaders/class1/deferred/blurLightF.glsl@36,16`: unknown/non-function (uniform vec2 screen_res;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@271,11`: unknown/non-function (uniform sampler2D diffuseMap;  //always in sRGB space)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@312,3`: unknown/non-function (void main())
+- `indra/newview/llavataractions.cpp@39,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawable.cpp@48,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawable.cpp@1938,3`: unknown/non-function (void LLHUDBridge::shiftPos(const LLVector4a& vec))
+- `indra/newview/llface.cpp@54,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterpay.cpp@46,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llspatialpartition.cpp@44,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llspatialpartition.cpp@4229,3`: unknown/non-function (void LLCullResult::assertDrawMapsEmpty())
+- `indra/newview/lltoolcomp.h@81,16`: unknown/non-function (public:)
+- `indra/newview/lltoolcomp.h@252,10`: unknown/non-function (public:)
+- `indra/newview/llviewerjointmesh.h@54,16`: unknown/non-function (public:)
+- `indra/newview/llviewerjointmesh.h@80,21`: unknown/non-function (public:)
+- `indra/newview/llviewerobject.h@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.h@46,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobject.h@353,10`: unknown/non-function (public:)
+- `indra/newview/llviewerobject.h@421,30`: unknown/non-function (public:)
+- `indra/newview/llviewerobject.h@842,11`: unknown/non-function (public:)
+- `indra/newview/llviewerobject.h@955,7`: unknown/non-function (public:)
+- `indra/newview/llviewerobject.h@1061,15`: unknown/non-function (protected:)
+- `indra/newview/llviewerobject.h@1150,8`: unknown/non-function (public:)
+- `indra/newview/llviewerobject.h@1215,3`: unknown/non-function (public:)
+- `indra/newview/llviewerobjectlist.cpp@27,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerobjectlist.cpp@43,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewertextureanim.cpp@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llworld.cpp@93,9`: unknown/non-function (LLWorld::LLWorld() :)
+- `indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@23,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl@40,17`: unknown/non-function (in vec2 vary_texcoord0;)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseIndexedF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedF.glsl@33,29`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@25,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@50,24`: unknown/non-function (in vec2 vary_texcoord0;)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@75,9`: unknown/non-function (uniform float minimum_alpha;)
+- `indra/newview/app_settings/shaders/class1/deferred/impostorF.glsl@39,7`: unknown/non-function (in vec2 vary_texcoord0;)
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowF.glsl@36,7`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedF.glsl@62,29`: unknown/non-function (uniform sampler2D basecolor7; uniform sampler2D emissivemap7;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl@83,28`: unknown/non-function (vec3 linear_to_srgb(vec3 c);)
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@24,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@51,27`: unknown/non-function (uniform vec3 sun_dir;)
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@99,36`: unknown/non-function (uniform float minimum_alpha; // PBR alphaMode: MASK, See: mAlphaCutoff, setAlpha)
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@574,11`: unknown/non-function (uniform sampler2D emissiveMap;)
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@24,15`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@60,80`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@543,25`: unknown/non-function (float getShadow(vec3 pos, vec3 norm))
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@683,8`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@727,10`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@741,48`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@794,34`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@829,51`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/alchemy/blitWithEffectsF.glsl@48,13`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@142,8`: unknown/non-function (vec3 PBRNeutralToneMapping( vec3 color ))
+- `indra/newview/app_settings/shaders/class3/environment/waterF.glsl@27,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolalpha.h@58,40`: unknown/non-function (public:)
+- `indra/newview/lldrawpoolalpha.h@111,11`: unknown/non-function (private:)
+- `indra/newview/lldrawpoolavatar.h@35,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolavatar.h@60,7`: unknown/non-function (public:)
+- `indra/newview/lldrawpoolavatar.h@73,8`: unknown/non-function (typedef enum)
+- `indra/newview/lldrawpoolavatar.h@97,14`: unknown/non-function (typedef enum)
+- `indra/newview/lldrawpoolavatar.h@129,25`: unknown/non-function (typedef enum)
+- `indra/newview/lldrawpoolbump.cpp@1139,3`: unknown/non-function (void LLRenderPass::pushBumpBatch(LLDrawInfo& params, bool texture, bool batch_te)
+- `indra/newview/lldrawpoolpbropaque.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolsimple.cpp@37,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/altoolalign.cpp@22,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10`: unknown/non-function (vec3 linear_to_srgb(vec3 col);)
+- `indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@45,15`: unknown/non-function (uniform vec4 waterPlane;)
+- `indra/newview/app_settings/shaders/class3/deferred/multiPointLightF.glsl@49,26`: unknown/non-function (uniform float sun_wash;)
+- `indra/newview/llfloatertools.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llmaniprotate.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llmanipscale.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llmaniptranslate.cpp@29,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelobject.cpp@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelvolume.cpp@25,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelvolume.cpp@86,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpresetsmanager.cpp@27,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llreflectionmap.h@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llreflectionmap.h@111,10`: unknown/non-function (public:)
+- `indra/newview/llreflectionmap.h@142,10`: unknown/non-function (public:)
+- `indra/newview/llreflectionmapmanager.h@26,15`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llreflectionmapmanager.h@112,9`: unknown/non-function (public:)
+- `indra/newview/llreflectionmapmanager.h@283,62`: unknown/non-function (private:)
+- `indra/newview/llreflectionmapmanager.h@357,16`: unknown/non-function (private:)
+- `indra/newview/llreflectionmapmanager.h@379,148`: unknown/non-function (private:)
+- `indra/newview/llreflectionmapmanager.h@530,8`: unknown/non-function (private:)
+- `indra/newview/llreflectionmapmanager.h@554,3`: unknown/non-function (private:)
+- `indra/newview/llsettingsvo.cpp@29,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llsettingsvo.cpp@39,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltoolgrab.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerregion.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerregion.cpp@2824,7`: unknown/non-function (void LLViewerRegion::decodeBoundingInfo(LLVOCacheEntry* entry))
+- `indra/newview/llviewerregion.cpp@4039,3`: unknown/non-function (U32 LLViewerRegion::getWhisperRange() const)
+- `indra/newview/llviewertexturelist.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewertexturelist.cpp@2007,3`: unknown/non-function (bool LLUIImageList::initFromFile())
+- `indra/newview/llvograss.cpp@42,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvotree.cpp@50,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llglslshader.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llglslshader.cpp@57,7`: unknown/non-function (GLuint LLGLSLShader::sCurBoundShader = 0;)
+- `indra/llrender/llglslshader.cpp@1170,6`: unknown/non-function (void LLGLSLShader::unbind(void))
+- `indra/llrender/llglslshader.cpp@1220,6`: unknown/non-function (S32 LLGLSLShader::bindTexture(S32 uniform, LLRenderTarget* texture, bool depth,)
+- `indra/llrender/llglslshader.h@37,12`: unknown/non-function (class LLShaderFeatures)
+- `indra/llrender/llglslshader.h@68,14`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@146,9`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@184,7`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@205,12`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@314,8`: unknown/non-function (public:)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@182,13`: unknown/non-function (vec3 mikktspace(vec3 vNt, vec3 vT, float sign))
+- `indra/newview/app_settings/shaders/class1/deferred/pbrterrainV.glsl@35,7`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/terrainF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/terrainF.glsl@42,13`: unknown/non-function (in vec4 vary_texcoord1;)
+- `indra/newview/app_settings/shaders/class1/deferred/terrainV.glsl@27,7`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/treeF.glsl@38,7`: unknown/non-function (uniform float minimum_alpha;)
+- `indra/newview/llenvironment.cpp@29,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llenvironment.cpp@855,10`: unknown/non-function (std::string env_selection_to_string(LLEnvironment::EnvSelection_t sel))
+- `indra/newview/llenvironment.cpp@3707,3`: unknown/non-function (namespace)
+- `indra/newview/llenvironment.h@116,15`: unknown/non-function (public:)
+- `indra/newview/llenvironment.h@151,7`: unknown/non-function (public:)
+- `indra/newview/llenvironment.h@406,11`: unknown/non-function (private:)
+- `indra/newview/llenvironment.h@537,3`: unknown/non-function (private:)
+- `indra/newview/llfloatereditenvironmentbase.cpp@47,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterfixedenvironment.cpp@55,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterfixedenvironment.h@39,8`: unknown/non-function (class LLButton;)
+- `indra/newview/llfloaterfixedenvironment.h@75,20`: unknown/non-function (protected:)
+- `indra/newview/llsettingsvo.h@32,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llsettingsvo.h@89,34`: unknown/non-function (private:)
+- `indra/newview/llsettingsvo.h@152,8`: unknown/non-function (public:)
+- `indra/newview/llsettingsvo.h@187,8`: unknown/non-function (public:)
+- `indra/newview/llviewercamera.h@53,22`: unknown/non-function (public:)
+- `indra/newview/skins/default/xui/en/floater_fixedenvironment.xml@17,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fixedenvironment.xml@59,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fixedenvironment.xml@69,36`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_save_settings.xml@15,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llplugin/llpluginprocessparent.cpp@44,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llplugin/llpluginprocessparent.h@30,15`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llplugin/llpluginprocessparent.h@115,9`: unknown/non-function (public:)
+- `indra/llplugin/llpluginprocessparent.h@218,9`: unknown/non-function (private:)
+- `indra/llplugin/llpluginprocessparent.h@237,8`: unknown/non-function (private:)
+- `indra/llui/llui.h@77,15`: unknown/non-function (enum EDragAndDropType)
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@40,14`: unknown/non-function (typedef SSIZE_T ssize_t;)
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@70,15`: unknown/non-function (private:)
+- `indra/media_plugins/libvlc/media_plugin_libvlc.cpp@86,11`: unknown/non-function (private:)
+- `indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl@34,24`: unknown/non-function (uniform samplerCubeArray   irradianceProbes;)
+- `indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl@953,10`: unknown/non-function (void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 no)
+- `indra/newview/llpanelface.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelface.cpp@95,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelface.h@32,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelface.h@170,9`: unknown/non-function (protected:)
+- `indra/newview/llpanelface.h@283,17`: unknown/non-function (protected:)
+- `indra/newview/llpanelface.h@741,3`: unknown/non-function (public:)
+- `indra/newview/llpanelvolume.h@30,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelvolume.h@87,9`: unknown/non-function (public:)
+- `indra/newview/llpanelvolume.h@109,9`: unknown/non-function (public:)
+- `indra/newview/llpanelvolume.h@157,10`: unknown/non-function (protected:)
+- `indra/newview/lltexturectrl.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltexturectrl.cpp@59,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltexturectrl.cpp@79,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltexturectrl.cpp@150,11`: unknown/non-function (bool get_can_copy_texture(LLUUID asset_id))
+- `indra/newview/lltexturectrl.cpp@2988,3`: unknown/non-function (namespace LLInitParam)
+- `indra/newview/lltexturectrl.h@36,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltexturectrl.h@49,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltexturectrl.h@90,17`: unknown/non-function (enum LLPickerSource)
+- `indra/newview/lltexturectrl.h@198,14`: unknown/non-function (public:)
+- `indra/newview/lltexturectrl.h@306,13`: unknown/non-function (private:)
+- `indra/newview/lltexturectrl.h@416,19`: unknown/non-function (public:)
+- `indra/newview/lltexturectrl.h@479,9`: unknown/non-function (protected:)
+- `indra/newview/lltexturectrl.h@509,20`: unknown/non-function (private:)
+- `indra/newview/lltooldraganddrop.cpp@26,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltooldraganddrop.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltooldraganddrop.cpp@78,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltooldraganddrop.cpp@143,6`: unknown/non-function (bool LLDropCopyableItems::operator()()
+- `indra/newview/lltooldraganddrop.h@65,7`: unknown/non-function (public:)
+- `indra/newview/lltooldraganddrop.h@173,11`: unknown/non-function (protected:)
+- `indra/newview/llviewermedia.cpp@27,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermedia.h@36,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewermedia.h@350,7`: unknown/non-function (public:)
+- `indra/newview/llviewermedia.h@498,11`: unknown/non-function (private:)
+- `indra/newview/llviewermedia.h@524,24`: unknown/non-function (private:)
+- `indra/newview/llviewermedia.h@560,7`: unknown/non-function (private:)
+- `indra/newview/llviewermedia.h@595,7`: unknown/non-function (private:)
+- `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@30,7`: unknown/non-function (PICK: MATERIAL)
+- `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@77,10`: unknown/non-function (PICK: TEXTURE)
+- `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@88,13`: unknown/non-function (PICK: TEXTURE)
+- `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@273,50`: unknown/non-function (PICK: TEXTURE)
+- `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@34,9`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@58,7`: unknown/non-function (uniform vec3  halation_tint;)
+- `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@66,18`: unknown/non-function (vec3 applyExposure(vec3 color);)
+- `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@95,8`: unknown/non-function (vec3 applyChannelCurves(vec3 diff);)
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@24,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@79,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@27,14`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@68,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@32,12`: unknown/non-function (uniform mat4 texture_matrix0;)
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@143,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@25,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl@27,12`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@54,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@24,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@143,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl@27,12`: unknown/non-function (uniform mat4 modelview_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl@26,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@26,15`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@43,7`: unknown/non-function (vec3 atmosAmbient();)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@28,7`: unknown/non-function (uniform mat4 texture_matrix0;)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@38,9`: unknown/non-function (uniform vec4 origin;)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl@26,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/gbufferUtil.glsl@32,7`: unknown/non-function (uniform sampler2D emissiveRect;)
+- `indra/newview/app_settings/shaders/class1/deferred/luminanceF.glsl@37,19`: unknown/non-function (uniform sampler2D emissiveRect;)
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@42,9`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl@32,15`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@35,6`: unknown/non-function (mat4 getObjectSkinnedTransform();)
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@44,9`: unknown/non-function (out vec3 vary_position;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskF.glsl@28,13`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedF.glsl@30,15`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@36,6`: unknown/non-function (mat4 getObjectSkinnedTransform();)
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@53,9`: unknown/non-function (uniform vec4[2] texture_emissive_transform;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@35,22`: unknown/non-function (uniform mat4 projection_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@30,22`: unknown/non-function (uniform mat4 projection_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@29,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@49,9`: unknown/non-function (uniform vec4 gltf_mr_transform[2*GLTF_INDEXED_CHANNELS];)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@46,9`: unknown/non-function (uniform vec4[2] texture_metallic_roughness_transform;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@147,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl@33,9`: unknown/non-function (uniform float minimum_alpha;)
+- `indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl@27,16`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class2/deferred/reflectionProbeF.glsl@27,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@31,7`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@51,8`: unknown/non-function (uniform vec3 sun_dir;)
+- `indra/newview/llgltfmaterialpreviewmgr.cpp@33,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_status_bar.xml@65,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_status_bar.xml@86,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_status_bar.xml@181,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llappearance/llavatarappearance.h@169,7`: unknown/non-function (protected:)
+- `indra/llcharacter/lljoint.cpp@1026,3`: unknown/non-function (void LLJoint::clampRotation(LLQuaternion old_rot, LLQuaternion new_rot))
+- `indra/llcharacter/lljoint.h@303,3`: unknown/non-function (public:)
+- `indra/llcharacter/llmotion.cpp@51,14`: unknown/non-function (LLMotion::LLMotion( const LLUUID &id ) :)
+- `indra/llcharacter/llmotion.cpp@386,3`: unknown/non-function (bool LLMotion::canDeprecate())
+- `indra/llcharacter/llmotion.h@59,12`: unknown/non-function (public:)
+- `indra/llcharacter/llmotion.h@303,22`: unknown/non-function (protected:)
+- `indra/llcharacter/llmotion.h@396,3`: unknown/non-function (public:)
+- `indra/llcharacter/llmotioncontroller.cpp@45,7`: unknown/non-function (const U32 MAX_MOTION_INSTANCES = 32;)
+- `indra/llcommon/llmemory.h@422,23`: unknown/non-function (public:)
+- `indra/llcommon/llstring.h@672,28`: unknown/non-function (using EmojiClusterList = std::vector<std::pair<size_t, size_t>>;)
+- `indra/llcorehttp/httpcommon.cpp@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llcorehttp/httpcommon.h@496,9`: unknown/non-function (namespace LLHttp)
+- `indra/llmath/llcamera.h@45,9`: unknown/non-function (constexpr F32 MAX_FAR_CLIP      = 512.0f;)
+- `indra/llrender/CMakeLists.txt@31,7`: unknown/non-function (set(llrender_SOURCE_FILES)
+- `indra/llrender/llimagegl.cpp@2043,7`: unknown/non-function (bool LLImageGL::createGLTexture(S32 discard_level, const U8* data_in, bool data_)
+- `indra/llrender/llimagegl.cpp@2098,7`: unknown/non-function (void LLImageGL::syncToMainThread(LLGLuint new_tex_name))
+- `indra/llrender/llimagegl.cpp@3094,8`: unknown/non-function (void LLImageGL::checkActiveThread())
+- `indra/llrender/llimagegl.cpp@3137,3`: unknown/non-function (void LLImageGLThread::run())
+- `indra/llrender/llimagegl.h@40,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llimagegl.h@56,9`: unknown/non-function (namespace LLImageGLMemory)
+- `indra/llrender/llimagegl.h@73,14`: unknown/non-function (public:)
+- `indra/llrender/llimagegl.h@135,8`: unknown/non-function (public:)
+- `indra/llrender/llimagegl.h@189,7`: unknown/non-function (public:)
+- `indra/llrender/llimagegl.h@234,9`: unknown/non-function (public:)
+- `indra/llrender/llimagegl.h@309,8`: unknown/non-function (private:)
+- `indra/llrender/llvertexbuffer.cpp@29,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llvertexbuffer.cpp@706,7`: unknown/non-function (U32 LLVertexBuffer::sGLRenderBuffer = 0;)
+- `indra/llrender/llvertexbuffer.h@120,11`: unknown/non-function (public:)
+- `indra/llrender/llvertexbuffer.h@335,7`: unknown/non-function (public:)
+- `indra/llui/llbutton.cpp@91,9`: unknown/non-function (LLButton::Params::Params())
+- `indra/llui/llbutton.cpp@154,11`: unknown/non-function (LLButton::LLButton(const LLButton::Params& p))
+- `indra/llui/llbutton.cpp@185,8`: unknown/non-function (LLButton::LLButton(const LLButton::Params& p))
+- `indra/llui/llbutton.h@97,9`: unknown/non-function (public:)
+- `indra/llui/llbutton.h@365,9`: unknown/non-function (protected:)
+- `indra/llui/llbutton.h@406,8`: unknown/non-function (protected:)
+- `indra/llui/llcombobox.cpp@73,14`: unknown/non-function (LLComboBox::Params::Params())
+- `indra/llui/llcombobox.cpp@94,14`: unknown/non-function (LLComboBox::LLComboBox(const LLComboBox::Params& p))
+- `indra/llui/llcombobox.h@72,8`: unknown/non-function (public:)
+- `indra/llui/llcombobox.h@89,13`: unknown/non-function (public:)
+- `indra/llui/llcombobox.h@261,7`: unknown/non-function (private:)
+- `indra/llui/llcombobox.h@271,7`: unknown/non-function (private:)
+- `indra/llui/llcontainerview.h@83,7`: unknown/non-function (public:)
+- `indra/llui/llfolderview.cpp@43,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llfolderview.cpp@164,7`: unknown/non-function (LLFolderView::Params::Params())
+- `indra/llui/llfolderview.h@272,7`: unknown/non-function (private:)
+- `indra/llui/llfolderviewitem.cpp@2734,3`: unknown/non-function (LLFolderViewItem* LLFolderViewFolder::getPreviousFromChild( LLFolderViewItem* it)
+- `indra/llui/llfolderviewitem.h@372,7`: unknown/non-function (protected:)
+- `indra/llui/lllineeditor.cpp@132,7`: unknown/non-function (LLLineEditor::LLLineEditor(const LLLineEditor::Params& p))
+- `indra/llui/lllineeditor.h@382,14`: unknown/non-function (protected:)
+- `indra/llui/lllineeditor.h@437,8`: unknown/non-function (protected:)
+- `indra/llui/llmenugl.h@897,7`: unknown/non-function (private:)
+- `indra/llui/llnotifications.cpp@64,7`: unknown/non-function (LLNotificationForm::FormElementBase::FormElementBase())
+- `indra/llui/llnotifications.h@175,7`: unknown/non-function (public:)
+- `indra/llui/llnotifications.h@989,8`: unknown/non-function (public:)
+- `indra/llui/llscrollbar.h@126,10`: unknown/non-function (public:)
+- `indra/llui/llscrollcontainer.h@105,7`: unknown/non-function (public:)
+- `indra/llui/llscrollcontainer.h@133,8`: unknown/non-function (protected:)
+- `indra/llui/llscrollcontainer.h@158,7`: unknown/non-function (private:)
+- `indra/llui/llscrolllistcell.cpp@105,7`: unknown/non-function (const LLSD LLScrollListCell::getAltValue() const)
+- `indra/llui/llscrolllistcell.cpp@795,3`: unknown/non-function (bool LLScrollListLineEditor::handleUnicodeCharHere(llwchar uni_char ))
+- `indra/llui/llscrolllistcell.h@67,8`: unknown/non-function (public:)
+- `indra/llui/llscrolllistcell.h@92,7`: unknown/non-function (public:)
+- `indra/llui/lltabcontainer.cpp@1215,7`: unknown/non-function (void LLTabContainer::addPlaceholder(LLPanel* child, const std::string& label))
+- `indra/llui/lltabcontainer.h@179,7`: unknown/non-function (public:)
+- `indra/llui/lltextbase.cpp@252,7`: unknown/non-function (LLTextBase::LLTextBase(const LLTextBase::Params &p))
+- `indra/llui/lltextbase.h@726,7`: unknown/non-function (protected:)
+- `indra/llui/lltextbase.h@829,12`: unknown/non-function (protected:)
+- `indra/llui/lluicolortable.h@27,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/lluicolortable.h@83,11`: unknown/non-function (public:)
+- `indra/llui/lluicolortable.h@120,16`: unknown/non-function (private:)
+- `indra/llui/llview.cpp@49,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llview.cpp@60,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llview.cpp@74,7`: unknown/non-function (bool    LLView::sDebugRectsShowNames = true;)
+- `indra/llui/llview.cpp@84,7`: unknown/non-function (S32     LLView::sLastLeftXML = S32_MIN;)
+- `indra/llui/llview.h@600,8`: unknown/non-function (private:)
+- `indra/llui/llview.h@679,15`: unknown/non-function (public:)
+- `indra/llui/llview.h@707,9`: unknown/non-function (public:)
+- `indra/llui/llviewereventrecorder.h@55,7`: unknown/non-function (public:)
+- `indra/llui/llviewquery.h@126,7`: unknown/non-function (public:)
+- `indra/llwindow/llwindowwin32.h@38,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llwindow/llwindowwin32.h@79,7`: unknown/non-function (public:)
+- `indra/llwindow/llwindowwin32.h@285,22`: unknown/non-function (protected:)
+- `indra/llxml/llcontrol.h@36,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llxml/llcontrol.h@75,7`: unknown/non-function (class LLControlVariable : public LLRefCount)
+- `indra/llxml/llcontrol.h@94,7`: unknown/non-function (private:)
+- `indra/newview/alfloaterexploresounds.h@9,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/alfloaterexploresounds.h@36,13`: unknown/non-function (private:)
+- `indra/newview/app_settings/settings_per_account.xml@1,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/avatar/objectSkinV.glsl@26,12`: unknown/non-function (in vec4 weight4;)
+- `indra/newview/app_settings/shaders/class1/deferred/impostorV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialF.glsl@30,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialF.glsl@53,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaF.glsl@25,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/treeV.glsl@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/environment/waterV.glsl@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/debugV.glsl@24,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/highlightNormV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/highlightSpecV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/highlightV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/normaldebugV.glsl@23,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/pathfindingNoNormalV.glsl@24,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/pathfindingV.glsl@24,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/interface/solidcolorV.glsl@24,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/objects/bumpV.glsl@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/objects/impostorV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/objects/previewPhysicsV.glsl@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/objects/simpleNoAtmosV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class2/deferred/sunLightSSAOF.glsl@30,7`: unknown/non-function (out vec4 frag_color;)
+- `indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflPostF.glsl@41,7`: unknown/non-function (uniform sampler2D diffuseRect;)
+- `indra/newview/app_settings/shaders/class3/deferred/waterHazeF.glsl@36,8`: unknown/non-function (vec4 getWaterFogView(vec3 pos);)
+- `indra/newview/app_settings/shaders/class3/environment/underWaterF.glsl@23,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/featuretable.txt@65,6`: unknown/non-function (RenderDeferred				1	1)
+- `indra/newview/featuretable.txt@112,6`: unknown/non-function (RenderTreeLODFactor			1	0)
+- `indra/newview/featuretable.txt@153,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable.txt@192,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable.txt@232,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable.txt@272,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable.txt@312,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable.txt@352,6`: unknown/non-function (RenderVolumeLODFactor		1	2.0)
+- `indra/newview/featuretable.txt@411,6`: unknown/non-function (RenderReflectionProbeCount  0   0)
+- `indra/newview/featuretable.txt@420,6`: unknown/non-function (list AMD)
+- `indra/newview/featuretable_linux.txt@65,6`: unknown/non-function (RenderDeferred				1	1)
+- `indra/newview/featuretable_linux.txt@112,6`: unknown/non-function (RenderTreeLODFactor			1	0)
+- `indra/newview/featuretable_linux.txt@153,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_linux.txt@192,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_linux.txt@232,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_linux.txt@272,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_linux.txt@312,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_linux.txt@352,6`: unknown/non-function (RenderVolumeLODFactor		1	2.0)
+- `indra/newview/featuretable_linux.txt@411,6`: unknown/non-function (RenderReflectionProbeCount  0   0)
+- `indra/newview/featuretable_linux.txt@423,6`: unknown/non-function (list NVIDIA)
+- `indra/newview/featuretable_mac.txt@62,6`: unknown/non-function (RenderDeferred				1	1)
+- `indra/newview/featuretable_mac.txt@110,6`: unknown/non-function (RenderTreeLODFactor			1	0)
+- `indra/newview/featuretable_mac.txt@151,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_mac.txt@192,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_mac.txt@232,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_mac.txt@272,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_mac.txt@312,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
+- `indra/newview/featuretable_mac.txt@352,6`: unknown/non-function (RenderVolumeLODFactor		1	2.0)
+- `indra/newview/fsposeranimator.cpp@32,19`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsposeranimator.h@32,25`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsposeranimator.h@722,15`: unknown/non-function (public:)
+- `indra/newview/llaisapi.cpp@1825,3`: unknown/non-function (void AISUpdate::doUpdate())
+- `indra/newview/llaisapi.h@109,7`: unknown/non-function (private:)
+- `indra/newview/llaisapi.h@162,7`: unknown/non-function (private:)
+- `indra/newview/lldrawable.h@182,8`: unknown/non-function (public:)
+- `indra/newview/lldrawable.h@284,14`: unknown/non-function (public:)
+- `indra/newview/llfetchedgltfmaterial.cpp@61,8`: unknown/non-function (LLFetchedGLTFMaterial& LLFetchedGLTFMaterial::operator=(const LLFetchedGLTFMater)
+- `indra/newview/llfetchedgltfmaterial.h@52,12`: unknown/non-function (public:)
+- `indra/newview/llfetchedgltfmaterial.h@90,3`: unknown/non-function (protected:)
+- `indra/newview/llfilepicker.cpp@67,7`: unknown/non-function (LLFilePicker LLFilePicker::sInstance;)
+- `indra/newview/llfilepicker.h@80,8`: unknown/non-function (public:)
+- `indra/newview/llfloater360capture.cpp@25,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatercamerapresets.cpp@22,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatercamerapresets.h@22,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatercamerapresets.h@67,13`: unknown/non-function (public:)
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@38,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.h@38,7`: unknown/non-function (public:)
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.h@52,8`: unknown/non-function (public:)
+- `indra/newview/llfloaterpreferencesgraphicsadvanced.h@69,12`: unknown/non-function (protected:)
+- `indra/newview/llfloatersnapshot.cpp@24,30`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatersnapshot.h@24,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatersnapshot.h@40,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatersnapshot.h@158,7`: unknown/non-function (public:)
+- `indra/newview/llfloatersnapshot.h@166,11`: unknown/non-function (public:)
+- `indra/newview/llfloatersnapshot.h@183,10`: unknown/non-function (public:)
+- `indra/newview/llhudeffectlookat.cpp@24,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llhudeffecttrail.cpp@39,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llhudicon.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llhudnametag.cpp@26,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llhudtext.cpp@27,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llimview.h@141,16`: unknown/non-function (public:)
+- `indra/newview/llinventorybridge.cpp@59,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llinventorybridge.cpp@96,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llinventorybridge.h@41,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llinventoryfunctions.cpp@4153,3`: unknown/non-function (void LLInventoryAction::updateMarketplaceFolders())
+- `indra/newview/llinventorymodel.cpp@448,7`: unknown/non-function (LLInventoryModel::LLInventoryModel())
+- `indra/newview/llinventorymodel.cpp@5246,3`: unknown/non-function (void LLInventoryModel::FetchItemHttpHandler::processFailure(const char * const r)
+- `indra/newview/llinventorymodel.h@611,7`: unknown/non-function (private:)
+- `indra/newview/llinventorymodel.h@751,3`: unknown/non-function (public:)
+- `indra/newview/llmeshrepository.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpaneleditwater.cpp@33,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanellogin.cpp@77,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanellogin.h@61,10`: unknown/non-function (public:)
+- `indra/newview/llpanelmaininventory.h@35,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpanelmaininventory.h@65,7`: unknown/non-function (class LLPanelMainInventory : public LLPanel, LLInventoryObserver)
+- `indra/newview/llpanelmaininventory.h@80,9`: unknown/non-function (public:)
+- `indra/newview/llpanelmaininventory.h@196,7`: unknown/non-function (private:)
+- `indra/newview/llpanelmaininventory.h@239,8`: unknown/non-function (private:)
+- `indra/newview/llpanelsnapshotlocal.cpp@24,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llphysicsmotion.cpp@105,7`: unknown/non-function (public:)
+- `indra/newview/llphysicsmotion.cpp@191,7`: unknown/non-function (private:)
+- `indra/newview/llpresetsmanager.h@24,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llpresetsmanager.h@86,11`: unknown/non-function (public:)
+- `indra/newview/llpreviewanim.h@50,9`: unknown/non-function (public:)
+- `indra/newview/llselectmgr.h@245,10`: unknown/non-function (public:)
+- `indra/newview/llsnapshotlivepreview.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llsurface.cpp@1142,7`: unknown/non-function (void LLSurface::dirtySurfacePatch(LLSurfacePatch *patchp))
+- `indra/newview/llsurface.cpp@1173,3`: unknown/non-function (F32 LLSurface::getWaterHeight() const)
+- `indra/newview/llsurface.h@118,7`: unknown/non-function (public:)
+- `indra/newview/lltexturecache.cpp@37,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltexturecache.cpp@392,7`: unknown/non-function (private:)
+- `indra/newview/lltexturefetch.cpp@33,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lltextureview.cpp@1177,3`: unknown/non-function (bool LLTextureView::handleKey(KEY key, MASK mask, bool called_from_parent))
+- `indra/newview/lltoolgrab.h@41,7`: unknown/non-function (class LLPickInfo;)
+- `indra/newview/lltoolgrab.h@86,10`: unknown/non-function (public:)
+- `indra/newview/llviewercontrol.h@43,8`: unknown/non-function (bool toggle_show_favorites_panel(const LLSD& newvalue);)
+- `indra/newview/llviewerjoint.cpp@30,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerregion.h@148,9`: unknown/non-function (public:)
+- `indra/newview/llviewerregion.h@373,9`: unknown/non-function (public:)
+- `indra/newview/llviewerregion.h@587,11`: unknown/non-function (public:)
+- `indra/newview/llviewertextureanim.h@40,7`: unknown/non-function (private:)
+- `indra/newview/llviewertextureanim.h@60,7`: unknown/non-function (public:)
+- `indra/newview/llviewertexturelist.h@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewertexturelist.h@132,9`: unknown/non-function (public:)
+- `indra/newview/llviewertexturelist.h@236,7`: unknown/non-function (private:)
+- `indra/newview/llviewerwindow.h@151,12`: unknown/non-function (struct MainPanel : public LLPanel)
+- `indra/newview/llviewerwindow.h@193,21`: unknown/non-function (public:)
+- `indra/newview/llviewerwindow.h@516,7`: unknown/non-function (private:)
+- `indra/newview/llviewerwindow.h@601,10`: unknown/non-function (private:)
+- `indra/newview/llvopartgroup.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvovolume.h@55,9`: unknown/non-function (enum LLVolumeInterfaceType)
+- `indra/newview/llvovolume.h@147,7`: unknown/non-function (public:)
+- `indra/newview/llvovolume.h@397,11`: unknown/non-function (public:)
+- `indra/newview/llvovolume.h@500,19`: unknown/non-function (private:)
+- `indra/newview/llworld.h@35,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llworld.h@154,7`: unknown/non-function (public:)
+- `indra/newview/llworld.h@211,7`: unknown/non-function (public:)
+- `indra/newview/llworld.h@237,9`: unknown/non-function (private:)
+- `indra/newview/skins/default/xui/de/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/de/strings.xml@31,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_about.xml@39,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_about.xml@79,30`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_about.xml@110,83`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_about.xml@195,8`: unknown/non-function (Dummy Name replaced at run time)
+- `indra/newview/skins/default/xui/en/floater_about.xml@206,7`: unknown/non-function (Dummy Name replaced at run time)
+- `indra/newview/skins/default/xui/en/floater_about.xml@214,14`: unknown/non-function (with open source contributions from:)
+- `indra/newview/skins/default/xui/en/floater_preferences_view_advanced.xml@315,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preferences_view_advanced.xml@328,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@1,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@66,36`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@106,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_preview_animation.xml@144,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml@84,30`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml@225,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml@32,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml@39,25`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml@13,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@60,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@101,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@151,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_preferences_interface.xml@292,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_presets_camera_pulldown.xml@378,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_presets_camera_pulldown.xml@392,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_prim_media_controls.xml@373,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_settings_water.xml@144,31`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/panel_snapshot_local.xml@197,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/es/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/es/strings.xml@22,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/fr/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/fr/strings.xml@31,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/it/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/it/strings.xml@28,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/ja/floater_adjust_environment.xml@9,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/ja/floater_adjust_environment.xml@99,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/ja/strings.xml@37,9`: unknown/non-function (that are returned from one component and may appear in many places)
+- `indra/newview/skins/default/xui/pl/floater_adjust_environment.xml@1,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/pl/floater_adjust_environment.xml@85,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/pt/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/pt/strings.xml@22,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/ru/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/ru/strings.xml@31,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/tr/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/tr/strings.xml@31,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/zh/strings.xml@31,9`: unknown/non-function (declaration, XML, build list or global scope)
+
+Other classified paths with unknown tags remain in inventory.json, including excluded artifacts and generated docs.

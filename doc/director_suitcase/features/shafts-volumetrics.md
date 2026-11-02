@@ -1,0 +1,355 @@
+# shafts-volumetrics: dependency evidence
+
+Landing layer 7. Projector shafts, local fog and froxel coverage; move camera/light; resize/login/off path restores GL state.
+
+Candidate associations require review. Includes/calls are discovery edges, not a complete call graph or proof of build closure.
+
+## owned
+
+- `indra/newview/alactormaskdiagnostics.cpp`
+- `indra/newview/alcinehaze.cpp`
+- `indra/newview/alcinehaze.h`
+- `indra/newview/alcinelightrig.cpp`
+- `indra/newview/alcinelightrig.h`
+- `indra/newview/aldirectortabmigration.cpp`
+- `indra/newview/alkitpage.cpp`
+- `indra/newview/alkitpresets.cpp`
+- `indra/newview/alkitqol.h`
+- `indra/newview/allocalfogmanager.cpp`
+- `indra/newview/allocalfogmanager.h`
+- `indra/newview/alpanelatmosphericvolumes.cpp`
+- `indra/newview/alpanelatmosphericvolumes.h`
+- `indra/newview/alpanelcinelightrig.cpp`
+- `indra/newview/alpanelpracticals.cpp`
+- `indra/newview/alpanelpracticals.h`
+- `indra/newview/alpanelprojectorshafts.cpp`
+- `indra/newview/alpanelprojectorshafts.h`
+- `indra/newview/alprojectorshaftlooks.cpp`
+- `indra/newview/alprojectorshaftlooks.h`
+- `indra/newview/alprojectorshaftpresets.cpp`
+- `indra/newview/alprojectorshaftpresets.h`
+- `indra/newview/alrotoink.cpp`
+- `indra/newview/alvcamautovol.h`
+- `indra/newview/app_settings/cine_light_rig_presets.xml`
+- `indra/newview/app_settings/shaders/class1/alchemy/cineFlareEnergyF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelApplyF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelDebugF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelInjectF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelIntegrateF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelMediaF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricBloomFeedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicBloomFeedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/volumetricLightF.glsl`
+- `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricClassicF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/volumetricLightF.glsl`
+- `indra/newview/llfloaterdirector.cpp`
+- `indra/newview/llprismlens.cpp`
+- `indra/newview/llprismlens.h`
+- `indra/newview/llprismpreview.cpp`
+- `indra/newview/llprismpreview.h`
+- `indra/newview/skins/default/xui/en/floater_director.xml`
+- `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml`
+- `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_looks.xml`
+- `indra/newview/skins/default/xui/en/panel_practicals_src.xml`
+- `indra/newview/skins/default/xui/en/panel_projector_shafts.xml`
+- `indra/newview/skins/default/xui/en/panel_weather_settings.xml`
+- `indra/newview/slweather.cpp`
+- `indra/newview/slweather.h`
+
+## hooks
+
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1283,159", "indra/newview/CMakeLists.txt@2836,31", "indra/newview/CMakeLists.txt@2941,178"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6548,14140"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@5793,119", "indra/newview/llappviewer.cpp@6457,45"]}
+- {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1133,66", "indra/newview/llviewercontrol.cpp@1279,33"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
+- {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
+- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3307,135", "indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
+- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@29,20", "indra/newview/llviewerdisplay.cpp@2067,28"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@120,11", "indra/newview/pipeline.cpp@327,106", "indra/newview/pipeline.cpp@712,16", "indra/newview/pipeline.cpp@951,88", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31781,695", "indra/newview/pipeline.cpp@32919,301"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@146,12", "indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@708,90", "indra/newview/pipeline.h@801,68", "indra/newview/pipeline.h@1491,409", "indra/newview/pipeline.h@2457,14", "indra/newview/pipeline.h@2615,194"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@281,81"]}
+- {"path": "indra/newview/viewer_manifest.py", "hunks": ["indra/newview/viewer_manifest.py@108,12"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1201,225"]}
+- {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@25,12", "indra/newview/lldrawpoolalpha.cpp@120,17"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@280,46", "indra/newview/llviewershadermgr.cpp@338,32", "indra/newview/llviewershadermgr.cpp@724,80", "indra/newview/llviewershadermgr.cpp@1474,26", "indra/newview/llviewershadermgr.cpp@1756,259", "indra/newview/llviewershadermgr.cpp@2093,45", "indra/newview/llviewershadermgr.cpp@2148,40", "indra/newview/llviewershadermgr.cpp@4590,620", "indra/newview/llviewershadermgr.cpp@5480,299"]}
+- {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@351,57", "indra/newview/llviewershadermgr.h@434,34"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@358,10", "indra/llrender/llshadermgr.cpp@385,9", "indra/llrender/llshadermgr.cpp@429,15", "indra/llrender/llshadermgr.cpp@2001,362"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@437,89", "indra/llrender/llshadermgr.h@589,395"]}
+- {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@742,175"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@70,296", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@588,23"]}
+- {"path": "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@130,9", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@140,7"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@45,15", "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@88,12", "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@104,30"]}
+- {"path": "indra/newview/llsettingsvo.cpp", "hunks": ["indra/newview/llsettingsvo.cpp@915,59"]}
+
+## settings
+
+- `BDMergeFroxelAmbient`
+- `BDMergeFroxelDebug`
+- `BDMergeFroxelDensity`
+- `BDMergeFroxelFar`
+- `BDMergeFroxelFogBase`
+- `BDMergeFroxelFogBaseMode`
+- `BDMergeFroxelFogFalloff`
+- `BDMergeFroxelFogGroundDensity`
+- `BDMergeFroxelFogStrength`
+- `BDMergeFroxelGridX`
+- `BDMergeFroxelGridY`
+- `BDMergeFroxelGridZ`
+- `BDMergeFroxelLights`
+- `BDMergeFroxelMaxLights`
+- `BDMergeFroxelNoiseScale`
+- `BDMergeFroxelNoiseSpeed`
+- `BDMergeFroxelNoiseStrength`
+- `BDMergeFroxelTemporal`
+- `BDMergeFroxelTemporalBlend`
+- `BDMergeFroxelTemporalReject`
+- `BDMergeFroxelVolumetrics`
+- `BDMergeFroxelWindAzimuth`
+- `BDMergeFroxelWindElevation`
+- `BDMergeFroxelWindInverted`
+- `BDMergeLocalFogVolumes`
+- `BDMergeProjectorVolumetrics`
+- `BDMergeProjectorVolumetricsAdaptive`
+- `BDMergeProjectorVolumetricsAirborneTap`
+- `BDMergeProjectorVolumetricsAnisotropy`
+- `BDMergeProjectorVolumetricsBeamShadows`
+- `BDMergeProjectorVolumetricsBigConeCap`
+- `BDMergeProjectorVolumetricsBloomFeed`
+- `BDMergeProjectorVolumetricsBloomFeedAnamorphic`
+- `BDMergeProjectorVolumetricsConservativeShadow`
+- `BDMergeProjectorVolumetricsCookieFootprint`
+- `BDMergeProjectorVolumetricsDefinition`
+- `BDMergeProjectorVolumetricsDensity`
+- `BDMergeProjectorVolumetricsDither`
+- `BDMergeProjectorVolumetricsDust`
+- `BDMergeProjectorVolumetricsDustDrift`
+- `BDMergeProjectorVolumetricsDustIntensity`
+- `BDMergeProjectorVolumetricsDustScale`
+- `BDMergeProjectorVolumetricsEngine`
+- `BDMergeProjectorVolumetricsEquiangular`
+- `BDMergeProjectorVolumetricsFeather`
+- `BDMergeProjectorVolumetricsFogBase`
+- `BDMergeProjectorVolumetricsFogFalloff`
+- `BDMergeProjectorVolumetricsFogGroundDensity`
+- `BDMergeProjectorVolumetricsFogStrength`
+- `BDMergeProjectorVolumetricsFrameBudget`
+- `BDMergeProjectorVolumetricsFrustumClip`
+- `BDMergeProjectorVolumetricsHalfRes`
+- `BDMergeProjectorVolumetricsMaxDistance`
+- `BDMergeProjectorVolumetricsMaxLuminance`
+- `BDMergeProjectorVolumetricsMaxSteps`
+- `BDMergeProjectorVolumetricsMinResolution`
+- `BDMergeProjectorVolumetricsMultiplier`
+- `BDMergeProjectorVolumetricsNoiseScale`
+- `BDMergeProjectorVolumetricsNoiseSpeed`
+- `BDMergeProjectorVolumetricsNoiseStrength`
+- `BDMergeProjectorVolumetricsPreset`
+- `BDMergeProjectorVolumetricsPyramidScissor`
+- `BDMergeProjectorVolumetricsResolution`
+- `BDMergeProjectorVolumetricsRimPower`
+- `BDMergeProjectorVolumetricsRimSoftness`
+- `BDMergeProjectorVolumetricsRimStrength`
+- `BDMergeProjectorVolumetricsRimThreshold`
+- `BDMergeProjectorVolumetricsRimWrap`
+- `BDMergeProjectorVolumetricsScissor`
+- `BDMergeProjectorVolumetricsShadowJitterTap`
+- `BDMergeProjectorVolumetricsShadowSamples`
+- `BDMergeProjectorVolumetricsShadowTint`
+- `BDMergeProjectorVolumetricsTemporal`
+- `BDMergeProjectorVolumetricsTemporalBeamDepth`
+- `BDMergeProjectorVolumetricsTemporalBlend`
+- `BDMergeProjectorVolumetricsTemporalDither`
+- `BDMergeProjectorVolumetricsTemporalReject`
+- `BDMergeProjectorVolumetricsTint`
+- `BDMergeProjectorVolumetricsTintStrength`
+- `BDMergeSnapshotAutoscale`
+- `LocalFogBank`
+- `RenderVolumetricLighting`
+- `RenderVolumetricLightingDirectional`
+- `RenderVolumetricLightingFalloffMultiplier`
+- `RenderVolumetricLightingMultiplier`
+- `RenderVolumetricLightingResolution`
+- `AlchemyEnvLocalLightEV`
+- `AlchemyEnvSunEV`
+- `CineHazeColor`
+- `CineHazeColorIntensity`
+- `CineHazeColorMode`
+- `CineHazeDebugView`
+- `CineHazeDensity`
+- `CineHazeEnable`
+- `CineHazeHeightEnable`
+- `CineHazeHeightFalloff`
+- `CineHazeMaxOpacity`
+- `CineHazeReferenceHeight`
+- `CineHazeStartDistance`
+- `CineHazeStrength`
+- `CineHazeSunLobeWidth`
+- `CineHazeSunStrength`
+- `CineHazeSunTint`
+- `RenderCineLensFlareThreshold`
+
+## shaders
+
+- `indra/newview/app_settings/shaders/class1/alchemy/cineFlareEnergyF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelApplyF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelDebugF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelInjectF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelIntegrateF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelMediaF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/froxelUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricBloomFeedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicBloomFeedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricTemporalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/volumetricLightF.glsl`
+- `indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl`
+- `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricClassicF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/volumetricLightF.glsl`
+
+## xui
+
+- `indra/newview/skins/default/xui/en/director_kit_index.xml`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml`
+- `indra/newview/skins/default/xui/en/floater_director.xml`
+- `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml`
+- `indra/newview/skins/default/xui/en/menu_object.xml`
+- `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml`
+- `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_looks.xml`
+- `indra/newview/skins/default/xui/en/panel_practicals_src.xml`
+- `indra/newview/skins/default/xui/en/panel_projector_shafts.xml`
+- `indra/newview/skins/default/xui/en/panel_weather_settings.xml`
+
+## generated runtime
+
+- `indra/newview/skins/default/xui/en/director_kit_index.xml`
+- `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml`
+
+## cmake entries
+
+- {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 337, "text": "alactormaskdiagnostics.cpp # [ActorMask] WP7", "source": "indra/newview/alactormaskdiagnostics.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 347, "text": "alcinehaze.cpp", "source": "indra/newview/alcinehaze.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1401, "text": "alcinehaze.h", "source": "indra/newview/alcinehaze.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 345, "text": "alcinelightrig.cpp", "source": "indra/newview/alcinelightrig.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1297, "text": "alcinelightrig.h", "source": "indra/newview/alcinelightrig.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 199, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2847, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 210, "text": "alkitpage.cpp", "source": "indra/newview/alkitpage.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 212, "text": "alkitpresets.cpp", "source": "indra/newview/alkitpresets.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1162, "text": "alkitqol.h", "source": "indra/newview/alkitqol.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 194, "text": "allocalfogmanager.cpp", "source": "indra/newview/allocalfogmanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1141, "text": "allocalfogmanager.h", "source": "indra/newview/allocalfogmanager.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 418, "text": "alpanelatmosphericvolumes.cpp", "source": "indra/newview/alpanelatmosphericvolumes.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1391, "text": "alpanelatmosphericvolumes.h", "source": "indra/newview/alpanelatmosphericvolumes.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 428, "text": "alpanelcinelightrig.cpp", "source": "indra/newview/alpanelcinelightrig.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 426, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1399, "text": "alpanelpracticals.h", "source": "indra/newview/alpanelpracticals.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 427, "text": "alpanelprojectorshafts.cpp", "source": "indra/newview/alpanelprojectorshafts.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1400, "text": "alpanelprojectorshafts.h", "source": "indra/newview/alpanelprojectorshafts.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 430, "text": "alprojectorshaftlooks.cpp", "source": "indra/newview/alprojectorshaftlooks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2848, "text": "alprojectorshaftlooks.cpp", "source": "indra/newview/alprojectorshaftlooks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1416, "text": "alprojectorshaftlooks.h", "source": "indra/newview/alprojectorshaftlooks.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 431, "text": "alprojectorshaftpresets.cpp", "source": "indra/newview/alprojectorshaftpresets.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1417, "text": "alprojectorshaftpresets.h", "source": "indra/newview/alprojectorshaftpresets.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 357, "text": "alrotoink.cpp", "source": "indra/newview/alrotoink.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1317, "text": "alvcamautovol.h", "source": "indra/newview/alvcamautovol.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 277, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2296, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2297, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 317, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 480, "text": "lldrawpoolalpha.cpp", "source": "indra/newview/lldrawpoolalpha.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 896, "text": "llprismlens.cpp", "source": "indra/newview/llprismlens.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1881, "text": "llprismlens.h", "source": "indra/newview/llprismlens.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 899, "text": "llprismpreview.cpp", "source": "indra/newview/llprismpreview.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1886, "text": "llprismpreview.h", "source": "indra/newview/llprismpreview.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 911, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 928, "text": "llsettingsvo.cpp", "source": "indra/newview/llsettingsvo.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 949, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 987, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1019, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1021, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1031, "text": "llviewerjoint.cpp", "source": "indra/newview/llviewerjoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1055, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2049, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1080, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1104, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2097, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1108, "text": "rlveffects.cpp", "source": "indra/newview/rlveffects.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1111, "text": "rlvhandler.cpp", "source": "indra/newview/rlvhandler.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1114, "text": "rlvlocks.cpp", "source": "indra/newview/rlvlocks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 374, "text": "slweather.cpp", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2852, "text": "slweather.cpp", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2877, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2879, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2881, "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")", "source": "indra/newview/slweather.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1320, "text": "slweather.h", "source": "indra/newview/slweather.h"}
+
+## kit wiring pages
+
+- `atmosphere_tab`
+- `cine_light_rig_tab`
+- `practicals_tab`
+- `projector_shafts_tab`
+
+## checks
+
+- `scripts/code_tools/relight_volumetric_engine_check.py`
+- `scripts/code_tools/relight_volumetric_fix1_check.py`
+- `scripts/code_tools/relight_volumetric_fix6_check.py`
+- `scripts/code_tools/relight_volumetric_gl_check.py`
+- `scripts/code_tools/relight_volumetric_login_check.py`
+
+Full include/call edges: ../features.json. Shared hooks: ../hooks.md. Setting values and save coverage: ../settings.csv.
