@@ -529,6 +529,9 @@ public:
         F32         mPoseRateHz = 0.f;    // 0 = smooth/live every frame
         F32         mEffectFps = 0.f;     // 0 = smooth shader time, 1..30 = stepped
         F64         mNextPoseRefresh = 0.0;
+        LLVector3   mCadenceBounds[2];
+        LLQuaternion mCadenceRotation;
+        std::map<LLUUID, LLMatrix4> mCadenceAttachMats;
         LLVector3   mCadenceFootAgent;
         LLVector3   mCadenceHeadAgent;
         bool        mCadenceHeadValid = false;
@@ -615,6 +618,7 @@ public:
         // FROZEN capture: the source's foot in the CAPTURE-TIME agent frame --
         // the same frame the frozen palettes bake their vertices into, which is
         // what makes the pivot math region-crossing-proof (see file header)
+        LLVector3   mFrozenBounds[2]; // capture-frame extents, paired with palette/pivot
         LLVector3   mFrozenFootAgent;
         LLVector3   mFrozenHeadAgent;
         bool        mFrozenHeadValid = false;
@@ -635,6 +639,7 @@ public:
     bool swapSource(const LLUUID& id, const LLUUID& source, const std::string& label);
     bool setStartOffset(const LLUUID& id, F32 seconds);
     std::string offsetStatus(const Instance& inst) const;
+    const std::string& swapStatus() const { return mSwapStatus; }
     void applyCrowdVariation(const LLUUID& member, U32 seed, bool timing = true, bool looks = true, bool building = false);
     void syncOffsets(const std::vector<LLUUID>& ids);
     void setSolo(const std::vector<LLUUID>& ids);
@@ -991,7 +996,9 @@ private:
     mutable bool mIndicesDirty = true;
     void rebuildIndices() const;
     void releaseOverlayHelper(const LLUUID& id);
+    void releaseOverlayReference(const LLUUID& runtime);
     bool acquireOverlayHelper(const LLUUID& id);
+    LLUUID reserveOverlayHelper(const Instance& candidate);
     void invalidateOverlayPose(Instance& inst);
     std::map<LLUUID, size_t> mOverlayHelperRefs;
     std::set<LLUUID> mPrivateOverlayActors; // UUID tombstones keep detached/retiring controls private
@@ -1013,6 +1020,8 @@ private:
     struct OverlayHistory
     {
         F64 mNextCapture = 0.;
+        F64 mPausedAt = 0.;
+        bool mPaused = false;
         std::deque<std::pair<F64, std::shared_ptr<const Instance>>> mFrames;
     };
     std::map<LLUUID, OverlayHistory> mOverlayHistory;
@@ -1032,6 +1041,7 @@ private:
     std::vector<FreezeStrip> mFreezeStrips;
     U32 mNextStripId = 1;
     std::string mLastStripStatus;
+    std::string mSwapStatus;
     bool mHasMotion = false;
     // [GhostMotionModes] Formation-motion clock (seconds). Only runs forward.
     // It advances only on frames where updatePerFrame() runs, so it pauses

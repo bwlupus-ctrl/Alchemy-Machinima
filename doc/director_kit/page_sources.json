@@ -63735,7 +63735,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 760,
+              "line": 761,
               "class": "ALPanelGhostStudio",
               "function": "onShowAllToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -63827,7 +63827,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 761,
+              "line": 762,
               "class": "ALPanelGhostStudio",
               "function": "onToggleEditMode",
               "wired_class": "ALPanelGhostStudio",
@@ -63924,7 +63924,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 762,
+              "line": 763,
               "class": "ALPanelGhostStudio",
               "function": "onListSelect",
               "wired_class": "ALPanelGhostStudio",
@@ -63935,7 +63935,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 764,
+              "line": 765,
               "class": "ALPanelGhostStudio",
               "function": "onListMouseUp",
               "wired_class": "ALPanelGhostStudio",
@@ -64003,7 +64003,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 720,
+              "line": 721,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64071,7 +64071,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 470,
+              "line": 471,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64082,7 +64082,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 769,
+              "line": 770,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicate",
               "wired_class": "ALPanelGhostStudio",
@@ -64150,7 +64150,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 471,
+              "line": 472,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64161,7 +64161,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 770,
+              "line": 771,
               "class": "ALPanelGhostStudio",
               "function": "onClickDelete",
               "wired_class": "ALPanelGhostStudio",
@@ -64229,7 +64229,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 472,
+              "line": 473,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64240,7 +64240,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 771,
+              "line": 772,
               "class": "ALPanelGhostStudio",
               "function": "onClickRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -64319,7 +64319,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 444,
+              "line": 445,
               "class": "ALPanelGhostStudio",
               "function": "getSolo",
               "wired_class": "ALPanelGhostStudio",
@@ -64403,7 +64403,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 462,
+              "line": 463,
               "class": "ALPanelGhostStudio",
               "function": "<inline callback>",
               "wired_class": "ALPanelGhostStudio",
@@ -64414,7 +64414,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 2507,
+              "line": 2508,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -64485,7 +64485,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 468,
+              "line": 469,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64496,7 +64496,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 2507,
+              "line": 2508,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -64564,7 +64564,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 469,
+              "line": 470,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64575,7 +64575,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 767,
+              "line": 768,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -64643,7 +64643,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 605,
+              "line": 606,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64654,7 +64654,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 840,
+              "line": 841,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicateInPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -64722,7 +64722,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 606,
+              "line": 607,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64733,7 +64733,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 841,
+              "line": 842,
               "class": "ALPanelGhostStudio",
               "function": "onClickCopyTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -64801,7 +64801,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 607,
+              "line": 608,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64812,7 +64812,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 842,
+              "line": 843,
               "class": "ALPanelGhostStudio",
               "function": "onClickPasteTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -64893,7 +64893,7 @@
               "file": "indra/newview/alpanelghoststudio.cpp",
               "line": 427,
               "class": "ALPanelGhostStudio",
-              "function": "swapSource",
+              "function": "empty",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
@@ -64959,7 +64959,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 473,
+              "line": 474,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65027,7 +65027,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 598,
+              "line": 599,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65095,7 +65095,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 474,
+              "line": 475,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65106,7 +65106,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 768,
+              "line": 769,
               "class": "ALPanelGhostStudio",
               "function": "onNameCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65174,7 +65174,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 476,
+              "line": 477,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65185,7 +65185,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 773,
+              "line": 774,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65266,7 +65266,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 477,
+              "line": 478,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65277,7 +65277,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 774,
+              "line": 775,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65358,7 +65358,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 478,
+              "line": 479,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65369,7 +65369,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 775,
+              "line": 776,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65450,7 +65450,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 480,
+              "line": 481,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65461,7 +65461,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 780,
+              "line": 781,
               "class": "ALPanelGhostStudio",
               "function": "onYawCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65472,7 +65472,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 982,
+              "line": 983,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65553,7 +65553,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 479,
+              "line": 480,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65564,7 +65564,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 778,
+              "line": 779,
               "class": "ALPanelGhostStudio",
               "function": "onHeadingDialCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65686,7 +65686,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 481,
+              "line": 482,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65697,7 +65697,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 781,
+              "line": 782,
               "class": "ALPanelGhostStudio",
               "function": "asReal",
               "wired_class": "ALPanelGhostStudio",
@@ -65708,7 +65708,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 983,
+              "line": 984,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65802,7 +65802,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 482,
+              "line": 483,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65813,7 +65813,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 783,
+              "line": 784,
               "class": "ALPanelGhostStudio",
               "function": "asReal",
               "wired_class": "ALPanelGhostStudio",
@@ -65824,7 +65824,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 984,
+              "line": 985,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65927,7 +65927,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 483,
+              "line": 484,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65938,7 +65938,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 785,
+              "line": 786,
               "class": "ALPanelGhostStudio",
               "function": "onScaleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65949,7 +65949,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 985,
+              "line": 986,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66101,7 +66101,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 608,
+              "line": 609,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66112,7 +66112,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 843,
+              "line": 844,
               "class": "ALPanelGhostStudio",
               "function": "onClickPastePosition",
               "wired_class": "ALPanelGhostStudio",
@@ -66180,7 +66180,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 599,
+              "line": 600,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66191,7 +66191,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 834,
+              "line": 835,
               "class": "ALPanelGhostStudio",
               "function": "onClickPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -66259,7 +66259,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 600,
+              "line": 601,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66270,7 +66270,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 835,
+              "line": 836,
               "class": "ALPanelGhostStudio",
               "function": "onClickToActor",
               "wired_class": "ALPanelGhostStudio",
@@ -66338,7 +66338,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 601,
+              "line": 602,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66349,7 +66349,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 836,
+              "line": 837,
               "class": "ALPanelGhostStudio",
               "function": "onClickToMe",
               "wired_class": "ALPanelGhostStudio",
@@ -66417,7 +66417,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 602,
+              "line": 603,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66428,7 +66428,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 837,
+              "line": 838,
               "class": "ALPanelGhostStudio",
               "function": "onClickDrop",
               "wired_class": "ALPanelGhostStudio",
@@ -66496,7 +66496,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 603,
+              "line": 604,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66507,7 +66507,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 838,
+              "line": 839,
               "class": "ALPanelGhostStudio",
               "function": "onClickAlignFeet",
               "wired_class": "ALPanelGhostStudio",
@@ -66580,7 +66580,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 609,
+              "line": 610,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66591,7 +66591,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 844,
+              "line": 845,
               "class": "ALPanelGhostStudio",
               "function": "onLookTargetCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66659,7 +66659,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 610,
+              "line": 611,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66670,7 +66670,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 846,
+              "line": 847,
               "class": "ALPanelGhostStudio",
               "function": "onClickFaceNow",
               "wired_class": "ALPanelGhostStudio",
@@ -66738,7 +66738,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 611,
+              "line": 612,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66749,7 +66749,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 848,
+              "line": 849,
               "class": "ALPanelGhostStudio",
               "function": "onKeepFacingCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66817,7 +66817,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 604,
+              "line": 605,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66828,7 +66828,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 839,
+              "line": 840,
               "class": "ALPanelGhostStudio",
               "function": "onClickUpright",
               "wired_class": "ALPanelGhostStudio",
@@ -66939,7 +66939,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 613,
+              "line": 614,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66950,7 +66950,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 851,
+              "line": 852,
               "class": "ALPanelGhostStudio",
               "function": "onStyleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67028,7 +67028,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 621,
+              "line": 622,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67039,7 +67039,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 859,
+              "line": 860,
               "class": "ALPanelGhostStudio",
               "function": "onDistortCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67107,7 +67107,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 622,
+              "line": 623,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67118,7 +67118,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 860,
+              "line": 861,
               "class": "ALPanelGhostStudio",
               "function": "onDistortAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67129,7 +67129,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1006,
+              "line": 1007,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67197,7 +67197,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 614,
+              "line": 615,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67208,7 +67208,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 852,
+              "line": 853,
               "class": "ALPanelGhostStudio",
               "function": "onActorTintToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -67276,7 +67276,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 615,
+              "line": 616,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67287,7 +67287,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 853,
+              "line": 854,
               "class": "ALPanelGhostStudio",
               "function": "onHueCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67298,7 +67298,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1000,
+              "line": 1001,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67366,7 +67366,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 616,
+              "line": 617,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67377,7 +67377,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 854,
+              "line": 855,
               "class": "ALPanelGhostStudio",
               "function": "onAlphaCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67388,7 +67388,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1001,
+              "line": 1002,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67456,7 +67456,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 623,
+              "line": 624,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67467,7 +67467,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 861,
+              "line": 862,
               "class": "ALPanelGhostStudio",
               "function": "onBrightnessCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67478,7 +67478,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1007,
+              "line": 1008,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67546,7 +67546,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 619,
+              "line": 620,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67557,7 +67557,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 857,
+              "line": 858,
               "class": "ALPanelGhostStudio",
               "function": "onPixelCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67568,7 +67568,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1002,
+              "line": 1003,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67636,7 +67636,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 618,
+              "line": 619,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67647,7 +67647,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 856,
+              "line": 857,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67658,7 +67658,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1004,
+              "line": 1005,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67726,7 +67726,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 617,
+              "line": 618,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67737,7 +67737,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 855,
+              "line": 856,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67748,7 +67748,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1003,
+              "line": 1004,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67816,7 +67816,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 620,
+              "line": 621,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67827,7 +67827,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 858,
+              "line": 859,
               "class": "ALPanelGhostStudio",
               "function": "onGlitchCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67838,7 +67838,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1005,
+              "line": 1006,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67906,7 +67906,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 624,
+              "line": 625,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67917,7 +67917,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 862,
+              "line": 863,
               "class": "ALPanelGhostStudio",
               "function": "onEffectFpsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67928,7 +67928,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 986,
+              "line": 987,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67996,7 +67996,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 651,
+              "line": 652,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68007,7 +68007,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 865,
+              "line": 866,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",
@@ -68103,7 +68103,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 656,
+              "line": 657,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68114,7 +68114,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 866,
+              "line": 867,
               "class": "ALPanelGhostStudio",
               "function": "onClickLive",
               "wired_class": "ALPanelGhostStudio",
@@ -68188,7 +68188,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 503,
+              "line": 504,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68199,7 +68199,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 802,
+              "line": 803,
               "class": "ALPanelGhostStudio",
               "function": "onDriveModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68345,7 +68345,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 657,
+              "line": 658,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68494,7 +68494,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 505,
+              "line": 506,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68505,7 +68505,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 528,
+              "line": 529,
               "class": "ALPanelGhostStudio",
               "function": "applyEntityTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -68576,7 +68576,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 504,
+              "line": 505,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68587,7 +68587,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 541,
+              "line": 542,
               "class": "ALPanelGhostStudio",
               "function": "invalidateReflectPlane",
               "wired_class": "ALPanelGhostStudio",
@@ -68655,7 +68655,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 510,
+              "line": 511,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68666,7 +68666,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 552,
+              "line": 553,
               "class": "ALPanelGhostStudio",
               "function": "asBoolean",
               "wired_class": "ALPanelGhostStudio",
@@ -68734,7 +68734,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 511,
+              "line": 512,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68745,7 +68745,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 512,
+              "line": 513,
               "class": "ALPanelGhostStudio",
               "function": "removeMirror",
               "wired_class": "ALPanelGhostStudio",
@@ -68813,7 +68813,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 525,
+              "line": 526,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68824,7 +68824,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 563,
+              "line": 564,
               "class": "ALPanelGhostStudio",
               "function": "getSelected",
               "wired_class": "ALPanelGhostStudio",
@@ -68901,7 +68901,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 988,
+              "line": 989,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68982,7 +68982,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 526,
+              "line": 527,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68993,7 +68993,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 569,
+              "line": 570,
               "class": "ALPanelGhostStudio",
               "function": "getSelected",
               "wired_class": "ALPanelGhostStudio",
@@ -69061,7 +69061,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 527,
+              "line": 528,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69129,7 +69129,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 485,
+              "line": 486,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69140,7 +69140,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 787,
+              "line": 788,
               "class": "ALPanelGhostStudio",
               "function": "onChaosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69151,7 +69151,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1008,
+              "line": 1009,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69219,7 +69219,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 486,
+              "line": 487,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69230,7 +69230,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 788,
+              "line": 789,
               "class": "ALPanelGhostStudio",
               "function": "onAnimSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69241,7 +69241,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 987,
+              "line": 988,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69316,7 +69316,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 625,
+              "line": 626,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69327,7 +69327,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 863,
+              "line": 864,
               "class": "ALPanelGhostStudio",
               "function": "onEntityLookCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69395,7 +69395,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 500,
+              "line": 501,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69406,7 +69406,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 799,
+              "line": 800,
               "class": "ALPanelGhostStudio",
               "function": "onPhysicsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69477,7 +69477,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 586,
+              "line": 587,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69488,7 +69488,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 814,
+              "line": 815,
               "class": "ALPanelGhostStudio",
               "function": "onLoopModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69565,7 +69565,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1029,
+              "line": 1030,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69655,7 +69655,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1029,
+              "line": 1030,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69736,7 +69736,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 501,
+              "line": 502,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69747,7 +69747,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 800,
+              "line": 801,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimPause",
               "wired_class": "ALPanelGhostStudio",
@@ -69815,7 +69815,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 502,
+              "line": 503,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69826,7 +69826,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 801,
+              "line": 802,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimResume",
               "wired_class": "ALPanelGhostStudio",
@@ -69894,7 +69894,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 587,
+              "line": 588,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69905,7 +69905,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 815,
+              "line": 816,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimSync",
               "wired_class": "ALPanelGhostStudio",
@@ -69984,7 +69984,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 450,
+              "line": 451,
               "class": "ALGhostStudio",
               "function": "setStartOffset",
               "wired_class": "ALPanelGhostStudio",
@@ -69995,7 +69995,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1028,
+              "line": 1029,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70131,7 +70131,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 574,
+              "line": 575,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70142,7 +70142,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 803,
+              "line": 804,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedAnimCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70210,7 +70210,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 582,
+              "line": 583,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70221,7 +70221,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 804,
+              "line": 805,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedMirrorCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70289,7 +70289,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 583,
+              "line": 584,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70300,7 +70300,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 805,
+              "line": 806,
               "class": "ALPanelGhostStudio",
               "function": "onSourceAnimationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70373,7 +70373,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 584,
+              "line": 585,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70384,7 +70384,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 806,
+              "line": 807,
               "class": "ALPanelGhostStudio",
               "function": "onAnimationLibraryCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70452,7 +70452,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 585,
+              "line": 586,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70463,7 +70463,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 807,
+              "line": 808,
               "class": "ALGhostStudio",
               "function": "scanAnimLibrary",
               "wired_class": "ALPanelGhostStudio",
@@ -70531,7 +70531,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 597,
+              "line": 598,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70599,7 +70599,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 489,
+              "line": 490,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70610,7 +70610,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 791,
+              "line": 792,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimWindow",
               "wired_class": "ALPanelGhostStudio",
@@ -70621,7 +70621,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 989,
+              "line": 990,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70689,7 +70689,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 492,
+              "line": 493,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70700,7 +70700,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 795,
+              "line": 796,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -70768,7 +70768,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 491,
+              "line": 492,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70779,7 +70779,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 796,
+              "line": 797,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -70847,7 +70847,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 498,
+              "line": 499,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70858,7 +70858,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 792,
+              "line": 793,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -70926,7 +70926,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 494,
+              "line": 495,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70937,7 +70937,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 793,
+              "line": 794,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -71005,7 +71005,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 490,
+              "line": 491,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71073,7 +71073,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 495,
+              "line": 496,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71084,7 +71084,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 794,
+              "line": 795,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -71152,7 +71152,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 497,
+              "line": 498,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71163,7 +71163,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 797,
+              "line": 798,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -71231,7 +71231,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 493,
+              "line": 494,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71242,7 +71242,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 798,
+              "line": 799,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -71310,7 +71310,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 589,
+              "line": 590,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71321,7 +71321,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 818,
+              "line": 819,
               "class": "ALPanelGhostStudio",
               "function": "onClickLensGazeSelection",
               "wired_class": "ALPanelGhostStudio",
@@ -71394,7 +71394,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 591,
+              "line": 592,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71405,7 +71405,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 822,
+              "line": 823,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71478,7 +71478,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 592,
+              "line": 593,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71489,7 +71489,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 824,
+              "line": 825,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71557,7 +71557,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 590,
+              "line": 591,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71568,7 +71568,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 820,
+              "line": 821,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeTorsoCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71579,7 +71579,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1009,
+              "line": 1010,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71647,7 +71647,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 593,
+              "line": 594,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71658,7 +71658,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 826,
+              "line": 827,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71669,7 +71669,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1010,
+              "line": 1011,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71737,7 +71737,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 594,
+              "line": 595,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71748,7 +71748,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 828,
+              "line": 829,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71759,7 +71759,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1011,
+              "line": 1012,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71827,7 +71827,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 595,
+              "line": 596,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71838,7 +71838,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 830,
+              "line": 831,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71849,7 +71849,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1012,
+              "line": 1013,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71917,7 +71917,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 596,
+              "line": 597,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71985,7 +71985,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 668,
+              "line": 669,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71996,7 +71996,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 870,
+              "line": 871,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -72064,7 +72064,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 669,
+              "line": 670,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72075,7 +72075,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 872,
+              "line": 873,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -72169,7 +72169,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 670,
+              "line": 671,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72180,7 +72180,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 874,
+              "line": 875,
               "class": "ALPanelGhostStudio",
               "function": "onFormationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -72191,7 +72191,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72259,7 +72259,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 661,
+              "line": 662,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72270,7 +72270,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 990,
+              "line": 991,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72281,7 +72281,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72349,7 +72349,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 662,
+              "line": 663,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72360,7 +72360,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 991,
+              "line": 992,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72371,7 +72371,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72425,7 +72425,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 664,
+              "line": 665,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72436,7 +72436,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 992,
+              "line": 993,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72447,7 +72447,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72501,7 +72501,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 665,
+              "line": 666,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72512,7 +72512,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 993,
+              "line": 994,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72523,7 +72523,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72577,7 +72577,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 666,
+              "line": 667,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72588,7 +72588,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 994,
+              "line": 995,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72599,7 +72599,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72653,7 +72653,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 667,
+              "line": 668,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72664,7 +72664,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 995,
+              "line": 996,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72675,7 +72675,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72743,7 +72743,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 679,
+              "line": 680,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72754,7 +72754,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72822,7 +72822,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 674,
+              "line": 675,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72833,7 +72833,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72901,7 +72901,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 673,
+              "line": 674,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72912,7 +72912,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 915,
+              "line": 916,
               "class": "ALGhostStudio",
               "function": "getInstance",
               "wired_class": "ALPanelGhostStudio",
@@ -72923,7 +72923,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72991,7 +72991,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 687,
+              "line": 688,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73002,7 +73002,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73087,7 +73087,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 686,
+              "line": 687,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73098,7 +73098,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73166,7 +73166,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 688,
+              "line": 689,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73177,7 +73177,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 928,
+              "line": 929,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -73245,7 +73245,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 694,
+              "line": 695,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73256,7 +73256,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 953,
+              "line": 954,
               "class": "ALPanelGhostStudio",
               "function": "onClickPickFacingTarget",
               "wired_class": "ALPanelGhostStudio",
@@ -73324,7 +73324,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 690,
+              "line": 691,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73335,7 +73335,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73517,7 +73517,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1028,
+              "line": 1029,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73696,7 +73696,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 676,
+              "line": 677,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73707,7 +73707,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73775,7 +73775,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 678,
+              "line": 679,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73786,7 +73786,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73858,7 +73858,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 691,
+              "line": 692,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73869,7 +73869,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73941,7 +73941,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 692,
+              "line": 693,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73952,7 +73952,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74024,7 +74024,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 701,
+              "line": 702,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74035,7 +74035,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 973,
+              "line": 974,
               "class": "ALPanelGhostStudio",
               "function": "onNameplateModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74118,7 +74118,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75117,7 +75117,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 695,
+              "line": 696,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75128,7 +75128,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 943,
+              "line": 944,
               "class": "ALPanelGhostStudio",
               "function": "onClickBuildArray",
               "wired_class": "ALPanelGhostStudio",
@@ -75196,7 +75196,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 696,
+              "line": 697,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75207,7 +75207,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 944,
+              "line": 945,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdConfirm",
               "wired_class": "ALPanelGhostStudio",
@@ -75275,7 +75275,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 697,
+              "line": 698,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75286,7 +75286,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 946,
+              "line": 947,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdUnpin",
               "wired_class": "ALPanelGhostStudio",
@@ -75354,7 +75354,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 698,
+              "line": 699,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75365,7 +75365,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 948,
+              "line": 949,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdCancel",
               "wired_class": "ALPanelGhostStudio",
@@ -75433,7 +75433,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 699,
+              "line": 700,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75501,7 +75501,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 700,
+              "line": 701,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75569,7 +75569,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 703,
+              "line": 704,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75580,7 +75580,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 967,
+              "line": 968,
               "class": "ALPanelGhostStudio",
               "function": "onGroupEditMembersCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -75652,7 +75652,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 693,
+              "line": 694,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75663,7 +75663,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 957,
+              "line": 958,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -75731,7 +75731,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 705,
+              "line": 706,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75742,7 +75742,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 969,
+              "line": 970,
               "class": "ALPanelGhostStudio",
               "function": "onGroupMemberPinnedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -75810,7 +75810,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 706,
+              "line": 707,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75821,7 +75821,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 971,
+              "line": 972,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroupMemberReset",
               "wired_class": "ALPanelGhostStudio",
@@ -75889,7 +75889,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 680,
+              "line": 681,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75900,7 +75900,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75968,7 +75968,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 681,
+              "line": 682,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75979,7 +75979,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76047,7 +76047,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 683,
+              "line": 684,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76058,7 +76058,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76126,7 +76126,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 685,
+              "line": 686,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76137,7 +76137,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76205,7 +76205,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 671,
+              "line": 672,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76216,7 +76216,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 875,
+              "line": 876,
               "class": "ALPanelGhostStudio",
               "function": "captureFormationParameter",
               "wired_class": "ALPanelGhostStudio",
@@ -76227,7 +76227,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4930,
+              "line": 4931,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelGhostStudio",
@@ -76238,7 +76238,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76306,7 +76306,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 707,
+              "line": 708,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76317,7 +76317,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 996,
+              "line": 997,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76328,7 +76328,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4608,
+              "line": 4609,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -76396,7 +76396,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 708,
+              "line": 709,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76407,7 +76407,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 997,
+              "line": 998,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76418,7 +76418,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4608,
+              "line": 4609,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -76486,7 +76486,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 709,
+              "line": 710,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76497,7 +76497,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 950,
+              "line": 951,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -76565,7 +76565,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 710,
+              "line": 711,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76576,7 +76576,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 951,
+              "line": 952,
               "class": "ALPanelGhostStudio",
               "function": "onClickCancelStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -76644,7 +76644,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 711,
+              "line": 712,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76727,7 +76727,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 712,
+              "line": 713,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76738,7 +76738,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4639,
+              "line": 4640,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -76806,7 +76806,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 713,
+              "line": 714,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76817,7 +76817,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 998,
+              "line": 999,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76828,7 +76828,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76896,7 +76896,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 714,
+              "line": 715,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76907,7 +76907,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 999,
+              "line": 1000,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76918,7 +76918,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4200,
+              "line": 4201,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76986,7 +76986,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 715,
+              "line": 716,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76997,7 +76997,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 952,
+              "line": 953,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -77065,7 +77065,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 718,
+              "line": 719,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77076,7 +77076,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 975,
+              "line": 976,
               "class": "ALPanelGhostStudio",
               "function": "onPoseRateCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -77222,7 +77222,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 716,
+              "line": 717,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77233,7 +77233,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 955,
+              "line": 956,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroup",
               "wired_class": "ALPanelGhostStudio",
@@ -77301,7 +77301,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 717,
+              "line": 718,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77312,7 +77312,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 956,
+              "line": 957,
               "class": "ALPanelGhostStudio",
               "function": "onClickUngroup",
               "wired_class": "ALPanelGhostStudio",
@@ -77436,7 +77436,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 659,
+              "line": 660,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77447,7 +77447,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 867,
+              "line": 868,
               "class": "ALPanelGhostStudio",
               "function": "onClickRigDiagRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -77515,7 +77515,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 658,
+              "line": 659,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -171939,7 +171939,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 29681,
+              "line": 29690,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -172006,7 +172006,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 24998,
+              "line": 25005,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -172073,7 +172073,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25010,
+              "line": 25017,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -222069,7 +222069,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20927,
+              "line": 20934,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222160,7 +222160,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20944,
+              "line": 20951,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222407,7 +222407,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20946,
+              "line": 20953,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222576,7 +222576,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20949,
+              "line": 20956,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222667,7 +222667,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20950,
+              "line": 20957,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222758,7 +222758,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20951,
+              "line": 20958,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222849,7 +222849,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20952,
+              "line": 20959,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -222940,7 +222940,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20953,
+              "line": 20960,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223031,7 +223031,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20954,
+              "line": 20961,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223122,7 +223122,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20955,
+              "line": 20962,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223291,7 +223291,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20962,
+              "line": 20969,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223382,7 +223382,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20964,
+              "line": 20971,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -223785,7 +223785,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21416,
+              "line": 21423,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224133,7 +224133,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21417,
+              "line": 21424,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224224,7 +224224,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21415,
+              "line": 21422,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224581,7 +224581,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21411,
+              "line": 21418,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -224984,7 +224984,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21427,
+              "line": 21434,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225309,7 +225309,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21434,
+              "line": 21441,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -235215,7 +235215,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 651,
+              "line": 652,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -235228,7 +235228,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 865,
+              "line": 866,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",

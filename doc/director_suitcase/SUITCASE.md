@@ -34,7 +34,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2546 classified paths.
+`inventory.csv` / `inventory.json` contain 2547 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -71,7 +71,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [composition](features/composition.md) | 3 | 40 | 23 | 12 |
 | [gaze](features/gaze.md) | 3 | 53 | 18 | 87 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 26 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 172 | 77 | 81 |
+| [clones](features/clones.md) | 4 | 172 | 80 | 81 |
 | [crowd](features/crowd.md) | 4 | 49 | 10 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 66 | 58 | 17 |

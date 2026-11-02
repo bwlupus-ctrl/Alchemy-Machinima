@@ -8,36 +8,23 @@
       "GENERATED": 723,
       "HOOK": 498,
       "OWNED": 884,
-      "TOOLING": 358
+      "TOOLING": 359
     },
     "dirty_product_inputs": [
       "indra/newview/alghoststudio.cpp",
       "indra/newview/alghoststudio.h",
       "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/alpanelghoststudio.h",
-      "indra/newview/altoolghostedit.cpp",
-      "indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveF.glsl",
-      "indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
       "indra/newview/lldrawpool.cpp",
-      "indra/newview/lldrawpoolavatar.cpp",
       "indra/newview/llghostavatar.cpp",
       "indra/newview/llghostavatar.h",
-      "indra/newview/llhudicon.cpp",
-      "indra/newview/llhudnametag.cpp",
-      "indra/newview/llhudtext.cpp",
-      "indra/newview/llselectmgr.cpp",
-      "indra/newview/llvoavatar.cpp",
-      "indra/newview/llvovolume.cpp",
       "indra/newview/pipeline.cpp",
       "scripts/code_tools/clone_looks_gl_check.py",
       "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_clone_qol_check.py",
-      "scripts/code_tools/director_clone_rekey_check.py"
+      "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -51,7 +38,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "b01a3130fc7ad387af92bd0fd217f6ff4453423dff48abc3b01ab73e0fb6bebb",
+        "csv_sha256": "d2e365c5815000c541658a30823ee021357c7aef5c620dc3d7132a414f25ea92",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
@@ -218,10 +205,10 @@
       },
       "wiring_rows": 2208
     },
-    "head_source_tree": "9decfa4b0717d8a9f747850464c34eb2c8b08f3e",
+    "head_source_tree": "28a5495e210dce739c5d6a143f4c6afb6674c382",
     "hook_files": 498,
     "hunks": 3011,
-    "input_sha256": "9b8a0408e3a67f8c94c77e07db7e59d258112567415a3212edd25437dd3c12ca",
+    "input_sha256": "d2913d31646e70eb804818c8ab39465b8e3432847638eb554e0ada1f60dde82e",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2009
   },
@@ -15178,7 +15165,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
         "crowd"
       ],
@@ -18349,7 +18335,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
         "clones",
         "crowd"
       ],
@@ -19806,6 +19791,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "looks"
       ],
       "class": "OWNED",
@@ -19843,6 +19829,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "looks",
         "roto-tron"
       ],
@@ -26094,8 +26081,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
-        "clones",
-        "gaze"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -26617,7 +26603,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "rig",
         "roto-tron",
         "weather"
       ],
@@ -26707,8 +26692,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "roto-tron"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -28150,21 +28134,13 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "camera",
-        "capture-sidecar",
-        "clones",
-        "director-shell",
-        "looks",
-        "rig",
-        "roto-tron",
-        "vcam",
-        "weather"
+        "clones"
       ],
       "git_status": "M",
-      "layer": 2,
+      "layer": 4,
       "path": "indra/newview/llhudicon.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -28175,25 +28151,13 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-path",
-        "camera",
-        "capture-sidecar",
-        "clones",
-        "composition",
-        "director-shell",
-        "looks",
-        "rig",
-        "roto-tron",
-        "sensor",
-        "shafts-volumetrics",
-        "vcam",
-        "weather"
+        "clones"
       ],
       "git_status": "M",
-      "layer": 2,
+      "layer": 4,
       "path": "indra/newview/llhudnametag.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -28204,25 +28168,13 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-path",
-        "camera",
-        "capture-sidecar",
-        "clones",
-        "composition",
-        "director-shell",
-        "looks",
-        "rig",
-        "roto-tron",
-        "sensor",
-        "shafts-volumetrics",
-        "vcam",
-        "weather"
+        "clones"
       ],
       "git_status": "M",
-      "layer": 2,
+      "layer": 4,
       "path": "indra/newview/llhudtext.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -29230,6 +29182,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
+        "clones",
         "vcam"
       ],
       "class": "HOOK",
@@ -30692,7 +30645,6 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "composition",
         "director-shell",
         "gaze",
         "roto-tron",
@@ -40214,6 +40166,21 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/env_only_signal_test.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

@@ -98,7 +98,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
 - {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@118,22"]}
 - {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@2425,11"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29125"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29155"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1926,270"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,203"]}
@@ -745,9 +745,6 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 442, "text": "llflycamrecorder.cpp", "source": "indra/newview/llflycamrecorder.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1438, "text": "llflycamrecorder.h", "source": "indra/newview/llflycamrecorder.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 679, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 684, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 702, "text": "llinventorybridge.cpp", "source": "indra/newview/llinventorybridge.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 742, "text": "llmediactrl.cpp", "source": "indra/newview/llmediactrl.cpp"}

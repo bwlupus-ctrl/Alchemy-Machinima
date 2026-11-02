@@ -7226,6 +7226,7 @@ void LLPipeline::renderGhostSilCover(U32 phase)
                                  di->mActorFxFallbackOwner, cover)) continue;
                 LLGLSLShader& shader = gSilCoverProgram[ACTOR_MASK_STATIC];
                 shader.bind();
+                shader.uniform1f(LLStaticHashedString("sil_clone_progress"), 1.f-proxy.mFadeAlpha);
                 GLint samplers[32];
                 const S32 channels = actorMaskTextureChannels();
                 for (S32 i = 0; i < channels; ++i) samplers[i] = i;
@@ -7253,7 +7254,13 @@ void LLPipeline::renderGhostSilCover(U32 phase)
                 else gGL.loadIdentity();
                 gGL.matrixMode(LLRender::MM_MODELVIEW);
                 gGL.pushMatrix();
-                gGL.multMatrix((GLfloat*)face->getRenderMatrix().mMatrix);
+                const LLMatrix4* matrix = &face->getRenderMatrix();
+                if (proxy.mHeldAttachMats)
+                {
+                    const auto held = proxy.mHeldAttachMats->find(gf.mObjectId);
+                    if (held != proxy.mHeldAttachMats->end()) matrix = &held->second;
+                }
+                gGL.multMatrix((GLfloat*)matrix->mMatrix);
                 gGL.syncMatrices();
                 LLGLDisable no_cull(gf.mDoubleSided ? GL_CULL_FACE : 0);
                 vb->setBuffer();
@@ -28887,7 +28894,9 @@ bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,
         (pass.rigged ? ACTOR_MASK_RIGGED : ACTOR_MASK_STATIC)];
     if (!shader.isComplete()) return false;
     shader.bind();
-    if (pass.rigged && !LLRenderPass::uploadMatrixPalette(di.mAvatar, di.mSkinInfo)) return false;
+    if (pass.rigged && !uploadGhostPalette(di)) return false;
+    shader.uniform1f(LLStaticHashedString("sil_clone_progress"),
+        sDrawingGhostProxy ? 1.f-sDrawingGhostProxy->mFadeAlpha : 0.f);
 
     const bool pbr_slots = pass.pbr && di.mGLTFMaterialList.size() > 1;
     const bool bump = pass.pass == LLRenderPass::PASS_BUMP || pass.pass == LLRenderPass::PASS_BUMP_RIGGED;

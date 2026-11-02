@@ -333,7 +333,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/toolbars.xml", "hunks": ["indra/newview/app_settings/toolbars.xml@9,7"]}
 - {"path": "indra/newview/fsfloaterposer.h", "hunks": ["indra/newview/fsfloaterposer.h@246,21"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@411,26"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@68,82", "indra/newview/lldrawpool.cpp@496,1373"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@70,82", "indra/newview/lldrawpool.cpp@498,1381"]}
 - {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,110"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,13", "indra/newview/lldrawpoolavatar.cpp@82,97"]}
 - {"path": "indra/newview/llfloaterpreference.cpp", "hunks": ["indra/newview/llfloaterpreference.cpp@2027,12", "indra/newview/llfloaterpreference.cpp@2070,8"]}
@@ -351,7 +351,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@5836,10", "indra/newview/llvoavatar.cpp@5911,46", "indra/newview/llvoavatar.cpp@12825,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@5690,87"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@30948,430"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29155", "indra/newview/pipeline.cpp@30978,430"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@1491,409", "indra/newview/pipeline.h@1926,270"]}
 - {"path": "indra/newview/skins/default/colors.xml", "hunks": ["indra/newview/skins/default/colors.xml@2,153"]}
 - {"path": "indra/newview/skins/default/textures/textures.xml", "hunks": ["indra/newview/skins/default/textures/textures.xml@1049,93"]}
@@ -927,9 +927,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1438, "text": "llflycamrecorder.h", "source": "indra/newview/llflycamrecorder.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 679, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 681, "text": "llhudeffecttrail.cpp", "source": "indra/newview/llhudeffecttrail.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 684, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 716, "text": "llkeyconflict.cpp", "source": "indra/newview/llkeyconflict.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 742, "text": "llmediactrl.cpp", "source": "indra/newview/llmediactrl.cpp"}

@@ -146,7 +146,7 @@ class Runner:
         return pr
 
     def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
-               shift_y=0., rotation=0., slot=-1, adjacent_slots=False, fade=1., native_fade=False, depth_test=False):
+               shift_y=0., rotation=0., slot=-1, adjacent_slots=False, fade=1., native_fade=False, depth_test=False, held_pose=None):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -169,6 +169,15 @@ class Runner:
         floats('ghostFadeProgress', 1.-fade)
         g.ui(loc('actorFxEnabled'), 2 if native_fade and fade < 1 else 0)
         floats('actorFxDissolveProgress', 1.-fade)
+        floats('sil_clone_progress', 1.-fade)
+        floats('sil_cover', 1., 1.)
+        g.ui(loc('sil_blended'), 0)
+        g.ui(loc('mask_vertex_alpha'), 0)
+        g.ui(loc('mask_indexed'), 0)
+        g.ui(loc('mask_material_slots'), 0)
+        g.ui(loc('mask_vec3_position'), 0)
+        for i in range(4): g.ui(loc('mask_textures[%d]' % i), 0)
+        for i in range(8): floats('mask_cutoff[%d]' % i, .5 if mask else -1.)
         floats('ghostTime', time)
         floats('ghostParams', 0., 1., 0., 8.)
         floats('ghostAux', .5 if mask else 0., 1., 0., phase)
@@ -187,6 +196,12 @@ class Runner:
             g.ui(loc('ghostIndexedUseVertexAlpha[%d]' % i), 1)
             g.ui(loc('ghostIndexedAlphaCutoffMode[%d]' % i), 1)
         view = np.array([[1,0,0,shift],[0,0,1,0],[0,-1,0,-4],[0,0,0,1]],np.float32)
+        pose = np.eye(4,dtype=np.float32)
+        if held_pose is not None:
+            x,y,angle = held_pose
+            co,si=np.cos(angle),np.sin(angle)
+            pose = np.array([[co,-si,0,x],[si,co,0,y],[0,0,1,0],[0,0,0,1]],np.float32)
+            if 'HAS_SKIN' not in defs: view = view @ pose # held rigid attachment render matrix
         # Camera roll and zoom also exercise transformed pattern footprints.
         co, si = np.cos(rotation), np.sin(rotation)
         roll = np.array([[co,-si,0,0],[si,co,0,shift_y],[0,0,1,0],[0,0,0,1]], np.float32)
@@ -204,7 +219,7 @@ class Runner:
             a = np.repeat(view[:3, None, :], 15, axis=1).copy()
             g.u4fv(loc('matrixPalette[0]'), 45, a.ctypes.data_as(C.POINTER(g.F)))
         elif 'HAS_SKIN' in defs:
-            a = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0]],np.float32)
+            a = pose[:3].copy()
             self.mat34(loc('matrixPalette[0]'), 1, 0, a.ctypes.data_as(C.POINTER(g.F)))
         g.bind_buf(0x8892, self.vbo)
         used = []
@@ -461,6 +476,35 @@ def main():
         assert np.array_equal(lit[visible],half[visible]), 'deferred lighting changed'
         assert np.array_equal(lit,runner.render(native_pr,1,mask=mask)), 'deferred endpoint changed'
         assert .49 < np.count_nonzero(visible)/np.count_nonzero(lit[...,3]) < .51
+    # Actual production silhouette-cover target/vertex shader versus beauty pixels.
+    class CoverTree:
+        def read(self,path):
+            if path == V: return tree.read(SH+'deferred/actorMaskV.glsl')
+            if path == F:
+                return '#define MASK_CHANNELS 4\n'+tree.read(SH+'deferred/silCoverF.glsl')+'\nvoid mirrorClip(vec3 p){}\n'
+            return tree.read(path)
+    sil_cases=[]
+    for defs in ((),('HAS_SKIN',)):
+        beauty=runner.program(NativeTree(),defs)
+        cover=runner.program(CoverTree(),defs)
+        for pose in ((-.6,.2,.7),(.5,-.3,-.9)):
+            for fade in (0.,.5,1.):
+                for mask in (False,True):
+                    b=runner.render(beauty,1,mask=mask,fade=fade,native_fade=True,held_pose=pose,depth_test=True)
+                    bd=runner.last_depth.copy()
+                    c=runner.render(cover,1,mask=mask,fade=fade,held_pose=pose,depth_test=True)
+                    assert np.array_equal(b[...,3]>0,c[...,3]>0), ('silhouette/beauty coverage',defs,pose,fade,mask)
+                    # Static native replay uses precombined MVP; Studio beauty uses
+                    # projection * modelview. Coverage must be exact; float depth
+                    # may differ slightly after independent triangle interpolation.
+                    depth_error=float(np.max(np.abs(bd-runner.last_depth)))
+                    assert depth_error <= 2e-6, ('silhouette/beauty depth',defs,pose,fade,mask,depth_error)
+                    sil_cases.append(dict(skin=bool(defs),pose=pose,fade=fade,mask=mask,depth_error=depth_error))
+        held=runner.render(cover,1,held_pose=(-.6,.2,.7))
+        live=runner.render(cover,1,held_pose=(.5,-.3,-.9))
+        assert not np.array_equal(held[...,3],live[...,3]), 'moving-pose control is insensitive'
+    stats['silhouette_coverage']=sil_cases
+    print('PASS: production silhouette coverage matches beauty exactly; depth error <=2e-6; moving held palettes/rigid transforms, fades 0/.5/1',flush=True)
     stats['fade_coverage'] = fade_stats
     print('PASS: opaque/masked fade 0/.5/1; stable coverage; native lit endpoint parity 0.0', flush=True)
     pr = runner.program(tree)

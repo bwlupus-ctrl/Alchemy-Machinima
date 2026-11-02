@@ -1010,6 +1010,8 @@ LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegi
 // virtual
 LLGhostAvatar::~LLGhostAvatar()
 {
+    if (mRenderOnlyHidden) --sRenderHiddenReasons;
+    if (!mEntityCloneVisible) --sRenderHiddenReasons;
     releaseSourceReference();
 }
 
@@ -1603,6 +1605,7 @@ void LLGhostAvatar::setEntityCloneVisible(bool visible)
         return;
     }
 
+    if (visible) --sRenderHiddenReasons; else ++sRenderHiddenReasons;
     mEntityCloneVisible = visible;
     if (visible)
     {
@@ -5691,10 +5694,24 @@ void LLGhostAvatar::copyHeldPoseFrom(LLVOAvatar* source)
     moveStampedAttachments();
 }
 
+U32 LLGhostAvatar::sRenderHiddenReasons = 0;
+void LLGhostAvatar::setRenderOnlyHidden(bool hidden)
+{
+    if (hidden == mRenderOnlyHidden) return;
+    if (hidden) ++sRenderHiddenReasons; else --sRenderHiddenReasons;
+    mRenderOnlyHidden = hidden;
+}
+bool LLGhostAvatar::isRenderHidden(const LLViewerObject* avatar, const LLUUID& owner, const LLUUID& fallback)
+{
+    if (!hasRenderHiddenPolicy()) return false;
+    return isRenderHidden(avatar) ||
+        (owner.notNull() && isRenderHidden(gObjectList.findObject(owner))) ||
+        (fallback.notNull() && isRenderHidden(gObjectList.findObject(fallback)));
+}
 // Owner-aware draw policy, deliberately independent of geometry/animation updates.
 bool LLGhostAvatar::isRenderHidden(const LLViewerObject* object)
 {
-    if (!object) return false;
+    if (!hasRenderHiddenPolicy() || !object) return false;
     const LLVOAvatar* avatar = object->isAvatar() ? static_cast<const LLVOAvatar*>(object) : nullptr;
     if (avatar && avatar->isControlAvatar())
     {

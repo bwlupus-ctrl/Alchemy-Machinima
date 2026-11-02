@@ -12850,6 +12850,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 batch_shader->uniform2fv(sSilCover, 1, cover.mV);
                 batch_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
+                batch_shader->uniform1f(LLStaticHashedString("sil_clone_progress"), 0.f);
             }
             else
             {
@@ -13394,6 +13395,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 static_shader->uniform2fv(sSilCover, 1, cover.mV);
                 static_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
+                static_shader->uniform1f(LLStaticHashedString("sil_clone_progress"), 0.f);
             }
 
             // [R2-5] cull-faithful: double-sided GLTF unculls per face
@@ -15370,6 +15372,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         {
             proxy.mHeldPalettes = &inst.mOffsetPose->mFrozenPalettes;
             proxy.mHeldAttachMats = &inst.mOffsetPose->mFrozenAttachMats;
+            proxy.mHeldBounds = inst.mOffsetPose->mFrozenBounds;
             proxy.mPivotFootAgent = inst.mOffsetPose->mFrozenFootAgent;
             proxy.mRotation = ~inst.mOffsetPose->mRotation * inst.mRotation;
         }
@@ -15405,7 +15408,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
 // (T(foot)*R*S*T(-pivot), matching drawGeometryGhost) into an agent-space AABB.
 void LLActorMover::computeProxyBounds(GhostProxy& proxy, LLVOAvatar* av)
 {
-    const LLVector3* ext = av->getLastAnimExtents();    // [min, max], agent space
+    const LLVector3* ext = proxy.mHeldBounds ? proxy.mHeldBounds : av->getLastAnimExtents(); // same capture frame as pivot
     const LLVector3 mn = ext[0];
     const LLVector3 mx = ext[1];
     // Degenerate / not-yet-built extents: fall back to a coarse avatar-sized box

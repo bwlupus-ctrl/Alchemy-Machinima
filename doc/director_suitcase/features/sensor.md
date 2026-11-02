@@ -122,13 +122,13 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@28,20", "indra/newview/llviewercontrol.cpp@1133,66"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@4,44", "indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1308,411", "indra/newview/app_settings/settings_alchemy.xml@1944,82", "indra/newview/app_settings/settings_alchemy.xml@3307,135", "indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@496,1373"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@498,1381"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,13", "indra/newview/lldrawpoolavatar.cpp@1221,84"]}
 - {"path": "indra/newview/llfloaterpreference.cpp", "hunks": ["indra/newview/llfloaterpreference.cpp@31,7", "indra/newview/llfloaterpreference.cpp@1652,7"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@30,24", "indra/newview/llreflectionmapmanager.cpp@593,2064"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@434,11", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@6033,19"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@217,16", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@30948,430", "indra/newview/pipeline.cpp@31512,13", "indra/newview/pipeline.cpp@31541,37", "indra/newview/pipeline.cpp@31597,20", "indra/newview/pipeline.cpp@31642,18", "indra/newview/pipeline.cpp@31758,18", "indra/newview/pipeline.cpp@31781,695", "indra/newview/pipeline.cpp@36372,1056"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@217,16", "indra/newview/pipeline.cpp@1692,29155", "indra/newview/pipeline.cpp@30978,430", "indra/newview/pipeline.cpp@31542,13", "indra/newview/pipeline.cpp@31571,37", "indra/newview/pipeline.cpp@31627,20", "indra/newview/pipeline.cpp@31672,18", "indra/newview/pipeline.cpp@31788,18", "indra/newview/pipeline.cpp@31811,695", "indra/newview/pipeline.cpp@36402,1056"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@949,42", "indra/newview/pipeline.h@1926,270", "indra/newview/pipeline.h@2216,34"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@368,40", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@433,33", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@467,36", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@577,66", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@644,33", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
@@ -417,8 +417,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 411, "text": "llfloaterprismmanager.cpp", "source": "indra/newview/llfloaterprismmanager.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1383, "text": "llfloaterprismmanager.h", "source": "indra/newview/llfloaterprismmanager.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 669, "text": "llgltfmaterialpreviewmgr.cpp", "source": "indra/newview/llgltfmaterialpreviewmgr.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 790, "text": "llpaneleditwater.cpp", "source": "indra/newview/llpaneleditwater.cpp"}

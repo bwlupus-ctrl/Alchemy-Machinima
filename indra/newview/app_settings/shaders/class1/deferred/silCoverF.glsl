@@ -2,6 +2,15 @@
 /*[EXTRA_CODE_HERE]*/
 uniform vec2 sil_cover;
 uniform int sil_blended;
+uniform float sil_clone_progress;
+float silCloneCoverage(float progress)
+{
+    if (progress <= 0.0) return 1.0;
+    if (progress >= 1.0) return -1.0;
+    ivec2 p = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
+    const float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
+    return (bayer[p.y*4+p.x]+0.5)/16.0-progress;
+}
 
 #ifdef SIL_COVER_SYSTEM
 uniform sampler2D diffuseMap;
@@ -131,6 +140,7 @@ float authoredAlpha()
 void main()
 {
     mirrorClip(vary_position);
+    if (sil_clone_progress > 0.0 && silCloneCoverage(sil_clone_progress) < 0.0) discard;
 #ifdef SIL_COVER_SYSTEM
     float alpha = texture(diffuseMap, vary_texcoord0).a;
     if (alpha < minimum_alpha) discard;

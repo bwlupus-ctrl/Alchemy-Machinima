@@ -115,13 +115,13 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@30,11", "indra/newview/alchatcommand.cpp@57,31", "indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@247,21"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@68,82", "indra/newview/lldrawpool.cpp@496,1373"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@70,82", "indra/newview/lldrawpool.cpp@498,1381"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,13", "indra/newview/lldrawpoolavatar.cpp@82,97"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@29,20", "indra/newview/llviewerdisplay.cpp@906,14", "indra/newview/llviewerdisplay.cpp@994,17", "indra/newview/llviewerdisplay.cpp@1119,36", "indra/newview/llviewerdisplay.cpp@1170,16", "indra/newview/llviewerdisplay.cpp@1882,22", "indra/newview/llviewerdisplay.cpp@2067,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266", "indra/newview/llviewerfloaterreg.cpp@878,7"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@861,7", "indra/newview/llvoavatar.cpp@898,37", "indra/newview/llvoavatar.cpp@2439,14", "indra/newview/llvoavatar.cpp@2888,19", "indra/newview/llvoavatar.cpp@4197,14", "indra/newview/llvoavatar.cpp@4823,20", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@5911,46", "indra/newview/llvoavatar.cpp@8734,106", "indra/newview/llvoavatar.cpp@12825,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@1189,10", "indra/newview/llvoavatar.h@1207,11", "indra/newview/llvoavatar.h@1259,17"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@156,12", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31781,695"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@156,12", "indra/newview/pipeline.cpp@1692,29155", "indra/newview/pipeline.cpp@31811,695"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1108,67"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,203"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,193"]}
@@ -327,8 +327,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 343, "text": "llghostdeferreddiagnostics.cpp", "source": "indra/newview/llghostdeferreddiagnostics.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 679, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 681, "text": "llhudeffecttrail.cpp", "source": "indra/newview/llhudeffecttrail.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 443, "text": "llpathcamera.cpp", "source": "indra/newview/llpathcamera.cpp"}

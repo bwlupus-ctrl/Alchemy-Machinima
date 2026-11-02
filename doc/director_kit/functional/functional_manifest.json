@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "b01a3130fc7ad387af92bd0fd217f6ff4453423dff48abc3b01ab73e0fb6bebb",
+  "csv_sha256": "d2e365c5815000c541658a30823ee021357c7aef5c620dc3d7132a414f25ea92",
   "interactive_rows": 2090,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -6029,7 +6029,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:470 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:471 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6074,7 +6074,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:471 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:472 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6124,7 +6124,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:472 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:473 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6277,7 +6277,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:468 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:469 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Overlay clone",
@@ -6338,7 +6338,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:469 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:470 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6388,7 +6388,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:605 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:606 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6438,7 +6438,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:606 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:607 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6488,7 +6488,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:607 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:608 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6586,7 +6586,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:476 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:477 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6634,7 +6634,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:477 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:478 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6682,7 +6682,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:478 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:479 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6730,7 +6730,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:480 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:481 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6778,7 +6778,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:479 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:480 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6828,7 +6828,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:481 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:482 ALPanelGhostStudio::postBuild",
    "probe": "clone_rotation",
    "prereq": "ghost_selected_formation",
    "enable_when": "clone selected"
@@ -6881,7 +6881,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:482 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:483 ALPanelGhostStudio::postBuild",
    "probe": "clone_rotation",
    "prereq": "ghost_selected_formation",
    "enable_when": "clone selected"
@@ -6932,7 +6932,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:483 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:484 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -6982,7 +6982,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:608 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:609 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7032,7 +7032,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:599 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:600 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7083,7 +7083,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:600 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:601 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7133,7 +7133,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:601 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:602 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7183,7 +7183,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:602 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:603 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7233,7 +7233,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:603 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:604 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7284,7 +7284,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:609 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:610 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7334,7 +7334,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:610 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:611 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7382,7 +7382,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:611 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:612 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7432,7 +7432,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:604 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:605 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7484,7 +7484,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:613 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:614 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Ghost",
@@ -7707,7 +7707,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:621 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:622 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Distort: None",
@@ -7794,7 +7794,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:622 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:623 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7842,7 +7842,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:614 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:615 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7890,7 +7890,7 @@
    "increment": 5.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:615 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:616 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7938,7 +7938,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:616 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:617 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -7986,7 +7986,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:623 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:624 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8034,7 +8034,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:619 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:620 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8082,7 +8082,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:618 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:619 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8130,7 +8130,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:617 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:618 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8178,7 +8178,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:620 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:621 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8226,7 +8226,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:624 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:625 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8276,7 +8276,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:651 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:652 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8326,7 +8326,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:656 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:657 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8378,7 +8378,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:503 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:504 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Mirror",
@@ -8553,7 +8553,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:505 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:506 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Wall",
@@ -8616,7 +8616,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:504 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:505 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Plane: Fixed",
@@ -8675,7 +8675,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:510 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:511 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8723,7 +8723,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:511 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:512 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8773,7 +8773,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:525 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:526 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8825,7 +8825,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "setting GhostReflectFacePairDistance (settings.xml); literal-only alpanelghoststudio.cpp:988 ALPanelGhostStudio::postBuild"
+   "evidence": "setting GhostReflectFacePairDistance (settings.xml); literal-only alpanelghoststudio.cpp:989 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8875,7 +8875,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:526 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:527 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8923,7 +8923,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:485 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:486 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -8971,7 +8971,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:486 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:487 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9023,7 +9023,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:625 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:626 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Normal",
@@ -9098,7 +9098,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:500 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:501 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9150,7 +9150,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:586 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:587 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Loop (re-trigger)",
@@ -9213,7 +9213,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "setting GhostStudioFadeIn (settings.xml); literal-only alpanelghoststudio.cpp:1029 ALPanelGhostStudio::postBuild"
+   "evidence": "setting GhostStudioFadeIn (settings.xml); literal-only alpanelghoststudio.cpp:1030 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9265,7 +9265,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "setting GhostStudioFadeOut (settings.xml); literal-only alpanelghoststudio.cpp:1029 ALPanelGhostStudio::postBuild"
+   "evidence": "setting GhostStudioFadeOut (settings.xml); literal-only alpanelghoststudio.cpp:1030 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9315,7 +9315,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:501 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:502 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9365,7 +9365,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:502 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:503 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9415,7 +9415,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:587 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:588 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9463,7 +9463,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:413 ALPanelGhostStudio::postBuild; cpp alpanelghoststudio.cpp:1028 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:413 ALPanelGhostStudio::postBuild; cpp alpanelghoststudio.cpp:1029 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9511,7 +9511,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:582 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:583 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9562,7 +9562,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:583 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:584 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9615,7 +9615,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:584 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:585 ALPanelGhostStudio::postBuild",
    "enable_when": "entity clone selected"
   },
   {
@@ -9666,7 +9666,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:585 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:586 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9714,7 +9714,7 @@
    "increment": 15.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:489 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:490 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9764,7 +9764,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:492 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:493 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9814,7 +9814,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:491 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:492 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9864,7 +9864,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:498 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:499 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9914,7 +9914,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:494 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:495 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -9964,7 +9964,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:495 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:496 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10009,7 +10009,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:497 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:498 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10059,7 +10059,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:493 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:494 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10110,7 +10110,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:589 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:590 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10162,7 +10162,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:591 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:592 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Travel tangent",
@@ -10232,7 +10232,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:592 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:593 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10280,7 +10280,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:590 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:591 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10328,7 +10328,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:593 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:594 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10376,7 +10376,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:594 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:595 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10424,7 +10424,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:595 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:596 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10474,7 +10474,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:668 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:669 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10524,7 +10524,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:669 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:670 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10576,7 +10576,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:670 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:671 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Line",
@@ -10727,7 +10727,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:661 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:662 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -10775,7 +10775,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:662 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:663 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11003,7 +11003,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:679 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:680 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11051,7 +11051,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:674 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:675 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11099,7 +11099,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:673 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:674 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11147,7 +11147,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:687 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:688 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11199,7 +11199,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:686 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:687 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Rotate with formation",
@@ -11314,7 +11314,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:688 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:689 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11365,7 +11365,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:694 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:695 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11413,7 +11413,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:690 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:691 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11536,7 +11536,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "setting GhostStudioStartSpread (settings.xml); cpp alpanelghoststudio.cpp:416 ALPanelGhostStudio::postBuild; cpp alpanelghoststudio.cpp:1028 ALPanelGhostStudio::postBuild"
+   "evidence": "setting GhostStudioStartSpread (settings.xml); cpp alpanelghoststudio.cpp:416 ALPanelGhostStudio::postBuild; cpp alpanelghoststudio.cpp:1029 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11659,7 +11659,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:676 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:677 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Guide: Off",
@@ -11722,7 +11722,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:678 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:679 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -11774,7 +11774,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:691 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:692 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Copies as: Select clone",
@@ -11841,7 +11841,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:692 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:693 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Create: Separate",
@@ -11908,7 +11908,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:701 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:702 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Names: Off",
@@ -13558,7 +13558,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:695 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:696 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13608,7 +13608,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:696 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:697 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13658,7 +13658,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:697 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:698 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13708,7 +13708,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:698 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:699 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13756,7 +13756,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:703 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:704 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13808,7 +13808,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:693 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:694 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Selected group: Off",
@@ -13871,7 +13871,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:705 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:706 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13921,7 +13921,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:706 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:707 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -13971,7 +13971,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:680 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:681 ALPanelGhostStudio::postBuild",
    "enable_when": "crowd draft active"
   },
   {
@@ -14022,7 +14022,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:681 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:682 ALPanelGhostStudio::postBuild",
    "enable_when": "crowd draft active"
   },
   {
@@ -14073,7 +14073,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:683 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:684 ALPanelGhostStudio::postBuild",
    "enable_when": "crowd draft active"
   },
   {
@@ -14124,7 +14124,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:685 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:686 ALPanelGhostStudio::postBuild",
    "enable_when": "crowd draft active"
   },
   {
@@ -14175,7 +14175,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:671 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:672 ALPanelGhostStudio::postBuild",
    "enable_when": "crowd draft active"
   },
   {
@@ -14224,7 +14224,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:707 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:708 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14272,7 +14272,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:708 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:709 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14322,7 +14322,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:709 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:710 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14372,7 +14372,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:710 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:711 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14426,7 +14426,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:712 ALPanelGhostStudio::postBuild",
+   "evidence": "cpp alpanelghoststudio.cpp:713 ALPanelGhostStudio::postBuild",
    "options": [
     {
      "label": "Off",
@@ -14534,7 +14534,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:713 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:714 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14582,7 +14582,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:714 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:715 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14632,7 +14632,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:715 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:716 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14680,7 +14680,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:718 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:719 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14780,7 +14780,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:716 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:717 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14830,7 +14830,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:717 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:718 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "ghosts_tab",
@@ -14880,7 +14880,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelGhostStudio::postBuild",
-   "evidence": "cpp alpanelghoststudio.cpp:659 ALPanelGhostStudio::postBuild"
+   "evidence": "cpp alpanelghoststudio.cpp:660 ALPanelGhostStudio::postBuild"
   },
   {
    "page": "dance_tab",
@@ -84774,7 +84774,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:20944 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:20951 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -84926,7 +84926,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:20946 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:20953 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85028,7 +85028,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:20949 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:20956 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85080,7 +85080,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:20950 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:20957 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85132,7 +85132,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:20951 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:20958 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85184,7 +85184,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:20952 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:20959 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85236,7 +85236,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:20953 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:20960 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85288,7 +85288,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:20954 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:20961 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85340,7 +85340,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:20955 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:20962 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85442,7 +85442,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:20962 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:20969 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85494,7 +85494,7 @@
    "increment": 0.001,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:20964 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:20971 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85746,7 +85746,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21416 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21423 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85946,7 +85946,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21417 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21424 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -85998,7 +85998,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21415 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21422 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -86449,7 +86449,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21427 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21434 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -86651,7 +86651,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21434 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21441 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",

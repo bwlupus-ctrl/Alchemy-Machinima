@@ -79,7 +79,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3307,135", "indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@29,20", "indra/newview/llviewerdisplay.cpp@2067,28"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@120,11", "indra/newview/pipeline.cpp@327,106", "indra/newview/pipeline.cpp@712,16", "indra/newview/pipeline.cpp@951,88", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31781,695", "indra/newview/pipeline.cpp@32919,301"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@120,11", "indra/newview/pipeline.cpp@327,106", "indra/newview/pipeline.cpp@712,16", "indra/newview/pipeline.cpp@951,88", "indra/newview/pipeline.cpp@1692,29155", "indra/newview/pipeline.cpp@31811,695", "indra/newview/pipeline.cpp@32949,301"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@146,12", "indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@708,90", "indra/newview/pipeline.h@801,68", "indra/newview/pipeline.h@1491,409", "indra/newview/pipeline.h@2457,14", "indra/newview/pipeline.h@2615,194"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@281,81"]}
@@ -306,8 +306,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 896, "text": "llprismlens.cpp", "source": "indra/newview/llprismlens.cpp"}

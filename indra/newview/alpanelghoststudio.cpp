@@ -434,10 +434,11 @@ bool ALPanelGhostStudio::postBuild()
         const auto* source_clone = studio.findInstanceByRuntime(source);
         const LLUUID source_instance = source_clone ? source_clone->mId : source;
         bool skipped = false;
+        mSwapStatus.clear();
         for (const auto& id : ids)
             if (id == source_instance) skipped = true;
-            else studio.swapSource(id, source, label);
-        mSwapStatus = skipped ? "Swap: skipped the picked source clone (cannot copy itself)" : "";
+            else if (!studio.swapSource(id, source, label)) mSwapStatus = studio.swapStatus();
+        if (skipped && mSwapStatus.empty()) mSwapStatus = "Swap: skipped the picked source clone (cannot copy itself)";
         refreshList(true);
         mDetailDirty = true;
     });

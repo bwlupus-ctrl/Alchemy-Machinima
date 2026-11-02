@@ -8022,6 +8022,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/lldrawpool.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldrawpool.cpp",
     "dependency": "indra/newview/altron.h",
     "excluded": false,
     "origin": "fork-added",
@@ -9189,6 +9198,15 @@
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llhudicon.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "HOOK",
     "consumer": "indra/newview/llhudnametag.cpp",
@@ -9198,6 +9216,15 @@
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llhudnametag.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "HOOK",
     "consumer": "indra/newview/llhudtext.cpp",
@@ -9205,6 +9232,15 @@
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llhudtext.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",

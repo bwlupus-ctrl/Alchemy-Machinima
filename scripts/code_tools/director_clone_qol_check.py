@@ -117,12 +117,14 @@ def check_round1(directory, nv):
     for file, signatures in {
         'alghoststudio.cpp': ('bool ALGhostStudio::isDeleting(', 'bool ALGhostStudio::refreshPoseCadence(', 'void ALGhostStudio::getWantedSources(', 'LLUUID ALGhostStudio::actorOwner(',
             'bool ALGhostStudio::isPrivateOverlayRuntime(', 'void ALGhostStudio::rememberOverlayDomain(', 'void ALGhostStudio::invalidateOverlayPose(',
-            'void ALGhostStudio::releaseOverlayHelper(', 'bool ALGhostStudio::acquireOverlayHelper(',
+            'void ALGhostStudio::releaseOverlayHelper(', 'void ALGhostStudio::releaseOverlayReference(', 'bool ALGhostStudio::acquireOverlayHelper(', 'LLUUID ALGhostStudio::reserveOverlayHelper(',
             'void ALGhostStudio::beginAppearance(', 'bool ALGhostStudio::swapSource(',
             'bool ALGhostStudio::setStartOffset(', 'void ALGhostStudio::syncOffsets(',
             'void ALGhostStudio::applyCrowdVariation(', 'void ALGhostStudio::refreshOverlayOffset(',
-            'LLVOAvatar* ALGhostStudio::resolveOverlayAvatar(', 'bool ALGhostStudio::freezeInstance('),
-        'llghostavatar.cpp': ('bool LLGhostAvatar::isRenderHidden(', 'F32 LLGhostAvatar::phaseOffset(', 'void LLGhostAvatar::setStartOffset(',
+            'LLVOAvatar* ALGhostStudio::resolveOverlayAvatar(', 'bool ALGhostStudio::freezeInstance(', 'void ALGhostStudio::unfreezeInstance('),
+        'pipeline.cpp': ('bool uploadGhostPalette(',),
+        'llactormover.cpp': ('void LLActorMover::computeProxyBounds(',),
+        'llghostavatar.cpp': ('void LLGhostAvatar::setRenderOnlyHidden(', 'bool LLGhostAvatar::isRenderHidden(const LLViewerObject* avatar,', 'bool LLGhostAvatar::isRenderHidden(const LLViewerObject* object)', 'F32 LLGhostAvatar::phaseOffset(', 'void LLGhostAvatar::setStartOffset(',
             'void LLGhostAvatar::applyOffsetHistory(', 'void LLGhostAvatar::restoreOffsetPose(',
             'void LLGhostAvatar::prepareOffsetDrive('),
         'lldirectorcast.cpp': ('const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(',
@@ -142,11 +144,15 @@ def check_round1(directory, nv):
         'skip_history_apply': ('void LLGhostAvatar::applyOffsetHistory', '\n    if (mStartOffset', '\n    return;\n    if (mStartOffset'),
         'skip_overlay_history': ('void ALGhostStudio::refreshOverlayOffset', 'inst.mOffsetPose = frame.second;', '(void)frame;'),
         'swap_early_return': ('bool ALGhostStudio::swapSource', '\n    Instance* inst =', '\n    return false;\n    Instance* inst ='),
+        'held_bounds_live_extents': ('void LLActorMover::computeProxyBounds', 'proxy.mHeldBounds ? proxy.mHeldBounds : av->getLastAnimExtents()', 'av->getLastAnimExtents()'),
+        'swap_failure_loses_prior': ('bool ALGhostStudio::swapSource', 'if (replacement) {', 'releaseOverlayHelper(id); if (replacement) {'),
+        'inactive_policy_resolves_owners': ('bool LLGhostAvatar::isRenderHidden(const LLViewerObject* avatar,', 'if (!hasRenderHiddenPolicy()) return false;', ''),
+        'resume_discards_clock_shift': ('void ALGhostStudio::unfreezeInstance', 'frame.first += paused;', 'frame.first += 0.;'),
         'drop_subject_filter': ('std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::buildActorChoices', 'return ALGhostStudio::instance().isDeleting(choice.mId)', 'return false && ALGhostStudio::instance().isDeleting(choice.mId)'),
         'fade_authoring_leak': ('const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle', 'return member.mActorStyle;', 'return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;'),
     }
     for name, (signature, old, new) in controls.items():
-        start = fixture.index(signature+'(')
+        start = fixture.index(signature if '(' in signature else signature+'(')
         stop = fixture.index('\n}', start)+2
         body = fixture[start:stop]
         assert old in body, name
@@ -167,6 +173,17 @@ def check_round1(directory, nv):
                       'bool LLActorMover::renderSharedActorStyleProxyItem('):
         assert 'isRenderHidden' in method(nv/'llactormover.cpp',signature)
     assert 'LLGhostAvatar::isRenderHidden(avatar)' in method(nv/'llactormover.cpp','void LLActorMover::buildSharedActorStyleQueue(')
+    # Viewer-only consumer wiring complements the executed production bounds and history.
+    queue = method(nv/'llactormover.cpp','void LLActorMover::buildGhostDeferredQueue(')
+    assert 'proxy.mHeldBounds = inst.mOffsetPose->mFrozenBounds' in queue
+    capture = method(nv/'alghoststudio.cpp','bool ALGhostStudio::captureOverlayPose(')
+    assert 'getLastAnimExtents()' in capture and 'mFrozenBounds[0] = ext[0]' in capture
+    cover = method(nv/'pipeline.cpp','bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,\n                       const LLVector2& cover, bool blended,\n                       bool apply_model_matrix)')
+    assert 'uploadGhostPalette(di)' in cover and 'sDrawingGhostProxy->mFadeAlpha' in cover
+    replay = method(nv/'pipeline.cpp','void LLPipeline::renderGhostSilCover(')
+    assert 'proxy.mHeldAttachMats->find(gf.mObjectId)' in replay and '1.f-proxy.mFadeAlpha' in replay
+    setter = method(nv/'llghostavatar.cpp','void LLGhostAvatar::setEntityCloneVisible(')
+    assert 'if (visible) --sRenderHiddenReasons; else ++sRenderHiddenReasons;' in setter
     directed=(nv/'llghostavatar.cpp').read_text(encoding='utf-8')
     retrigger=directed[directed.index('        if (!active &&'):directed.index('        mEntityDirectedWasActive = active;')]
     assert 'startMotion(mEntityDirectedAnim, 0.f)' in retrigger and 'phaseOffset(' not in retrigger

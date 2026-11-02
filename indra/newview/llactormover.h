@@ -970,6 +970,7 @@ public:
         LLVector3    mWorldBoundsHalfExtent;
         const std::map<std::pair<LLUUID, U64>, std::vector<F32>>* mHeldPalettes = nullptr;
         const std::map<LLUUID, LLMatrix4>* mHeldAttachMats = nullptr;
+        const LLVector3* mHeldBounds = nullptr;
         F32 mFadeAlpha = 1.f;
         EGhostProxyPose mPose = EGhostProxyPose::LIVE;
         bool mFrustumVisible = false;

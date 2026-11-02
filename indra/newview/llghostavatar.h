@@ -146,7 +146,10 @@ public:
 
     void setEntityCloneVisible(bool visible);
     bool isEntityCloneVisible() const { return mEntityCloneVisible && !mRenderOnlyHidden; }
-    void setRenderOnlyHidden(bool hidden) { mRenderOnlyHidden = hidden; }
+    void setRenderOnlyHidden(bool hidden);
+    static U32 sRenderHiddenReasons;
+    static bool hasRenderHiddenPolicy() { return sRenderHiddenReasons != 0; }
+    static bool isRenderHidden(const LLViewerObject* avatar, const LLUUID& owner, const LLUUID& fallback);
     bool mRenderOnlyHidden = false;
     bool mOverlayHelper = false; // private for its complete lifetime, including deferred death
 
