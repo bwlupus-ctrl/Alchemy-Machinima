@@ -1484,6 +1484,9 @@ bool ALGhostStudio::applyEntityTransform(const LLUUID& id)
         (ghost->getEntityDriveMode() == DRIVE_FROZEN && ghost->hasFloorRootHold()))))
         ghost->setGhostFootPosition(gAgent.getPosAgentFromGlobal(inst->mFootGlobal));
     if (!stampOwnsFacing(*inst)) ghost->setGhostRotation(inst->mRotation);
+    // Gizmo writes run after the post-pose pass. Avatar async moves can reuse
+    // translated extents, which cannot represent a rotated seated body.
+    ghost->refreshVisualBounds(true);
     return true;
 }
 
@@ -2393,6 +2396,16 @@ void ALGhostStudio::updatePostObjectList()
             continue;
         }
         ghost->reassertTiltRotation();
+    }
+
+    // Selection and culling consume the same final rendered skeleton bounds.
+    // Classify all entity clones, but force final-pose extents/partition moves
+    // only for selected or fitted clones; others keep native extent throttling.
+    for (const Instance& inst : mInstances)
+    {
+        if (inst.mKind == BACKING_ENTITY_CLONE)
+            if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+                ghost->refreshVisualBounds();
     }
 }
 

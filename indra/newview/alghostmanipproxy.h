@@ -73,6 +73,8 @@ public:
     void noteEmptyGroundClick() { mEmptyGroundClicked = true; }
     // True if `object` IS our proxy (for pick/command policy callers).
     bool owns(const LLViewerObject* object) const;
+    bool usesBodyPivot(const LLViewerObject* object) const
+    { return mProxyUsesBodyPivot && owns(object); }
 
 private:
     // Canonical avatar-sized manipulation bounds (world metres). The proxy volume
@@ -108,6 +110,9 @@ private:
     U64  mSeenGroupRevision = 0;
     bool mEditMode = false;
     bool mDragging = false;
+    bool mProxyUsesBodyPivot = false;
+    LLVector3 mProxyRootOffset;
+    LLVector3 mDragRootOffset;
     // [GhostEditFix] Provenance flag: the stock pick path saw a CONFIRMED empty-
     // ground click (no ghost, no object, no avatar, no gizmo part) during a ghost
     // edit session. Consumed by tick(); cleared by begin()/teardown().

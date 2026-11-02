@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llmanip.h"
+#include "altoolghostedit.h"
 
 #include "llmath.h"
 #include "v3math.h"
@@ -363,6 +364,8 @@ LLVector3 LLManip::getSavedPivotPoint() const
     LLViewerObject* obj = selection->getFirstObject();
     if (obj && obj->isGhostManipProxy() && selection->getObjectCount() == 1)
     {
+        if (ALToolGhostEdit::getInstance()->getManipProxy().usesBodyPivot(obj))
+            return saved_center;
         const LLVector3 live_center = LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();
         return saved_center + (obj->getManipPivotPositionAgent() - live_center);
     }
@@ -375,6 +378,11 @@ LLVector3 LLManip::getPivotPoint()
     LLViewerObject* object = mObjectSelection->getFirstRootObject(true);
     if (object && (mObjectSelection->getObjectCount() == 1 || editRootAxis) && mObjectSelection->getSelectType() != SELECT_TYPE_HUD)
     {
+        // Only the owned proxy of a displaced ENTITY gets a body pivot. Other
+        // proxies keep the historical raised manipulator origin unchanged.
+        if (mObjectSelection->getObjectCount() == 1 &&
+            ALToolGhostEdit::getInstance()->getManipProxy().usesBodyPivot(object))
+            return LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();
         return mObjectSelection->getFirstObject()->getManipPivotPositionAgent();
     }
     return LLSelectMgr::getInstance()->getBBoxOfSelection().getCenterAgent();

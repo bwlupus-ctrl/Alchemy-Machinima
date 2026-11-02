@@ -15,6 +15,7 @@
 #include "alghoststudio.h"
 #include "altoolghostplace.h"
 #include "llagent.h"                // global <-> agent (pick projection)
+#include "llghostavatar.h"
 #include "lltoolmgr.h"
 #include "llviewercamera.h"         // projectPosAgentToScreen (screen-space pick)
 #include "llviewerobject.h"         // [GhostEditFix] LLPointer<LLViewerObject> needs the full type
@@ -81,6 +82,16 @@ LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
         const LLVector3 foot = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
         LLVector3 probes[2] = { foot, foot };
         probes[1].mV[VZ] += 1.f * inst.mScale;      // mid-body, scale-aware
+        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            LLVector3 center, size;
+            if (const LLGhostAvatar* ghost = studio.resolveEntityClone(inst.mId);
+                ghost && ghost->getVisualBounds(center, size))
+            {
+                probes[0] = probes[1] = center;
+                probes[0].mV[VZ] -= .5f * size[VZ];
+            }
+        }
         for (const LLVector3& p : probes)
         {
             LLCoordGL screen;

@@ -16,6 +16,7 @@
 
 #include "llagent.h"
 #include "lldrawable.h"
+#include "llghostavatar.h"
 #include "llprimitive.h"            // FLAGS_OBJECT_*, LL_PCODE_* profile/path
 #include "llselectmgr.h"
 #include "lltoolcomp.h"             // LLToolCompTranslate
@@ -54,6 +55,8 @@ LLVector3d pivotFromProxyCenter(const LLVector3d& center_global,
 
 bool groupLocalBounds(const ALGhostGroupModel::Group& group,
                       F32 avatar_width, F32 avatar_depth, F32 avatar_height,
+                      const LLVector3d& world_foot, const LLQuaternion& world_rotation,
+                      F32 world_scale,
                       LLVector3& center, LLVector3& dimensions)
 {
     bool have_corner = false;
@@ -61,6 +64,10 @@ bool groupLocalBounds(const ALGhostGroupModel::Group& group,
     LLVector3 maximum;
     for (const ALGhostGroupModel::Member& member : group.mMembers)
     {
+        LLVector3 visual_center, visual_size;
+        const LLGhostAvatar* ghost =
+            ALGhostStudio::instance().resolveEntityClone(member.mInstanceId);
+        const bool visual = ghost && ghost->getVisualBounds(visual_center, visual_size);
         if (!member.mLocal.isFinite())
         {
             return false;
@@ -83,9 +90,22 @@ bool groupLocalBounds(const ALGhostGroupModel::Group& group,
                         (x ? 0.5f : -0.5f) * avatar_width,
                         (y ? 0.5f : -0.5f) * avatar_depth,
                         z ? avatar_height : 0.f);
-                    corner *= member.mLocal.mScale;
-                    corner *= member.mLocal.mRotation;
-                    corner += local_foot;
+                    if (visual)
+                    {
+                        corner.setVec((x ? .5f : -.5f) * visual_size[VX],
+                                      (y ? .5f : -.5f) * visual_size[VY],
+                                      (z ? .5f : -.5f) * visual_size[VZ]);
+                        corner += visual_center;
+                        corner -= gAgent.getPosAgentFromGlobal(world_foot);
+                        corner *= ~world_rotation;
+                        corner /= world_scale; // rendered extents are already scaled
+                    }
+                    else
+                    {
+                        corner *= member.mLocal.mScale;
+                        corner *= member.mLocal.mRotation;
+                        corner += local_foot;
+                    }
                     if (!corner.isFinite())
                     {
                         return false;
@@ -348,12 +368,6 @@ void ALGhostManipProxy::pushInstanceToProxy()
         group && (mInstanceId == group->mId || !group->mEditMembers);
     LLVector3 local_center(0.f, 0.f, 0.5f * PROXY_HEIGHT);
     LLVector3 local_dimensions(PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT);
-    if (whole_group &&
-        !groupLocalBounds(*group, PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT,
-                          local_center, local_dimensions))
-    {
-        return;
-    }
 
     // Individual/member proxy bounds keep the avatar scale limits. A collapsed
     // group uses its authoring world scale directly: each member's own resolved
@@ -366,12 +380,53 @@ void ALGhostManipProxy::pushInstanceToProxy()
     {
         return;
     }
+    if (whole_group &&
+        !groupLocalBounds(*group, PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT,
+                          foot, rotation, s, local_center, local_dimensions))
+        return;
+    mProxyUsesBodyPivot = false;
+    if (!whole_group && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+    {
+        LLVector3 center, size;
+        if (LLGhostAvatar* ghost = studio.resolveEntityClone(inst->mId);
+            ghost && ghost->getVisualBounds(center, size))
+        {
+            // Inverse the authored frame once. The extents already contain the
+            // outer scale. Enclosing all corners preserves the editor's axes.
+            LLBBox local_box(gAgent.getPosAgentFromGlobal(foot), rotation,
+                            LLVector3::zero, LLVector3::zero);
+            for (S32 x = 0; x < 2; ++x)
+                for (S32 y = 0; y < 2; ++y)
+                    for (S32 z = 0; z < 2; ++z)
+                        local_box.addPointAgent(center + LLVector3(
+                            (x ? .5f : -.5f) * size[VX],
+                            (y ? .5f : -.5f) * size[VY],
+                            (z ? .5f : -.5f) * size[VZ]));
+            local_center = local_box.getCenterLocal() / s;
+            local_dimensions = local_box.getExtentLocal() / s;
+            mProxyUsesBodyPivot = true;
+            // Foot placement lifts the skeleton root in WORLD Z, not along
+            // the authored rotation. Keep that lift unrotated during pitch/roll.
+            const LLVector3 rendered_root = ghost->getRootJoint()->getWorldPosition() *
+                ghost->getClientOuterTransformMatrix();
+            mProxyRootOffset = rendered_root - gAgent.getPosAgentFromGlobal(foot);
+        }
+    }
     mProxyLocalCenter = local_center;
     mProxyLocalDimensions = local_dimensions;
-    mProxy->setScale(local_dimensions * s, false);
-    mProxy->setRotation(rotation, false);
-    mProxy->setPositionGlobal(
-        proxyCenterFromPivot(foot, rotation, local_center, s), false);
+    const LLVector3 dimensions = local_dimensions * s;
+    const LLVector3d position = proxyCenterFromPivot(foot, rotation, local_center, s);
+    if (mProxy->getScale() != dimensions || mProxy->getRotation() != rotation ||
+        mProxy->getPositionGlobal() != position)
+    {
+        mProxy->setScale(dimensions, false);
+        mProxy->setRotation(rotation, false);
+        mProxy->setPositionGlobal(position, false);
+        // Pose changes carry no authoring revision, but stock handles still
+        // need their new bbox. Do not touch an unrelated selection at creation.
+        if (owns(LLSelectMgr::getInstance()->getSelection()->getFirstObject()))
+            LLSelectMgr::getInstance()->updateSelectionCenter();
+    }
     mSeenGroupRevision = group ? group->mRevision : 0;
 }
 
@@ -454,12 +509,16 @@ void ALGhostManipProxy::pullProxyToInstance()
         else
         {
             LLVector3d foot = mDragStartFoot;
-            if (LLToolMgr::getInstance()->getCurrentTool() !=
+            if (mProxyUsesBodyPivot || LLToolMgr::getInstance()->getCurrentTool() !=
                 LLToolCompRotate::getInstance())
             {
                 foot = pivotFromProxyCenter(
                     mProxy->getPositionGlobal(), rotation,
                     mDragLocalCenter, mDragStartScale);
+                if (mProxyUsesBodyPivot && LLToolMgr::getInstance()->getCurrentTool() ==
+                    LLToolCompRotate::getInstance())
+                    foot += LLVector3d((mDragRootOffset * ~mDragStartRotation) * rotation -
+                                       mDragRootOffset);
             }
             studio.transformUnit(
                 mInstanceId, foot, rotation, inst->mScale);
@@ -467,7 +526,8 @@ void ALGhostManipProxy::pullProxyToInstance()
         return;
     }
     inst->mRotation = rotation;
-    if (LLToolMgr::getInstance()->getCurrentTool() == LLToolCompRotate::getInstance())
+    if (!mProxyUsesBodyPivot &&
+        LLToolMgr::getInstance()->getCurrentTool() == LLToolCompRotate::getInstance())
     {
         // ROTATE pivots around the planted FOOT: keep the drag-start foot and take
         // only the new orientation. Stock rotate spins about the box CENTRE, which
@@ -477,12 +537,16 @@ void ALGhostManipProxy::pullProxyToInstance()
     }
     else
     {
-        // TRANSLATE: the foot follows the box centre (the center<->foot conversion
-        // uses the SCALED box height).
+        // TRANSLATE keeps the exact centre delta. Entity ROTATE keeps the
+        // rendered body centre fixed, with the world-Z root lift unchanged.
         inst->mFootGlobal = pivotFromProxyCenter(
             mProxy->getPositionGlobal(), rotation,
             mDragLocalCenter,
             llclamp(inst->mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX));
+        if (mProxyUsesBodyPivot && LLToolMgr::getInstance()->getCurrentTool() ==
+            LLToolCompRotate::getInstance())
+            inst->mFootGlobal += LLVector3d(
+                (mDragRootOffset * ~mDragStartRotation) * rotation - mDragRootOffset);
     }
     if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
     {
@@ -511,6 +575,7 @@ void ALGhostManipProxy::beginDrag()
     mDragging = true;
     mDragLocalCenter = mProxyLocalCenter;
     mDragLocalDimensions = mProxyLocalDimensions;
+    mDragRootOffset = mProxyRootOffset;
     mDragStartMemberPinKnown = false;
     mDragStartMemberPinned = false;
     // Snapshot the pre-drag transform so a cancelled drag can restore it.
@@ -793,11 +858,20 @@ void ALGhostManipProxy::tick()
         const ALGhostGroupModel::Group* group =
             studio.groupForMember(inst->mId);
         const U64 group_revision = group ? group->mRevision : 0;
-        if (studio.reflectOwnsPosition(*inst) || inst->mTransformRevision != mSeenRevision ||
-            group_revision != mSeenGroupRevision)
+        const bool transform_changed = studio.reflectOwnsPosition(*inst) ||
+            inst->mTransformRevision != mSeenRevision || group_revision != mSeenGroupRevision;
+        // Entity poses can change independently of authoring revisions. A group
+        // can contain entities even when its representative is an overlay.
+        bool pose_bounds = inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+        if (group && !pose_bounds)
+            for (const auto& member : group->mMembers)
+                if (const auto* member_inst = studio.getInstance(member.mInstanceId);
+                    member_inst && member_inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                    { pose_bounds = true; break; }
+        if (transform_changed || pose_bounds)
         {
             pushInstanceToProxy();
-            if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+            if (transform_changed && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
             {
                 studio.applyEntityTransform(inst->mId);
             }
