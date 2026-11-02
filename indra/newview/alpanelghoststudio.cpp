@@ -523,6 +523,11 @@ bool ALPanelGhostStudio::postBuild()
 
     mArrayCount   = getChild<LLSpinCtrl>("array_count_spinner");
     mArraySpacing = getChild<LLSpinCtrl>("array_spacing_spinner");
+    // Director kit rows; standalone retains its existing Columns parameter.
+    mArrayWidth = findChild<LLSpinCtrl>("array_width_spinner");
+    mArrayDepth = findChild<LLSpinCtrl>("array_depth_spinner");
+    mArrayColumns = findChild<LLSpinCtrl>("array_columns_spinner");
+    mArrayRows = findChild<LLSpinCtrl>("array_rows_spinner");
     mArrayLineBtn = getChild<LLButton>("btn_array_line");
     mArrayRingBtn = getChild<LLButton>("btn_array_ring");
     mFormationCombo = getChild<LLComboBox>("array_formation_combo");
@@ -764,6 +769,12 @@ bool ALPanelGhostStudio::postBuild()
         control->setCommitCallback(
             [this](LLUICtrl*, const LLSD&) { updateOwnedCrowdPlacement(); });
     }
+    for (LLSpinCtrl* control : {mArrayWidth, mArrayDepth, mArrayColumns, mArrayRows})
+    {
+        if (control)
+            control->setCommitCallback(
+                [this](LLUICtrl*, const LLSD&) { updateOwnedCrowdPlacement(); });
+    }
     // Independent of FormationSpec: the facing-offset bias lives directly on
     // the crowd draft (CrowdPlacementDraft::mFacingYawOffset), not the spec,
     // so it goes through its own dedicated setter rather than
@@ -832,6 +843,10 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_autoanim_window", "autoanim_window_spinner" }, // [AutoAnimate]
         { "reset_array_count", "array_count_spinner" },
         { "reset_array_spacing", "array_spacing_spinner" },
+        { "reset_array_width", "array_width_spinner" },
+        { "reset_array_depth", "array_depth_spinner" },
+        { "reset_array_columns", "array_columns_spinner" },
+        { "reset_array_rows", "array_rows_spinner" },
         { "reset_strip_count", "strip_count_spinner" },
         { "reset_strip_interval", "strip_interval_spinner" },
         { "reset_motion_speed", "formation_motion_speed" },
@@ -3753,7 +3768,8 @@ void ALPanelGhostStudio::configureFormationParameter(
 {
     const CrowdParameterDescriptor descriptor =
         crowd_parameter_descriptor(formation);
-    const bool visible = descriptor.mParameter != ECrowdParameter::NONE;
+    const bool visible = descriptor.mParameter != ECrowdParameter::NONE &&
+        !(mArrayColumns && descriptor.mParameter == ECrowdParameter::GRID_COLUMNS);
 
     // [GhostPanelPerf] Deferral comes FIRST, before ANY visibility or configuration
     // change: hiding or reconfiguring the spinner (setPrecision rewrites its inline
@@ -3933,7 +3949,11 @@ ALGhostStudio::FormationSpec ALPanelGhostStudio::capturePlacementSpec() const
     switch (crowd_parameter_descriptor(spec.mFormation).mParameter)
     {
     case ECrowdParameter::GRID_COLUMNS:
-        spec.mGridColumns = mFormationGridColumns;
+        spec.mGridColumns = mArrayColumns
+            ? (U32)mArrayColumns->getValue().asInteger() : mFormationGridColumns;
+        spec.mGridRows = mArrayRows ? (U32)mArrayRows->getValue().asInteger() : 0;
+        spec.mWidthSpacing = mArrayWidth ? (F32)mArrayWidth->getValue().asReal() : 0.f;
+        spec.mDepthSpacing = mArrayDepth ? (F32)mArrayDepth->getValue().asReal() : 0.f;
         break;
     case ECrowdParameter::ARC_SWEEP:
         spec.mArcSweepDegrees = mFormationArcSweep;
@@ -4068,6 +4088,14 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         configureFormationParameter(draft.mSpec.mFormation);
         setValueIfChanged(mArrayCount, LLSD((S32)draft.mSpec.mCount));
         setValueIfChanged(mArraySpacing, LLSD((F64)draft.mSpec.mCenterSpacing));
+        if (draft.mSpec.mFormation == ALGhostStudio::FORMATION_GRID ||
+            draft.mSpec.mFormation == ALGhostStudio::FORMATION_STAGGERED_ROWS)
+        {
+            setValueIfChanged(mArrayWidth, LLSD((F64)draft.mSpec.mWidthSpacing));
+            setValueIfChanged(mArrayDepth, LLSD((F64)draft.mSpec.mDepthSpacing));
+            setValueIfChanged(mArrayColumns, LLSD((S32)draft.mSpec.mGridColumns));
+            setValueIfChanged(mArrayRows, LLSD((S32)draft.mSpec.mGridRows));
+        }
         setValueIfChanged(mFormationEdgeGap, LLSD((F64)draft.mSpec.mEdgeGap));
         setValueIfChanged(mBrigadeColumns, LLSD((S32)draft.mSpec.mGridColumns));
         setValueIfChanged(mBrigadeRows, LLSD((S32)draft.mSpec.mGridRows));
@@ -4086,6 +4114,8 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         mApplyingCrowdDraft = false;
         mCrowdImportPending =
             alIsBeingEdited(mFormationCombo) || alIsBeingEdited(mFormationParam) ||
+            alIsBeingEdited(mArrayWidth) || alIsBeingEdited(mArrayDepth) ||
+            alIsBeingEdited(mArrayColumns) || alIsBeingEdited(mArrayRows) ||
             alIsBeingEdited(mArrayCount) || alIsBeingEdited(mArraySpacing) ||
             alIsBeingEdited(mFormationEdgeGap) || alIsBeingEdited(mBrigadeColumns) ||
             alIsBeingEdited(mBrigadeRows) || alIsBeingEdited(mBrigadeFileSpacing) ||
@@ -4127,7 +4157,9 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger();
     const bool has_parameter =
         crowd_parameter_descriptor(formation).mParameter !=
-            ECrowdParameter::NONE;
+            ECrowdParameter::NONE &&
+        !(mArrayColumns && crowd_parameter_descriptor(formation).mParameter ==
+            ECrowdParameter::GRID_COLUMNS);
     const bool guide_visible =
         mFormationGuideShape->getValue().asInteger() !=
             (S32)ALGhostStudio::GUIDE_OFF;
@@ -4154,6 +4186,13 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
            static_cast<LLUICtrl*>(mCrowdCreateMode) })
     {
         setEnabledIfChanged(control, can_edit);
+    }
+    const bool uses_axes = formation == ALGhostStudio::FORMATION_GRID ||
+        formation == ALGhostStudio::FORMATION_STAGGERED_ROWS;
+    for (LLSpinCtrl* control : {mArrayWidth, mArrayDepth, mArrayColumns, mArrayRows})
+    {
+        setRowVisibleIfChanged(control, uses_axes);
+        setEnabledIfChanged(control, can_edit && uses_axes);
     }
     const bool uses_grid = formation_uses_grid(formation);
     setRowVisibleIfChanged(mBrigadeColumns, uses_grid);
@@ -4250,10 +4289,8 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
             {
                 status += "\n" + source_reason;
             }
-            else
-            {
+            if (!draft.mValidation.mMessage.empty())
                 status += "\n" + draft.mValidation.mMessage;
-            }
         }
     }
     else

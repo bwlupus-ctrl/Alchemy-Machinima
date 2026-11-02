@@ -325,17 +325,16 @@ namespace tut
     template<> template<>
     void formation_solver_object::test<6>()
     {
-        Request request = makeRequest(Shape::StaggeredRows, 6, 0.0, 1.0);
-        request.mGridColumns = 3;
+        Request request = makeRequest(Shape::StaggeredRows, 4, 0.0, 1.0);
         const Result result = solve(request);
         ensureContract("staggered rows", request, result);
 
         const F64 vertical =
-            std::fabs(result.mSlots[3].mLocalY - result.mSlots[0].mLocalY);
+            std::fabs(result.mSlots[2].mLocalY - result.mSlots[0].mLocalY);
         ensureClose("triangular vertical pitch",
                     vertical, std::sqrt(3.0) * 0.5);
         ensureClose("triangular diagonal neighbour",
-                    slotDistance(result.mSlots[0], result.mSlots[3]), 1.0);
+                    slotDistance(result.mSlots[0], result.mSlots[2]), 1.0);
         ensureClose("same-row neighbour",
                     slotDistance(result.mSlots[0], result.mSlots[1]), 1.0);
     }
@@ -891,4 +890,62 @@ namespace tut
                               soul_result.mSlots[1].mLocalX),
                     0.40);
     }
+    // The four crowd controls map to deterministic heading-relative grid slots.
+    template<> template<>
+    void formation_solver_object::test<21>()
+    {
+        for (Shape shape : {Shape::Grid, Shape::StaggeredRows})
+        {
+            Request request = makeRequest(shape, 6, 0.30, 0.40);
+            request.mGridColumns = 2;
+            request.mGridRows = 3;
+            request.mColumnSpacingMeters = 2.0;
+            request.mRowSpacingMeters = 3.0;
+            const Result result = solve(request);
+            ensureContract("axis grid", request, result);
+            ensureClose("width is local Y", result.mSlots[1].mLocalY -
+                        result.mSlots[0].mLocalY, 2.0);
+            ensureClose("columns share forward coordinate", result.mSlots[1].mLocalX -
+                        result.mSlots[0].mLocalX, 0.0);
+            ensureClose("depth is local X, no stagger compression",
+                        result.mSlots[0].mLocalX - result.mSlots[2].mLocalX, 3.0);
+            request.mYawRadians = PI / 2.0;
+            const Result rotated = solve(request);
+            ensureClose("width rotates with heading", rotated.mSlots[1].mLocalX -
+                        rotated.mSlots[0].mLocalX, -2.0);
+            request.mYawRadians = 0.0;
+            request.mGridColumns = 0;
+            const Result rows_only = solve(request);
+            for (size_t i = 0; i < result.mSlots.size(); ++i)
+            {
+                ensureClose("Rows-only X", rows_only.mSlots[i].mLocalX, result.mSlots[i].mLocalX);
+                ensureClose("Rows-only Y", rows_only.mSlots[i].mLocalY, result.mSlots[i].mLocalY);
+            }
+
+            request.mGridColumns = 2;
+            request.mGridRows = 1;
+            request.mColumnSpacingMeters = 0.1;
+            request.mRowSpacingMeters = 0.2;
+            request.mEdgeGapMeters = 0.02;
+            const Result widened = solve(request);
+            ensureContract("widened grid", request, widened);
+            ensureClose("width clearance floor", widened.mSlots[1].mLocalY -
+                        widened.mSlots[0].mLocalY, 0.62);
+            ensureClose("depth clearance floor", widened.mSlots[0].mLocalX -
+                        widened.mSlots[2].mLocalX, 0.62);
+            ensure("width warning", widened.mDiagnostic.find("Width widened to 0.62 m") != std::string::npos);
+            ensure("depth warning", widened.mDiagnostic.find("Depth widened to 0.62 m") != std::string::npos);
+            ensure("conflicting rows explained", widened.mDiagnostic.find("using 3 rows") != std::string::npos);
+            ensure("count retained", widened.mPlacedCount == 6);
+            ensure("axis changes invalidate input", widened.mInputFingerprint != result.mInputFingerprint);
+        }
+
+        Request legacy = makeRequest(Shape::Grid, 4, 0.0, 1.0);
+        const Result compact = solve(legacy);
+        ensureClose("zero overrides preserve legacy column X", compact.mSlots[1].mLocalX -
+                    compact.mSlots[0].mLocalX, 1.0);
+        ensureClose("zero overrides preserve legacy row Y", compact.mSlots[2].mLocalY -
+                    compact.mSlots[0].mLocalY, 1.0);
+    }
+
 }

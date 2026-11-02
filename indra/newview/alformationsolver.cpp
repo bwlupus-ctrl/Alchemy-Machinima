@@ -15,6 +15,8 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <iomanip>
+#include <sstream>
 
 namespace ALFormationSolver
 {
@@ -950,6 +952,14 @@ bool buildRow(const Request& request, size_t count, Layout& layout)
     return true;
 }
 
+// All-zero requests retain the historical compact layout exactly. An explicit
+// axis/count override opts into heading-relative axes: X forward, Y across.
+bool usesGridAxes(const Request& request)
+{
+    return request.mGridColumns != 0 || request.mGridRows != 0 ||
+        request.mColumnSpacingMeters > 0.0 || request.mRowSpacingMeters > 0.0;
+}
+
 void buildGridCandidate(const Request& request, size_t count, U32 columns,
                         bool staggered, F64 pitch,
                         std::vector<Vec2>& points)
@@ -960,10 +970,21 @@ void buildGridCandidate(const Request& request, size_t count, U32 columns,
         return;
     }
 
+    const bool axes = usesGridAxes(request);
+    const F64 width = std::max(pitch, request.mColumnSpacingMeters);
+    const F64 depth = std::max(pitch, request.mRowSpacingMeters);
     for (size_t i = 0; i < count; ++i)
     {
         const U32 row = static_cast<U32>(i / columns);
         const U32 column = static_cast<U32>(i % columns);
+        if (axes)
+        {
+            // Width is side-to-side, perpendicular to the crowd's +X heading.
+            points[i].mY = static_cast<F64>(column) * width +
+                (staggered && (row & 1U) ? 0.5 * width : 0.0);
+            points[i].mX = -static_cast<F64>(row) * depth;
+            continue;
+        }
         points[i].mX = static_cast<F64>(column) * pitch;
         points[i].mY = static_cast<F64>(row) * pitch;
         if (staggered)
@@ -986,9 +1007,14 @@ bool buildSmartGrid(const Request& request, size_t count, bool staggered,
 
     U32 first_columns = 1;
     U32 last_columns = static_cast<U32>(count);
-    if (request.mGridColumns != 0)
+    const U32 explicit_columns = request.mGridColumns != 0
+        ? request.mGridColumns
+        : (request.mGridRows != 0
+            ? static_cast<U32>((count + request.mGridRows - 1) / request.mGridRows)
+            : 0);
+    if (explicit_columns != 0)
     {
-        first_columns = std::min(request.mGridColumns,
+        first_columns = std::min(explicit_columns,
                                  static_cast<U32>(count));
         last_columns = first_columns;
     }
@@ -1682,6 +1708,34 @@ void finishFingerprint(Result& result)
     result.mSolutionFingerprint = solutionFingerprint(result);
 }
 
+// A single diagnostic string is reused by the existing placement readout.
+void appendGridDiagnostic(const Request& request, Result& result)
+{
+    if ((request.mShape != Shape::Grid && request.mShape != Shape::StaggeredRows) ||
+        !usesGridAxes(request) || request.mMembers.size() < 2)
+        return;
+    const F64 minimum = maximumReservedPairRequirement(request, request.mMembers.size());
+    std::ostringstream message;
+    message << std::fixed << std::setprecision(2);
+    if (request.mColumnSpacingMeters > 0.0 && request.mColumnSpacingMeters < minimum)
+        message << "; Width widened to " << minimum << " m for clearance";
+    if (request.mRowSpacingMeters > 0.0 && request.mRowSpacingMeters < minimum)
+        message << "; Depth widened to " << minimum << " m for clearance";
+    if (request.mGridRows != 0)
+    {
+        const U32 columns = request.mGridColumns != 0
+            ? request.mGridColumns
+            : static_cast<U32>((request.mMembers.size() + request.mGridRows - 1) /
+                               request.mGridRows);
+        const U32 rows = static_cast<U32>((request.mMembers.size() + columns - 1) / columns);
+        if (rows != request.mGridRows)
+            message << "; Count preserved: using " << rows << " rows ("
+                    << (request.mGridColumns ? "Columns takes priority" : "Rows limited by Count")
+                    << ")";
+    }
+    result.mDiagnostic += message.str();
+}
+
 } // anonymous namespace
 
 Result solve(const Request& request)
@@ -1764,6 +1818,7 @@ Result solve(const Request& request)
         result.mEnvelopeRadiusMeters = result.mRequiredRadiusMeters;
         populateSlotsAndMetrics(request, requested_count, full_layout, result);
         populateOverflow(request, requested_count, result);
+        appendGridDiagnostic(request, result);
         finishFingerprint(result);
         return result;
     }
@@ -1774,6 +1829,7 @@ Result solve(const Request& request)
     {
         result.mStatus = Status::Ok;
         result.mDiagnostic = "all members fit the fixed radius";
+        appendGridDiagnostic(request, result);
         populateSlotsAndMetrics(request, requested_count, full_layout, result);
         populateOverflow(request, requested_count, result);
         finishFingerprint(result);

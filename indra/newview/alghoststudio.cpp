@@ -4703,8 +4703,11 @@ bool ALGhostStudio::resolveCrowdPlacement()
     request.mYawRadians = draft.mPatternYaw;
     request.mGridColumns = draft.mSpec.mGridColumns;
     request.mGridRows = draft.mSpec.mGridRows;
-    request.mColumnSpacingMeters = draft.mSpec.mFileSpacing;
-    request.mRowSpacingMeters = draft.mSpec.mRankSpacing;
+    const bool crowd_axes = shape == Shape::Grid || shape == Shape::StaggeredRows;
+    request.mColumnSpacingMeters = crowd_axes
+        ? draft.mSpec.mWidthSpacing : draft.mSpec.mFileSpacing;
+    request.mRowSpacingMeters = crowd_axes
+        ? draft.mSpec.mDepthSpacing : draft.mSpec.mRankSpacing;
     request.mArcSweepRadians = draft.mSpec.mArcSweepDegrees * DEG_TO_RAD;
     request.mLaneGapMeters = draft.mSpec.mLaneGap;
     request.mChevronAngleDegrees = draft.mSpec.mChevronAngleDegrees;
@@ -5046,6 +5049,13 @@ bool ALGhostStudio::resolveCrowdPlacement()
         if (!partial_warning.empty())
         {
             validation.mMessage += " \xC2\xB7 " + partial_warning;
+        }
+        // The solver's axis/count advisories must survive the success summary.
+        // partial_warning already includes this diagnostic when it is retained.
+        if (partial_warning.empty() && crowd_axes &&
+            solved.mDiagnostic.find("; ") != std::string::npos)
+        {
+            validation.mMessage += solved.mDiagnostic.substr(solved.mDiagnostic.find("; "));
         }
     }
     return validation.mCanCommit;

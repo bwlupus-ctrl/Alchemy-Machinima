@@ -133,6 +133,10 @@ struct Request
 
     // Zero chooses the most compact deterministic row/column count. A non-zero
     // value fixes the maximum members per row for Grid/StaggeredRows.
+    // Columns wins over Rows, preserving Count. Any nonzero grid override
+    // uses heading-relative columns along local Y (width), rows along local X
+    // (depth); all-zero keeps legacy automatic geometry. Spacing overrides are
+    // floored by centre spacing, footprint clearance and jitter reservation.
     U32 mGridColumns = 0;
     U32 mGridRows = 0;
     F64 mColumnSpacingMeters = 0.0;

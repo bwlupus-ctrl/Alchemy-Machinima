@@ -220,6 +220,8 @@ public:
         S32 mCount = 5;
         F32 mRadius = 6.f;             // legacy; use mGuideSize for the guide
         F32 mCenterSpacing = 1.5f;
+        F32 mWidthSpacing = 0.f;       // Grid/StaggeredRows; 0 = centre spacing
+        F32 mDepthSpacing = 0.f;
         F32 mEdgeGap = 0.10f;
         F32 mJitter = 0.f;             // metres, not a spacing fraction
         U32 mGridColumns = 0;          // 0 = solver chooses compact dimensions

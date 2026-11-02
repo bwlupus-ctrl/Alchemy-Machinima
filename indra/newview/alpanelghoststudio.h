@@ -414,6 +414,10 @@ private:
 
     LLSpinCtrl*       mArrayCount = nullptr;
     LLSpinCtrl*       mArraySpacing = nullptr;
+    LLSpinCtrl*       mArrayWidth = nullptr;
+    LLSpinCtrl*       mArrayDepth = nullptr;
+    LLSpinCtrl*       mArrayColumns = nullptr;
+    LLSpinCtrl*       mArrayRows = nullptr;
     LLButton*         mArrayLineBtn = nullptr;
     LLButton*         mArrayRingBtn = nullptr;
     LLComboBox*       mFormationCombo = nullptr;
