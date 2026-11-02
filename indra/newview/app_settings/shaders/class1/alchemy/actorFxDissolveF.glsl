@@ -16,6 +16,16 @@ uniform vec4 actorFxParams0;
 uniform vec4 actorFxParams1;
 uniform float actorFxDissolveProgress;
 
+
+float cloneFadeCoverage(float progress)
+{
+    if (progress <= 0.0) return 1.0;
+    if (progress >= 1.0) return -1.0;
+    ivec2 p = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
+    const float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
+    return (bayer[p.y*4+p.x]+0.5)/16.0-progress;
+}
+
 float actor_fx_dissolve_hash(vec2 p)
 {
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -45,11 +55,12 @@ bool actorFxDissolveEnabled()
 {
     // Look 10 is the persisted/UI ActorStyle mapping for Dissolve. Coverage is
     // independent of Layer Alpha; actorFxEnabled remains the shared style gate.
-    return actorFxEnabled != 0 && actorFxLook == 10;
+    return actorFxEnabled == 2 || (actorFxEnabled != 0 && actorFxLook == 10);
 }
 
 float actorFxDissolveCoverage(vec3 object_position)
 {
+    if (actorFxEnabled == 2) return cloneFadeCoverage(actorFxDissolveProgress);
     float progress = clamp(actorFxDissolveProgress, 0.0, 1.0);
     // Make the authored endpoints exact instead of depending on the sampled
     // FBM's practical min/max. This keeps Cover useful at progress zero and

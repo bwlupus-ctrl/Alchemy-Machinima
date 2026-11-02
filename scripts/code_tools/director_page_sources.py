@@ -1385,7 +1385,15 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
                 # camera slots: audit None plus one camera, not every slot.
                 if len(items) > 2 and all(re.fullmatch(r"Cam \d+", str(i)) for i in items[1:]):
                     items = items[:2]
-                for index, item in enumerate(items):
+                options = list(enumerate(items))
+                # Clone mix menus share exactly the same options and visibility.
+                # Look 1 audits every look. Each remaining menu audits None and
+                # the widest label, retaining independent wiring/layout coverage
+                # without repeating 205 identical local visibility states.
+                if re.fullmatch(r"crowd_mix_look_[2-6]", widget) and items:
+                    widest = max(range(len(items)), key=lambda i: len(str(items[i])))
+                    options = [(0, items[0]), (widest, items[widest])]
+                for index, item in options:
                     states.append((f"{widget}-option-{index}", f"Only `{widget}` selects `{item}`; other selectors remain default."))
             elif row["kind"] == "toggle":
                 states.append((f"{widget}-on", f"Only `{widget}` is on; dependent visibility is measured."))

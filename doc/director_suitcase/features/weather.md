@@ -348,7 +348,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1380, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}

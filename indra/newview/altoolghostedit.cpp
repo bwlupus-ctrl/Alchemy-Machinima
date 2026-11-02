@@ -75,7 +75,7 @@ LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
     F32 best_d2 = GHOST_PICK_PX * GHOST_PICK_PX;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (!inst.mEnabled)
+        if (!studio.isVisible(inst) || inst.mDeleting)
         {
             continue;       // you pick what you can see; hidden ghosts via the list
         }
@@ -121,7 +121,8 @@ bool ALToolGhostEdit::handleMouseDown(S32 x, S32 y, MASK mask)
     const LLUUID hit = pickInstance(x, y);
     if (hit.notNull())
     {
-        ALGhostStudio::instance().setSelected(hit);
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        studio.setSelected(hit);
     }
     return true;        // tool mode: clicks never fall through to world selection
 }
@@ -201,7 +202,7 @@ bool ALToolGhostEdit::handleKey(KEY key, MASK mask)
                 delete_id = group->mMembers.front().mInstanceId;
             }
         }
-        studio.removeInstance(delete_id);    // also clears the selection
+        studio.requestRemoveInstance(delete_id);    // also clears the selection
         return true;
     }
     if (key == KEY_ESCAPE)

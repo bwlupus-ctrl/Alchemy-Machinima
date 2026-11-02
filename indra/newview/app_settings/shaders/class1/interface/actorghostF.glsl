@@ -462,8 +462,20 @@ vec2 ghostTronSeams(vec3 dPx, vec3 dPy)
 #endif // GHOST_SHARED_DISSOLVE
 #endif // GHOST_WORLD_PASS
 
+uniform float ghostFadeProgress;
+
+float cloneFadeCoverage(float progress)
+{
+    if (progress <= 0.0) return 1.0;
+    if (progress >= 1.0) return -1.0;
+    ivec2 p = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
+    const float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
+    return (bayer[p.y*4+p.x]+0.5)/16.0-progress;
+}
+
 void main()
 {
+    if (ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
     vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
     float ghostDissolveEdge = 0.0;
 #ifndef GHOST_WORLD_PASS

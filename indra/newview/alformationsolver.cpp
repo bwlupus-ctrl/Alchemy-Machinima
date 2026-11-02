@@ -47,6 +47,8 @@ struct Vec2
 struct Layout
 {
     std::vector<Vec2> mPoints;
+    U32 mColumns = 0;
+    std::vector<U32> mRows;
     F64 mActualArcSweep = 0.0;
 };
 
@@ -1047,6 +1049,7 @@ bool buildSmartGrid(const Request& request, size_t count, bool staggered,
             best_aspect = aspect;
             best_columns = columns;
             layout.mPoints = candidate;
+            layout.mColumns = columns;
         }
     }
     return have_best;
@@ -1081,6 +1084,7 @@ bool buildBrigade(const Request& request, size_t count, Layout& layout)
     for (size_t i = 0; i < count; ++i)
     {
         const U32 rank = static_cast<U32>(i / columns);
+        layout.mColumns = columns;
         const U32 file = static_cast<U32>(i % columns);
         layout.mPoints[i].mX = static_cast<F64>(file) * file_pitch;
         layout.mPoints[i].mY = -static_cast<F64>(rank) * rank_pitch;
@@ -1117,6 +1121,7 @@ U32 resolveGridColumns(const Request& request, size_t population)
 bool buildSoulTrainMilitary(const Request& request, size_t count, Layout& layout)
 {
     layout.mPoints.assign(count, Vec2());
+    layout.mRows.resize(count);
     if (count <= 1)
     {
         return true;
@@ -1149,6 +1154,7 @@ bool buildSoulTrainMilitary(const Request& request, size_t count, Layout& layout
         const size_t local = near_side ? i : i - near_count;
         const U32 file = static_cast<U32>(local % columns);
         const U32 rank = static_cast<U32>(local / columns);
+        layout.mRows[i] = rank;
         const F64 side_sign = near_side ? 1.0 : -1.0;
         layout.mPoints[i].mX = static_cast<F64>(file) * file_pitch;
         layout.mPoints[i].mY = side_sign *
@@ -1188,6 +1194,7 @@ bool buildStaggeredMilitary(const Request& request, size_t count, Layout& layout
     {
         const U32 file = static_cast<U32>(i % columns);
         const U32 rank = static_cast<U32>(i / columns);
+        layout.mColumns = columns;
         const F64 shift = offset >= 0.0
             ? ((rank & 1U) ? offset * file_pitch : 0.0)
             : static_cast<F64>(rank) * (-offset) * file_pitch;
@@ -1229,6 +1236,7 @@ bool buildRingBrigade(const Request& request, size_t count, Layout& layout)
     // members placed on each concentric ring. Ranks (rings) follow implicitly as
     // ceil(count / per_ring) via the rank-major index split below.
     const U32 per_ring = resolveGridColumns(request, count);
+    layout.mColumns = per_ring;
     const F64 clearance = maximumReservedPairRequirement(request, count);
     // Rank spacing is the ring spacing: the radial gap between consecutive rings
     // and thus each ring's distance from the centre. File spacing becomes the
@@ -1659,6 +1667,8 @@ void populateSlotsAndMetrics(const Request& request, size_t count,
         Slot slot;
         slot.mMemberId = request.mMembers[i].mId;
         slot.mInputIndex = static_cast<U32>(i);
+        slot.mRowIndex = !layout.mRows.empty() ? layout.mRows[i] : layout.mColumns ? static_cast<U32>(i / layout.mColumns) :
+            request.mShape == Shape::Row ? 0 : static_cast<U32>(i);
         slot.mLocalX = layout.mPoints[i].mX;
         slot.mLocalY = layout.mPoints[i].mY;
         slot.mFootprintRadiusMeters =

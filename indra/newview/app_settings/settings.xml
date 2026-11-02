@@ -7724,6 +7724,97 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>GhostStudioFadeIn</key>
+  <map>
+    <key>Comment</key><string>Appearance ramp for all new clones. Overlay opacity is multiplied; entities dissolve. Zero appears instantly. Session clones are never saved.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0</real>
+  </map>
+  <key>GhostStudioFadeOut</key>
+  <map>
+    <key>Comment</key><string>Retire selected clones with an opacity ramp or entity dissolve. Deletion and reference retirement finish at the end; retiring clones cannot be selected. Teleport and logout remove immediately.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0</real>
+  </map>
+  <key>GhostStudioStartMode</key>
+  <map>
+    <key>Comment</key><string>Off keeps current timing. Random hashes crowd seed and stable clone ID. Ripple orders slots in the formation frame. Changes rephase the current crowd immediately.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>GhostStudioStartSpread</key>
+  <map>
+    <key>Comment</key><string>Maximum animation phase offset. Live mirror poses are delayed into their 2-second history, capped to its available length.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.8</real>
+  </map>
+  <key>GhostStudioRippleFrom</key>
+  <map>
+    <key>Comment</key><string>Front/back and left/right follow the formation heading. Centre out uses radial distance from its origin. Equal coordinates receive equal offsets.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>GhostStudioLooksMode</key>
+  <map>
+    <key>Comment</key><string>Single keeps the prototype look. Mix applies the non-None Look menus to overlay copies only. Switching back restores each clone’s prior single look.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>GhostStudioLookSpread</key>
+  <map>
+    <key>Comment</key><string>Random uses the crowd seed and stable clone ID. By row cycles looks using solver row indices. Non-row shapes fall back to slot order. Duplicate menu choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>GhostStudioMixLook1</key>
+  <map>
+    <key>Comment</key><string>Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>-1</integer>
+  </map>
+  <key>GhostStudioMixLook2</key>
+  <map>
+    <key>Comment</key><string>Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>-1</integer>
+  </map>
+  <key>GhostStudioMixLook3</key>
+  <map>
+    <key>Comment</key><string>Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>-1</integer>
+  </map>
+  <key>GhostStudioMixLook4</key>
+  <map>
+    <key>Comment</key><string>Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>-1</integer>
+  </map>
+  <key>GhostStudioMixLook5</key>
+  <map>
+    <key>Comment</key><string>Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>-1</integer>
+  </map>
+  <key>GhostStudioMixLook6</key>
+  <map>
+    <key>Comment</key><string>Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>-1</integer>
+  </map>
   <key>GhostStudioNameplateMode</key>
   <map>
     <key>Comment</key>

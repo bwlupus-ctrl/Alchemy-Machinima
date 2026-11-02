@@ -1,6 +1,6 @@
 {
   "base": "24b2723dcd9",
-  "reason": "Clone looks phase 2 / fix rounds 1 through 3: per-Glass projected composite copies, capture-end and idle-expiring single-size snapshot scratch, loaded-program reset, lazy phase-2 scheduling, semantic CineCam take/owner identity with continuous lenses, cadence-aware camera prediction with provisional unseeded guard, smoothed motion and captured-pose bounds",
+  "feature": "3a64bb9c5c4d25e86b621d04d553d6cf834826a0",
   "hunks": [
     {
       "before": "#include \"llpresentationtime.h\"    // [Temporal Capture]\n\n#include \"llactormover.h\"\n#include \"alghostanimmirrormath.h\"\n#include \"alkithistory.h\"\n#include \"alkitpage.h\"\n",

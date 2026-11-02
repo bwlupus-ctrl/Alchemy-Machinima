@@ -19,6 +19,13 @@ def check():
     assert 'studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),' in overlay
     assert overlay.count('studio_scene_copy(') == 1
     assert overlay.index('std::sort(items.begin()') < overlay.index('studio_scene_copy(') < overlay.index('drawGeometryGhost(')
+    # Visibility/fade filtering must precede helper resolution and all Glass
+    # preparation: zero presentation coverage must never copy the scene.
+    gather_guard = overlay[overlay.index('for (ALGhostStudio::Instance& inst : studio.getInstances())'):
+                           overlay.index('LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);')]
+    assert '!studio.isVisible(inst)' in gather_guard
+    assert '|| !(inst.mFadeAlpha > 0.f)' in gather_guard
+    assert gather_guard.index('!(inst.mFadeAlpha > 0.f)') < gather_guard.index('continue;')
     assert 'studio_draw_displaced(style, studio_frame != nullptr,' in draw
     assert 'studio_reset_loaded(static_shader, shader, apply_program);' in draw
     assert 'if (!sh || !sh->mProgramObject) return;' in draw
@@ -99,8 +106,12 @@ struct ALGhostStudio {
  enum {POSE_LIVE,POSE_FROZEN};
  struct Instance {
   float mAlpha=1,mScale=1,mPoseRateHz=0,mFrozenBoundsRadius=2,mCadenceBoundsRadius=2;
+  float mStartOffset=0;
   int mPose=POSE_LIVE;std::vector<int> mFrozenPalettes,mCadencePalettes;
   LLVector3 mFrozenFootAgent,mCadenceFootAgent;
+  LLVector3 mFrozenBounds[2]={{-.5f,-.5f,0},{.5f,.5f,2}};
+  LLVector3 mCadenceBounds[2]={{-.5f,-.5f,0},{.5f,.5f,2}};
+  std::shared_ptr<const Instance> mOffsetPose;
  };
 };
 struct StudioItem {const ALGhostStudio::Instance* mInst;LLVOAvatar* mAv;LLVector3 mFootAgent;};
@@ -215,12 +226,44 @@ int sGhostDisplace,sGhostVelocity,sGhostSceneValid,sGhostScreenSize,sGhostScreen
                       'struct StudioSceneCache', 'struct StudioSceneCaches', 'StudioSceneCaches& studio_scene_caches(', 'std::array<GLint, 4> studio_glass_rect(',
                       'LLImageGL* studio_scene_copy('):
         fixture += method(path, signature) + (';' if signature.startswith(('class','struct')) else '') + '\n'
+    fixture += method(path, 'const auto phase2_radius =') + ';\n'
     fixture += r'''
 
 int main(){
  std::array<LLTexUnit,8> units;
  for(U32 i=0;i<8;++i){units[i].index=i;gGL.units[i]=&units[i];}
  GLint viewport[4]={17,23,3840,2160};
+ // Execute the actual radius lambda against delayed capture-time extents.
+ // A historical non-phase2 cadence capture may have radius zero before the
+ // look changes to Glass; its paired extents must still keep it onscreen.
+ LLVOAvatar bounds_avatar;
+ ALGhostStudio::Instance held_instance;
+ auto delayed_pose=std::make_shared<ALGhostStudio::Instance>();
+ delayed_pose->mFrozenBoundsRadius=0;
+ delayed_pose->mFrozenFootAgent={100,0,0};
+ delayed_pose->mFrozenBounds[0]={80,-1,0};
+ delayed_pose->mFrozenBounds[1]={120,1,30};
+ held_instance.mStartOffset=1;
+ held_instance.mOffsetPose=delayed_pose;
+ held_instance.mPoseRateHz=12;held_instance.mCadencePalettes={1};
+ StudioItem bounds_item{&held_instance,&bounds_avatar,{-25,0,0}};
+ const float delayed_radius=phase2_radius(bounds_item);
+ const float expected_radius=15.f+std::sqrt(2504.f)*.5f+.8f;
+ assert(std::abs(delayed_radius-expected_radius)<.0001f);
+ auto delayed_frame=studio_prepare_item(64,1,true,[&](){
+  return LLViewerCamera::getInstance()->sphereInFrustum(bounds_item.mFootAgent,phase2_radius(bounds_item));
+ },[](){return StudioLookFrame{};});
+ assert(delayed_frame); // live and current cadence bounds are both too small
+ held_instance.mPose=ALGhostStudio::POSE_FROZEN;held_instance.mFrozenPalettes={1};
+ assert(phase2_radius(bounds_item)<5); // frozen takes precedence over offset
+ held_instance.mPose=ALGhostStudio::POSE_LIVE;held_instance.mOffsetPose.reset();
+ held_instance.mCadenceBounds[0]=delayed_pose->mFrozenBounds[0];
+ held_instance.mCadenceBounds[1]=delayed_pose->mFrozenBounds[1];
+ held_instance.mCadenceFootAgent=delayed_pose->mFrozenFootAgent;
+ held_instance.mCadenceBoundsRadius=0;
+ assert(std::abs(phase2_radius(bounds_item)-expected_radius)<.0001f);
+ held_instance.mPoseRateHz=0;
+ assert(!LLViewerCamera::getInstance()->sphereInFrustum(bounds_item.mFootAgent,phase2_radius(bounds_item)));
  for(auto type:{LLTexUnit::TT_NONE,LLTexUnit::TT_TEXTURE,LLTexUnit::TT_CUBE_MAP,LLTexUnit::TT_RECT_TEXTURE})
  for(U32 texture:{0U,41U}){
   if(type==LLTexUnit::TT_NONE && texture)continue;
@@ -418,7 +461,7 @@ int main(){
  view.mCameraId=5;view.mAt={0,1,0};assert(velocity(10,22,0).length()==0);
  view.mSnapshot=false;view.mOrdinal=1;assert(velocity(11,24,0).length()==0);
  view.mOrdinal=0;assert(velocity(12,26,0).length()==0);
- std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis; 10s breathing/zoom; 24/30/60/variable cadence pan+dolly and jump; tiles/faces/aux reset; bounded snapshot size, capture-end/idle release; manual lens take/owner reset; unseeded jump fallback\n";
+ std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis; 10s breathing/zoom; 24/30/60/variable cadence pan+dolly and jump; tiles/faces/aux reset; bounded snapshot size, capture-end/idle release; manual lens take/owner reset; unseeded jump fallback; delayed giant bounds with zero stored radius and frozen/offset/cadence/live precedence\n";
 }
 '''
     directory = Path('.tmp/looks2_20261102/runtime').resolve()
@@ -456,7 +499,9 @@ int main(){
         ('idle_latched_snapshot','studio_scene_caches().expire(LLTimer::getTotalSeconds());',
          'if (!gSnapshot) studio_scene_caches().expire(LLTimer::getTotalSeconds());'),
         ('snapshot_idle_expiry','if (!mSnapshot.empty() && now - mSnapshot.begin()->second.mLastUse > 3.0) endCapture();',
-         'if (false) endCapture();')):
+         'if (false) endCapture();'),
+        ('delayed_bounds_ignored','else if (item.mInst->mStartOffset > 0.f && item.mInst->mOffsetPose)',
+         'else if (false)')):
         assert fixture.count(before)==1
         results.append(execute(name,fixture.replace(before,after),False))
     (directory/'results.json').write_text(json.dumps(results,indent=2))

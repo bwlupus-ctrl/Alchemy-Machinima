@@ -97,7 +97,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@50,7", "indra/newview/llviewermenu.cpp@10937,40"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
 - {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@118,22"]}
-- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@2425,11"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@2426,11"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@102,8", "indra/newview/pipeline.cpp@1692,29125"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1926,270"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
@@ -733,7 +733,6 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1504, "text": "llfetchedgltfmaterial.h", "source": "indra/newview/llfetchedgltfmaterial.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1380, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 582, "text": "llfloaterjoystick.cpp", "source": "indra/newview/llfloaterjoystick.cpp"}

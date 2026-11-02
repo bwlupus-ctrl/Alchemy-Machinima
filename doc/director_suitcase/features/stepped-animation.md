@@ -169,7 +169,6 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 406, "text": "lldirectorcast.cpp", "source": "indra/newview/lldirectorcast.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1376, "text": "lldirectorcast.h", "source": "indra/newview/lldirectorcast.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 511, "text": "llflexibleobject.cpp", "source": "indra/newview/llflexibleobject.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 663, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}

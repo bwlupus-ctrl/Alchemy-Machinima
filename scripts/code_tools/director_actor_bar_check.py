@@ -8,6 +8,22 @@ import xml.etree.ElementTree as ET
 from relight_area_policy_check import method
 
 
+def reverse_qol_allowance(path, source):
+    """Exact reviewed feature delta; unrelated content remains baseline guarded."""
+    import hashlib
+    import json
+    raw = (Path(__file__).parent / "clone_qol_renderer_hunks.json").read_text(encoding="utf-8").replace("\r\n", "\n").encode()
+    assert hashlib.sha256(raw).hexdigest() == "1537cae0db0e2597e140d50937a7eb768afb729365bf2a095ae4b7fbe2aa7a0e", "QoL allowance pin"
+    allowance = json.loads(raw)
+    baseline = subprocess.check_output(["git", "show", allowance["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowance["files"][path]:
+        assert baseline.count(hunk["before"]) == 1, ("QoL baseline hunk", path)
+        assert source.count(hunk["after"]) == 1, ("QoL exact feature hunk", path)
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == baseline, ("QoL reversal must reproduce its exact baseline", path)
+    return source
+
+
 def main():
     nv = Path("indra/newview")
     xui = nv / "skins/default/xui/en"
@@ -37,7 +53,10 @@ def main():
         assert "\t" + widget + "\t" in index
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
-        assert (nv / path).read_bytes().replace(b"\r\n", b"\n") == subprocess.check_output(
+        guarded = (nv / path).read_text(encoding="utf-8")
+        if path == "pipeline.cpp":
+            guarded = reverse_qol_allowance("indra/newview/" + path, guarded)
+        assert guarded.encode() == subprocess.check_output(
             ["git", "show", "c5dd757d341:indra/newview/" + path]).replace(b"\r\n", b"\n"), path
     # D1 includes the subject display adapter, not just rows and renderer reads.
     kit = (nv / "alkitpage.cpp").read_text()
@@ -81,12 +100,11 @@ def main():
         'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
     guarded_mover = current_mover
-    # Phase 2 is permitted by exact before/after hunks, including context. Undo
-    # ONLY those hunks before the original baseline/rekey/look guard runs.
-    # Pin the allow-list itself: editing it cannot silently bless extra code.
+    # Reverse only QoL against the reviewed phase-2 HEAD, then phase 2.
+    guarded_mover = reverse_qol_allowance("indra/newview/llactormover.cpp", guarded_mover)
     import json
     phase2_bytes = normalize((Path(__file__).parent / 'clone_looks2_mover_hunks.json').read_text(encoding='utf-8')).encode()
-    assert hashlib.sha256(phase2_bytes).hexdigest() == '9b59dcdeda8001cd702e6a66e4769bef124f4a75fda3b4d8578fe275d973c869'
+    assert hashlib.sha256(phase2_bytes).hexdigest() == '853c3b49b143ef58c488f9ce4af4b1eb70cbed005ebd0752924e612d3ebf9bbc'
     phase2 = json.loads(phase2_bytes)
     phase2_base = normalize(subprocess.check_output([
         'git', 'show', phase2['base'] + ':indra/newview/llactormover.cpp']).decode())
@@ -94,6 +112,8 @@ def main():
         assert phase2_base.count(hunk['before']) == 1, 'phase-2 baseline hunk'
         assert guarded_mover.count(hunk['after']) == 1, 'phase-2 exact feature hunk'
         guarded_mover = guarded_mover.replace(hunk['after'], hunk['before'], 1)
+    assert guarded_mover == phase2_base, 'phase-2 reversal must reproduce its exact baseline'
+
     for signature, digest in rekey_methods.items():
         body = normalize(method(nv / "llactormover.cpp", signature))
         assert hashlib.sha256(body.encode()).hexdigest() == digest, signature
@@ -239,6 +259,7 @@ struct LLVOAvatar : LLViewerObject {
     bool dead = false, control = false, ghost = false, mIsDummy = false;
     bool isDead() const { return dead; }
     bool isControlAvatar() const { return control; }
+    LLUUID getID() const { return {}; } // picker fixture has no runtime identities
     bool isGhostAvatar() const { return ghost; }
     bool isUIAvatar() const { return false; }
     void* getRootJoint() const { return nullptr; }
@@ -252,6 +273,8 @@ struct ALGhostStudio {
     static ALGhostStudio& instance() { static ALGhostStudio studio; return studio; }
     const Instance* getInstance(LLUUID id) const { auto it=clones.find(id); return it==clones.end()?nullptr:&it->second; }
     const Instance* findInstanceByRuntime(LLUUID id) const { for(auto& item:clones) if(id.notNull() && item.second.mEntityId==id) return &item.second; return nullptr; }
+    bool isPrivateOverlayRuntime(LLUUID) const { return false; }
+    bool isDeleting(LLUUID) const { return false; } // this fixture has no retiring bodies
     void setInstanceAnimSpeed(LLUUID id, float speed) { clones.at(id).mAnimSpeed=speed; }
 };
 LLVOAvatar* resolve_actor(LLUUID) { return nullptr; }
@@ -312,7 +335,7 @@ struct LLDirectorCast {
         std::vector<int> mGazeCues, mGazeInfluenceKeys;
         // Model nested sparse Stepped defaults separately from Actor FX.
         int mode = 0, rate = 12, role = 0, part = -1;
-    };
+    bool mCloneFading=false;};
     std::vector<CastMember> mCast;
     uuid_vec_t mIds;
     std::set<LLUUID> mLookAtCameraIds;

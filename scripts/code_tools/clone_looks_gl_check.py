@@ -48,11 +48,10 @@ class Runner:
         g.bind_fbo(0x8D40, self.fbo)
         self.target = self.texture(None, width, height, 0x8814)
         g.fbo_tex(0x8D40, 0x8CE0, 0x0DE1, self.target, 0)
-        self.depth = g.U()
-        g.fn('glGenRenderbuffers',None,g.I,C.POINTER(g.U))(1,C.byref(self.depth))
-        g.fn('glBindRenderbuffer',None,g.U,g.U)(0x8D41,self.depth)
-        g.fn('glRenderbufferStorage',None,g.U,g.U,g.I,g.I)(0x8D41,0x81A6,width,height)
-        g.fn('glFramebufferRenderbuffer',None,g.U,g.U,g.U,g.U)(0x8D40,0x8D00,0x8D41,self.depth)
+        depth = g.U()
+        g.gen_tex(1,C.byref(depth));g.bind_tex(0x0DE1,depth)
+        g.teximage(0x0DE1,0,0x8CAC,width,height,0,0x1902,0x1406,None)
+        g.fbo_tex(0x8D40,0x8D00,0x0DE1,depth,0)
         assert g.fbo_status(0x8D40) == 0x8CD5
         self.scene = self.texture(None, width, height, 0x8058, 'linear')
         y, x = np.mgrid[:height, :width]
@@ -156,7 +155,8 @@ class Runner:
     def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
                shift_y=0., rotation=0., slot=-1, adjacent_slots=False,
                velocity=(0.,0.), displace=0., scene=False, composite=False, sweeps=False, timing=False,
-               occlude=False, keep=False, stale_scene=False, opacity=.85, attachment_rotation=0., scene_rect=False):
+               occlude=False, keep=False, stale_scene=False, opacity=.85, attachment_rotation=0., scene_rect=False,
+               fade=1., native_fade=False, depth_test=False, held_pose=None):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -176,6 +176,18 @@ class Runner:
             g.ui(loc(name), value)
         for name in ('color', 'ghostSystemColor'):
             floats(name, .42, .72, .94, opacity)
+        floats('ghostFadeProgress', 1.-fade)
+        g.ui(loc('actorFxEnabled'), 2 if native_fade and fade < 1 else 0)
+        floats('actorFxDissolveProgress', 1.-fade)
+        floats('sil_clone_progress', 1.-fade)
+        floats('sil_cover', 1., 1.)
+        g.ui(loc('sil_blended'), 0)
+        g.ui(loc('mask_vertex_alpha'), 0)
+        g.ui(loc('mask_indexed'), 0)
+        g.ui(loc('mask_material_slots'), 0)
+        g.ui(loc('mask_vec3_position'), 0)
+        for i in range(4): g.ui(loc('mask_textures[%d]' % i), 0)
+        for i in range(8): floats('mask_cutoff[%d]' % i, .5 if mask else -1.)
         floats('ghostTime', time)
         floats('ghostParams', 0., 1., 0., 8.)
         floats('ghostAux', .5 if mask else 0., 1., 0., phase)
@@ -200,6 +212,12 @@ class Runner:
             g.ui(loc('ghostIndexedUseVertexAlpha[%d]' % i), 1)
             g.ui(loc('ghostIndexedAlphaCutoffMode[%d]' % i), 1)
         view = np.array([[1,0,0,shift],[0,0,1,0],[0,-1,0,-4],[0,0,0,1]],np.float32)
+        pose = np.eye(4,dtype=np.float32)
+        if held_pose is not None:
+            x,y,angle = held_pose
+            co,si=np.cos(angle),np.sin(angle)
+            pose = np.array([[co,-si,0,x],[si,co,0,y],[0,0,1,0],[0,0,0,1]],np.float32)
+            if 'HAS_SKIN' not in defs: view = view @ pose # held rigid attachment render matrix
         # Camera roll and zoom also exercise transformed pattern footprints.
         co, si = np.cos(rotation), np.sin(rotation)
         roll = np.array([[co,-si,0,0],[si,co,0,shift_y],[0,0,1,0],[0,0,0,1]], np.float32)
@@ -221,7 +239,7 @@ class Runner:
             a = np.repeat(view[:3, None, :], 15, axis=1).copy()
             g.u4fv(loc('matrixPalette[0]'), 45, a.ctypes.data_as(C.POINTER(g.F)))
         elif 'HAS_SKIN' in defs:
-            a = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0]],np.float32)
+            a = pose[:3].copy()
             self.mat34(loc('matrixPalette[0]'), 1, 0, a.ctypes.data_as(C.POINTER(g.F)))
         g.bind_buf(0x8892, self.vbo)
         used = []
@@ -245,11 +263,12 @@ class Runner:
         g.active(0x84C0); g.bind_tex(0x0DE1,self.diffuse); g.ui(loc('diffuseMap'),0)
         g.bind_fbo(0x8D40,self.fbo); g.viewport(0,0,self.width,self.height)
         depth_mask = g.fn('glDepthMask',None,g.U)
-        if sweeps:
+        if sweeps or depth_test:
             g.enable(0x0B71)
             g.fn('glDepthFunc',None,g.U)(0x0203)  # production LEQUAL
             depth_mask(1)
             self.clear(0x1801,0,(g.F*1)(0. if occlude else 1.))
+        else: g.disable(0x0B71)
         if not keep: self.clear(0x1800,0,(g.F*4)(0,0,0,0))
         if not keep and (composite or scene):
             g.bind_tex(0x0DE1, self.target)
@@ -307,6 +326,9 @@ class Runner:
         g.active(0x84C1); g.bind_tex(0x0DE1,0); g.active(0x84C0)
         result = np.empty((self.height,self.width,4),np.float32)
         g.read(0,0,self.width,self.height,0x1908,0x1406,result.ctypes.data)
+        if depth_test:
+            self.last_depth=np.empty((self.height,self.width),np.float32)
+            g.read(0,0,self.width,self.height,0x1902,0x1406,self.last_depth.ctypes.data)
         for ix in used: self.disable_attr(ix)
         assert g.fn('glGetError',g.U)() == 0, 'OpenGL render error'
         assert np.isfinite(result).all(), 'nonfinite pixels'
@@ -650,6 +672,89 @@ def main():
             assert delta == 0., (label,look,delta)
         stats['regressions'].append(dict(permutation=label,looks=maximum,max_error=worst))
         print('PASS compile/link + regression:',label,flush=True)
+    # Exercise blend-disabled opaque/mask sweeps, including coverage/depth holes.
+    fade_stats = []
+    for defs in ((), ('HAS_SKIN',)):
+        fade_pr = runner.program(tree, defs)
+        for mask in (False, True):
+            full = runner.render(fade_pr, 1, mask=mask, opaque=True, depth_test=True)
+            full_depth=runner.last_depth.copy()
+            zero = runner.render(fade_pr, 1, mask=mask, opaque=True, fade=0.,depth_test=True)
+            assert np.all(runner.last_depth==1.), "fade zero writes depth"
+            half = runner.render(fade_pr, 1, mask=mask, opaque=True, fade=.5,depth_test=True)
+            half_depth=runner.last_depth.copy()
+            assert not np.any(zero), ('fade zero drew geometry', defs, mask)
+            assert np.array_equal(full, runner.render(fade_pr,1,mask=mask,opaque=True,fade=1.)), 'fade one parity'
+            occupied = full[...,3] > 0
+            surviving = half[...,3] > 0
+            assert np.array_equal(half_depth[surviving],full_depth[surviving]), 'surviving depth changed'
+            assert np.all(half_depth[~surviving]==1.), 'discarded coverage writes depth'
+            ratio = np.count_nonzero(surviving)/np.count_nonzero(occupied)
+            assert .49 < ratio < .51, ('half coverage', ratio)
+            assert np.array_equal(full[surviving], half[surviving]), 'fade changed surviving beauty'
+            assert np.array_equal(half,runner.render(fade_pr,1,mask=mask,opaque=True,fade=.5,time=900.)), 'coverage crawls'
+            fade_stats.append(dict(skin=bool(defs),mask=mask,half_coverage=ratio,endpoint_error=0.))
+    # Link the actual native material/coverage modules. Analytic directional lit
+    # material is the boundary fixture, not a claim of an in-world PBR test.
+    class NativeTree:
+        def read(self, path):
+            if path != F: return tree.read(path)
+            module = tree.read(SH+'alchemy/actorFxF.glsl').replace('vary_actor_fx_position','vary_object_position')
+            coverage = tree.read(SH+'alchemy/actorFxDissolveF.glsl')
+            coverage = '\n'.join(line for line in coverage.splitlines() if not (line.startswith('uniform ') and line in module))
+            return module + coverage + r"""
+                in vec3 vary_normal; in vec2 vary_texcoord0;
+                uniform sampler2D diffuseMap; uniform vec4 ghostAux;
+                out vec4 frag_color;
+                void main(){
+                    bool styled = actorFxActive();
+                    vec4 material=texture(diffuseMap,vary_texcoord0);
+                    if (material.a < ghostAux.x) discard;
+                    float light=.08+.9*max(dot(normalize(vary_normal),normalize(vec3(.7,.2,1.))),0.);
+                    frag_color=vec4(material.rgb*light,1.);
+                }
+            """
+    native_pr = runner.program(NativeTree())
+    for mask in (False,True):
+        lit=runner.render(native_pr,1,mask=mask,native_fade=True)
+        zero=runner.render(native_pr,1,mask=mask,fade=0,native_fade=True)
+        half=runner.render(native_pr,1,mask=mask,fade=.5,native_fade=True)
+        assert not np.any(zero), 'deferred zero drew'
+        visible=half[...,3]>0
+        assert np.array_equal(lit[visible],half[visible]), 'deferred lighting changed'
+        assert np.array_equal(lit,runner.render(native_pr,1,mask=mask)), 'deferred endpoint changed'
+        assert .49 < np.count_nonzero(visible)/np.count_nonzero(lit[...,3]) < .51
+    # Actual production silhouette-cover target/vertex shader versus beauty pixels.
+    class CoverTree:
+        def read(self,path):
+            if path == V: return tree.read(SH+'deferred/actorMaskV.glsl')
+            if path == F:
+                return '#define MASK_CHANNELS 4\n'+tree.read(SH+'deferred/silCoverF.glsl')+'\nvoid mirrorClip(vec3 p){}\n'
+            return tree.read(path)
+    sil_cases=[]
+    for defs in ((),('HAS_SKIN',)):
+        beauty=runner.program(NativeTree(),defs)
+        cover=runner.program(CoverTree(),defs)
+        for pose in ((-.6,.2,.7),(.5,-.3,-.9)):
+            for fade in (0.,.5,1.):
+                for mask in (False,True):
+                    b=runner.render(beauty,1,mask=mask,fade=fade,native_fade=True,held_pose=pose,depth_test=True)
+                    bd=runner.last_depth.copy()
+                    c=runner.render(cover,1,mask=mask,fade=fade,held_pose=pose,depth_test=True)
+                    assert np.array_equal(b[...,3]>0,c[...,3]>0), ('silhouette/beauty coverage',defs,pose,fade,mask)
+                    # Static native replay uses precombined MVP; Studio beauty uses
+                    # projection * modelview. Coverage must be exact; float depth
+                    # may differ slightly after independent triangle interpolation.
+                    depth_error=float(np.max(np.abs(bd-runner.last_depth)))
+                    assert depth_error <= 2e-6, ('silhouette/beauty depth',defs,pose,fade,mask,depth_error)
+                    sil_cases.append(dict(skin=bool(defs),pose=pose,fade=fade,mask=mask,depth_error=depth_error))
+        held=runner.render(cover,1,held_pose=(-.6,.2,.7))
+        live=runner.render(cover,1,held_pose=(.5,-.3,-.9))
+        assert not np.array_equal(held[...,3],live[...,3]), 'moving-pose control is insensitive'
+    stats['silhouette_coverage']=sil_cases
+    print('PASS: production silhouette coverage matches beauty exactly; depth error <=2e-6; moving held palettes/rigid transforms, fades 0/.5/1',flush=True)
+    stats['fade_coverage'] = fade_stats
+    print('PASS: opaque/masked fade 0/.5/1; stable coverage; native lit endpoint parity 0.0', flush=True)
     pr = runner.program(tree)
     phase1 = runner.program(G.SourceTree('24b2723dcd9'))
     unchanged = [look for look in range(78) if look not in (64,68,72,75)]

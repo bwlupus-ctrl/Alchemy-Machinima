@@ -512,6 +512,12 @@ float actorFxPbrStrength()
 // bit-for-bit identity path.
 bool actorFxActive()
 {
+    // Coverage-only clone fade leaves every material/lighting calculation intact.
+    if (actorFxEnabled == 2)
+    {
+        if (actorFxBeautyDissolveCoverage() < 0.0) discard;
+        return false;
+    }
     return actorFxEnabled != 0 && actorFxParams0.x > 0.001;
 }
 

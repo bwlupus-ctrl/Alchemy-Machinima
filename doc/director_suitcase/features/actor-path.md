@@ -119,6 +119,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,13", "indra/newview/lldrawpoolavatar.cpp@82,97"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@29,20", "indra/newview/llviewerdisplay.cpp@906,14", "indra/newview/llviewerdisplay.cpp@994,17", "indra/newview/llviewerdisplay.cpp@1119,36", "indra/newview/llviewerdisplay.cpp@1170,16", "indra/newview/llviewerdisplay.cpp@1882,22", "indra/newview/llviewerdisplay.cpp@2067,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266", "indra/newview/llviewerfloaterreg.cpp@878,7"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,19", "indra/newview/llviewerwindow.cpp@6320,7", "indra/newview/llviewerwindow.cpp@6428,7"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@861,7", "indra/newview/llvoavatar.cpp@898,37", "indra/newview/llvoavatar.cpp@2439,14", "indra/newview/llvoavatar.cpp@2888,19", "indra/newview/llvoavatar.cpp@4197,14", "indra/newview/llvoavatar.cpp@4823,20", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@5911,46", "indra/newview/llvoavatar.cpp@8734,106", "indra/newview/llvoavatar.cpp@12825,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@1189,10", "indra/newview/llvoavatar.h@1207,11", "indra/newview/llvoavatar.h@1259,17"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@156,12", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31781,695"]}
@@ -136,6 +137,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@485,30"]}
 - {"path": "indra/newview/fsfloaterposer.cpp", "hunks": ["indra/newview/fsfloaterposer.cpp@25,14", "indra/newview/fsfloaterposer.cpp@78,19", "indra/newview/fsfloaterposer.cpp@2447,253"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@49,14", "indra/newview/lldrawpoolalpha.cpp@1164,157"]}
+- {"path": "indra/newview/llfloater360capture.cpp", "hunks": ["indra/newview/llfloater360capture.cpp@25,12", "indra/newview/llfloater360capture.cpp@606,8"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,21", "indra/newview/llviewerjoystick.cpp@1844,1983"]}
 - {"path": "indra/newview/llviewermessage.cpp", "hunks": ["indra/newview/llviewermessage.cpp@56,7", "indra/newview/llviewermessage.cpp@4371,58", "indra/newview/llviewermessage.cpp@4465,14"]}
 - {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@134,24", "indra/newview/llviewershadermgr.cpp@616,35", "indra/newview/llviewershadermgr.cpp@2691,18", "indra/newview/llviewershadermgr.cpp@4165,11", "indra/newview/llviewershadermgr.cpp@6467,118"]}
@@ -345,6 +347,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1055, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2050, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
+- {"file": "indra/llwindow/CMakeLists.txt", "line": 107, "text": "# llviewerwindow.cpp's (guarded) include still resolves.", "source": "indra/newview/llviewerwindow.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1065, "text": "llviewerwindow.cpp", "source": "indra/newview/llviewerwindow.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1070, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2065, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1080, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}

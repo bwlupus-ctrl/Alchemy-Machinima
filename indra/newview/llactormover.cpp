@@ -13020,6 +13020,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         ? LLRenderPass::actorFxFragOffset() : actor_ghost_frag_offset();
     const LLVector2 ghost_screen_size = gp.mWorldLinear
         ? LLRenderPass::actorFxScreenSize() : LLVector2(1.f, 1.f);
+    F32 coverage_fade = 0.f;
     auto apply_program = [&](LLGLSLShader* sh)
     {
         if (!sh || !sh->mProgramObject) return; // optional static FX may fail independently
@@ -13048,6 +13049,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         {
             // neutral alpha state (per-draw code retargets ghostAux.xy and
             // ghostSlot); the per-instance creative FX ride zw / ghostFx
+            sh->uniform1f(LLStaticHashedString("ghostFadeProgress"), coverage_fade);
             sh->uniform1f(sGhostTime, ghost_now);
             sh->uniform4fv(sGhostParams, 1, style_params.mV);
             sh->uniform4f(sGhostAux, 0.f, 0.f, gp.mPixelSize, gp.mPhase);
@@ -13167,6 +13169,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // A preceding static sweep or indexed batch may have left a different
         // program bound. Start every rigged sweep from a proven scalar state;
         // individual indexed descriptors switch below and the tail restores it.
+        coverage_fade = subset == SWEEP_SOLID && style == GHOST_STYLE_CLONE && !gp.mWorldLinear ? 1.f-gp.mFadeAlpha : 0.f;
         apply_program(shader);
         LLGLSLShader* active_shader = shader;
         const LLVOAvatar* lastAvatar = nullptr;
@@ -13251,6 +13254,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 batch_shader->uniform2fv(sSilCover, 1, cover.mV);
                 batch_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
+                batch_shader->uniform1f(LLStaticHashedString("sil_clone_progress"), 0.f);
             }
             else
             {
@@ -13763,6 +13767,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         {
             return;
         }
+        coverage_fade = subset == SWEEP_SOLID && style == GHOST_STYLE_CLONE && !gp.mWorldLinear ? 1.f-gp.mFadeAlpha : 0.f;
         apply_program(static_shader);
         for (const LLActorMover::GhostStaticFace& gf : *static_faces)
         {
@@ -13794,6 +13799,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 static_shader->uniform2fv(sSilCover, 1, cover.mV);
                 static_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
+                static_shader->uniform1f(LLStaticHashedString("sil_clone_progress"), 0.f);
             }
 
             // [R2-5] cull-faithful: double-sided GLTF unculls per face
@@ -15324,13 +15330,13 @@ void LLActorMover::collectGhostBatches()
     const bool studio = ALGhostStudio::instance().anyEnabled();
     LLDirectorCast& director_cast = LLDirectorCast::instance();
     bool actor_styles = actor_style_wants_shared_replay(
-        director_cast.getActorStyle(LLUUID::null));
+        director_cast.getRenderActorStyle(LLUUID::null));
     if (!actor_styles)
     {
         for (const LLDirectorCast::CastMember& member : director_cast.getCast())
         {
             if (actor_style_wants_shared_replay(
-                    director_cast.getActorStyle(member.mId)))
+                    director_cast.getRenderActorStyle(member.mId)))
             {
                 actor_styles = true;
                 break;
@@ -15403,7 +15409,7 @@ void LLActorMover::collectGhostBatches()
         auto add_styled_actor = [&](const LLUUID& style_id)
         {
             if (!actor_style_wants_shared_replay(
-                    director_cast.getActorStyle(style_id)))
+                    director_cast.getRenderActorStyle(style_id)))
             {
                 return;
             }
@@ -15704,10 +15710,10 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
     // The frustum test is observational; the API is non-const, so cast locally.
     LLCamera& cull_cam = const_cast<LLCamera&>(camera);
 
-    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||
-            !inst.mEnabled ||
+            !studio.isVisible(inst) || !(inst.mFadeAlpha > 0.f) ||
             inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)
         {
             continue;
@@ -15736,7 +15742,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         }
         ++mGhostDeferredCounters.mLiveInstancesConsidered;
 
-        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);
+        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);
         if (!av || av->isDead() || !av->getRootJoint())
         {
             ++mGhostDeferredCounters.mUnresolvedSources;
@@ -15751,7 +15757,9 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
             continue;
         }
 
+        if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, LLTimer::getTotalSeconds());
         GhostProxy proxy;
+        proxy.mFadeAlpha = inst.mFadeAlpha;
         proxy.mInstanceId   = inst.mId;
         proxy.mSourceId     = inst.mSource;
         proxy.mWearerId     = av->getID();
@@ -15787,6 +15795,14 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
             ++mGhostDeferredCounters.mUnresolvedSources;
             continue;
         }
+        if (inst.mStartOffset > 0.f && inst.mOffsetPose)
+        {
+            proxy.mHeldPalettes = &inst.mOffsetPose->mFrozenPalettes;
+            proxy.mHeldAttachMats = &inst.mOffsetPose->mFrozenAttachMats;
+            proxy.mHeldBounds = inst.mOffsetPose->mFrozenBounds;
+            proxy.mPivotFootAgent = inst.mOffsetPose->mFrozenFootAgent;
+            proxy.mRotation = ~inst.mOffsetPose->mRotation * inst.mRotation;
+        }
         proxy.mPose        = EGhostProxyPose::LIVE;
         proxy.mFrameStamp  = frame;
         proxy.mViewStamp   = view_stamp;
@@ -15819,7 +15835,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
 // (T(foot)*R*S*T(-pivot), matching drawGeometryGhost) into an agent-space AABB.
 void LLActorMover::computeProxyBounds(GhostProxy& proxy, LLVOAvatar* av)
 {
-    const LLVector3* ext = av->getLastAnimExtents();    // [min, max], agent space
+    const LLVector3* ext = proxy.mHeldBounds ? proxy.mHeldBounds : av->getLastAnimExtents(); // same capture frame as pivot
     const LLVector3 mn = ext[0];
     const LLVector3 mx = ext[1];
     // Degenerate / not-yet-built extents: fall back to a coarse avatar-sized box
@@ -16005,24 +16021,24 @@ void LLActorMover::renderStudioGhosts()
     bool phase2 = false;
     for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)
+        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)
+            || !(inst.mFadeAlpha > 0.f))
         {
             continue;
         }
-        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);
+        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);
         if (!av || av->isDead())
         {
             continue;
         }
+        if (inst.mPoseRateHz > 0.f) studio.refreshPoseCadence(inst.mId, pose_now);
+        if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, pose_now);
+        if (inst.mOverlayAvatar.notNull() && inst.mPose == ALGhostStudio::POSE_FROZEN && inst.mFrozenPalettes.empty()) studio.freezeInstance(inst.mId);
         const std::vector<GhostBatch>* batches = ghostBatchesFor(av->getID());
         const std::vector<GhostStaticFace>* statics = ghostStaticFacesFor(av->getID());
         if (!batches && !statics)
         {
             continue;
-        }
-        if (inst.mPoseRateHz > 0.f)
-        {
-            studio.refreshPoseCadence(inst.mId, pose_now);
         }
         // [GhostDeferred] classify what the clone's geometry contains, so the
         // suppression below can compare against the pipeline's coverage and the
@@ -16105,11 +16121,19 @@ void LLActorMover::renderStudioGhosts()
         F32 radius = 2.f;
         if (item.mInst->mPose == ALGhostStudio::POSE_FROZEN && !item.mInst->mFrozenPalettes.empty())
         {
+            ext = item.mInst->mFrozenBounds;
             pivot = item.mInst->mFrozenFootAgent;
             radius = llmax(radius, item.mInst->mFrozenBoundsRadius);
         }
+        else if (item.mInst->mStartOffset > 0.f && item.mInst->mOffsetPose)
+        {
+            ext = item.mInst->mOffsetPose->mFrozenBounds;
+            pivot = item.mInst->mOffsetPose->mFrozenFootAgent;
+            radius = llmax(radius, item.mInst->mOffsetPose->mFrozenBoundsRadius);
+        }
         else if (item.mInst->mPoseRateHz > 0.f && !item.mInst->mCadencePalettes.empty())
         {
+            ext = item.mInst->mCadenceBounds;
             pivot = item.mInst->mCadenceFootAgent;
             radius = llmax(radius, item.mInst->mCadenceBoundsRadius);
         }
@@ -16164,7 +16188,7 @@ void LLActorMover::renderStudioGhosts()
         LLColor4 tint;
         if (inst.mUseActorTint)
         {
-            tint = actorPathColor(item.mAv->getID());
+            tint = actorPathColor(inst.mHasAnimationSource ? inst.mAppearanceSwapTintSeed : item.mAv->getID());
         }
         else
         {
@@ -16180,17 +16204,27 @@ void LLActorMover::renderStudioGhosts()
         // double-rotated overlays whenever look-at/formation facing was active.
         gp.mRotation = ~item.mAv->getRotation() * inst.mRotation;
         gp.mScale    = inst.mScale;
+        gp.mFadeAlpha = inst.mFadeAlpha;
         if (inst.mPose == ALGhostStudio::POSE_FROZEN && !inst.mFrozenPalettes.empty())
         {
             gp.mHavePivot      = true;
             gp.mPivotFootAgent = inst.mFrozenFootAgent;
             gp.mFrozenPalettes = &inst.mFrozenPalettes;
+            if (inst.mOffsetPose) gp.mRotation = ~inst.mOffsetPose->mRotation * inst.mRotation;
             // [R2-2] frozen non-rigged attachment placement (capture-frame
             // matrices; a lookup miss -- e.g. flexi -- stays LIVE, documented)
             if (!inst.mFrozenAttachMats.empty())
             {
                 gp.mFrozenAttachMats = &inst.mFrozenAttachMats;
             }
+        }
+        else if (inst.mOffsetPose && inst.mStartOffset > 0.f)
+        {
+            gp.mHavePivot = true;
+            gp.mPivotFootAgent = inst.mOffsetPose->mFrozenFootAgent;
+            gp.mFrozenPalettes = &inst.mOffsetPose->mFrozenPalettes;
+            gp.mFrozenAttachMats = &inst.mOffsetPose->mFrozenAttachMats;
+            gp.mRotation = ~inst.mOffsetPose->mRotation * inst.mRotation;
         }
         else if (inst.mPoseRateHz > 0.f && !inst.mCadencePalettes.empty())
         {
@@ -16257,7 +16291,7 @@ void LLActorMover::renderStudioGhosts()
             [&](const StudioLookFrame* inputs)
             {
                 drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
-                    llclamp(inst.mAlpha, 0.f, 1.f),
+                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,
                     ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,
                     item.mStatic, nullptr, inputs);
             });
@@ -16330,7 +16364,7 @@ void LLActorMover::renderStudioGhosts()
 bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
                                              const LLUUID& style_id) const
 {
-    if (ALDerenderList::keepsAvatarLive(avatar)) return false;
+    if ((ALDerenderList::keepsAvatarLive(avatar) || LLGhostAvatar::isRenderHidden(avatar))) return false;
     if (!avatar || avatar->isDead() || avatar->isControlAvatar()
         || avatar->isUIAvatar() || avatar->mDrawable.isNull()
         || avatar->isHardVisualMute()
@@ -16363,7 +16397,7 @@ bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
     }
 
     const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getActorStyle(style_id);
+        LLDirectorCast::instance().getRenderActorStyle(style_id);
     return style.mEnabled
         && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
             || style.mAlpha > 0.001f);
@@ -16373,7 +16407,7 @@ bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
 // inferred from the suppression recorder. Mirror them conservatively here.
 bool LLActorMover::actorMaskAvatarEligible(LLVOAvatar* avatar)
 {
-    if (ALDerenderList::keepsAvatarLive(avatar)) return false;
+    if ((ALDerenderList::keepsAvatarLive(avatar) || LLGhostAvatar::isRenderHidden(avatar))) return false;
     if (!avatar || avatar->isDead() || avatar->mDrawable.isNull() ||
         !avatar->isFullyLoaded() || avatar->isHardVisualMute() ||
         avatar->getOverallAppearance() != LLVOAvatar::AOA_NORMAL ||
@@ -16516,7 +16550,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     }
 
     const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getActorStyle(style_id);
+        LLDirectorCast::instance().getRenderActorStyle(style_id);
     const S32 look = llclamp(
         style.mStyle,
         static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
@@ -17404,7 +17438,7 @@ void LLActorMover::buildSharedActorStyleQueue()
     auto remember_exact_control = [&](const LLUUID& style_id)
     {
         if (!actor_style_wants_shared_replay(
-                director_cast.getActorStyle(style_id)))
+                director_cast.getRenderActorStyle(style_id)))
         {
             return;
         }
@@ -17422,7 +17456,7 @@ void LLActorMover::buildSharedActorStyleQueue()
 
     auto actor_visible_in_main_cull = [&](LLVOAvatar* avatar) -> bool
     {
-        if (ALDerenderList::keepsAvatarLive(avatar)) return false;
+        if ((ALDerenderList::keepsAvatarLive(avatar) || LLGhostAvatar::isRenderHidden(avatar))) return false;
         if (!avatar || avatar->isDead() || !avatar->getRootJoint()
             || avatar->isUIAvatar() || avatar->mDrawable.isNull()
             || !avatar->mDrawable->isVisible() || !avatar->isVisible()
@@ -17482,7 +17516,7 @@ void LLActorMover::buildSharedActorStyleQueue()
     auto add_actor = [&](const LLUUID& style_id)
     {
         const LLDirectorCast::ActorStyle& style =
-            director_cast.getActorStyle(style_id);
+            director_cast.getRenderActorStyle(style_id);
         if (!actor_style_wants_shared_replay(style))
         {
             return;
@@ -19415,7 +19449,7 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
     SharedActorStyleProxy& proxy, bool depth_only)
 {
     if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||
-        ALDerenderList::keepsAvatarLive(proxy.mAvatar))
+        (ALDerenderList::keepsAvatarLive(proxy.mAvatar) || LLGhostAvatar::isRenderHidden(proxy.mAvatar)))
     {
         return false;
     }

@@ -194,8 +194,8 @@ public:
     bool despawn(ALGhostStudio& studio,
                  const LLUUID& instance_id) override
     {
-        studio.removeInstance(instance_id);
-        return studio.getInstance(instance_id) == nullptr;
+        studio.requestRemoveInstance(instance_id);
+        return studio.getInstance(instance_id) == nullptr || studio.isDeleting(instance_id);
     }
 };
 
@@ -315,8 +315,8 @@ public:
     bool despawn(ALGhostStudio& studio,
                  const LLUUID& instance_id) override
     {
-        studio.removeInstance(instance_id);
-        return studio.getInstance(instance_id) == nullptr;
+        studio.requestRemoveInstance(instance_id);
+        return studio.getInstance(instance_id) == nullptr || studio.isDeleting(instance_id);
     }
 };
 

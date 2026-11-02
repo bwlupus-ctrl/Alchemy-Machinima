@@ -45,7 +45,9 @@
            tool_tip="Remove the selected clone" width="72" />
           <button follows="left|top" height="22" label="Refresh" layout="topleft" left="174" name="btn_ghost_refresh" top="190"
            tool_tip="Re-sync this entity clone to its source's current appearance and worn attachments" visible="false" width="82" />
-        </panel>
+                  <button name="btn_ghost_solo" label="Solo" left="264" top="190" width="66" height="22" layout="topleft" follows="left|top" tool_tip="Isolate selected clones and their groups. Hidden clones keep simulating. Press again or Show clones to restore prior visibility. New clones join the solo set." toggle="true" />
+          <button name="btn_ghost_swap" label="Swap source" left="340" top="162" width="112" height="22" layout="topleft" follows="left|top" tool_tip="Replace the selected clones’ copied avatar using Copy from. Source must be loaded. Placement, names, groups, animation source and authored settings are retained." />
+</panel>
 
         <tab_container
          follows="all"
@@ -61,7 +63,7 @@
               <panel background_visible="false" follows="left|top" layout="topleft" left="0" name="place_scroll_body" top="0" width="484">
 
         <!-- Placement -->
-        <panel follows="left|top" height="308" layout="topleft" left="0" name="placement_section" top="0" width="484">
+        <panel follows="left|top" height="364" layout="topleft" left="0" name="placement_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="place_lbl" right="-8" top="8">Placement</text>
           <text follows="left|top" font="SansSerifSmallBold" height="18" layout="topleft" left="8" name="ghost_type" top="29" tool_tip="The kind of the selected clone, and its state.&#10;&#10;Overlay clone: A light copy that re-draws the source avatar&apos;s own mesh at another spot. It mirrors what the source is doing, or holds a pose you freeze. Cheapest; best for crowds and echoes. Drawn after fog and haze, so atmosphere doesn&apos;t touch it.&#10;&#10;Entity clone: A real avatar that exists only in your viewer, with its own skeleton. It can play its own animations (copy the source, a chosen animation, true mirror, or auto-animate), and has its own scale, physics, eye motion, speed and stepping. Lit, fogged and hazed like a real avatar. Heavier per copy." width="174">Type: No selection</text>
           <line_editor follows="left|top|right" height="22" label="Name" layout="topleft" left="188" max_length_bytes="63" name="ghost_name" right="-8" top="25"
@@ -115,7 +117,11 @@
            tool_tip="Copy foot position, full rotation, and scale to the session clipboard" width="104" />
           <button follows="left|top" height="22" label="Paste transform" layout="topleft" left="232" name="btn_paste_transform" top="274"
            tool_tip="Paste foot position, full rotation, and scale to every selected clone" width="110" />
-        </panel>
+                  <spinner name="clone_fade_in_spinner" label="Fade in (s)" label_width="124" left="8" top="304" width="232" height="22" layout="topleft" follows="left|top" initial_value="0" min_val="0" max_val="5" increment="0.05" decimal_digits="2" tool_tip="Appearance ramp for all new clones. Overlay opacity is multiplied; entities dissolve. Zero appears instantly. Session clones are never saved." control_name="GhostStudioFadeIn" />
+          <button name="reset_clone_fade_in_spinner" label="&#x21BA;" left="246" top="304" width="22" height="22" layout="topleft" follows="left|top" tool_tip="Reset Fade in (s)" />
+          <spinner name="clone_fade_out_spinner" label="Fade out (s)" label_width="124" left="8" top="332" width="232" height="22" layout="topleft" follows="left|top" initial_value="0" min_val="0" max_val="5" increment="0.05" decimal_digits="2" tool_tip="Retire selected clones with an opacity ramp or entity dissolve. Deletion and reference retirement finish at the end; retiring clones cannot be selected. Teleport and logout remove immediately." control_name="GhostStudioFadeOut" />
+          <button name="reset_clone_fade_out_spinner" label="&#x21BA;" left="246" top="332" width="22" height="22" layout="topleft" follows="left|top" tool_tip="Reset Fade out (s)" />
+</panel>
               </panel>
             </scroll_container>
           </panel>
@@ -223,10 +229,10 @@
 
           <panel border="false" follows="all" height="490" label="Pose" layout="topleft" name="pose_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="pose_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="946" layout="topleft" left="0" name="pose_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" layout="topleft" left="0" name="pose_scroll_body" top="0" width="484" height="1030">
 
         <!-- Pose and animation -->
-        <panel follows="left|top" height="946" layout="topleft" left="0" name="pose_section" top="0" width="484">
+        <panel follows="left|top" height="1018" layout="topleft" left="0" name="pose_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this clone (worn mesh + attachment placement). The clone holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the clone" width="126" />
@@ -348,17 +354,20 @@
           <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_rig_diag_refresh" right="-8" top="750"
            tool_tip="Capture the live render/cull state (draw pass, texture bindings, pool) of the selected entity clone now. It is a snapshot and does not follow the camera" width="64" />
           <text_editor follows="left|top|right" font="Monospace" height="156" layout="topleft" left="8" max_length="32768" name="rig_diagnostics" read_only="true" right="-8" top="782" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
-        </panel>
+                  <spinner name="clone_start_offset_spinner" label="Start offset (s)" label_width="124" left="8" top="946" width="232" height="22" layout="topleft" follows="left|top" initial_value="0" min_val="0" max_val="10" increment="0.05" decimal_digits="2" tool_tip="Phase into Directed animations, wrapping loops. Live mirrors use a bounded 2-second pose history; delay is capped to available history while warming up. Sync clears it." />
+          <button name="reset_clone_start_offset_spinner" label="&#x21BA;" left="246" top="946" width="22" height="22" layout="topleft" follows="left|top" tool_tip="Reset Start offset (s)" />
+          <text name="clone_offset_status" left="8" top="974" width="460" height="36" word_wrap="true" layout="topleft" follows="left|top" tool_tip="Effective phase or live-history delay and cap for the selected clone.">Start offset off</text>
+</panel>
               </panel>
             </scroll_container>
           </panel>
 
           <panel border="false" follows="all" height="490" label="Crowd" layout="topleft" name="crowd_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="crowd_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="676" layout="topleft" left="0" name="crowd_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" layout="topleft" left="0" name="crowd_scroll_body" top="0" width="484" height="1004">
 
         <!-- Reliable crowd placement -->
-        <panel follows="left|top" height="460" layout="topleft" left="0" name="array_section" top="0" width="484">
+        <panel follows="left|top" height="776" layout="topleft" left="0" name="array_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="array_section_label" right="-8" top="8">Crowd Placement</text>
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="5" label="Count" label_width="40" layout="topleft" left="8" max_val="256" min_val="2" name="array_count_spinner" top="30"
            tool_tip="Total clones in the crowd, including the selected prototype" width="84" />
@@ -504,10 +513,310 @@
            tool_tip="Keep this member's edited local offset when group authoring updates" />
           <button follows="left|top" height="22" label="Reset member" layout="topleft" left="156" name="btn_group_member_reset" top="428" width="106"
            tool_tip="Restore this member's authored local transform inside the group" />
-        </panel>
+                  <text name="crowd_start_mode_combo_label" left="8" top="463" width="124" height="18" layout="topleft" follows="left|top">Start offset</text>
+          <combo_box name="crowd_start_mode_combo" left="138" top="460" width="212" height="22" layout="topleft" follows="left|top" initial_value="0" tool_tip="Off keeps current timing. Random hashes crowd seed and stable clone ID. Ripple orders slots in the formation frame. Changes rephase the current crowd immediately." control_name="GhostStudioStartMode">
+            <combo_box.item label="Off" value="0" />
+            <combo_box.item label="Random" value="1" />
+            <combo_box.item label="Ripple" value="2" />
+          </combo_box>
+          <spinner name="crowd_start_spread_spinner" label="Spread (s)" label_width="124" left="8" top="488" width="232" height="22" layout="topleft" follows="left|top" initial_value="0.8" min_val="0" max_val="10" increment="0.05" decimal_digits="2" tool_tip="Maximum animation phase offset. Live mirror poses are delayed into their 2-second history, capped to its available length." control_name="GhostStudioStartSpread" />
+          <button name="reset_crowd_start_spread_spinner" label="&#x21BA;" left="246" top="488" width="22" height="22" layout="topleft" follows="left|top" tool_tip="Reset Spread (s)" />
+          <text name="crowd_ripple_from_combo_label" left="8" top="519" width="124" height="18" layout="topleft" follows="left|top">Ripple from</text>
+          <combo_box name="crowd_ripple_from_combo" left="138" top="516" width="212" height="22" layout="topleft" follows="left|top" initial_value="0" tool_tip="Front/back and left/right follow the formation heading. Centre out uses radial distance from its origin. Equal coordinates receive equal offsets." control_name="GhostStudioRippleFrom">
+            <combo_box.item label="Front to back" value="0" />
+            <combo_box.item label="Left to right" value="1" />
+            <combo_box.item label="Centre out" value="2" />
+          </combo_box>
+          <text name="crowd_looks_mode_combo_label" left="8" top="547" width="124" height="18" layout="topleft" follows="left|top">Looks</text>
+          <combo_box name="crowd_looks_mode_combo" left="138" top="544" width="212" height="22" layout="topleft" follows="left|top" initial_value="0" tool_tip="Single keeps the prototype look. Mix applies the non-None Look menus to overlay copies only. Switching back restores each clone’s prior single look." control_name="GhostStudioLooksMode">
+            <combo_box.item label="Single" value="0" />
+            <combo_box.item label="Mix" value="1" />
+          </combo_box>
+          <text name="crowd_look_spread_combo_label" left="8" top="575" width="124" height="18" layout="topleft" follows="left|top">Look spread</text>
+          <combo_box name="crowd_look_spread_combo" left="138" top="572" width="212" height="22" layout="topleft" follows="left|top" initial_value="0" tool_tip="Random uses the crowd seed and stable clone ID. By row cycles looks using solver row indices. Non-row shapes fall back to slot order. Duplicate menu choices count once." control_name="GhostStudioLookSpread">
+            <combo_box.item label="Random" value="0" />
+            <combo_box.item label="By row" value="1" />
+          </combo_box>
+          <text name="crowd_mix_look_1_label" left="8" top="603" width="124" height="18" layout="topleft" follows="left|top">Look 1</text>
+          <combo_box name="crowd_mix_look_1" left="138" top="600" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook1">
+            <combo_box.item label="None" value="-1" />
+            <combo_box.item label="Ghost" value="0" />
+            <combo_box.item label="Clone" value="1" />
+            <combo_box.item label="Hologram" value="2" />
+            <combo_box.item label="Wireframe" value="3" />
+            <combo_box.item label="X-ray" value="4" />
+            <combo_box.item label="Thermal" value="5" />
+            <combo_box.item label="Neon Outline" value="6" />
+            <combo_box.item label="Silhouette" value="7" />
+            <combo_box.item label="Toon/Ink" value="8" />
+            <combo_box.item label="Chrome" value="9" />
+            <combo_box.item label="Dissolve" value="10" />
+            <combo_box.item label="Negative" value="11" />
+            <combo_box.item label="Gold Statue" value="12" />
+            <combo_box.item label="Night-vision" value="13" />
+            <combo_box.item label="Blueprint" value="14" />
+            <combo_box.item label="Ectoplasm" value="15" />
+            <combo_box.item label="Frost/Ice" value="16" />
+            <combo_box.item label="Prism" value="17" />
+            <combo_box.item label="Thermal Scope" value="18" />
+            <combo_box.item label="Wallhack/ESP" value="19" />
+            <combo_box.item label="Night-vision Tube" value="20" />
+            <combo_box.item label="Damage Overlay" value="21" />
+            <combo_box.item label="Killcam" value="22" />
+            <combo_box.item label="Oil Slick" value="23" />
+            <combo_box.item label="Vaporwave" value="24" />
+            <combo_box.item label="Halftone/Comic" value="25" />
+            <combo_box.item label="Sonar Reveal" value="26" />
+            <combo_box.item label="Hologram Echo" value="27" />
+            <combo_box.item label="Glass" value="64" />
+            <combo_box.item label="Mercury" value="65" />
+            <combo_box.item label="Marble" value="66" />
+            <combo_box.item label="Crystal" value="67" />
+            <combo_box.item label="Ash Drift" value="68" />
+            <combo_box.item label="Magma" value="69" />
+            <combo_box.item label="Void" value="70" />
+            <combo_box.item label="Sumi-e" value="71" />
+            <combo_box.item label="Arc" value="72" />
+            <combo_box.item label="Lidar" value="73" />
+            <combo_box.item label="Code Rain" value="74" />
+            <combo_box.item label="Datamosh" value="75" />
+            <combo_box.item label="Scan Build" value="76" />
+            <combo_box.item label="Contour" value="77" />
+          </combo_box>
+          <text name="crowd_mix_look_2_label" left="8" top="631" width="124" height="18" layout="topleft" follows="left|top">Look 2</text>
+          <combo_box name="crowd_mix_look_2" left="138" top="628" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook2">
+            <combo_box.item label="None" value="-1" />
+            <combo_box.item label="Ghost" value="0" />
+            <combo_box.item label="Clone" value="1" />
+            <combo_box.item label="Hologram" value="2" />
+            <combo_box.item label="Wireframe" value="3" />
+            <combo_box.item label="X-ray" value="4" />
+            <combo_box.item label="Thermal" value="5" />
+            <combo_box.item label="Neon Outline" value="6" />
+            <combo_box.item label="Silhouette" value="7" />
+            <combo_box.item label="Toon/Ink" value="8" />
+            <combo_box.item label="Chrome" value="9" />
+            <combo_box.item label="Dissolve" value="10" />
+            <combo_box.item label="Negative" value="11" />
+            <combo_box.item label="Gold Statue" value="12" />
+            <combo_box.item label="Night-vision" value="13" />
+            <combo_box.item label="Blueprint" value="14" />
+            <combo_box.item label="Ectoplasm" value="15" />
+            <combo_box.item label="Frost/Ice" value="16" />
+            <combo_box.item label="Prism" value="17" />
+            <combo_box.item label="Thermal Scope" value="18" />
+            <combo_box.item label="Wallhack/ESP" value="19" />
+            <combo_box.item label="Night-vision Tube" value="20" />
+            <combo_box.item label="Damage Overlay" value="21" />
+            <combo_box.item label="Killcam" value="22" />
+            <combo_box.item label="Oil Slick" value="23" />
+            <combo_box.item label="Vaporwave" value="24" />
+            <combo_box.item label="Halftone/Comic" value="25" />
+            <combo_box.item label="Sonar Reveal" value="26" />
+            <combo_box.item label="Hologram Echo" value="27" />
+            <combo_box.item label="Glass" value="64" />
+            <combo_box.item label="Mercury" value="65" />
+            <combo_box.item label="Marble" value="66" />
+            <combo_box.item label="Crystal" value="67" />
+            <combo_box.item label="Ash Drift" value="68" />
+            <combo_box.item label="Magma" value="69" />
+            <combo_box.item label="Void" value="70" />
+            <combo_box.item label="Sumi-e" value="71" />
+            <combo_box.item label="Arc" value="72" />
+            <combo_box.item label="Lidar" value="73" />
+            <combo_box.item label="Code Rain" value="74" />
+            <combo_box.item label="Datamosh" value="75" />
+            <combo_box.item label="Scan Build" value="76" />
+            <combo_box.item label="Contour" value="77" />
+          </combo_box>
+          <text name="crowd_mix_look_3_label" left="8" top="659" width="124" height="18" layout="topleft" follows="left|top">Look 3</text>
+          <combo_box name="crowd_mix_look_3" left="138" top="656" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook3">
+            <combo_box.item label="None" value="-1" />
+            <combo_box.item label="Ghost" value="0" />
+            <combo_box.item label="Clone" value="1" />
+            <combo_box.item label="Hologram" value="2" />
+            <combo_box.item label="Wireframe" value="3" />
+            <combo_box.item label="X-ray" value="4" />
+            <combo_box.item label="Thermal" value="5" />
+            <combo_box.item label="Neon Outline" value="6" />
+            <combo_box.item label="Silhouette" value="7" />
+            <combo_box.item label="Toon/Ink" value="8" />
+            <combo_box.item label="Chrome" value="9" />
+            <combo_box.item label="Dissolve" value="10" />
+            <combo_box.item label="Negative" value="11" />
+            <combo_box.item label="Gold Statue" value="12" />
+            <combo_box.item label="Night-vision" value="13" />
+            <combo_box.item label="Blueprint" value="14" />
+            <combo_box.item label="Ectoplasm" value="15" />
+            <combo_box.item label="Frost/Ice" value="16" />
+            <combo_box.item label="Prism" value="17" />
+            <combo_box.item label="Thermal Scope" value="18" />
+            <combo_box.item label="Wallhack/ESP" value="19" />
+            <combo_box.item label="Night-vision Tube" value="20" />
+            <combo_box.item label="Damage Overlay" value="21" />
+            <combo_box.item label="Killcam" value="22" />
+            <combo_box.item label="Oil Slick" value="23" />
+            <combo_box.item label="Vaporwave" value="24" />
+            <combo_box.item label="Halftone/Comic" value="25" />
+            <combo_box.item label="Sonar Reveal" value="26" />
+            <combo_box.item label="Hologram Echo" value="27" />
+            <combo_box.item label="Glass" value="64" />
+            <combo_box.item label="Mercury" value="65" />
+            <combo_box.item label="Marble" value="66" />
+            <combo_box.item label="Crystal" value="67" />
+            <combo_box.item label="Ash Drift" value="68" />
+            <combo_box.item label="Magma" value="69" />
+            <combo_box.item label="Void" value="70" />
+            <combo_box.item label="Sumi-e" value="71" />
+            <combo_box.item label="Arc" value="72" />
+            <combo_box.item label="Lidar" value="73" />
+            <combo_box.item label="Code Rain" value="74" />
+            <combo_box.item label="Datamosh" value="75" />
+            <combo_box.item label="Scan Build" value="76" />
+            <combo_box.item label="Contour" value="77" />
+          </combo_box>
+          <text name="crowd_mix_look_4_label" left="8" top="687" width="124" height="18" layout="topleft" follows="left|top">Look 4</text>
+          <combo_box name="crowd_mix_look_4" left="138" top="684" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook4">
+            <combo_box.item label="None" value="-1" />
+            <combo_box.item label="Ghost" value="0" />
+            <combo_box.item label="Clone" value="1" />
+            <combo_box.item label="Hologram" value="2" />
+            <combo_box.item label="Wireframe" value="3" />
+            <combo_box.item label="X-ray" value="4" />
+            <combo_box.item label="Thermal" value="5" />
+            <combo_box.item label="Neon Outline" value="6" />
+            <combo_box.item label="Silhouette" value="7" />
+            <combo_box.item label="Toon/Ink" value="8" />
+            <combo_box.item label="Chrome" value="9" />
+            <combo_box.item label="Dissolve" value="10" />
+            <combo_box.item label="Negative" value="11" />
+            <combo_box.item label="Gold Statue" value="12" />
+            <combo_box.item label="Night-vision" value="13" />
+            <combo_box.item label="Blueprint" value="14" />
+            <combo_box.item label="Ectoplasm" value="15" />
+            <combo_box.item label="Frost/Ice" value="16" />
+            <combo_box.item label="Prism" value="17" />
+            <combo_box.item label="Thermal Scope" value="18" />
+            <combo_box.item label="Wallhack/ESP" value="19" />
+            <combo_box.item label="Night-vision Tube" value="20" />
+            <combo_box.item label="Damage Overlay" value="21" />
+            <combo_box.item label="Killcam" value="22" />
+            <combo_box.item label="Oil Slick" value="23" />
+            <combo_box.item label="Vaporwave" value="24" />
+            <combo_box.item label="Halftone/Comic" value="25" />
+            <combo_box.item label="Sonar Reveal" value="26" />
+            <combo_box.item label="Hologram Echo" value="27" />
+            <combo_box.item label="Glass" value="64" />
+            <combo_box.item label="Mercury" value="65" />
+            <combo_box.item label="Marble" value="66" />
+            <combo_box.item label="Crystal" value="67" />
+            <combo_box.item label="Ash Drift" value="68" />
+            <combo_box.item label="Magma" value="69" />
+            <combo_box.item label="Void" value="70" />
+            <combo_box.item label="Sumi-e" value="71" />
+            <combo_box.item label="Arc" value="72" />
+            <combo_box.item label="Lidar" value="73" />
+            <combo_box.item label="Code Rain" value="74" />
+            <combo_box.item label="Datamosh" value="75" />
+            <combo_box.item label="Scan Build" value="76" />
+            <combo_box.item label="Contour" value="77" />
+          </combo_box>
+          <text name="crowd_mix_look_5_label" left="8" top="715" width="124" height="18" layout="topleft" follows="left|top">Look 5</text>
+          <combo_box name="crowd_mix_look_5" left="138" top="712" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook5">
+            <combo_box.item label="None" value="-1" />
+            <combo_box.item label="Ghost" value="0" />
+            <combo_box.item label="Clone" value="1" />
+            <combo_box.item label="Hologram" value="2" />
+            <combo_box.item label="Wireframe" value="3" />
+            <combo_box.item label="X-ray" value="4" />
+            <combo_box.item label="Thermal" value="5" />
+            <combo_box.item label="Neon Outline" value="6" />
+            <combo_box.item label="Silhouette" value="7" />
+            <combo_box.item label="Toon/Ink" value="8" />
+            <combo_box.item label="Chrome" value="9" />
+            <combo_box.item label="Dissolve" value="10" />
+            <combo_box.item label="Negative" value="11" />
+            <combo_box.item label="Gold Statue" value="12" />
+            <combo_box.item label="Night-vision" value="13" />
+            <combo_box.item label="Blueprint" value="14" />
+            <combo_box.item label="Ectoplasm" value="15" />
+            <combo_box.item label="Frost/Ice" value="16" />
+            <combo_box.item label="Prism" value="17" />
+            <combo_box.item label="Thermal Scope" value="18" />
+            <combo_box.item label="Wallhack/ESP" value="19" />
+            <combo_box.item label="Night-vision Tube" value="20" />
+            <combo_box.item label="Damage Overlay" value="21" />
+            <combo_box.item label="Killcam" value="22" />
+            <combo_box.item label="Oil Slick" value="23" />
+            <combo_box.item label="Vaporwave" value="24" />
+            <combo_box.item label="Halftone/Comic" value="25" />
+            <combo_box.item label="Sonar Reveal" value="26" />
+            <combo_box.item label="Hologram Echo" value="27" />
+            <combo_box.item label="Glass" value="64" />
+            <combo_box.item label="Mercury" value="65" />
+            <combo_box.item label="Marble" value="66" />
+            <combo_box.item label="Crystal" value="67" />
+            <combo_box.item label="Ash Drift" value="68" />
+            <combo_box.item label="Magma" value="69" />
+            <combo_box.item label="Void" value="70" />
+            <combo_box.item label="Sumi-e" value="71" />
+            <combo_box.item label="Arc" value="72" />
+            <combo_box.item label="Lidar" value="73" />
+            <combo_box.item label="Code Rain" value="74" />
+            <combo_box.item label="Datamosh" value="75" />
+            <combo_box.item label="Scan Build" value="76" />
+            <combo_box.item label="Contour" value="77" />
+          </combo_box>
+          <text name="crowd_mix_look_6_label" left="8" top="743" width="124" height="18" layout="topleft" follows="left|top">Look 6</text>
+          <combo_box name="crowd_mix_look_6" left="138" top="740" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook6">
+            <combo_box.item label="None" value="-1" />
+            <combo_box.item label="Ghost" value="0" />
+            <combo_box.item label="Clone" value="1" />
+            <combo_box.item label="Hologram" value="2" />
+            <combo_box.item label="Wireframe" value="3" />
+            <combo_box.item label="X-ray" value="4" />
+            <combo_box.item label="Thermal" value="5" />
+            <combo_box.item label="Neon Outline" value="6" />
+            <combo_box.item label="Silhouette" value="7" />
+            <combo_box.item label="Toon/Ink" value="8" />
+            <combo_box.item label="Chrome" value="9" />
+            <combo_box.item label="Dissolve" value="10" />
+            <combo_box.item label="Negative" value="11" />
+            <combo_box.item label="Gold Statue" value="12" />
+            <combo_box.item label="Night-vision" value="13" />
+            <combo_box.item label="Blueprint" value="14" />
+            <combo_box.item label="Ectoplasm" value="15" />
+            <combo_box.item label="Frost/Ice" value="16" />
+            <combo_box.item label="Prism" value="17" />
+            <combo_box.item label="Thermal Scope" value="18" />
+            <combo_box.item label="Wallhack/ESP" value="19" />
+            <combo_box.item label="Night-vision Tube" value="20" />
+            <combo_box.item label="Damage Overlay" value="21" />
+            <combo_box.item label="Killcam" value="22" />
+            <combo_box.item label="Oil Slick" value="23" />
+            <combo_box.item label="Vaporwave" value="24" />
+            <combo_box.item label="Halftone/Comic" value="25" />
+            <combo_box.item label="Sonar Reveal" value="26" />
+            <combo_box.item label="Hologram Echo" value="27" />
+            <combo_box.item label="Glass" value="64" />
+            <combo_box.item label="Mercury" value="65" />
+            <combo_box.item label="Marble" value="66" />
+            <combo_box.item label="Crystal" value="67" />
+            <combo_box.item label="Ash Drift" value="68" />
+            <combo_box.item label="Magma" value="69" />
+            <combo_box.item label="Void" value="70" />
+            <combo_box.item label="Sumi-e" value="71" />
+            <combo_box.item label="Arc" value="72" />
+            <combo_box.item label="Lidar" value="73" />
+            <combo_box.item label="Code Rain" value="74" />
+            <combo_box.item label="Datamosh" value="75" />
+            <combo_box.item label="Scan Build" value="76" />
+            <combo_box.item label="Contour" value="77" />
+          </combo_box>
+</panel>
 
         <!-- Time and formation motion -->
-        <panel follows="left|top" height="206" layout="topleft" left="0" name="motion_section" top="470" width="484">
+        <panel follows="left|top" height="206" layout="topleft" left="0" name="motion_section" top="786" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="motion_section_label" right="-8" top="8">Freeze Strip &amp; Formation Motion</text>
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="8" label="Frames" label_width="50" layout="topleft" left="8" max_val="64" min_val="1" name="strip_count_spinner" top="30"
            tool_tip="Number of successive real-time pose snapshots" width="90" />

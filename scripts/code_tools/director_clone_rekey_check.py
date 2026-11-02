@@ -19,6 +19,17 @@ def check():
     source_rewrite = method(nv / "alpanelghoststudio.cpp", "void ALPanelGhostStudio::rewriteActorReferences(")
     assert "mSourceCombo->setSelectedByValue(LLUUID::null, true)" in source_rewrite
     assert "mSourceSelectionRemoved = false" in source_rewrite and "mAddBtn->setEnabled(true)" in source_rewrite
+    removal = method(nv / "alghoststudio.cpp", "void ALGhostStudio::removeInstance(")
+    assert "replaceActorId(retiring_id, LLUUID::null, retiring_id)" in removal
+    assert "const LLUUID retiring_id = id" in removal
+    swap = method(nv / "alghoststudio.cpp", "bool ALGhostStudio::swapSource(")
+    assert "onEntityRuntimeReplaced(*inst, replacement->getID(), replacement)" in swap
+    assert "cast.remove(" not in swap and "migrateActor(" not in swap
+    assert "candidate.mAnimationSource = before.mSource" in swap
+    assert "inst->mSource =" not in swap # appearance never redirects motion/path/light provenance
+    assert "inst->mAppearanceSource = candidate.mAppearanceSource" in swap
+    # The exact same production runtime transaction executes R -> S -> N below;
+    # swap uses its live-body R -> N branch, with outside reference checks shared.
     fixture = r'''
 #include <algorithm>
 #include <cassert>
@@ -140,9 +151,10 @@ struct LLGhostAvatar:LLCharacter {
 };
 std::map<LLUUID,U32> LLGhostAvatar::sLiveSourceCounts;
 struct ALGhostStudio {
+ bool isPrivateOverlayRuntime(LLUUID)const{return false;}
  enum ELookTarget{LOOK_TARGET_CAMERA,LOOK_TARGET_ME,LOOK_TARGET_ACTOR,LOOK_TARGET_GHOST,LOOK_TARGET_POINT};
  enum{TURN_MODE_OFF,TURN_MODE_ONCE};
- struct Instance{LLUUID mId,mSource,mEntityId;bool mSourceRemoved=false;
+ struct Instance{LLUUID mId,mSource,mEntityId,mAnimationSource,mAppearanceSource;bool mSourceRemoved=false,mHasAnimationSource=false,mAnimationSourceRemoved=false,mAppearanceSourceRemoved=false;
   ELookTarget mLookTarget=LOOK_TARGET_ACTOR,mTurnTarget=LOOK_TARGET_ACTOR;
   LLUUID mLookTargetId,mTurnTargetId;int mFootGlobal=3,mLookPointGlobal=0,mTurnMode=TURN_MODE_ONCE;
   bool mKeepFacing=true;};
@@ -199,7 +211,7 @@ struct ALDanceBall {
 struct LLDirectorCast {
  using GazeTarget=LLActorMover::GazeTarget;
  struct GazeCue{GazeTarget mTarget;};using GazeCueList=std::vector<GazeCue>;
- struct CastMember{LLUUID mId;std::string mLastName;GazeTarget mGazeTarget,mEyeGazeTarget;GazeCueList mGazeCues;};
+ struct CastMember{LLUUID mId;std::string mLastName;GazeTarget mGazeTarget,mEyeGazeTarget;GazeCueList mGazeCues;bool mCloneFading=false;};
  std::vector<CastMember> mCast;std::vector<LLUUID> mIds;
  GazeTarget mSelfGazeTarget,mSelfEyeGazeTarget;GazeCueList mSelfGazeCues;
  struct Start{LLUUID mId;};std::vector<Start> mPendingStarts;
@@ -346,6 +358,7 @@ int main(){
  auto& studio=ALGhostStudio::instance();
  ALGhostStudio::Instance look;look.mLookTargetId=look.mTurnTargetId=R;studio.mInstances={look};
  studio.mInstances.front().mSource=R;
+ studio.mInstances.front().mHasAnimationSource=true;studio.mInstances.front().mAnimationSource=R;studio.mInstances.front().mAppearanceSource=R;
  ALGhostStudio::Instance source;source.mId=S;studio.mInstances.push_back(source);
  studio.mCrowdDraft.mActive=true;studio.mCrowdDraft.mSource.mSourceId=R;
  studio.mCrowdDraft.mSource.mEntityId=R;
@@ -377,6 +390,7 @@ int main(){
   assert(dependent.mAnimationSourceId==id);
   if(id.notNull()) assert(LLGhostAvatar::sLiveSourceCounts.at(id)==1);
   else assert(LLGhostAvatar::sLiveSourceCounts.empty());
+  assert(studio.mInstances.front().mAnimationSource==id && studio.mInstances.front().mAppearanceSource==id);
   assert(studio.mInstances.front().mLookTargetId==id && studio.mInstances.front().mTurnTargetId==id);
   assert(snapshot->before.front().mTarget.mCastRef==id && snapshot->after.front().mTarget.mCastRef==id);
   if(id.notNull()) assert(mover.mFollows.at(A).mLeader==id);
@@ -395,6 +409,13 @@ int main(){
   }
   if(id==S) assert(cast.resolve(cast.mCast.front().mGazeTarget.mCastRef)==nullptr);
  };
+ // Swap-source uses the live R -> N branch of this same production transaction.
+ // Prove it directly before also exercising parking/recovery/deletion.
+ gObjectList.objects[N]=&newClone;studio.mInstances[1].mEntityId=N;
+ cast.replaceActorId(R,N,S);verify(N);
+ cast.replaceActorId(N,R,S);verify(R);
+ studio.mInstances[1].mEntityId.setNull();
+ gObjectList.objects.erase(N);
  gObjectList.objects.erase(R);original.dead=true;
  cast.replaceActorId(R,S,S);verify(S);
  // An unrelated parked clone must never publish the shell signal which commits

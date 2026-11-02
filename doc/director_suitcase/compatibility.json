@@ -6906,6 +6906,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.cpp",
+    "dependency": "indra/newview/alcameradispatch.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.cpp",
     "dependency": "indra/newview/alghostanimmirrormath.h",
     "excluded": false,
     "origin": "fork-added",
@@ -8167,6 +8176,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llflexibleobject.cpp",
     "dependency": "indra/newview/alsteppedanimruntime.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloater360capture.cpp",
+    "dependency": "indra/newview/llactormover.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -11113,6 +11131,15 @@
     "excluded": true,
     "origin": "fork-added",
     "reason": "pure performance/governor/pool/frame-limiter feature; adapt any creative caller"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerwindow.cpp",
+    "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
     "action": "carry/adapt fork source",

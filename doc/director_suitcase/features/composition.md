@@ -58,7 +58,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@193,9", "indra/newview/llcontrolavatar.cpp@247,21"]}
 - {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@979,14", "indra/newview/llviewerinput.cpp@1163,22", "indra/newview/llviewerinput.cpp@1588,83", "indra/newview/llviewerinput.cpp@1740,14"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@4723,10"]}
-- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@200,7", "indra/newview/llviewerwindow.cpp@261,272", "indra/newview/llviewerwindow.cpp@3365,14"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@201,7", "indra/newview/llviewerwindow.cpp@262,272", "indra/newview/llviewerwindow.cpp@3366,14"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@2947,33", "indra/newview/llvoavatar.cpp@5059,21", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5819,13", "indra/newview/llvoavatar.cpp@5911,46", "indra/newview/llvoavatar.cpp@9412,10", "indra/newview/llvoavatar.cpp@9456,15", "indra/newview/llvoavatar.cpp@9477,12", "indra/newview/llvoavatar.cpp@12825,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@1259,17"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@84,17", "indra/newview/pipeline.cpp@1692,29125"]}
@@ -162,7 +162,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 572, "text": "llfloaterhoverheight.cpp", "source": "indra/newview/llfloaterhoverheight.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1570, "text": "llfloaterhoverheight.h", "source": "indra/newview/llfloaterhoverheight.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}

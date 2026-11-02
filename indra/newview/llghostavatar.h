@@ -26,6 +26,7 @@
 
 #ifndef LL_LLGHOSTAVATAR_H
 #define LL_LLGHOSTAVATAR_H
+#include <deque>
 
 #include "llvoavatar.h"
 #include "alghostautoanimmodel.h" // [AutoAnimate]
@@ -144,7 +145,13 @@ public:
     virtual void idleUpdate(LLAgent &agent, const F64 &time);
 
     void setEntityCloneVisible(bool visible);
-    bool isEntityCloneVisible() const { return mEntityCloneVisible; }
+    bool isEntityCloneVisible() const { return mEntityCloneVisible && !mRenderOnlyHidden; }
+    void setRenderOnlyHidden(bool hidden);
+    static U32 sRenderHiddenReasons;
+    static bool hasRenderHiddenPolicy() { return sRenderHiddenReasons != 0; }
+    static bool isRenderHidden(const LLViewerObject* avatar, const LLUUID& owner, const LLUUID& fallback);
+    bool mRenderOnlyHidden = false;
+    bool mOverlayHelper = false; // private for its complete lifetime, including deferred death
 
     // Viewer-local entity controls. These only alter this synthetic avatar's
     // skeleton/motion controller; neither path touches simulator object state.
@@ -160,6 +167,38 @@ public:
     // LLCharacter::setAnimTimeFactor alone never reaches them (multi-animesh desync).
     void setEntityAnimTimeFactor(F32 factor);
     void restartEntityAnimation();
+    void refreshOverlayAttachments() { moveStampedAttachments(); }
+    static bool isRenderHidden(const LLViewerObject* object);
+    void setStartOffset(F32 seconds);
+    void setAnimationSource(const LLUUID& source);
+    void copyHeldPoseFrom(LLVOAvatar* source);
+    void applyOffsetHistory(F64 now);
+    void restoreOffsetPose();
+    F32 offsetHistoryLength() const;
+    F32 phaseOffset(const LLUUID& animation);
+    struct OffsetFrame
+    {
+        F64 time = 0.;
+        std::vector<LLQuaternion> rotations;
+        std::vector<LLVector3> positions;
+        std::map<S32, F32> face;
+        struct AttachmentPose
+        {
+            std::vector<LLQuaternion> rotations;
+            std::vector<LLVector3> positions;
+        };
+        std::map<LLUUID, AttachmentPose> attachments;
+    };
+    OffsetFrame mOffsetRestore;
+    bool mOffsetNeedsRestore = false;
+    std::deque<OffsetFrame> mOffsetHistory;
+    F32 mStartOffset = 0.f;
+    F32 mAppliedStartPhase = 0.f;
+    bool mPhaseArmed = true;
+    F64 mOffsetFrozenAt = 0.;
+    void prepareOffsetDrive(S32 mode);
+    bool mStartPhasePending = false;
+    F64 mOffsetNextCapture = 0.;
     void setEntityLook(S32 look, F32 alpha);
 
     // [AutoAnimate] Actions are consumed by idleUpdate, never by UI callbacks.

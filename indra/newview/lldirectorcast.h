@@ -264,6 +264,8 @@ public:
         LLActorMover::GazeTarget mEyeGazeTarget; // optional eyes-only target
         GazeCueList             mGazeCues;        // ordered presentation-time performance track
         GazeInfluenceKeyList    mGazeInfluenceKeys; // parallel influence lane (empty = influence 1)
+        bool                    mCloneFading = false; // transient, never serialized
+        ActorStyle              mCloneFadeStyle;
         ActorStyle              mActorStyle;      // client-only live actor presentation
     };
 
@@ -340,6 +342,8 @@ public:
     // LLUUID::null (and the agent avatar's runtime id) address You. Invalid or
     // non-cast ids read as the disabled default and ignore writes.
     const ActorStyle& getActorStyle(const LLUUID& id) const;
+    const ActorStyle& getRenderActorStyle(const LLUUID& id) const;
+    void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
     LLUUID            getSteppedActorId() const { return runtimeActorId(mActiveActorId); }
     void              setSteppedActorId(const LLUUID& id);

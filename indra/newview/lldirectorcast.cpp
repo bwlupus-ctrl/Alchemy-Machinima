@@ -1098,7 +1098,10 @@ std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::buildActorChoices(
     const std::array<LLUUID, 4>& subjects,
     const std::vector<ActorChoiceSource>& cast)
 {
-    return alBuildActorChoices(self_id, subjects, cast);
+    auto choices = alBuildActorChoices(self_id, subjects, cast);
+    choices.erase(std::remove_if(choices.begin(), choices.end(), [](const ActorChoice& choice)
+    { return ALGhostStudio::instance().isDeleting(choice.mId) || ALGhostStudio::instance().isPrivateOverlayRuntime(choice.mId); }), choices.end());
+    return choices;
 }
 
 std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::getActorChoices() const
@@ -1107,7 +1110,8 @@ std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::getActorChoices() const
     sources.reserve(mCast.size());
     for (const CastMember& member : mCast)
     {
-        sources.push_back({ member.mId, member.mLastName });
+        if (!ALGhostStudio::instance().isDeleting(member.mId))
+            sources.push_back({ member.mId, member.mLastName });
     }
     return buildActorChoices(gAgentID,
         { mSubjectA, mSubjectB, mSubjectC, mSubjectD }, sources);
@@ -1164,6 +1168,7 @@ void LLDirectorCast::touchScene()
 // ---------------------------------------------------------------------------
 void LLDirectorCast::add(const LLUUID& id, bool touch_scene)
 {
+    if (ALGhostStudio::instance().isPrivateOverlayRuntime(id)) return;
     LLViewerObject* candidate = gObjectList.findObject(id);
     if (candidate && candidate->isColorChart()) return; // session prop cannot enter scene capture
     const LLUUID actor_id = canonicalActorId(id);
@@ -1321,6 +1326,7 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
     if (old != mCast.end())
     {
         CastMember saved = *old;
+        saved.mCloneFading = false; // presentation never survives park/recovery
         // The migrating alias is the current owner of edits while live/parked.
         // Normalized scene loads also install directly under that owner. A
         // duplicate destination is discarded wholesale, never field-merged.
@@ -1402,7 +1408,8 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
     if (primary_it != mMemberIndex.end() && primary_it->second < mCast.size())
     {
         resolved_id = primary;
-        return mCast[primary_it->second].mActorStyle;
+        const auto& member = mCast[primary_it->second];
+        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
     }
 
     // Preserve the established animesh/control-avatar fallback semantics even
@@ -1418,7 +1425,8 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
         const auto fallback_it = mMemberIndex.find(fallback);
         if (fallback_it != mMemberIndex.end() && fallback_it->second < mCast.size())
         {
-            return mCast[fallback_it->second].mActorStyle;
+            const auto& member = mCast[fallback_it->second];
+            return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
         }
         return default_style;
     }
@@ -1452,7 +1460,24 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(const LLUUID& id
     const auto it = mMemberIndex.find(id);
     if (it != mMemberIndex.end() && it->second < mCast.size())
     {
-        return mCast[it->second].mActorStyle;
+        const auto& member = mCast[it->second];
+        return member.mActorStyle;
+    }
+    return default_style;
+}
+
+const LLDirectorCast::ActorStyle& LLDirectorCast::getRenderActorStyle(const LLUUID& id) const
+{
+    static const ActorStyle default_style;
+    if (id.isNull() || (gAgentID.notNull() && id == gAgentID))
+    {
+        return mSelfActorStyle;
+    }
+    const auto it = mMemberIndex.find(id);
+    if (it != mMemberIndex.end() && it->second < mCast.size())
+    {
+        const auto& member = mCast[it->second];
+        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
     }
     return default_style;
 }
@@ -1477,6 +1502,7 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
 void LLDirectorCast::setActiveActorId(const LLUUID& id)
 {
     const LLUUID actor = canonicalActorId(id);
+    if (ALGhostStudio::instance().isPrivateOverlayRuntime(actor)) return;
     if (actor == mActiveActorId) return;
     const bool stepped_changed = runtimeActorId(actor) != getSteppedActorId();
     mActiveActorId = actor;
@@ -3021,4 +3047,22 @@ void LLDirectorCast::cut()
     }
     mRunning = false;
     LL_INFOS("DirectorCast") << "CUT" << LL_ENDL;
+}
+
+// This override belongs to a live synthetic body only, outside authored scene state.
+void LLDirectorCast::setCloneFadeAlpha(const LLUUID& id, F32 alpha)
+{
+    CastMember* member = getMember(id);
+    if (!member) return;
+    if (alpha >= 1.f) { member->mCloneFading = false; return; }
+    if (!LLGhostAvatar::isGhostId(id)) return;
+    member->mCloneFading = alpha < 1.f;
+    if (!member->mCloneFading) return;
+    auto& style = member->mCloneFadeStyle;
+    style = member->mActorStyle;
+    style.mEnabled = true;
+    style.mMode = ACTOR_STYLE_REPLACE;
+    style.mStyle = 10; // the existing native noise-threshold dissolve, including shadows
+    style.mAlpha = 1.f;
+    style.mDissolveProgress = 1.f-alpha;
 }

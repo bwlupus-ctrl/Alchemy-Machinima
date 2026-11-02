@@ -190,7 +190,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 497, "text": "llenvironment.cpp", "source": "indra/newview/llenvironment.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1494, "text": "llenvironment.h", "source": "indra/newview/llenvironment.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 550, "text": "llfloatereditenvironmentbase.cpp", "source": "indra/newview/llfloatereditenvironmentbase.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 553, "text": "llfloaterenvironmentadjust.cpp", "source": "indra/newview/llfloaterenvironmentadjust.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1551, "text": "llfloaterenvironmentadjust.h", "source": "indra/newview/llfloaterenvironmentadjust.h"}

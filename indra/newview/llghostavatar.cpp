@@ -1010,6 +1010,8 @@ LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegi
 // virtual
 LLGhostAvatar::~LLGhostAvatar()
 {
+    if (mRenderOnlyHidden) --sRenderHiddenReasons;
+    if (!mEntityCloneVisible) --sRenderHiddenReasons;
     releaseSourceReference();
 }
 
@@ -1603,6 +1605,7 @@ void LLGhostAvatar::setEntityCloneVisible(bool visible)
         return;
     }
 
+    if (visible) --sRenderHiddenReasons; else ++sRenderHiddenReasons;
     mEntityCloneVisible = visible;
     if (visible)
     {
@@ -1864,6 +1867,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
         if (frozen_root.isFinite()) setGhostRotation(frozen_root);
     }
     const S32 old_mode = mEntityDriveMode; // [AutoAnimate]
+    prepareOffsetDrive(mode);
     mEntityDriveMode = mode;
     mEntityDirectedAnim = directed_anim;
     // A freeze/stamp must release cues before pausing its controller. Release
@@ -1881,7 +1885,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     }
     if (mode == ALGhostStudio::DRIVE_DIRECTED && directed_anim.notNull())
     {
-        LLCharacter::startMotion(directed_anim);
+        LLCharacter::startMotion(directed_anim, phaseOffset(directed_anim));
         mEntityDirectedStarted = true;
     }
     else if (mode == ALGhostStudio::DRIVE_FROZEN)
@@ -2577,7 +2581,7 @@ void LLGhostAvatar::restartEntityAnimation()
         if (mEntityDirectedAnim.notNull())
         {
             LLCharacter::stopMotion(mEntityDirectedAnim, true);
-            LLCharacter::startMotion(mEntityDirectedAnim, 0.f);
+            LLCharacter::startMotion(mEntityDirectedAnim, phaseOffset(mEntityDirectedAnim));
             mEntityDirectedStarted = true;
             mEntityDirectedWasActive = false;
         }
@@ -4318,11 +4322,22 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     else if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED &&
              mEntityDirectedAnim.notNull())
     {
+        if (mStartPhasePending && mStartOffset > 0.f)
+        {
+            LLMotion* clip = findMotion(mEntityDirectedAnim);
+            if (clip && clip->getDuration() > 0.f)
+            {
+                mStartPhasePending = false;
+                LLCharacter::stopMotion(mEntityDirectedAnim, true);
+                LLCharacter::startMotion(mEntityDirectedAnim, phaseOffset(mEntityDirectedAnim));
+                mEntityDirectedWasActive = false;
+            }
+        }
         bool active = isMotionActive(mEntityDirectedAnim);
         const F32 anim_time = getMotionController().getAnimTime();
         if (active && !mEntityDirectedWasActive)
         {
-            mEntityDirectedStartTime = anim_time;
+            mEntityDirectedStartTime = anim_time - mAppliedStartPhase;
         }
         if (active && !mFormationAnims.count(mEntityDirectedAnim) &&
             mEntityLoopMode == ALGhostStudio::LOOP_PLAY_ONCE)
@@ -4343,8 +4358,10 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             (mEntityLoopMode == ALGhostStudio::LOOP_RETRIGGER ||
              !mEntityDirectedStarted))
         {
-            LLCharacter::startMotion(mEntityDirectedAnim);
+            mAppliedStartPhase = 0.f;
+            LLCharacter::startMotion(mEntityDirectedAnim, 0.f);
             mEntityDirectedStarted = true;
+            mEntityDirectedStartTime = anim_time;
         }
         mEntityDirectedWasActive = active;
     }
@@ -5512,4 +5529,218 @@ S32 LLGhostAvatar::clearTestHarnessGhosts()
     LL_INFOS("GhostStudio") << "/ghostclear test: released " << released
                             << " harness ghost(s)" << LL_ENDL;
     return released;
+}
+
+// Clone QoL: a bounded pose history, allocated only for staggered live mirrors.
+// Record the evaluated pose, never controller state or the clone's placement.
+void LLGhostAvatar::setAnimationSource(const LLUUID& source)
+{
+    if (source == mAnimationSourceId) return;
+    synchronizeCloneAnimations(signaled_animation_map_t());
+    releaseSourceReference();
+    mAnimationSourceId = source;
+    if (source.notNull()) ++sLiveSourceCounts[source];
+    mOffsetHistory.clear();
+}
+F32 LLGhostAvatar::phaseOffset(const LLUUID& animation)
+{
+    if ((!mPhaseArmed && !mStartPhasePending) || mStartOffset <= 0.f) return mAppliedStartPhase = 0.f;
+    LLMotion* motion = findMotion(animation);
+    if (!motion) motion = createMotion(animation);
+    const F32 duration = motion ? motion->getDuration() : 0.f;
+    if (duration <= 0.f) { mStartPhasePending = true; return mAppliedStartPhase = mStartOffset; }
+    mPhaseArmed = false;
+    mStartPhasePending = false;
+    if (auto* clip = dynamic_cast<LLKeyframeMotion*>(motion); clip && clip->getLoop())
+    {
+        const F32 loop_in = clip->getLoopIn(), loop_out = clip->getLoopOut();
+        if (loop_out > loop_in && mStartOffset >= loop_out)
+            return mAppliedStartPhase = loop_in + fmodf(mStartOffset-loop_in, loop_out-loop_in);
+    }
+    return mAppliedStartPhase = motion->getLoop() ? fmodf(mStartOffset, duration) : llmin(mStartOffset, duration);
+}
+void LLGhostAvatar::setStartOffset(F32 seconds)
+{
+    mPhaseArmed = true;
+    if (seconds == mStartOffset) return;
+    mStartOffset = seconds;
+    if (seconds == 0.f) { restoreOffsetPose(); mOffsetHistory.clear(); }
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED) restartEntityAnimation();
+}
+F32 LLGhostAvatar::offsetHistoryLength() const
+{
+    return mOffsetHistory.size() > 1 ? F32(mOffsetHistory.back().time-mOffsetHistory.front().time) : 0.f;
+}
+void LLGhostAvatar::applyOffsetHistory(F64 now)
+{
+    if (mStartOffset <= 0.f || mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN || !mRoot) return;
+    const auto& joints = getSkeleton();
+    if (!mOffsetHistory.empty() && mOffsetHistory.back().positions.size() != joints.size())
+        mOffsetHistory.clear();
+    mOffsetRestore.time = now;
+    mOffsetRestore.rotations.resize(joints.size());
+    mOffsetRestore.positions.resize(joints.size());
+    for (size_t i=0; i<joints.size(); ++i)
+    {
+        mOffsetRestore.rotations[i] = joints[i] ? joints[i]->getRotation() : LLQuaternion();
+        mOffsetRestore.positions[i] = joints[i] ? joints[i]->getPosition() : LLVector3::zero;
+    }
+    if (!mTrueMirrorParamSetsBuilt) buildTrueMirrorParamSets();
+    for (S32 id : mTrueMirrorFaceParamIds)
+        if (LLVisualParam* param = getVisualParam(id)) mOffsetRestore.face[id] = param->getWeight();
+    for (S32 id : mTrueMirrorPhysicsParamIds)
+        if (LLVisualParam* param = getVisualParam(id)) mOffsetRestore.face[id] = param->getWeight();
+    for (const ClonedLinkset& linkset : mClonedLinksets)
+    {
+        LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+        LLControlAvatar* avatar = root ? root->getControlAvatar() : nullptr;
+        if (!avatar || avatar->isDead()) continue;
+        auto& pose = mOffsetRestore.attachments[avatar->getID()];
+        const auto& skeleton = avatar->getSkeleton();
+        pose.rotations.resize(skeleton.size()); pose.positions.resize(skeleton.size());
+        for (size_t i=0; i<skeleton.size(); ++i)
+        {
+            pose.rotations[i] = skeleton[i] ? skeleton[i]->getRotation() : LLQuaternion();
+            pose.positions[i] = skeleton[i] ? skeleton[i]->getPosition() : LLVector3::zero;
+        }
+    }
+    mOffsetNeedsRestore = true;
+    if (now >= mOffsetNextCapture || mOffsetHistory.empty())
+    {
+        mOffsetHistory.push_back(mOffsetRestore);
+        while (mOffsetHistory.size() > 61) mOffsetHistory.pop_front();
+        mOffsetNextCapture = now + 1./30.;
+    }
+    const F64 target = now - llmin(mStartOffset, 2.f);
+    size_t next = 0;
+    while (next+1 < mOffsetHistory.size() && mOffsetHistory[next].time < target) ++next;
+    const auto& b = mOffsetHistory[next];
+    const auto& a = mOffsetHistory[next ? next-1 : 0];
+    const F32 t = b.time > a.time ? F32(llclamp((target-a.time)/(b.time-a.time), 0., 1.)) : 0.f;
+    for (size_t i=0; i<joints.size(); ++i)
+        if (joints[i])
+        {
+            joints[i]->setRotation(slerp(t, a.rotations[i], b.rotations[i]));
+            joints[i]->setPosition(lerp(a.positions[i], b.positions[i], t));
+        }
+    for (const auto& value : a.face)
+    {
+        const auto next_value = b.face.find(value.first);
+        if (LLVisualParam* param = getVisualParam(value.first); param && !param->isAnimating())
+            setVisualParamWeight(param, value.second + t*((next_value != b.face.end() ? next_value->second : value.second)-value.second));
+    }
+    updateVisualParams();
+    for (const auto& entry : a.attachments)
+    {
+        LLViewerObject* object = gObjectList.findObject(entry.first);
+        LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+        if (!avatar || avatar->isDead()) continue;
+        const auto next_pose = b.attachments.find(entry.first);
+        const auto& from = entry.second;
+        const auto& to = next_pose != b.attachments.end() ? next_pose->second : from;
+        const auto& skeleton = avatar->getSkeleton();
+        for (size_t i=0; i<skeleton.size() && i<from.rotations.size() && i<to.rotations.size(); ++i)
+            if (skeleton[i])
+            {
+                skeleton[i]->setRotation(slerp(t, from.rotations[i], to.rotations[i]));
+                skeleton[i]->setPosition(lerp(from.positions[i], to.positions[i], t));
+            }
+        if (avatar->getRootJoint()) avatar->getRootJoint()->updateWorldMatrixChildren();
+        avatar->dirtyMesh();
+    }
+    mRoot->updateWorldMatrixChildren();
+    dirtyMesh();
+    moveStampedAttachments();
+}
+
+void LLGhostAvatar::restoreOffsetPose()
+{
+    if (!mOffsetNeedsRestore || mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN) return;
+    mOffsetNeedsRestore = false;
+    const auto& joints = getSkeleton();
+    for (size_t i=0; i<joints.size() && i<mOffsetRestore.rotations.size(); ++i)
+        if (joints[i])
+        {
+            joints[i]->setRotation(mOffsetRestore.rotations[i]);
+            joints[i]->setPosition(mOffsetRestore.positions[i]);
+        }
+    for (const auto& value : mOffsetRestore.face)
+        if (LLVisualParam* param = getVisualParam(value.first); param && !param->isAnimating())
+            setVisualParamWeight(param, value.second);
+    for (const auto& entry : mOffsetRestore.attachments)
+    {
+        LLViewerObject* object = gObjectList.findObject(entry.first);
+        LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+        if (!avatar || avatar->isDead()) continue;
+        const auto& skeleton = avatar->getSkeleton();
+        for (size_t i=0; i<skeleton.size() && i<entry.second.rotations.size(); ++i)
+            if (skeleton[i])
+            {
+                skeleton[i]->setRotation(entry.second.rotations[i]);
+                skeleton[i]->setPosition(entry.second.positions[i]);
+            }
+    }
+}
+
+void LLGhostAvatar::copyHeldPoseFrom(LLVOAvatar* source)
+{
+    if (!source || !source->getRootJoint() || !mRoot) return;
+    setEntityDriveMode(ALGhostStudio::DRIVE_FROZEN, LLUUID::null);
+    stampTrueMirrorSkeleton(source, false);
+    stampTrueMirrorFace(source);
+    mRoot->updateWorldMatrixChildren();
+    dirtyMesh();
+    moveStampedAttachments();
+}
+
+U32 LLGhostAvatar::sRenderHiddenReasons = 0;
+void LLGhostAvatar::setRenderOnlyHidden(bool hidden)
+{
+    if (hidden == mRenderOnlyHidden) return;
+    if (hidden) ++sRenderHiddenReasons; else --sRenderHiddenReasons;
+    mRenderOnlyHidden = hidden;
+}
+bool LLGhostAvatar::isRenderHidden(const LLViewerObject* avatar, const LLUUID& owner, const LLUUID& fallback)
+{
+    if (!hasRenderHiddenPolicy()) return false;
+    return isRenderHidden(avatar) ||
+        (owner.notNull() && isRenderHidden(gObjectList.findObject(owner))) ||
+        (fallback.notNull() && isRenderHidden(gObjectList.findObject(fallback)));
+}
+// Owner-aware draw policy, deliberately independent of geometry/animation updates.
+bool LLGhostAvatar::isRenderHidden(const LLViewerObject* object)
+{
+    if (!hasRenderHiddenPolicy() || !object) return false;
+    const LLVOAvatar* avatar = object->isAvatar() ? static_cast<const LLVOAvatar*>(object) : nullptr;
+    if (avatar && avatar->isControlAvatar())
+    {
+        const LLVOAvatar* wearer = avatar->getAttachedAvatar();
+        if (wearer) avatar = wearer;
+    }
+    if (avatar && avatar->isGhostAvatar())
+        return !static_cast<const LLGhostAvatar*>(avatar)->isEntityCloneVisible();
+    const auto* parent = static_cast<const LLViewerObject*>(object->getParent());
+    return parent && isRenderHidden(parent);
+}
+
+void LLGhostAvatar::prepareOffsetDrive(S32 mode)
+{
+    if (mode == mEntityDriveMode) return;
+    if (mode == ALGhostStudio::DRIVE_FROZEN)
+    {
+        mOffsetFrozenAt = LLTimer::getTotalSeconds();
+        return; // latch the displayed delayed image, retaining independent input
+    }
+    const S32 previous = mEntityDriveMode;
+    mEntityDriveMode = mode;
+    restoreOffsetPose();
+    mEntityDriveMode = previous;
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN)
+    {
+        const F64 paused = LLTimer::getTotalSeconds()-mOffsetFrozenAt;
+        for (auto& frame : mOffsetHistory) frame.time += paused;
+        mOffsetNextCapture += paused;
+    }
+    else mOffsetHistory.clear();
 }

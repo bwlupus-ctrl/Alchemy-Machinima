@@ -347,7 +347,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@10937,40"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
 - {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@118,22"]}
-- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,18", "indra/newview/llviewerwindow.cpp@95,9", "indra/newview/llviewerwindow.cpp@261,272", "indra/newview/llviewerwindow.cpp@1302,55", "indra/newview/llviewerwindow.cpp@1435,17", "indra/newview/llviewerwindow.cpp@3603,10", "indra/newview/llviewerwindow.cpp@3698,20", "indra/newview/llviewerwindow.cpp@3874,18", "indra/newview/llviewerwindow.cpp@3950,24", "indra/newview/llviewerwindow.cpp@4009,14"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,19", "indra/newview/llviewerwindow.cpp@96,9", "indra/newview/llviewerwindow.cpp@262,272", "indra/newview/llviewerwindow.cpp@1303,55", "indra/newview/llviewerwindow.cpp@1436,17", "indra/newview/llviewerwindow.cpp@3604,10", "indra/newview/llviewerwindow.cpp@3699,20", "indra/newview/llviewerwindow.cpp@3875,18", "indra/newview/llviewerwindow.cpp@3951,24", "indra/newview/llviewerwindow.cpp@4010,14"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@5216,595", "indra/newview/llvoavatar.cpp@5836,10", "indra/newview/llvoavatar.cpp@5911,46", "indra/newview/llvoavatar.cpp@12825,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@5690,87"]}
@@ -915,7 +915,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1504, "text": "llfetchedgltfmaterial.h", "source": "indra/newview/llfetchedgltfmaterial.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 407, "text": "llfloateractormover.cpp", "source": "indra/newview/llfloateractormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1380, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}

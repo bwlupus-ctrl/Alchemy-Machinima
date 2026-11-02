@@ -970,6 +970,10 @@ public:
         // Agent-space AABB of the source anim-extents after the placement.
         LLVector3    mWorldBoundsCenter;
         LLVector3    mWorldBoundsHalfExtent;
+        const std::map<std::pair<LLUUID, U64>, std::vector<F32>>* mHeldPalettes = nullptr;
+        const std::map<LLUUID, LLMatrix4>* mHeldAttachMats = nullptr;
+        const LLVector3* mHeldBounds = nullptr;
+        F32 mFadeAlpha = 1.f;
         EGhostProxyPose mPose = EGhostProxyPose::LIVE;
         bool mFrustumVisible = false;
         U32  mFrameStamp = 0;
@@ -1091,6 +1095,7 @@ public:
         // Provenance, not a look-number test: Actor FX forward-fallback look 1
         // intentionally aliases GHOST_STYLE_CLONE numerically.
         bool       mIsClone = false;
+        F32        mFadeAlpha = 1.f; // presentation coverage; never authored opacity
         F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1
         // actorghostF historically composites after tone mapping and therefore
         // authors its output in display/sRGB space.  The native live Wire pass
