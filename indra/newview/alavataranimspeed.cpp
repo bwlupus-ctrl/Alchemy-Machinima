@@ -17,6 +17,17 @@
 #include <cmath>
 #include <random>
 
+namespace
+{
+const ALGhostStudio::Instance* studioClone(const LLUUID& id)
+{
+    auto& studio = ALGhostStudio::instance();
+    const auto* clone = studio.getInstance(id);
+    if (clone && clone->mKind == ALGhostStudio::BACKING_ENTITY_CLONE) return clone;
+    return studio.findInstanceByRuntime(id);
+}
+}
+
 ALAvatarAnimSpeed& ALAvatarAnimSpeed::instance()
 {
     static ALAvatarAnimSpeed owner;
@@ -46,13 +57,13 @@ F32 ALAvatarAnimSpeed::variedSpeed(F32 spread, F32 unit)
 
 bool ALAvatarAnimSpeed::isGhost(const LLUUID& id)
 {
-    return ALGhostStudio::instance().findInstanceByRuntime(id) ||
+    return studioClone(id) ||
         dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(id));
 }
 
 F32 ALAvatarAnimSpeed::getSpeed(const LLUUID& id) const
 {
-    if (const auto* inst = ALGhostStudio::instance().findInstanceByRuntime(id))
+    if (const auto* inst = studioClone(id))
         return inst->mAnimSpeed;
     const auto found = mSpeeds.find(id);
     return found == mSpeeds.end() ? 1.f : found->second;
@@ -63,7 +74,7 @@ void ALAvatarAnimSpeed::setSpeed(const LLUUID& id, F32 speed)
     if (id.isNull() || !std::isfinite(speed)) return;
     speed = clampSpeed(speed);
     // Studio remains the sole clone writer, including its Chaos composition.
-    if (const auto* inst = ALGhostStudio::instance().findInstanceByRuntime(id))
+    if (const auto* inst = studioClone(id))
     {
         ALGhostStudio::instance().setInstanceAnimSpeed(inst->mId, speed);
         ++mRevision;

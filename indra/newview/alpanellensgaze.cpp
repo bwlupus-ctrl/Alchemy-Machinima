@@ -391,7 +391,15 @@ void al_gaze_register_random_perf_idle()
 bool ALPanelLensGaze::postBuild()
 {
     mStatus = getChild<LLTextBox>("gaze_status");
-    mEditActor = getChild<LLComboBox>("gaze_edit_actor");
+    mEditActor = findChild<LLComboBox>("gaze_edit_actor");
+    mApplyTo = findChild<LLComboBox>("gaze_apply_to");
+    mApplyGroup = findChild<LLComboBox>("gaze_apply_group");
+    if (mApplyTo) mApplyTo->setCommitCallback([this](LLUICtrl*, const LLSD&) {
+        ++mSelectionRevision; mCastComboRevision = 0; refreshEditActorCombo();
+    });
+    if (mApplyGroup) mApplyGroup->setCommitCallback([this](LLUICtrl*, const LLSD&) {
+        ++mSelectionRevision; mCastComboRevision = 0;
+    });
     mMasterEnable = getChild<LLCheckBoxCtrl>("look_at_camera_enabled");
     mSlotYou = getChild<LLCheckBoxCtrl>("gaze_slot_you");
     mSlotA = getChild<LLCheckBoxCtrl>("gaze_slot_a");
@@ -475,7 +483,7 @@ bool ALPanelLensGaze::postBuild()
 
     mMasterEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onMasterEnableCommit(); });
-    mEditActor->setCommitCallback(
+    if (mEditActor) mEditActor->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onEditActorCommit(); });
     // The Aim-at-camera checkboxes are pure per-actor look-at toggles again;
     // choosing which actor to EDIT is the separate gaze_edit_actor dropdown.
@@ -801,6 +809,12 @@ bool ALPanelLensGaze::postBuild()
         return LLSD();
     });
     // The kit's post-attachment sync/popover must see choices before first draw.
+    if (!mEditActor)
+    {
+        mEditAll = false;
+        mActiveActorConnection = LLDirectorCast::instance().addActiveActorChangedCallback(
+            [this]() { ++mSelectionRevision; mCastComboRevision = 0; });
+    }
     mEditActorRevision = ~U64(0);
     refreshEditActorCombo();
     return true;
@@ -837,22 +851,27 @@ LLUUID ALPanelLensGaze::slotActor(S32 slot_index) const
 
 LLUUID ALPanelLensGaze::activeSlotActor() const
 {
-    return slotActor(mActiveSlot);
+    return !mEditActor ? LLDirectorCast::instance().getActiveActorId().isNull()
+        ? gAgentID : LLDirectorCast::instance().getActiveActorId() : slotActor(mActiveSlot);
 }
 
 LLUUID ALPanelLensGaze::displayActor() const
 {
+    if (!mEditActor) return activeSlotActor();
     return mSelected.empty() ? LLUUID::null : mSelected.front();
 }
 
 uuid_vec_t ALPanelLensGaze::commitActors() const
 {
+    if (!mEditActor) return uuid_vec_t(1, activeSlotActor());
     return mSelected.empty() ? uuid_vec_t(1, LLUUID::null) : mSelected;
 }
 
 uuid_vec_t ALPanelLensGaze::editActors() const
 {
     uuid_vec_t out;
+    if (mApplyTo && mApplyTo->getValue().asInteger() == 1)
+        return LLDirectorCast::instance().membersInGroup(mApplyGroup->getValue().asString());
     if (!mEditAll)
     {
         const LLUUID a = activeSlotActor();
@@ -885,6 +904,11 @@ uuid_vec_t ALPanelLensGaze::editActors() const
 
 LLUUID ALPanelLensGaze::editDisplayActor() const
 {
+    if (mApplyTo && mApplyTo->getValue().asInteger() == 1)
+    {
+        const auto actors = editActors();
+        return actors.empty() ? LLUUID::null : actors.front();
+    }
     if (!mEditAll)
     {
         return activeSlotActor();
@@ -1041,10 +1065,30 @@ static void gazeRandomPerfTick(void* /*user*/)
     }
 }
 
+void ALPanelLensGaze::refreshApplyGroupCombo()
+{
+    if (mApplyTo && mApplyGroup)
+    {
+        const auto groups = LLDirectorCast::instance().getGroupNames();
+        if (mLastApplyGroups != groups)
+        {
+            const LLSD selected = mApplyGroup->getValue();
+            mApplyGroup->removeall();
+            for (const auto& group : groups) mApplyGroup->add(group, group);
+            // Never redirect a broadcast when its group disappears. An empty
+            // choice has no edit actors until the operator picks a group.
+            if (!mApplyGroup->setSelectedByValue(selected, true)) mApplyGroup->clear();
+            mLastApplyGroups = groups;
+        }
+        setVisibleIfChanged(mApplyGroup->getParent(), mApplyTo->getValue().asInteger() == 1);
+    }
+}
+
 void ALPanelLensGaze::refreshEditActorCombo()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshEditActorCombo");
-    if (isEditing(mEditActor))
+    refreshApplyGroupCombo();
+    if (!mEditActor || isEditing(mEditActor))
     {
         return;
     }
@@ -1089,7 +1133,9 @@ void ALPanelLensGaze::refreshCastCombo()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshCastCombo");
     LLDirectorCast& cast = LLDirectorCast::instance();
-    const LLUUID displayed = activeSlotActor();
+    // Like the old All editor, read and exclude only the displayed member.
+    // Other group members (and the unrelated Actor-bar actor) remain targets.
+    const LLUUID displayed = editDisplayActor();
     const LLUUID current = mEditingEyeTarget && cast.hasEyeGazeTarget(displayed)
         ? cast.getEyeGazeTarget(displayed).mCastRef
         : cast.getGazeTarget(displayed).mCastRef;
@@ -1140,8 +1186,8 @@ void ALPanelLensGaze::refreshControls()
     // onto the same subject, so the panel never shows two actors at once.
     const LLUUID actor = editDisplayActor();
     const LLUUID slot_actor = actor;
-    const bool have_actor = actor.notNull();
-    const bool have_slot = actor.notNull();
+    const bool have_actor = actor.notNull() && (LLDirectorCast::isSelf(actor) || cast.contains(actor));
+    const bool have_slot = have_actor;
     const bool enabled = have_actor && mover.isGazeEnabled(actor);
     const bool slot_enabled = have_slot && cast.isLookAtCamera(slot_actor);
     const LLActorMover::GazeTarget slot_target = have_slot
@@ -1827,35 +1873,33 @@ void ALPanelLensGaze::onInfluenceSet()
     {
         return;
     }
-    const LLUUID actor = editDisplayActor();
-    if (actor.isNull())
-    {
-        return;
-    }
     const F32 value = llclamp((F32)mInfluence->getValue().asReal(), 0.f, 1.f);
     const F64 playhead = llmax(
         LLPresentationTime::currentFrame().presentation_time, 0.0);
     LLDirectorCast& cast = LLDirectorCast::instance();
-    LLDirectorCast::GazeInfluenceKeyList keys = cast.getGazeInfluenceKeys(actor);
-    bool replaced = false;
-    for (LLDirectorCast::GazeInfluenceKey& key : keys)
+    for (const LLUUID& actor : editActors())
     {
-        if (fabsf((F32)(key.mTimeSec - playhead)) <= 1.0e-3f)
+        LLDirectorCast::GazeInfluenceKeyList keys = cast.getGazeInfluenceKeys(actor);
+        bool replaced = false;
+        for (LLDirectorCast::GazeInfluenceKey& key : keys)
         {
-            key.mValue = value;
-            replaced = true;
-            break;
+            if (fabsf((F32)(key.mTimeSec - playhead)) <= 1.0e-3f)
+            {
+                key.mValue = value;
+                replaced = true;
+                break;
+            }
         }
+        if (!replaced)
+        {
+            LLDirectorCast::GazeInfluenceKey key;
+            key.mTimeSec = playhead;
+            key.mValue = value;
+            key.mInterpolation = LLDirectorCast::GAZE_KEY_SMOOTHSTEP;
+            keys.push_back(key);
+        }
+        cast.setGazeInfluenceKeys(actor, keys);
     }
-    if (!replaced)
-    {
-        LLDirectorCast::GazeInfluenceKey key;
-        key.mTimeSec = playhead;
-        key.mValue = value;
-        key.mInterpolation = LLDirectorCast::GAZE_KEY_SMOOTHSTEP;
-        keys.push_back(key);
-    }
-    cast.setGazeInfluenceKeys(actor, keys);
 }
 
 void ALPanelLensGaze::onInfluenceDelete()
@@ -1864,24 +1908,22 @@ void ALPanelLensGaze::onInfluenceDelete()
     {
         return;
     }
-    const LLUUID actor = editDisplayActor();
-    if (actor.isNull())
-    {
-        return;
-    }
     const F64 playhead = llmax(
         LLPresentationTime::currentFrame().presentation_time, 0.0);
     LLDirectorCast& cast = LLDirectorCast::instance();
-    LLDirectorCast::GazeInfluenceKeyList keys = cast.getGazeInfluenceKeys(actor);
-    const std::size_t before = keys.size();
-    keys.erase(
-        std::remove_if(keys.begin(), keys.end(),
-            [playhead](const LLDirectorCast::GazeInfluenceKey& key)
-            { return fabsf((F32)(key.mTimeSec - playhead)) <= 1.0e-3f; }),
-        keys.end());
-    if (keys.size() != before)
+    for (const LLUUID& actor : editActors())
     {
-        cast.setGazeInfluenceKeys(actor, keys);
+        LLDirectorCast::GazeInfluenceKeyList keys = cast.getGazeInfluenceKeys(actor);
+        const std::size_t before = keys.size();
+        keys.erase(
+            std::remove_if(keys.begin(), keys.end(),
+                [playhead](const LLDirectorCast::GazeInfluenceKey& key)
+                { return fabsf((F32)(key.mTimeSec - playhead)) <= 1.0e-3f; }),
+            keys.end());
+        if (keys.size() != before)
+        {
+            cast.setGazeInfluenceKeys(actor, keys);
+        }
     }
 }
 

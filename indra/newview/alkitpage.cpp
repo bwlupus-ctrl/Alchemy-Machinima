@@ -1924,6 +1924,7 @@ void ALKitPage::connectWho(ALKitShell& shell)
 
 bool ALKitPage::setWhoPin(const LLSD& value)
 {
+    if (!mWhoChip) return false; // single-actor pages use the shell, including old saved pins
     const bool pinned = value.isDefined() && !value.asString().empty();
     if (pinned && mWhoCombo && !selectWhoValue(value))
         return false;
@@ -2081,7 +2082,8 @@ void ALKitPage::restoreState()
     if (page.has("chip"))
         mChipIndex = llclamp(page["chip"].asInteger(), 0, llmax(0, (S32)mSections.size() - 1));
     mSavedWhoPin = page["who_pin"];
-    mWhoPinned = mSavedWhoPin.isDefined() && !mSavedWhoPin.asString().empty();
+    mWhoPinned = (mWhoCombo || mActorTargetPage) &&
+        mSavedWhoPin.isDefined() && !mSavedWhoPin.asString().empty();
     if (mActorTargetPage && mWhoPinned && !mWhoCombo)
         mActorTarget = page["who_pin"].asUUID();
     if (page.has("cards"))

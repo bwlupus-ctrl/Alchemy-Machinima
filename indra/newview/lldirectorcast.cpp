@@ -383,6 +383,16 @@ LLUUID canonicalSceneActorId(const LLUUID& id,
         found != actor_ids.end() ? found->second : id);
 }
 
+// Normalize ownership only. Embedded gaze/path target references retain their
+// established resolution rules; a stable Studio target already resolves live.
+LLUUID loadedSceneMemberId(const LLUUID& id, const SceneActorIdRemap& actor_ids)
+{
+    const LLUUID canonical = canonicalSceneActorId(id, actor_ids);
+    const auto* clone = ALGhostStudio::instance().getInstance(canonical);
+    return clone && clone->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && clone->mEntityId.notNull()
+        ? clone->mEntityId : canonical;
+}
+
 // Pre-stable-ID scenes cached animated-object names as AO_<root UUID>.  Only
 // trust that legacy marker when the stale UUID is no longer a live object and
 // the encoded UUID currently identifies a linkset root with a control avatar.
@@ -1115,6 +1125,11 @@ LLUUID LLDirectorCast::canonicalActorId(const LLUUID& id)
     return id;
 }
 
+LLUUID LLDirectorCast::runtimeActorId(const LLUUID& id)
+{
+    return isSelf(id) ? LLUUID::null : canonicalActorId(id);
+}
+
 LLDirectorCast::LLDirectorCast()
 {
     mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
@@ -1176,7 +1191,6 @@ void LLDirectorCast::remove(const LLUUID& id)
     mCast.erase(it);
     ++mGazeCueRevision;
     ++mCastRevision; // [GhostPanelPerf] membership changed
-    touchScene();
     mIds.erase(std::find(mIds.begin(), mIds.end(), actor_id));
     rebuildMemberIndex();
     // [DirFix] D14: a removed member can no longer be the path-editor edit actor;
@@ -1184,10 +1198,6 @@ void LLDirectorCast::remove(const LLUUID& id)
     // draw-time list rebuild. Targeted on the removed id: see onRosterMemberRemoved.
     LLActorMover::instance().onRosterMemberRemoved(actor_id);
     mLookAtCameraIds.erase(actor_id);
-    if (mSteppedActorId == actor_id)
-    {
-        mSteppedActorId.setNull();
-    }
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == actor_id)
     {
@@ -1208,6 +1218,68 @@ void LLDirectorCast::remove(const LLUUID& id)
     // leaving the cast also leaves the start queue, and may retire the group
     cancelPendingStart(actor_id);
     pruneGroupData(group);
+    touchScene();
+    // Explicit removal clears the edit selection. Region departure alone does
+    // not remove membership and therefore retains the away actor.
+    if (mActiveActorId == actor_id) setActiveActorId(LLUUID::null);
+}
+
+void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    // One identity transaction for every per-actor store. Park under the
+    // stable Studio id too, so edits and scene saves during absence use the
+    // very same path/history/move and CastMember that recovery will claim.
+    LLActorMover& mover = LLActorMover::instance();
+    if (new_id.isNull())
+    {
+        mover.dropActor(old_id);
+        remove(old_id);
+        // Choosing a clone need not enroll it in Cast. Final removal still
+        // clears that shared selection when there was no member to remove.
+        if (mActiveActorId == old_id) setActiveActorId(LLUUID::null);
+        return;
+    }
+    auto old = std::find_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == old_id; });
+    if (old != mCast.end())
+    {
+        CastMember saved = *old;
+        // The migrating alias is the current owner of edits while live/parked.
+        // Normalized scene loads also install directly under that owner. A
+        // duplicate destination is discarded wholesale, never field-merged.
+        if (contains(new_id))
+        {
+            LL_WARNS("Director") << "Actor alias collision on recovery " << old_id
+                << " / " << new_id << ": keeping migrating record" << LL_ENDL;
+            mover.clearDirectorLookAtRuntime(new_id);
+            mover.dropActor(new_id);
+            mLookAtCameraIds.erase(new_id);
+        }
+        mover.migrateActor(old_id, new_id);
+        mCast.erase(old);
+        mCast.erase(std::remove_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == new_id; }), mCast.end());
+        saved.mId = new_id;
+        mCast.push_back(saved);
+        mIds.clear();
+        for (const auto& member : mCast) mIds.push_back(member.mId);
+        rebuildMemberIndex();
+        ++mCastRevision;
+        ++mGazeCueRevision;
+    }
+    else if (!contains(new_id)) mover.migrateActor(old_id, new_id);
+    else
+    {
+        // A loaded destination beats orphaned stores from the old runtime.
+        mover.dropActor(old_id);
+        mLookAtCameraIds.erase(old_id);
+    }
+    for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
+        if (*subject == old_id) { *subject = new_id; ++mSubjectRevision; }
+    if (mLookAtCameraIds.erase(old_id)) mLookAtCameraIds.insert(new_id);
+    for (auto& start : mPendingStarts)
+        if (start.mId == old_id) start.mId = new_id;
+    if (mActiveActorId == old_id) setActiveActorId(new_id);
+    touchScene();
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
@@ -1319,18 +1391,22 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
     }
 }
 
+void LLDirectorCast::setActiveActorId(const LLUUID& id)
+{
+    const LLUUID actor = canonicalActorId(id);
+    if (actor == mActiveActorId) return;
+    const bool stepped_changed = runtimeActorId(actor) != getSteppedActorId();
+    mActiveActorId = actor;
+    // The shared edit actor is also Stepped's saved Selected/Mixed render
+    // selection. Track that functional change through normal scene recovery,
+    // while treating Clear and explicit You as the same render selection.
+    if (stepped_changed) touchScene();
+    mActiveActorChanged();
+}
+
 void LLDirectorCast::setSteppedActorId(const LLUUID& id)
 {
-    const LLUUID actor_id = canonicalActorId(id);
-    if (actor_id.notNull() && !containsStored(actor_id))
-    {
-        return;
-    }
-    if (mSteppedActorId != actor_id)
-    {
-        mSteppedActorId = actor_id;
-        touchScene();
-    }
+    setActiveActorId(id);
 }
 
 void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
@@ -1804,7 +1880,7 @@ F32 LLDirectorCast::evaluateGazeInfluence(const GazeInfluenceKeyList& keys,
 // ---------------------------------------------------------------------------
 LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
 {
-    if (id.isNull())
+    if (isSelf(id))
     {
         return isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : nullptr;
     }
@@ -1904,6 +1980,7 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
         if (old != name)
         {
             pruneGroupData(old);   // retagging the last member retires the group
+            ++mCastRevision;       // group pickers and their representatives
             touchScene();
         }
     }
@@ -1982,6 +2059,7 @@ bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string&
     }
     // the stepped rate rides along by the same rule (the target's own rate wins on a merge)
     ALSteppedAnim::renameGroupRate(mGroupRates, old_name, new_name);
+    ++mCastRevision;
     touchScene();
     return true;
 }
@@ -2004,7 +2082,10 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
     mGroupDelays.erase(name);
     mGroupRates.erase(name);
     if (any)
+    {
+        ++mCastRevision;
         touchScene();
+    }
     return any;
 }
 
@@ -2331,10 +2412,8 @@ LLSD LLDirectorCast::sceneData() const
         data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
     data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
-    if (mSteppedActorId.notNull())
-    {
-        data["stepped_actor"] = mSteppedActorId;
-    }
+    // Selected/Mixed rendering is functional scene state, even though the editor is session state.
+    data["stepped_actor"] = getSteppedActorId();
     const LLSD self_path = LLActorMover::instance().pathSceneData(LLUUID::null);
     if (self_path.isMap())
     {
@@ -2399,7 +2478,6 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mSelfGazeCues.clear();
     mSelfGazeInfluenceKeys.clear();
     mSelfActorStyle = ActorStyle();
-    mSteppedActorId.setNull();
 
     // Build the legacy-to-stable identity map before loading any gaze lane:
     // self targets may refer to a cast entry that appears later in the file.
@@ -2470,11 +2548,9 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
     }
-    if (data.has("stepped_actor"))
-    {
-        mSteppedActorId = canonicalSceneActorId(
-            data["stepped_actor"].asUUID(), scene_actor_ids);
-    }
+    const bool has_stepped_actor = data.has("stepped_actor");
+    const LLUUID stepped_actor = has_stepped_actor ? loadedSceneMemberId(
+        data["stepped_actor"].asUUID(), scene_actor_ids) : LLUUID::null;
     if (data.has("self_actor_path"))
     {
         LLActorMover::instance().applyPathSceneData(LLUUID::null, data["self_actor_path"]);
@@ -2489,10 +2565,30 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         // scenes could persist that transient UUID; migrate it to the stable
         // linkset-root owner while the object is present so Actor FX, gaze, and
         // marks continue to resolve after the control avatar is regenerated.
-        m.mId = canonicalSceneActorId(e["id"].asUUID(), scene_actor_ids);
-        if (m.mId.isNull() || contains(m.mId))
+        m.mId = loadedSceneMemberId(e["id"].asUUID(), scene_actor_ids);
+        if (m.mId.isNull()) continue;
+        CastMember* alias = getMember(m.mId);
+        if (alias)
         {
-            continue;
+            // Only Studio stable/runtime collisions replace an existing entry.
+            // Ordinary duplicate UUID entries keep the round-2 first-entry rule.
+            const auto& studio = ALGhostStudio::instance();
+            const auto* clone = studio.getInstance(m.mId);
+            if (!clone) clone = studio.findInstanceByRuntime(m.mId);
+            if (!clone || clone->mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
+            LLUUID previous_id = m.mId;
+            for (auto previous = cast_arr.beginArray(); previous != it; ++previous)
+            {
+                if (loadedSceneMemberId((*previous)["id"].asUUID(), scene_actor_ids) == m.mId)
+                    previous_id = (*previous)["id"].asUUID();
+            }
+            // Scene order is deterministic: the last alias in this scene wins
+            // wholesale, including absent/default settings and an absent path.
+            LL_WARNS("Director") << "Actor alias collision on load " << previous_id
+                << " / " << e["id"].asUUID() << ": keeping latter scene record" << LL_ENDL;
+            LLActorMover::instance().clearDirectorLookAtRuntime(m.mId);
+            LLActorMover::instance().dropActor(m.mId);
+            mLookAtCameraIds.erase(m.mId);
         }
         m.mLastName = e["name"].asString();
         m.mHasMark = e["has_mark"].asBoolean();
@@ -2550,9 +2646,13 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
         const GazeCueList loaded_gaze_cues = e.has("gaze_cues")
             ? readGazeCues(e["gaze_cues"], scene_actor_ids) : GazeCueList();
-        mCast.push_back(m);
-        mIds.push_back(m.mId);
-        mMemberIndex[m.mId] = mCast.size() - 1;
+        if (alias) *alias = m;
+        else
+        {
+            mCast.push_back(m);
+            mIds.push_back(m.mId);
+            mMemberIndex[m.mId] = mCast.size() - 1;
+        }
         ++mCastRevision; // [GhostPanelPerf] loaded member
         if (e.has("gaze_cues"))
         {
@@ -2560,10 +2660,8 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
         if (e.has("gaze_influence_keys"))
         {
-            // No public setter for this lane (unlike setGazeCues -- it has no
-            // revision/runtime-clear side effects to fire), so write it
-            // straight into the member just pushed onto mCast.
-            mCast.back().mGazeInfluenceKeys = readGazeInfluenceKeys(e["gaze_influence_keys"]);
+            // No public setter for this lane; write into the one loaded member.
+            getMember(m.mId)->mGazeInfluenceKeys = readGazeInfluenceKeys(e["gaze_influence_keys"]);
         }
         if (e.has("gaze_target"))
         {
@@ -2585,10 +2683,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     }
 
     // subjects only survive when they point into the loaded cast
-    const LLUUID a = canonicalSceneActorId(data["subject_a"].asUUID(), scene_actor_ids);
-    const LLUUID b = canonicalSceneActorId(data["subject_b"].asUUID(), scene_actor_ids);
-    const LLUUID c = canonicalSceneActorId(data["subject_c"].asUUID(), scene_actor_ids);
-    const LLUUID d = canonicalSceneActorId(data["subject_d"].asUUID(), scene_actor_ids);
+    const LLUUID a = loadedSceneMemberId(data["subject_a"].asUUID(), scene_actor_ids);
+    const LLUUID b = loadedSceneMemberId(data["subject_b"].asUUID(), scene_actor_ids);
+    const LLUUID c = loadedSceneMemberId(data["subject_c"].asUUID(), scene_actor_ids);
+    const LLUUID d = loadedSceneMemberId(data["subject_d"].asUUID(), scene_actor_ids);
     if (contains(a))
     {
         mSubjectA = a;
@@ -2642,6 +2740,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // actor is not in the loaded cast, drop it now (owner, node and tool session
     // end with it) rather than leaving the hosts' draw-time rebuild to deselect.
     LLActorMover::instance().pruneEditActor();
+    // Migrate the legacy functional Selected/Mixed render choice into the shared actor.
+    if (has_stepped_actor) setActiveActorId(isSelf(stepped_actor) ? gAgentID : stepped_actor);
+    // Keep the session choice only if it still has a row in the loaded cast.
+    if (!has_stepped_actor && !isSelf(getActiveActorId()) && !contains(getActiveActorId()))
+        setActiveActorId(LLUUID::null);
 }
 
 // ---------------------------------------------------------------------------

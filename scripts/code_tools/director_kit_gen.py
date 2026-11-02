@@ -353,8 +353,9 @@ def validate_data(data: dict) -> None:
     # Projector joint tracking: seven session-only Practicals rows, 2390 -> 2397.
     # Sensor noise on/off row on Light > Exposure, 2397 -> 2398.
     # Crowd axes: +4 Width, Depth, Columns and Rows controls; 2398 -> 2402.
-    if len(pages) != 38 or row_count != 2402:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2402")
+    # Unified shell Actor: remove four per-page actor choices; add two Gaze scope rows, 2402 -> 2400.
+    if len(pages) != 38 or row_count != 2400:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2400")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1752,6 +1753,12 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
             raise GenError(f"search index/generated row drift on {key}: "
                            f"index-only={sorted(runtime_indexed - widgets)}, "
                            f"page-only={sorted(widgets - runtime_indexed)}")
+    # One searchable shell destination, independent of the current lazy page.
+    fields = ["quick_group", "quick_tab", "Quick", "Director", "", "", "Actor", "",
+              "kit_actor_choose", "Actor", "button", "", "0", "c", "actor subject who avatar clone animesh",
+              "Choose the shared actor for all single-actor Director pages.", "", "", "", "", "", "director"]
+    assert len(fields) == INDEX_FIELDS
+    lines.append("\t".join(esc(value) for value in fields))
     payload = "\n".join(lines) + "\n"
     return (f'<?xml version="1.0" encoding="utf-8"?>\n<!-- {note} -->\n'
             f'<director_kit_index version="3" fields="{INDEX_FIELDS}"><![CDATA[\n{payload}]]>'
@@ -1781,6 +1788,24 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         masters = sorted({p.get("master", {}).get("s", "") for p in group.get("pages", []) if p.get("master", {}).get("s")})
         ET.SubElement(shell, "kit_shell.rail_item", {"group": group["name"], "label": group["label"],
                       "icon": ICONS[group["icon"]], "master_settings": ",".join(masters)})
+    # Shell chrome, outside the lazy page tree and Cast popover. The runtime
+    # layout reserves its full height in every rail/help mode.
+    actor = ET.SubElement(shell, "panel", {"name": "kit_actor_bar", "left": "0", "top": "0",
+        "width": "1160", "height": "28", "follows": "left|right|top", "background_visible": "true",
+        "bg_alpha_color": "KitSubBand", "bg_opaque_color": "KitSubBand"})
+    label = ET.SubElement(actor, "text", {"name": "kit_actor_label", "font": "SansSerifSmall", "text_color": "KitMuted"})
+    label.text = "Actor"
+    name = ET.SubElement(actor, "text", {"name": "kit_actor_name", "font": "SansSerifSmall", "text_color": "KitText",
+        "use_ellipses": "true", "tool_tip": "Shared edit actor for Director actor pages. Roto Ink, Tron and Shadows keep independent subject choices. Clear preserves each page's default."})
+    name.text = "Clear"
+    for widget, label in (("choose", "Choose..."), ("selected", "Use selected"),
+                          ("you", "You"), ("clear", "Clear")):
+        ET.SubElement(actor, "button", {"name": "kit_actor_" + widget, "label": label,
+            "tool_tip": {"choose": "Choose a cast actor, nearby avatar, clone, or click in world.",
+                "selected": "Use the selected avatar, attachment wearer or animesh.",
+                "you": "Act on your avatar.", "clear": "Clear the shared actor; page defaults apply."}[widget]})
+    status = ET.SubElement(actor, "text", {"name": "kit_actor_status", "font": "SansSerifSmall", "text_color": "KitMuted", "use_ellipses": "true"})
+    status.text = "Choose here for single-actor editors."
     roster = ET.SubElement(shell, "panel", {"name": "kit_cast_roster", "background_visible": "false"})
     header = ET.SubElement(roster, "text", {"name": "cast_roster_header", "font": "SansSerifSmall",
                                             "text_color": "KitMuted"})

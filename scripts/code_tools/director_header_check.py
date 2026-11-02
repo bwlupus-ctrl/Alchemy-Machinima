@@ -186,6 +186,11 @@ struct ALKitPage {
     int reveals = 0;
     ALKitCard* findHeaderCard(const std::string&) const;
     bool revealHeader(const std::string&);
+    std::shared_ptr<ALKitSwitch> mMaster;
+    std::string mMasterWidget;
+    bool isMasterWidget(const std::string& w) const { return mMaster && w == mMasterWidget; }
+    struct Scroller { int getDocPosVertical() const { return 0; } };
+    Scroller* scroller() { return nullptr; }
     bool revealCard(ALKitCard*, bool) { ++reveals; return true; }
     void scrollToView(ALKitSwitch* s) { scrolled = s; }
     void applyModeAndChip() {
@@ -224,6 +229,8 @@ struct ALKitShell {
     bool mChangedOnly = true, mHasTopSearchHit = false;
     struct Popup { void hide() {} } *mSearchPopover = nullptr;
     ALKitSearch::Hits mSearchHits;
+    std::map<std::string, int> mSearchScrollPositions;
+    void clearSearch() { mSearch.setQuery(""); for (auto& p : mBuiltPages) p.second->clearSearch(); }
     struct ChangedEntry { std::string setting; bool changed = false; S32 decimals = 0; };
     std::map<std::string, std::vector<ChangedEntry>> mPageSettings;
     std::map<std::string, bool> mPageChanged;
@@ -268,6 +275,10 @@ int main() {
     auto one = std::make_shared<ALKitSwitch>();
     auto two = std::make_shared<ALKitSwitch>();
     ALKitOption opt1{"one", "Setting", "One", LLSD(false)}, opt2{"two", "Setting", "Two", LLSD(true)};
+    ALKitPage master_page;
+    master_page.mMaster = master;
+    master_page.mMasterWidget = "page_master";
+    assert(master_page.revealHeader("page_master"));
     ALKitCard card;
     card.children = {{"master", master.get()}};
     card.mOptions = {&opt1, &opt2}; card.mOptionSwitches = {one.get(), two.get()};
@@ -362,6 +373,7 @@ int main() {
     gSavedSettings.setting->set(true); // undo's setting restore, via the actual flip/refresh path
     assert(shape.headerChanged() && shape.visible);
     std::cout << "Director indexed Changed-only PASS: production query/scoring, real header index, enable/relight/off/undo restore\n";
+    master_page.mMaster.reset();
     master.reset(); proxy.set(LLSD(false));
     assert(!proxy.canSet() && !proxy.get().isDefined());
     std::cout << "Director header PASS: real lookup, option reveal, focus/scroll, one commit/write, "

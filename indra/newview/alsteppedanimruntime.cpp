@@ -59,7 +59,7 @@ bool vecEqual(const LLVector3& a, const LLVector3& b)
 LLUUID runtimeActorId(const LLVOAvatar* avatar)
 {
     if (!avatar || avatar->isSelf()) return LLUUID::null;
-    return LLDirectorCast::canonicalActorId(avatar->getID());
+    return LLDirectorCast::runtimeActorId(avatar->getID());
 }
 
 F32 finiteSetting(F32 value, F32 fallback)

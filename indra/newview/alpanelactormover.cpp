@@ -15,6 +15,7 @@
 #include "alcompassdial.h"          // ALCompassDial custom widget (heading dial)
 #include "fsposeranimator.h"
 #include "llactormover.h"
+#include "lldirectorcast.h"
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llbutton.h"

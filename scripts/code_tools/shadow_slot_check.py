@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 def check_wiring(pipe, agent, shader):
+    # Proximity checks measure executable wiring, not the length of adjacent comments.
+    agent = re.sub(r"//[^\n]*", "", agent)
     assert shader.count("uniform vec4 area_fade") == 1
     final_fade = shader[shader.index("// After BOTH the cube combine"):]
     assert "if (all(equal(area_axis,vec2(0))) && area_world_debug == 0)" in final_fade

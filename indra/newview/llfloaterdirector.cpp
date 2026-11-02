@@ -1278,6 +1278,7 @@ LLFloaterDirector::~LLFloaterDirector()
 void LLFloaterDirector::onClose(bool app_quitting)
 {
     ALAvatarSubjectPicker::cancelFor(this);
+    if (mShell) mShell->closeActorChooser();
     if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->hide();
     if (mShell)
         mShell->setSearchPopupArmed(nullptr, false);
@@ -1543,7 +1544,7 @@ bool LLFloaterDirector::postBuild()
     mActorStyleReset = getChild<LLButton>("actor_style_reset");
     mActorStyleStatus = getChild<LLTextBox>("actor_style_status");
 
-    mActorStyleTarget->setCommitCallback(
+    if (mActorStyleTarget) mActorStyleTarget->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onActorStyleTargetChanged(); });
     for (LLUICtrl* control : {
             static_cast<LLUICtrl*>(mActorStyleEnabled),
@@ -1918,12 +1919,15 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mCastList->setDoubleClickCallback([this]() { onCastSetSubject(SUBJECT_A); });
     mCastList->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
-        if (mPathPanel)
-        {
-            retargetPathFromCastSelection();
-        }
+        if (mSyncingActiveActor) return;
+        mPrimaryCastActor.setNull();
+        LLDirectorCast::instance().setActiveActorId(firstSelectedCastId());
         mShell->setCastSelection(selectedCastIds());
+        if (mPathPanel) retargetPathFromCastSelection();
     });
+    mActiveActorConnection = LLDirectorCast::instance().addActiveActorChangedCallback(
+        [this]() { syncActiveActor(); });
+    syncActiveActor();
     mGroupAssignCombo = root->getChild<LLComboBox>("group_assign_combo");
     mGroupAssignCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupAssign(); });
 
@@ -2671,13 +2675,15 @@ void LLFloaterDirector::bindAnimSpeedPage(LLView* root)
     mAnimSpeedSlider = root->findChild<LLSliderCtrl>("anim_speed_slider");
     mAnimSpeedSpread = root->findChild<LLSliderCtrl>("anim_speed_spread");
     mAnimSpeedStatus = root->findChild<LLTextBox>("anim_speed_status");
-    if (mAnimSpeedAvatar && mAnimSpeedSlider && mAnimSpeedSpread && mAnimSpeedStatus)
+    mAnimSpeedReset = root->findChild<LLButton>("anim_speed_reset");
+    if (mAnimSpeedSlider && mAnimSpeedSpread && mAnimSpeedStatus)
     {
+        if (mShell) mAnimSpeedSelection = LLDirectorCast::instance().getActiveActorId();
         if (mAnimSpeedSelection.isNull()) mAnimSpeedSelection = gAgentID;
         mAnimSpeedSpread->setValue(LLSD(15.f));
-        mAnimSpeedAvatar->setPrearrangeCallback([this](LLUICtrl*, const LLSD&)
+        if (mAnimSpeedAvatar) mAnimSpeedAvatar->setPrearrangeCallback([this](LLUICtrl*, const LLSD&)
             { rebuildAnimSpeedAvatars(); });
-        mAnimSpeedAvatar->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        if (mAnimSpeedAvatar) mAnimSpeedAvatar->setCommitCallback([this](LLUICtrl*, const LLSD&)
             {
                 mAnimSpeedSelection = mAnimSpeedAvatar->getValue().asUUID();
                 setValueIfChanged(mAnimSpeedSlider,
@@ -2690,8 +2696,8 @@ void LLFloaterDirector::bindAnimSpeedPage(LLView* root)
                 owner.setSpeed(mAnimSpeedSelection, mAnimSpeedSlider->getValueF32());
                 mAnimSpeedChanged = previous != owner.getSpeed(mAnimSpeedSelection) ? 1 : 0;
             });
-        if (auto* reset = root->findChild<LLButton>("anim_speed_reset"))
-            reset->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        if (mAnimSpeedReset)
+            mAnimSpeedReset->setCommitCallback([this](LLUICtrl*, const LLSD&)
                 {
                     auto& owner = ALAvatarAnimSpeed::instance();
                     mAnimSpeedChanged = owner.getSpeed(mAnimSpeedSelection) != 1.f ? 1 : 0;
@@ -2776,14 +2782,16 @@ void LLFloaterDirector::rebuildAnimSpeedAvatars()
 void LLFloaterDirector::refreshAnimSpeed()
 {
     if (!mAnimSpeedSlider || !isWidgetOnScreen(mAnimSpeedSlider) || !mAnimSpeedClock.due()) return;
+    LLVOAvatar* actor = LLDirectorCast::instance().resolve(mAnimSpeedSelection);
+    setEnabledIfChanged(mAnimSpeedSlider, !actor || !actor->isControlAvatar());
+    setEnabledIfChanged(mAnimSpeedReset, !actor || !actor->isControlAvatar());
     const F32 speed = ALAvatarAnimSpeed::instance().getSpeed(mAnimSpeedSelection);
     setValueIfChanged(mAnimSpeedSlider, LLSD(speed));
-    setTextIfChanged(mAnimSpeedStatus, llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
+    setTextIfChanged(mAnimSpeedStatus, mAnimSpeedContextLabel + llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
 }
 
 void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
 {
-    mAnimSpeedSelection = avatar;
     if (mShell) mShell->navigateTo("cast_group/move_tab/anim_speed");
     else
     {
@@ -2793,6 +2801,14 @@ void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
             if (auto* card = findChild<LLPanel>("anim_speed_panel"))
                 scroll->scrollToShowRect(card->getRect());
     }
+    // A context-menu speed edit must not retarget live Selected/Mixed Stepped
+    // rendering. Keep this existing speed-only context visible in its status;
+    // the next deliberate Actor bar change resumes following the shared actor.
+    mAnimSpeedSelection = avatar;
+    auto& cast = LLDirectorCast::instance();
+    LLVOAvatar* target = cast.resolve(avatar);
+    mAnimSpeedContextLabel = "Speed for " + (LLDirectorCast::isSelf(avatar) ? std::string("You") :
+        target ? target->getFullname() : avatar.asString()) + "  |  ";
     rebuildAnimSpeedAvatars();
     if (mAnimSpeedSlider)
         setValueIfChanged(mAnimSpeedSlider, LLSD(ALAvatarAnimSpeed::instance().getSpeed(avatar)), true);
@@ -2837,7 +2853,7 @@ void LLFloaterDirector::bindActorStylePage(LLView* root)
     mActorStyleEffectFps = root->findChild<LLSpinCtrl>("actor_style_effect_fps");
     mActorStyleReset = root->findChild<LLButton>("actor_style_reset");
     mActorStyleStatus = root->findChild<LLTextBox>("actor_style_status");
-    if (!mActorStyleTarget || !mActorStyleEnabled || !mActorStyleMode || !mActorStyleLook ||
+    if ((!mShell && !mActorStyleTarget) || !mActorStyleEnabled || !mActorStyleMode || !mActorStyleLook ||
         !mActorStyleUseActorHue || !mActorStyleHue || !mActorStyleAlpha ||
         !mActorStyleDissolveProgress || !mActorStylePixel || !mActorStyleShimmerSpeed ||
         !mActorStyleShimmerAmount || !mActorStyleGlitch || !mActorStyleDistortion ||
@@ -2864,7 +2880,7 @@ void LLFloaterDirector::bindActorStylePage(LLView* root)
         mActorStyleStatus = nullptr;
         return;
     }
-    mActorStyleTarget->setCommitCallback(
+    if (mActorStyleTarget) mActorStyleTarget->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onActorStyleTargetChanged(); });
     for (LLUICtrl* control : {
             static_cast<LLUICtrl*>(mActorStyleEnabled),
@@ -3065,7 +3081,7 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
             : root->findChild<ALPanelLensGaze>("director_gaze_panel", true))
     {
         mGazePanel = control;
-        mGazePanel->setSelectedActors(selectedCastIds());
+        mGazePanel->setSelectedActors(actorTargetsForPage("performance_group/gaze_tab", selectedCastIds()));
     }
     if (LLButton* control = root->findChild<LLButton>("dance_popout"))
     {
@@ -3380,10 +3396,10 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         ALScrollFit::fillPage(mGhostPage, mGhostPanelView, 8);
     }
 
-    const uuid_vec_t selected = selectedCastIds();
+    const uuid_vec_t selected = actorTargetsForPage("performance_group/gaze_tab", selectedCastIds());
     mLastGazePush = selected;
     ALFloaterActorGaze::updateSelection(ALFloaterActorGaze::ESelectionSource::DIRECTOR, selected);
-    if (mGazePanel) mGazePanel->setSelectedActors(selected);
+    if (mGazePanel) mGazePanel->setSelectedActors(actorTargetsForPage("performance_group/gaze_tab", selected));
 
     // [DirFix] D14: the console is visible here (openFloater shows before onOpen);
     // if the restored tab is Path, feed + claim the current cast selection NOW so
@@ -5963,7 +5979,7 @@ void LLFloaterDirector::refreshCastList()
     }
     if (rebuild)
     {
-        const LLUUID prev_sel = firstSelectedCastId();
+        const uuid_vec_t previous_selection = selectedCastIds();
         mCastList->deleteAllItems();
         mRowStates.clear();
         mRowStates.resize(ids.size());
@@ -5985,10 +6001,7 @@ void LLFloaterDirector::refreshCastList()
             row["columns"][4]["value"] = "";
             mCastList->addElement(row, ADD_BOTTOM);
         }
-        if (prev_sel.notNull())
-        {
-            mCastList->selectByID(prev_sel);
-        }
+        mCastList->selectMultiple(previous_selection);
         items = mCastList->getAllData();
     }
 
@@ -6113,42 +6126,66 @@ uuid_vec_t LLFloaterDirector::selectedCastIds() const
 
 LLUUID LLFloaterDirector::firstSelectedCastId() const
 {
+    const auto selected = selectedCastIds();
+    if (mPrimaryCastActor.notNull() && std::find(selected.begin(), selected.end(), mPrimaryCastActor) != selected.end())
+        return mPrimaryCastActor;
     LLScrollListItem* item = mCastList->getFirstSelected();
     return item ? item->getValue().asUUID() : LLUUID::null;
+}
+
+LLUUID LLFloaterDirector::singleActorId() const
+{
+    return mShell ? LLDirectorCast::instance().getActiveActorId() : firstSelectedCastId();
+}
+
+void LLFloaterDirector::syncActiveActor()
+{
+    if (!mShell || !mCastList || mSyncingActiveActor) return;
+    mSyncingActiveActor = true;
+    const LLUUID actor = LLDirectorCast::instance().getActiveActorId();
+    if (actor != firstSelectedCastId())
+    {
+        const uuid_vec_t batch = selectedCastIds();
+        refreshCastList();
+        mPrimaryCastActor = actor;
+        if (batch.size() > 1)
+        {
+            uuid_vec_t mirrored = batch;
+            if (actor.notNull() && std::find(mirrored.begin(), mirrored.end(), actor) == mirrored.end()) mirrored.push_back(actor);
+            mCastList->selectMultiple(mirrored);
+        }
+        else
+        {
+            mCastList->deselectAllItems();
+            if (actor.notNull()) mCastList->selectByID(actor);
+        }
+    }
+    // A bar mirror must not commit independent Who adapters (Light Rig).
+    retargetPathFromCastSelection();
+    mAnimSpeedSelection = actor.isNull() ? gAgentID : actor;
+    mAnimSpeedContextLabel.clear();
+    mAnimSpeedClock.forceDue();
+    mActorStyleHadTarget = false;
+    mActorStyleTabDirty = true;
+    mAnimateTabDirty = true;
+    refreshGazeSelection(selectedCastIds());
+    mSyncingActiveActor = false;
 }
 
 void LLFloaterDirector::retargetPathFromCastSelection()
 {
     if (!mPathPanel)
         return;
-    if (mShell)
-    {
-        ALKitPage* page = mShell->findBuiltPage("cast_group/path_tab");
-        if (page && page->whoPinned())
-            return;
-    }
-    mPathPanel->revealFor(firstSelectedCastId());
+    mPathPanel->revealFor(singleActorId());
 }
 
 const uuid_vec_t& LLFloaterDirector::actorTargetsForPage(const std::string& page,
                                                           const uuid_vec_t& selected)
 {
-    if (!mShell)
-        return selected;
-    ALKitPage* kit_page = mShell->currentKitPage();
-    if (!kit_page || kit_page->pageKey() != page || !kit_page->whoPinned())
-        return selected;
-    const LLUUID target = kit_page->actorTarget();
-    if (kit_page->actorTargetAway() || target.isNull())
-    {
-        mPinnedActorTarget.clear();
-        return mPinnedActorTarget;
-    }
-    if (mPinnedActorTarget.size() != 1 || mPinnedActorTarget.front() != target)
-    {
-        mPinnedActorTarget.clear();
-        mPinnedActorTarget.push_back(target);
-    }
+    if (!mShell || page == "cast_group/move_tab") return selected;
+    const LLUUID actor = LLDirectorCast::instance().getActiveActorId();
+    mPinnedActorTarget.clear();
+    if (actor.notNull()) mPinnedActorTarget.push_back(actor);
     return mPinnedActorTarget;
 }
 
@@ -6167,6 +6204,11 @@ void LLFloaterDirector::onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y)
                 mCastList->selectNthItem(index);
                 // [DirFix] D14: programmatic select (no list commit) on a user
                 // right-click -> feed + claim the Path host synchronously
+                if (mShell)
+                {
+                    LLDirectorCast::instance().setActiveActorId(firstSelectedCastId());
+                    mShell->setCastSelection(selectedCastIds());
+                }
                 if (mPathPanel) retargetPathFromCastSelection();
             }
         }
@@ -6395,6 +6437,9 @@ void LLFloaterDirector::onGroupsListSelect()
     // makes the batch ops to the left (assign, marks, Move-tab Walk on the
     // selection) act on exactly this group.
     mCastList->selectMultiple(cast.membersInGroup(name));
+    mPrimaryCastActor.setNull();
+    cast.setActiveActorId(firstSelectedCastId());
+    if (mShell) mShell->setCastSelection(selectedCastIds());
     // [DirFix] D14: programmatic cast selection (no list commit) on a user click
     // in the groups list -> feed + claim the Path host synchronously
     if (mPathPanel) retargetPathFromCastSelection();
@@ -6641,11 +6686,20 @@ void LLFloaterDirector::refreshPathTab(const uuid_vec_t& selected)
 // ---------------------------------------------------------------------------
 bool LLFloaterDirector::hasActorStyleTarget() const
 {
+    if (mShell)
+    {
+        auto& cast = LLDirectorCast::instance();
+        const LLUUID actor = singleActorId();
+        // Clones and animesh already participate in the native Actor FX
+        // renderer. Away cast actors remain authorable as before.
+        return LLDirectorCast::isSelf(actor) ? isAgentAvatarValid() : cast.getMember(actor) != nullptr;
+    }
     return mActorStyleTarget && mActorStyleTarget->getCurrentIndex() >= 0;
 }
 
 LLUUID LLFloaterDirector::actorStyleTargetId() const
 {
+    if (mShell) return singleActorId();
     return hasActorStyleTarget()
         ? mActorStyleTarget->getSelectedValue().asUUID()
         : LLUUID::null;
@@ -6723,10 +6777,7 @@ void LLFloaterDirector::onActorStyleReset()
 void LLFloaterDirector::refreshActorStyleTab()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshActorStyleTab"); // [DirFix] D9
-    if (!mActorStyleTarget)
-    {
-        return;
-    }
+    if (!mActorStyleEnabled) return;
 
     // [DirFix] D8: a pure-UI mirror of LLDirectorCast with no model writes and no readers of
     // its caches while hidden (the tab's own controls are the only entry points), so skip
@@ -6747,6 +6798,8 @@ void LLFloaterDirector::refreshActorStyleTab()
     }
 
     LLDirectorCast& cast = LLDirectorCast::instance();
+    if (!mShell)
+    {
     const bool have_self = isAgentAvatarValid();
     // De-duplicate against the stable agent id even during a transient avatar
     // rebuild. If self is momentarily invalid, do not expose the same body as a
@@ -6838,44 +6891,11 @@ void LLFloaterDirector::refreshActorStyleTab()
         mActorStyleSnapshot.clear();
     }
 
-    if (mShell)
-    {
-        ALKitPage* page = mShell->currentKitPage();
-        if (page && page->pageKey() == "look_group/actor_style_tab")
-        {
-            const bool pinned = page->whoPinned();
-            const LLUUID cast_selection = firstSelectedCastId();
-            const bool selection_changed = !mActorStyleHaveLastCastSelection ||
-                cast_selection != mActorStyleLastCastSelection;
-            if (!pinned && selection_changed)
-            {
-                mActorStyleHaveLastCastSelection = true;
-                mActorStyleLastCastSelection = cast_selection;
-                mRefreshingActorStyle = true;
-                if (mActorStyleTarget->setSelectedByValue(LLSD(cast_selection), true))
-                {
-                    mActorStyleHadTarget = false;
-                    mActorStyleSnapshot.clear();
-                }
-                mRefreshingActorStyle = false;
-            }
-            else if (pinned &&
-                     mActorStyleTarget->getSelectedValue().asUUID() != page->actorTarget())
-            {
-                mRefreshingActorStyle = true;
-                if (mActorStyleTarget->setSelectedByValue(LLSD(page->actorTarget()), true))
-                {
-                    mActorStyleHadTarget = false;
-                    mActorStyleSnapshot.clear();
-                }
-                mRefreshingActorStyle = false;
-            }
-        }
     }
 
     const bool have_target = hasActorStyleTarget();
     // [DirFix] D4: pure early-out helpers (same end state, no widget touch when unchanged)
-    setEnabledIfChanged(mActorStyleTarget, mActorStyleTarget->getItemCount() > 0);
+    if (mActorStyleTarget) setEnabledIfChanged(mActorStyleTarget, mActorStyleTarget->getItemCount() > 0);
     if (!have_target)
     {
         setEnabledIfChanged(mActorStyleEnabled, false);
@@ -6896,7 +6916,7 @@ void LLFloaterDirector::refreshActorStyleTab()
         setEnabledIfChanged(mActorStyleEffectFps, false);
         setEnabledIfChanged(mActorStyleReset, false);
         setTextIfChanged(mActorStyleStatus, std::string(
-            "You is unavailable and the Director cast is empty."));
+            "Actor unavailable. Choose You or a cast actor."));
         mActorStyleHadTarget = false;
         mActorStyleSnapshot.clear();
         return;
@@ -7071,7 +7091,7 @@ S32 LLFloaterDirector::selectedLocomotionRole() const
 void LLFloaterDirector::applySelectedLocomotion(const LLUUID& anim)
 {
     LLDirectorCast::CastMember* m =
-        LLDirectorCast::instance().getMember(firstSelectedCastId());
+        LLDirectorCast::instance().getMember(singleActorId());
     if (anim.isNull() || !m)
     {
         return;
@@ -7123,7 +7143,7 @@ static void apply_play_local_priority(LLVOAvatar* av, const LLUUID& anim)
 void LLFloaterDirector::onAnimPlayLocal(bool play)
 {
     const LLUUID anim = selectedAnimId();
-    LLVOAvatar* av = LLDirectorCast::instance().resolve(firstSelectedCastId());
+    LLVOAvatar* av = LLDirectorCast::instance().resolve(singleActorId());
     if (anim.isNull() || !av)
     {
         return;
@@ -7139,7 +7159,7 @@ void LLFloaterDirector::onAnimPlayLocal(bool play)
 void LLFloaterDirector::onPastePlayLocal(bool play)
 {
     const LLUUID anim = pasteAnimId();
-    LLVOAvatar* av = LLDirectorCast::instance().resolve(firstSelectedCastId());
+    LLVOAvatar* av = LLDirectorCast::instance().resolve(singleActorId());
     if (anim.isNull() || !av)
     {
         return;
@@ -7159,7 +7179,7 @@ void LLFloaterDirector::onPasteSetLoco()
 void LLFloaterDirector::onClickClearLoco()
 {
     if (LLDirectorCast::CastMember* m =
-            LLDirectorCast::instance().getMember(firstSelectedCastId()))
+            LLDirectorCast::instance().getMember(singleActorId()))
     {
         const S32 role = selectedLocomotionRole();
         m->mLocomotionSet.mRoles.erase(role);
@@ -7175,13 +7195,13 @@ void LLFloaterDirector::onClickClearLoco()
 void LLFloaterDirector::onLocomotionRoleChanged()
 {
     mLocomotionEditorLoaded = false;
-    refreshLocomotionRoleEditor(firstSelectedCastId());
+    refreshLocomotionRoleEditor(singleActorId());
 }
 
 void LLFloaterDirector::onLocomotionMetadataCommit()
 {
     LLDirectorCast::CastMember* member =
-        LLDirectorCast::instance().getMember(firstSelectedCastId());
+        LLDirectorCast::instance().getMember(singleActorId());
     if (!member)
     {
         return;

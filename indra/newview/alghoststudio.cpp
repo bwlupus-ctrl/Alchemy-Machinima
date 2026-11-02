@@ -262,54 +262,11 @@ ALGhostStudio::ALGhostStudio()
                const LLUUID& new_id, bool removing_instance)
         {
             LLDirectorCast& cast = LLDirectorCast::instance();
-            Instance* inst = getInstance(stable_id);
-            const bool subject_a =
-                (old_id.notNull() && cast.getSubjectA() == old_id) ||
-                (inst && inst->mWasDirectorSubjectA);
-            const bool subject_b =
-                (old_id.notNull() && cast.getSubjectB() == old_id) ||
-                (inst && inst->mWasDirectorSubjectB);
-            const bool subject_c =
-                (old_id.notNull() && cast.getSubjectC() == old_id) ||
-                (inst && inst->mWasDirectorSubjectC);
-            const bool subject_d =
-                (old_id.notNull() && cast.getSubjectD() == old_id) ||
-                (inst && inst->mWasDirectorSubjectD);
-            if (old_id.notNull())
-            {
-                cast.remove(old_id);
-            }
-            if (new_id.notNull())
-            {
-                cast.add(new_id);
-            }
-            if (subject_a)
-            {
-                cast.setSubjectA(new_id);
-            }
-            if (subject_b)
-            {
-                cast.setSubjectB(new_id);
-            }
-            if (subject_c)
-            {
-                cast.setSubjectC(new_id);
-            }
-            if (subject_d)
-            {
-                cast.setSubjectD(new_id);
-            }
-            if (inst)
-            {
-                inst->mWasDirectorSubjectA =
-                    !removing_instance && subject_a;
-                inst->mWasDirectorSubjectB =
-                    !removing_instance && subject_b;
-                inst->mWasDirectorSubjectC =
-                    !removing_instance && subject_c;
-                inst->mWasDirectorSubjectD =
-                    !removing_instance && subject_d;
-            }
+            const LLUUID destination = removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id;
+            // Cast owns the single rekey transaction, including mover/path
+            // state. Absence uses the stable id for every authored store.
+            cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination);
+            if (new_id.notNull() && !removing_instance) cast.add(new_id);
         });
     mRuntimeConsumers.emplace_back(
         [this](const LLUUID& stable_id, const LLUUID&, const LLUUID&,
@@ -467,15 +424,9 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
     }
     inst.mEntityId = new_runtime;
     ++mInstanceRevision; // [GhostPanelPerf] runtime swap: lifecycle/state/rows may differ
-    // [GhostWalk] Actor Mover keys walks / paths / suspend-resume state by the
-    // RUNTIME uuid: migrate them to the replacement (or park them across a
-    // despawn, or drop them on final removal) BEFORE the consumer walk, so any
-    // observer a consumer pumps -- the Director-cast add/remove below -- already
-    // sees the mover consistent under the new id. Without this, a refreshed or
-    // despawn-recovered WALKING clone left its walk permanently suspended under
-    // the dead uuid, unreachable by RESUME_NEAR and the Path tab alike. Runs
-    // AFTER applyEntityRuntimeState so the fresh runtime's drive mode is set
-    // before the migration restarts a live walk's loco anim on it.
+    // Release body-owned gaze captures before the Cast consumer rekeys all
+    // authored state. The fresh body's drive mode is already installed, so
+    // migrating a live walk can restart its locomotion on that body.
     LLActorMover::instance().onActorRuntimeReplaced(
         stable_id, old_runtime, new_runtime, removing_instance);
     for (const runtime_consumer_t& consumer : mRuntimeConsumers)
@@ -1397,8 +1348,9 @@ bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
     if (!ghost)
     {
         ++mInstanceRevision; // [GhostPanelPerf]
-        inst->mState = STATE_ERROR;
-        return false;
+        // Parked clones have no clock to update. The authored value above is
+        // still valid and recovery reads it when it creates the next body.
+        return true;
     }
     const F32 chaos_factor =
         1.f + (seeded_unit(inst->mId, 5) * 2.f - 1.f) *

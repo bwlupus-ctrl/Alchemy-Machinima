@@ -550,7 +550,9 @@ def load_generated_kit_pages(xi):
     index_pages = set()
     for line in (index_root.text or "").splitlines():
         fields = line.split("\t")
-        if len(fields) > 1 and fields[1]:
+        # Searchable shell chrome has no page-owned kit_row. It must not turn
+        # the runtime Quick host into an empty functional page.
+        if len(fields) == 22 and fields[1] and "c" not in fields[13]:
             index_pages.add(fields[1])
 
     pages = collections.OrderedDict()
@@ -2497,7 +2499,9 @@ def main(argv=None):
     if len(got) != len(set(got)) or set(got) != expected:
         sys.exit("coverage check failed: expected %d csv entries, got %d" % (len(expected), len(got)))
     if len(set(e["page"] for e in entries)) != len(page_order):
-        sys.exit("coverage check failed: page count mismatch")
+        sys.exit("coverage check failed: page count mismatch: missing=" +
+                 repr(sorted(set(page_order) - {e["page"] for e in entries})) +
+                 "; extra=" + repr(sorted({e["page"] for e in entries} - set(page_order))))
     stale = [e["id"] for e in entries
              if e.get("version") == "v2" and e.get("page") in kit_pages and
              (e.get("host", {}).get("via") == "launcher" or

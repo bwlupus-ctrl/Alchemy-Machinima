@@ -254,13 +254,27 @@
   },
   "look_group/stepped_tab": {
    "v1_sources": [],
-   "root_class": "panel_stepped_anim", "root_name": "stepped_tab_logic",
-   "preset": {"mode": "provider", "provider": "stepped_anim"},
-   "who_adapter": "stepped_anim", "actor_target": true,
-   "watch_extra": ["StepAnimFace", "StepAnimPartFace"],
-   "row_overrides": {"sa_rate_chips": {"reset_settings": "StepAnimRate"},
-                     "sa_part_face": {"reset_settings": "StepAnimFace,StepAnimPartFace"}},
-   "selector_settings": {}, "card_enables": {}, "add_rows": [],
+   "root_class": "panel_stepped_anim",
+   "root_name": "stepped_tab_logic",
+   "preset": {
+    "mode": "provider",
+    "provider": "stepped_anim"
+   },
+   "watch_extra": [
+    "StepAnimFace",
+    "StepAnimPartFace"
+   ],
+   "row_overrides": {
+    "sa_rate_chips": {
+     "reset_settings": "StepAnimRate"
+    },
+    "sa_part_face": {
+     "reset_settings": "StepAnimFace,StepAnimPartFace"
+    }
+   },
+   "selector_settings": {},
+   "card_enables": {},
+   "add_rows": [],
    "label_names": {}
   },
   "look_group/image_tab": {
@@ -274,7 +288,6 @@
   },
   "look_group/actor_style_tab": {
    "v1_sources": [],
-   "actor_target": true, "who_adapter": "actor_style",
    "label_names": {}
   },
   "light_group/actors_tab": {
@@ -362,13 +375,36 @@
   },
   "settings_group/director_settings_tab": {"v1_sources": [], "label_names": {}},
   "performance_group/animate_tab": {
-   "v1_sources": ["panel_director_animate_src.xml"],
-   "actor_target": true, "actor_target_synthetic": true,
+   "v1_sources": [
+    "panel_director_animate_src.xml"
+   ],
    "row_overrides": {
-    "anim_list": {"row_height": 150},
-    "animation_preview": {"row_height": 186},
-    "play_local_priority_combo": {"iv": [-1, 0, 1, 2, 3, 4], "inherit_selectable": true},
-    "locomotion_role_combo": {"iv": [1, 2, 3, 9, 10]}
+    "anim_list": {
+     "row_height": 150
+    },
+    "animation_preview": {
+     "row_height": 186
+    },
+    "play_local_priority_combo": {
+     "iv": [
+      -1,
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "inherit_selectable": true
+    },
+    "locomotion_role_combo": {
+     "iv": [
+      1,
+      2,
+      3,
+      9,
+      10
+     ]
+    }
    },
    "label_names": {}
   },
@@ -438,7 +474,7 @@
   "cast_group/move_tab": {
    "v1_sources": ["panel_actor_mover.xml", "panel_director_move_src.xml", "panel_avatar_anim_speed.xml"],
    "root_class": "panel_actor_mover", "root_name": "move_tab_logic",
-   "actor_target": true, "actor_target_synthetic": true,
+
    "row_overrides": {
     "anim_speed_slider": {"k": "slider"},
     "btn_stop": {"w": "move_btn_stop", "source_widget": "btn_stop"},
@@ -467,19 +503,30 @@
    "label_names": {}
   },
   "cast_group/path_tab": {
-   "v1_sources": ["panel_path_editor.xml"],
-   "root_class": "panel_path_editor", "root_name": "path_tab_logic",
-   "actor_target": true, "actor_target_synthetic": true,
+   "v1_sources": [
+    "panel_path_editor.xml"
+   ],
+   "root_class": "panel_path_editor",
+   "root_name": "path_tab_logic",
    "row_overrides": {
-    "waypoint_list": {"row_height": 130},
-    "color_lbl": {"w": "color_swatch", "source_widget": "color_swatch", "k": "viewport", "row_height": 28}
+    "waypoint_list": {
+     "row_height": 130
+    },
+    "color_lbl": {
+     "w": "color_swatch",
+     "source_widget": "color_swatch",
+     "k": "viewport",
+     "row_height": 28
+    }
    },
    "label_names": {}
   },
   "performance_group/gaze_tab": {
-   "v1_sources": ["panel_lens_gaze.xml"],
-   "root_class": "panel_lens_gaze", "root_name": "gaze_tab_logic",
-   "actor_target": true, "who_adapter": "gaze_slot",
+   "v1_sources": [
+    "panel_lens_gaze.xml"
+   ],
+   "root_class": "panel_lens_gaze",
+   "root_name": "gaze_tab_logic",
    "row_overrides": {},
    "label_names": {}
   },
@@ -571,7 +618,22 @@
   "light_group/light_cues_tab": {"no_history_rows": ["cue_rows"]},
   "light_group/practicals_tab": {"history": "none"},
   "look_group/actor_style_tab": {"history": "none"},
-  "look_group/stepped_tab": {"scope": "global", "no_history_rows": ["sa_actor_target", "sa_override_list", "sa_group_pick", "sa_group_offset", "sa_group_list", "sa_actor_override", "sa_actor_offset", "sa_actor_part", "sa_actor_part_rate", "sa_actor_rate", "sa_actor_steps", "sa_actor_role"]},
+  "look_group/stepped_tab": {
+   "scope": "global",
+   "no_history_rows": [
+    "sa_override_list",
+    "sa_group_pick",
+    "sa_group_offset",
+    "sa_group_list",
+    "sa_actor_override",
+    "sa_actor_offset",
+    "sa_actor_part",
+    "sa_actor_part_rate",
+    "sa_actor_rate",
+    "sa_actor_steps",
+    "sa_actor_role"
+   ]
+  },
   "performance_group/animate_tab": {"history": "none"},
   "performance_group/gaze_tab": {"history": "none"},
   "performance_group/gaze_cues_tab": {"no_history_rows": ["cue_list"]},

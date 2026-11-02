@@ -56,6 +56,7 @@ private:
     uuid_vec_t editActors() const;
     LLUUID     editDisplayActor() const;
     void refreshCastCombo();
+    void refreshApplyGroupCombo();
     void refreshEditActorCombo();
     void refreshControls();
     void refreshLiveControls();
@@ -133,7 +134,11 @@ private:
     U64 mSlotIdentityRevision = 0;
 
     LLTextBox* mStatus = nullptr;
+    boost::signals2::scoped_connection mActiveActorConnection;
     LLComboBox* mEditActor = nullptr;
+    LLComboBox* mApplyTo = nullptr;
+    LLComboBox* mApplyGroup = nullptr;
+    std::vector<std::string> mLastApplyGroups;
     LLCheckBoxCtrl* mMasterEnable = nullptr;
     LLCheckBoxCtrl* mSlotYou = nullptr;
     LLCheckBoxCtrl* mSlotA = nullptr;
