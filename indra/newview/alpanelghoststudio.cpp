@@ -384,8 +384,10 @@ void ALPanelGhostStudio::rewriteActorReferences(const LLUUID& old_id, const LLUU
     {
         if (rewrite(panel->mSourceCombo, false))
         {
-            panel->mSourceSelectionRemoved = true;
-            if (panel->mAddBtn) panel->mAddBtn->setEnabled(false);
+            // Match the visible fallback to You with an operative source.
+            panel->mSourceCombo->setSelectedByValue(LLUUID::null, true);
+            panel->mSourceSelectionRemoved = false;
+            if (panel->mAddBtn) panel->mAddBtn->setEnabled(true);
         }
         if (rewrite(panel->mLensGazeCastTarget, false) && panel->mLensGazeTargetMode)
             panel->mLensGazeTargetMode->setValue(static_cast<S32>(LLActorMover::GAZE_TANGENT));

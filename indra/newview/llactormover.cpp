@@ -5424,15 +5424,17 @@ bool LLActorMover::rewriteGazeTarget(GazeTarget& target, const LLUUID& old_id, c
     return changed;
 }
 
-void LLActorMover::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+bool LLActorMover::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
 {
     // Scan authored targets AND history/runtime copies once in the Cast
     // transaction. Never scan or canonicalize these references per frame.
+    bool changed = false;
     auto arrival = [&](auto& path)
     {
         if (path.mArrivalTarget == old_id)
         {
             path.mArrivalTarget = new_id;
+            changed = true;
             // Retain the captured compass bearing when the actor is deleted.
             if (new_id.isNull() && path.mArrivalFacingMode == 2)
                 path.mArrivalFacingMode = 1;
@@ -5471,11 +5473,19 @@ void LLActorMover::rewriteActorReferences(const LLUUID& old_id, const LLUUID& ne
         rewriteGazeTarget(runtime.mCueFromBaseTarget, old_id, new_id);
         rewriteGazeTarget(runtime.mCueFromTarget, old_id, new_id);
     }
+    std::vector<LLUUID> stopped_followers;
     for (auto& item : mFollows)
-        if (item.second.mLeader == old_id) item.second.mLeader = new_id;
-    // A null leader cannot alias You: advanceFollower uses exact map lookup,
-    // and path_key stores You under gAgentID. It keeps the leader-gone hold.
+    {
+        if (item.second.mLeader != old_id) continue;
+        changed = true;
+        if (new_id.isNull()) stopped_followers.push_back(item.first);
+        else item.second.mLeader = new_id;
+    }
+    // Remove the relationship through its normal teardown, so getFollow and
+    // the offset editor cannot send a deleted null leader through path_key.
+    for (const LLUUID& follower : stopped_followers) clearFollow(follower);
     ++mGazeRevision;
+    return changed;
 }
 
 void LLActorMover::dropActor(const LLUUID& actor_id)

@@ -12,6 +12,13 @@ from relight_area_policy_check import method
 
 def check():
     nv = Path("indra/newview")
+    # The executed timeout helper is the one the real frame loop calls, and
+    # the offset spinner uses the real getFollow result exercised below.
+    assert "if (!holdMissingSubject(id, s, now)) continue;" in method(nv / "alprojectortracker.cpp", "void ALProjectorTracker::update(")
+    assert "setEnabledIfChanged(mFollowOffset, following);" in (nv / "alpanelpatheditor.cpp").read_text()
+    source_rewrite = method(nv / "alpanelghoststudio.cpp", "void ALPanelGhostStudio::rewriteActorReferences(")
+    assert "mSourceCombo->setSelectedByValue(LLUUID::null, true)" in source_rewrite
+    assert "mSourceSelectionRemoved = false" in source_rewrite and "mAddBtn->setEnabled(true)" in source_rewrite
     fixture = r'''
 #include <algorithm>
 #include <cassert>
@@ -22,10 +29,13 @@ def check():
 #include <set>
 #include <string>
 #include <vector>
-using S32=int; using U32=unsigned; using U64=unsigned long long;
+using S32=int; using U32=unsigned; using U64=unsigned long long; using F32=float; using F64=double;
+template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}
+template<class T>T llmax(T a,T b){return std::max(a,b);}
 struct LLUUID {
  int value=0; bool isNull() const{return !value;} bool notNull() const{return value;}
  void setNull(){value=0;} static const LLUUID null;
+ std::string asString() const{return std::to_string(value);}
  bool operator==(LLUUID b) const{return value==b.value;}
  bool operator!=(LLUUID b) const{return !(*this==b);}
  bool operator<(LLUUID b) const{return value<b.value;}
@@ -33,6 +43,7 @@ struct LLUUID {
 const LLUUID LLUUID::null{};
 std::ostream& operator<<(std::ostream& s, LLUUID id){return s<<id.value;}
 #define LL_WARNS(x) std::cerr
+#define LL_INFOS(x) std::cerr
 #define LL_ENDL std::endl
 struct LLVOAvatar;
 struct LLViewerObject {
@@ -42,6 +53,7 @@ struct LLViewerObject {
 struct LLVOAvatar:LLViewerObject {
  LLUUID id;bool dead=false;bool ghost=true;
  LLVOAvatar* asAvatar() override{return this;}bool isDead(){return dead;}
+ LLUUID getID() const{return id;} bool isControlAvatar(){return false;} bool mIsDummy=false;
  bool isGhostAvatar(){return ghost;}std::string getFullname(){return "clone";}
 };
 struct ObjectList{std::map<LLUUID,LLViewerObject*> objects;
@@ -49,6 +61,11 @@ struct ObjectList{std::map<LLUUID,LLViewerObject*> objects;
 } gObjectList;
 LLVOAvatar self;LLVOAvatar* gAgentAvatarp=&self;
 bool isAgentAvatarValid(){return true;}
+LLUUID gAgentID{100};
+using uuid_vec_t=std::vector<LLUUID>;
+struct LLSD {LLUUID id; double number=0; LLSD(LLUUID v={}):id(v){} LLUUID asUUID()const{return id;} double asReal()const{return number;}};
+struct Spinner {LLSD value; LLSD getValue(){return value;}};
+struct ALPanelPathEditor {LLUUID mActor; Spinner spinner; Spinner* mFollowOffset=&spinner; void onFollowOffsetCommit();};
 struct LLActorMover {
  enum {GAZE_TANGENT=0,GAZE_CAST=2,GAZE_OBJECT=4};
  struct GazeTarget {
@@ -62,7 +79,14 @@ struct LLActorMover {
   bool invalidated=false;
  };
  struct DirectorGaze{Gaze mGaze; GazeTarget mLastTarget,mCueFromBaseTarget,mCueFromTarget;};
- struct Follow{LLUUID mLeader;};
+ struct Follow{LLUUID mLeader;S32 mMode=0;F32 mOffset=0;};
+ struct Move{bool mPathPoseEvaluated=true,mIsPath=true;};std::map<LLUUID,Move> mMoves;
+ int stops=0;void stop(LLUUID id){++stops;mMoves.erase(id);}
+ bool hasWalkablePath(LLUUID id){return mPaths.count(id)!=0;}
+ bool wouldFollowCycle(const LLUUID&,const LLUUID&)const;
+ bool setFollow(const LLUUID&,const LLUUID&,S32,F32);
+ bool getFollow(const LLUUID&,LLUUID&,S32&,F32&)const;
+ void clearFollow(const LLUUID&);
  std::map<LLUUID,Path> mPaths;
  std::map<LLUUID,EditHistory> mHistory;
  std::map<LLUUID,Gaze> mGazes;
@@ -71,7 +95,7 @@ struct LLActorMover {
  U64 mGazeRevision=0;
  static LLActorMover& instance(){static LLActorMover m;return m;}
  static bool rewriteGazeTarget(GazeTarget&,const LLUUID&,const LLUUID&);
- void rewriteActorReferences(const LLUUID&,const LLUUID&);
+ bool rewriteActorReferences(const LLUUID&,const LLUUID&);
  static void invalidateGazeCache(Gaze& g,bool){g.invalidated=true;}
  void clearDirectorLookAtRuntime(LLUUID){}
  void dropActor(LLUUID id){mPaths.erase(id);mHistory.erase(id);mGazes.erase(id);mFollows.erase(id);}
@@ -91,11 +115,14 @@ std::set<ALKitHistory*>& actorReferenceHistories(){static std::set<ALKitHistory*
 struct ALProjectorTracker {
  enum Mode{AIM,FOLLOW};
  struct State{LLUUID subject;bool hasSubject=true,captured=true,capturePending=true;
-  bool enabled=true,restorePending=false;double missingSince=4.;};
- std::map<LLUUID,State> mStates;U64 mRevision=0;
+  bool enabled=true,restorePending=false,subjectPending=false;double missingSince=0.;std::string status;};
+ std::map<LLUUID,State> mStates;std::set<LLUUID> mActive;U64 mRevision=0;
+ bool restoreSucceeds=true;
+ bool restore(LLViewerObject*,State& s){s.restorePending=!restoreSucceeds;return restoreSucceeds;}
+ bool holdMissingSubject(const LLUUID&,State&,F64);
  static ALProjectorTracker& instance(){static ALProjectorTracker s;return s;}
  void rewriteActorReferences(const LLUUID&,const LLUUID&);
- void stop(LLUUID id,const char*){auto& s=mStates.at(id);s.enabled=false;s.restorePending=true;}
+ void stop(const LLUUID&,const std::string&);
 };
 struct ALDirectorAnimSwitcher {
  std::set<LLUUID> mPosedAvatars;
@@ -142,10 +169,16 @@ struct ALCineLightRigManager {
 };
 struct ALPanelGhostStudio {static void rewriteActorReferences(LLUUID,LLUUID){}};
 struct ALFloaterGazeCues{static void rewriteActorReferences(LLUUID,LLUUID){}};
-struct LLFloaterDirector{static void rewriteActorReferences(LLUUID,LLUUID){}};
+
 struct ALPanelLensGaze{static void rewriteActorReferences(LLUUID,LLUUID){}};
 struct ALClientHeight {static ALClientHeight& instance(){static ALClientHeight s;return s;} void reset(LLUUID){}};
-struct ALAvatarLightResponse {static bool instanceExists(){return false;} static ALAvatarLightResponse& instance(){static ALAvatarLightResponse s;return s;} void inherit(LLUUID,bool){}};
+struct ALAvatarLightResponse {
+ std::map<LLUUID,int> mEntries,mPersistExtras;std::set<LLUUID> mPersistSuppressed;int changes=0;
+ void markChanged(LLUUID){++changes;}
+ static bool instanceExists(){return true;}
+ static ALAvatarLightResponse& instance(){static ALAvatarLightResponse s;return s;}
+ void retireClone(const LLUUID&);
+};
 struct ALAvatarStaging {
  enum class FacingMode{TRACK,LOCK};enum class TrackSource{ACTOR,POINT};
  struct Entry{LLUUID mTrackTarget;float mLockYaw=0;FacingMode mMode=FacingMode::TRACK;
@@ -172,7 +205,9 @@ struct LLDirectorCast {
  struct Start{LLUUID mId;};std::vector<Start> mPendingStarts;
  LLUUID mSubjectA,mSubjectB,mSubjectC,mSubjectD,mActiveActorId;
  std::set<LLUUID> mLookAtCameraIds;U64 mCastRevision=0,mGazeCueRevision=0,mSubjectRevision=0;
- void rewriteActorReferences(const LLUUID&,const LLUUID&);
+ static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
+ void setGazeCues(LLUUID,const GazeCueList&){}
+ bool rewriteActorReferences(const LLUUID&,const LLUUID&);
  void replaceActorId(const LLUUID&,const LLUUID&,const LLUUID& = LLUUID::null);
  static bool isSelf(LLUUID id){return id.isNull();}
  static LLUUID canonicalActorId(LLUUID id){return id;}
@@ -182,14 +217,60 @@ struct LLDirectorCast {
  void remove(LLUUID id){mCast.erase(std::remove_if(mCast.begin(),mCast.end(),[&](auto& m){return m.mId==id;}),mCast.end());}
  void setActiveActorId(LLUUID id){mActiveActorId=id;}
  void cancelPendingStart(LLUUID id){mPendingStarts.erase(std::remove_if(mPendingStarts.begin(),mPendingStarts.end(),[&](auto& s){return s.mId==id;}),mPendingStarts.end());}
- void rebuildMemberIndex(){} void touchScene(){}
+ int sceneTouches=0; void rebuildMemberIndex(){} void touchScene(){++sceneTouches;}
 };
+'''
+    fixture += r'''
+namespace ALAvatarSubjectPicker {
+std::vector<std::weak_ptr<LLUUID>> pendingSubjects;
+'''
+    fixture += method(nv / 'alavatarsubjectpicker.cpp', 'void prunePendingSubjects(') + '\n'
+    fixture += method(nv / 'alavatarsubjectpicker.cpp', 'void rewriteActorReferences(') + '\n}\n'
+    fixture += r'''
+struct LLScrollListItem {LLSD value;LLSD getValue()const{return value;}};
+struct Combo {
+ std::vector<LLScrollListItem> rows; LLUUID selected;
+ std::vector<LLScrollListItem*> getAllData(){std::vector<LLScrollListItem*> result;for(auto& r:rows)result.push_back(&r);return result;}
+ void remove(S32 i){rows.erase(rows.begin()+i);}
+};
+struct CastList {uuid_vec_t selected;void selectMultiple(const uuid_vec_t& ids){selected=ids;}};
+struct ALKitShell {
+ uuid_vec_t mCurrentCastSelection; int whoCommits=0; LLUUID lightRigWho,gazeWho,steppedWho,styleWho;
+ void mCastSelection(const uuid_vec_t& ids){++whoCommits;lightRigWho=gazeWho=steppedWho=styleWho=ids.empty()?LLUUID{}:ids.front();}
+'''
+    fixture += method(nv / 'alkitshell.h', 'void                        setCastSelection(') + '\n'
+    fixture += method(nv / 'alkitshell.h', 'void                        cacheCastSelection(') + '\n};\n'
+    fixture += r'''
+struct LLFloaterDirector {
+ static LLFloaterDirector* current;
+ LLUUID mAnimSpeedSelection,mPrimaryCastActor,mCastRightClickId,mGroupShownFor,
+  mActorStyleShownFor,mActorStyleLastCastSelection,mLocomotionEditorMember,mAnimAvatarId;
+ std::string mAnimSpeedContextLabel;struct Clock{void forceDue(){}}mAnimSpeedClock;
+ Combo speed;Combo* mAnimSpeedAvatar=&speed;CastList list;CastList* mCastList=&list;
+ ALKitShell shell;ALKitShell* mShell=&shell;int refreshes=0;
+ uuid_vec_t selectedCastIds(){return list.selected;}
+ void refreshCastList(){++refreshes;}
+ void rebuildAnimSpeedAvatars(){speed.rows.push_back({mAnimSpeedSelection});speed.selected=mAnimSpeedSelection;}
+ static void rewriteActorReferences(const LLUUID&,const LLUUID&);
+};
+LLFloaterDirector* LLFloaterDirector::current=nullptr;
+struct LLFloaterReg{template<class T>static T* findTypedInstance(const char*){return T::current;}};
 '''
     for file, signature in (
         ("llactormover.cpp", "bool LLActorMover::rewriteGazeTarget("),
-        ("llactormover.cpp", "void LLActorMover::rewriteActorReferences("),
+        ("llactormover.cpp", "bool LLActorMover::rewriteActorReferences("),
+        ("llactormover.cpp", "LLUUID path_key("),
+        ("llactormover.cpp", "bool LLActorMover::wouldFollowCycle("),
+        ("llactormover.cpp", "bool LLActorMover::setFollow("),
+        ("llactormover.cpp", "void LLActorMover::clearFollow("),
+        ("llactormover.cpp", "bool LLActorMover::getFollow("),
+        ("alpanelpatheditor.cpp", "void ALPanelPathEditor::onFollowOffsetCommit("),
+        ("llfloaterdirector.cpp", "void LLFloaterDirector::rewriteActorReferences("),
         ("alkithistory.cpp", "void ALKitHistory::rewriteActorReferences("),
         ("alprojectortracker.cpp", "void ALProjectorTracker::rewriteActorReferences("),
+        ("alprojectortracker.cpp", "void ALProjectorTracker::stop("),
+        ("alavatarlightresponse.cpp", "void ALAvatarLightResponse::retireClone("),
+        ("alprojectortracker.cpp", "bool ALProjectorTracker::holdMissingSubject("),
         ("llcinematiccamera.cpp", "void LLCinematicCamera::onRuntimeTargetReplaced("),
         ("llghostavatar.cpp", "void LLGhostAvatar::releaseSourceReference("),
         ("llghostavatar.cpp", "void LLGhostAvatar::rewriteAnimationSourceReferences("),
@@ -197,13 +278,16 @@ struct LLDirectorCast {
         ("alavatarstaging.cpp", "void ALAvatarStaging::removeActorReferences("),
         ("aldanceball.cpp", "void ALDanceBall::removeActorReferences("),
         ("alcinelightrigmanager.cpp", "void ALCineLightRigManager::rewriteActorReferences("),
-        ("lldirectorcast.cpp", "void LLDirectorCast::rewriteActorReferences("),
+        ("lldirectorcast.cpp", "bool LLDirectorCast::rewriteActorReferences("),
         ("lldirectorcast.cpp", "void LLDirectorCast::replaceActorId("),
         ("lldirectorcast.cpp", "LLVOAvatar* LLDirectorCast::resolve("),
     ):
         fixture += method(nv / file, signature) + "\n"
     # Execute the exact production custom-history callback, not a model of it.
     callback = method(nv / "alpanelgazecues.cpp", "[snapshot](const LLUUID& old_id")
+    validate = method(nv / "alpanelgazecues.cpp", "[snapshot](bool, std::string& reason)")
+    replay = method(nv / "alpanelgazecues.cpp", "[snapshot, validate](bool redo")
+    choose_callback = method(nv / "alavatarsubjectpicker.cpp", "[handle, picked, subject]()")
     fixture += r'''
 int main(){
  const LLUUID A{1},R{2},S{3},N{4},other{9},projector{20};
@@ -211,7 +295,18 @@ int main(){
  gObjectList.objects[R]=&original;
  using T=LLActorMover::GazeTarget;
  auto target=[](LLUUID id){T t;t.mMode=T::CAST_MEMBER;t.mCastRef=id;return t;};
- LLDirectorCast cast;
+ self.id=gAgentID;
+ LLDirectorCast& cast=LLDirectorCast::instance();
+ LLFloaterDirector director;LLFloaterDirector::current=&director;
+ director.list.selected={A};director.shell.mCurrentCastSelection={A};
+ director.shell.lightRigWho=director.shell.gazeWho=director.shell.steppedWho=director.shell.styleWho=gAgentID;
+ director.mAnimSpeedSelection=A;director.speed.selected=A;director.speed.rows={{{A}},{{R}}};
+ auto pendingSubject=std::make_shared<LLUUID>(R);
+ ALAvatarSubjectPicker::pendingSubjects.push_back(pendingSubject);
+ auto subject=pendingSubject;struct Handle{bool get()const{return true;}}handle;
+ LLUUID chosen;int choiceCommits=0;auto picked=[&](LLUUID id){chosen=id;++choiceCommits;};
+ auto invokeChoice=''' + choose_callback + r''';
+ ALPanelPathEditor pathEditor;pathEditor.mActor=A;pathEditor.spinner.value.number=7.;
  LLDirectorCast::CastMember a;a.mId=A;a.mGazeTarget=target(R);a.mEyeGazeTarget=target(R);
  a.mGazeCues={{target(R)}};
  LLDirectorCast::CastMember clone;clone.mId=R;clone.mGazeTarget=target(A);
@@ -240,6 +335,8 @@ int main(){
  LLGhostAvatar::sLiveSourceCounts[R]=1;
  struct CueHistory{LLUUID actor;LLDirectorCast::GazeCueList before,after;};
  auto snapshot=std::make_shared<CueHistory>(CueHistory{A,{{target(R)}},{{target(R)}}});
+ auto validate=''' + validate + r''';
+ auto replay=''' + replay + r''';
  auto rewrite_snapshot=''' + callback + r''';
  ALKitHistory history;actorReferenceHistories().insert(&history);
  history.mUndo={{{{rewrite_snapshot}}}};history.mRedo=history.mUndo;
@@ -264,7 +361,12 @@ int main(){
   else assert(LLGhostAvatar::sLiveSourceCounts.empty());
   assert(studio.mInstances.front().mLookTargetId==id && studio.mInstances.front().mTurnTargetId==id);
   assert(snapshot->before.front().mTarget.mCastRef==id && snapshot->after.front().mTarget.mCastRef==id);
-  assert(mover.mFollows[A].mLeader==id);
+  if(id.notNull()) assert(mover.mFollows.at(A).mLeader==id);
+  else assert(mover.mFollows.count(A)==0);
+  assert(*pendingSubject==id);
+  const int beforeChoice=choiceCommits;invokeChoice();
+  if(id.notNull()) assert(chosen==id && choiceCommits==beforeChoice+1);
+  else assert(choiceCommits==beforeChoice);
   assert(mover.mPaths[other].mArrivalTarget==other);
   if(id==N){
    // Execute the production resolver used by both Head and Eyes gaze.
@@ -277,11 +379,32 @@ int main(){
  };
  gObjectList.objects.erase(R);original.dead=true;
  cast.replaceActorId(R,S,S);verify(S);
- assert(studio.mInstances.front().mSource==S && studio.mCrowdDraft.mSource.mEntityId==S);
+ // An unrelated parked clone must never publish the shell signal which commits
+ // the independent Light Rig/Gaze/Stepped/Actor Style Who adapters.
+ assert(director.shell.whoCommits==0 && director.refreshes==0);
+ assert(director.shell.lightRigWho==gAgentID && director.shell.gazeWho==gAgentID);
+ assert(director.shell.steppedWho==gAgentID && director.shell.styleWho==gAgentID);
+ assert(director.shell.mCurrentCastSelection==uuid_vec_t{A});
+ assert(director.mAnimSpeedSelection==A && director.speed.selected==A);
+ for(auto* row:director.speed.getAllData())assert(row->getValue().asUUID()!=R);
+ auto& track=tracker.mStates.at(projector);tracker.mActive.insert(projector);
+ assert(track.subjectPending && track.enabled);
+ assert(tracker.holdMissingSubject(projector,track,10.));
+ assert(tracker.holdMissingSubject(projector,track,100.));
+ assert(track.enabled && tracker.mActive.count(projector));
+ // Recovery also rewrites a selected clone without firing any Who adapter.
+ director.list.selected={S};director.shell.mCurrentCastSelection={S};
+ assert(studio.mInstances.front().mSource==S && studio.mCrowdDraft.mSource.mEntityId==R);
  assert(cast.mActiveActorId==S && cast.mSubjectA==S && cast.mSubjectD==S);
  gObjectList.objects[N]=&newClone;studio.mInstances[1].mEntityId=N;
  cast.replaceActorId(S,N,S);verify(N);
- assert(studio.mInstances.front().mSource==N && studio.mCrowdDraft.mSource.mEntityId==N);
+ assert(director.list.selected==uuid_vec_t{N} && director.shell.mCurrentCastSelection==uuid_vec_t{N});
+ assert(director.shell.whoCommits==0 && director.shell.lightRigWho==gAgentID);
+ assert(!track.subjectPending && track.enabled && tracker.mActive.count(projector));
+ pathEditor.onFollowOffsetCommit();assert(mover.mFollows.at(A).mLeader==N);
+ // With no own path, deletion must take clearFollow's actual stop path.
+ mover.mFollows[{77}].mLeader=N;mover.mMoves[{77}]={};
+ assert(studio.mInstances.front().mSource==N && studio.mCrowdDraft.mSource.mEntityId==R);
  assert(studio.mCrowdDraft.mSource.mSourceId==N);
  assert(cast.mActiveActorId==N && cast.mSubjectA==N && cast.mLookAtCameraIds.count(N));
  // Stable authored references must retire too, even when deletion is live.
@@ -290,7 +413,19 @@ int main(){
  studio.mInstances.push_back(look);studio.mInstances.back().mLookTarget=ALGhostStudio::LOOK_TARGET_GHOST;
  studio.mInstances.back().mLookTargetId=S;
  gObjectList.objects.erase(N);newClone.dead=true;
+ tracker.restoreSucceeds=false;
  cast.replaceActorId(N,LLUUID::null,S);verify(LLUUID::null);
+ LLUUID leader;S32 mode=0;F32 offset=0;
+ assert(!mover.getFollow(A,leader,mode,offset));
+ pathEditor.onFollowOffsetCommit();assert(!mover.getFollow(A,leader,mode,offset));
+ assert(mover.stops==1 && !mover.mMoves.count({77}));
+ assert(!track.enabled && tracker.mActive.count(projector) && track.restorePending);
+ // A normal missing resident still hits the same timeout and real stop().
+ auto& absent=tracker.mStates[{21}];absent.subject={88};tracker.mActive.insert({21});
+ tracker.restoreSucceeds=true;
+ assert(tracker.holdMissingSubject({21},absent,10.));
+ assert(!tracker.holdMissingSubject({21},absent,13.));
+ assert(!absent.enabled && !tracker.mActive.count({21}) && absent.status=="Subject unavailable");
  assert(studio.mInstances.front().mSource.isNull() && studio.mInstances.front().mSourceRemoved);
  assert(!studio.mCrowdDraft.mActive);
  assert(cast.mCast.front().mGazeTarget.mMode==T::MOTION);
@@ -308,6 +443,11 @@ int main(){
  snapshot->actor=R;ALKitHistory::rewriteActorReferences(R,S);assert(snapshot->actor==S);
  ALKitHistory::rewriteActorReferences(S,N);assert(snapshot->actor==N);
  ALKitHistory::rewriteActorReferences(N,{});assert(snapshot->actor.isNull());
+ std::string reason;assert(!validate(false,reason) && !replay(false,reason));
+ // A removed non-clone owner remains valid during group preparation and
+ // fails only when its custom entry is actually replayed, as before.
+ snapshot->actor={88};assert(validate(false,reason));assert(!replay(false,reason));
+ snapshot->actor=A;assert(validate(false,reason) && replay(false,reason));
  // Loaded destination wins orphaned OWN state but incoming refs still migrate.
  cast.mCast.front().mGazeTarget=target(R);cast.replaceActorId(R,A,S);
  assert(cast.mCast.front().mGazeTarget.mCastRef==A);
@@ -315,6 +455,13 @@ int main(){
  tracker.mStates[projector].subject=R;tracker.mStates[projector].hasSubject=true;
  cast.mSubjectC=R;cast.replaceActorId(R,{},S);
  assert(cast.mSubjectC.isNull() && !tracker.mStates[projector].hasSubject);
+ // An unenrolled and unreferenced deletion must leave scene cleanliness alone.
+ const int touches=cast.sceneTouches;
+ cast.replaceActorId({1234},{},{1235});assert(cast.sceneTouches==touches);
+ auto& response=ALAvatarLightResponse::instance();
+ for(int i=2000;i<2100;++i){response.mEntries[{i}]=1;response.mPersistSuppressed.insert({i});cast.replaceActorId({i},{},{i});}
+ assert(response.mEntries.empty() && response.mPersistSuppressed.empty());
+ assert(cast.sceneTouches==touches);
  actorReferenceHistories().erase(&history);
  std::cout<<"PASS: production clone reference transaction R -> parked S -> N; Head/Eyes/self/cues/runtime; path undo+redo; tracker/camera/Studio targets; custom history; deletion; collision and unenrolled branches\n";
 }
@@ -328,7 +475,7 @@ int main(){
     command.write_text(
         f'@echo off\ncall "{vcvars}" >nul\n'
         f'cl /nologo /std:c++17 /EHsc /Fo"{directory / "rekey.obj"}" '
-        f'/Fe"{directory / "rekey.exe"}" "{directory / "rekey.cpp"}\nexit /b %ERRORLEVEL%\n', encoding="utf-8")
+        f'/Fe"{directory / "rekey.exe"}" "{directory / "rekey.cpp"}"\nexit /b %ERRORLEVEL%\n', encoding="utf-8")
     subprocess.run(["cmd", "/d", "/c", str(command)], check=True)
     subprocess.run([str(directory / "rekey.exe")], check=True)
 

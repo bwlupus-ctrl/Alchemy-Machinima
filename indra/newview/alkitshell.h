@@ -109,6 +109,8 @@ public:
     boost::signals2::connection setCastSelectionCallback(const cast_signal_t::slot_type& s) { return mCastSelection.connect(s); }
     void                        emitPageBuilt(const std::string& name, LLPanel* p) { mPageBuilt(name, p); }
     void                        setCastSelection(const uuid_vec_t& ids) { mCurrentCastSelection = ids; mCastSelection(ids); }
+    // Identity maintenance must not commit independent Who adapters.
+    void                        cacheCastSelection(const uuid_vec_t& ids) { mCurrentCastSelection = ids; }
     const uuid_vec_t&           castSelection() const { return mCurrentCastSelection; }
     ALScrollFit::Controller&    scrollFit() { return mExternalScrollFit ? *mExternalScrollFit : mScrollFit; }
     void                        setScrollFit(ALScrollFit::Controller* controller) { mExternalScrollFit = controller; }

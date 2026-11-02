@@ -197,8 +197,7 @@ void ALPanelGazeCues::commitListEdit(const LLUUID& actor, const LLDirectorCast::
         auto snapshot = std::make_shared<CueHistory>(CueHistory{actor, before, stored});
         auto validate = [snapshot](bool, std::string& reason)
         {
-            if (snapshot->actor.isNull() ||
-                (!LLDirectorCast::instance().getMember(snapshot->actor) && snapshot->actor != gAgentID))
+            if (snapshot->actor.isNull())
             {
                 reason = "That actor is no longer in the cast";
                 return false;
@@ -209,6 +208,13 @@ void ALPanelGazeCues::commitListEdit(const LLUUID& actor, const LLDirectorCast::
             [snapshot, validate](bool redo, std::string& reason)
             {
                 if (!validate(redo, reason)) return false;
+                // Preserve the original replay-time failure for residents
+                // removed from Cast, including grouped replay ordering.
+                if (!LLDirectorCast::instance().getMember(snapshot->actor) && snapshot->actor != gAgentID)
+                {
+                    reason = "That actor is no longer in the cast";
+                    return false;
+                }
                 LLDirectorCast::instance().setGazeCues(snapshot->actor,
                     redo ? snapshot->after : snapshot->before);
                 return true;

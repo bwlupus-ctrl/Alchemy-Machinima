@@ -19,6 +19,7 @@ public:
     {
         LLUUID subject;
         bool hasSubject = false;
+        bool subjectPending = false; // known Studio stable handle; hold across parking
         S32 joint = 0;
         Mode mode = AIM;
         F32 smoothing = .15f;
@@ -66,6 +67,7 @@ public:
     static bool isTrackingMove(const LLViewerObject* object);
     static const char* jointName(S32 index);
 private:
+    bool holdMissingSubject(const LLUUID& id, State& state, F64 now);
     void stop(const LLUUID& id, const std::string& status);
     bool restore(LLViewerObject* object, State& state);
     bool pause(LLViewerObject* object, State& state, const char* status);

@@ -13,11 +13,31 @@
 #include "llviewerwindow.h"
 #include "llvoavatar.h"
 #include <set>
+#include <memory>
+#include <algorithm>
+#include <vector>
 #include "llviewermenu.h"
 #include "llagent.h"
 
 namespace ALAvatarSubjectPicker
 {
+namespace
+{
+std::vector<std::weak_ptr<LLUUID>> pendingSubjects;
+void prunePendingSubjects()
+{
+    pendingSubjects.erase(std::remove_if(pendingSubjects.begin(), pendingSubjects.end(),
+        [](const auto& subject) { return subject.expired(); }), pendingSubjects.end());
+}
+}
+
+void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    prunePendingSubjects();
+    for (auto& pending : pendingSubjects)
+        if (auto subject = pending.lock(); subject && *subject == old_id) *subject = new_id;
+}
+
 enum { SUBJECT_A, SUBJECT_B, SUBJECT_C, SUBJECT_D };
 bool valid(const LLVOAvatar* avatar, bool ghosts, bool animesh)
 {
@@ -139,6 +159,7 @@ void choose(LLUICtrl* anchor, LLView* owner, LLHandle<LLContextMenu>& menu_handl
             bool ghosts, std::function<void(const LLUUID&)> picked, bool animesh)
 {
     if (!anchor || !gMenuHolder) return;
+    prunePendingSubjects();
     if (LLContextMenu* old = menu_handle.get())
     {
         old->hide();
@@ -195,9 +216,13 @@ void choose(LLUICtrl* anchor, LLView* owner, LLHandle<LLContextMenu>& menu_handl
         label += mark >= SUBJECT_A ? llformat(" - Subject %c", 'A' + mark - SUBJECT_A) :
             (in_cast ? " - cast" : " - nearby");
         if (!avatar) label += " (away)";
-        add("avatar_" + id.asString(), label, avatar != nullptr, [handle, picked, id]()
+        auto subject = std::make_shared<LLUUID>(id);
+        pendingSubjects.push_back(subject);
+        add("avatar_" + id.asString(), label, avatar != nullptr, [handle, picked, subject]()
         {
-            if (handle.get()) picked(id);
+            // Rekey the operative payload while a menu is open. Final deletion
+            // invalidates it rather than allowing null to select You.
+            if (handle.get() && subject->notNull()) picked(*subject);
         });
     };
     for (const auto& member : cast.getCast()) add_avatar(member.mId, member.mLastName, true);

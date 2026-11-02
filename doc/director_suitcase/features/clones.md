@@ -74,6 +74,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alghostspawnengine.h`
 - `indra/newview/alghoststudio.cpp`
 - `indra/newview/alghoststudio.h`
+- `indra/newview/alkithistory.h`
 - `indra/newview/alkitshell.cpp`
 - `indra/newview/allenslooks.cpp`
 - `indra/newview/allocalfogmanager.cpp`
@@ -510,6 +511,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1292, "text": "alghostspawnengine.h", "source": "indra/newview/alghostspawnengine.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 392, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1357, "text": "alghoststudio.h", "source": "indra/newview/alghoststudio.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1155, "text": "alkithistory.h", "source": "indra/newview/alkithistory.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 215, "text": "alkitshell.cpp", "source": "indra/newview/alkitshell.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 349, "text": "allenslooks.cpp", "source": "indra/newview/allenslooks.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 194, "text": "allocalfogmanager.cpp", "source": "indra/newview/allocalfogmanager.cpp"}
@@ -674,6 +676,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## checks
 
 - `scripts/code_tools/clone_looks_gl_check.py`
+- `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`
 - `scripts/code_tools/test_clone_stamp_attachments.py`
 

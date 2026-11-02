@@ -494,7 +494,7 @@ public:
     F32  countdownRemaining() const;    // seconds; 0 when not counting down
 
 private:
-    void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
+    bool rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     LLDirectorCast();
     ~LLDirectorCast();
 

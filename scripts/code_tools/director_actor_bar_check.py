@@ -78,7 +78,7 @@ def main():
     import hashlib
     rekey_methods = {
         'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',
-        'void LLActorMover::rewriteActorReferences(': '56927dae33d71e920b66bf0cc6e15042cd48c033d8e2ffa41f5d51606020c0ff',
+        'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
     guarded_mover = current_mover
     for signature, digest in rekey_methods.items():
@@ -156,7 +156,9 @@ def main():
         body = method(nv / "llactormover.cpp", signature)
         assert 'pathSceneData' not in body and 'sceneData' not in body and 'mCast' not in body
     # The new pass also runs in the loaded-destination collision branch.
-    assert len(re.findall(r"^    +rewriteActorReferences\(old_id, new_id\);", rekey, re.M)) == 2
+    assert len(re.findall(r"^    +(bool references_changed = )?rewriteActorReferences\(old_id, new_id\);", rekey, re.M)) == 2
+    assert "bool references_changed = rewriteActorReferences(old_id, new_id);" in rekey
+    assert "if (references_changed) touchScene();" in rekey
     assert "rewriteActorReferences(stable_id, new_id)" in rekey
     from director_clone_rekey_check import check as check_clone_rekey
     check_clone_rekey()
@@ -287,7 +289,7 @@ struct ActorEditorStub { static void rewriteActorReferences(LLUUID, LLUUID) {} }
 struct ALPanelGhostStudio {static void rewriteActorReferences(LLUUID,LLUUID){}};
 struct ALFloaterGazeCues { static void rewriteActorReferences(LLUUID, LLUUID) {} };
 struct ALClientHeight {static ALClientHeight& instance(){static ALClientHeight s;return s;} void reset(LLUUID){}};
-struct ALAvatarLightResponse {static bool instanceExists(){return false;} static ALAvatarLightResponse& instance(){static ALAvatarLightResponse s;return s;} void inherit(LLUUID,bool){}};
+struct ALAvatarLightResponse {static bool instanceExists(){return false;} static ALAvatarLightResponse& instance(){static ALAvatarLightResponse s;return s;} void retireClone(LLUUID){}};
 struct ALAvatarStaging { static ALAvatarStaging& instance() { static ALAvatarStaging s; return s; } void removeActorReferences(LLUUID) {} };
 struct ALDanceBall { static ALDanceBall& instance() { static ALDanceBall s; return s; } void removeActorReferences(LLUUID) {} };
 struct LLDirectorCast {
@@ -313,7 +315,7 @@ struct LLDirectorCast {
     void remove(const LLUUID&);
     void cancelPendingStart(LLUUID id) { mPendingStarts.erase(std::remove_if(mPendingStarts.begin(),mPendingStarts.end(),[&](const PendingStart& start){return start.mId==id;}),mPendingStarts.end()); }
     void replaceActorId(const LLUUID&, const LLUUID&, const LLUUID& = LLUUID::null);
-    void rewriteActorReferences(const LLUUID&, const LLUUID&) {} // exercised by focused production harness
+    bool rewriteActorReferences(const LLUUID&, const LLUUID&) { return false; } // exercised by focused production harness
     uuid_vec_t membersInGroup(const std::string&) const;
     bool contains(LLUUID id) const { for(const auto& m:mCast) if(m.mId==id) return true; return false; }
     CastMember* getMember(LLUUID id) { for(auto& m:mCast) if(m.mId==id) return &m; return nullptr; }

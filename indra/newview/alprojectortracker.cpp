@@ -2,6 +2,7 @@
 #include "alprojectortracker.h"
 #include "llagent.h"
 #include "lldirectorcast.h"
+#include "alghoststudio.h"
 #include "lldrawable.h"
 #include "llfloatertools.h"
 #include "lljoint.h"
@@ -168,6 +169,7 @@ void ALProjectorTracker::rewriteActorReferences(const LLUUID& old_id, const LLUU
         State& s = item.second;
         if (s.subject != old_id) continue;
         s.subject = new_id;
+        s.subjectPending = new_id.notNull() && ALGhostStudio::instance().getInstance(new_id) != nullptr;
         s.missingSince = 0.;
         if (new_id.isNull())
         {
@@ -195,6 +197,7 @@ void ALProjectorTracker::configure(const LLUUID& id, const LLUUID& subject,
             if (restore(object, s))
                 s.current = {object->getRenderPosition(), object->getRenderRotation()};
     s.subject = subject;
+    s.subjectPending = subject.notNull() && ALGhostStudio::instance().getInstance(subject) != nullptr;
     s.hasSubject = has_subject;
     s.joint = llclamp(joint, 0, 6);
     s.mode = mode;
@@ -456,6 +459,16 @@ void ALProjectorTracker::clear()
     mRegion = nullptr;
     ++mRevision;
 }
+bool ALProjectorTracker::holdMissingSubject(const LLUUID& id, State& s, F64 now)
+{
+    // A stable Studio handle is a known, temporarily unresolved subject. Keep
+    // the captured pose/offset and Track armed until recovery or final deletion.
+    if (s.subjectPending) { s.missingSince = 0.; return true; }
+    if (!s.missingSince) s.missingSince = now;
+    if (now - s.missingSince > 2.) { stop(id, "Subject unavailable"); return false; }
+    return true;
+}
+
 void ALProjectorTracker::update(F32 dt)
 {
     if (mActive.empty()) return;
@@ -506,8 +519,7 @@ void ALProjectorTracker::update(F32 dt)
             ? avatar->getJoint(jointName(s.joint)) : nullptr;
         if (!avatar || avatar->isDead() || avatar->mDrawable.isNull())
         {
-            if (!s.missingSince) s.missingSince = now;
-            if (now - s.missingSince > 2.) { stop(id, "Subject unavailable"); continue; }
+            if (!holdMissingSubject(id, s, now)) continue;
             place(object, s.current);
             s.overridden = true;
             continue;

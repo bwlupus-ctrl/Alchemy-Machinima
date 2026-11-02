@@ -1567,7 +1567,8 @@ void ALGhostStudio::rewriteActorReferences(const LLUUID& old_id, const LLUUID& n
         else
         {
             if (source.mSourceId == old_id) source.mSourceId = new_id;
-            if (source.mEntityId == old_id) source.mEntityId = new_id;
+            // mEntityId is the captured backing version, not a logical actor
+            // reference. Leave it intact so confirmation rejects stale drafts.
         }
     }
 }

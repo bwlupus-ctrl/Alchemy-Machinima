@@ -2804,16 +2804,27 @@ void LLFloaterDirector::rewriteActorReferences(const LLUUID& old_id, const LLUUI
     {
         director->mAnimSpeedContextLabel.clear();
         director->mAnimSpeedClock.forceDue();
-        director->rebuildAnimSpeedAvatars();
+    }
+    // An open picker can contain the retired body even when another actor is
+    // selected. Remove that row directly; rebuilding from live objects here
+    // could re-add a body that has not finished leaving gObjectList yet.
+    if (director->mAnimSpeedAvatar)
+    {
+        if (speed_changed) director->rebuildAnimSpeedAvatars();
+        const auto rows = director->mAnimSpeedAvatar->getAllData();
+        for (S32 i = static_cast<S32>(rows.size()) - 1; i >= 0; --i)
+            if (rows[i]->getValue().asUUID() == old_id) director->mAnimSpeedAvatar->remove(i);
     }
     if (director->mCastList)
     {
         uuid_vec_t selected = director->selectedCastIds();
+        const bool selection_changed = std::find(selected.begin(), selected.end(), old_id) != selected.end();
+        if (!selection_changed) return;
         for (auto& id : selected) if (id == old_id) id = new_id;
         selected.erase(std::remove(selected.begin(), selected.end(), LLUUID::null), selected.end());
         director->refreshCastList();
         director->mCastList->selectMultiple(selected);
-        if (director->mShell) director->mShell->setCastSelection(selected);
+        if (director->mShell) director->mShell->cacheCastSelection(selected);
     }
 }
 
