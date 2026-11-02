@@ -212,7 +212,7 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 Existing evidence: 2195 wiring rows; page-source summary
 `{"ambiguous_rows": 0, "independent_json_rows": 2191, "multi_page_settings": 21, "owner_roots": 35, "pages": 38, "rows": 2191, "unresolved_rows": 57}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
-**False**. Existing manifests can still be stale
+**True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
 rows remain unresolved. They do not establish in-world behavior.
 
