@@ -1278,7 +1278,7 @@ LLFloaterDirector::~LLFloaterDirector()
 void LLFloaterDirector::onClose(bool app_quitting)
 {
     ALAvatarSubjectPicker::cancelFor(this);
-    if (mShell) ALAvatarSubjectPicker::cancelFor(mShell);
+    if (mShell) mShell->closeActorChooser();
     if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->hide();
     if (mShell)
         mShell->setSearchPopupArmed(nullptr, false);
@@ -1920,6 +1920,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mCastList->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         if (mSyncingActiveActor) return;
+        mPrimaryCastActor.setNull();
         LLDirectorCast::instance().setActiveActorId(firstSelectedCastId());
         mShell->setCastSelection(selectedCastIds());
         if (mPathPanel) retargetPathFromCastSelection();
@@ -2786,13 +2787,11 @@ void LLFloaterDirector::refreshAnimSpeed()
     setEnabledIfChanged(mAnimSpeedReset, !actor || !actor->isControlAvatar());
     const F32 speed = ALAvatarAnimSpeed::instance().getSpeed(mAnimSpeedSelection);
     setValueIfChanged(mAnimSpeedSlider, LLSD(speed));
-    setTextIfChanged(mAnimSpeedStatus, llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
+    setTextIfChanged(mAnimSpeedStatus, mAnimSpeedContextLabel + llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
 }
 
 void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
 {
-    mAnimSpeedSelection = avatar;
-    if (mShell) LLDirectorCast::instance().setActiveActorId(avatar);
     if (mShell) mShell->navigateTo("cast_group/move_tab/anim_speed");
     else
     {
@@ -2802,6 +2801,14 @@ void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
             if (auto* card = findChild<LLPanel>("anim_speed_panel"))
                 scroll->scrollToShowRect(card->getRect());
     }
+    // A context-menu speed edit must not retarget live Selected/Mixed Stepped
+    // rendering. Keep this existing speed-only context visible in its status;
+    // the next deliberate Actor bar change resumes following the shared actor.
+    mAnimSpeedSelection = avatar;
+    auto& cast = LLDirectorCast::instance();
+    LLVOAvatar* target = cast.resolve(avatar);
+    mAnimSpeedContextLabel = "Speed for " + (LLDirectorCast::isSelf(avatar) ? std::string("You") :
+        target ? target->getFullname() : avatar.asString()) + "  |  ";
     rebuildAnimSpeedAvatars();
     if (mAnimSpeedSlider)
         setValueIfChanged(mAnimSpeedSlider, LLSD(ALAvatarAnimSpeed::instance().getSpeed(avatar)), true);
@@ -3389,7 +3396,7 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         ALScrollFit::fillPage(mGhostPage, mGhostPanelView, 8);
     }
 
-    const uuid_vec_t selected = selectedCastIds();
+    const uuid_vec_t selected = actorTargetsForPage("performance_group/gaze_tab", selectedCastIds());
     mLastGazePush = selected;
     ALFloaterActorGaze::updateSelection(ALFloaterActorGaze::ESelectionSource::DIRECTOR, selected);
     if (mGazePanel) mGazePanel->setSelectedActors(actorTargetsForPage("performance_group/gaze_tab", selected));
@@ -6119,6 +6126,9 @@ uuid_vec_t LLFloaterDirector::selectedCastIds() const
 
 LLUUID LLFloaterDirector::firstSelectedCastId() const
 {
+    const auto selected = selectedCastIds();
+    if (mPrimaryCastActor.notNull() && std::find(selected.begin(), selected.end(), mPrimaryCastActor) != selected.end())
+        return mPrimaryCastActor;
     LLScrollListItem* item = mCastList->getFirstSelected();
     return item ? item->getValue().asUUID() : LLUUID::null;
 }
@@ -6135,15 +6145,25 @@ void LLFloaterDirector::syncActiveActor()
     const LLUUID actor = LLDirectorCast::instance().getActiveActorId();
     if (actor != firstSelectedCastId())
     {
-        // Programmatic list selection does not commit. Avoid clearing a batch
-        // when the primary actor already matches the first selected row.
+        const uuid_vec_t batch = selectedCastIds();
         refreshCastList();
-        mCastList->deselectAllItems();
-        if (actor.notNull()) mCastList->selectByID(actor);
+        mPrimaryCastActor = actor;
+        if (batch.size() > 1)
+        {
+            uuid_vec_t mirrored = batch;
+            if (actor.notNull() && std::find(mirrored.begin(), mirrored.end(), actor) == mirrored.end()) mirrored.push_back(actor);
+            mCastList->selectMultiple(mirrored);
+        }
+        else
+        {
+            mCastList->deselectAllItems();
+            if (actor.notNull()) mCastList->selectByID(actor);
+        }
     }
-    mShell->setCastSelection(selectedCastIds());
+    // A bar mirror must not commit independent Who adapters (Light Rig).
     retargetPathFromCastSelection();
     mAnimSpeedSelection = actor.isNull() ? gAgentID : actor;
+    mAnimSpeedContextLabel.clear();
     mAnimSpeedClock.forceDue();
     mActorStyleHadTarget = false;
     mActorStyleTabDirty = true;
@@ -6417,6 +6437,9 @@ void LLFloaterDirector::onGroupsListSelect()
     // makes the batch ops to the left (assign, marks, Move-tab Walk on the
     // selection) act on exactly this group.
     mCastList->selectMultiple(cast.membersInGroup(name));
+    mPrimaryCastActor.setNull();
+    cast.setActiveActorId(firstSelectedCastId());
+    if (mShell) mShell->setCastSelection(selectedCastIds());
     // [DirFix] D14: programmatic cast selection (no list commit) on a user click
     // in the groups list -> feed + claim the Path host synchronously
     if (mPathPanel) retargetPathFromCastSelection();

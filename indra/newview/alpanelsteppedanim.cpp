@@ -174,6 +174,11 @@ void ALPanelSteppedAnim::refreshActor()
 {
     const LLDirectorCast::ActorStyle& style = LLDirectorCast::instance().getActorStyle(selectedActor());
     mRefreshing = true;
+    if (mOverrideList)
+    {
+        mOverrideList->deselectAllItems(true);
+        mOverrideList->selectByID(LLDirectorCast::runtimeActorId(selectedActor()));
+    }
     if (mActorOverride) mActorOverride->setCurrentByIndex(style.mStepped.mMode);
     if (mActorRate) mActorRate->setValue(style.mStepped.mRate);
     // Inherit (-1) is a real, selectable choice: select by value so the combo always shows the

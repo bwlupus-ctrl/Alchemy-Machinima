@@ -262,63 +262,16 @@ ALGhostStudio::ALGhostStudio()
                const LLUUID& new_id, bool removing_instance)
         {
             LLDirectorCast& cast = LLDirectorCast::instance();
-            Instance* inst = getInstance(stable_id);
             const bool active_actor = cast.getActiveActorId() == stable_id ||
                 (old_id.notNull() && cast.getActiveActorId() == old_id);
-            if (active_actor && cast.contains(stable_id)) cast.remove(stable_id);
-            const bool subject_a =
-                (old_id.notNull() && cast.getSubjectA() == old_id) ||
-                (inst && inst->mWasDirectorSubjectA);
-            const bool subject_b =
-                (old_id.notNull() && cast.getSubjectB() == old_id) ||
-                (inst && inst->mWasDirectorSubjectB);
-            const bool subject_c =
-                (old_id.notNull() && cast.getSubjectC() == old_id) ||
-                (inst && inst->mWasDirectorSubjectC);
-            const bool subject_d =
-                (old_id.notNull() && cast.getSubjectD() == old_id) ||
-                (inst && inst->mWasDirectorSubjectD);
-            if (old_id.notNull())
-            {
-                cast.remove(old_id);
-            }
-            if (new_id.notNull())
-            {
-                cast.add(new_id);
-            }
-            if (active_actor)
-            {
-                // Park on the stable instance while temporarily despawned;
-                // never interpret a missing clone as Clear/You.
-                cast.setActiveActorId(removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id);
-            }
-            if (subject_a)
-            {
-                cast.setSubjectA(new_id);
-            }
-            if (subject_b)
-            {
-                cast.setSubjectB(new_id);
-            }
-            if (subject_c)
-            {
-                cast.setSubjectC(new_id);
-            }
-            if (subject_d)
-            {
-                cast.setSubjectD(new_id);
-            }
-            if (inst)
-            {
-                inst->mWasDirectorSubjectA =
-                    !removing_instance && subject_a;
-                inst->mWasDirectorSubjectB =
-                    !removing_instance && subject_b;
-                inst->mWasDirectorSubjectC =
-                    !removing_instance && subject_c;
-                inst->mWasDirectorSubjectD =
-                    !removing_instance && subject_d;
-            }
+            const LLUUID destination = removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id;
+            // Move the entire authored record and current Subject A-D aliases,
+            // even if the user selected another actor while this clone was away.
+            // Current aliases also respect assignments cleared/changed while parked.
+            if (old_id.notNull()) cast.replaceActorId(old_id, destination);
+            if (stable_id != destination) cast.replaceActorId(stable_id, destination);
+            if (new_id.notNull() && !removing_instance) cast.add(new_id);
+            if (active_actor) cast.setActiveActorId(destination);
         });
     mRuntimeConsumers.emplace_back(
         [this](const LLUUID& stable_id, const LLUUID&, const LLUUID&,

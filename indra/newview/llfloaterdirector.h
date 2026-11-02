@@ -98,6 +98,7 @@ private:
     LLSliderCtrl* mAnimSpeedSpread = nullptr;
     LLTextBox* mAnimSpeedStatus = nullptr;
     LLUUID mAnimSpeedSelection;
+    std::string mAnimSpeedContextLabel;
     S32 mAnimSpeedChanged = 0;
     ALLiveReadoutClock mAnimSpeedClock{10.f};
     bool postBuildV2();
@@ -612,6 +613,7 @@ private:
     LLButton* mCrashBackupDeleteButton = nullptr;
     boost::signals2::scoped_connection mActorMaskTestWatch;
     bool mSyncingActiveActor = false;
+    LLUUID mPrimaryCastActor;
     boost::signals2::scoped_connection mActiveActorConnection;
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;

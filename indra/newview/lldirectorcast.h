@@ -286,6 +286,9 @@ public:
     // Residents use their avatar UUID; animated objects use their persistent
     // linkset-root UUID rather than the regenerated LLControlAvatar UUID.
     static LLUUID canonicalActorId(const LLUUID& id);
+    // Runtime lanes use null for self; the bar retains explicit You vs Clear.
+    static LLUUID runtimeActorId(const LLUUID& id);
+    void replaceActorId(const LLUUID& old_id, const LLUUID& new_id);
 
     // The Director's one session-only edit actor. Null is Clear; consumers
     // which historically defaulted to You resolve null as self. Never Subjects A-D.
@@ -334,7 +337,7 @@ public:
     // non-cast ids read as the disabled default and ignore writes.
     const ActorStyle& getActorStyle(const LLUUID& id) const;
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
-    const LLUUID&     getSteppedActorId() const { return mActiveActorId; }
+    LLUUID            getSteppedActorId() const { return runtimeActorId(mActiveActorId); }
     void              setSteppedActorId(const LLUUID& id);
 
     // ---- render-only real-avatar camera gaze selection ----

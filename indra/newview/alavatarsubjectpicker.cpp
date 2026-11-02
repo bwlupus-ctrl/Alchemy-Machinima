@@ -201,9 +201,9 @@ void choose(LLUICtrl* anchor, LLView* owner, LLHandle<LLContextMenu>& menu_handl
         });
     };
     for (const auto& member : cast.getCast()) add_avatar(member.mId, member.mLastName, true);
-    if (ghosts)
+    if (animesh)
         for (const auto& clone : ALGhostStudio::instance().getInstances())
-            if (clone.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+            if (clone.mKind == ALGhostStudio::BACKING_ENTITY_CLONE && clone.mEntityId.notNull())
                 add_avatar(clone.mEntityId, clone.mName, false);
     // Same live-avatar source and filters as Light rig > Add avatar. Only on open.
     for (LLCharacter* character : LLCharacter::sInstances)

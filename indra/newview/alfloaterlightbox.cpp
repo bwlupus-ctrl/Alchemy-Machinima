@@ -277,15 +277,6 @@ bool ALFloaterLightBox::postBuild()
         LLComboBox* combo = mSubjectCombos[index];
         if (combo && combo->getControlVariable())
         {
-            combo->setCommitCallback([combo](LLUICtrl*, const LLSD&)
-            {
-                auto& cast = LLDirectorCast::instance();
-                const S32 slot = combo->getValue().asInteger();
-                const LLUUID actors[] = { gAgentID, cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
-                if (slot == 0 || (slot > 0 && slot < 5 && actors[slot].notNull()))
-                    cast.setActiveActorId(actors[slot]);
-                // Shadows' "Same as Roto Ink" already shares this Actor.
-            });
             mSubjectComboConnections[index] =
                 combo->getControlVariable()->getSignal()->connect(
                     [combo](LLControlVariable*, const LLSD&, const LLSD& value)

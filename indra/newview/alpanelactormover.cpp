@@ -145,8 +145,6 @@ void ALPanelActorMover::onDialCommit()
 
 const char* ALPanelActorMover::myHeadingDisabledReason() const
 {
-    if (mKitPage && !LLDirectorCast::isSelf(LLDirectorCast::instance().getActiveActorId()))
-        return "My heading supports You only. Choose You in the Actor bar to turn.";
     if (!isAgentAvatarValid()) return "My heading is unavailable until your avatar is ready.";
     if (gAgent.isSitting()) return "Not available while seated: the seat owns your avatar's rotation.";
     // Mouselook owns pitch as well as yaw; an upright absolute heading would erase its pitch.

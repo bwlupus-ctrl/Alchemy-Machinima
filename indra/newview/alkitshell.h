@@ -52,6 +52,7 @@ public:
     bool                        postBuild() override;
     void                        reshape(S32, S32, bool = true) override;
     void                        draw() override;
+    void                        closeActorChooser();
     bool                        handleMouseDown(S32, S32, MASK) override;
     bool                        handleScrollWheel(S32, S32, LLScrollDelta) override;
     ALKitHistory&               history() { return mHistory; }
@@ -181,6 +182,13 @@ private:
     LLButton*                                            mActorClear = nullptr;
     LLHandle<LLContextMenu>                               mActorMenu;
     LLUUID                                              mActorShownId;
+    LLFrameTimer                                        mActorLifecycleClock;
+    U64                                                 mActorStudioRevision = 0;
+    U64                                                 mActorCastRevision = 0;
+    bool                                                mActorAvailable = false;
+    bool                                                mRefreshingActorBar = false;
+    std::string                                         mActorShownStatus;
+    std::string                                         mActorShownText;
     std::string                                         mActorShownKind;
     std::string                                         mActorShownName;
     LLPanel*                                             mRoster       = nullptr;

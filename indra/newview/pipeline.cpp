@@ -18333,10 +18333,20 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
 // gatherRotoInkTargets (the `Candidate` struct + the target_set switch that
 // filled a local `candidates` vector), extracted verbatim so it can be
 // called on its own (Tron trail sampling, T3) without the frustum-cull /
-// smoothing / re-projection that follows it below.
-// Single-subject gathers follow the session Actor; the other seven target
-// sets retain their existing collection, shape, mask and palette behavior.
-void LLPipeline::collectRotoInkCandidates(S32 target_set,
+// smoothing / re-projection that follows it below. `Candidate` is now the
+// pipeline.h `RotoInkCandidate` struct; `candidates.push_back` is now
+// `out_candidates.push_back`; the CineOutlineSubjectTarget read for
+// target_set==0 is now the `subject_target_setting` parameter instead of a
+// LLCachedControl read inside this function.
+// [TronT1 P1 fix] gatherRotoInkTargets() (below) USED to read
+// CineOutlineSubjectTarget internally and forward it here unconditionally,
+// which made every caller's target_set==0 mask follow Roto Ink's own
+// single-subject choice -- including Tron's. gatherRotoInkTargets() now also
+// takes `subject_target_setting` as a parameter instead, so each caller
+// passes its OWN cached control (Roto Ink still passes
+// CineOutlineSubjectTarget, byte-identical to before; Tron passes
+// TronSubjectTarget).
+void LLPipeline::collectRotoInkCandidates(S32 target_set, S32 subject_target_setting,
                                            std::vector<RotoInkCandidate>& out_candidates)
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
@@ -18371,9 +18381,17 @@ void LLPipeline::collectRotoInkCandidates(S32 target_set,
 
     switch (target_set)
     {
-        case 0: // shared Director Actor
+        case 0: // single Director subject (as today, CineOutlineSubjectTarget)
         {
-            LLVOAvatar* avatar = cast.resolve(cast.getActiveActorId());
+            LLVOAvatar* avatar = nullptr;
+            switch (subject_target_setting)
+            {
+                case 1: avatar = cast.resolveSubjectA(); break;
+                case 2: avatar = cast.resolveSubjectB(); break;
+                case 3: avatar = cast.resolveSubjectC(); break;
+                case 4: avatar = cast.resolveSubjectD(); break;
+                case 0: default: avatar = cast.resolve(LLUUID::null); break;
+            }
             S32 palette_idx = 0;
             if (avatar)
             {
@@ -18521,14 +18539,21 @@ void LLPipeline::collectRotoInkCandidates(S32 target_set,
 }
 
 S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
-                                      F32 depth_range,
+                                      F32 depth_range, S32 subject_target_setting,
                                       const F32* mv, const F32* proj,
                                       LLVector4* out_targets, LLVector4* out_targets2)
 {
     // [TronT0] Pure-move refactor: candidate collection now lives in
     // collectRotoInkCandidates() (above).
+    // [TronT1 P1 fix] `subject_target_setting` used to be read internally
+    // from CineOutlineSubjectTarget unconditionally, which made every caller
+    // -- including Tron -- follow Roto Ink's single-subject selection
+    // instead of its own. It is now the caller's own cached control value,
+    // forwarded through unchanged (Roto Ink still passes
+    // CineOutlineSubjectTarget, so target_set==0's resolved avatar/palette
+    // index for that caller is unchanged).
     std::vector<RotoInkCandidate> candidates;
-    collectRotoInkCandidates(target_set, candidates);
+    collectRotoInkCandidates(target_set, subject_target_setting, candidates);
 
     if (candidates.empty())
     {
@@ -19119,6 +19144,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     static LLCachedControl<F32>  far_cutoff_setting(gSavedSettings, "CineOutlineFarCutoff", 0.f);
 
     static LLCachedControl<S32>  subject_mode_setting(gSavedSettings, "CineOutlineSubjectMode", 0);
+    static LLCachedControl<S32>  subject_target_setting(gSavedSettings, "CineOutlineSubjectTarget", 0);
     static LLCachedControl<F32>  subject_manual_depth_setting(gSavedSettings, "CineOutlineSubjectManualDepth", 4.f);
     static LLCachedControl<F32>  subject_depth_range_setting(gSavedSettings, "CineOutlineSubjectDepthRange", 1.5f);
     static LLCachedControl<F32>  subject_depth_feather_setting(gSavedSettings, "CineOutlineSubjectDepthFeather", 0.75f);
@@ -19213,6 +19239,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     const F32  far_cutoff       = llclamp(finite_or((F32)far_cutoff_setting(), 0.f), 0.f, 512.f);
 
     const S32  subject_mode            = std::clamp((S32)subject_mode_setting(), 0, 9);
+    const S32  subject_target          = std::clamp((S32)subject_target_setting(), 0, 4);
     const F32  subject_manual_depth    = llclamp(finite_or((F32)subject_manual_depth_setting(), 4.f), 0.1f, 256.f);
     const F32  subject_depth_range     = llclamp(finite_or((F32)subject_depth_range_setting(), 1.5f), 0.f, 32.f);
     const F32  subject_depth_feather   = llclamp(finite_or((F32)subject_depth_feather_setting(), 0.75f), 0.01f, 16.f);
@@ -19337,7 +19364,15 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     bool ellipse_valid = false;
     {
         LLDirectorCast& cast = LLDirectorCast::instance();
-        LLVOAvatar* avatar = cast.resolve(cast.getActiveActorId());
+        LLVOAvatar* avatar = nullptr;
+        switch (subject_target)
+        {
+            case 1: avatar = cast.resolveSubjectA(); break;
+            case 2: avatar = cast.resolveSubjectB(); break;
+            case 3: avatar = cast.resolveSubjectC(); break;
+            case 4: avatar = cast.resolveSubjectD(); break;
+            case 0: default: avatar = cast.resolve(LLUUID::null); break;
+        }
 
         if (avatar && !avatar->isDead())
         {
@@ -19521,6 +19556,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     {
         target_count = gatherRotoInkTargets(subject_target_set, subject_max_targets,
                                              subject_ellipse_scale, subject_depth_range,
+                                             subject_target_setting(),
                                              subject_modelview_src, subject_projection_src,
                                              roto_target_cells, roto_target_cells2);
     }
@@ -19838,6 +19874,7 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     static LLCachedControl<S32>  rim_color_mode_setting(gSavedSettings, "TronRimColorMode", 0);
     static LLCachedControl<bool> rim_reject_floors_setting(gSavedSettings, "TronRimRejectFloors", true);
 
+    static LLCachedControl<S32>  subject_target_setting(gSavedSettings, "TronSubjectTarget", 0);
     static LLCachedControl<S32>  subject_target_set_setting(gSavedSettings, "TronSubjectTargetSet", 2);
     static LLCachedControl<S32>  subject_max_targets_setting(gSavedSettings, "TronSubjectMaxTargets", 8);
     static LLCachedControl<S32>  subject_shape_setting(gSavedSettings, "TronSubjectShape", 2);
@@ -19936,6 +19973,7 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     const bool rim_reject_floors  = rim_reject_floors_setting();
     const bool rim_on = rim_enabled && rim_gain > 0.f;
 
+    const S32  subject_target      = std::clamp((S32)subject_target_setting(), 0, 4);
     const S32  subject_target_set  = std::clamp((S32)subject_target_set_setting(), 0, 7);
     const S32  subject_max_targets = std::clamp((S32)subject_max_targets_setting(), 1, 16);
     const S32  subject_shape       = std::clamp((S32)subject_shape_setting(), 0, 2);
@@ -20048,13 +20086,18 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     // trails do not use the target/anchor arrays at all.
     if (world_wanted && (grid_subject_exclude > 0.f || grid_subject_radius > 0.f || grade_keep_subject > 0.f || rim_on))
     {
-        // The single subject follows the shared Actor; other sets are independent.
+        // [TronT1 P1 fix] Pass Tron's OWN single-subject selector
+        // (subject_target, from TronSubjectTarget) rather than letting
+        // gatherRotoInkTargets() read CineOutlineSubjectTarget internally --
+        // otherwise Tron's target_set==0 mask would silently follow Roto
+        // Ink's subject choice.
         target_count = gatherRotoInkTargets(subject_target_set, subject_max_targets,
                                              subject_ellipse_scale, subject_depth_range,
+                                             subject_target,
                                              mv, proj, target_cells, target_cells2);
 
         std::vector<RotoInkCandidate> candidates;
-        collectRotoInkCandidates(subject_target_set, candidates);
+        collectRotoInkCandidates(subject_target_set, subject_target, candidates);
         std::sort(candidates.begin(), candidates.end(),
             [&cam_agent](const RotoInkCandidate& a, const RotoInkCandidate& b)
             {
@@ -27455,11 +27498,24 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
 // [ShadowDist P3] ---------------------------------------------------------
 // Control B helpers.
 
-bool LLPipeline::resolveShadowSubject(LLVOAvatar*& av, LLVector3& center, LLVector3& half)
+bool LLPipeline::resolveShadowSubject(S32 target, LLVOAvatar*& av, LLVector3& center, LLVector3& half)
 {
     av = nullptr;
+    if (target == 5)
+    {   // "same as Roto Ink": read CineOutlineSubjectTarget and clamp it to 0-4 -- no recursion (v3 s4.3)
+        static LLCachedControl<S32> roto_target(gSavedSettings, "CineOutlineSubjectTarget", 0);
+        target = llclamp(static_cast<S32>(roto_target), 0, 4);
+    }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    av = cast.resolve(cast.getActiveActorId());
+    switch (target)
+    {
+        case 1: av = cast.resolveSubjectA(); break;
+        case 2: av = cast.resolveSubjectB(); break;
+        case 3: av = cast.resolveSubjectC(); break;
+        case 4: av = cast.resolveSubjectD(); break;
+        case 0:
+        default: av = cast.resolve(LLUUID::null); break;   // null id == Self (lldirectorcast.cpp)
+    }
     // Jellydolled / impostored subjects report box_detail 1 extents (no attachments) -> unsupported.
     // [ShadowDist P3 fix, Codex P2] rank/count impostors pass AOA_NORMAL but are skipped by the
     // avatar pool in shadow passes -> the column would be wasted on an avatar that casts nothing.
@@ -35029,7 +35085,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
     if (RenderShadowSubjectCascade && !gCubeSnapshot && RenderShadowSplits >= 3)
     {
         LLVOAvatar* subject_av = nullptr;
-        if (resolveShadowSubject(subject_av, subject_center, subject_half))
+        if (resolveShadowSubject(RenderShadowSubjectTarget, subject_av, subject_center, subject_half))
         {
             const F32 subject_dist = (subject_center - camera.getOrigin()).magVec();
             const F32 max_dist = llclamp(RenderShadowSubjectMaxDistance, 5.f, 256.f) * (mShadowSubjectWasActive ? 1.1f : 1.f);

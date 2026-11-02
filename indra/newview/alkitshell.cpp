@@ -5,8 +5,11 @@
 #include "lldirectorcast.h"
 #include "llagent.h"
 #include "llvoavatar.h"
+#include "llvoavatarself.h"
+#include "llviewerobjectlist.h"
 #include "llmenugl.h"
 #include "aluiperfselftest.h"
+#include "aluirefresh.h"
 #include "alkitbar.h"
 #include "alkitbinding.h"
 #include "alkitcard.h"
@@ -391,7 +394,9 @@ bool ALKitShell::postBuild()
     mConnections.emplace_back(LLDirectorCast::instance().addActiveActorChangedCallback(
         [this]() { refreshActorBar(); }));
     mConnections.emplace_back(LLDirectorCast::instance().addChangedCallback(
-        [this]() { refreshActorBar(); }));
+        [this]() {
+            if (mActorCastRevision != LLDirectorCast::instance().getCastRevision()) refreshActorBar();
+        }));
     mConnections.emplace_back(setPageSelectedCallback(
         [this](const std::string&) { refreshActorBar(); }));
     buildChrome();
@@ -740,16 +745,16 @@ void ALKitShell::layoutChrome()
     if (!mDirectorTabs || !mRail || !mTabStrip || !mTransport)
         return;
     const S32 width             = getRect().getWidth();
-    constexpr S32 ACTOR_H = 56;
+    constexpr S32 ACTOR_H = 28;
     const S32 height            = getRect().getHeight() - ACTOR_H;
     if (mActorBar)
     {
         mActorBar->reshape(width, ACTOR_H, true);
         mActorBar->setOrigin(0, height);
         mActorLabel->reshape(44, 24, true);
-        mActorLabel->setOrigin(8, 24);
-        mActorName->setOrigin(56, 24);
-        mActorStatus->setOrigin(56, 4);
+        mActorLabel->setOrigin(8, 2);
+        mActorName->setOrigin(56, 2);
+        mActorStatus->setOrigin(56, 2);
         mActorClear->reshape(56, 26, true);
         mActorYou->reshape(44, 26, true);
         mActorSelected->reshape(100, 26, true);
@@ -758,11 +763,13 @@ void ALKitShell::layoutChrome()
         for (LLButton* button : {mActorClear, mActorYou, mActorSelected, mActorChoose})
         {
             x -= button->getRect().getWidth();
-            button->setOrigin(x, 24);
+            button->setOrigin(x, 1);
             x -= 4;
         }
-        mActorName->reshape(llmax(1, x - 56), 24, true);
-        mActorStatus->reshape(llmax(1, width - 64), 18, true);
+        const S32 name_width = llmax(120, (x - 56) * 3 / 5);
+        mActorName->reshape(name_width, 24, true);
+        mActorStatus->setOrigin(60 + name_width, 2);
+        mActorStatus->reshape(llmax(1, x - 60 - name_width), 24, true);
     }
     const S32 rail_width        = mRailLabels ? ALKitStyle::RAIL_W : ALKitStyle::RAIL_ICON_W;
     const S32 help_width        = mWideHelp ? ALKitStyle::HELP_W : 0;
@@ -783,13 +790,14 @@ void ALKitShell::layoutChrome()
     mHelpStrip->reshape(width - rail_width, help_strip_height, true);
     mHelpStrip->setOrigin(rail_width, transport_height);
     mHelp.layout(help_width, height - transport_height, width - rail_width);
-    S32 y = height - transport_height - ALKitStyle::RAIL_ITEM_H;
+    const S32 rail_item_h = ALKitStyle::RAIL_ITEM_H - (ACTOR_H + (S32)mRailButtons.size()) / llmax(1, (S32)mRailButtons.size() + 1);
+    S32 y = height - transport_height - rail_item_h;
     for (S32 i = 0; i < (S32)mRailButtons.size(); ++i)
     {
         LLButton* button = mRailButtons[i];
-        button->reshape(rail_width, ALKitStyle::RAIL_ITEM_H, true);
+        button->reshape(rail_width, rail_item_h, true);
         button->setOrigin(0, y);
-        y -= ALKitStyle::RAIL_ITEM_H;
+        y -= rail_item_h;
     }
     if (mRoster)
     {
@@ -925,12 +933,19 @@ void ALKitShell::layoutChrome()
     }
 }
 
+void ALKitShell::closeActorChooser()
+{
+    ALAvatarSubjectPicker::cancelFor(this);
+    if (auto* menu = mActorMenu.get()) menu->hide();
+}
+
 void ALKitShell::refreshActorBar()
 {
-    if (!mActorName) return;
+    if (!mActorName || mRefreshingActorBar) return;
+    mRefreshingActorBar = true;
     auto& cast = LLDirectorCast::instance();
     const LLUUID id = cast.getActiveActorId();
-    // Selection and model signals refresh the bar; draw() never walks names.
+    // Names are refreshed on selection/membership/lifecycle changes, never per frame.
     const auto* member = cast.getMember(id);
     LLVOAvatar* avatar = cast.resolve(id);
     auto& studio = ALGhostStudio::instance();
@@ -942,16 +957,20 @@ void ALKitShell::refreshActorBar()
     const std::string kind = id == mActorShownId && !avatar && !mActorShownKind.empty()
         ? mActorShownKind : id == gAgentID ? "You" : clone ? "Clone" : animesh ? "Animesh" : "Avatar";
     std::string name = id.isNull() ? "Clear" : id == gAgentID ? "You" :
-        member && !member->mLastName.empty() ? member->mLastName :
         clone && instance ? instance->mName :
+        member && !member->mLastName.empty() ? member->mLastName :
         avatar ? avatar->getFullname() : id == mActorShownId && !mActorShownName.empty()
         ? mActorShownName : id.asString();
     mActorShownId = id;
     mActorShownKind = kind;
     mActorShownName = name;
     if (id.notNull()) name += " (" + kind + ")";
-    mActorName->setText(name);
-    mActorName->setToolTip(name);
+    if (name != mActorShownText)
+    {
+        setTextIfChanged(mActorName, name);
+        setToolTipIfChanged(mActorName, name);
+        mActorShownText = name;
+    }
     const std::string page = currentPageKey();
     std::string status = id.isNull() ? "Clear: page defaults apply." :
         !avatar ? "Actor is away; choose an actor in world to preview." : "Single-actor pages follow this Actor.";
@@ -963,7 +982,20 @@ void ALKitShell::refreshActorBar()
         status = "Animesh: animation speed is unsupported; movement scopes still apply.";
     else if (page == "performance_group/switchboard_tab")
         status = "Switchboard uses each slot's target assignment.";
-    mActorStatus->setText(status);
+    if (!LLDirectorCast::isSelf(id) && !member)
+        status = "Outside Cast: add to Cast for saved actor edits.";
+    if (page == "look_group/stylize_tab" || page == "look_group/tron_tab" || page == "world_group/shadows_probes_tab")
+        status = "This page uses its own subject choice.";
+    if (status != mActorShownStatus)
+    {
+        setTextIfChanged(mActorStatus, status);
+        setToolTipIfChanged(mActorStatus, status);
+        mActorShownStatus = status;
+    }
+    mActorAvailable = avatar != nullptr;
+    mActorCastRevision = cast.getCastRevision();
+    mActorStudioRevision = studio.getInstanceRevision();
+    mRefreshingActorBar = false;
 }
 
 void ALKitShell::layoutRoster()
@@ -1079,6 +1111,18 @@ void ALKitShell::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALKitShell draw");
     ALUIPerfSelfTest::recordKitWidgetTree(this);
+    if (mActorLifecycleClock.getElapsedTimeF32() > 0.5f)
+    {
+        mActorLifecycleClock.reset();
+        auto& cast = LLDirectorCast::instance();
+        const LLUUID id = cast.getActiveActorId();
+        LLVOAvatar* avatar = LLDirectorCast::isSelf(id) ? (isAgentAvatarValid() ? gAgentAvatarp : nullptr) :
+            dynamic_cast<LLVOAvatar*>(gObjectList.findObject(id));
+        // Animesh roots and stable clone handles need resolution, only twice a second.
+        if (!avatar && id.notNull()) avatar = cast.resolve(id);
+        if ((avatar && !avatar->isDead()) != mActorAvailable ||
+            mActorStudioRevision != ALGhostStudio::instance().getInstanceRevision()) refreshActorBar();
+    }
     // The anchor-close memory belongs to one press. The click commit runs inside the
     // mouse-up event, before this frame is drawn, so once no view holds mouse capture
     // (button released, on or off the anchor) the flag is stale and must go.

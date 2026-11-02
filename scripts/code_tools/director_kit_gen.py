@@ -352,9 +352,9 @@ def validate_data(data: dict) -> None:
     # Avatar targets (10/31): Shot Target + OTS/Two-Shot Second, Moves Target + Second; 2385 -> 2390.
     # Projector joint tracking: seven session-only Practicals rows, 2390 -> 2397.
     # Sensor noise on/off row on Light > Exposure, 2397 -> 2398.
-    # Unified shell Actor: remove seven per-page actor choices, 2398 -> 2391.
-    if len(pages) != 38 or row_count != 2391:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2391")
+    # Unified shell Actor: remove four per-page actor choices; add two Gaze scope rows, 2398 -> 2396.
+    if len(pages) != 38 or row_count != 2396:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2396")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1399,8 +1399,6 @@ def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[lis
     def visit(node: ET.Element, floater: dict, tab_name: str = "", tab_label: str = "",
               parent: ET.Element | None = None, role: str = "") -> None:
         name = node.get("name", "")
-        if name in {"sd_subject_target_combo", "ri_subject_target_combo", "tr_subject_target_combo"}:
-            return  # replaced by the shell Actor destination, including external search
         setting = node.get("control_name", "")
         widget = name or setting
         if node.tag == "panel" and name in _LIGHT_ROLE_PANELS:
@@ -1792,12 +1790,12 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     # Shell chrome, outside the lazy page tree and Cast popover. The runtime
     # layout reserves its full height in every rail/help mode.
     actor = ET.SubElement(shell, "panel", {"name": "kit_actor_bar", "left": "0", "top": "0",
-        "width": "1160", "height": "56", "follows": "left|right|top", "background_visible": "true",
+        "width": "1160", "height": "28", "follows": "left|right|top", "background_visible": "true",
         "bg_alpha_color": "KitSubBand", "bg_opaque_color": "KitSubBand"})
     label = ET.SubElement(actor, "text", {"name": "kit_actor_label", "font": "SansSerifSmall", "text_color": "KitMuted"})
     label.text = "Actor"
     name = ET.SubElement(actor, "text", {"name": "kit_actor_name", "font": "SansSerifSmall", "text_color": "KitText",
-        "use_ellipses": "true", "tool_tip": "Shared actor / subject / who for Director actor pages. Clear preserves each page's default."})
+        "use_ellipses": "true", "tool_tip": "Shared edit actor for Director actor pages. Roto Ink, Tron and Shadows keep independent subject choices. Clear preserves each page's default."})
     name.text = "Clear"
     for widget, label in (("choose", "Choose..."), ("selected", "Use selected"),
                           ("you", "You"), ("clear", "Clear")):
@@ -1806,7 +1804,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 "selected": "Use the selected avatar, attachment wearer or animesh.",
                 "you": "Act on your avatar.", "clear": "Clear the shared actor; page defaults apply."}[widget]})
     status = ET.SubElement(actor, "text", {"name": "kit_actor_status", "font": "SansSerifSmall", "text_color": "KitMuted", "use_ellipses": "true"})
-    status.text = "Actor / subject / who: choose here for all single-actor pages."
+    status.text = "Choose here for single-actor editors."
     roster = ET.SubElement(shell, "panel", {"name": "kit_cast_roster", "background_visible": "false"})
     header = ET.SubElement(roster, "text", {"name": "cast_roster_header", "font": "SansSerifSmall",
                                             "text_color": "KitMuted"})

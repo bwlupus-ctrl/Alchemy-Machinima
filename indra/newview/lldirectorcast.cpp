@@ -1115,6 +1115,11 @@ LLUUID LLDirectorCast::canonicalActorId(const LLUUID& id)
     return id;
 }
 
+LLUUID LLDirectorCast::runtimeActorId(const LLUUID& id)
+{
+    return isSelf(id) ? LLUUID::null : canonicalActorId(id);
+}
+
 LLDirectorCast::LLDirectorCast()
 {
     mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
@@ -1207,6 +1212,31 @@ void LLDirectorCast::remove(const LLUUID& id)
     // Explicit removal clears the edit selection. Region departure alone does
     // not remove membership and therefore retains the away actor.
     if (mActiveActorId == actor_id) setActiveActorId(LLUUID::null);
+}
+
+void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    if (new_id.isNull()) { remove(old_id); return; }
+    auto old = std::find_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == old_id; });
+    if (old != mCast.end())
+    {
+        CastMember saved = *old;
+        mCast.erase(old);
+        mCast.erase(std::remove_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == new_id; }), mCast.end());
+        saved.mId = new_id;
+        mCast.push_back(saved);
+        mIds.clear();
+        for (const auto& member : mCast) mIds.push_back(member.mId);
+        rebuildMemberIndex();
+        ++mCastRevision;
+        ++mGazeCueRevision;
+    }
+    for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
+        if (*subject == old_id) { *subject = new_id; ++mSubjectRevision; }
+    if (mLookAtCameraIds.erase(old_id)) mLookAtCameraIds.insert(new_id);
+    if (mActiveActorId == old_id) setActiveActorId(new_id);
+    touchScene();
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
@@ -1321,9 +1351,6 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
 void LLDirectorCast::setActiveActorId(const LLUUID& id)
 {
     const LLUUID actor = canonicalActorId(id);
-    // Nearby avatars and Studio clones become cast members so every actor
-    // editor can author their state and the roster can mirror this choice.
-    if (actor.notNull()) add(actor);
     if (actor == mActiveActorId) return;
     mActiveActorId = actor;
     mActiveActorChanged();
@@ -1805,7 +1832,7 @@ F32 LLDirectorCast::evaluateGazeInfluence(const GazeInfluenceKeyList& keys,
 // ---------------------------------------------------------------------------
 LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
 {
-    if (id.isNull())
+    if (isSelf(id))
     {
         return isAgentAvatarValid() ? (LLVOAvatar*)gAgentAvatarp : nullptr;
     }
@@ -2332,6 +2359,8 @@ LLSD LLDirectorCast::sceneData() const
         data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
     data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
+    // Selected/Mixed rendering is functional scene state, even though the editor is session state.
+    data["stepped_actor"] = getSteppedActorId();
     const LLSD self_path = LLActorMover::instance().pathSceneData(LLUUID::null);
     if (self_path.isMap())
     {
@@ -2466,7 +2495,9 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
     }
-    // Legacy stepped_actor is an edit selection, now session-only.
+    const bool has_stepped_actor = data.has("stepped_actor");
+    const LLUUID stepped_actor = has_stepped_actor ? canonicalSceneActorId(
+        data["stepped_actor"].asUUID(), scene_actor_ids) : LLUUID::null;
     if (data.has("self_actor_path"))
     {
         LLActorMover::instance().applyPathSceneData(LLUUID::null, data["self_actor_path"]);
@@ -2634,9 +2665,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // actor is not in the loaded cast, drop it now (owner, node and tool session
     // end with it) rather than leaving the hosts' draw-time rebuild to deselect.
     LLActorMover::instance().pruneEditActor();
+    // Migrate the legacy functional Selected/Mixed render choice into the shared actor.
+    if (has_stepped_actor) setActiveActorId(isSelf(stepped_actor) ? gAgentID : stepped_actor);
     // Keep the session choice only if it still has a row in the loaded cast.
-    // Never restore a per-page edit actor from scene data.
-    if (getActiveActorId().notNull() && !contains(getActiveActorId()))
+    if (!has_stepped_actor && !isSelf(getActiveActorId()) && !contains(getActiveActorId()))
         setActiveActorId(LLUUID::null);
 }
 
