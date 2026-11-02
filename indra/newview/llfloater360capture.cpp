@@ -30,6 +30,7 @@
 // Black Dragon (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
+#include "llactormover.h"
 
 #include "llfloater360capture.h"
 
@@ -604,6 +605,8 @@ void LLFloater360Capture::capture360Images()
     // previously and is what is referred to in the display HTML file
     // (newview/skins/default/html/common/equirectangular/display_eqr.html)
     writeDataURLFooter(cubemap_js_full_path);
+
+    LLActorMover::releaseStudioSnapshotScratch();
 
     // unfreeze the world now we have our shots
     freezeWorld(false);

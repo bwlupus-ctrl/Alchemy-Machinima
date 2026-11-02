@@ -31,6 +31,7 @@
 // MAX_SNAPSHOT_IMAGE_SIZE raise. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
+#include "llactormover.h"
 #include "llviewerwindow.h"
 #include "alkithistory.h"
 #include "alhidecursor.h"
@@ -6319,6 +6320,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
     }
     setBalanceVisible(true);
 
+    LLActorMover::releaseStudioSnapshotScratch();
     return ret;
 }
 
@@ -6426,6 +6428,7 @@ bool LLViewerWindow::simpleSnapshot(LLImageRaw* raw, S32 image_width, S32 image_
     scratch_space.release();
     gPipeline.allocateScreenBuffer(original_width, original_height);
 
+    LLActorMover::releaseStudioSnapshotScratch();
     return true;
 }
 

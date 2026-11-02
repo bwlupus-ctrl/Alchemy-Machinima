@@ -2938,6 +2938,7 @@ void LLCinematicCamera::updateCamera()
                     "Director switcher hard cut");
             }
         }
+        ++mTakeGeneration;
         mPhase = 0.f;
         mHavePose = false;
         mWasActive = false;

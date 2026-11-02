@@ -11,6 +11,8 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "alcameradispatch.h"
+#include "llcallbacklist.h"
 #include "alghostanimmirrormath.h"
 #include "alkithistory.h"
 #include "alkitpage.h"
@@ -12030,6 +12032,8 @@ struct StudioView
     U32 mFrame = 0;
     U32 mOrdinal = 0;
     U64 mCut = 0;
+    U64 mTake = 0;
+    S32 mCameraOwner = 0;
     GLint mFbo = 0;
     S32 mCameraId = 0;
     bool mSnapshot = false;
@@ -12042,7 +12046,8 @@ struct StudioView
 
 bool studio_same_view(const StudioView& a, const StudioView& b)
 {
-    return a.mCameraId == b.mCameraId && a.mOrdinal == b.mOrdinal && a.mSnapshot == b.mSnapshot && a.mFbo == b.mFbo
+    return a.mTake == b.mTake && a.mCameraOwner == b.mCameraOwner
+        && a.mCameraId == b.mCameraId && a.mOrdinal == b.mOrdinal && a.mSnapshot == b.mSnapshot && a.mFbo == b.mFbo
         && std::equal(a.mViewport, a.mViewport + 4, b.mViewport);
 }
 
@@ -12058,6 +12063,7 @@ struct StudioMotion
     LLVector3 mCameraVelocity;
     LLVector3 mAtVelocity;
     bool mCameraVelocityValid = false;
+    bool mCameraProvisional = false;
     bool mValid = false;
     bool mTrailing = false;
 };
@@ -12092,17 +12098,22 @@ LLVector2 studio_screen_velocity(StudioMotion& previous, const StudioView& view,
         return residual2 > floor2
             && residual2 > 0.5625f * llmax(delta.lengthSquared(), predicted.lengthSquared());
     };
+    // An unseeded large pair is provisional: suppress direction until a
+    // following pair confirms its rate. A single jump is never a trained rate.
+    const bool unseeded_large = continuous && !previous.mCameraVelocityValid
+        && !previous.mCameraProvisional
+        && (camera_delta.lengthSquared() > 0.25f || at_delta.lengthSquared() > 0.001218f);
     const bool camera_cut = view.mTeleport || view.mCut != previous.mView.mCut
-        || (continuous && previous.mCameraVelocityValid
+        || (continuous && (previous.mCameraVelocityValid || previous.mCameraProvisional)
             && (discontinuous(camera_delta, previous.mCameraVelocity, 0.25f)
                 || discontinuous(at_delta, previous.mAtVelocity, 0.001218f)));
     if (continuous && !camera_cut)
     {
-        // Seed the predictor on the first comparable pair; never learn a cut.
+        // Small pairs seed immediately; large startup pairs await confirmation.
         const F32 weight = previous.mCameraVelocityValid ? 1.f - expf(-12.f * step) : 1.f;
         previous.mCameraVelocity = previous.mCameraVelocity * (1.f - weight) + camera_delta * (weight / step);
         previous.mAtVelocity = previous.mAtVelocity * (1.f - weight) + at_delta * (weight / step);
-        LLVector2 raw = screen - previous.mScreen;
+        LLVector2 raw = unseeded_large ? LLVector2() : screen - previous.mScreen;
         const F32 speed = raw.length();
         if (llfinite(speed) && speed <= view.mViewport[3] * 0.20f)
         {
@@ -12113,8 +12124,9 @@ LLVector2 studio_screen_velocity(StudioMotion& previous, const StudioView& view,
             trailing = velocity.length() > (previous.mTrailing ? 0.5f : 1.f);
         }
     }
-    previous.mCameraVelocityValid = continuous && !camera_cut;
-    if (!previous.mCameraVelocityValid)
+    previous.mCameraProvisional = continuous && !camera_cut && unseeded_large;
+    previous.mCameraVelocityValid = continuous && !camera_cut && !unseeded_large;
+    if (!previous.mCameraVelocityValid && !previous.mCameraProvisional)
     {
         previous.mCameraVelocity.clear();
         previous.mAtVelocity.clear();
@@ -12241,24 +12253,47 @@ struct StudioSceneCache
     }
 };
 
-// LLImageGL deletion is deferred until idle. Keep one scratch per size across
-// the synchronous tiles/faces/passes of a capture, rather than retiring a full
-// allocation on every invocation. The next live call ends the capture even
-// when Studio/Glass is disabled; all prior texture binding scopes have ended.
+// Keep only the current snapshot size; equal-size tiles/passes reuse it.
+// Capture completion releases ownership after all overlay binding scopes close.
+// Idle expiry also covers abandoned capture paths without another live render.
 struct StudioSceneCaches
 {
     StudioSceneCache mLive;
     std::map<std::pair<GLint, GLint>, StudioSceneCache> mSnapshot;
-    void begin(bool snapshot, F64 now)
+    void endCapture() { mSnapshot.clear(); }
+    void expire(F64 now)
     {
         mLive.expire(now);
+        if (!mSnapshot.empty() && now - mSnapshot.begin()->second.mLastUse > 3.0) endCapture();
+    }
+    void begin(bool snapshot, F64 now)
+    {
+        expire(now);
         if (!snapshot) mSnapshot.clear();
     }
     StudioSceneCache& get(bool snapshot, const GLint (&viewport)[4])
     {
-        return snapshot ? mSnapshot[{viewport[2], viewport[3]}] : mLive;
+        if (!snapshot) return mLive;
+        const std::pair<GLint, GLint> size{viewport[2], viewport[3]};
+        if (mSnapshot.find(size) == mSnapshot.end()) mSnapshot.clear();
+        return mSnapshot[size];
     }
 };
+
+StudioSceneCaches& studio_scene_caches()
+{
+    static StudioSceneCaches caches;
+    static const bool registered = []()
+    {
+        gIdleCallbacks.addFunction([](void*)
+        {
+            studio_scene_caches().expire(LLTimer::getTotalSeconds());
+        });
+        return true;
+    }();
+    (void)registered;
+    return caches;
+}
 
 // Rect is viewport-relative. Project the conservative foot-centred pose sphere's
 // enclosing cube; a near-plane crossing uses the full viewport. Pad separately
@@ -15905,6 +15940,11 @@ void LLActorMover::emitGhostDeferredDebug() const
 }
 
 // ---------------------------------------------------------------------------
+void LLActorMover::releaseStudioSnapshotScratch()
+{
+    studio_scene_caches().endCapture();
+}
+
 // [GhostStudio] frame-lifetime batch access for the studio (freeze snapshot +
 // per-instance draw). Null when the pipeline is not rendering that body.
 const std::vector<LLActorMover::GhostBatch>* LLActorMover::ghostBatchesFor(const LLUUID& wearer_id) const
@@ -15938,7 +15978,7 @@ void LLActorMover::renderStudioGhosts()
     ordinal = frame == last_frame ? ordinal + 1 : 0;
     last_frame = frame;
     const F64 pose_now = LLTimer::getTotalSeconds();
-    static StudioSceneCaches scene_caches;
+    auto& scene_caches = studio_scene_caches();
     scene_caches.begin(gSnapshot, pose_now);
     ALGhostStudio& studio = ALGhostStudio::instance();
     if (!studio.anyEnabled())
@@ -16042,6 +16082,8 @@ void LLActorMover::renderStudioGhosts()
         view->mFrame = frame;
         view->mOrdinal = ordinal;
         view->mCut = ALDirectorSwitcher::instance().cutSerial();
+        view->mTake = LLCinematicCamera::instance().takeGeneration();
+        view->mCameraOwner = static_cast<S32>(gCameraDispatchOwner);
         view->mTeleport = gAgent.getTeleportState() != LLAgent::TELEPORT_NONE;
         view->mSnapshot = gSnapshot;
         view->mCameraId = LLViewerCamera::sCurCameraID;

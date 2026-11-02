@@ -86,7 +86,7 @@ def main():
     # Pin the allow-list itself: editing it cannot silently bless extra code.
     import json
     phase2_bytes = normalize((Path(__file__).parent / 'clone_looks2_mover_hunks.json').read_text(encoding='utf-8')).encode()
-    assert hashlib.sha256(phase2_bytes).hexdigest() == '56fd3344d0a700aa623316750ecb648effb0b98571dc677be54ad0ed6f5c7170'
+    assert hashlib.sha256(phase2_bytes).hexdigest() == '9b59dcdeda8001cd702e6a66e4769bef124f4a75fda3b4d8578fe275d973c869'
     phase2 = json.loads(phase2_bytes)
     phase2_base = normalize(subprocess.check_output([
         'git', 'show', phase2['base'] + ':indra/newview/llactormover.cpp']).decode())

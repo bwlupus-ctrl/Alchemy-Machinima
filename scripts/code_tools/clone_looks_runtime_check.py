@@ -31,7 +31,23 @@ def check():
                      'saved_shader->bind()', 'ScopedStudioTexture texture(0)'):
         assert required in draw, required
     assert 'std::any_of' not in overlay
-    assert 'static StudioSceneCaches scene_caches;' in overlay
+    assert 'auto& scene_caches = studio_scene_caches();' in overlay
+    assert 'view->mTake = LLCinematicCamera::instance().takeGeneration();' in overlay
+    assert 'view->mCameraOwner = static_cast<S32>(gCameraDispatchOwner);' in overlay
+    cine = Path('indra/newview/llcinematiccamera.cpp').read_text()
+    reset = cine.index('if (fresh_activation || mode_changed || target_changed || serial_changed ||')
+    assert reset < cine.index('++mTakeGeneration;', reset) < cine.index('mPhase = 0.f;', reset)
+    assert cine.count('++mTakeGeneration;') == 1
+    assert 'U64 takeGeneration() const { return mTakeGeneration; }' in Path('indra/newview/llcinematiccamera.h').read_text()
+    for signature in ('bool LLViewerWindow::rawSnapshot(', 'bool LLViewerWindow::simpleSnapshot('):
+        capture_path = method(Path('indra/newview/llviewerwindow.cpp'), signature)
+        assert capture_path.index('scratch_space.release();') < capture_path.index('LLActorMover::releaseStudioSnapshotScratch();')
+    assert 'LLActorMover::releaseStudioSnapshotScratch();' in method(Path('indra/newview/llfloater360capture.cpp'), 'void LLFloater360Capture::capture360Images(')
+    assert 'studio_scene_caches().endCapture();' in method(path, 'void LLActorMover::releaseStudioSnapshotScratch(')
+    idle = method(path, 'StudioSceneCaches& studio_scene_caches(')
+    assert 'gIdleCallbacks.addFunction' in idle
+    assert 'studio_scene_caches().expire(LLTimer::getTotalSeconds());' in idle
+    assert 'gSnapshot' not in idle
     assert overlay.index('scene_caches.begin(gSnapshot, pose_now)') < overlay.index('if (!studio.anyEnabled())')
     assert 'scene_caches.get(gSnapshot, look_frame->mViewport)' in overlay
     studio = Path('indra/newview/alghoststudio.cpp').read_text()
@@ -111,6 +127,10 @@ enum {GL_TEXTURE_BINDING_2D=1,GL_DRAW_FRAMEBUFFER_BINDING,GL_READ_FRAMEBUFFER_BI
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_UI(x)
 #define LL_PROFILE_GPU_ZONE(x)
 U32 frame=1;
+bool gSnapshot=true; // display() can leave this latched after capture
+struct LLTimer {static F64 now;static F64 getTotalSeconds(){return now;}};
+F64 LLTimer::now=0;
+struct IdleCallbacks {void (*callback)(void*)=nullptr;void addFunction(void (*fn)(void*)){callback=fn;}} gIdleCallbacks;
 struct LLFrameTimer { static U32 getFrameCount(){return frame;} };
 int draw_fbo=7,read_fbo=2,draw_buffer=103,copies=0,allocations=0,resident=0,retired=0;
 std::map<int,int> read_buffers={{7,101},{2,102}};
@@ -192,7 +212,7 @@ int sGhostDisplace,sGhostVelocity,sGhostSceneValid,sGhostScreenSize,sGhostScreen
                       'template<class Visible, class Prepare>', 'template<class Apply>',
                       'template<class Copy, class Draw>', 'template<class Draw>',
                       'void studio_apply_phase2(', 'class ScopedStudioTexture',
-                      'struct StudioSceneCache', 'struct StudioSceneCaches', 'std::array<GLint, 4> studio_glass_rect(',
+                      'struct StudioSceneCache', 'struct StudioSceneCaches', 'StudioSceneCaches& studio_scene_caches(', 'std::array<GLint, 4> studio_glass_rect(',
                       'LLImageGL* studio_scene_copy('):
         fixture += method(path, signature) + (';' if signature.startswith(('class','struct')) else '') + '\n'
     fixture += r'''
@@ -255,24 +275,47 @@ int main(){
  assert(copies==old_copies && allocations==old_allocations);red_bits=8;
  cache.expire(3.9);assert(cache.mScene);cache.expire(4.1);assert(!cache.mScene);
  assert(retired==1 && resident==1);LLImageGL::updateClass();assert(resident==0);
- // No idle/updateClass occurs inside a synchronous capture. Alternate two
+ // No idle/updateClass occurs during equal-size capture passes. Group two
  // sizes, six faces x three passes each, and two Glass copies per invocation.
  StudioSceneCaches capture;const int capture_allocations=allocations,capture_copies=copies;
  GLint small[4]={0,0,2048,2048};
  U32 names[2]={};
- for(int face=0;face<6;++face)for(int pass=0;pass<3;++pass)for(int size=0;size<2;++size){
+ for(int size=0;size<2;++size)for(int face=0;face<6;++face)for(int pass=0;pass<3;++pass){
   const auto& vp=size?viewport:small;capture.begin(true,5.);
   auto& scratch=capture.get(true,vp);++invocation;
   for(int glass=0;glass<2;++glass){
    auto* image=studio_scene_copy(scratch,invocation,5.,vp,{0,0,10,10});assert(image);
    if(!names[size])names[size]=image->getTexName();assert(names[size]==image->getTexName());
   }
-  assert(allocations-capture_allocations<=2 && resident<=2 && retired==0);
+  assert(allocations-capture_allocations<=2 && resident<=2 && retired<=1);
+  assert(capture.mSnapshot.size()==1);
  }
  assert(allocations==capture_allocations+2 && copies==capture_copies+72 && resident==2);
- capture.begin(false,5.1); // also runs before the production disabled/empty return
+ capture.endCapture(); // completed capture, no next live invocation
  assert(capture.mSnapshot.empty() && retired==2 && resident==2);
  LLImageGL::updateClass();assert(resident==0 && retired==0);
+ // Completion and idle release have no dependency on live begin/render.
+ for(int size=1;size<=5;++size){
+  GLint vp[4]={0,0,512*size,512*size};capture.begin(true,6.);
+  studio_scene_copy(capture.get(true,vp),++invocation,6.,vp,{0,0,10,10});
+  assert(capture.mSnapshot.size()==1);
+  LLImageGL::updateClass();assert(resident==1 && retired==0);
+ }
+ capture.expire(8.9);assert(capture.mSnapshot.size()==1);
+ capture.expire(9.1);assert(capture.mSnapshot.empty() && retired==1);
+ LLImageGL::updateClass();assert(resident==0);
+ // Execute the registered production idle callback with snapshot still
+ // latched true and no live begin/render after the last snapshot.
+ auto& abandoned=studio_scene_caches();LLTimer::now=10.;
+ studio_scene_copy(abandoned.get(true,small),++invocation,10.,small,{0,0,10,10});
+ assert(gIdleCallbacks.callback && gSnapshot);
+ LLTimer::now=13.1;gIdleCallbacks.callback(nullptr);
+ assert(abandoned.mSnapshot.empty() && retired==1);
+ LLImageGL::updateClass();assert(resident==0);
+ // Keep the earlier next-live-before-disabled/empty cleanup assertion too.
+ studio_scene_copy(capture.get(true,small),++invocation,10.,small,{0,0,10,10});
+ capture.begin(false,10.1);assert(capture.mSnapshot.empty() && retired==1);
+ LLImageGL::updateClass();assert(resident==0);
  auto rect=studio_glass_rect({0,0,0},.1f,glm::mat4(1),viewport);
  assert(rect[0]<1728 && rect[1]<972 && rect[0]+rect[2]>2112 && rect[1]+rect[3]>1188);
  auto full=studio_glass_rect({0,0,0},3,glm::mat4(1),viewport);
@@ -336,6 +379,36 @@ int main(){
   ++view.mFrame;++view.mInvocation;view.mCamera.mV[0]+=10.f;
   assert(studio_screen_velocity(motion,view,id,&av,t+1./60.,{},{sx+1,0},true).length()==0);
  }
+ // Same pass/FBO/pose, Slow Zoom's 33-degree lens -> Crash Zoom's
+ // 60-degree lens, foot initially 100px from centre: only 48.7px jump.
+ // Each semantic reset source is an independent identity component.
+ for(int boundary=0;boundary<3;++boundary){
+  motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
+  for(U32 f=1;f<=5;++f)velocity(f,100,0);
+  view.mProjection.m[0][0]=1.7320508f;
+  if(boundary==0)++view.mTake;
+  if(boundary==1)++view.mCameraOwner;
+  if(boundary==2)++view.mCut;
+  assert(velocity(6,51.3057f,0).length()==0);
+ }
+ // First comparable pair after init, gap, or explicit cut. Translation and
+ // angle probes stay below the screen jump threshold, then hold and recover.
+ for(int invalidation=0;invalidation<3;++invalidation)for(bool angle:{false,true}){
+  motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
+  U32 f=1;
+  if(invalidation){
+   for(;f<=5;++f)velocity(f,0,0);
+   if(invalidation==1)f+=2;
+   else ++view.mCut;
+  }
+  assert(velocity(f++,0,0).length()==0);
+  if(angle)view.mAt={.998f,.07f,0};else view.mCamera={.6f,0,0};
+  assert(velocity(f++,10,0).length()==0);
+  assert(!motion.mCameraVelocityValid); // provisional must not be trained
+  assert(velocity(f++,10,0).length()==0); // held jump fails confirmation
+  for(int k=0;k<12;++k) v=velocity(f++,12+2.f*k,0);
+  assert(v.mV[0]>1); // no permanent fallback
+ }
  // Equal-size tiles/faces change projection on the same FBO; snapshot
  // history must reset even across consecutive application frames.
  motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
@@ -345,7 +418,7 @@ int main(){
  view.mCameraId=5;view.mAt={0,1,0};assert(velocity(10,22,0).length()==0);
  view.mSnapshot=false;view.mOrdinal=1;assert(velocity(11,24,0).length()==0);
  view.mOrdinal=0;assert(velocity(12,26,0).length()==0);
- std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis; 10s breathing/zoom; 24/30/60/variable cadence pan+dolly and jump; tiles/faces/aux reset; deferred snapshot allocations 1 per size\n";
+ std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis; 10s breathing/zoom; 24/30/60/variable cadence pan+dolly and jump; tiles/faces/aux reset; bounded snapshot size, capture-end/idle release; manual lens take/owner reset; unseeded jump fallback\n";
 }
 '''
     directory = Path('.tmp/looks2_20261102/runtime').resolve()
@@ -372,7 +445,18 @@ int main(){
          '&& std::equal(a.mViewport, a.mViewport + 4, b.mViewport) && a.mProjection == b.mProjection;'),
         ('fixed_frame_cut','const bool camera_cut = view.mTeleport || view.mCut != previous.mView.mCut',
          'const bool camera_cut = (view.mCamera - previous.mView.mCamera).lengthSquared() > .25f || (view.mAt - previous.mView.mAt).lengthSquared() > .001218f || view.mTeleport || view.mCut != previous.mView.mCut'),
-        ('snapshot_per_invocation','if (!snapshot) mSnapshot.clear();','mSnapshot.clear();')):
+        ('snapshot_per_invocation','if (!snapshot) mSnapshot.clear();','mSnapshot.clear();'),
+        ('manual_take_identity','a.mTake == b.mTake && a.mCameraOwner == b.mCameraOwner','a.mCameraOwner == b.mCameraOwner'),
+        ('camera_owner_identity','a.mTake == b.mTake && a.mCameraOwner == b.mCameraOwner','a.mTake == b.mTake'),
+        ('unseeded_guard','LLVector2 raw = unseeded_large ? LLVector2() : screen - previous.mScreen;',
+         'LLVector2 raw = screen - previous.mScreen;'),
+        ('capture_end_release','void endCapture() { mSnapshot.clear(); }','void endCapture() {}'),
+        ('snapshot_size_bound','if (mSnapshot.find(size) == mSnapshot.end()) mSnapshot.clear();',
+         'if (false) mSnapshot.clear();'),
+        ('idle_latched_snapshot','studio_scene_caches().expire(LLTimer::getTotalSeconds());',
+         'if (!gSnapshot) studio_scene_caches().expire(LLTimer::getTotalSeconds());'),
+        ('snapshot_idle_expiry','if (!mSnapshot.empty() && now - mSnapshot.begin()->second.mLastUse > 3.0) endCapture();',
+         'if (false) endCapture();')):
         assert fixture.count(before)==1
         results.append(execute(name,fixture.replace(before,after),False))
     (directory/'results.json').write_text(json.dumps(results,indent=2))
