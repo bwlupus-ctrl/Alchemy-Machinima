@@ -1,5 +1,18 @@
 # Upstream rendering re-port playbook
 
+> **Director Suitcase note — 2026-11-02:** The suitcase was generated from local
+> history only, pinned to `7c11d3f38bd` (July 2026), with no upstream fetch or
+> remote diff (the owner's standing no-upstream-sourcing rule). Historical remote
+> SHAs and endgame commands below are reference material, not instructions to
+> execute. [Director Suitcase](director_suitcase/SUITCASE.md) reuses the full
+> ledger, vertical-slice checkpoints and shader co-landing methodology, with the
+> later creative IN / pure-perf OUT ruling from
+> [the Director plan](MERGE_FORK_DIRECTOR_CONSOLE_PLAN.md). Hooks are mapped against
+> the local base; current upstream may have drifted. Newer-renderer UPSTREAM-WINS
+> decisions must be re-adjudicated at this older base. Generated runtime XUI must
+> be regenerated and shipped; it is not excluded product functionality. Inventory
+> classifications and heuristic feature/guard evidence do not prove target builds.
+
 ## Grounding and scope
 
 Authoritative committed surfaces:

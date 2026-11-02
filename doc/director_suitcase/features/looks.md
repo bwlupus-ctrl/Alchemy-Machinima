@@ -1,0 +1,747 @@
+# looks: dependency evidence
+
+Landing layer 10. Replace complete looks, preserve targeting and shot keys; reset/undo, custom preset round trip, LUT/grade/CAS.
+
+Candidate associations require review. Includes/calls are discovery edges, not a complete call graph or proof of build closure.
+
+## owned
+
+- `indra/newview/alavatarkey.cpp`
+- `indra/newview/alavatarkey.h`
+- `indra/newview/alavatarlightresponse.cpp`
+- `indra/newview/alavatarlightresponse.h`
+- `indra/newview/alavatarlightresponsemodel.cpp`
+- `indra/newview/alavatarlightresponsemodel.h`
+- `indra/newview/alcinehaze.cpp`
+- `indra/newview/alcinehaze.h`
+- `indra/newview/alcinelightrig.cpp`
+- `indra/newview/alcinelightrigmanager.cpp`
+- `indra/newview/alcinerigrim.cpp`
+- `indra/newview/alcinerigrim.h`
+- `indra/newview/alcolorchart.cpp`
+- `indra/newview/alcolorchart.h`
+- `indra/newview/aldirectortabmigration.cpp`
+- `indra/newview/alenvintensity.cpp`
+- `indra/newview/alenvintensity.h`
+- `indra/newview/alfloateravatarlightresponse.cpp`
+- `indra/newview/alfloateravatarlightresponse.h`
+- `indra/newview/alfloaterphototools.h`
+- `indra/newview/alghoststudio.h`
+- `indra/newview/alkitcard.cpp`
+- `indra/newview/alkitpage.cpp`
+- `indra/newview/alkitpresets.cpp`
+- `indra/newview/alkitrow.cpp`
+- `indra/newview/allenslooks.cpp`
+- `indra/newview/allenslooks.h`
+- `indra/newview/allpm.cpp`
+- `indra/newview/allpm.h`
+- `indra/newview/alobjectpathmover.cpp`
+- `indra/newview/alpanelavatarlightresponse.cpp`
+- `indra/newview/alpanelavatarlightresponse.h`
+- `indra/newview/alpanelcinecamparams.cpp`
+- `indra/newview/alpanelcinelightrig.cpp`
+- `indra/newview/alpanelcinelightrig.h`
+- `indra/newview/alpanelexposurehub.cpp`
+- `indra/newview/alpanelexposurehub.h`
+- `indra/newview/alpanelexposurepage.cpp`
+- `indra/newview/alpanelexposurepage.h`
+- `indra/newview/alpanelghoststudio.cpp`
+- `indra/newview/alpanellenslooks.cpp`
+- `indra/newview/alpanellenslooks.h`
+- `indra/newview/alpanelpracticals.cpp`
+- `indra/newview/alpanelpracticals.h`
+- `indra/newview/alpanelpropmover.cpp`
+- `indra/newview/alpanelrigrim.cpp`
+- `indra/newview/alpanelsteppedanim.cpp`
+- `indra/newview/alpanelweathersettings.cpp`
+- `indra/newview/alpresetlook.h`
+- `indra/newview/alprobeschedule.h`
+- `indra/newview/alprojectorshaftpresets.cpp`
+- `indra/newview/alrigrimcontroller.cpp`
+- `indra/newview/alrotoink.cpp`
+- `indra/newview/alrotoink.h`
+- `indra/newview/alscrollfit.cpp`
+- `indra/newview/alscrollfit.h`
+- `indra/newview/alsteppedanimruntime.cpp`
+- `indra/newview/altron.cpp`
+- `indra/newview/altron.h`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveFallbackF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxFallbackF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/avatarLightResponseF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/lensSoftEdgeF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/onLensFiltersF.glsl`
+- `indra/newview/app_settings/shaders/class1/avatar/avatarActorGhostV.glsl`
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballActorGhostV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/LPMUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxPbrGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxPbrGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorMaskAvatarV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorMaskEyesV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarVelocityV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/cineOutlineF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/colorChartF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/colorChartV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismLensF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismPreviewF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismProjectorFeedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismSignalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/rigRimDebugF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrDepthF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrDepthV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrSyntheticGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrSyntheticGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterGatherF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/weatherMaterialF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl`
+- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
+- `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
+- `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
+- `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricClassicF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricF.glsl`
+- `indra/newview/llactormover.cpp`
+- `indra/newview/llactormover.h`
+- `indra/newview/lldirectorcast.cpp`
+- `indra/newview/lldirectorcast.h`
+- `indra/newview/llfloaterdirector.cpp`
+- `indra/newview/llfloaterdirector.h`
+- `indra/newview/llghostavatar.cpp`
+- `indra/newview/llghostavatar.h`
+- `indra/newview/llprismpreview.cpp`
+- `indra/newview/llreshadebridgeabi.h`
+- `indra/newview/skins/default/xui/en/floater_avatar_light_response.xml`
+- `indra/newview/skins/default/xui/en/floater_director.xml`
+- `indra/newview/skins/default/xui/en/floater_phototools.xml`
+- `indra/newview/skins/default/xui/en/menu_director_cast.xml`
+- `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml`
+- `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml`
+- `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml`
+- `indra/newview/skins/default/xui/en/panel_exposure_hub.xml`
+- `indra/newview/skins/default/xui/en/panel_exposure_src.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_looks.xml`
+- `indra/newview/skins/default/xui/en/panel_practicals_src.xml`
+- `indra/newview/skins/default/xui/en/panel_weather_settings.xml`
+- `reshade-addon/shaders/SL_Bridge.fxh`
+- `reshade-addon/shaders/SL_BridgeDebug.fx`
+
+## hooks
+
+- {"path": "indra/llui/llslider.h", "hunks": ["indra/llui/llslider.h@119,45"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1099,7", "indra/newview/CMakeLists.txt@1283,159", "indra/newview/CMakeLists.txt@2092,7", "indra/newview/CMakeLists.txt@2836,31"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@21921,837", "indra/newview/app_settings/settings.xml@22759,511", "indra/newview/app_settings/settings.xml@23293,87", "indra/newview/app_settings/settings.xml@23711,153", "indra/newview/app_settings/settings.xml@28445,2122", "indra/newview/app_settings/settings.xml@30568,1104", "indra/newview/app_settings/settings.xml@31883,98"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@1939,24", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@5656,48", "indra/newview/llappviewer.cpp@5914,44", "indra/newview/llappviewer.cpp@6419,15"]}
+- {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@1123,296"]}
+- {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@44,9", "indra/newview/llstartup.cpp@1490,10"]}
+- {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1133,66"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@4,44", "indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
+- {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
+- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1308,411", "indra/newview/app_settings/settings_alchemy.xml@1789,13", "indra/newview/app_settings/settings_alchemy.xml@1944,82", "indra/newview/app_settings/settings_alchemy.xml@2027,65", "indra/newview/app_settings/settings_alchemy.xml@2093,236", "indra/newview/app_settings/settings_alchemy.xml@3131,175", "indra/newview/app_settings/settings_alchemy.xml@3443,117", "indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
+- {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@411,26"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,23", "indra/newview/lldrawpool.cpp@496,1373", "indra/newview/lldrawpool.cpp@1870,136", "indra/newview/lldrawpool.cpp@2008,92", "indra/newview/lldrawpool.cpp@2102,10", "indra/newview/lldrawpool.cpp@2142,7", "indra/newview/lldrawpool.cpp@2158,13", "indra/newview/lldrawpool.cpp@2419,29", "indra/newview/lldrawpool.cpp@2564,13", "indra/newview/lldrawpool.cpp@2578,11", "indra/newview/lldrawpool.cpp@2593,27", "indra/newview/lldrawpool.cpp@2623,24"]}
+- {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,110"]}
+- {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@82,97", "indra/newview/lldrawpoolavatar.cpp@538,122", "indra/newview/lldrawpoolavatar.cpp@884,158", "indra/newview/lldrawpoolavatar.cpp@1140,29", "indra/newview/lldrawpoolavatar.cpp@1174,22", "indra/newview/lldrawpoolavatar.cpp@1200,7", "indra/newview/lldrawpoolavatar.cpp@1221,84", "indra/newview/lldrawpoolavatar.cpp@1328,27"]}
+- {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@593,2064"]}
+- {"path": "indra/newview/llspatialpartition.h", "hunks": ["indra/newview/llspatialpartition.h@102,21"]}
+- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@1882,22"]}
+- {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
+- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@504,71"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@4232,13", "indra/newview/llvoavatar.cpp@4663,27", "indra/newview/llvoavatar.cpp@6583,8", "indra/newview/llvoavatar.cpp@8734,106", "indra/newview/llvoavatar.cpp@12825,163", "indra/newview/llvoavatar.cpp@13523,18", "indra/newview/llvoavatar.cpp@13686,17"]}
+- {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@647,13"]}
+- {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@5690,87", "indra/newview/llvovolume.cpp@5835,10", "indra/newview/llvovolume.cpp@6090,24", "indra/newview/llvovolume.cpp@6181,18", "indra/newview/llvovolume.cpp@6239,17", "indra/newview/llvovolume.cpp@7168,34"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,40", "indra/newview/pipeline.cpp@179,7", "indra/newview/pipeline.cpp@1362,61", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31457,53", "indra/newview/pipeline.cpp@31781,695", "indra/newview/pipeline.cpp@36372,1056", "indra/newview/pipeline.cpp@38297,153"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@1926,270", "indra/newview/pipeline.h@2216,34"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1,27", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@34,7", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@156,17", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@342,14", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@368,40", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@413,8", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@433,33", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@467,36", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@504,35", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@543,32", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@577,66", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@644,33", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4189,56", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4246,56", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4303,56", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1013,22"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,203"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,193"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@114,209"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@298,193"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@22,249"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
+- {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@6490,31", "indra/newview/skins/default/xui/en/notifications.xml@13574,361"]}
+- {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@84,49", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@137,59", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@267,36", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@305,18", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@348,33", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@423,25", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@485,30", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@520,26", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@551,23"]}
+- {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@120,17", "indra/newview/lldrawpoolalpha.cpp@161,9", "indra/newview/lldrawpoolalpha.cpp@188,41", "indra/newview/lldrawpoolalpha.cpp@314,439", "indra/newview/lldrawpoolalpha.cpp@901,12", "indra/newview/lldrawpoolalpha.cpp@1001,13", "indra/newview/lldrawpoolalpha.cpp@1015,49", "indra/newview/lldrawpoolalpha.cpp@1066,20", "indra/newview/lldrawpoolalpha.cpp@1098,54", "indra/newview/lldrawpoolalpha.cpp@1156,7", "indra/newview/lldrawpoolalpha.cpp@1164,157", "indra/newview/lldrawpoolalpha.cpp@1349,116", "indra/newview/lldrawpoolalpha.cpp@1487,38", "indra/newview/lldrawpoolalpha.cpp@1662,65", "indra/newview/lldrawpoolalpha.cpp@1732,27", "indra/newview/lldrawpoolalpha.cpp@1786,27", "indra/newview/lldrawpoolalpha.cpp@1872,34"]}
+- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@141,68", "indra/newview/llselectmgr.cpp@8272,7"]}
+- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,21", "indra/newview/llviewerjoystick.cpp@899,169", "indra/newview/llviewerjoystick.cpp@4101,218"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@244,32", "indra/newview/llviewershadermgr.cpp@373,20", "indra/newview/llviewershadermgr.cpp@400,22", "indra/newview/llviewershadermgr.cpp@435,143", "indra/newview/llviewershadermgr.cpp@724,80", "indra/newview/llviewershadermgr.cpp@810,8", "indra/newview/llviewershadermgr.cpp@824,29", "indra/newview/llviewershadermgr.cpp@1080,31", "indra/newview/llviewershadermgr.cpp@1119,9", "indra/newview/llviewershadermgr.cpp@1273,52", "indra/newview/llviewershadermgr.cpp@1474,26", "indra/newview/llviewershadermgr.cpp@1507,13", "indra/newview/llviewershadermgr.cpp@1756,259", "indra/newview/llviewershadermgr.cpp@2073,10", "indra/newview/llviewershadermgr.cpp@2093,45", "indra/newview/llviewershadermgr.cpp@2196,7", "indra/newview/llviewershadermgr.cpp@2211,117", "indra/newview/llviewershadermgr.cpp@2337,12", "indra/newview/llviewershadermgr.cpp@2352,13", "indra/newview/llviewershadermgr.cpp@2380,13", "indra/newview/llviewershadermgr.cpp@2395,13", "indra/newview/llviewershadermgr.cpp@2439,10", "indra/newview/llviewershadermgr.cpp@2556,11", "indra/newview/llviewershadermgr.cpp@2602,14", "indra/newview/llviewershadermgr.cpp@2627,15", "indra/newview/llviewershadermgr.cpp@2670,12", "indra/newview/llviewershadermgr.cpp@2691,18", "indra/newview/llviewershadermgr.cpp@2757,18", "indra/newview/llviewershadermgr.cpp@2803,312", "indra/newview/llviewershadermgr.cpp@3161,7", "indra/newview/llviewershadermgr.cpp@3174,7", "indra/newview/llviewershadermgr.cpp@3499,17", "indra/newview/llviewershadermgr.cpp@3610,16", "indra/newview/llviewershadermgr.cpp@3635,17", "indra/newview/llviewershadermgr.cpp@3678,13", "indra/newview/llviewershadermgr.cpp@3725,14", "indra/newview/llviewershadermgr.cpp@3774,12", "indra/newview/llviewershadermgr.cpp@3818,12", "indra/newview/llviewershadermgr.cpp@3832,49", "indra/newview/llviewershadermgr.cpp@3883,14", "indra/newview/llviewershadermgr.cpp@4063,7", "indra/newview/llviewershadermgr.cpp@4076,7", "indra/newview/llviewershadermgr.cpp@4095,7", "indra/newview/llviewershadermgr.cpp@4110,7", "indra/newview/llviewershadermgr.cpp@4132,7", "indra/newview/llviewershadermgr.cpp@4148,7", "indra/newview/llviewershadermgr.cpp@4165,11", "indra/newview/llviewershadermgr.cpp@4205,8", "indra/newview/llviewershadermgr.cpp@4238,7", "indra/newview/llviewershadermgr.cpp@4256,7", "indra/newview/llviewershadermgr.cpp@4270,7", "indra/newview/llviewershadermgr.cpp@4282,7", "indra/newview/llviewershadermgr.cpp@4315,15", "indra/newview/llviewershadermgr.cpp@4348,14", "indra/newview/llviewershadermgr.cpp@5480,299", "indra/newview/llviewershadermgr.cpp@6035,80", "indra/newview/llviewershadermgr.cpp@6121,115", "indra/newview/llviewershadermgr.cpp@6269,12", "indra/newview/llviewershadermgr.cpp@6352,12", "indra/newview/llviewershadermgr.cpp@6377,70", "indra/newview/llviewershadermgr.cpp@6467,118"]}
+- {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@62,39", "indra/newview/llviewershadermgr.h@160,17", "indra/newview/llviewershadermgr.h@247,23", "indra/newview/llviewershadermgr.h@280,14", "indra/newview/llviewershadermgr.h@351,57", "indra/newview/llviewershadermgr.h@417,8", "indra/newview/llviewershadermgr.h@488,41"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@47,7", "indra/llrender/llshadermgr.cpp@69,95", "indra/llrender/llshadermgr.cpp@283,57", "indra/llrender/llshadermgr.cpp@454,12", "indra/llrender/llshadermgr.cpp@1346,16", "indra/llrender/llshadermgr.cpp@1403,15", "indra/llrender/llshadermgr.cpp@1832,12", "indra/llrender/llshadermgr.cpp@1878,60"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@39,9", "indra/llrender/llshadermgr.h@82,9", "indra/llrender/llshadermgr.h@391,12", "indra/llrender/llshadermgr.h@437,89"]}
+- {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@4,11", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/emissiveF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/emissiveF.glsl@28,90"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@62,95", "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@158,108"]}
+- {"path": "indra/newview/lldrawable.cpp", "hunks": ["indra/newview/lldrawable.cpp@1639,14", "indra/newview/lldrawable.cpp@1738,12"]}
+- {"path": "indra/newview/llviewerjointmesh.h", "hunks": ["indra/newview/llviewerjointmesh.h@54,16"]}
+- {"path": "indra/newview/llviewerobject.h", "hunks": ["indra/newview/llviewerobject.h@859,32"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl@37,29", "indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl@69,45"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@41,41", "indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@84,79"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@2022,12"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl@40,17"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl@37,39", "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl@79,56"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl@33,41", "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl@75,56"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseF.glsl@36,107"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseIndexedF.glsl@34,112"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedF.glsl@33,29", "indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedF.glsl@105,93"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@50,24", "indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@88,9", "indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl@111,155"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@217,33", "indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@257,17", "indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@284,16", "indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@309,87", "indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl@397,13"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrglowF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrglowF.glsl@45,118"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedF.glsl@62,29", "indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedF.glsl@142,85"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl@83,28", "indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl@214,163"]}
+- {"path": "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl@29,31", "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl@61,51"]}
+- {"path": "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl@31,31", "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl@63,49"]}
+- {"path": "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@99,36", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@164,84", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@259,55", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@324,98", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@423,96", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@521,50"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/fullbrightShinyF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/fullbrightShinyF.glsl@52,61", "indra/newview/app_settings/shaders/class3/deferred/fullbrightShinyF.glsl@122,66"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@60,80", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@152,118", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@349,79", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@484,17", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@543,25", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@570,88", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@741,48", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@794,34", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@829,51", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@881,34"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@110,19", "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@131,7", "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@142,8", "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@336,194", "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@556,27"]}
+- {"path": "indra/newview/lldrawpoolalpha.h", "hunks": ["indra/newview/lldrawpoolalpha.h@111,11"]}
+- {"path": "indra/newview/lldrawpoolbump.cpp", "hunks": ["indra/newview/lldrawpoolbump.cpp@410,14", "indra/newview/lldrawpoolbump.cpp@1065,11", "indra/newview/lldrawpoolbump.cpp@1120,7"]}
+- {"path": "indra/newview/lldrawpoolmaterials.cpp", "hunks": ["indra/newview/lldrawpoolmaterials.cpp@117,17", "indra/newview/lldrawpoolmaterials.cpp@180,7", "indra/newview/lldrawpoolmaterials.cpp@320,10", "indra/newview/lldrawpoolmaterials.cpp@407,7"]}
+- {"path": "indra/newview/lldrawpoolpbropaque.cpp", "hunks": ["indra/newview/lldrawpoolpbropaque.cpp@29,8", "indra/newview/lldrawpoolpbropaque.cpp@126,7", "indra/newview/lldrawpoolpbropaque.cpp@137,7"]}
+- {"path": "indra/newview/lldrawpoolsimple.cpp", "hunks": ["indra/newview/lldrawpoolsimple.cpp@37,8", "indra/newview/lldrawpoolsimple.cpp@65,7", "indra/newview/lldrawpoolsimple.cpp@78,7"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/multiPointLightF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/multiPointLightF.glsl@99,44", "indra/newview/app_settings/shaders/class3/deferred/multiPointLightF.glsl@225,20"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/pointLightF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/pointLightF.glsl@90,117", "indra/newview/app_settings/shaders/class3/deferred/pointLightF.glsl@228,38"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/spotLightF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/spotLightF.glsl@113,123", "indra/newview/app_settings/shaders/class3/deferred/spotLightF.glsl@401,35"]}
+- {"path": "indra/newview/llreflectionmapmanager.h", "hunks": ["indra/newview/llreflectionmapmanager.h@209,32"]}
+- {"path": "indra/newview/llsettingsvo.cpp", "hunks": ["indra/newview/llsettingsvo.cpp@566,110", "indra/newview/llsettingsvo.cpp@915,59"]}
+- {"path": "indra/llrender/llglslshader.h", "hunks": ["indra/llrender/llglslshader.h@68,14", "indra/llrender/llglslshader.h@205,12"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@182,13"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/terrainF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/terrainF.glsl@42,13"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl@953,10"]}
+- {"path": "indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@34,9", "indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@58,7", "indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@66,18", "indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@95,8", "indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@116,176", "indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@295,19"]}
+- {"path": "indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@24,14", "indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@64,12"]}
+- {"path": "indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@27,14", "indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@55,12"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@32,12", "indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@73,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarAlphaMaskShadowF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarAlphaMaskShadowF.glsl@28,23"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowF.glsl@29,33"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@33,12"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl@27,12", "indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl@44,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarShadowF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarShadowF.glsl@26,15"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@30,11"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@24,12", "indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@55,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl@27,12", "indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl@52,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/cofF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/cofF.glsl@43,56", "indra/newview/app_settings/shaders/class1/deferred/cofF.glsl@124,21"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseNoColorV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseNoColorV.glsl@24,31"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl@26,12", "indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl@54,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl@37,27"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@26,15", "indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@53,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@38,9", "indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@58,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl@26,13", "indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl@54,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@42,9", "indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@73,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl@32,15", "indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl@97,10"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@43,13"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/materialV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@44,9", "indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@73,23"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaBlendF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaBlendF.glsl@28,52"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskF.glsl@28,13", "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskF.glsl@44,10"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedF.glsl@30,15", "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedF.glsl@97,10"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@47,13"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl@35,21"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@53,9", "indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@78,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@35,22", "indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@60,25"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@30,22", "indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@53,16"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@49,9", "indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@77,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@46,9", "indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@71,9"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskF.glsl@28,78"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl@32,21"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl@26,7", "indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl@35,7"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowF.glsl@24,15"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowSkinnedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowSkinnedV.glsl@27,13"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowV.glsl@26,11"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl@33,9", "indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl@46,10"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/treeShadowSkinnedV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/treeShadowSkinnedV.glsl@31,13"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/treeShadowV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/treeShadowV.glsl@30,11"]}
+- {"path": "indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl@27,16", "indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl@55,11"]}
+- {"path": "indra/newview/app_settings/shaders/class2/deferred/reflectionProbeF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/reflectionProbeF.glsl@108,17"]}
+- {"path": "indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@103,72", "indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@271,25"]}
+- {"path": "indra/newview/llheroprobemanager.cpp", "hunks": ["indra/newview/llheroprobemanager.cpp@86,15"]}
+- {"path": "indra/newview/skins/default/xui/en/panel_status_bar.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_status_bar.xml@181,7"]}
+
+## settings
+
+- `AlchemyColorChartAnchor`
+- `AlchemyColorChartDebugReadback`
+- `AlchemyColorChartForceShaderFailure`
+- `AlchemyColorChartMode`
+- `AlchemyColorChartPlacement`
+- `AlchemyColorChartShow`
+- `AlchemyColorChartSize`
+- `AvatarLightResponseDebugLog`
+- `AvatarLightResponseDebugTint`
+- `AvatarLightResponseEnabled`
+- `AvatarLightResponsePersist`
+- `BDMergeProjectorVolumetricsMaxLuminance`
+- `CineOutlineLayer`
+- `GhostDeferredEnable`
+- `RenderGBufferAvatarTag`
+- `RenderReShadeDecoupleOnLens`
+- `RenderSkyAutoAdjustLegacy`
+- `TronNoPostScale`
+- `TronPulseAmount`
+- `TronPulseRate`
+- `TronRimEnabled`
+- `TronSuitUsePalette`
+- `AlchemyEnvSunEV`
+- `AlchemyRenderTonemapType`
+- `AlchemyToneMapAMDContrast`
+- `AlchemyToneMapAMDExposure`
+- `AlchemyToneMapAMDHDRMax`
+- `AlchemyToneMapAMDSaturationB`
+- `AlchemyToneMapAMDSaturationG`
+- `AlchemyToneMapAMDSaturationR`
+- `AlchemyToneMapContrast`
+- `AlchemyToneMapKhronosDesaturation`
+- `AlchemyToneMapKhronosStartCompression`
+- `AlchemyToneMapSLogCurve`
+- `AlchemyToneMapSLogEV`
+- `AlchemyToneMapSLogGamut`
+- `AlchemyToneMapSLogPurity`
+- `AlchemyToneMapSLogRange`
+- `AlchemyToneMapSLogToe`
+- `AlchemyToneMapSaturation`
+- `AlchemyTonemapLegacyGammaSkies`
+- `CineHazeReferenceHeight`
+- `RenderAvatarShadowDetail`
+- `RenderGradNDAngle`
+- `RenderGradNDDensity`
+- `RenderGradNDEnabled`
+- `RenderGradNDFlip`
+- `RenderGradNDPosition`
+- `RenderGradNDPreset`
+- `RenderGradNDSkyConfine`
+- `RenderGradNDSoftness`
+- `RenderGradNDSunRadius`
+- `RenderGradNDSunWeight`
+- `RenderGradNDTintAmount`
+- `RenderGradNDTintColor`
+- `RenderInfraredAeroFilter`
+- `RenderInfraredAeroSaturation`
+- `RenderInfraredDebugView`
+- `RenderInfraredDryVegetation`
+- `RenderInfraredEnabled`
+- `RenderInfraredExposureEV`
+- `RenderInfraredFoliageEV`
+- `RenderInfraredFoliageSensitivity`
+- `RenderInfraredHalation`
+- `RenderInfraredMode`
+- `RenderInfraredPresetSetsGrain`
+- `RenderInfraredRedLeak`
+- `RenderInfraredShadowDepth`
+- `RenderInfraredSkinEV`
+- `RenderInfraredSkyDarken`
+- `RenderInfraredStrength`
+- `RenderInfraredWaterDarken`
+- `RenderPolarizerAutoBand`
+- `RenderPolarizerBandRadius`
+- `RenderPolarizerEnabled`
+- `RenderPolarizerGlareMaxDepth`
+- `RenderPolarizerGlareStrength`
+- `RenderPolarizerGlareThreshold`
+- `RenderPolarizerPreset`
+- `RenderPolarizerSkyDarken`
+- `RenderPolarizerSkySaturation`
+- `RenderPolarizerStrength`
+- `RenderSoftEdgeAnchor`
+- `RenderSoftEdgeAngle`
+- `RenderSoftEdgeAspect`
+- `RenderSoftEdgeBlur`
+- `RenderSoftEdgeBlurType`
+- `RenderSoftEdgeCenterX`
+- `RenderSoftEdgeCenterY`
+- `RenderSoftEdgeDesaturate`
+- `RenderSoftEdgeEnabled`
+- `RenderSoftEdgeFeather`
+- `RenderSoftEdgeGlow`
+- `RenderSoftEdgeGlowThreshold`
+- `RenderSoftEdgeShape`
+- `RenderSoftEdgeShowMask`
+- `RenderSoftEdgeSize`
+- `RenderSoftEdgeTint`
+- `RenderSoftEdgeTintAmount`
+
+## shaders
+
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveFallbackF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorFxFallbackF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/avatarLightResponseF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/lensSoftEdgeF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/onLensFiltersF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl`
+- `indra/newview/app_settings/shaders/class1/avatar/avatarActorGhostV.glsl`
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl`
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballActorGhostV.glsl`
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/LPMUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxPbrGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorFxPbrGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorMaskAvatarV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/actorMaskEyesV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaMaskShadowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarVelocityV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/cineOutlineF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/cofF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/colorChartF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/colorChartV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseNoColorV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaBlendF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismLensF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismPreviewF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismProjectorFeedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/prismSignalF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricUpsampleF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/rigRimDebugF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowSkinnedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrDepthF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrDepthV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrSyntheticGlowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrSyntheticGlowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/terrainF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/treeShadowSkinnedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/treeShadowV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterGatherF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaIndexedV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityAlphaV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/weatherMaterialF.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl`
+- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
+- `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
+- `indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl`
+- `indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl`
+- `indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl`
+- `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
+- `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`
+- `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl`
+- `indra/newview/app_settings/shaders/class2/deferred/reflectionProbeF.glsl`
+- `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/fullbrightShinyF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/multiPointLightF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/pointLightF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricClassicF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl`
+- `indra/newview/app_settings/shaders/class3/deferred/spotLightF.glsl`
+- `reshade-addon/shaders/SL_Bridge.fxh`
+- `reshade-addon/shaders/SL_BridgeDebug.fx`
+
+## xui
+
+- `indra/newview/skins/default/xui/en/director_kit_index.xml`
+- `indra/newview/skins/default/xui/en/floater_adjust_environment.xml`
+- `indra/newview/skins/default/xui/en/floater_avatar_light_response.xml`
+- `indra/newview/skins/default/xui/en/floater_director.xml`
+- `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml`
+- `indra/newview/skins/default/xui/en/floater_phototools.xml`
+- `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml`
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml`
+- `indra/newview/skins/default/xui/en/menu_attachment_self.xml`
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml`
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml`
+- `indra/newview/skins/default/xui/en/menu_director_cast.xml`
+- `indra/newview/skins/default/xui/en/menu_object.xml`
+- `indra/newview/skins/default/xui/en/menu_viewer.xml`
+- `indra/newview/skins/default/xui/en/notifications.xml`
+- `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml`
+- `indra/newview/skins/default/xui/en/panel_avatar_light_response.xml`
+- `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml`
+- `indra/newview/skins/default/xui/en/panel_exposure_hub.xml`
+- `indra/newview/skins/default/xui/en/panel_exposure_src.xml`
+- `indra/newview/skins/default/xui/en/panel_lens_looks.xml`
+- `indra/newview/skins/default/xui/en/panel_practicals_src.xml`
+- `indra/newview/skins/default/xui/en/panel_status_bar.xml`
+- `indra/newview/skins/default/xui/en/panel_weather_settings.xml`
+
+## generated runtime
+
+- `indra/newview/alcolorchartdata.h`
+- `indra/newview/alfloaterlightbox.cpp`
+- `indra/newview/alfloaterlightbox.h`
+- `indra/newview/skins/default/xui/en/director_kit_index.xml`
+- `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_image.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml`
+
+## cmake entries
+
+- {"file": "indra/llrender/CMakeLists.txt", "line": 4, "text": "llcubemap.cpp", "source": "indra/llrender/llcubemap.cpp"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 45, "text": "llglslshader.h", "source": "indra/llrender/llglslshader.h"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 17, "text": "llimagegl.cpp", "source": "indra/llrender/llimagegl.cpp"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 195, "text": "llslider.h", "source": "indra/llui/llslider.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 363, "text": "alavatarkey.cpp # [ClientHeight]", "source": "indra/newview/alavatarkey.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1304, "text": "alavatarkey.h # [ClientHeight]", "source": "indra/newview/alavatarkey.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 360, "text": "alavatarlightresponse.cpp # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1301, "text": "alavatarlightresponse.h # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 361, "text": "alavatarlightresponsemodel.cpp # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponsemodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2844, "text": "alavatarlightresponsemodel.cpp # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponsemodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1302, "text": "alavatarlightresponsemodel.h # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponsemodel.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 347, "text": "alcinehaze.cpp", "source": "indra/newview/alcinehaze.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1401, "text": "alcinehaze.h", "source": "indra/newview/alcinehaze.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 345, "text": "alcinelightrig.cpp", "source": "indra/newview/alcinelightrig.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 346, "text": "alcinelightrigmanager.cpp", "source": "indra/newview/alcinelightrigmanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 348, "text": "alcinerigrim.cpp", "source": "indra/newview/alcinerigrim.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1402, "text": "alcinerigrim.h", "source": "indra/newview/alcinerigrim.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 387, "text": "alcolorchart.cpp", "source": "indra/newview/alcolorchart.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1336, "text": "alcolorchart.h", "source": "indra/newview/alcolorchart.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1337, "text": "alcolorchartdata.h", "source": "indra/newview/alcolorchartdata.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 199, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2847, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 351, "text": "alenvintensity.cpp", "source": "indra/newview/alenvintensity.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1405, "text": "alenvintensity.h", "source": "indra/newview/alenvintensity.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 362, "text": "alfloateravatarlightresponse.cpp # [AvatarLightResponse]", "source": "indra/newview/alfloateravatarlightresponse.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1303, "text": "alfloateravatarlightresponse.h # [AvatarLightResponse]", "source": "indra/newview/alfloateravatarlightresponse.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 224, "text": "alfloaterblocked.cpp", "source": "indra/newview/alfloaterblocked.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 231, "text": "alfloaterlightbox.cpp", "source": "indra/newview/alfloaterlightbox.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1181, "text": "alfloaterlightbox.h", "source": "indra/newview/alfloaterlightbox.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1183, "text": "alfloaterphototools.h", "source": "indra/newview/alfloaterphototools.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1356, "text": "alghoststudio.h", "source": "indra/newview/alghoststudio.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 205, "text": "alkitcard.cpp", "source": "indra/newview/alkitcard.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 210, "text": "alkitpage.cpp", "source": "indra/newview/alkitpage.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 212, "text": "alkitpresets.cpp", "source": "indra/newview/alkitpresets.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 213, "text": "alkitrow.cpp", "source": "indra/newview/alkitrow.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 349, "text": "allenslooks.cpp", "source": "indra/newview/allenslooks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1403, "text": "allenslooks.h", "source": "indra/newview/allenslooks.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1102, "text": "allpm.cpp", "source": "indra/newview/allpm.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2095, "text": "allpm.h", "source": "indra/newview/allpm.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 397, "text": "alobjectpathmover.cpp", "source": "indra/newview/alobjectpathmover.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 419, "text": "alpanelavatarlightresponse.cpp", "source": "indra/newview/alpanelavatarlightresponse.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1392, "text": "alpanelavatarlightresponse.h", "source": "indra/newview/alpanelavatarlightresponse.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 432, "text": "alpanelcinecamparams.cpp", "source": "indra/newview/alpanelcinecamparams.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 428, "text": "alpanelcinelightrig.cpp", "source": "indra/newview/alpanelcinelightrig.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1413, "text": "alpanelcinelightrig.h", "source": "indra/newview/alpanelcinelightrig.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 421, "text": "alpanelexposurehub.cpp", "source": "indra/newview/alpanelexposurehub.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1394, "text": "alpanelexposurehub.h", "source": "indra/newview/alpanelexposurehub.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 422, "text": "alpanelexposurepage.cpp", "source": "indra/newview/alpanelexposurepage.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1395, "text": "alpanelexposurepage.h", "source": "indra/newview/alpanelexposurepage.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 398, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 424, "text": "alpanellenslooks.cpp", "source": "indra/newview/alpanellenslooks.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1397, "text": "alpanellenslooks.h", "source": "indra/newview/alpanellenslooks.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 426, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1399, "text": "alpanelpracticals.h", "source": "indra/newview/alpanelpracticals.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 399, "text": "alpanelpropmover.cpp", "source": "indra/newview/alpanelpropmover.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 221, "text": "alpanelrigrim.cpp", "source": "indra/newview/alpanelrigrim.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 416, "text": "alpanelsteppedanim.cpp", "source": "indra/newview/alpanelsteppedanim.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 437, "text": "alpanelweathersettings.cpp", "source": "indra/newview/alpanelweathersettings.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1415, "text": "alprobeschedule.h # [ProbeOnDemand]", "source": "indra/newview/alprobeschedule.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 431, "text": "alprojectorshaftpresets.cpp", "source": "indra/newview/alprojectorshaftpresets.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 222, "text": "alrigrimcontroller.cpp", "source": "indra/newview/alrigrimcontroller.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 357, "text": "alrotoink.cpp", "source": "indra/newview/alrotoink.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1411, "text": "alrotoink.h", "source": "indra/newview/alrotoink.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 232, "text": "alscrollfit.cpp # [ScrollFit]", "source": "indra/newview/alscrollfit.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1360, "text": "alscrollfit.h # [ScrollFit]", "source": "indra/newview/alscrollfit.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 247, "text": "alsteppedanimruntime.cpp", "source": "indra/newview/alsteppedanimruntime.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 358, "text": "altron.cpp", "source": "indra/newview/altron.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1412, "text": "altron.h", "source": "indra/newview/altron.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 277, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2296, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2297, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1236, "text": "fsposeranimator.h", "source": "indra/newview/fsposeranimator.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 338, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1289, "text": "llactormover.h", "source": "indra/newview/llactormover.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 300, "text": "llaisapi.cpp", "source": "indra/newview/llaisapi.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 317, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 462, "text": "llcontrolavatar.cpp", "source": "indra/newview/llcontrolavatar.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 406, "text": "lldirectorcast.cpp", "source": "indra/newview/lldirectorcast.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1375, "text": "lldirectorcast.h", "source": "indra/newview/lldirectorcast.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 478, "text": "lldrawable.cpp", "source": "indra/newview/lldrawable.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1474, "text": "lldrawable.h", "source": "indra/newview/lldrawable.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 479, "text": "lldrawpool.cpp", "source": "indra/newview/lldrawpool.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1475, "text": "lldrawpool.h", "source": "indra/newview/lldrawpool.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 480, "text": "lldrawpoolalpha.cpp", "source": "indra/newview/lldrawpoolalpha.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1476, "text": "lldrawpoolalpha.h", "source": "indra/newview/lldrawpoolalpha.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 481, "text": "lldrawpoolavatar.cpp", "source": "indra/newview/lldrawpoolavatar.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 482, "text": "lldrawpoolbump.cpp", "source": "indra/newview/lldrawpoolbump.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 483, "text": "lldrawpoolmaterials.cpp", "source": "indra/newview/lldrawpoolmaterials.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 484, "text": "lldrawpoolpbropaque.cpp", "source": "indra/newview/lldrawpoolpbropaque.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 485, "text": "lldrawpoolsimple.cpp", "source": "indra/newview/lldrawpoolsimple.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 489, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 492, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 507, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfloater360capture.cpp", "source": "indra/newview/llfloater360capture.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 530, "text": "llfloaterbuy.cpp", "source": "indra/newview/llfloaterbuy.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 531, "text": "llfloaterbuycontents.cpp", "source": "indra/newview/llfloaterbuycontents.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1379, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 553, "text": "llfloaterenvironmentadjust.cpp", "source": "indra/newview/llfloaterenvironmentadjust.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 616, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 623, "text": "llfloaterreporter.cpp", "source": "indra/newview/llfloaterreporter.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 663, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1664, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 905, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 679, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 681, "text": "llhudeffecttrail.cpp", "source": "indra/newview/llhudeffecttrail.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 684, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 686, "text": "llhudnametag.cpp", "source": "indra/newview/llhudnametag.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 689, "text": "llhudtext.cpp", "source": "indra/newview/llhudtext.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 724, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 745, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 790, "text": "llpaneleditwater.cpp", "source": "indra/newview/llpaneleditwater.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 887, "text": "llpresetsmanager.cpp", "source": "indra/newview/llpresetsmanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 899, "text": "llprismpreview.cpp", "source": "indra/newview/llprismpreview.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 904, "text": "llreflectionmapmanager.cpp", "source": "indra/newview/llreflectionmapmanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1891, "text": "llreflectionmapmanager.h", "source": "indra/newview/llreflectionmapmanager.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1897, "text": "llreshadebridgeabi.h", "source": "indra/newview/llreshadebridgeabi.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 911, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 925, "text": "llselectmgr.cpp", "source": "indra/newview/llselectmgr.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1916, "text": "llselectmgr.h", "source": "indra/newview/llselectmgr.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 928, "text": "llsettingsvo.cpp", "source": "indra/newview/llsettingsvo.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1931, "text": "llspatialpartition.h", "source": "indra/newview/llspatialpartition.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 945, "text": "llstartup.cpp", "source": "indra/newview/llstartup.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 949, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 963, "text": "lltextureview.cpp", "source": "indra/newview/lltextureview.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 987, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1019, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1021, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1023, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1035, "text": "llviewerinput.cpp", "source": "indra/newview/llviewerinput.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1031, "text": "llviewerjoint.cpp", "source": "indra/newview/llviewerjoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2026, "text": "llviewerjointmesh.h", "source": "indra/newview/llviewerjointmesh.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1034, "text": "llviewerjoystick.cpp", "source": "indra/newview/llviewerjoystick.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2037, "text": "llviewerobject.h", "source": "indra/newview/llviewerobject.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1055, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2049, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1070, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2064, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1080, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1084, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2077, "text": "llvovolume.h", "source": "indra/newview/llvovolume.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1104, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2097, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1108, "text": "rlveffects.cpp", "source": "indra/newview/rlveffects.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1111, "text": "rlvhandler.cpp", "source": "indra/newview/rlvhandler.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1114, "text": "rlvlocks.cpp", "source": "indra/newview/rlvlocks.cpp"}
+
+## kit wiring pages
+
+- `actor_style_tab`
+- `actors_tab`
+- `atmosphere_tab`
+- `bloom_glow_tab`
+- `exposure_tab`
+- `filters_tab`
+- `image_tab`
+- `practicals_tab`
+- `shadows_probes_tab`
+- `stepped_tab`
+- `stylize_tab`
+- `tron_tab`
+
+## checks
+
+- `scripts/code_tools/colorchart_check.py`
+- `scripts/code_tools/colorchart_policy_check.py`
+
+Full include/call edges: ../features.json. Shared hooks: ../hooks.md. Setting values and save coverage: ../settings.csv.

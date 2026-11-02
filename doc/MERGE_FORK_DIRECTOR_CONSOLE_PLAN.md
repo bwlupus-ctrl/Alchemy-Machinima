@@ -1,5 +1,19 @@
 # Machinima Creative Merge Fork — Plan (for Codex)
 
+> **Director Suitcase note — 2026-11-02:** The suitcase uses only local base
+> `7c11d3f38bd` and the local fork history (no upstream fetch or remote diff, per
+> the owner's standing no-upstream-sourcing rule). The fresh-upstream/ref-swap
+> instructions below are historical plans, not current instructions. Hooks in
+> [Director Suitcase](director_suitcase/SUITCASE.md) are mapped against that July
+> 2026 base; current upstream may have drifted. Keep the creative IN / pure-perf
+> OUT ruling, complete ledger, dependency ordering and shader co-landing method.
+> Generated runtime XUI remains required product output: regenerate and ship it.
+> At this older base, renderer primitives previously labelled UPSTREAM-WINS need
+> dependency review rather than automatic exclusion. The suitcase classifies the
+> pure RAM/VRAM budget/pool implementation OUT and requires an explicit adapter
+> for creative capture callers; this differs from §4's retained RAM-budget call.
+> Per-path/hunk feature labels are candidate evidence, not proof of build closure.
+
 **Scope (user ruling, "only pure-perf out"):** re-port the **full creative machinima fork** onto **current** Alchemy upstream — the Director's Console suite **and** all creative/capture rendering — dropping **only** the pure-performance stack. This is ≈ the full `doc/MERGE_PLAYBOOK.md` re-port, re-pinned to current upstream, minus perf, with **two features that must be REBUILT (not re-ported)** against the updated upstream: the full VCam prism and the revamped Lightbox.
 
 **Governing document:** `doc/MERGE_PLAYBOOK.md` supplies the methodology and the ordered 12-step slice sequence verbatim (integration branch at a pinned upstream SHA, full adjudicated ledger, dependency-ordered *buildable* vertical slices, per-slice checkpoints, the shader co-land rule, the destructive-ref-swap endgame with `--force-with-lease`). **THIS file changes only three things** and otherwise defers to the playbook: (1) re-pin to **current** upstream develop, not `af0f3bd`; (2) the ledger `Action` for the perf rows is **DROP-OBSOLETE/OUT**; (3) insert **two REBUILD slices** (VCam prism, Lightbox). Everything else — the ledger gate, the checkpoints, the shader/program closure rule, the endgame — is the playbook's.
