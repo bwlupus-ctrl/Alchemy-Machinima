@@ -1,0 +1,169 @@
+// Viewer boundaries below provide representative objects, clocks and harvested
+// palettes. All feature decisions under test are injected from production C++.
+#include "alcloneqol.h"
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <deque>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+using F32=float;using F64=double;using S32=int;using U8=unsigned char;using U32=unsigned;using U64=unsigned long long;
+struct LLUUID {int id=0;std::array<U8,16> mData{};LLUUID(int n=0):id(n){mData[0]=U8(n);mData[1]=U8(n>>8);}
+ std::string asString()const{return std::to_string(id);}
+ bool isNull()const{return !id;}bool notNull()const{return id;}void setNull(){*this={};}
+ bool operator==(LLUUID b)const{return id==b.id;}bool operator!=(LLUUID b)const{return id!=b.id;}bool operator<(LLUUID b)const{return id<b.id;}
+ static const LLUUID null;};const LLUUID LLUUID::null{};LLUUID gAgentID{900};
+template<class T>T llclamp(T x,T lo,T hi){return std::clamp(x,lo,hi);}template<class T>T llmin(T a,T b){return std::min(a,b);}template<class T>T llmax(T a,T b){return std::max(a,b);}
+enum{VX,VY,VZ};inline bool llfinite(float v){return std::isfinite(v);}
+struct LLVector3 {float value=0;float mV[3]{};LLVector3()=default;LLVector3(float x):value(x){}LLVector3(float x,float y,float z):value(x),mV{x,y,z}{}void set(float x,float y,float z){mV[0]=x;mV[1]=y;mV[2]=z;}bool isFinite()const{return true;}static const LLVector3 zero;};const LLVector3 LLVector3::zero{};
+using LLQuaternion=LLVector3;struct LLMatrix4{float value=0;};
+LLVector3 lerp(LLVector3 a,LLVector3 b,float t){return {a.value+(b.value-a.value)*t};}LLQuaternion slerp(float t,LLQuaternion a,LLQuaternion b){return lerp(a,b,t);}
+struct Joint{LLQuaternion r;LLVector3 p;void setRotation(LLQuaternion q){r=q;}void setPosition(LLVector3 v){p=v;}LLQuaternion getRotation(){return r;}LLVector3 getPosition(){return p;}LLVector3 getWorldPosition(){return p;}void updateWorldMatrixChildren(){}};using LLJoint=Joint;
+struct LLVisualParam{float w=0;float getWeight(){return w;}bool isAnimating(){return false;}};
+struct LLTimer{static double now;static double getTotalSeconds(){return now;}};double LLTimer::now=10.;
+struct Region{LLUUID getRegionID(){return {50};}}region;
+struct LLAgent{enum{TELEPORT_NONE,TELEPORT_START};Region* getRegion(){return &region;}int getTeleportState(){return 0;}}gAgent;
+struct Settings{std::map<std::string,int> ints;std::map<std::string,float> floats;int getS32(std::string n){return ints[n];}float getF32(std::string n){return floats[n];}void setS32(std::string n,int v){ints[n]=v;}}gSavedSettings;
+template<class T>struct LLCachedControl{std::string name;LLCachedControl(Settings&,const char* n,T):name(n){}operator T()const{return T(gSavedSettings.getF32(name));}};
+struct LLVOAvatar;
+struct LLViewerObject{LLUUID id;LLViewerObject* parent=nullptr;bool dead=false;virtual ~LLViewerObject(){}LLVOAvatar* controlAvatar=nullptr;std::vector<LLViewerObject*>children;const auto& getChildren(){return children;}LLVOAvatar* getControlAvatar(){return controlAvatar;}virtual LLVOAvatar* asAvatar(){return nullptr;}const LLVOAvatar* asAvatar()const{return const_cast<LLViewerObject*>(this)->asAvatar();}bool isAvatar()const{return asAvatar()!=nullptr;}bool isDead()const{return dead;}LLUUID getID()const{return id;}LLViewerObject* getParent()const{return parent;}};
+struct LLMeshSkinInfo{U64 mHash=2;};
+struct LLVOAvatar:LLViewerObject{bool control=false;LLVOAvatar* wearer=nullptr;Joint root,joint;std::vector<Joint*> joints{&joint};std::map<int,LLVisualParam> params;
+ LLVOAvatar* asAvatar()override{return this;}bool isControlAvatar()const{return control;}virtual bool isGhostAvatar()const{return false;}LLVOAvatar* getAttachedAvatar()const{return wearer;}
+ struct MatrixPaletteCache{std::vector<float>mGLMp{3.f};}palette;const MatrixPaletteCache& updateSkinInfoMatrixPalette(LLMeshSkinInfo*){return palette;}float getPelvisToFoot(){return 1;}Joint* getJoint(const char*){return nullptr;}
+ bool isBuilt(){return true;}bool isFullyLoaded(){return true;}Joint* getRootJoint(){return &root;}LLQuaternion getRotation(){return {};}
+ const std::vector<Joint*>& getSkeleton(){return joints;}LLVisualParam* getVisualParam(int n){return &params[n];}void setVisualParamWeight(LLVisualParam* p,float w){p->w=w;}void updateVisualParams(){}void dirtyMesh(){}};
+struct ObjectList{std::map<LLUUID,LLViewerObject*> objects;LLViewerObject* findObject(LLUUID id){auto it=objects.find(id);return it==objects.end()?nullptr:it->second;}}gObjectList;
+using LLControlAvatar=LLVOAvatar;struct LLDrawable{enum{FORCE_INVISIBLE=1};};
+struct LLMotion{float duration=.6f;bool loop=false;virtual ~LLMotion(){}float getDuration(){return duration;}bool getLoop(){return loop;}};
+struct LLKeyframeMotion:LLMotion{float getLoopIn(){return .2f;}float getLoopOut(){return 1.f;}};
+struct LLGhostAvatar:LLVOAvatar{
+ bool mOverlayHelper=false,mPhaseArmed=true;bool visible=true,hidden=false;int mode=0;float scale=1,offset=0;LLUUID animation;int phaseRestarts=0;
+ LLMotion clip;bool mStartPhasePending=false;float mAppliedStartPhase=0;LLMotion* findMotion(LLUUID){return &clip;}LLMotion* createMotion(LLUUID){return &clip;}float phaseOffset(const LLUUID&);
+ bool isGhostAvatar()const override{return true;}bool isEntityCloneVisible()const{return visible&&!hidden;}void setEntityCloneVisible(bool v){visible=v;}void setRenderOnlyHidden(bool v){hidden=v;}
+ void setDrawableState(int,bool){assert(!mOverlayHelper&&"helper must not suppress geometry");}void clearDrawableState(int,bool){}
+ void setEntityScale(float v){scale=v;}void releaseClonedAttachments(){}void markForDeath(){dead=true;}void copyHeldPoseFrom(LLGhostAvatar*){}
+ void setEntityDriveMode(int m,LLUUID){prepareOffsetDrive(m);mode=m;mEntityDriveMode=m;}void restartEntityAnimation(){++phaseRestarts;}
+ static bool isGhostId(LLUUID id){auto* o=gObjectList.findObject(id);return o&&!o->isDead()&&o->asAvatar()&&o->asAvatar()->isGhostAvatar();}
+ static bool isRenderHidden(const LLViewerObject*);
+ void setStartOffset(float);void applyOffsetHistory(double);void restoreOffsetPose();void prepareOffsetDrive(int);
+ struct Pose{std::vector<LLQuaternion> rotations;std::vector<LLVector3> positions;};
+ struct OffsetFrame:Pose{double time=0;std::map<int,float> face;std::map<LLUUID,Pose> attachments;};
+ OffsetFrame mOffsetRestore;std::deque<OffsetFrame>mOffsetHistory;bool mOffsetNeedsRestore=false;float mStartOffset=0;int mEntityDriveMode=0;double mOffsetNextCapture=0,mOffsetFrozenAt=0;
+ Joint* mRoot=&root;bool mTrueMirrorParamSetsBuilt=true;std::set<int> mTrueMirrorFaceParamIds{1},mTrueMirrorPhysicsParamIds;
+ struct ClonedLinkset{LLUUID mRoot;};std::vector<ClonedLinkset>mClonedLinksets;
+ void buildTrueMirrorParamSets(){}void moveStampedAttachments(){}
+};
+void set_entity_clone_visible(LLGhostAvatar*,bool,bool);
+struct ALActorChoiceSource{LLUUID mId;std::string mLabel;};struct ALActorChoice{LLUUID mId;std::string mLabel,mSubjectLetters;U8 mSubjectMask=0;};
+std::vector<ALActorChoice> alBuildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ALActorChoiceSource>&);
+struct LLDirectorCast{
+ enum{ACTOR_STYLE_REPLACE=1};struct ActorStyle{bool mEnabled=false;int mMode=0,mStyle=3,mStepped=0;float mAlpha=.7f,mDissolveProgress=.13f;};
+ struct CastMember{LLUUID mId;ActorStyle mActorStyle,mCloneFadeStyle;bool mCloneFading=false;};std::vector<CastMember> mCast;std::map<LLUUID,size_t>mMemberIndex;ActorStyle mSelfActorStyle;
+ using ActorChoice=ALActorChoice;using ActorChoiceSource=ALActorChoiceSource;static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
+ static bool isSelf(LLUUID id){return id.isNull()||id==gAgentID;}static LLUUID canonicalActorId(LLUUID id){return id;}
+ LLVOAvatar* resolve(LLUUID id){auto* o=gObjectList.findObject(isSelf(id)?gAgentID:id);return o?o->asAvatar():nullptr;}
+ CastMember* getMember(LLUUID id){auto it=mMemberIndex.find(id);return it==mMemberIndex.end()?nullptr:&mCast[it->second];}
+ void touchScene(){}void sanitizeActorStyle(ActorStyle&){}void setActorStyle(const LLUUID&,const ActorStyle&);
+ const ActorStyle& getActorStyle(const LLUUID&)const;const ActorStyle& getRenderActorStyle(const LLUUID&)const;void setCloneFadeAlpha(const LLUUID&,float);
+ static std::vector<ActorChoice>buildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ActorChoiceSource>&);
+};
+template<class T>struct Ref{T* p;T* get(){return p;}};
+struct LLDrawInfo{Ref<LLVOAvatar>mAvatar;Ref<LLMeshSkinInfo>mSkinInfo;};
+struct LLActorMover{struct GhostBatch{LLDrawInfo* mInfo;};std::map<LLUUID,std::vector<GhostBatch>>batches;static LLActorMover& instance(){static LLActorMover m;return m;}const std::vector<GhostBatch>* ghostBatchesFor(LLUUID id){auto it=batches.find(id);return it==batches.end()?nullptr:&it->second;}};
+using uuid_vec_t=std::vector<LLUUID>;
+struct ALGhostStudio{
+ enum{BACKING_OVERLAY,BACKING_ENTITY_CLONE};enum{DRIVE_MIRROR,DRIVE_TRUE_MIRROR,DRIVE_REFLECT,DRIVE_DIRECTED,DRIVE_FROZEN};enum{POSE_LIVE,POSE_FROZEN};enum{STATE_READY,STATE_TEARING_DOWN};
+ using palette_map_t=std::map<std::pair<LLUUID,U64>,std::vector<float>>;
+ struct Instance{
+ LLUUID mId,mEntityId,mGroupId,mCrowdId,mSource,mAppearanceSource,mAnimationSource,mOverlayAvatar,mAppearanceSwapTintSeed;
+ bool mDeleting=false,mEnabled=true,mSoloVisible=true,mHasAnimationSource=false,mSourceRemoved=false,mAppearanceSourceRemoved=false,mAnimationSourceRemoved=false,mCrowdMixed=false;
+ int mKind=BACKING_OVERLAY,mState=STATE_READY,mDriveMode=DRIVE_MIRROR,mPose=POSE_LIVE,mPendingFreezeFrames=0,mCrowdRow=0,mStyle=0,mCrowdSingleStyle=0;U32 mCrowdSeed=0;
+ float mPoseRateHz=0,mStartOffset=0,mFadeAlpha=1,mScale=2,mNextPoseRefresh=0;double mCrowdLocalX=0,mCrowdLocalY=0;std::string mSourceLabel;
+ palette_map_t mFrozenPalettes,mCadencePalettes;LLVector3 mFrozenFootAgent,mFrozenHeadAgent,mCadenceFootAgent,mCadenceHeadAgent;bool mFrozenHeadValid=false,mCadenceHeadValid=false;
+ std::vector<LLQuaternion>mFrozenJointRotations;std::vector<LLVector3>mFrozenJointPositions;std::map<LLUUID,LLMatrix4>mFrozenAttachMats;LLQuaternion mRotation;
+ std::shared_ptr<const Instance>mOffsetPose;
+ };
+ std::vector<Instance>mInstances;std::set<LLUUID>mOffsetInstances;std::map<LLUUID,LLUUID>mPrivateOverlayRuntimes;std::map<LLUUID,size_t>mOverlayHelperRefs;std::set<LLUUID>mPrivateOverlayActors;void rememberOverlayDomain(LLViewerObject*);
+ struct History{double mNextCapture=0;std::deque<std::pair<double,std::shared_ptr<const Instance>>>mFrames;};std::map<LLUUID,History>mOverlayHistory;
+ struct Fade{ALCloneQol::Fade mFade;};std::map<LLUUID,Fade>mFades;LLUUID mFadeRegion;U64 mInstanceRevision=0;
+ int created=0,transactions=0;float inputPose=0;bool mShowAll=true,mSolo=false;
+ static ALGhostStudio* current;static ALGhostStudio& instance(){return *current;}
+ Instance* getInstance(LLUUID id)const{for(auto& i:const_cast<ALGhostStudio*>(this)->mInstances)if(i.mId==id)return &i;return nullptr;}
+ const Instance* findInstanceByRuntime(LLUUID id)const{for(auto& i:mInstances)if(i.mEntityId==id&&id.notNull())return &i;return nullptr;}
+ LLGhostAvatar* resolveEntityClone(LLUUID id)const{auto* i=getInstance(id);if(!i||i->mKind!=BACKING_ENTITY_CLONE)return nullptr;auto* o=gObjectList.findObject(i->mEntityId);return o&&!o->isDead()?dynamic_cast<LLGhostAvatar*>(o):nullptr;}
+ std::vector<LLUUID> groupMembers(LLUUID id){return getInstance(id)?std::vector<LLUUID>{id}:std::vector<LLUUID>{};}
+ struct Member{LLUUID mInstanceId;};struct Group{std::vector<Member>mMembers;};const Group* groupForMember(LLUUID)const{return nullptr;}
+ bool isVisible(const Instance&i)const{return ALCloneQol::visible(mShowAll,i.mEnabled,mSolo,i.mSoloVisible);}
+ static bool isOverlayStyle(int look){return look>=0&&look<100;}
+ static LLVOAvatar* resolveSourceAvatar(const Instance&i){return i.mSourceRemoved?nullptr:LLDirectorCast::instance().resolve(i.mSource);}
+ static LLVOAvatar* resolveOverlayAvatar(const Instance&);
+ LLGhostAvatar* createEntityRuntime(Instance&i,S32&){if(!LLDirectorCast::instance().resolve(i.mAppearanceSource))return nullptr;auto* g=new LLGhostAvatar;g->id=LLUUID(1000+(++created));gObjectList.objects[g->id]=g;return g;}
+ // External runtime setup boundary; independently checked for resolver wiring.
+ void applyEntityRuntimeState(Instance&i,LLGhostAvatar*g){g->scale=i.mScale;g->offset=i.mStartOffset;g->mode=i.mDriveMode;g->animation=i.mAnimationSource;}
+ void onEntityRuntimeReplaced(Instance&i,LLUUID id,LLGhostAvatar*){i.mEntityId=id;++transactions;}
+ bool captureOverlayPose(Instance&i){i.mFrozenPalettes[{{77},1}]={inputPose};i.mFrozenJointRotations={{inputPose}};i.mFrozenJointPositions={{inputPose}};i.mPose=POSE_FROZEN;return true;}
+ bool refreshPoseCadence(const LLUUID&,F64);void getWantedSources(uuid_vec_t&)const;
+ bool freezeInstance(const LLUUID&);bool swapSource(const LLUUID&,const LLUUID&,const std::string&);void beginAppearance(const LLUUID&,bool=true);
+ void invalidateOverlayPose(Instance&);void releaseOverlayHelper(const LLUUID&);bool acquireOverlayHelper(const LLUUID&);
+ LLUUID actorOwner(const LLUUID&)const;bool isPrivateOverlayRuntime(const LLUUID&)const;bool isDeleting(const LLUUID&)const;
+ bool setStartOffset(const LLUUID&,float);void syncOffsets(const std::vector<LLUUID>&);void applyCrowdVariation(const LLUUID&,U32,bool=true,bool=true,bool=false);void refreshOverlayOffset(Instance&,double);
+};ALGhostStudio* ALGhostStudio::current=nullptr;
+@PRODUCTION@
+int main(){
+ ALGhostStudio studio;ALGhostStudio::current=&studio;auto& cast=LLDirectorCast::instance();
+ LLVOAvatar a,b;a.id={70};b.id={80};gObjectList.objects[a.id]=&a;gObjectList.objects[b.id]=&b;
+ ALGhostStudio::Instance x;x.mId={1};x.mSource=a.id;x.mCrowdId={44};x.mCrowdLocalX=0;
+ auto y=x;y.mId={2};y.mCrowdLocalX=-5;y.mCrowdRow=1;studio.mInstances={x,y};
+ gSavedSettings.ints={{"GhostStudioStartMode",2},{"GhostStudioLooksMode",1},{"GhostStudioMixLook1",7},{"GhostStudioMixLook2",8},{"GhostStudioMixLook3",-1},{"GhostStudioMixLook4",-1},{"GhostStudioMixLook5",-1},{"GhostStudioMixLook6",-1},{"GhostStudioLookSpread",1}};
+ gSavedSettings.floats["GhostStudioStartSpread"]=2;
+ studio.applyCrowdVariation({1},123);assert(studio.mInstances[0].mStartOffset==0&&studio.mInstances[1].mStartOffset==2);assert(studio.mInstances[0].mStyle==7&&studio.mInstances[1].mStyle==8);
+ studio.setStartOffset({1},.75f);studio.applyCrowdVariation({1},123,false,true);assert(studio.mInstances[0].mStartOffset==.75f);
+ studio.syncOffsets({{1},{2}});assert(gSavedSettings.getS32("GhostStudioStartMode")==0&&studio.mOffsetInstances.empty());
+ studio.setStartOffset({1},.75f);studio.applyCrowdVariation({1},123,true,true,true);assert(studio.mInstances[0].mStartOffset==.75f);
+ auto& i=studio.mInstances[0];studio.inputPose=10;studio.refreshOverlayOffset(i,10);studio.inputPose=20;studio.refreshOverlayOffset(i,11);studio.inputPose=30;studio.refreshOverlayOffset(i,12);
+ assert(i.mOffsetPose&&i.mOffsetPose->mFrozenPalettes.begin()->second[0]==30); // 12-.75 selects first sample at/after 11.25
+ studio.setStartOffset({1},2);studio.refreshOverlayOffset(i,12);assert(i.mOffsetPose->mFrozenPalettes.begin()->second[0]==10);
+ assert(studio.freezeInstance({1})&&i.mFrozenPalettes.begin()->second[0]==10);
+ // Swapped copies share a harvest-only helper, and failed copies are registered.
+ i.mCadencePalettes[{{70},2}]={99};i.mCadenceFootAgent.value=99;i.mNextPoseRefresh=100;
+ assert(studio.swapSource({1},b.id,"B"));assert(i.mCadencePalettes.empty()&&i.mNextPoseRefresh==0);auto helper=i.mOverlayAvatar;assert(helper.notNull()&&studio.created==1&&i.mSource==a.id&&i.mAnimationSource==a.id);
+ assert(studio.swapSource({2},b.id,"B")&&studio.created==1&&studio.mInstances[1].mOverlayAvatar==helper&&studio.mOverlayHelperRefs[helper]==2);
+ auto* body=dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(helper));assert(body&&body->hidden&&body->scale==1&&body->offset==0);
+ i.mPose=ALGhostStudio::POSE_LIVE;i.mPoseRateHz=5;LLMeshSkinInfo skin;LLDrawInfo batch{{body},{&skin}};LLActorMover::instance().batches[helper]={{&batch}};
+ assert(studio.refreshPoseCadence({1},30)&&i.mCadencePalettes.count({helper,2})&&i.mCadencePalettes.begin()->second[0]==3);
+ i.mSourceRemoved=true;uuid_vec_t wanted;studio.getWantedSources(wanted);assert(std::find(wanted.begin(),wanted.end(),helper)!=wanted.end());
+ LLGhostAvatar visibility;set_entity_clone_visible(&visibility,false,true);assert(!visibility.isEntityCloneVisible()&&visibility.visible);
+ LLVOAvatar control;control.id={300};control.control=true;control.wearer=body;gObjectList.objects[control.id]=&control;
+ LLViewerObject attachment;attachment.id={301};attachment.parent=body;gObjectList.objects[attachment.id]=&attachment;
+ body->children.push_back(&attachment);attachment.controlAvatar=&control;studio.rememberOverlayDomain(body);
+ assert(studio.isPrivateOverlayRuntime(helper)&&studio.isPrivateOverlayRuntime(control.id)&&studio.isPrivateOverlayRuntime(attachment.id));assert(LLGhostAvatar::isRenderHidden(&control)&&LLGhostAvatar::isRenderHidden(&attachment));
+ attachment.parent=nullptr;control.wearer=nullptr;assert(studio.isPrivateOverlayRuntime(attachment.id)&&studio.isPrivateOverlayRuntime(control.id));
+ studio.releaseOverlayHelper({1});assert(!body->dead&&studio.mOverlayHelperRefs[helper]==1);studio.releaseOverlayHelper({2});assert(body->dead&&studio.mOverlayHelperRefs.empty());
+ studio.mInstances[1].mAppearanceSource={99};studio.beginAppearance({2},false);assert(studio.mPrivateOverlayRuntimes.count({2})&&studio.mInstances[1].mOverlayAvatar.isNull());
+ LLVOAvatar late;late.id={99};gObjectList.objects[late.id]=&late;studio.beginAppearance({2},false);assert(studio.mInstances[1].mOverlayAvatar.notNull());
+ // A clone cannot copy its own body even as a member of a swap batch.
+ i.mKind=ALGhostStudio::BACKING_ENTITY_CLONE;i.mEntityId={222};assert(!studio.swapSource({1},{222},"self"));
+ LLGhostAvatar owner;owner.id={222};LLVOAvatar ownControl;ownControl.id={223};ownControl.control=true;ownControl.wearer=&owner;gObjectList.objects[owner.id]=&owner;gObjectList.objects[ownControl.id]=&ownControl;assert(!studio.swapSource({1},ownControl.id,"own attachment"));
+ auto beforeEntity=i;assert(studio.swapSource({1},a.id,"A"));assert(studio.transactions==1&&i.mEntityId!=LLUUID(222)&&i.mSource==beforeEntity.mSource&&i.mScale==beforeEntity.mScale&&i.mStartOffset==beforeEntity.mStartOffset);
+ // Authoring read/modify/write while rendering uses a transient fade.
+ LLGhostAvatar entity;entity.id={222};i.mEntityId=entity.id;gObjectList.objects[entity.id]=&entity;cast.mCast.push_back({entity.id});cast.mMemberIndex[entity.id]=0;
+ cast.setCloneFadeAlpha(entity.id,.5f);assert(cast.getRenderActorStyle(entity.id).mStyle==10);auto style=cast.getActorStyle(entity.id);style.mStepped=5;cast.setActorStyle(entity.id,style);cast.setCloneFadeAlpha(entity.id,1);assert(cast.getActorStyle(entity.id).mStyle==3&&cast.getActorStyle(entity.id).mStepped==5&&!cast.mCast[0].mCloneFading);
+ cast.setCloneFadeAlpha(entity.id,.3f);entity.dead=true;cast.setCloneFadeAlpha(entity.id,1);assert(!cast.mCast[0].mCloneFading);
+ i.mDeleting=true;auto choices=cast.buildActorChoices(gAgentID,{entity.id,{}, {},{}},{{entity.id,"retiring"},{b.id,"B"}});assert(std::none_of(choices.begin(),choices.end(),[&](const auto& c){return c.mId==entity.id;}));
+ // Execute the production entity history apply and freeze/resume decisions.
+ entity.dead=false;entity.mStartOffset=1;entity.mEntityDriveMode=ALGhostStudio::DRIVE_MIRROR;entity.joint.r={10};entity.joint.p={10};entity.applyOffsetHistory(20);
+ entity.restoreOffsetPose();entity.joint.r={20};entity.joint.p={20};entity.applyOffsetHistory(21);assert(entity.joint.r.value==10&&entity.mOffsetRestore.rotations[0].value==20);
+ LLTimer::now=21;entity.setEntityDriveMode(ALGhostStudio::DRIVE_FROZEN,{});entity.restoreOffsetPose();assert(entity.joint.r.value==10);
+ LLTimer::now=25;entity.setEntityDriveMode(ALGhostStudio::DRIVE_MIRROR,{});assert(entity.joint.r.value==20&&entity.mOffsetHistory.front().time==24);
+ entity.applyOffsetHistory(25);assert(entity.joint.r.value==10);
+ LLGhostAvatar phase;phase.setStartOffset(.8f);assert(phase.phaseOffset({70})==.6f);assert(phase.phaseOffset({70})==0.f);
+ phase.clip.duration=0;phase.setStartOffset(.8f);assert(phase.phaseOffset({70})==.8f&&phase.mStartPhasePending);phase.clip.duration=2;assert(phase.phaseOffset({70})==.8f&&!phase.mStartPhasePending);assert(phase.phaseOffset({70})==0);
+ std::cout<<"PASS: production crowd assignment/Sync, overlay and entity history apply, displayed Freeze/resume, swap/beginAppearance, shared/recoverable helpers, owner privacy, authored fade restore and final Subject exclusion\n";
+}

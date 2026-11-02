@@ -78,6 +78,7 @@ struct ALGhostStudio{
  bool isVisible(const Instance& i)const{return ALCloneQol::visible(mShowAll,i.mEnabled,mSolo,i.mSoloVisible);}
  void setSelected(LLUUID id){mSelected=id;}
  void removeInstance(LLUUID id){if(getInstance(id)){++finalDeletes;mInstances.erase(std::remove_if(mInstances.begin(),mInstances.end(),[&](const Instance& i){return i.mId==id;}),mInstances.end());}}
+ LLUUID actorOwner(const LLUUID& id)const{return id;}
  bool isDeleting(const LLUUID&)const;void refreshSoloVisibility();void setSolo(const std::vector<LLUUID>&);
  void requestRemoveInstance(const LLUUID&);void updateFades();
 };
@@ -103,9 +104,72 @@ int main(){ALGhostStudio studio;
  // Zero-duration remains the old immediate deletion path.
  studio.mInstances={{{4},{104},{}}};gSavedSettings.duration=0.f;studio.requestRemoveInstance({4});
  assert(studio.finalDeletes==4&&studio.mInstances.empty());
- std::cout<<"PASS: production solo group expansion/visibility restore; retiring selection/reference exclusion; deferred group deletion; teleport and zero-duration immediate paths\n";}
+ std::cout<<"PASS: production solo group expansion/visibility restore; retiring selection/identity state; deferred group completion; teleport and zero-duration immediate paths\n";}
 '''
     compile_run(directory, 'studio_qol', fixture, (nv.resolve(),))
+    check_round1(directory, nv)
+
+
+
+def check_round1(directory, nv):
+    fixture = Path('scripts/code_tools/fixtures/clone_qol_fixture.cpp.in').read_text(encoding='utf-8')
+    production = []
+    for file, signatures in {
+        'alghoststudio.cpp': ('bool ALGhostStudio::isDeleting(', 'bool ALGhostStudio::refreshPoseCadence(', 'void ALGhostStudio::getWantedSources(', 'LLUUID ALGhostStudio::actorOwner(',
+            'bool ALGhostStudio::isPrivateOverlayRuntime(', 'void ALGhostStudio::rememberOverlayDomain(', 'void ALGhostStudio::invalidateOverlayPose(',
+            'void ALGhostStudio::releaseOverlayHelper(', 'bool ALGhostStudio::acquireOverlayHelper(',
+            'void ALGhostStudio::beginAppearance(', 'bool ALGhostStudio::swapSource(',
+            'bool ALGhostStudio::setStartOffset(', 'void ALGhostStudio::syncOffsets(',
+            'void ALGhostStudio::applyCrowdVariation(', 'void ALGhostStudio::refreshOverlayOffset(',
+            'LLVOAvatar* ALGhostStudio::resolveOverlayAvatar(', 'bool ALGhostStudio::freezeInstance('),
+        'llghostavatar.cpp': ('bool LLGhostAvatar::isRenderHidden(', 'F32 LLGhostAvatar::phaseOffset(', 'void LLGhostAvatar::setStartOffset(',
+            'void LLGhostAvatar::applyOffsetHistory(', 'void LLGhostAvatar::restoreOffsetPose(',
+            'void LLGhostAvatar::prepareOffsetDrive('),
+        'lldirectorcast.cpp': ('const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(',
+            'const LLDirectorCast::ActorStyle& LLDirectorCast::getRenderActorStyle(',
+            'void LLDirectorCast::setActorStyle(', 'void LLDirectorCast::setCloneFadeAlpha(',
+            'std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::buildActorChoices('),
+    }.items():
+        production.extend(method(nv / file, sig) for sig in signatures)
+    production.insert(0,method(nv / 'alghoststudio.cpp', 'void set_entity_clone_visible('))
+    merger = (nv / 'aldirectoractorchoice.cpp').read_text(encoding='utf-8')
+    merger = '\n'.join(line for line in merger.splitlines() if not line.startswith('#include "'))
+    fixture = fixture.replace('@PRODUCTION@', merger+'\n'+'\n'.join(production))
+    compile_run(directory, 'round1_qol', fixture, (nv.resolve(),))
+    # Negative controls mutate only assembled fixture text, never viewer files.
+    controls = {
+        'crowd_early_return': ('void ALGhostStudio::applyCrowdVariation', '\n    const Instance* member =', '\n    return;\n    const Instance* member ='),
+        'skip_history_apply': ('void LLGhostAvatar::applyOffsetHistory', '\n    if (mStartOffset', '\n    return;\n    if (mStartOffset'),
+        'skip_overlay_history': ('void ALGhostStudio::refreshOverlayOffset', 'inst.mOffsetPose = frame.second;', '(void)frame;'),
+        'swap_early_return': ('bool ALGhostStudio::swapSource', '\n    Instance* inst =', '\n    return false;\n    Instance* inst ='),
+        'drop_subject_filter': ('std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::buildActorChoices', 'return ALGhostStudio::instance().isDeleting(choice.mId)', 'return false && ALGhostStudio::instance().isDeleting(choice.mId)'),
+        'fade_authoring_leak': ('const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle', 'return member.mActorStyle;', 'return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;'),
+    }
+    for name, (signature, old, new) in controls.items():
+        start = fixture.index(signature+'(')
+        stop = fixture.index('\n}', start)+2
+        body = fixture[start:stop]
+        assert old in body, name
+        broken = fixture[:start]+body.replace(old,new,1)+fixture[stop:]
+        try:
+            compile_run(directory, name, broken, (nv.resolve(),))
+        except subprocess.CalledProcessError as failure:
+            assert failure.cmd[0].endswith('.exe'), (name, 'negative control must compile')
+            print('PASS: rejected negative control', name, flush=True)
+        else:
+            raise AssertionError('negative control escaped: '+name)
+    assert 'for (' not in method(nv/'alghoststudio.cpp','ALGhostStudio::Instance* ALGhostStudio::getInstance(')
+    assert 'for (' not in method(nv/'alghoststudio.cpp','LLGhostAvatar* ALGhostStudio::resolveEntityClone(')
+    # Wiring checks complement execution at viewer-only boundaries.
+    setup = method(nv/'alghoststudio.cpp', 'void ALGhostStudio::applyEntityRuntimeState(')
+    assert 'resolve(inst.mAnimationSource)' in setup and 'animation->getID()' in setup
+    for signature in ('bool LLActorMover::canRenderSystemActorGhost(', 'bool LLActorMover::actorMaskAvatarEligible(',
+                      'bool LLActorMover::renderSharedActorStyleProxyItem('):
+        assert 'isRenderHidden' in method(nv/'llactormover.cpp',signature)
+    assert 'LLGhostAvatar::isRenderHidden(avatar)' in method(nv/'llactormover.cpp','void LLActorMover::buildSharedActorStyleQueue(')
+    directed=(nv/'llghostavatar.cpp').read_text(encoding='utf-8')
+    retrigger=directed[directed.index('        if (!active &&'):directed.index('        mEntityDirectedWasActive = active;')]
+    assert 'startMotion(mEntityDirectedAnim, 0.f)' in retrigger and 'phaseOffset(' not in retrigger
 
 
 if __name__ == '__main__':

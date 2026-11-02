@@ -30,6 +30,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alcinelightrigmodel.h`
 - `indra/newview/alclientheight.h`
 - `indra/newview/alclientheightmodel.h`
+- `indra/newview/alcloneqol.h`
 - `indra/newview/aldanceball.cpp`
 - `indra/newview/aldanceball.h`
 - `indra/newview/aldiopterpresetbank.cpp`
@@ -181,7 +182,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@660,7", "indra/newview/CMakeLists.txt@1283,160", "indra/newview/CMakeLists.txt@1662,7", "indra/newview/CMakeLists.txt@2837,31", "indra/newview/CMakeLists.txt@2942,179"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14140", "indra/newview/app_settings/settings.xml@31673,209"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3450", "indra/newview/app_settings/settings.xml@6548,14231", "indra/newview/app_settings/settings.xml@31764,209"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@5334,24", "indra/newview/llappviewer.cpp@5656,48", "indra/newview/llappviewer.cpp@5793,119", "indra/newview/llappviewer.cpp@6419,15", "indra/newview/llappviewer.cpp@6457,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@788,19", "indra/newview/llfloaterenvironmentadjust.cpp@810,33", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterhoverheight.cpp", "hunks": ["indra/newview/llfloaterhoverheight.cpp@29,50", "indra/newview/llfloaterhoverheight.cpp@228,216"]}
@@ -297,13 +298,26 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `GhostReflectVerify`
 - `GhostStudioCrowdHeightUnitsPerPixel`
 - `GhostStudioCrowdRotationStepDegrees`
+- `GhostStudioFadeIn`
+- `GhostStudioFadeOut`
 - `GhostStudioFormationPreviewHeight`
 - `GhostStudioFormationPreviewScale`
 - `GhostStudioGuideWidthPixels`
+- `GhostStudioLookSpread`
+- `GhostStudioLooksMode`
+- `GhostStudioMixLook1`
+- `GhostStudioMixLook2`
+- `GhostStudioMixLook3`
+- `GhostStudioMixLook4`
+- `GhostStudioMixLook5`
+- `GhostStudioMixLook6`
 - `GhostStudioNameplateMode`
 - `GhostStudioOverlayPalette`
 - `GhostStudioRefreshAlways`
+- `GhostStudioRippleFrom`
 - `GhostStudioShowFormationPreview`
+- `GhostStudioStartMode`
+- `GhostStudioStartSpread`
 - `GhostStudioTurnEase`
 - `GhostStudioTurnRate`
 - `GhostTrueMirrorCopyFace`
@@ -678,6 +692,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## checks
 
 - `scripts/code_tools/clone_looks_gl_check.py`
+- `scripts/code_tools/director_clone_qol_check.py`
 - `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`
 - `scripts/code_tools/test_clone_stamp_attachments.py`

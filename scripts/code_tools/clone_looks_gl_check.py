@@ -46,6 +46,10 @@ class Runner:
         g.bind_fbo(0x8D40, self.fbo)
         self.target = self.texture(None, width, height, 0x8814)
         g.fbo_tex(0x8D40, 0x8CE0, 0x0DE1, self.target, 0)
+        depth = g.U()
+        g.gen_tex(1,C.byref(depth));g.bind_tex(0x0DE1,depth)
+        g.teximage(0x0DE1,0,0x8CAC,width,height,0,0x1902,0x1406,None)
+        g.fbo_tex(0x8D40,0x8D00,0x0DE1,depth,0)
         assert g.fbo_status(0x8D40) == 0x8CD5
         # Nearest-only poison fixture: whole transparent taps must contribute
         # no RGB. Filtered contamination is measured separately below.
@@ -142,7 +146,7 @@ class Runner:
         return pr
 
     def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
-               shift_y=0., rotation=0., slot=-1, adjacent_slots=False):
+               shift_y=0., rotation=0., slot=-1, adjacent_slots=False, fade=1., native_fade=False, depth_test=False):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -162,6 +166,9 @@ class Runner:
             g.ui(loc(name), value)
         for name in ('color', 'ghostSystemColor'):
             floats(name, .42, .72, .94, .85)
+        floats('ghostFadeProgress', 1.-fade)
+        g.ui(loc('actorFxEnabled'), 2 if native_fade and fade < 1 else 0)
+        floats('actorFxDissolveProgress', 1.-fade)
         floats('ghostTime', time)
         floats('ghostParams', 0., 1., 0., 8.)
         floats('ghostAux', .5 if mask else 0., 1., 0., phase)
@@ -220,10 +227,16 @@ class Runner:
                 self.disable_attr(ix); self.attri(ix,0)
         g.active(0x84C0); g.bind_tex(0x0DE1,self.diffuse); g.ui(loc('diffuseMap'),0)
         g.bind_fbo(0x8D40,self.fbo); g.viewport(0,0,self.width,self.height)
+        if depth_test: g.fn('glEnable',None,g.U)(0x0B71)
+        else: g.disable(0x0B71)
+        self.clear(0x1801,0,(g.F*1)(1.))
         self.clear(0x1800,0,(g.F*4)(0,0,0,0))
         g.draw(0x0004,0,len(self.verts))
         result = np.empty((self.height,self.width,4),np.float32)
         g.read(0,0,self.width,self.height,0x1908,0x1406,result.ctypes.data)
+        if depth_test:
+            self.last_depth=np.empty((self.height,self.width),np.float32)
+            g.read(0,0,self.width,self.height,0x1902,0x1406,self.last_depth.ctypes.data)
         for ix in used: self.disable_attr(ix)
         assert g.fn('glGetError',g.U)() == 0, 'OpenGL render error'
         assert np.isfinite(result).all(), 'nonfinite pixels'
@@ -396,6 +409,60 @@ def main():
             assert delta <= 1/255, (label,look,delta)
         stats['regressions'].append(dict(permutation=label,looks=maximum,max_error=worst))
         print('PASS compile/link + regression:',label,flush=True)
+    # Exercise blend-disabled opaque/mask sweeps, including coverage/depth holes.
+    fade_stats = []
+    for defs in ((), ('HAS_SKIN',)):
+        fade_pr = runner.program(tree, defs)
+        for mask in (False, True):
+            full = runner.render(fade_pr, 1, mask=mask, opaque=True, depth_test=True)
+            full_depth=runner.last_depth.copy()
+            zero = runner.render(fade_pr, 1, mask=mask, opaque=True, fade=0.,depth_test=True)
+            assert np.all(runner.last_depth==1.), "fade zero writes depth"
+            half = runner.render(fade_pr, 1, mask=mask, opaque=True, fade=.5,depth_test=True)
+            half_depth=runner.last_depth.copy()
+            assert not np.any(zero), ('fade zero drew geometry', defs, mask)
+            assert np.array_equal(full, runner.render(fade_pr,1,mask=mask,opaque=True,fade=1.)), 'fade one parity'
+            occupied = full[...,3] > 0
+            surviving = half[...,3] > 0
+            assert np.array_equal(half_depth[surviving],full_depth[surviving]), 'surviving depth changed'
+            assert np.all(half_depth[~surviving]==1.), 'discarded coverage writes depth'
+            ratio = np.count_nonzero(surviving)/np.count_nonzero(occupied)
+            assert .49 < ratio < .51, ('half coverage', ratio)
+            assert np.array_equal(full[surviving], half[surviving]), 'fade changed surviving beauty'
+            assert np.array_equal(half,runner.render(fade_pr,1,mask=mask,opaque=True,fade=.5,time=900.)), 'coverage crawls'
+            fade_stats.append(dict(skin=bool(defs),mask=mask,half_coverage=ratio,endpoint_error=0.))
+    # Link the actual native material/coverage modules. Analytic directional lit
+    # material is the boundary fixture, not a claim of an in-world PBR test.
+    class NativeTree:
+        def read(self, path):
+            if path != F: return tree.read(path)
+            module = tree.read(SH+'alchemy/actorFxF.glsl').replace('vary_actor_fx_position','vary_object_position')
+            coverage = tree.read(SH+'alchemy/actorFxDissolveF.glsl')
+            coverage = '\n'.join(line for line in coverage.splitlines() if not (line.startswith('uniform ') and line in module))
+            return module + coverage + r"""
+                in vec3 vary_normal; in vec2 vary_texcoord0;
+                uniform sampler2D diffuseMap; uniform vec4 ghostAux;
+                out vec4 frag_color;
+                void main(){
+                    bool styled = actorFxActive();
+                    vec4 material=texture(diffuseMap,vary_texcoord0);
+                    if (material.a < ghostAux.x) discard;
+                    float light=.08+.9*max(dot(normalize(vary_normal),normalize(vec3(.7,.2,1.))),0.);
+                    frag_color=vec4(material.rgb*light,1.);
+                }
+            """
+    native_pr = runner.program(NativeTree())
+    for mask in (False,True):
+        lit=runner.render(native_pr,1,mask=mask,native_fade=True)
+        zero=runner.render(native_pr,1,mask=mask,fade=0,native_fade=True)
+        half=runner.render(native_pr,1,mask=mask,fade=.5,native_fade=True)
+        assert not np.any(zero), 'deferred zero drew'
+        visible=half[...,3]>0
+        assert np.array_equal(lit[visible],half[visible]), 'deferred lighting changed'
+        assert np.array_equal(lit,runner.render(native_pr,1,mask=mask)), 'deferred endpoint changed'
+        assert .49 < np.count_nonzero(visible)/np.count_nonzero(lit[...,3]) < .51
+    stats['fade_coverage'] = fade_stats
+    print('PASS: opaque/masked fade 0/.5/1; stable coverage; native lit endpoint parity 0.0', flush=True)
     pr = runner.program(tree)
     runner.probe = runner.program(tree, probe=True)
     def save(a,name):

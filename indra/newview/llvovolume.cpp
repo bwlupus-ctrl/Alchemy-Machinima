@@ -4977,7 +4977,7 @@ bool LLVOVolume::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
 {
     // Shelter rays count only visible surfaces: client-only FORCE_INVISIBLE helpers
     // (rig emitters, catchlight, live probe, manipulator proxies) never shelter rain.
-    if (ALDerenderList::isHiddenObject(this) ||
+    if (LLGhostAvatar::isRenderHidden(this) || ALDerenderList::isHiddenObject(this) ||
         (!mbCanSelect && !ALWeatherShelter::VisibleSurfaceRay::active())
         || mDrawable->isDead()
         || (ALWeatherShelter::VisibleSurfaceRay::active() && mDrawable->isState(LLDrawable::FORCE_INVISIBLE))

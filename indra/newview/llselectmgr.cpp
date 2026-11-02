@@ -4387,15 +4387,15 @@ void LLSelectMgr::selectDelete()
             studio.groupForMember(selected);
         if (!group)
         {
-            studio.removeInstance(selected);
+            studio.requestRemoveInstance(selected);
         }
         else if (!group->mEditMembers)
         {
-            studio.removeInstance(selected);
+            studio.requestRemoveInstance(selected);
         }
         else if (selected == group->mId && !group->mMembers.empty())
         {
-            studio.removeInstance(
+            studio.requestRemoveInstance(
                 group->mMembers.front().mInstanceId);
         }
         return;
@@ -4567,15 +4567,15 @@ void LLSelectMgr::selectForceDelete()
             studio.groupForMember(selected);
         if (!group)
         {
-            studio.removeInstance(selected);
+            studio.requestRemoveInstance(selected);
         }
         else if (!group->mEditMembers)
         {
-            studio.removeInstance(selected);
+            studio.requestRemoveInstance(selected);
         }
         else if (selected == group->mId && !group->mMembers.empty())
         {
-            studio.removeInstance(
+            studio.requestRemoveInstance(
                 group->mMembers.front().mInstanceId);
         }
         return;

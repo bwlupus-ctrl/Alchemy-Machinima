@@ -27,6 +27,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alderenderlist.h"
+#include "llghostavatar.h"
 
 #include "llhudnametag.h"
 
@@ -116,7 +117,7 @@ LLHUDNameTag::~LLHUDNameTag()
 
 bool LLHUDNameTag::lineSegmentIntersect(const LLVector4a& start, const LLVector4a& end, LLVector4a& intersection, bool debug_render)
 {
-    if (!mVisible || mHidden || ALDerenderList::isHiddenObject(mSourceObject))
+    if (!mVisible || mHidden || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
     {
         return false;
     }
@@ -233,7 +234,7 @@ void LLHUDNameTag::render()
 
 void LLHUDNameTag::renderText()
 {
-    if (!mVisible || mHidden || ALDerenderList::isHiddenObject(mSourceObject))
+    if (!mVisible || mHidden || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
     {
         return;
     }
@@ -559,7 +560,7 @@ void LLHUDNameTag::updateVisibility()
     }
 
     // Not visible if parent object is dead
-    if (mSourceObject->isDead() || ALDerenderList::isHiddenObject(mSourceObject))
+    if (mSourceObject->isDead() || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
     {
         mVisible = false;
         return;

@@ -2172,6 +2172,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.h",
+    "dependency": "indra/newview/alcloneqol.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.h",
     "dependency": "indra/newview/alghostautoanimmodel.h",
     "excluded": false,
     "origin": "fork-added",

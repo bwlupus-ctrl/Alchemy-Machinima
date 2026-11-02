@@ -123,7 +123,6 @@ bool ALToolGhostEdit::handleMouseDown(S32 x, S32 y, MASK mask)
     {
         ALGhostStudio& studio = ALGhostStudio::instance();
         studio.setSelected(hit);
-        if (studio.getSolo()) studio.setSolo({hit});
     }
     return true;        // tool mode: clicks never fall through to world selection
 }
@@ -153,7 +152,6 @@ bool ALToolGhostEdit::handleStockPick(const LLPickInfo& pick_info, bool gizmo_pa
         if (ghost != studio.getSelected())
         {
             studio.setSelected(ghost);  // tick() rebuilds the proxy on the new ghost
-            if (studio.getSolo()) studio.setSolo({ghost});
         }
         return true;                    // consume: stock selection unchanged
     }

@@ -2016,7 +2016,7 @@ bool LLVOAvatar::lineSegmentIntersect(const LLVector4a& start, const LLVector4a&
                                       LLVector4a* normal,
                                       LLVector4a* tangent)
 {
-    if (ALDerenderList::keepsAvatarLive(this) ||
+    if (LLGhostAvatar::isRenderHidden(this) || ALDerenderList::keepsAvatarLive(this) ||
         (isSelf() && !gAgent.needsRenderAvatar()) || !LLPipeline::sPickAvatar)
     {
         return false;
@@ -2124,7 +2124,7 @@ LLViewerObject* LLVOAvatar::lineSegmentIntersectRiggedAttachments(const LLVector
                                       LLVector4a* normal,
                                       LLVector4a* tangent)
 {
-    if (ALDerenderList::keepsAvatarLive(this) ||
+    if (LLGhostAvatar::isRenderHidden(this) || ALDerenderList::keepsAvatarLive(this) ||
         (isSelf() && !gAgent.needsRenderAvatar()))
     {
         return NULL;
@@ -12947,7 +12947,7 @@ bool LLVOAvatar::hasEffectiveActorFx() const
 
     const LLUUID actor_fx_id = actor_fx_avatar->getActorFxOwnerId();
     const LLDirectorCast::ActorStyle& actor_fx_style =
-        LLDirectorCast::instance().getActorStyle(actor_fx_id);
+        LLDirectorCast::instance().getRenderActorStyle(actor_fx_id);
     return actor_fx_style.mEnabled &&
         (actor_fx_style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
          actor_fx_style.mAlpha > 0.001f);

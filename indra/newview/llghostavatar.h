@@ -148,6 +148,7 @@ public:
     bool isEntityCloneVisible() const { return mEntityCloneVisible && !mRenderOnlyHidden; }
     void setRenderOnlyHidden(bool hidden) { mRenderOnlyHidden = hidden; }
     bool mRenderOnlyHidden = false;
+    bool mOverlayHelper = false; // private for its complete lifetime, including deferred death
 
     // Viewer-local entity controls. These only alter this synthetic avatar's
     // skeleton/motion controller; neither path touches simulator object state.
@@ -163,6 +164,8 @@ public:
     // LLCharacter::setAnimTimeFactor alone never reaches them (multi-animesh desync).
     void setEntityAnimTimeFactor(F32 factor);
     void restartEntityAnimation();
+    void refreshOverlayAttachments() { moveStampedAttachments(); }
+    static bool isRenderHidden(const LLViewerObject* object);
     void setStartOffset(F32 seconds);
     void setAnimationSource(const LLUUID& source);
     void copyHeldPoseFrom(LLVOAvatar* source);
@@ -187,6 +190,10 @@ public:
     bool mOffsetNeedsRestore = false;
     std::deque<OffsetFrame> mOffsetHistory;
     F32 mStartOffset = 0.f;
+    F32 mAppliedStartPhase = 0.f;
+    bool mPhaseArmed = true;
+    F64 mOffsetFrozenAt = 0.;
+    void prepareOffsetDrive(S32 mode);
     bool mStartPhasePending = false;
     F64 mOffsetNextCapture = 0.;
     void setEntityLook(S32 look, F32 alpha);

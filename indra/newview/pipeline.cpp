@@ -6539,6 +6539,32 @@ bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,
 // (below) sets it for the lifetime of each proxy's draw loop, so the pushGhost* helpers can key the
 // light response as (instance id, batch owner, batch fallback owner). Null outside a proxy loop.
 LLUUID sGhostAlrInstance;
+const LLActorMover::GhostProxy* sDrawingGhostProxy = nullptr;
+void uploadGhostCoverage()
+{
+    LLRenderPass::uploadActorFxDisabled();
+    if (sDrawingGhostProxy && sDrawingGhostProxy->mFadeAlpha < 1.f)
+    {
+        auto* shader = LLGLSLShader::sCurBoundShaderPtr;
+        shader->uniform1i(LLStaticHashedString("actorFxEnabled"), 2);
+        shader->uniform1f(LLStaticHashedString("actorFxDissolveProgress"), 1.f-sDrawingGhostProxy->mFadeAlpha);
+    }
+}
+bool uploadGhostPalette(LLDrawInfo& info)
+{
+    if (sDrawingGhostProxy && sDrawingGhostProxy->mHeldPalettes && info.mAvatar)
+    {
+        const auto& palettes = *sDrawingGhostProxy->mHeldPalettes;
+        const auto it = palettes.find({info.mAvatar->getID(), info.getSkinHash()});
+        if (it != palettes.end() && !it->second.empty())
+        {
+            LLGLSLShader::sCurBoundShaderPtr->uniformMatrix3x4fv(LLViewerShaderMgr::AVATAR_MATRIX,
+                U32(it->second.size()/12), false, it->second.data());
+            return true;
+        }
+    }
+    return LLRenderPass::uploadMatrixPalette(info);
+}
 
 void setup_ghost_texture_matrix(LLDrawInfo& params)
 {
@@ -6610,7 +6636,7 @@ bool pushGhostBatch(LLDrawInfo& params, bool batch_textures)
     // stock material programs retain uniforms across binds, so explicitly
     // clear a styled source actor that may have used this program immediately
     // before the custom clone submission.
-    LLRenderPass::uploadActorFxDisabled();
+    uploadGhostCoverage();
     LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
@@ -6657,7 +6683,7 @@ bool pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
 
     setup_ghost_texture_matrix(params);
 
-    LLRenderPass::uploadActorFxDisabled();
+    uploadGhostCoverage();
     LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
@@ -6746,7 +6772,7 @@ bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader,
 
     setup_ghost_texture_matrix(params);
 
-    LLRenderPass::uploadActorFxDisabled();
+    uploadGhostCoverage();
     LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
@@ -6870,7 +6896,7 @@ bool pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMap
 
     LLGLDisable cull_face(double_sided ? GL_CULL_FACE : 0);
 
-    LLRenderPass::uploadActorFxDisabled();
+    uploadGhostCoverage();
     LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
@@ -6885,8 +6911,9 @@ class ScopedGhostTransform
 {
 public:
     explicit ScopedGhostTransform(const LLActorMover::GhostProxy& proxy)
-        : mPreviousAlrInstance(sGhostAlrInstance)
+        : mPreviousProxy(sDrawingGhostProxy), mPreviousAlrInstance(sGhostAlrInstance)
     {
+        sDrawingGhostProxy = &proxy;
         sGhostAlrInstance = proxy.mInstanceId; // [AvatarLightResponse]
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.pushMatrix();
@@ -6914,6 +6941,8 @@ public:
 
     ~ScopedGhostTransform()
     {
+        if (sDrawingGhostProxy && sDrawingGhostProxy->mFadeAlpha < 1.f) LLRenderPass::uploadActorFxDisabled();
+        sDrawingGhostProxy = mPreviousProxy;
         sGhostAlrInstance = mPreviousAlrInstance; // [AvatarLightResponse]
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.popMatrix();
@@ -6925,6 +6954,7 @@ public:
     ScopedGhostTransform& operator=(const ScopedGhostTransform&) = delete;
 
 private:
+    const LLActorMover::GhostProxy* mPreviousProxy;
     LLUUID mPreviousAlrInstance; // [AvatarLightResponse]
 };
 
@@ -7010,7 +7040,7 @@ bool pushGhostBumpBatch(LLDrawInfo& params, S32 diffuse_channel)
         tex_setup = true;
     }
 
-    LLRenderPass::uploadActorFxDisabled();
+    uploadGhostCoverage();
     LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
@@ -7079,7 +7109,7 @@ bool pushGhostFullbrightShinyBatch(LLDrawInfo& params, S32 diffuse_channel, bool
         }
     }
 
-    LLRenderPass::uploadActorFxDisabled();
+    uploadGhostCoverage();
     LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
@@ -7496,7 +7526,7 @@ void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
 
             // Correctness-first cut: upload the skin palette for every batch (also
             // avoids any palette-dedup cache crossing a shader switch).
-            if (!LLRenderPass::uploadMatrixPalette(*di))
+            if (!uploadGhostPalette(*di))
             {
                 solid.mFailed = true;
                 continue;
@@ -7943,7 +7973,7 @@ void LLPipeline::renderGhostRiggedBlend(const LLCamera& camera)
                     }
                 }
 
-                if (!LLRenderPass::uploadMatrixPalette(*di))
+                if (!uploadGhostPalette(*di))
                 {
                     blend.mFailed = true;
                     continue;
@@ -8257,7 +8287,7 @@ void LLPipeline::renderGhostPostDeferred(const LLCamera& camera, EGhostForwardSt
                     solid.mFailed = true;
                     continue;
                 }
-                if (!LLRenderPass::uploadMatrixPalette(*di))
+                if (!uploadGhostPalette(*di))
                 {
                     solid.mFailed = true;
                     continue;

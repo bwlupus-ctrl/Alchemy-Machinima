@@ -75,6 +75,7 @@ constexpr F32 GHOST_SCALE_MAX = 150.f;
 
 class LLGhostAvatar;
 class LLVOAvatar;
+class LLViewerObject;
 class ALGhostNameplates;
 struct ALGhostCloneRequest;
 struct ALGhostCloneUpdate;
@@ -634,7 +635,7 @@ public:
     bool swapSource(const LLUUID& id, const LLUUID& source, const std::string& label);
     bool setStartOffset(const LLUUID& id, F32 seconds);
     std::string offsetStatus(const Instance& inst) const;
-    void applyCrowdVariation(const LLUUID& member, U32 seed);
+    void applyCrowdVariation(const LLUUID& member, U32 seed, bool timing = true, bool looks = true, bool building = false);
     void syncOffsets(const std::vector<LLUUID>& ids);
     void setSolo(const std::vector<LLUUID>& ids);
     bool getSolo() const { return mSolo; }
@@ -986,6 +987,16 @@ private:
     U32 mNextGroupNumber = 1;
 
     std::vector<Instance> mInstances;
+    mutable std::map<LLUUID, size_t> mStableIndex, mRuntimeIndex;
+    mutable bool mIndicesDirty = true;
+    void rebuildIndices() const;
+    void releaseOverlayHelper(const LLUUID& id);
+    bool acquireOverlayHelper(const LLUUID& id);
+    void invalidateOverlayPose(Instance& inst);
+    std::map<LLUUID, size_t> mOverlayHelperRefs;
+    std::set<LLUUID> mPrivateOverlayActors; // UUID tombstones keep detached/retiring controls private
+    void rememberOverlayDomain(LLViewerObject* helper);
+    LLUUID actorOwner(const LLUUID& actor) const;
     bool mShowAll = true;
     bool mSolo = false;
     std::vector<boost::signals2::scoped_connection> mVariationConnections;

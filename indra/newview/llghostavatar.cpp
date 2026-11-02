@@ -1864,7 +1864,7 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
         if (frozen_root.isFinite()) setGhostRotation(frozen_root);
     }
     const S32 old_mode = mEntityDriveMode; // [AutoAnimate]
-    if (mode != mEntityDriveMode) { restoreOffsetPose(); mOffsetHistory.clear(); }
+    prepareOffsetDrive(mode);
     mEntityDriveMode = mode;
     mEntityDirectedAnim = directed_anim;
     // A freeze/stamp must release cues before pausing its controller. Release
@@ -4334,7 +4334,7 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
         const F32 anim_time = getMotionController().getAnimTime();
         if (active && !mEntityDirectedWasActive)
         {
-            mEntityDirectedStartTime = anim_time - phaseOffset(mEntityDirectedAnim);
+            mEntityDirectedStartTime = anim_time - mAppliedStartPhase;
         }
         if (active && !mFormationAnims.count(mEntityDirectedAnim) &&
             mEntityLoopMode == ALGhostStudio::LOOP_PLAY_ONCE)
@@ -4355,8 +4355,10 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             (mEntityLoopMode == ALGhostStudio::LOOP_RETRIGGER ||
              !mEntityDirectedStarted))
         {
-            LLCharacter::startMotion(mEntityDirectedAnim, phaseOffset(mEntityDirectedAnim));
+            mAppliedStartPhase = 0.f;
+            LLCharacter::startMotion(mEntityDirectedAnim, 0.f);
             mEntityDirectedStarted = true;
+            mEntityDirectedStartTime = anim_time;
         }
         mEntityDirectedWasActive = active;
     }
@@ -5539,21 +5541,24 @@ void LLGhostAvatar::setAnimationSource(const LLUUID& source)
 }
 F32 LLGhostAvatar::phaseOffset(const LLUUID& animation)
 {
-    if (mStartOffset <= 0.f) return 0.f;
+    if ((!mPhaseArmed && !mStartPhasePending) || mStartOffset <= 0.f) return mAppliedStartPhase = 0.f;
     LLMotion* motion = findMotion(animation);
     if (!motion) motion = createMotion(animation);
     const F32 duration = motion ? motion->getDuration() : 0.f;
-    if (duration <= 0.f) { mStartPhasePending = true; return mStartOffset; }
+    if (duration <= 0.f) { mStartPhasePending = true; return mAppliedStartPhase = mStartOffset; }
+    mPhaseArmed = false;
+    mStartPhasePending = false;
     if (auto* clip = dynamic_cast<LLKeyframeMotion*>(motion); clip && clip->getLoop())
     {
         const F32 loop_in = clip->getLoopIn(), loop_out = clip->getLoopOut();
         if (loop_out > loop_in && mStartOffset >= loop_out)
-            return loop_in + fmodf(mStartOffset-loop_in, loop_out-loop_in);
+            return mAppliedStartPhase = loop_in + fmodf(mStartOffset-loop_in, loop_out-loop_in);
     }
-    return motion->getLoop() ? fmodf(mStartOffset, duration) : llmin(mStartOffset, duration);
+    return mAppliedStartPhase = motion->getLoop() ? fmodf(mStartOffset, duration) : llmin(mStartOffset, duration);
 }
 void LLGhostAvatar::setStartOffset(F32 seconds)
 {
+    mPhaseArmed = true;
     if (seconds == mStartOffset) return;
     mStartOffset = seconds;
     if (seconds == 0.f) { restoreOffsetPose(); mOffsetHistory.clear(); }
@@ -5648,7 +5653,7 @@ void LLGhostAvatar::applyOffsetHistory(F64 now)
 
 void LLGhostAvatar::restoreOffsetPose()
 {
-    if (!mOffsetNeedsRestore) return;
+    if (!mOffsetNeedsRestore || mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN) return;
     mOffsetNeedsRestore = false;
     const auto& joints = getSkeleton();
     for (size_t i=0; i<joints.size() && i<mOffsetRestore.rotations.size(); ++i)
@@ -5684,4 +5689,41 @@ void LLGhostAvatar::copyHeldPoseFrom(LLVOAvatar* source)
     mRoot->updateWorldMatrixChildren();
     dirtyMesh();
     moveStampedAttachments();
+}
+
+// Owner-aware draw policy, deliberately independent of geometry/animation updates.
+bool LLGhostAvatar::isRenderHidden(const LLViewerObject* object)
+{
+    if (!object) return false;
+    const LLVOAvatar* avatar = object->isAvatar() ? static_cast<const LLVOAvatar*>(object) : nullptr;
+    if (avatar && avatar->isControlAvatar())
+    {
+        const LLVOAvatar* wearer = avatar->getAttachedAvatar();
+        if (wearer) avatar = wearer;
+    }
+    if (avatar && avatar->isGhostAvatar())
+        return !static_cast<const LLGhostAvatar*>(avatar)->isEntityCloneVisible();
+    const auto* parent = static_cast<const LLViewerObject*>(object->getParent());
+    return parent && isRenderHidden(parent);
+}
+
+void LLGhostAvatar::prepareOffsetDrive(S32 mode)
+{
+    if (mode == mEntityDriveMode) return;
+    if (mode == ALGhostStudio::DRIVE_FROZEN)
+    {
+        mOffsetFrozenAt = LLTimer::getTotalSeconds();
+        return; // latch the displayed delayed image, retaining independent input
+    }
+    const S32 previous = mEntityDriveMode;
+    mEntityDriveMode = mode;
+    restoreOffsetPose();
+    mEntityDriveMode = previous;
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN)
+    {
+        const F64 paused = LLTimer::getTotalSeconds()-mOffsetFrozenAt;
+        for (auto& frame : mOffsetHistory) frame.time += paused;
+        mOffsetNextCapture += paused;
+    }
+    else mOffsetHistory.clear();
 }

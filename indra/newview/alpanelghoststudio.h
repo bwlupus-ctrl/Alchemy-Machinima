@@ -188,6 +188,7 @@ private:
     LLButton* mSoloBtn = nullptr;
     LLSpinCtrl* mStartOffset = nullptr;
     LLTextBox* mOffsetStatus = nullptr;
+    std::string mSwapStatus;
     LLComboBox* mCrowdStartMode = nullptr;
     LLSpinCtrl* mCrowdStartSpread = nullptr;
     LLComboBox* mCrowdRippleFrom = nullptr;

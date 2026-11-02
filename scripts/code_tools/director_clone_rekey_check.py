@@ -151,6 +151,7 @@ struct LLGhostAvatar:LLCharacter {
 };
 std::map<LLUUID,U32> LLGhostAvatar::sLiveSourceCounts;
 struct ALGhostStudio {
+ bool isPrivateOverlayRuntime(LLUUID)const{return false;}
  enum ELookTarget{LOOK_TARGET_CAMERA,LOOK_TARGET_ME,LOOK_TARGET_ACTOR,LOOK_TARGET_GHOST,LOOK_TARGET_POINT};
  enum{TURN_MODE_OFF,TURN_MODE_ONCE};
  struct Instance{LLUUID mId,mSource,mEntityId,mAnimationSource,mAppearanceSource;bool mSourceRemoved=false,mHasAnimationSource=false,mAnimationSourceRemoved=false,mAppearanceSourceRemoved=false;
@@ -210,7 +211,7 @@ struct ALDanceBall {
 struct LLDirectorCast {
  using GazeTarget=LLActorMover::GazeTarget;
  struct GazeCue{GazeTarget mTarget;};using GazeCueList=std::vector<GazeCue>;
- struct CastMember{LLUUID mId;std::string mLastName;GazeTarget mGazeTarget,mEyeGazeTarget;GazeCueList mGazeCues;};
+ struct CastMember{LLUUID mId;std::string mLastName;GazeTarget mGazeTarget,mEyeGazeTarget;GazeCueList mGazeCues;bool mCloneFading=false;};
  std::vector<CastMember> mCast;std::vector<LLUUID> mIds;
  GazeTarget mSelfGazeTarget,mSelfEyeGazeTarget;GazeCueList mSelfGazeCues;
  struct Start{LLUUID mId;};std::vector<Start> mPendingStarts;

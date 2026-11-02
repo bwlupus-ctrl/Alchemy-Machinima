@@ -28,6 +28,7 @@
 
 #include "llhudtext.h"
 #include "alderenderlist.h"
+#include "llghostavatar.h"
 
 #include "llrender.h"
 
@@ -114,7 +115,7 @@ void LLHUDText::render()
 
 void LLHUDText::renderText()
 {
-    if (!mVisible || mHidden || ALDerenderList::isHiddenObject(mSourceObject))
+    if (!mVisible || mHidden || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
     {
         return;
     }
@@ -354,7 +355,7 @@ void LLHUDText::updateVisibility()
     }
 
     // Not visible if parent object is dead
-    if (mSourceObject->isDead() || ALDerenderList::isHiddenObject(mSourceObject))
+    if (mSourceObject->isDead() || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
     {
         mVisible = false;
         return;

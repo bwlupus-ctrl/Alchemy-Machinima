@@ -431,15 +431,13 @@ bool ALPanelGhostStudio::postBuild()
         const std::string label = sourceName(source);
         // Snapshot selection: a runtime replacement synchronously rewrites outside UI references.
         auto ids = selectedInstances();
-        if (const auto* source_clone = studio.findInstanceByRuntime(source))
-        {
-            const LLUUID source_instance = source_clone->mId;
-            // A picked source can itself be in the batch. Replace it last so
-            // earlier copies never resolve a retired runtime UUID.
-            std::stable_partition(ids.begin(), ids.end(), [&source_instance](const LLUUID& id)
-            { return id != source_instance; });
-        }
-        for (const auto& id : ids) studio.swapSource(id, source, label);
+        const auto* source_clone = studio.findInstanceByRuntime(source);
+        const LLUUID source_instance = source_clone ? source_clone->mId : source;
+        bool skipped = false;
+        for (const auto& id : ids)
+            if (id == source_instance) skipped = true;
+            else studio.swapSource(id, source, label);
+        mSwapStatus = skipped ? "Swap: skipped the picked source clone (cannot copy itself)" : "";
         refreshList(true);
         mDetailDirty = true;
     });
@@ -917,6 +915,10 @@ bool ALPanelGhostStudio::postBuild()
     mFormationSeed->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         updateOwnedCrowdPlacement();
+        std::set<LLUUID> crowds;
+        for (const auto& id : selectedInstances())
+            if (const auto* inst = ALGhostStudio::instance().getInstance(id); inst && inst->mCrowdId.notNull() && crowds.insert(inst->mCrowdId).second)
+                ALGhostStudio::instance().applyCrowdVariation(id, (U32)mFormationSeed->getValue().asInteger());
         onCrowdVariationCommit();
     });
     // Independent of FormationSpec: the facing-offset bias lives directly on
@@ -1034,7 +1036,7 @@ bool ALPanelGhostStudio::postBuild()
     }
     onFormationCommit();
 
-    mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
+    mShowAllCheck->set(ALGhostStudio::instance().getShowAll() && !ALGhostStudio::instance().getSolo());
     mNameplateMode->setValue(gSavedSettings.getS32("GhostStudioNameplateMode"));
     if (ALKitPage* page = findChild<ALKitPage>("ghosts_kit"))
         page->setAvailabilityRefresh([this]() { refreshDetail(); });
@@ -1310,7 +1312,7 @@ void ALPanelGhostStudio::draw()
 
     // keep the master check honest against external state (diff-guarded, forced:
     // a check box that was merely clicked must still follow the model)
-    setValueIfChanged(mShowAllCheck, LLSD(studio.getShowAll()), true);
+    setValueIfChanged(mShowAllCheck, LLSD(studio.getShowAll() && !studio.getSolo()), true);
 
     // [R2-3] if our edit tool was taken away (build tools, another picker, Esc
     // inside the tool), reflect that in the toggle instead of a stale "on" --
@@ -2440,7 +2442,7 @@ void ALPanelGhostStudio::onListSelect()
     studio.setSelected(
         group && row_value == group->mId
             ? group->mId : selectedInstance());
-    if (studio.getSolo()) studio.setSolo(selectedInstances());
+    if (studio.getSolo() && !selectedInstances().empty()) studio.setSolo(selectedInstances());
     mObservedSelectionRevision = studio.getSelectionRevision();
     syncCrowdFacingPointPrototype();
     refreshDetail();
@@ -4972,10 +4974,6 @@ void ALPanelGhostStudio::onResetNumeric(const std::string& target_name)
 void ALPanelGhostStudio::onCrowdVariationCommit()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    std::set<LLUUID> crowds;
-    for (const LLUUID& id : selectedInstances())
-        if (const auto* inst = studio.getInstance(id); inst && inst->mCrowdId.notNull() && crowds.insert(inst->mCrowdId).second)
-            studio.applyCrowdVariation(id, (U32)mFormationSeed->getValue().asInteger());
     mDetailDirty = true;
 }
 void ALPanelGhostStudio::refreshCloneQol(const ALGhostStudio::Instance* inst)
@@ -4993,7 +4991,7 @@ void ALPanelGhostStudio::refreshCloneQol(const ALGhostStudio::Instance* inst)
     setValueIfChanged(mSoloBtn, LLSD(studio.getSolo()));
     setEnabledIfChanged(mStartOffset, have);
     setValueIfChanged(mStartOffset, LLSD(have ? inst->mStartOffset : 0.f));
-    setTextIfChanged(mOffsetStatus, have ? studio.offsetStatus(*inst) : "Select a clone");
+    setTextIfChanged(mOffsetStatus, !mSwapStatus.empty() ? mSwapStatus : have ? studio.offsetStatus(*inst) : "Select a clone");
     static LLCachedControl<S32> mode(gSavedSettings, "GhostStudioStartMode", 0);
     static LLCachedControl<S32> looks(gSavedSettings, "GhostStudioLooksMode", 0);
     const auto show = [this](LLView* control, bool visible)

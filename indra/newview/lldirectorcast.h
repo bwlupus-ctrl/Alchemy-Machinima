@@ -342,6 +342,7 @@ public:
     // LLUUID::null (and the agent avatar's runtime id) address You. Invalid or
     // non-cast ids read as the disabled default and ignore writes.
     const ActorStyle& getActorStyle(const LLUUID& id) const;
+    const ActorStyle& getRenderActorStyle(const LLUUID& id) const;
     void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
     LLUUID            getSteppedActorId() const { return runtimeActorId(mActiveActorId); }

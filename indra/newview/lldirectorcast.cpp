@@ -1098,7 +1098,10 @@ std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::buildActorChoices(
     const std::array<LLUUID, 4>& subjects,
     const std::vector<ActorChoiceSource>& cast)
 {
-    return alBuildActorChoices(self_id, subjects, cast);
+    auto choices = alBuildActorChoices(self_id, subjects, cast);
+    choices.erase(std::remove_if(choices.begin(), choices.end(), [](const ActorChoice& choice)
+    { return ALGhostStudio::instance().isDeleting(choice.mId) || ALGhostStudio::instance().isPrivateOverlayRuntime(choice.mId); }), choices.end());
+    return choices;
 }
 
 std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::getActorChoices() const
@@ -1165,6 +1168,7 @@ void LLDirectorCast::touchScene()
 // ---------------------------------------------------------------------------
 void LLDirectorCast::add(const LLUUID& id, bool touch_scene)
 {
+    if (ALGhostStudio::instance().isPrivateOverlayRuntime(id)) return;
     LLViewerObject* candidate = gObjectList.findObject(id);
     if (candidate && candidate->isColorChart()) return; // session prop cannot enter scene capture
     const LLUUID actor_id = canonicalActorId(id);
@@ -1322,6 +1326,7 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
     if (old != mCast.end())
     {
         CastMember saved = *old;
+        saved.mCloneFading = false; // presentation never survives park/recovery
         // The migrating alias is the current owner of edits while live/parked.
         // Normalized scene loads also install directly under that owner. A
         // duplicate destination is discarded wholesale, never field-merged.
@@ -1456,6 +1461,22 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(const LLUUID& id
     if (it != mMemberIndex.end() && it->second < mCast.size())
     {
         const auto& member = mCast[it->second];
+        return member.mActorStyle;
+    }
+    return default_style;
+}
+
+const LLDirectorCast::ActorStyle& LLDirectorCast::getRenderActorStyle(const LLUUID& id) const
+{
+    static const ActorStyle default_style;
+    if (id.isNull() || (gAgentID.notNull() && id == gAgentID))
+    {
+        return mSelfActorStyle;
+    }
+    const auto it = mMemberIndex.find(id);
+    if (it != mMemberIndex.end() && it->second < mCast.size())
+    {
+        const auto& member = mCast[it->second];
         return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
     }
     return default_style;
@@ -1481,6 +1502,7 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
 void LLDirectorCast::setActiveActorId(const LLUUID& id)
 {
     const LLUUID actor = canonicalActorId(id);
+    if (ALGhostStudio::instance().isPrivateOverlayRuntime(actor)) return;
     if (actor == mActiveActorId) return;
     const bool stepped_changed = runtimeActorId(actor) != getSteppedActorId();
     mActiveActorId = actor;
@@ -3031,7 +3053,9 @@ void LLDirectorCast::cut()
 void LLDirectorCast::setCloneFadeAlpha(const LLUUID& id, F32 alpha)
 {
     CastMember* member = getMember(id);
-    if (!member || !LLGhostAvatar::isGhostId(id)) return;
+    if (!member) return;
+    if (alpha >= 1.f) { member->mCloneFading = false; return; }
+    if (!LLGhostAvatar::isGhostId(id)) return;
     member->mCloneFading = alpha < 1.f;
     if (!member->mCloneFading) return;
     auto& style = member->mCloneFadeStyle;

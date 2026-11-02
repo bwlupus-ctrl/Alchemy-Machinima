@@ -146,7 +146,7 @@ static bool has_actor_fx_wireframe(const LLVOAvatar* avatarp)
         return false;
     }
     const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getActorStyle(get_actor_fx_id(avatarp));
+        LLDirectorCast::instance().getRenderActorStyle(get_actor_fx_id(avatarp));
     return style.mEnabled && style.mStyle == 3 &&
         (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
          style.mAlpha > 0.001f);

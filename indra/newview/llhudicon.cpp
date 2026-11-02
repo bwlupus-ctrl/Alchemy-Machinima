@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alderenderlist.h"
+#include "llghostavatar.h"
 
 #include "llhudicon.h"
 
@@ -82,7 +83,7 @@ void LLHUDIcon::render()
     LLGLDepthTest gls_depth(GL_TRUE);
     //LLGLDisable gls_stencil(GL_STENCIL_TEST);
 
-    if (mHidden || ALDerenderList::isHiddenObject(mSourceObject))
+    if (mHidden || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
         return;
 
     if (mSourceObject.isNull() || mImagep.isNull())
@@ -194,7 +195,7 @@ void LLHUDIcon::markDead()
 
 bool LLHUDIcon::lineSegmentIntersect(const LLVector4a& start, const LLVector4a& end, LLVector4a* intersection)
 {
-    if (mHidden || ALDerenderList::isHiddenObject(mSourceObject))
+    if (mHidden || (LLGhostAvatar::isRenderHidden(mSourceObject) || ALDerenderList::isHiddenObject(mSourceObject)))
         return false;
 
     if (mSourceObject.isNull() || mImagep.isNull())

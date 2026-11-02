@@ -29,6 +29,8 @@
 #include "llactormaskeligibility.h" // [ActorMask]
 
 #include "lldrawpool.h"
+#include "llghostavatar.h"
+#include "llviewerobjectlist.h"
 #include "llrender.h"
 #include "llfasttimer.h"
 #include "llviewercontrol.h"
@@ -498,6 +500,8 @@ void LLFacePool::LLOverrideFaceColor::setColor(F32 r, F32 g, F32 b, F32 a)
 //=============================
 static bool skip_shadow_draw(const LLDrawInfo* params)
 {
+    if (params && (LLGhostAvatar::isRenderHidden(params->mAvatar) ||
+        LLGhostAvatar::isRenderHidden(gObjectList.findObject(params->mActorFxOwner)))) return true;
     // [AlphaShadowCap] Fold both policies into the existing per-draw rain filter.
     const U8 f = LLPipeline::sShadowDrawFilter;
     if (f != 0 && params)
@@ -947,7 +951,7 @@ bool LLRenderPass::uploadActorFxStyleOnly(const LLUUID& actor_id,
     // UUID callers and LLDrawInfo owners are canonicalized at their mutation /
     // geometry-build boundaries; keep this per-draw path free of object lookup.
     const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getActorStyle(actor_id);
+        LLDirectorCast::instance().getRenderActorStyle(actor_id);
     return upload_actor_fx_style(actor_id, style, allow_native_wire);
 }
 
@@ -1076,9 +1080,9 @@ bool shared_actor_fx_style_suppresses(
 // static
 bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
 {
-    if (ALDerenderList::isHiddenSource(actor_id)) return true;
+    if (LLGhostAvatar::isRenderHidden(gObjectList.findObject(actor_id)) || ALDerenderList::isHiddenSource(actor_id)) return true;
     const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getActorStyle(actor_id);
+        LLDirectorCast::instance().getRenderActorStyle(actor_id);
     if (shared_actor_fx_zero_cover_context() &&
         shared_actor_fx_zero_cover(style))
     {
@@ -1101,7 +1105,10 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
 bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
                                                 bool depth_only)
 {
-    if (ALDerenderList::keepsAvatarLive(params.mAvatar) ||
+    if (LLGhostAvatar::isRenderHidden(params.mAvatar) ||
+        LLGhostAvatar::isRenderHidden(gObjectList.findObject(params.mActorFxOwner)) ||
+        LLGhostAvatar::isRenderHidden(gObjectList.findObject(params.mActorFxFallbackOwner)) ||
+        ALDerenderList::keepsAvatarLive(params.mAvatar) ||
         ALDerenderList::isHiddenSource(params.mActorFxOwner) ||
         ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner)) return true;
     if (params.mActorFxOwner.isNull())
@@ -1140,7 +1147,10 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
 bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
                                                    bool depth_only)
 {
-    if (ALDerenderList::keepsAvatarLive(params.mAvatar) ||
+    if (LLGhostAvatar::isRenderHidden(params.mAvatar) ||
+        LLGhostAvatar::isRenderHidden(gObjectList.findObject(params.mActorFxOwner)) ||
+        LLGhostAvatar::isRenderHidden(gObjectList.findObject(params.mActorFxFallbackOwner)) ||
+        ALDerenderList::keepsAvatarLive(params.mAvatar) ||
         ALDerenderList::isHiddenSource(params.mActorFxOwner) ||
         ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner)) return true;
     if (params.mActorFxOwner.isNull())
