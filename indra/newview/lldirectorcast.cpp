@@ -1176,7 +1176,6 @@ void LLDirectorCast::remove(const LLUUID& id)
     mCast.erase(it);
     ++mGazeCueRevision;
     ++mCastRevision; // [GhostPanelPerf] membership changed
-    touchScene();
     mIds.erase(std::find(mIds.begin(), mIds.end(), actor_id));
     rebuildMemberIndex();
     // [DirFix] D14: a removed member can no longer be the path-editor edit actor;
@@ -1184,10 +1183,6 @@ void LLDirectorCast::remove(const LLUUID& id)
     // draw-time list rebuild. Targeted on the removed id: see onRosterMemberRemoved.
     LLActorMover::instance().onRosterMemberRemoved(actor_id);
     mLookAtCameraIds.erase(actor_id);
-    if (mSteppedActorId == actor_id)
-    {
-        mSteppedActorId.setNull();
-    }
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == actor_id)
     {
@@ -1208,6 +1203,10 @@ void LLDirectorCast::remove(const LLUUID& id)
     // leaving the cast also leaves the start queue, and may retire the group
     cancelPendingStart(actor_id);
     pruneGroupData(group);
+    touchScene();
+    // Explicit removal clears the edit selection. Region departure alone does
+    // not remove membership and therefore retains the away actor.
+    if (mActiveActorId == actor_id) setActiveActorId(LLUUID::null);
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
@@ -1319,18 +1318,20 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
     }
 }
 
+void LLDirectorCast::setActiveActorId(const LLUUID& id)
+{
+    const LLUUID actor = canonicalActorId(id);
+    // Nearby avatars and Studio clones become cast members so every actor
+    // editor can author their state and the roster can mirror this choice.
+    if (actor.notNull()) add(actor);
+    if (actor == mActiveActorId) return;
+    mActiveActorId = actor;
+    mActiveActorChanged();
+}
+
 void LLDirectorCast::setSteppedActorId(const LLUUID& id)
 {
-    const LLUUID actor_id = canonicalActorId(id);
-    if (actor_id.notNull() && !containsStored(actor_id))
-    {
-        return;
-    }
-    if (mSteppedActorId != actor_id)
-    {
-        mSteppedActorId = actor_id;
-        touchScene();
-    }
+    setActiveActorId(id);
 }
 
 void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
@@ -2331,10 +2332,6 @@ LLSD LLDirectorCast::sceneData() const
         data["self_gaze_influence_keys"] = writeGazeInfluenceKeys(mSelfGazeInfluenceKeys);
     }
     data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
-    if (mSteppedActorId.notNull())
-    {
-        data["stepped_actor"] = mSteppedActorId;
-    }
     const LLSD self_path = LLActorMover::instance().pathSceneData(LLUUID::null);
     if (self_path.isMap())
     {
@@ -2399,7 +2396,6 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mSelfGazeCues.clear();
     mSelfGazeInfluenceKeys.clear();
     mSelfActorStyle = ActorStyle();
-    mSteppedActorId.setNull();
 
     // Build the legacy-to-stable identity map before loading any gaze lane:
     // self targets may refer to a cast entry that appears later in the file.
@@ -2470,11 +2466,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     {
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
     }
-    if (data.has("stepped_actor"))
-    {
-        mSteppedActorId = canonicalSceneActorId(
-            data["stepped_actor"].asUUID(), scene_actor_ids);
-    }
+    // Legacy stepped_actor is an edit selection, now session-only.
     if (data.has("self_actor_path"))
     {
         LLActorMover::instance().applyPathSceneData(LLUUID::null, data["self_actor_path"]);
@@ -2642,6 +2634,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // actor is not in the loaded cast, drop it now (owner, node and tool session
     // end with it) rather than leaving the hosts' draw-time rebuild to deselect.
     LLActorMover::instance().pruneEditActor();
+    // Keep the session choice only if it still has a row in the loaded cast.
+    // Never restore a per-page edit actor from scene data.
+    if (getActiveActorId().notNull() && !contains(getActiveActorId()))
+        setActiveActorId(LLUUID::null);
 }
 
 // ---------------------------------------------------------------------------

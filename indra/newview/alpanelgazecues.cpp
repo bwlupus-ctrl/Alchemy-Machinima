@@ -21,6 +21,7 @@
 #include "llfloaterreg.h"
 #include "llscrolllistctrl.h"
 #include "llscrolllistitem.h"
+#include "llvoavatar.h"
 
 #include <cmath>
 
@@ -84,15 +85,8 @@ void ALPanelGazeCues::draw()
 
 LLUUID ALPanelGazeCues::actorId() const
 {
-    if (ALKitShell* shell = ALKitShell::find(const_cast<ALPanelGazeCues*>(this)))
-    {
-        const ALKitShell::uuid_vec_t& selected = shell->castSelection();
-        if (!selected.empty())
-        {
-            return selected.front();
-        }
-    }
-    return gAgentID;
+    const LLUUID actor = LLDirectorCast::instance().getActiveActorId();
+    return actor.isNull() ? gAgentID : actor;
 }
 
 S32 ALPanelGazeCues::selectedCueIndex() const
@@ -144,7 +138,9 @@ void ALPanelGazeCues::refreshButtons()
     const LLDirectorCast::GazeCueList& cues = cast.getGazeCues(actor);
     const S32 index = selectedCueIndex();
     const bool valid = index >= 0 && index < static_cast<S32>(cues.size());
-    const bool in_cast = cast.getMember(actor) != nullptr;
+    LLVOAvatar* avatar = cast.resolve(actor);
+    const bool in_cast = cast.getMember(actor) != nullptr &&
+        (!avatar || (!avatar->isGhostAvatar() && !avatar->isControlAvatar()));
     const bool previewing = LLActorMover::instance().hasGazeCuePreview(actor);
     setEnabledIfChanged(mRemoveBtn, valid);
     setEnabledIfChanged(mPlayBtn, valid && in_cast);
@@ -152,7 +148,7 @@ void ALPanelGazeCues::refreshButtons()
     setToolTipIfChanged(mRemoveBtn, valid ? std::string("Remove the selected cue")
                                           : std::string("Select a cue first"));
     setToolTipIfChanged(mPlayBtn, !valid ? std::string("Select a cue first")
-        : !in_cast ? std::string("Add this actor to the cast to preview a cue")
+        : !in_cast ? std::string("Cue preview requires a resident avatar in the cast")
         : !cast.isLookAtCamera(actor)
             ? std::string("Preview the selected cue. It drives actors that have Look at camera on")
             : std::string("Preview the selected cue on this actor"));

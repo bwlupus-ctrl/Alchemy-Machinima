@@ -10,6 +10,7 @@
 #include "lluuid.h"
 
 #include <array>
+#include <boost/signals2.hpp>
 #include <string>
 #include <vector>
 
@@ -62,6 +63,7 @@ private:
     void writeActor();
     LLUUID selectedActor() const;
 
+    boost::signals2::scoped_connection mActiveActorConnection;
     LLComboBox*       mActorTarget = nullptr;
     LLScrollListCtrl* mOverrideList = nullptr;
     LLComboBox*       mActorOverride = nullptr;

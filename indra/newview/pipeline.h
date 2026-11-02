@@ -1623,7 +1623,7 @@ public:
     bool shadowUnitsFilterWanted() const;
     // Resolve the Follow-subject target (0 Self, 1-4 Director Subject A-D, 5 = CineOutlineSubjectTarget
     // clamped 0-4) to a normally-drawn avatar and its FRESH spatial extents (+ margin); false = inactive.
-    bool resolveShadowSubject(S32 target, LLVOAvatar*& av, LLVector3& center, LLVector3& half);
+    bool resolveShadowSubject(LLVOAvatar*& av, LLVector3& center, LLVector3& half);
     // [ShadowDist P3] alpha fix: shadow-pass alpha policy for the currently bound shadow program
     // (blended_pass = 1 for renderAlphaObjects, 0 for the alpha-mask passes of renderShadow).
     void uploadShadowAlphaMode(S32 blended_pass);
@@ -2093,16 +2093,9 @@ public:
         S32       mPaletteIdx;
     };
 
-    // [TronT0] Pure-move refactor: the target_set switch that used to open
-    // gatherRotoInkTargets() (the `Candidate` collection, now
-    // RotoInkCandidate), split out verbatim so it can be reused without the
-    // frustum-cull / smoothing / re-projection that follows it in
-    // gatherRotoInkTargets. `subject_target_setting` is target_set==0's
-    // single-subject selector (CineOutlineSubjectTarget's value for the Roto
-    // Ink caller); passed in rather than read from gSavedSettings internally
-    // so a future caller (Tron, T3) can pass its own equivalent setting
-    // without this function needing to know which setting name it is.
-    void collectRotoInkCandidates(S32 target_set, S32 subject_target_setting,
+    // Single subject follows LLDirectorCast's session Actor; target sets
+    // retain their independent collection and stable per-actor palette.
+    void collectRotoInkCandidates(S32 target_set,
                                    std::vector<RotoInkCandidate>& out_candidates);
 
     // [RotoInk Anim] Subject mode 3 (target set) gather: builds up to 16
@@ -2118,15 +2111,8 @@ public:
     // out_targets2 (LLShaderMgr::ROTO_TARGETS2 packing: x view depth m, y
     // slab half depth m, z palette index 0..7, w 1 valid) and returns the
     // count actually written (0..16, 0 on no candidates/all culled).
-    // [TronT1 P1 fix] `subject_target_setting` is target_set==0's
-    // single-subject selector, forwarded verbatim to
-    // collectRotoInkCandidates() -- the caller passes its OWN cached control
-    // (CineOutlineSubjectTarget for Roto Ink, TronSubjectTarget for Tron)
-    // instead of this function reading CineOutlineSubjectTarget internally,
-    // so a Tron call no longer silently follows Roto's single-subject
-    // selection.
     S32 gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
-                              F32 depth_range, S32 subject_target_setting,
+                              F32 depth_range,
                               const F32* mv, const F32* proj,
                               LLVector4* out_targets, LLVector4* out_targets2);
 

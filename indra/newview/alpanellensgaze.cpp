@@ -391,7 +391,7 @@ void al_gaze_register_random_perf_idle()
 bool ALPanelLensGaze::postBuild()
 {
     mStatus = getChild<LLTextBox>("gaze_status");
-    mEditActor = getChild<LLComboBox>("gaze_edit_actor");
+    mEditActor = findChild<LLComboBox>("gaze_edit_actor");
     mMasterEnable = getChild<LLCheckBoxCtrl>("look_at_camera_enabled");
     mSlotYou = getChild<LLCheckBoxCtrl>("gaze_slot_you");
     mSlotA = getChild<LLCheckBoxCtrl>("gaze_slot_a");
@@ -475,7 +475,7 @@ bool ALPanelLensGaze::postBuild()
 
     mMasterEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onMasterEnableCommit(); });
-    mEditActor->setCommitCallback(
+    if (mEditActor) mEditActor->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onEditActorCommit(); });
     // The Aim-at-camera checkboxes are pure per-actor look-at toggles again;
     // choosing which actor to EDIT is the separate gaze_edit_actor dropdown.
@@ -801,6 +801,12 @@ bool ALPanelLensGaze::postBuild()
         return LLSD();
     });
     // The kit's post-attachment sync/popover must see choices before first draw.
+    if (!mEditActor)
+    {
+        mEditAll = false;
+        mActiveActorConnection = LLDirectorCast::instance().addActiveActorChangedCallback(
+            [this]() { ++mSelectionRevision; mCastComboRevision = 0; });
+    }
     mEditActorRevision = ~U64(0);
     refreshEditActorCombo();
     return true;
@@ -837,16 +843,19 @@ LLUUID ALPanelLensGaze::slotActor(S32 slot_index) const
 
 LLUUID ALPanelLensGaze::activeSlotActor() const
 {
-    return slotActor(mActiveSlot);
+    return !mEditActor ? LLDirectorCast::instance().getActiveActorId().isNull()
+        ? gAgentID : LLDirectorCast::instance().getActiveActorId() : slotActor(mActiveSlot);
 }
 
 LLUUID ALPanelLensGaze::displayActor() const
 {
+    if (!mEditActor) return activeSlotActor();
     return mSelected.empty() ? LLUUID::null : mSelected.front();
 }
 
 uuid_vec_t ALPanelLensGaze::commitActors() const
 {
+    if (!mEditActor) return uuid_vec_t(1, activeSlotActor());
     return mSelected.empty() ? uuid_vec_t(1, LLUUID::null) : mSelected;
 }
 
@@ -1044,7 +1053,7 @@ static void gazeRandomPerfTick(void* /*user*/)
 void ALPanelLensGaze::refreshEditActorCombo()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshEditActorCombo");
-    if (isEditing(mEditActor))
+    if (!mEditActor || isEditing(mEditActor))
     {
         return;
     }

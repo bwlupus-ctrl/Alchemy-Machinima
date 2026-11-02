@@ -92,6 +92,7 @@ private:
     void bindAnimSpeedPage(LLView* root);
     void rebuildAnimSpeedAvatars();
     void refreshAnimSpeed();
+    LLButton* mAnimSpeedReset = nullptr;
     LLComboBox* mAnimSpeedAvatar = nullptr;
     LLSliderCtrl* mAnimSpeedSlider = nullptr;
     LLSliderCtrl* mAnimSpeedSpread = nullptr;
@@ -202,6 +203,8 @@ private:
     void onClickFocusActor();           // frame the selected member in the camera
     uuid_vec_t selectedCastIds() const;
     LLUUID     firstSelectedCastId() const;
+    LLUUID     singleActorId() const;
+    void       syncActiveActor();
     const uuid_vec_t& actorTargetsForPage(const std::string& page, const uuid_vec_t& selected);
     // context-menu / button ops (act on the list selection)
     void onCastSetSubject(S32 subject);
@@ -608,6 +611,8 @@ private:
     LLButton* mCrashBackupRestoreButton = nullptr;
     LLButton* mCrashBackupDeleteButton = nullptr;
     boost::signals2::scoped_connection mActorMaskTestWatch;
+    bool mSyncingActiveActor = false;
+    boost::signals2::scoped_connection mActiveActorConnection;
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;
     // Kit Time page: scale commit side effect driven from the TemporalWorldScale signal.

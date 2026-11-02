@@ -133,6 +133,7 @@ private:
     U64 mSlotIdentityRevision = 0;
 
     LLTextBox* mStatus = nullptr;
+    boost::signals2::scoped_connection mActiveActorConnection;
     LLComboBox* mEditActor = nullptr;
     LLCheckBoxCtrl* mMasterEnable = nullptr;
     LLCheckBoxCtrl* mSlotYou = nullptr;

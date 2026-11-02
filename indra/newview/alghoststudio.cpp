@@ -263,6 +263,9 @@ ALGhostStudio::ALGhostStudio()
         {
             LLDirectorCast& cast = LLDirectorCast::instance();
             Instance* inst = getInstance(stable_id);
+            const bool active_actor = cast.getActiveActorId() == stable_id ||
+                (old_id.notNull() && cast.getActiveActorId() == old_id);
+            if (active_actor && cast.contains(stable_id)) cast.remove(stable_id);
             const bool subject_a =
                 (old_id.notNull() && cast.getSubjectA() == old_id) ||
                 (inst && inst->mWasDirectorSubjectA);
@@ -282,6 +285,12 @@ ALGhostStudio::ALGhostStudio()
             if (new_id.notNull())
             {
                 cast.add(new_id);
+            }
+            if (active_actor)
+            {
+                // Park on the stable instance while temporarily despawned;
+                // never interpret a missing clone as Clear/You.
+                cast.setActiveActorId(removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id);
             }
             if (subject_a)
             {

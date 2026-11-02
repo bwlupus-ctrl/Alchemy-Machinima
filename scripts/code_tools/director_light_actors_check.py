@@ -15,6 +15,12 @@ assert len(rows) == 31
 panel = (ROOT / "indra/newview/alpanelavatarlightresponse.cpp").read_text()
 post = panel.split("bool ALPanelAvatarLightResponse::postBuild()", 1)[1].split("void ALPanelAvatarLightResponse::focusTarget", 1)[0]
 lookups = re.findall(r'getChild<(\w+)>\("([^" ]+)"\)', post)
+# The reset-all callback resolves its page-unique name dynamically. Validate
+# that route too; the other 23 controls are literal getChild calls.
+assert 'if (findChild<LLButton>("la_btn_reset_all"))' in post
+assert 'reset_all_name = "la_btn_reset_all";' in post
+assert 'getChild<LLButton>(reset_all_name)->setCommitCallback' in post
+lookups.append(("LLButton", "la_btn_reset_all"))
 assert len(lookups) == 24
 compatible = {"LLScrollListCtrl": "scroll_list", "LLCheckBoxCtrl": "kit_switch",
               "LLSliderCtrl": "slider", "LLColorSwatchCtrl": "color_swatch",

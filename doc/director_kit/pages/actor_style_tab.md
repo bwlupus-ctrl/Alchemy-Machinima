@@ -1,12 +1,12 @@
 # Actor FX — Director Kit page contract
 
 Page key: `actor_style_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (1/19 setting-bound rows; 18 C++-referenced rows).
+Computed class: **code-driven** (1/18 setting-bound rows; 17 C++-referenced rows).
 
 ## Real owners
 
-- `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (18 matching rows).
-- Referencing classes: `LLFloaterDirector` (56).
+- `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (17 matching rows).
+- Referencing classes: `LLFloaterDirector` (51).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,15 +20,14 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `actor` / `actor_style_target` (Actor) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1531` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleTargetChanged()` (`indra/newview/llfloaterdirector.cpp:1546`), wired in `LLFloaterDirector::bindActorStylePage()`; behavior `LLFloaterDirector::onActorStyleTargetChanged()` (`indra/newview/llfloaterdirector.cpp:2867`), wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `actor` / `actor_style_status` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1647` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
-| `actor` / `actor_style_reset` (Reset style) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1646` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleReset()` (`indra/newview/llfloaterdirector.cpp:1568`), wired in `LLFloaterDirector::bindActorStylePage()`; behavior `LLFloaterDirector::onActorStyleReset()` (`indra/newview/llfloaterdirector.cpp:2889`), wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `actor` / `actor_style_reset` (Reset style) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1646` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleReset()` (`indra/newview/llfloaterdirector.cpp:1569`), wired in `LLFloaterDirector::bindActorStylePage()`; behavior `LLFloaterDirector::onActorStyleReset()` (`indra/newview/llfloaterdirector.cpp:2898`), wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `actor` / `actor_style_hint` (About) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1516` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `look` / `actor_style_look` (Look) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1568` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `look` / `actor_style_mode` (Render mode) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1553` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `look` / `actor_style_alpha` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1623` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `look` / `actor_style_dissolve_progress` (Dissolve) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1624` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
-| `avatar_rendering` / `alpha_attachment_sort` (Alpha attachment sort (legacy)) | none | kit `toggle` ↔ `BDMergeAlphaAttachmentSort` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml:94` `alpha_attachment_sort` |
+| `avatar_rendering` / `alpha_attachment_sort` (Alpha attachment sort (legacy)) | none | kit `toggle` ↔ `BDMergeAlphaAttachmentSort` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml:84` `alpha_attachment_sort` |
 | `color` / `actor_style_use_actor_hue` (Use actor hue) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1618` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `color` / `actor_style_hue` (Custom hue) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1622` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 | `color` / `actor_style_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1644` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
@@ -45,8 +44,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Existing function | Extraction contract |
 |---|---|
 | `LLFloaterDirector::onActorStyleControlChanged()` — `indra/newview/llfloaterdirector.cpp:2404` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onActorStyleReset()` — `indra/newview/llfloaterdirector.cpp:1568, 2889` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onActorStyleTargetChanged()` — `indra/newview/llfloaterdirector.cpp:1546, 2867` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onActorStyleReset()` — `indra/newview/llfloaterdirector.cpp:1569, 2898` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -57,7 +55,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **74 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **70 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -66,10 +64,6 @@ Manifest size: **74 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `size-1141x720` | Default data at the wide non-round shell size. |
 | `card-actor-tallest-850` | Only `actor` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-actor-tallest-1160` | Only `actor` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `actor_style_target-option-0` | Only `actor_style_target` selects `Selected cast`; other selectors remain default. |
-| `actor_style_target-option-1` | Only `actor_style_target` selects `Mara`; other selectors remain default. |
-| `actor_style_target-option-2` | Only `actor_style_target` selects `Jun`; other selectors remain default. |
-| `actor_style_target-option-3` | Only `actor_style_target` selects `Me`; other selectors remain default. |
 | `card-look-tallest-850` | Only `look` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-look-tallest-1160` | Only `look` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `actor_style_look-option-0` | Only `actor_style_look` selects `Ghost`; other selectors remain default. |
@@ -149,7 +143,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-21 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+20 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -287,6 +287,14 @@ public:
     // linkset-root UUID rather than the regenerated LLControlAvatar UUID.
     static LLUUID canonicalActorId(const LLUUID& id);
 
+    // The Director's one session-only edit actor. Null is Clear; consumers
+    // which historically defaulted to You resolve null as self. Never Subjects A-D.
+    const LLUUID& getActiveActorId() const { return mActiveActorId; }
+    void setActiveActorId(const LLUUID& id);
+    boost::signals2::connection addActiveActorChangedCallback(
+        const boost::signals2::signal<void()>::slot_type& callback)
+        { return mActiveActorChanged.connect(callback); }
+
     // ---- membership (ordered, session-only) ----
     void add(const LLUUID& id, bool touch_scene = true);
     void remove(const LLUUID& id);
@@ -326,7 +334,7 @@ public:
     // non-cast ids read as the disabled default and ignore writes.
     const ActorStyle& getActorStyle(const LLUUID& id) const;
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
-    const LLUUID&     getSteppedActorId() const { return mSteppedActorId; }
+    const LLUUID&     getSteppedActorId() const { return mActiveActorId; }
     void              setSteppedActorId(const LLUUID& id);
 
     // ---- render-only real-avatar camera gaze selection ----
@@ -509,7 +517,8 @@ private:
     GazeCueList mSelfGazeCues;
     GazeInfluenceKeyList mSelfGazeInfluenceKeys;
     ActorStyle mSelfActorStyle;
-    LLUUID mSteppedActorId; // null means You
+    LLUUID mActiveActorId; // session-only; null means Clear
+    boost::signals2::signal<void()> mActiveActorChanged;
     U64 mGazeCueRevision = 0;
     U64 mGazeConfigRevision = 1;
     U64 mSubjectRevision = 1;

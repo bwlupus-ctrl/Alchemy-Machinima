@@ -51,7 +51,7 @@ bool ALPanelSteppedAnim::postBuild()
 
 void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
 {
-    if (!root || mActorTarget)
+    if (!root || mOverrideList)
     {
         return;
     }
@@ -119,6 +119,8 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
         }
         return LLDirectorCast::instance().contains(actor) ? LLSD(actor.asString()) : LLSD();
     });
+    mActiveActorConnection = LLDirectorCast::instance().addActiveActorChangedCallback(
+        [this]() { refreshActor(); });
     rebuildActors();
     refreshActor();
     syncGroups(true);
@@ -126,24 +128,23 @@ void ALPanelSteppedAnim::bindSteppedPage(LLView* root)
 
 LLUUID ALPanelSteppedAnim::selectedActor() const
 {
-    return mActorTarget ? LLUUID(mActorTarget->getSelectedValue().asString())
-                        : LLDirectorCast::instance().getSteppedActorId();
+    return LLDirectorCast::instance().getActiveActorId();
 }
 
 // ui-draw-lint: allow-function(raw-write) draw() calls this only when the cast revision changed
 void ALPanelSteppedAnim::rebuildActors()
 {
-    if (!mActorTarget || !mOverrideList)
+    if (!mOverrideList)
     {
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID selected = cast.getSteppedActorId();
-    mActorTarget->removeall();
+    if (mActorTarget) mActorTarget->removeall();
     mOverrideList->deleteAllItems();
     const auto add_actor = [this](const LLUUID& id, const std::string& name, const LLDirectorCast::ActorStyle& style)
     {
-        mActorTarget->add(name, id.asString());
+        if (mActorTarget) mActorTarget->add(name, id.asString());
         // An actor that only carries a rate offset or part overrides is not "Inherit": show them.
         const LLDirectorCast::ActorStyle::SteppedOverride& ov = style.mStepped;
         const bool has_parts = std::any_of(ov.mParts.begin(), ov.mParts.end(), [](S32 part) { return part >= 0; });
@@ -164,7 +165,7 @@ void ALPanelSteppedAnim::rebuildActors()
             ? LLUUID::null : choice.mId;
         add_actor(value, choice.mLabel, cast.getActorStyle(value));
     }
-    mActorTarget->setValue(selected.asString());
+    if (mActorTarget) mActorTarget->setValue(selected.asString());
     mCastRevision = cast.getActorChoiceRevision();
 }
 
@@ -217,19 +218,20 @@ void ALPanelSteppedAnim::writeActor()
 
 void ALPanelSteppedAnim::onActorTargetCommit()
 {
-    LLDirectorCast::instance().setSteppedActorId(selectedActor());
+    if (mActorTarget)
+        LLDirectorCast::instance().setActiveActorId(LLUUID(mActorTarget->getSelectedValue().asString()));
     refreshActor();
 }
 
 void ALPanelSteppedAnim::onOverrideListSelect()
 {
-    if (!mOverrideList || !mActorTarget)
+    if (!mOverrideList)
     {
         return;
     }
     const LLUUID id = mOverrideList->getSelectedValue().asUUID();
-    mActorTarget->setValue(id.asString());
-    onActorTargetCommit();
+    LLDirectorCast::instance().setActiveActorId(id.isNull() ? gAgentID : id);
+    refreshActor();
 }
 
 void ALPanelSteppedAnim::onActorOverrideCommit() { writeActor(); }

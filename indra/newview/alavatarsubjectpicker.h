@@ -11,11 +11,11 @@ class LLUICtrl;
 class LLContextMenu;
 namespace ALAvatarSubjectPicker
 {
-bool valid(const LLVOAvatar* avatar, bool ghosts = false);
+bool valid(const LLVOAvatar* avatar, bool ghosts = false, bool animesh = false);
 LLVOAvatar* fromObject(LLViewerObject* object);
-LLVOAvatar* fromSelection();
+LLVOAvatar* fromSelection(bool animesh = false);
 void choose(LLUICtrl* anchor, LLView* owner, LLHandle<LLContextMenu>& menu,
-            bool ghosts, std::function<void(const LLUUID&)> picked);
+            bool ghosts, std::function<void(const LLUUID&)> picked, bool animesh = false);
 void cancelFor(LLView* owner);
 bool handleKey(KEY key, MASK mask);
 }

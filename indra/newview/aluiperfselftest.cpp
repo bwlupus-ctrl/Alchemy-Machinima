@@ -4039,7 +4039,7 @@ private:
             ALPanelLensGaze* panel = findFirstView<ALPanelLensGaze>(mFunctionalPageRoot);
             LLComboBox* edit_actor = mFunctionalPageRoot->findChild<LLComboBox>(
                 "gaze_edit_actor", true);
-            if (panel && edit_actor)
+            if (panel)
             {
                 mFunctionalGazeActor = gAgentAvatarp->getID();
                 if (!mFunctionalHaveCastGazeBefore)
@@ -4054,8 +4054,16 @@ private:
                     mFunctionalHaveCastGazeBefore = true;
                     mFunctionalGazeEnabledBefore = LLActorMover::instance().isGazeEnabled(
                         mFunctionalGazeActor);
-                    mFunctionalGazeEditActorBefore = edit_actor->getValue();
-                    mFunctionalGazeEditActor = edit_actor->getDerivedHandle<LLComboBox>();
+                    if (edit_actor)
+                    {
+                        mFunctionalGazeEditActorBefore = edit_actor->getValue();
+                        mFunctionalGazeEditActor = edit_actor->getDerivedHandle<LLComboBox>();
+                    }
+                    else
+                    {
+                        mFunctionalSharedActorBefore = LLDirectorCast::instance().getActiveActorId();
+                        mFunctionalHaveSharedActorBefore = true;
+                    }
                 }
                 if (widget == "gaze_cast_combo" && mFunctionalGazeCastFixture.isNull())
                 {
@@ -4066,8 +4074,12 @@ private:
                 }
                 // SELF is a real cast member after login.  Selecting it through
                 // the panel's public combo path refreshes all actor-owned gates.
-                edit_actor->setValue(0);
-                edit_actor->onCommit();
+                if (edit_actor)
+                {
+                    edit_actor->setValue(0);
+                    edit_actor->onCommit();
+                }
+                else LLDirectorCast::instance().setActiveActorId(mFunctionalGazeActor);
                 // SELF must never acquire camera-facing body rotation during a
                 // real-account run.  The per-row setting snapshot restores the
                 // global, while the actor/cast snapshots restore this override.
@@ -4972,6 +4984,11 @@ private:
         {
             LLDirectorCast::instance().remove(mFunctionalGazeCastFixtureAlternate);
             mFunctionalGazeCastFixtureAlternate.setNull();
+        }
+        if (mFunctionalHaveSharedActorBefore)
+        {
+            LLDirectorCast::instance().setActiveActorId(mFunctionalSharedActorBefore);
+            mFunctionalHaveSharedActorBefore = false;
         }
         if (mFunctionalHaveCastLookBefore)
         {
@@ -7801,6 +7818,12 @@ private:
                     edit_actor->add("A", LLSD(1));
                 edit_actor->setValue(1);
                 edit_actor->onCommit();
+            }
+            else
+            {
+                mFunctionalSharedActorBefore = cast.getActiveActorId();
+                mFunctionalHaveSharedActorBefore = true;
+                cast.setActiveActorId(mFunctionalLoginGazeActor);
             }
         }
         prepareFunctionalSelector(entry);
@@ -14692,6 +14715,8 @@ private:
     bool mFunctionalCastLookBefore = false;
     bool mFunctionalHaveCastGazeBefore = false;
     bool mFunctionalGazeEnabledBefore = false;
+    LLUUID mFunctionalSharedActorBefore;
+    bool mFunctionalHaveSharedActorBefore = false;
     LLSD mFunctionalGazeEditActorBefore;
     LLHandle<LLComboBox> mFunctionalGazeEditActor;
     LLUUID mFunctionalGazeCastFixture;
