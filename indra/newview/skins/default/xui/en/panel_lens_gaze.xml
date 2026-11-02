@@ -2,7 +2,7 @@
 <panel
  background_visible="false"
  border="false"
- height="1910"
+ height="2374"
  layout="topleft"
  name="panel_lens_gaze"
  width="516">
@@ -826,4 +826,40 @@
      layout="topleft" left="370" name="btn_gaze_cues" top="1866"
      tool_tip="Edit presentation-time gaze cues for the active You/A-D subject"
      width="106" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_slot_label" top="1906" width="124">Slot</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_slot" top="1906" width="336" tool_tip="Choose one of four independent scene hot target setups."><combo_box.item label="Slot 1" value="0" /><combo_box.item label="Slot 2" value="1" /><combo_box.item label="Slot 3" value="2" /><combo_box.item label="Slot 4" value="3" /></combo_box>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_who_label" top="1932" width="124">Who</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_who" top="1932" width="336" tool_tip="Choose one actor or a Director group for this slot. Independent of the Actor bar." />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_target_label" top="1958" width="124">Target</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_target" top="1958" width="336" tool_tip="Choose Camera, Actor, Point or Object. Point and Object use Pick in world."><combo_box.item label="Choose target" value="0" /><combo_box.item label="Camera" value="1" /><combo_box.item label="Actor" value="2" /><combo_box.item label="Point" value="3" /><combo_box.item label="Object" value="4" /></combo_box>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_actor_label" top="1984" width="124">Target actor</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_actor" top="1984" width="336" tool_tip="Any cast actor or session clone can be the live target." />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_pick_label" top="2010" width="124">Pick</text>
+<button follows="left|top" height="20" layout="topleft" left="140" name="hot_pick" top="2010" width="336" tool_tip="Click an in-world object to track it live, or click a surface for a fixed Point. Escape cancels." label="Pick in world" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_name_label" top="2036" width="124">Chosen target</text>
+<text follows="left|top" height="20" layout="topleft" left="140" name="hot_name" top="2036" width="336" tool_tip="The chosen target name. Moving objects and actors are resolved live.">No target</text>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_clear_label" top="2062" width="124">Clear</text>
+<button follows="left|top" height="20" layout="topleft" left="140" name="hot_clear" top="2062" width="336" tool_tip="Clear this slot target and its displayed name." label="Clear target" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_snap_label" top="2088" width="124">Snap (s)</text>
+<spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_snap" top="2088" width="336" tool_tip="Acquire duration. Zero jolts instantly; up to 1.5 seconds turns smoothly." min_val="0" max_val="1.5" increment="0.01" decimal_digits="2" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_head_label" top="2114" width="124">Head</text>
+<slider follows="left|top" height="20" layout="topleft" left="140" name="hot_head" top="2114" width="336" tool_tip="Independent head reaction strength from zero to one." min_val="0" max_val="1" increment="0.05" decimal_digits="2" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_eyes_label" top="2140" width="124">Eyes</text>
+<slider follows="left|top" height="20" layout="topleft" left="140" name="hot_eyes" top="2140" width="336" tool_tip="Independent eyes reaction strength from zero to one." min_val="0" max_val="1" increment="0.05" decimal_digits="2" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_torso_label" top="2166" width="124">Torso</text>
+<slider follows="left|top" height="20" layout="topleft" left="140" name="hot_torso" top="2166" width="336" tool_tip="Independent torso reaction strength from zero to one." min_val="0" max_val="1" increment="0.05" decimal_digits="2" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_after_label" top="2192" width="124">After</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_after" top="2192" width="336" tool_tip="Stay fixated until released, or return after the selected dwell following acquisition. Hold mode lasts until release."><combo_box.item label="Return after" value="0" /><combo_box.item label="Stay fixated" value="1" /></combo_box>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_dwell_label" top="2218" width="124">Dwell (s)</text>
+<spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_dwell" top="2218" width="336" tool_tip="Seconds to stay after acquisition in Tap / Return mode." min_val="0" max_val="3600" increment="0.1" decimal_digits="1" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_return_label" top="2244" width="124">Return (s)</text>
+<spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_return" top="2244" width="336" tool_tip="Seconds to drift back to the normal gaze and currently playing cues after release." min_val="0" max_val="60" increment="0.1" decimal_digits="1" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_mode_label" top="2270" width="124">Key mode</text>
+<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_mode" top="2270" width="336" tool_tip="Tap fires and a second tap releases early. Hold stays while pressed and returns on release. Re-press during return restarts acquisition."><combo_box.item label="Tap" value="0" /><combo_box.item label="Hold" value="1" /></combo_box>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_fire_label" top="2296" width="124">Fire</text>
+<button follows="left|top" height="20" layout="topleft" left="140" name="hot_fire" top="2296" width="336" tool_tip="Test this slot. Tap clicks fire; Hold mode uses press and hold, returning on mouse release." label="Fire" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_reset_label" top="2322" width="124">Reset slot</text>
+<button follows="left|top" height="20" layout="topleft" left="140" name="hot_reset" top="2322" width="336" tool_tip="Reset the selected slot including target and Who to empty, with default reaction timing and strengths." label="Reset slot" />
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_gamepad_label" top="2348" width="124">Gamepad D-pad</text>
+<check_box follows="left|top" height="20" layout="topleft" left="140" name="hot_gamepad" top="2348" width="336" tool_tip="Opt in to reserve XInput D-pad Up/Right/Down/Left for Slot 1/2/3/4. Replaces camera D-pad actions; off by default." label="Gamepad D-pad" control_name="DirectorHotGazeGamepad" />
 </panel>

@@ -59,6 +59,17 @@ struct LLViewerInput {
 ''' + rule + r'''
 int main() {
     using Mode = LLViewerInput::KeyMode;
+    Mode hotDefaults;
+    for(int i=1;i<=4;++i) hotDefaults.bindings.add({std::to_string(i), "CTL_ALT", LLViewerInput::Command(("director_hot_gaze_"+std::to_string(i)).c_str())});
+    for(int version:{0,1,2,3}) {
+        Mode user; migrateBindingMode(user,hotDefaults,version,1);
+        assert(user.bindings.size()==(version<3?4u:0u));
+    }
+    Mode customHot;
+    customHot.bindings.add({"2","SHIFT","custom_command"});
+    customHot.bindings.add({"","NONE","director_hot_gaze_3"});
+    migrateBindingMode(customHot,hotDefaults,2,1);
+    assert(customHot.bindings.size()==4); // add only 1 and 4; occupied/cleared survive
     Mode defaults;
     defaults.bindings.add({"V", "CTL_ALT", "toggle_viewfinder"});
     defaults.bindings.add({"W", "NONE", "push_forward"});
@@ -131,7 +142,7 @@ def check_legacy_detection():
         return text[start:text.index('\nS32 count_masks(', start)]
     current_loader = loader(source)
     migration_start = current_loader.index("    // HEAD's fallback decision")
-    assert current_loader[:migration_start] + '    return binding_count;\n}\n' == loader(original)
+    assert current_loader == loader(original)  # Hot Gaze changes only the existing shared migration rule
     assert current_loader.index('// fix version') < migration_start
     constructor = 'LLViewerInput::Keys::Keys()'
     def keys_constructor(text):
@@ -140,7 +151,7 @@ def check_legacy_detection():
     assert keys_constructor(source) == keys_constructor(original)
     shared_loader = source[source.index('void LLViewerInput::migrateKeysXML('):source.index('S32 LLViewerInput::loadBindingsXML(')]
     assert 'xml_version' not in shared_loader
-    assert 'binding_count == 0 || migration_version >= 2' in shared_loader
+    assert 'binding_count == 0 || migration_version >= 3' in shared_loader
     assert 'getS32("KeyBindingsMigrationVersion")' in shared_loader
     header = 'indra/newview/llviewerinput.h'
     version = 'const S32 keybindings_xml_version = 1;'
@@ -152,11 +163,11 @@ def check_legacy_detection():
         return text[begin:text.index('\nvoid ', begin + 10)]
     marker = '''                    if (!temporary)
                     {
-                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 2);
+                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 3);
                     }
 '''
     assert marker in save(conflict)
-    assert save(conflict).replace(marker, '') == save(head(path))
+    assert save(conflict).replace(marker, '') == save(head(path)).replace(marker.replace(', 3)', ', 2)'), '')
     shipped = 'indra/newview/app_settings/key_bindings.xml'
     import xml.etree.ElementTree as ET
     assert ET.fromstring((ROOT / shipped).read_text()).attrib == ET.fromstring(head(shipped)).attrib
@@ -166,7 +177,7 @@ def check_legacy_detection():
     values = list(setting)
     fields = {values[i].text: values[i + 1].text for i in range(0, len(values), 2)}
     assert fields['Persist'] == '1' and fields['Type'] == 'S32' and fields['Value'] == '0'
-    assert conflict.count('setS32("KeyBindingsMigrationVersion", 2)') == 1
+    assert conflict.count('setS32("KeyBindingsMigrationVersion", 3)') == 1
     print('PASS: git show HEAD legacy loader and Controls save identical apart from migration/marker; file format version unchanged; marker globally persisted')
 
 

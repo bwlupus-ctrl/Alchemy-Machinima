@@ -49,7 +49,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2851,
+        "line": 2853,
         "source": "indra/newview/alavatarstagingmodel.cpp",
         "text": "alavatarstagingmodel.cpp"
       },
@@ -115,7 +115,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2949,
+        "line": 2951,
         "source": "indra/newview/aldirectoractorchoice.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -265,7 +265,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1429,
+        "line": 1431,
         "source": "indra/newview/alpanellensgaze.h",
         "text": "alpanellensgaze.h"
       },
@@ -277,7 +277,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1436,
+        "line": 1438,
         "source": "indra/newview/alpanelpatheditor.h",
         "text": "alpanelpatheditor.h"
       },
@@ -481,7 +481,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -4092,6 +4092,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -4105,6 +4106,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -4348,6 +4350,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -9310,7 +9313,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2851,
+        "line": 2853,
         "source": "indra/newview/alavatarstagingmodel.cpp",
         "text": "alavatarstagingmodel.cpp"
       },
@@ -9352,7 +9355,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2850,
+        "line": 2852,
         "source": "indra/newview/aldanceballmodel.cpp",
         "text": "aldanceballmodel.cpp"
       },
@@ -9418,7 +9421,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2843,
+        "line": 2845,
         "source": "indra/newview/alformationsolver.cpp",
         "text": "alformationsolver.cpp"
       },
@@ -9436,7 +9439,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1428,
+        "line": 1430,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
       },
@@ -9532,7 +9535,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1430,
+        "line": 1432,
         "source": "indra/newview/alpaneldanceball.h",
         "text": "alpaneldanceball.h"
       },
@@ -9544,13 +9547,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1431,
+        "line": 1433,
         "source": "indra/newview/alpaneldirectoranimswitcher.h",
         "text": "alpaneldirectoranimswitcher.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1435,
+        "line": 1437,
         "source": "indra/newview/alpanelflycamrecorder.h",
         "text": "alpanelflycamrecorder.h"
       },
@@ -9592,7 +9595,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1436,
+        "line": 1438,
         "source": "indra/newview/alpanelpatheditor.h",
         "text": "alpanelpatheditor.h"
       },
@@ -9682,7 +9685,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
@@ -9838,7 +9841,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -9898,7 +9901,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1439,
+        "line": 1441,
         "source": "indra/newview/llpathcamera.h",
         "text": "llpathcamera.h"
       },
@@ -9910,7 +9913,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1898,
+        "line": 1900,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
       },
@@ -9982,9 +9985,21 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
+      },
+      {
+        "file": "indra/llwindow/CMakeLists.txt",
+        "line": 107,
+        "source": "indra/newview/llviewerwindow.cpp",
+        "text": "# llviewerwindow.cpp's (guarded) include still resolves."
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1065,
+        "source": "indra/newview/llviewerwindow.cpp",
+        "text": "llviewerwindow.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -9994,7 +10009,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -10012,7 +10027,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -10136,6 +10151,14 @@
           "indra/newview/llviewerfloaterreg.cpp@878,7"
         ],
         "path": "indra/newview/llviewerfloaterreg.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/llviewerwindow.cpp@24,19",
+          "indra/newview/llviewerwindow.cpp@6320,7",
+          "indra/newview/llviewerwindow.cpp@6428,7"
+        ],
+        "path": "indra/newview/llviewerwindow.cpp"
       },
       {
         "hunks": [
@@ -10271,6 +10294,13 @@
           "indra/newview/lldrawpoolalpha.cpp@1164,157"
         ],
         "path": "indra/newview/lldrawpoolalpha.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/llfloater360capture.cpp@25,12",
+          "indra/newview/llfloater360capture.cpp@606,8"
+        ],
+        "path": "indra/newview/llfloater360capture.cpp"
       },
       {
         "hunks": [
@@ -13369,6 +13399,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -13382,6 +13413,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -13625,6 +13657,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -15324,6 +15357,7 @@
           "indra/llui/lltextbox.h",
           "indra/llui/lltrans.h",
           "indra/llui/lluictrlfactory.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentui.h",
           "indra/newview/llenvironment.h",
@@ -15340,6 +15374,7 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLAgentUI::buildSLURL",
           "LLApp::isExiting",
           "LLAppViewer::instance",
@@ -18325,6 +18360,504 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llviewerwindow.cpp": {
+        "includes": [
+          "indra/llappearance/lltexlayer.h",
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcleanup.h",
+          "indra/llcommon/lldate.h",
+          "indra/llcommon/llerrorcontrol.h",
+          "indra/llcommon/llstring.h",
+          "indra/llcommon/lltimer.h",
+          "indra/llcommon/lluuid.h",
+          "indra/llcommon/stringize.h",
+          "indra/llfilesystem/lldir.h",
+          "indra/llimage/llimage.h",
+          "indra/llimage/llimagej2c.h",
+          "indra/llimage/llimageworker.h",
+          "indra/llmath/llrect.h",
+          "indra/llmath/raytrace.h",
+          "indra/llmessage/llassetstorage.h",
+          "indra/llmessage/llxfermanager.h",
+          "indra/llmessage/message.h",
+          "indra/llprimitive/llmediaentry.h",
+          "indra/llprimitive/object_flags.h",
+          "indra/llrender/llfontfreetype.h",
+          "indra/llrender/llfontgl.h",
+          "indra/llrender/llfontregistry.h",
+          "indra/llrender/llglheaders.h",
+          "indra/llrender/llrender.h",
+          "indra/llrender/llrendersphere.h",
+          "indra/llui/llaccordionctrl.h",
+          "indra/llui/llchatentry.h",
+          "indra/llui/llconsole.h",
+          "indra/llui/llfloater.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llfocusmgr.h",
+          "indra/llui/lllineeditor.h",
+          "indra/llui/llmenugl.h",
+          "indra/llui/llmodaldialog.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llstatview.h",
+          "indra/llui/lltextbox.h",
+          "indra/llui/lltooltip.h",
+          "indra/llui/lltrans.h",
+          "indra/llui/llui.h",
+          "indra/llui/lluictrlfactory.h",
+          "indra/llui/llview.h",
+          "indra/llui/llviewereventrecorder.h",
+          "indra/llui/llviewquery.h",
+          "indra/llwindow/llkeyboard.h",
+          "indra/llwindow/llmousehandler.h",
+          "indra/llwindow/llwindowwin32.h",
+          "indra/llxml/llxmltree.h",
+          "indra/newview/alchatbar.h",
+          "indra/newview/aldirectorhotkeys.h",
+          "indra/newview/alfloaterprogressview.h",
+          "indra/newview/alhidecursor.h",
+          "indra/newview/alkithistory.h",
+          "indra/newview/altoolcrowdplace.h",
+          "indra/newview/altoolghostedit.h",
+          "indra/newview/aluiperfselftest.h",
+          "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentbenefits.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llagentui.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/llbox.h",
+          "indra/newview/llchicletbar.h",
+          "indra/newview/llcommandhandler.h",
+          "indra/newview/llcommunicationchannel.h",
+          "indra/newview/llcylinder.h",
+          "indra/newview/lldebugview.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/lldrawpoolalpha.h",
+          "indra/newview/lldrawpoolbump.h",
+          "indra/newview/lldrawpoolwater.h",
+          "indra/newview/llface.h",
+          "indra/newview/llfeaturemanager.h",
+          "indra/newview/llfilepicker.h",
+          "indra/newview/llfirstuse.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatercamera.h",
+          "indra/newview/llfloaterimnearbychat.h",
+          "indra/newview/llfloaterinspect.h",
+          "indra/newview/llfloaterland.h",
+          "indra/newview/llfloaterlocalassets.h",
+          "indra/newview/llfloatermap.h",
+          "indra/newview/llfloaternamedesc.h",
+          "indra/newview/llfloaternotificationsconsole.h",
+          "indra/newview/llfloaterpreference.h",
+          "indra/newview/llfloatersnapshot.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llfloaterworldmap.h",
+          "indra/newview/llgesturemgr.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llhudmanager.h",
+          "indra/newview/llhudobject.h",
+          "indra/newview/llhudview.h",
+          "indra/newview/lllocalbitmaps.h",
+          "indra/newview/lllocalgltfmaterials.h",
+          "indra/newview/llmaniptranslate.h",
+          "indra/newview/llmenuoptionpathfindingrebakenavmesh.h",
+          "indra/newview/llmeshrepository.h",
+          "indra/newview/llmorphview.h",
+          "indra/newview/llmoveview.h",
+          "indra/newview/llnavigationbar.h",
+          "indra/newview/llnotificationhandler.h",
+          "indra/newview/llnotificationmanager.h",
+          "indra/newview/llpanellogin.h",
+          "indra/newview/llpaneltopinfobar.h",
+          "indra/newview/llpopupview.h",
+          "indra/newview/llpreviewtexture.h",
+          "indra/newview/llprogressview.h",
+          "indra/newview/llrootview.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llsetkeybinddialog.h",
+          "indra/newview/llsky.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llsurface.h",
+          "indra/newview/llsurfacepatch.h",
+          "indra/newview/lltexturecache.h",
+          "indra/newview/lltexturefetch.h",
+          "indra/newview/lltextureview.h",
+          "indra/newview/lltoast.h",
+          "indra/newview/lltool.h",
+          "indra/newview/lltoolbarview.h",
+          "indra/newview/lltoolcomp.h",
+          "indra/newview/lltooldraganddrop.h",
+          "indra/newview/lltoolface.h",
+          "indra/newview/lltoolfocus.h",
+          "indra/newview/lltoolgrab.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolmorph.h",
+          "indra/newview/lltoolpie.h",
+          "indra/newview/lltoolselectland.h",
+          "indra/newview/llurldispatcher.h",
+          "indra/newview/llversioninfo.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerdisplay.h",
+          "indra/newview/llviewergesture.h",
+          "indra/newview/llviewerinput.h",
+          "indra/newview/llviewerinventory.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermedia.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewermenufile.h",
+          "indra/newview/llviewermessage.h",
+          "indra/newview/llviewernetwork.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerstats.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llviewerwindowlistener.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llvopartgroup.h",
+          "indra/newview/llvovolume.h",
+          "indra/newview/llwearablelist.h",
+          "indra/newview/llwindowlistener.h",
+          "indra/newview/llworld.h",
+          "indra/newview/llworldmapview.h",
+          "indra/newview/pipeline.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlveffects.h",
+          "indra/newview/rlvhandler.h"
+        ],
+        "qualified_call_candidates": [
+          "ALChatBar::startChat",
+          "ALDirectorHotkeys::handleKey",
+          "ALHideCursor::wantHidden",
+          "ALKitHistory::comboInputSource",
+          "ALKitHistory::noteKey",
+          "ALKitHistory::notePointer",
+          "ALToolCrowdPlace::getInstance",
+          "ALToolGhostEdit::getInstance",
+          "ALToolGhostEdit::handleKey",
+          "ALToolGhostEdit::instanceExists",
+          "ALUIPerfSelfTest::recordViewCounts",
+          "ALViewfinder::armLength",
+          "ALViewfinder::clampScale",
+          "ALViewfinder::fontSizeName",
+          "ALViewfinder::fontStep",
+          "ALViewfinder::formatValue",
+          "ALViewfinder::label",
+          "ALViewfinder::layout",
+          "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
+          "LLApp::isExiting",
+          "LLApp::isStopped",
+          "LLAppViewer::getTextureCache",
+          "LLAppViewer::getTextureFetch",
+          "LLAppViewer::instance",
+          "LLChicletBar::getInstance",
+          "LLChicletBar::instanceExists",
+          "LLConsole::updateClass",
+          "LLDate::now",
+          "LLDefaultChildRegistry::instance",
+          "LLError::addRecorder",
+          "LLError::removeRecorder",
+          "LLFeatureManager::getInstance",
+          "LLFile::stat",
+          "LLFilePickerReplyThread::startPicker",
+          "LLFirstUse::notUsingDestinationGuide",
+          "LLFirstUse::notUsingSidePanel",
+          "LLFloater360Capture::capture360Images",
+          "LLFloaterReg::findInstance",
+          "LLFloaterReg::getInstance",
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterReg::toggleInstanceOrBringToFront",
+          "LLFontGL::consumePendingReload",
+          "LLFontGL::destroyAllGL",
+          "LLFontGL::destroyDefaultFonts",
+          "LLFontGL::getFont",
+          "LLFontGL::getFontMonospace",
+          "LLFontGL::getFontSansSerif",
+          "LLFontGL::getFontSansSerifBig",
+          "LLFontGL::getFontSansSerifSmall",
+          "LLFontGL::initClass",
+          "LLFontGL::loadCommonFonts",
+          "LLFontGL::sweepGlyphCaches",
+          "LLFontManager::initClass",
+          "LLGLState::restoreGL",
+          "LLGestureMgr::instance",
+          "LLGridManager::getInstance",
+          "LLHUDIcon::lineSegmentIntersectAll",
+          "LLHUDObject::reshapeAll",
+          "LLIMMgr::getInstance",
+          "LLImageFormatted::createFromType",
+          "LLImageGL::allocateConversionBuffer",
+          "LLImageGL::initClass",
+          "LLInventoryType::defaultForAssetType",
+          "LLLayoutStack::updateClass",
+          "LLLocalBitmapMgr::instance",
+          "LLLocalGLTFMaterialMgr::instance",
+          "LLManipTranslate::destroyGL",
+          "LLManipTranslate::restoreGL",
+          "LLMemory::getCurrentRSS",
+          "LLMemory::getMaxMemKB",
+          "LLMemory::tryToAlloc",
+          "LLMemory::updateMemoryInfo",
+          "LLMenuGL::getKeyboardMode",
+          "LLMenuOptionPathfindingRebakeNavmesh::getInstance",
+          "LLModalDialog::activeCount",
+          "LLModalDialog::onAppFocusGained",
+          "LLModalDialog::onAppFocusLost",
+          "LLModalDialog::shutdownModals",
+          "LLNavigationBar::deleteSingleton",
+          "LLNavigationBar::getInstance",
+          "LLNavigationBar::instanceExists",
+          "LLNotifications::instance",
+          "LLNotificationsUI::LLViewerAlertHandler",
+          "LLNotificationsUtil::add",
+          "LLPanelHideBeacon::getInstance",
+          "LLPanelLogin::reshapePanel",
+          "LLPanelStandStopFlying::getInstance",
+          "LLPanelTopInfoBar::getInstance",
+          "LLPanelTopInfoBar::instanceExists",
+          "LLPickInfo::LLPickInfo",
+          "LLPickInfo::fetchResults",
+          "LLPickInfo::getObject",
+          "LLPickInfo::getSurfaceInfo",
+          "LLPickInfo::isFlora",
+          "LLPickInfo::updateXYCoords",
+          "LLPipeline::getRenderBeacons",
+          "LLPipeline::getRenderMOAPBeacons",
+          "LLPipeline::getRenderParticleBeacons",
+          "LLPipeline::getRenderPhysicalBeacons",
+          "LLPipeline::getRenderScriptedBeacons",
+          "LLPipeline::getRenderScriptedTouchBeacons",
+          "LLPipeline::getRenderSoundBeacons",
+          "LLPipeline::toggleRenderDebugFeature",
+          "LLPipeline::toggleRenderTypeControlNegated",
+          "LLResMgr::getInstance",
+          "LLSelectMgr::getInstance",
+          "LLSelectMgr::instance",
+          "LLSetKeyBindDialog::recordKey",
+          "LLSplashScreen::update",
+          "LLStartUp::getStartupState",
+          "LLStringUtil::replaceChar",
+          "LLToast::cleanupToasts",
+          "LLToolCamera::getInstance",
+          "LLToolCompGun::getInstance",
+          "LLToolCompInspect::getInstance",
+          "LLToolCompRotate::getInstance",
+          "LLToolCompScale::getInstance",
+          "LLToolCompTranslate::getInstance",
+          "LLToolDragAndDrop::getInstance",
+          "LLToolGrab::getInstance",
+          "LLToolMgr::getInstance",
+          "LLToolPie::getInstance",
+          "LLToolTipMgr::instance",
+          "LLTrace::get_frame_recording",
+          "LLTrans::getString",
+          "LLUI::getInstance",
+          "LLUI::getScaleFactor",
+          "LLUI::popMatrix",
+          "LLUI::pushMatrix",
+          "LLUI::setLineWidth",
+          "LLUI::setScaleFactor",
+          "LLUI::translate",
+          "LLUIColorTable::instance",
+          "LLUICtrlFactory::getInstance",
+          "LLURLDispatcher::dispatch",
+          "LLUUID::generateNewID",
+          "LLUserWarningMsg::show",
+          "LLVOAvatar::destroyGL",
+          "LLVOAvatar::restoreGL",
+          "LLVOAvatar::rezStatusToString",
+          "LLVOPartGroup::destroyGL",
+          "LLVOPartGroup::restoreGL",
+          "LLVertexBuffer::initClass",
+          "LLVfxManager::instance",
+          "LLView::sMouseHandlerRecorder",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance",
+          "LLViewerDynamicTexture::destroyGL",
+          "LLViewerDynamicTexture::restoreGL",
+          "LLViewerEventRecorder::instance",
+          "LLViewerJoystick::getInstance",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerShaderMgr::instance",
+          "LLViewerShaderMgr::releaseInstance",
+          "LLViewerStats::instance",
+          "LLViewerTextureManager::cleanup",
+          "LLViewerTextureManager::getFetchedTexture",
+          "LLViewerTextureManager::init",
+          "LLViewerWindow::LLViewerWindow",
+          "LLViewerWindow::addPopup",
+          "LLViewerWindow::calcDisplayScale",
+          "LLViewerWindow::calcScaledRect",
+          "LLViewerWindow::checkSettings",
+          "LLViewerWindow::clearPopups",
+          "LLViewerWindow::clickPointInWorldGlobal",
+          "LLViewerWindow::clickPointOnSurfaceGlobal",
+          "LLViewerWindow::cubeSnapshot",
+          "LLViewerWindow::cursorIntersect",
+          "LLViewerWindow::cursorIntersectIcon",
+          "LLViewerWindow::destroyWindow",
+          "LLViewerWindow::draw",
+          "LLViewerWindow::drawDebugText",
+          "LLViewerWindow::drawMouselookInstructions",
+          "LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended",
+          "LLViewerWindow::dumpState",
+          "LLViewerWindow::focusClient",
+          "LLViewerWindow::getChatConsoleBottomPad",
+          "LLViewerWindow::getChatConsoleRect",
+          "LLViewerWindow::getIndicatorsVisible",
+          "LLViewerWindow::getLastSnapshotDir",
+          "LLViewerWindow::getPlatformWindow",
+          "LLViewerWindow::getProgressView",
+          "LLViewerWindow::getRootView",
+          "LLViewerWindow::getShowProgress",
+          "LLViewerWindow::getUIVisibility",
+          "LLViewerWindow::getWindowHeightRaw",
+          "LLViewerWindow::getWindowHeightScaled",
+          "LLViewerWindow::getWindowWidthRaw",
+          "LLViewerWindow::getWindowWidthScaled",
+          "LLViewerWindow::getWorldViewAspectRatio",
+          "LLViewerWindow::getWorldViewHeightRaw",
+          "LLViewerWindow::getWorldViewHeightScaled",
+          "LLViewerWindow::getWorldViewRectScaled",
+          "LLViewerWindow::getWorldViewWidthRaw",
+          "LLViewerWindow::getWorldViewWidthScaled",
+          "LLViewerWindow::handleActivate",
+          "LLViewerWindow::handleActivateApp",
+          "LLViewerWindow::handleAnyMouseClick",
+          "LLViewerWindow::handleCloseRequest",
+          "LLViewerWindow::handleDPIChanged",
+          "LLViewerWindow::handleDataCopy",
+          "LLViewerWindow::handleDeviceChange",
+          "LLViewerWindow::handleDisplayChanged",
+          "LLViewerWindow::handleDoubleClick",
+          "LLViewerWindow::handleDragNDrop",
+          "LLViewerWindow::handleDragNDropDefault",
+          "LLViewerWindow::handleDragNDropFile",
+          "LLViewerWindow::handleFocus",
+          "LLViewerWindow::handleFocusLost",
+          "LLViewerWindow::handleKey",
+          "LLViewerWindow::handleKeyUp",
+          "LLViewerWindow::handleMenuSelect",
+          "LLViewerWindow::handleMiddleMouseDown",
+          "LLViewerWindow::handleMiddleMouseUp",
+          "LLViewerWindow::handleMouseDown",
+          "LLViewerWindow::handleMouseDragged",
+          "LLViewerWindow::handleMouseLeave",
+          "LLViewerWindow::handleMouseMove",
+          "LLViewerWindow::handleMouseUp",
+          "LLViewerWindow::handleOtherMouse",
+          "LLViewerWindow::handleOtherMouseDown",
+          "LLViewerWindow::handleOtherMouseUp",
+          "LLViewerWindow::handlePaint",
+          "LLViewerWindow::handlePauseWatchdog",
+          "LLViewerWindow::handlePieMenu",
+          "LLViewerWindow::handlePingWatchdog",
+          "LLViewerWindow::handleQuit",
+          "LLViewerWindow::handleResize",
+          "LLViewerWindow::handleResumeWatchdog",
+          "LLViewerWindow::handleRightMouseDown",
+          "LLViewerWindow::handleRightMouseUp",
+          "LLViewerWindow::handleScanKey",
+          "LLViewerWindow::handleScrollHWheel",
+          "LLViewerWindow::handleScrollWheel",
+          "LLViewerWindow::handleSessionExit",
+          "LLViewerWindow::handleTimerEvent",
+          "LLViewerWindow::handleTranslatedKeyDown",
+          "LLViewerWindow::handleTranslatedKeyUp",
+          "LLViewerWindow::handleUnicodeChar",
+          "LLViewerWindow::handleWindowBlock",
+          "LLViewerWindow::handleWindowDidChangeScreen",
+          "LLViewerWindow::handleWindowUnblock",
+          "LLViewerWindow::hideCursor",
+          "LLViewerWindow::initBase",
+          "LLViewerWindow::initFonts",
+          "LLViewerWindow::initGLDefaults",
+          "LLViewerWindow::initTextures",
+          "LLViewerWindow::initWorldUI",
+          "LLViewerWindow::isSnapshotLocSet",
+          "LLViewerWindow::mouseDirectionCamera",
+          "LLViewerWindow::mouseDirectionGlobal",
+          "LLViewerWindow::mousePointHUD",
+          "LLViewerWindow::mousePointOnLandGlobal",
+          "LLViewerWindow::mousePointOnPlaneGlobal",
+          "LLViewerWindow::moveCursorToCenter",
+          "LLViewerWindow::movieSize",
+          "LLViewerWindow::onDirectorySelected",
+          "LLViewerWindow::onSelectionFailure",
+          "LLViewerWindow::onSnapshotNotificationClick",
+          "LLViewerWindow::performPick",
+          "LLViewerWindow::pickAsync",
+          "LLViewerWindow::pickImmediate",
+          "LLViewerWindow::playSnapshotAnimAndSound",
+          "LLViewerWindow::rawSnapshot",
+          "LLViewerWindow::removePopup",
+          "LLViewerWindow::renderSelections",
+          "LLViewerWindow::requestResolutionUpdate",
+          "LLViewerWindow::resetSnapshotLoc",
+          "LLViewerWindow::resetStatusBarContainer",
+          "LLViewerWindow::reshape",
+          "LLViewerWindow::reshapeStatusBarContainer",
+          "LLViewerWindow::restoreGL",
+          "LLViewerWindow::returnEmptyPicks",
+          "LLViewerWindow::revealIntroPanel",
+          "LLViewerWindow::sMouseVelocityStat",
+          "LLViewerWindow::saveImageLocal",
+          "LLViewerWindow::saveImageNumbered",
+          "LLViewerWindow::saveLastMouse",
+          "LLViewerWindow::saveSnapshot",
+          "LLViewerWindow::schedulePick",
+          "LLViewerWindow::sendShapeToSim",
+          "LLViewerWindow::setBalanceVisible",
+          "LLViewerWindow::setCursor",
+          "LLViewerWindow::setMenuBackgroundColor",
+          "LLViewerWindow::setNormalControlsVisible",
+          "LLViewerWindow::setProgressCancelButtonVisible",
+          "LLViewerWindow::setProgressMessage",
+          "LLViewerWindow::setProgressPercent",
+          "LLViewerWindow::setProgressString",
+          "LLViewerWindow::setShowProgress",
+          "LLViewerWindow::setStartupComplete",
+          "LLViewerWindow::setUIVisibility",
+          "LLViewerWindow::setup2DRender",
+          "LLViewerWindow::setup2DViewport",
+          "LLViewerWindow::setup3DRender",
+          "LLViewerWindow::setup3DViewport",
+          "LLViewerWindow::showCursor",
+          "LLViewerWindow::shutdownGL",
+          "LLViewerWindow::shutdownViews",
+          "LLViewerWindow::simpleSnapshot",
+          "LLViewerWindow::stopGL",
+          "LLViewerWindow::thumbnailSnapshot",
+          "LLViewerWindow::translateString",
+          "LLViewerWindow::updateDebugText",
+          "LLViewerWindow::updateKeyboardFocus",
+          "LLViewerWindow::updateLayout",
+          "LLViewerWindow::updateMouseDelta",
+          "LLViewerWindow::updateUI",
+          "LLViewerWindow::updateWorldViewRect",
+          "LLVisualParamHint::requestHintUpdates",
+          "LLWearableList::instance",
+          "LLWindowManager::createWindow",
+          "LLWindowManager::destroyWindow",
+          "LLWorld::getInstance",
+          "LLWorldMapView::cleanupTextures",
+          "LLWorldMapView::initClass"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llvoavatar.cpp": {
         "includes": [
           "indra/llappearance/lldriverparam.h",
@@ -20224,7 +20757,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3069,
+        "line": 3077,
         "source": "indra/newview/alcinecammodes.cpp",
         "text": "\"alcinecammodes.cpp\""
       },
@@ -20290,19 +20823,19 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2846,
+        "line": 2848,
         "source": "indra/newview/aldirectorswitchermodel.cpp",
         "text": "aldirectorswitchermodel.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2888,
+        "line": 2890,
         "source": "indra/newview/aldirectorswitchermodel.cpp",
         "text": "aldirectorswitchermodel.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3089,
+        "line": 3097,
         "source": "indra/newview/aldirectorswitchermodel.cpp",
         "text": "\"llprismgate.cpp;aldirectorswitchermodel.cpp\""
       },
@@ -20332,19 +20865,19 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2945,
+        "line": 2947,
         "source": "indra/newview/alflycamclassic.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2946,
+        "line": 2948,
         "source": "indra/newview/alflycamclassic.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alflycamclassic \"alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2947,
+        "line": 2949,
         "source": "indra/newview/alflycamclassic.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -20362,7 +20895,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2947,
+        "line": 2949,
         "source": "indra/newview/alflycamweighted.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -20428,7 +20961,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1432,
+        "line": 1434,
         "source": "indra/newview/alpaneldirectorswitcher.h",
         "text": "alpaneldirectorswitcher.h"
       },
@@ -20452,7 +20985,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1434,
+        "line": 1436,
         "source": "indra/newview/alpanelflycamorbit.h",
         "text": "alpanelflycamorbit.h"
       },
@@ -20464,7 +20997,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1435,
+        "line": 1437,
         "source": "indra/newview/alpanelflycamrecorder.h",
         "text": "alpanelflycamrecorder.h"
       },
@@ -20488,7 +21021,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1436,
+        "line": 1438,
         "source": "indra/newview/alpanelpatheditor.h",
         "text": "alpanelpatheditor.h"
       },
@@ -20530,13 +21063,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -20596,7 +21129,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3187,
+        "line": 3195,
         "source": "indra/newview/llcameraoperator.cpp",
         "text": "llcameraoperator.cpp"
       },
@@ -20650,15 +21183,9 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1504,
+        "line": 1506,
         "source": "indra/newview/llfetchedgltfmaterial.h",
         "text": "llfetchedgltfmaterial.h"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -20680,7 +21207,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1583,
+        "line": 1585,
         "source": "indra/newview/llfloaterjoystick.h",
         "text": "llfloaterjoystick.h"
       },
@@ -20698,13 +21225,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2945,
+        "line": 2947,
         "source": "indra/newview/llflycamdrone.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1437,
+        "line": 1439,
         "source": "indra/newview/llflycamdrone.h",
         "text": "llflycamdrone.h"
       },
@@ -20716,7 +21243,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1438,
+        "line": 1440,
         "source": "indra/newview/llflycamrecorder.h",
         "text": "llflycamrecorder.h"
       },
@@ -20782,7 +21309,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1439,
+        "line": 1441,
         "source": "indra/newview/llpathcamera.h",
         "text": "llpathcamera.h"
       },
@@ -20824,7 +21351,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1941,
+        "line": 1943,
         "source": "indra/newview/llsurface.h",
         "text": "llsurface.h"
       },
@@ -20878,7 +21405,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2028,
+        "line": 2030,
         "source": "indra/newview/llviewerjoystick.h",
         "text": "llviewerjoystick.h"
       },
@@ -20908,13 +21435,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2055,
+        "line": 2057,
         "source": "indra/newview/llviewertexture.h",
         "text": "llviewertexture.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2057,
+        "line": 2059,
         "source": "indra/newview/llviewertexturelist.h",
         "text": "llviewertexturelist.h"
       },
@@ -20938,13 +21465,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2088,
+        "line": 2090,
         "source": "indra/newview/llworld.h",
         "text": "llworld.h"
       },
@@ -20956,7 +21483,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -21116,7 +21643,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@2425,11"
+          "indra/newview/llviewerwindow.cpp@2426,11"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -23737,6 +24264,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -23750,6 +24278,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -23993,6 +24522,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -25518,69 +26048,6 @@
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
-        ],
         "unresolved_includes": []
       },
       "indra/newview/llfloaterdirector.cpp": {
@@ -30130,6 +30597,7 @@
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentbenefits.h",
           "indra/newview/llagentcamera.h",
@@ -30263,6 +30731,7 @@
           "ALViewfinder::label",
           "ALViewfinder::layout",
           "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLApp::isExiting",
           "LLApp::isStopped",
           "LLAppViewer::getTextureCache",
@@ -32034,13 +32503,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -32100,7 +32569,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1475,
+        "line": 1477,
         "source": "indra/newview/lldrawable.h",
         "text": "lldrawable.h"
       },
@@ -32112,7 +32581,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1476,
+        "line": 1478,
         "source": "indra/newview/lldrawpool.h",
         "text": "lldrawpool.h"
       },
@@ -32124,7 +32593,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1477,
+        "line": 1479,
         "source": "indra/newview/lldrawpoolalpha.h",
         "text": "lldrawpoolalpha.h"
       },
@@ -32136,7 +32605,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1478,
+        "line": 1480,
         "source": "indra/newview/lldrawpoolavatar.h",
         "text": "lldrawpoolavatar.h"
       },
@@ -32148,7 +32617,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1479,
+        "line": 1481,
         "source": "indra/newview/lldrawpoolbump.h",
         "text": "lldrawpoolbump.h"
       },
@@ -32160,7 +32629,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1480,
+        "line": 1482,
         "source": "indra/newview/lldrawpoolmaterials.h",
         "text": "lldrawpoolmaterials.h"
       },
@@ -32172,7 +32641,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1481,
+        "line": 1483,
         "source": "indra/newview/lldrawpoolpbropaque.h",
         "text": "lldrawpoolpbropaque.h"
       },
@@ -32184,7 +32653,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1482,
+        "line": 1484,
         "source": "indra/newview/lldrawpoolsimple.h",
         "text": "lldrawpoolsimple.h"
       },
@@ -32196,7 +32665,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1484,
+        "line": 1486,
         "source": "indra/newview/lldrawpoolterrain.h",
         "text": "lldrawpoolterrain.h"
       },
@@ -32208,7 +32677,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1485,
+        "line": 1487,
         "source": "indra/newview/lldrawpooltree.h",
         "text": "lldrawpooltree.h"
       },
@@ -32235,12 +32704,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -32274,7 +32737,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -32340,13 +32803,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1897,
+        "line": 1899,
         "source": "indra/newview/llreshadebridge.h",
         "text": "llreshadebridge.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1898,
+        "line": 1900,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
       },
@@ -32358,13 +32821,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1917,
+        "line": 1919,
         "source": "indra/newview/llselectmgr.h",
         "text": "llselectmgr.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1932,
+        "line": 1934,
         "source": "indra/newview/llspatialpartition.h",
         "text": "llspatialpartition.h"
       },
@@ -32424,7 +32887,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2027,
+        "line": 2029,
         "source": "indra/newview/llviewerjointmesh.h",
         "text": "llviewerjointmesh.h"
       },
@@ -32436,7 +32899,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2038,
+        "line": 2040,
         "source": "indra/newview/llviewerobject.h",
         "text": "llviewerobject.h"
       },
@@ -32460,7 +32923,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -32478,7 +32941,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -32496,7 +32959,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
@@ -32508,7 +32971,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -35034,6 +35497,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -35047,6 +35511,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -35290,6 +35755,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -37704,69 +38170,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -42897,7 +43300,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2844,
+        "line": 2846,
         "source": "indra/newview/alcinelightrigmodel.cpp",
         "text": "alcinelightrigmodel.cpp"
       },
@@ -42921,7 +43324,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2987,
+        "line": 2989,
         "source": "indra/newview/alclientheightmodel.h",
         "text": "# (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath."
       },
@@ -42957,7 +43360,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3209,
+        "line": 3217,
         "source": "indra/newview/aldiopterpresetbank.cpp",
         "text": "aldiopterpresetbank.cpp"
       },
@@ -42969,7 +43372,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3113,
+        "line": 3121,
         "source": "indra/newview/aldiopterrelevance.cpp",
         "text": "\"aldiopterrelevance.cpp\""
       },
@@ -43023,7 +43426,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -43101,7 +43504,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2842,
+        "line": 2844,
         "source": "indra/newview/alghostautoanimmodel.cpp",
         "text": "alghostautoanimmodel.cpp # [AutoAnimate]"
       },
@@ -43125,7 +43528,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2859,
+        "line": 2861,
         "source": "indra/newview/alghostgroupmodel.cpp",
         "text": "alghostgroupmodel.cpp"
       },
@@ -43143,7 +43546,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2860,
+        "line": 2862,
         "source": "indra/newview/alghostinteractionstate.cpp",
         "text": "alghostinteractionstate.cpp"
       },
@@ -43215,7 +43618,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2861,
+        "line": 2863,
         "source": "indra/newview/alghostplacementresolver.cpp",
         "text": "alghostplacementresolver.cpp"
       },
@@ -43317,7 +43720,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1430,
+        "line": 1432,
         "source": "indra/newview/alpaneldanceball.h",
         "text": "alpaneldanceball.h"
       },
@@ -43407,7 +43810,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2948,
+        "line": 2950,
         "source": "indra/newview/alsteppedanim.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -43509,13 +43912,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2855,
+        "line": 2857,
         "source": "indra/newview/alweathershelter.cpp",
         "text": "alweathershelter.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2877,
+        "line": 2879,
         "source": "indra/newview/alweathershelter.cpp",
         "text": "set_source_files_properties(alweathershelter.cpp PROPERTIES"
       },
@@ -43527,13 +43930,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -43647,7 +44050,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1475,
+        "line": 1477,
         "source": "indra/newview/lldrawable.h",
         "text": "lldrawable.h"
       },
@@ -43698,12 +44101,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -43803,7 +44200,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -43899,7 +44296,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1882,
+        "line": 1884,
         "source": "indra/newview/llprismlens.h",
         "text": "llprismlens.h"
       },
@@ -43923,7 +44320,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1917,
+        "line": 1919,
         "source": "indra/newview/llselectmgr.h",
         "text": "llselectmgr.h"
       },
@@ -43935,7 +44332,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1920,
+        "line": 1922,
         "source": "indra/newview/llsettingsvo.h",
         "text": "llsettingsvo.h"
       },
@@ -43977,7 +44374,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1970,
+        "line": 1972,
         "source": "indra/newview/lltoolcomp.h",
         "text": "lltoolcomp.h"
       },
@@ -44031,7 +44428,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2027,
+        "line": 2029,
         "source": "indra/newview/llviewerjointmesh.h",
         "text": "llviewerjointmesh.h"
       },
@@ -44049,7 +44446,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2038,
+        "line": 2040,
         "source": "indra/newview/llviewerobject.h",
         "text": "llviewerobject.h"
       },
@@ -44079,7 +44476,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -44109,7 +44506,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -44127,7 +44524,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
@@ -44145,7 +44542,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -44328,9 +44725,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@177,8",
-          "indra/newview/llviewerwindow.cpp@3828,28",
-          "indra/newview/llviewerwindow.cpp@4047,19"
+          "indra/newview/llviewerwindow.cpp@178,8",
+          "indra/newview/llviewerwindow.cpp@3829,28",
+          "indra/newview/llviewerwindow.cpp@4048,19"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -51532,6 +51929,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -51545,6 +51943,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -51788,6 +52187,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -54529,69 +54929,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -60519,6 +60856,7 @@
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentbenefits.h",
           "indra/newview/llagentcamera.h",
@@ -60652,6 +60990,7 @@
           "ALViewfinder::label",
           "ALViewfinder::layout",
           "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLApp::isExiting",
           "LLApp::isStopped",
           "LLAppViewer::getTextureCache",
@@ -63688,7 +64027,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1430,
+        "line": 1432,
         "source": "indra/newview/alpaneldanceball.h",
         "text": "alpaneldanceball.h"
       },
@@ -63736,7 +64075,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1435,
+        "line": 1437,
         "source": "indra/newview/alpanelflycamrecorder.h",
         "text": "alpanelflycamrecorder.h"
       },
@@ -63760,7 +64099,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1429,
+        "line": 1431,
         "source": "indra/newview/alpanellensgaze.h",
         "text": "alpanellensgaze.h"
       },
@@ -63868,7 +64207,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2863,
+        "line": 2865,
         "source": "indra/newview/alsettingsundohistorymodel.cpp",
         "text": "alsettingsundohistorymodel.cpp"
       },
@@ -63904,7 +64243,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
@@ -63946,13 +64285,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1523,
+        "line": 1525,
         "source": "indra/newview/llfloaterbigpreview.h",
         "text": "llfloaterbigpreview.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1533,
+        "line": 1535,
         "source": "indra/newview/llfloatercamerapresets.h",
         "text": "llfloatercamerapresets.h"
       },
@@ -63976,7 +64315,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1551,
+        "line": 1553,
         "source": "indra/newview/llfloaterenvironmentadjust.h",
         "text": "llfloaterenvironmentadjust.h"
       },
@@ -63994,7 +64333,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1583,
+        "line": 1585,
         "source": "indra/newview/llfloaterjoystick.h",
         "text": "llfloaterjoystick.h"
       },
@@ -64006,7 +64345,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1618,
+        "line": 1620,
         "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.h",
         "text": "llfloaterpreferencesgraphicsadvanced.h"
       },
@@ -64030,7 +64369,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1641,
+        "line": 1643,
         "source": "indra/newview/llfloatersnapshot.h",
         "text": "llfloatersnapshot.h"
       },
@@ -68348,6 +68687,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -68361,6 +68701,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -68604,6 +68945,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -71462,7 +71804,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2987,
+        "line": 2989,
         "source": "indra/newview/alclientheightmodel.h",
         "text": "# (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath."
       },
@@ -71510,7 +71852,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1428,
+        "line": 1430,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
       },
@@ -71540,7 +71882,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1429,
+        "line": 1431,
         "source": "indra/newview/alpanellensgaze.h",
         "text": "alpanellensgaze.h"
       },
@@ -71582,19 +71924,19 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2295,
+        "line": 2297,
         "source": "indra/newview/app_settings/key_bindings.xml",
         "text": "app_settings/key_bindings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -71672,19 +72014,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 572,
         "source": "indra/newview/llfloaterhoverheight.cpp",
         "text": "llfloaterhoverheight.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1570,
+        "line": 1572,
         "source": "indra/newview/llfloaterhoverheight.h",
         "text": "llfloaterhoverheight.h"
       },
@@ -71702,7 +72038,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -71744,7 +72080,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1881,
+        "line": 1883,
         "source": "indra/newview/llprismgate.h",
         "text": "llprismgate.h"
       },
@@ -71822,7 +72158,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -71840,7 +72176,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -71946,9 +72282,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@200,7",
-          "indra/newview/llviewerwindow.cpp@261,272",
-          "indra/newview/llviewerwindow.cpp@3365,14"
+          "indra/newview/llviewerwindow.cpp@201,7",
+          "indra/newview/llviewerwindow.cpp@262,272",
+          "indra/newview/llviewerwindow.cpp@3366,14"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -73477,6 +73813,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -73490,6 +73827,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -73733,6 +74071,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -75153,69 +75492,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -77178,6 +77454,7 @@
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentbenefits.h",
           "indra/newview/llagentcamera.h",
@@ -77311,6 +77588,7 @@
           "ALViewfinder::label",
           "ALViewfinder::layout",
           "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLApp::isExiting",
           "LLApp::isStopped",
           "LLAppViewer::getTextureCache",
@@ -79375,7 +79653,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2851,
+        "line": 2853,
         "source": "indra/newview/alavatarstagingmodel.cpp",
         "text": "alavatarstagingmodel.cpp"
       },
@@ -79411,7 +79689,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2843,
+        "line": 2845,
         "source": "indra/newview/alformationsolver.cpp",
         "text": "alformationsolver.cpp"
       },
@@ -79423,7 +79701,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1428,
+        "line": 1430,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
       },
@@ -79435,7 +79713,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2859,
+        "line": 2861,
         "source": "indra/newview/alghostgroupmodel.cpp",
         "text": "alghostgroupmodel.cpp"
       },
@@ -79453,7 +79731,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2860,
+        "line": 2862,
         "source": "indra/newview/alghostinteractionstate.cpp",
         "text": "alghostinteractionstate.cpp"
       },
@@ -79531,7 +79809,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1430,
+        "line": 1432,
         "source": "indra/newview/alpaneldanceball.h",
         "text": "alpaneldanceball.h"
       },
@@ -79597,13 +79875,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -79633,13 +79911,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1898,
+        "line": 1900,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
       },
@@ -79727,8 +80005,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@177,8",
-          "indra/newview/llviewerwindow.cpp@4047,19"
+          "indra/newview/llviewerwindow.cpp@178,8",
+          "indra/newview/llviewerwindow.cpp@4048,19"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -81395,6 +81673,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -81408,6 +81687,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -81651,6 +81931,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -83280,6 +83561,7 @@
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentbenefits.h",
           "indra/newview/llagentcamera.h",
@@ -83413,6 +83695,7 @@
           "ALViewfinder::label",
           "ALViewfinder::layout",
           "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLApp::isExiting",
           "LLApp::isStopped",
           "LLAppViewer::getTextureCache",
@@ -83941,7 +84224,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2949,
+        "line": 2951,
         "source": "indra/newview/aldirectoractorchoice.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -83995,7 +84278,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2847,
+        "line": 2849,
         "source": "indra/newview/aldirectorqol.cpp",
         "text": "aldirectorqol.cpp"
       },
@@ -84025,19 +84308,19 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2846,
+        "line": 2848,
         "source": "indra/newview/aldirectorswitchermodel.cpp",
         "text": "aldirectorswitchermodel.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2888,
+        "line": 2890,
         "source": "indra/newview/aldirectorswitchermodel.cpp",
         "text": "aldirectorswitchermodel.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3089,
+        "line": 3097,
         "source": "indra/newview/aldirectorswitchermodel.cpp",
         "text": "\"llprismgate.cpp;aldirectorswitchermodel.cpp\""
       },
@@ -84055,7 +84338,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -84151,7 +84434,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1428,
+        "line": 1430,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
       },
@@ -84475,7 +84758,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1431,
+        "line": 1433,
         "source": "indra/newview/alpaneldirectoranimswitcher.h",
         "text": "alpaneldirectoranimswitcher.h"
       },
@@ -84487,7 +84770,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1432,
+        "line": 1434,
         "source": "indra/newview/alpaneldirectorswitcher.h",
         "text": "alpaneldirectorswitcher.h"
       },
@@ -84523,7 +84806,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1434,
+        "line": 1436,
         "source": "indra/newview/alpanelflycamorbit.h",
         "text": "alpanelflycamorbit.h"
       },
@@ -84535,7 +84818,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1435,
+        "line": 1437,
         "source": "indra/newview/alpanelflycamrecorder.h",
         "text": "alpanelflycamrecorder.h"
       },
@@ -84571,7 +84854,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1429,
+        "line": 1431,
         "source": "indra/newview/alpanellensgaze.h",
         "text": "alpanellensgaze.h"
       },
@@ -84595,7 +84878,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1436,
+        "line": 1438,
         "source": "indra/newview/alpanelpatheditor.h",
         "text": "alpanelpatheditor.h"
       },
@@ -84655,7 +84938,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1433,
+        "line": 1435,
         "source": "indra/newview/alpanelweathersettings.h",
         "text": "alpanelweathersettings.h"
       },
@@ -84667,7 +84950,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2849,
+        "line": 2851,
         "source": "indra/newview/alprojectorshaftlooks.cpp",
         "text": "alprojectorshaftlooks.cpp"
       },
@@ -84811,25 +85094,25 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2290,
+        "line": 2292,
         "source": "indra/newview/app_settings/commands.xml",
         "text": "app_settings/commands.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2304,
+        "line": 2306,
         "source": "indra/newview/app_settings/toolbars.xml",
         "text": "app_settings/toolbars.xml"
       },
@@ -84889,7 +85172,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3187,
+        "line": 3195,
         "source": "indra/newview/llcameraoperator.cpp",
         "text": "llcameraoperator.cpp"
       },
@@ -84937,7 +85220,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1476,
+        "line": 1478,
         "source": "indra/newview/lldrawpool.h",
         "text": "lldrawpool.h"
       },
@@ -84967,15 +85250,9 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1504,
+        "line": 1506,
         "source": "indra/newview/llfetchedgltfmaterial.h",
         "text": "llfetchedgltfmaterial.h"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -84997,7 +85274,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1551,
+        "line": 1553,
         "source": "indra/newview/llfloaterenvironmentadjust.h",
         "text": "llfloaterenvironmentadjust.h"
       },
@@ -85027,7 +85304,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1438,
+        "line": 1440,
         "source": "indra/newview/llflycamrecorder.h",
         "text": "llflycamrecorder.h"
       },
@@ -85093,7 +85370,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1439,
+        "line": 1441,
         "source": "indra/newview/llpathcamera.h",
         "text": "llpathcamera.h"
       },
@@ -85117,7 +85394,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1882,
+        "line": 1884,
         "source": "indra/newview/llprismlens.h",
         "text": "llprismlens.h"
       },
@@ -85129,7 +85406,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1887,
+        "line": 1889,
         "source": "indra/newview/llprismpreview.h",
         "text": "llprismpreview.h"
       },
@@ -85147,7 +85424,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1897,
+        "line": 1899,
         "source": "indra/newview/llreshadebridge.h",
         "text": "llreshadebridge.h"
       },
@@ -85159,7 +85436,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1932,
+        "line": 1934,
         "source": "indra/newview/llspatialpartition.h",
         "text": "llspatialpartition.h"
       },
@@ -85177,7 +85454,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1941,
+        "line": 1943,
         "source": "indra/newview/llsurface.h",
         "text": "llsurface.h"
       },
@@ -85231,7 +85508,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2029,
+        "line": 2031,
         "source": "indra/newview/llviewerinput.h",
         "text": "llviewerinput.h"
       },
@@ -85261,13 +85538,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2055,
+        "line": 2057,
         "source": "indra/newview/llviewertexture.h",
         "text": "llviewertexture.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2057,
+        "line": 2059,
         "source": "indra/newview/llviewertexturelist.h",
         "text": "llviewertexturelist.h"
       },
@@ -85291,7 +85568,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -85309,13 +85586,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2088,
+        "line": 2090,
         "source": "indra/newview/llworld.h",
         "text": "llworld.h"
       },
@@ -85327,7 +85604,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -85631,16 +85908,16 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@24,18",
-          "indra/newview/llviewerwindow.cpp@95,9",
-          "indra/newview/llviewerwindow.cpp@261,272",
-          "indra/newview/llviewerwindow.cpp@1302,55",
-          "indra/newview/llviewerwindow.cpp@1435,17",
-          "indra/newview/llviewerwindow.cpp@3603,10",
-          "indra/newview/llviewerwindow.cpp@3698,20",
-          "indra/newview/llviewerwindow.cpp@3874,18",
-          "indra/newview/llviewerwindow.cpp@3950,24",
-          "indra/newview/llviewerwindow.cpp@4009,14"
+          "indra/newview/llviewerwindow.cpp@24,19",
+          "indra/newview/llviewerwindow.cpp@96,9",
+          "indra/newview/llviewerwindow.cpp@262,272",
+          "indra/newview/llviewerwindow.cpp@1303,55",
+          "indra/newview/llviewerwindow.cpp@1436,17",
+          "indra/newview/llviewerwindow.cpp@3604,10",
+          "indra/newview/llviewerwindow.cpp@3699,20",
+          "indra/newview/llviewerwindow.cpp@3875,18",
+          "indra/newview/llviewerwindow.cpp@3951,24",
+          "indra/newview/llviewerwindow.cpp@4010,14"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -92345,6 +92622,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -92358,6 +92636,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -92601,6 +92880,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -94258,69 +94538,6 @@
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
-        ],
         "unresolved_includes": []
       },
       "indra/newview/llfloateractormover.cpp": {
@@ -99004,6 +99221,7 @@
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentbenefits.h",
           "indra/newview/llagentcamera.h",
@@ -99137,6 +99355,7 @@
           "ALViewfinder::label",
           "ALViewfinder::layout",
           "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLApp::isExiting",
           "LLApp::isStopped",
           "LLAppViewer::getTextureCache",
@@ -102580,19 +102799,19 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2290,
+        "line": 2292,
         "source": "indra/newview/app_settings/commands.xml",
         "text": "app_settings/commands.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -102622,7 +102841,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1494,
+        "line": 1496,
         "source": "indra/newview/llenvironment.h",
         "text": "llenvironment.h"
       },
@@ -102631,12 +102850,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -102652,7 +102865,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1551,
+        "line": 1553,
         "source": "indra/newview/llfloaterenvironmentadjust.h",
         "text": "llfloaterenvironmentadjust.h"
       },
@@ -102664,7 +102877,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1552,
+        "line": 1554,
         "source": "indra/newview/llfloaterenvironmentsettings.h",
         "text": "llfloaterenvironmentsettings.h"
       },
@@ -102676,7 +102889,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1557,
+        "line": 1559,
         "source": "indra/newview/llfloaterfixedenvironment.h",
         "text": "llfloaterfixedenvironment.h"
       },
@@ -102688,7 +102901,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1654,
+        "line": 1656,
         "source": "indra/newview/llfloaterwateradjust.h",
         "text": "llfloaterwateradjust.h"
       },
@@ -102712,7 +102925,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1920,
+        "line": 1922,
         "source": "indra/newview/llsettingsvo.h",
         "text": "llsettingsvo.h"
       },
@@ -104117,69 +104330,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -106875,7 +107025,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1428,
+        "line": 1430,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
       },
@@ -106965,7 +107115,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1429,
+        "line": 1431,
         "source": "indra/newview/alpanellensgaze.h",
         "text": "alpanellensgaze.h"
       },
@@ -106977,7 +107127,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2948,
+        "line": 2950,
         "source": "indra/newview/alsteppedanim.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -107013,7 +107163,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
@@ -107097,7 +107247,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -109252,6 +109402,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -109265,6 +109416,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -109508,6 +109660,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -113112,7 +113265,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2845,
+        "line": 2847,
         "source": "indra/newview/alavatarlightresponsemodel.cpp",
         "text": "alavatarlightresponsemodel.cpp # [AvatarLightResponse]"
       },
@@ -113184,7 +113337,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -113286,7 +113439,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2096,
+        "line": 2098,
         "source": "indra/newview/allpm.h",
         "text": "allpm.h"
       },
@@ -113472,13 +113625,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -113538,7 +113691,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1475,
+        "line": 1477,
         "source": "indra/newview/lldrawable.h",
         "text": "lldrawable.h"
       },
@@ -113550,7 +113703,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1476,
+        "line": 1478,
         "source": "indra/newview/lldrawpool.h",
         "text": "lldrawpool.h"
       },
@@ -113562,7 +113715,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1477,
+        "line": 1479,
         "source": "indra/newview/lldrawpoolalpha.h",
         "text": "lldrawpoolalpha.h"
       },
@@ -113616,12 +113769,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 530,
         "source": "indra/newview/llfloaterbuy.cpp",
         "text": "llfloaterbuy.cpp"
@@ -113670,7 +113817,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -113748,13 +113895,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1892,
+        "line": 1894,
         "source": "indra/newview/llreflectionmapmanager.h",
         "text": "llreflectionmapmanager.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1898,
+        "line": 1900,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
       },
@@ -113772,7 +113919,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1917,
+        "line": 1919,
         "source": "indra/newview/llselectmgr.h",
         "text": "llselectmgr.h"
       },
@@ -113784,7 +113931,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1932,
+        "line": 1934,
         "source": "indra/newview/llspatialpartition.h",
         "text": "llspatialpartition.h"
       },
@@ -113844,7 +113991,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2027,
+        "line": 2029,
         "source": "indra/newview/llviewerjointmesh.h",
         "text": "llviewerjointmesh.h"
       },
@@ -113856,7 +114003,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2038,
+        "line": 2040,
         "source": "indra/newview/llviewerobject.h",
         "text": "llviewerobject.h"
       },
@@ -113874,7 +114021,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -113886,7 +114033,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -113904,7 +114051,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
@@ -113916,7 +114063,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -119199,6 +119346,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -119212,6 +119360,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -119455,6 +119604,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -121297,69 +121447,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -128028,7 +128115,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2845,
+        "line": 2847,
         "source": "indra/newview/alavatarlightresponsemodel.cpp",
         "text": "alavatarlightresponsemodel.cpp # [AvatarLightResponse]"
       },
@@ -128070,7 +128157,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2844,
+        "line": 2846,
         "source": "indra/newview/alcinelightrigmodel.cpp",
         "text": "alcinelightrigmodel.cpp"
       },
@@ -128106,7 +128193,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3209,
+        "line": 3217,
         "source": "indra/newview/aldiopterpresetbank.cpp",
         "text": "aldiopterpresetbank.cpp"
       },
@@ -128130,7 +128217,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -128244,7 +128331,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2841,
+        "line": 2843,
         "source": "indra/newview/allocallightsize.cpp",
         "text": "allocallightsize.cpp"
       },
@@ -128346,7 +128433,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2849,
+        "line": 2851,
         "source": "indra/newview/alprojectorshaftlooks.cpp",
         "text": "alprojectorshaftlooks.cpp"
       },
@@ -128436,13 +128523,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -128478,7 +128565,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1475,
+        "line": 1477,
         "source": "indra/newview/lldrawable.h",
         "text": "lldrawable.h"
       },
@@ -128514,15 +128601,9 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1504,
+        "line": 1506,
         "source": "indra/newview/llfetchedgltfmaterial.h",
         "text": "llfetchedgltfmaterial.h"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -128646,7 +128727,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1882,
+        "line": 1884,
         "source": "indra/newview/llprismlens.h",
         "text": "llprismlens.h"
       },
@@ -128658,7 +128739,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1891,
+        "line": 1893,
         "source": "indra/newview/llreflectionmap.h",
         "text": "llreflectionmap.h"
       },
@@ -128670,7 +128751,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1892,
+        "line": 1894,
         "source": "indra/newview/llreflectionmapmanager.h",
         "text": "llreflectionmapmanager.h"
       },
@@ -128688,7 +128769,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1917,
+        "line": 1919,
         "source": "indra/newview/llselectmgr.h",
         "text": "llselectmgr.h"
       },
@@ -128706,7 +128787,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1941,
+        "line": 1943,
         "source": "indra/newview/llsurface.h",
         "text": "llsurface.h"
       },
@@ -128784,7 +128865,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2038,
+        "line": 2040,
         "source": "indra/newview/llviewerobject.h",
         "text": "llviewerobject.h"
       },
@@ -128808,7 +128889,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2049,
+        "line": 2051,
         "source": "indra/newview/llviewerregion.h",
         "text": "llviewerregion.h"
       },
@@ -128820,7 +128901,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -128832,7 +128913,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2055,
+        "line": 2057,
         "source": "indra/newview/llviewertexture.h",
         "text": "llviewertexture.h"
       },
@@ -128844,13 +128925,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2897,
+        "line": 2899,
         "source": "indra/newview/llviewertexturelist.cpp",
         "text": "#llviewertexturelist.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2057,
+        "line": 2059,
         "source": "indra/newview/llviewertexturelist.h",
         "text": "llviewertexturelist.h"
       },
@@ -128886,13 +128967,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2088,
+        "line": 2090,
         "source": "indra/newview/llworld.h",
         "text": "llworld.h"
       },
@@ -128904,7 +128985,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -135459,69 +135540,6 @@
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
-        ],
         "unresolved_includes": []
       },
       "indra/newview/llfloaterbuy.cpp": {
@@ -144051,7 +144069,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2845,
+        "line": 2847,
         "source": "indra/newview/alavatarlightresponsemodel.cpp",
         "text": "alavatarlightresponsemodel.cpp # [AvatarLightResponse]"
       },
@@ -144105,7 +144123,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2844,
+        "line": 2846,
         "source": "indra/newview/alcinelightrigmodel.cpp",
         "text": "alcinelightrigmodel.cpp"
       },
@@ -144135,7 +144153,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2847,
+        "line": 2849,
         "source": "indra/newview/aldirectorqol.cpp",
         "text": "aldirectorqol.cpp"
       },
@@ -144165,7 +144183,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1428,
+        "line": 1430,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
       },
@@ -144177,7 +144195,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2860,
+        "line": 2862,
         "source": "indra/newview/alghostinteractionstate.cpp",
         "text": "alghostinteractionstate.cpp"
       },
@@ -144279,7 +144297,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1430,
+        "line": 1432,
         "source": "indra/newview/alpaneldanceball.h",
         "text": "alpaneldanceball.h"
       },
@@ -144315,7 +144333,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2849,
+        "line": 2851,
         "source": "indra/newview/alprojectorshaftlooks.cpp",
         "text": "alprojectorshaftlooks.cpp"
       },
@@ -144363,7 +144381,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2858,
+        "line": 2860,
         "source": "indra/newview/alsensormodel.cpp",
         "text": "alsensormodel.cpp"
       },
@@ -144387,7 +144405,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2948,
+        "line": 2950,
         "source": "indra/newview/alsteppedanim.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -144435,13 +144453,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -144534,12 +144552,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -144645,7 +144657,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1898,
+        "line": 1900,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
       },
@@ -144705,7 +144717,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -144723,7 +144735,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -144747,7 +144759,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -150207,6 +150219,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -150220,6 +150233,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -150463,6 +150477,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -151910,69 +151925,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -157263,7 +157215,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2845,
+        "line": 2847,
         "source": "indra/newview/alavatarlightresponsemodel.cpp",
         "text": "alavatarlightresponsemodel.cpp # [AvatarLightResponse]"
       },
@@ -157413,7 +157365,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2096,
+        "line": 2098,
         "source": "indra/newview/allpm.h",
         "text": "allpm.h"
       },
@@ -157485,7 +157437,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2858,
+        "line": 2860,
         "source": "indra/newview/alsensormodel.cpp",
         "text": "alsensormodel.cpp"
       },
@@ -157539,13 +157491,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2855,
+        "line": 2857,
         "source": "indra/newview/alweathershelter.cpp",
         "text": "alweathershelter.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2877,
+        "line": 2879,
         "source": "indra/newview/alweathershelter.cpp",
         "text": "set_source_files_properties(alweathershelter.cpp PROPERTIES"
       },
@@ -157557,13 +157509,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -157611,12 +157563,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 408,
         "source": "indra/newview/llfloaterdirector.cpp",
         "text": "llfloaterdirector.cpp"
@@ -157635,7 +157581,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1551,
+        "line": 1553,
         "source": "indra/newview/llfloaterenvironmentadjust.h",
         "text": "llfloaterenvironmentadjust.h"
       },
@@ -157719,7 +157665,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1882,
+        "line": 1884,
         "source": "indra/newview/llprismlens.h",
         "text": "llprismlens.h"
       },
@@ -157749,13 +157695,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1920,
+        "line": 1922,
         "source": "indra/newview/llsettingsvo.h",
         "text": "llsettingsvo.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1932,
+        "line": 1934,
         "source": "indra/newview/llspatialpartition.h",
         "text": "llspatialpartition.h"
       },
@@ -157821,7 +157767,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -157845,7 +157791,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -162178,69 +162124,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -167718,7 +167601,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -167802,7 +167685,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2849,
+        "line": 2851,
         "source": "indra/newview/alprojectorshaftlooks.cpp",
         "text": "alprojectorshaftlooks.cpp"
       },
@@ -167844,13 +167727,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -167883,12 +167766,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -167934,7 +167811,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1882,
+        "line": 1884,
         "source": "indra/newview/llprismlens.h",
         "text": "llprismlens.h"
       },
@@ -167946,7 +167823,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1887,
+        "line": 1889,
         "source": "indra/newview/llprismpreview.h",
         "text": "llprismpreview.h"
       },
@@ -168006,7 +167883,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -168024,7 +167901,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -168054,25 +167931,25 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2853,
+        "line": 2855,
         "source": "indra/newview/slweather.cpp",
         "text": "slweather.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2878,
+        "line": 2880,
         "source": "indra/newview/slweather.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2880,
+        "line": 2882,
         "source": "indra/newview/slweather.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2882,
+        "line": 2884,
         "source": "indra/newview/slweather.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
@@ -170734,69 +170611,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -174233,7 +174047,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2948,
+        "line": 2950,
         "source": "indra/newview/alsteppedanim.cpp",
         "text": "LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")"
       },
@@ -174263,7 +174077,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
@@ -174317,12 +174131,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 408,
         "source": "indra/newview/llfloaterdirector.cpp",
         "text": "llfloaterdirector.cpp"
@@ -174341,7 +174149,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1665,
+        "line": 1667,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
       },
@@ -174395,13 +174203,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2046,
+        "line": 2048,
         "source": "indra/newview/llviewerpartsim.h",
         "text": "llviewerpartsim.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2047,
+        "line": 2049,
         "source": "indra/newview/llviewerpartsource.h",
         "text": "llviewerpartsource.h"
       },
@@ -174413,7 +174221,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2065,
+        "line": 2067,
         "source": "indra/newview/llvoavatar.h",
         "text": "llvoavatar.h"
       },
@@ -174431,7 +174239,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2088,
+        "line": 2090,
         "source": "indra/newview/llworld.h",
         "text": "llworld.h"
       }
@@ -177564,69 +177372,6 @@
           "LLVolumeImplFlexible::updateClass",
           "LLVolumeImplFlexible::updateRelativeXform",
           "LLVolumeImplFlexible::updateRenderRes"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -185156,7 +184901,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -185276,7 +185021,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1884,
+        "line": 1886,
         "source": "indra/newview/alvcammediafilecontainer.h",
         "text": "alvcammediafilecontainer.h"
       },
@@ -185288,7 +185033,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1883,
+        "line": 1885,
         "source": "indra/newview/alvcammediafileio.h",
         "text": "alvcammediafileio.h"
       },
@@ -185300,19 +185045,19 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3075,
+        "line": 3083,
         "source": "indra/newview/alvcammediafilepolicy.cpp",
         "text": "\"alvcammediafilepolicy.cpp\""
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1885,
+        "line": 1887,
         "source": "indra/newview/alvcammediafilepolicy.h",
         "text": "alvcammediafilepolicy.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1886,
+        "line": 1888,
         "source": "indra/newview/alvcammediafileposix.h",
         "text": "alvcammediafileposix.h"
       },
@@ -185354,13 +185099,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -185429,12 +185174,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -185510,7 +185249,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1702,
+        "line": 1704,
         "source": "indra/newview/llinventorybridge.h",
         "text": "llinventorybridge.h"
       },
@@ -185552,7 +185291,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1789,
+        "line": 1791,
         "source": "indra/newview/llpanelface.h",
         "text": "llpanelface.h"
       },
@@ -185570,7 +185309,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1843,
+        "line": 1845,
         "source": "indra/newview/llpanelvolume.h",
         "text": "llpanelvolume.h"
       },
@@ -185582,31 +185321,31 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2864,
+        "line": 2866,
         "source": "indra/newview/llprismgate.cpp",
         "text": "llprismgate.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2885,
+        "line": 2887,
         "source": "indra/newview/llprismgate.cpp",
         "text": "llprismgate.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3089,
+        "line": 3097,
         "source": "indra/newview/llprismgate.cpp",
         "text": "\"llprismgate.cpp;aldirectorswitchermodel.cpp\""
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 3095,
+        "line": 3103,
         "source": "indra/newview/llprismgate.cpp",
         "text": "\"llprismgate.cpp\""
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1881,
+        "line": 1883,
         "source": "indra/newview/llprismgate.h",
         "text": "llprismgate.h"
       },
@@ -185618,7 +185357,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1882,
+        "line": 1884,
         "source": "indra/newview/llprismlens.h",
         "text": "llprismlens.h"
       },
@@ -185630,7 +185369,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1887,
+        "line": 1889,
         "source": "indra/newview/llprismpreview.h",
         "text": "llprismpreview.h"
       },
@@ -185642,7 +185381,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1892,
+        "line": 1894,
         "source": "indra/newview/llreflectionmapmanager.h",
         "text": "llreflectionmapmanager.h"
       },
@@ -185678,7 +185417,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1951,
+        "line": 1953,
         "source": "indra/newview/lltexturectrl.h",
         "text": "lltexturectrl.h"
       },
@@ -185702,7 +185441,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1971,
+        "line": 1973,
         "source": "indra/newview/lltooldraganddrop.h",
         "text": "lltooldraganddrop.h"
       },
@@ -185714,7 +185453,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2012,
+        "line": 2014,
         "source": "indra/newview/llviewercamera.h",
         "text": "llviewercamera.h"
       },
@@ -185744,7 +185483,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2031,
+        "line": 2033,
         "source": "indra/newview/llviewermedia.h",
         "text": "llviewermedia.h"
       },
@@ -185762,7 +185501,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2040,
+        "line": 2042,
         "source": "indra/newview/llvieweroctree.h",
         "text": "llvieweroctree.h"
       },
@@ -185774,13 +185513,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2057,
+        "line": 2059,
         "source": "indra/newview/llviewertexturelist.h",
         "text": "llviewertexturelist.h"
       },
@@ -185792,7 +185531,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2078,
+        "line": 2080,
         "source": "indra/newview/llvovolume.h",
         "text": "llvovolume.h"
       },
@@ -185804,7 +185543,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -190288,6 +190027,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -190301,6 +190041,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -190544,6 +190285,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -192019,69 +191761,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },
@@ -198968,7 +198647,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2848,
+        "line": 2850,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
       },
@@ -199004,7 +198683,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1433,
+        "line": 1435,
         "source": "indra/newview/alpanelweathersettings.h",
         "text": "alpanelweathersettings.h"
       },
@@ -199046,25 +198725,25 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2854,
+        "line": 2856,
         "source": "indra/newview/alweatherbridge.cpp",
         "text": "alweatherbridge.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2878,
+        "line": 2880,
         "source": "indra/newview/alweatherbridge.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2879,
+        "line": 2881,
         "source": "indra/newview/alweatherbridge.cpp",
         "text": "set_source_files_properties(alweatherbridge.cpp PROPERTIES"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2882,
+        "line": 2884,
         "source": "indra/newview/alweatherbridge.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
@@ -199082,25 +198761,25 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2856,
+        "line": 2858,
         "source": "indra/newview/alweatherclock.cpp",
         "text": "alweatherclock.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2878,
+        "line": 2880,
         "source": "indra/newview/alweatherclock.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2880,
+        "line": 2882,
         "source": "indra/newview/alweatherclock.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2882,
+        "line": 2884,
         "source": "indra/newview/alweatherclock.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
@@ -199124,25 +198803,25 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2852,
+        "line": 2854,
         "source": "indra/newview/alweathermodel.cpp",
         "text": "alweathermodel.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2878,
+        "line": 2880,
         "source": "indra/newview/alweathermodel.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2880,
+        "line": 2882,
         "source": "indra/newview/alweathermodel.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2882,
+        "line": 2884,
         "source": "indra/newview/alweathermodel.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
@@ -199184,13 +198863,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2855,
+        "line": 2857,
         "source": "indra/newview/alweathershelter.cpp",
         "text": "alweathershelter.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2877,
+        "line": 2879,
         "source": "indra/newview/alweathershelter.cpp",
         "text": "set_source_files_properties(alweathershelter.cpp PROPERTIES"
       },
@@ -199208,13 +198887,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2857,
+        "line": 2859,
         "source": "indra/newview/alweatheruimodel.cpp",
         "text": "alweatheruimodel.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2881,
+        "line": 2883,
         "source": "indra/newview/alweatheruimodel.cpp",
         "text": "set_source_files_properties(alweatheruimodel.cpp PROPERTIES"
       },
@@ -199226,13 +198905,13 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2297,
+        "line": 2299,
         "source": "indra/newview/app_settings/settings.xml",
         "text": "app_settings/settings.xml"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2298,
+        "line": 2300,
         "source": "indra/newview/app_settings/settings_alchemy.xml",
         "text": "app_settings/settings_alchemy.xml"
       },
@@ -199277,12 +198956,6 @@
         "line": 507,
         "source": "indra/newview/llfetchedgltfmaterial.cpp",
         "text": "llfetchedgltfmaterial.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 512,
-        "source": "indra/newview/llfloater360capture.cpp",
-        "text": "llfloater360capture.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -199346,7 +199019,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1892,
+        "line": 1894,
         "source": "indra/newview/llreflectionmapmanager.h",
         "text": "llreflectionmapmanager.h"
       },
@@ -199370,7 +199043,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2012,
+        "line": 2014,
         "source": "indra/newview/llviewercamera.h",
         "text": "llviewercamera.h"
       },
@@ -199406,7 +199079,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2040,
+        "line": 2042,
         "source": "indra/newview/llvieweroctree.h",
         "text": "llvieweroctree.h"
       },
@@ -199418,7 +199091,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2050,
+        "line": 2052,
         "source": "indra/newview/llviewershadermgr.h",
         "text": "llviewershadermgr.h"
       },
@@ -199442,7 +199115,7 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2098,
+        "line": 2100,
         "source": "indra/newview/pipeline.h",
         "text": "pipeline.h"
       },
@@ -199472,25 +199145,25 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2853,
+        "line": 2855,
         "source": "indra/newview/slweather.cpp",
         "text": "slweather.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2878,
+        "line": 2880,
         "source": "indra/newview/slweather.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2880,
+        "line": 2882,
         "source": "indra/newview/slweather.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 2882,
+        "line": 2884,
         "source": "indra/newview/slweather.cpp",
         "text": "LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")"
       },
@@ -201697,6 +201370,7 @@
           "indra/llcharacter/lljoint.h",
           "indra/llcharacter/llkeyframemotion.h",
           "indra/llcharacter/llmotion.h",
+          "indra/llcommon/llcallbacklist.h",
           "indra/llcommon/llframetimer.h",
           "indra/llmath/llsdutil_math.h",
           "indra/llmath/llvector4a.h",
@@ -201710,6 +201384,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
+          "indra/newview/alcameradispatch.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
@@ -201953,6 +201628,7 @@
           "LLActorMover::redoPath",
           "LLActorMover::releaseDirectorTurnAO",
           "LLActorMover::releaseEdit",
+          "LLActorMover::releaseStudioSnapshotScratch",
           "LLActorMover::renderActorPathOverlay",
           "LLActorMover::renderHeadingPreview",
           "LLActorMover::renderSharedActorLegacyGlowCommands",
@@ -203404,69 +203080,6 @@
           "LLFetchedGLTFMaterial::updateTextureTracking",
           "LLLocalBitmapMgr::getInstance",
           "LLViewerTextureManager::getFetchedTexture"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llfloater360capture.cpp": {
-        "includes": [
-          "indra/llcommon/llbase64.h",
-          "indra/llcommon/llcallbacklist.h",
-          "indra/llcommon/lldate.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llui/llradiogroup.h",
-          "indra/llui/lltextbox.h",
-          "indra/llui/lltrans.h",
-          "indra/llui/lluictrlfactory.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llenvironment.h",
-          "indra/newview/llfloater360capture.h",
-          "indra/newview/llmediactrl.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llversioninfo.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerpartsim.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerregion.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "LLAgentUI::buildSLURL",
-          "LLApp::isExiting",
-          "LLAppViewer::instance",
-          "LLBase64::encode",
-          "LLDate::now",
-          "LLEnvironment::instance",
-          "LLFile::mkdir",
-          "LLFloater360Capture::LLFloater360Capture",
-          "LLFloater360Capture::capture360Images",
-          "LLFloater360Capture::encodeAndSave",
-          "LLFloater360Capture::freezeWorld",
-          "LLFloater360Capture::generate_proposed_filename",
-          "LLFloater360Capture::getHTMLBaseFolder",
-          "LLFloater360Capture::getSelectedQualityTooltip",
-          "LLFloater360Capture::handleMediaEvent",
-          "LLFloater360Capture::makeFullPathToJS",
-          "LLFloater360Capture::mockSnapShot",
-          "LLFloater360Capture::onCapture360ImagesBtn",
-          "LLFloater360Capture::onChooseQualityRadioGroup",
-          "LLFloater360Capture::onOpen",
-          "LLFloater360Capture::onSaveLocalBtn",
-          "LLFloater360Capture::postBuild",
-          "LLFloater360Capture::setSourceImageSize",
-          "LLFloater360Capture::suspendForAFrame",
-          "LLFloater360Capture::writeDataURL",
-          "LLFloater360Capture::writeDataURLFooter",
-          "LLFloater360Capture::writeDataURLHeader",
-          "LLFrameTimer::getFrameCount",
-          "LLPipeline::toggleRenderTypeControl",
-          "LLRadioGroup::getSelectedValue",
-          "LLVersionInfo::instance",
-          "LLViewerCamera::getInstance",
-          "LLViewerPartSim::getInstance",
-          "LLViewerStats::instance"
         ],
         "unresolved_includes": []
       },

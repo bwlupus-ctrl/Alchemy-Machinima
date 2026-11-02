@@ -2,6 +2,14 @@
 <llsd xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="llsd.xsd">
 <map>
+    <key>DirectorHotGazeGamepad</key>
+    <map>
+        <key>Comment</key><string>Opt in: reserve XInput D-pad Up/Right/Down/Left for gaze hot slots 1/2/3/4, replacing camera D-pad actions.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
+
     <key>AlchemyEmergencyPurgeSliced</key>
     <map>
         <key>Comment</key><string>Spread emergency texture purges across frames and preserve unused textures' lazy-flush timers.</string>

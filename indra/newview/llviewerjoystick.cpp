@@ -28,6 +28,7 @@
 
 #include "llviewerjoystick.h"
 #include "llviewerinput.h"
+#include "lldirectorcast.h"
 #include "alcameradispatch.h"
 #include "alflycamclassic.h"
 #include "alflycamweighted.h"
@@ -3669,6 +3670,8 @@ void LLViewerJoystick::handleXInputDpad()
     // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
     // input is suspended (it reaches avatar controls, object moves and the flycam).
     if (gViewerInput.worldInputSuspended()) return;
+    static LLCachedControl<bool> hot_gaze(gSavedSettings, "DirectorHotGazeGamepad", false);
+    if (hot_gaze) return;
 #if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
     if (!xInputAssociated() ||
         !ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
@@ -3810,16 +3813,18 @@ void LLViewerJoystick::scanJoystick()
 {
     // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
     // input is suspended (it reaches avatar controls, object moves and the flycam).
-    if (gViewerInput.worldInputSuspended()) return;
+    if (gViewerInput.worldInputSuspended()) { handleHotGazeInput(); return; }
     pollForXboxController();
     scanXInputAssociation();
 
     if (mDriverState != JDS_INITIALIZED || !mJoystickEnabled)
     {
+        handleHotGazeInput();
         return;
     }
 
     pollXInputState();
+    handleHotGazeInput();
 
 #if LL_WINDOWS
     // On windows, the flycam is updated syncronously with a timer, so there is
@@ -4315,4 +4320,28 @@ void LLViewerJoystick::resetDroneSettings()
     gSavedSettings.setF32("FlycamDroneExpoYaw", .45f);
     gSavedSettings.setF32("FlycamDroneExpoGimbal", .45f);
     gSavedSettings.setS32("FlycamDroneResumeMomentum", 0);
+}
+
+void LLViewerJoystick::handleHotGazeInput()
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    static LLCachedControl<bool> enabled(gSavedSettings, "DirectorHotGazeGamepad", false);
+    if (!enabled && !mHotGazeButtons) return;
+    const bool ready = enabled && mDriverState == JDS_INITIALIZED && mJoystickEnabled &&
+        !gViewerInput.worldInputSuspended() && xInputAssociated() &&
+        ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(), mXISampleGeneration, mXILoopGeneration);
+    const U16 buttons = ready ? mXIPrevRaw : 0;
+    const U16 masks[] = {XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_RIGHT,
+                         XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT};
+    for (S32 i = 0; i < 4; ++i)
+    {
+        const bool was = (mHotGazeButtons & masks[i]) != 0;
+        const bool down = (buttons & masks[i]) != 0;
+        // Primed samples deliberately have no press edge (no firing on focus return).
+        if (down != was && (!down || (mXIEdges & masks[i])))
+            LLDirectorCast::instance().hotGazeInput(i, down);
+    }
+    mHotGazeButtons = buttons;
+    if (enabled) mXIEdges = 0;
+#endif
 }

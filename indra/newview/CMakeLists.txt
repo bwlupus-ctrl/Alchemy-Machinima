@@ -1425,6 +1425,8 @@ set(viewer_HEADER_FILES
     algazeblink.h
     algazenoise.h
     algazepolicy.h
+    algazehot.h
+    algazehotslots.h
     algazemotor.h
     alpanellensgaze.h
     alpaneldanceball.h
@@ -3045,6 +3047,12 @@ if (BUILD_TESTING)
   # ALGazeMotor is the header-only assembly core (gaze spec 6A) composing the
   # leaf modules above with ALTrajectory; TUT registered directly.
   LL_ADD_INTEGRATION_TEST(algazemotor
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(algazehot
     ""
     "${test_libs}"
     "${test_project}"

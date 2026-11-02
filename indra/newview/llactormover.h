@@ -39,6 +39,7 @@
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
 #include "alghostanimmirrormath.h" // Directed mirror gaze observer
+#include "algazehot.h"
 #include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
 #include "alavataranimationtime.h"
 #include "altrajectory.h"   // deterministic C2 path-facing trajectory
@@ -638,6 +639,17 @@ public:
     // any avatar with no gaze entry. Safe on missing joints / animesh (each joint
     // is guarded; it drives whatever of mHead/mNeck/mTorso/mEye* exist).
     void   applyGaze(LLVOAvatar* av);
+    // Live presentation layer: never authors mGazes or Cast gaze settings.
+    void fireHotGaze(const LLUUID& actor, S32 slot, const GazeTarget& target,
+                     F32 snap, F32 dwell, F32 back, bool hold, bool stay,
+                     F32 head, F32 eyes, F32 torso);
+    void hotGazeInput(S32 slot, bool down);
+    void restoreHotGazePose(LLVOAvatar* av);
+    void applyHotGaze(LLVOAvatar* av);
+    void clearHotGazes();
+    bool hasHotGazes() const { return !mHotGazes.empty(); }
+    void rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id);
+
 
     // Director Console camera-facing pose for selected REAL cast avatars. Restore the
     // prior frame's captured animation pose before updateMotions(), then call
@@ -1354,6 +1366,15 @@ private:
         ALGazeMotor::TargetInput mHeldMotorInput;
         ALGazeMotor::ClockSafety mClockSafety;
         bool mClockBlocked = false;
+        void resetHotAim()
+        {
+            mGazeMotor = {};
+            mChainYawValid = false;
+            mBehindShoulderSign = 0.f;
+            mBehindSweeping = false;
+        }
+        U32 mHotGeneration = 0;
+        F32 mHotSnap = -1.f; // >=0: live override uses the shared motor with explicit timing
         F64 mClockShift = 0.0;
         bool mHeldMotorInputValid = false;
         F32 mHeldCameraRoll = 0.f;
@@ -1762,6 +1783,15 @@ private:
     U64 mPathRevision = 1;
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
+    struct HotGaze
+    {
+        ALGazeHot::State mState;
+        DirectorGaze mPaint;
+        GazeTarget mTarget;
+        F32 mHead = 1.f, mEyes = 1.f, mTorso = .2f;
+        F32 mFromHead = 1.f, mFromEyes = 1.f, mFromTorso = .2f;
+    };
+    std::map<LLUUID, HotGaze> mHotGazes;
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     U64 mGazeRevision = 1;
     std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime

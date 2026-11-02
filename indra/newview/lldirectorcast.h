@@ -34,6 +34,7 @@
 
 #include "aldirectoractorchoice.h"
 #include "algazemath.h"
+#include "algazehotslots.h"
 #include "llactormover.h"
 #include "llsd.h"
 #include "lluuid.h"
@@ -351,6 +352,11 @@ public:
     void setLookAtCamera(const LLUUID& id, bool selected);
     bool isLookAtCamera(const LLUUID& id) const;
 
+    const ALGazeHot::Slots& getHotGazeSlots() const { return mHotGazeSlots; }
+    U64 getHotGazeRevision() const { return mHotGazeRevision; }
+    void setHotGazeSlot(S32 index, const ALGazeHot::Slot& slot);
+    void hotGazeInput(S32 index, bool down);
+
     // ---- per-cast / slot gaze targeting ----
     void                     setGazeTarget(const LLUUID& id, const LLActorMover::GazeTarget& target);
     LLActorMover::GazeTarget getGazeTarget(const LLUUID& id) const;
@@ -528,6 +534,8 @@ private:
     LLUUID mActiveActorId; // null means Clear; normalized Stepped identity is saved
     boost::signals2::signal<void()> mActiveActorChanged;
     U64 mGazeCueRevision = 0;
+    ALGazeHot::Slots mHotGazeSlots;
+    U64 mHotGazeRevision = 1;
     U64 mGazeConfigRevision = 1;
     U64 mSubjectRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names

@@ -21,6 +21,7 @@ def check():
     assert "mSourceSelectionRemoved = false" in source_rewrite and "mAddBtn->setEnabled(true)" in source_rewrite
     fixture = r'''
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <functional>
 #include <iostream>
@@ -95,6 +96,7 @@ struct LLActorMover {
  U64 mGazeRevision=0;
  static LLActorMover& instance(){static LLActorMover m;return m;}
  static bool rewriteGazeTarget(GazeTarget&,const LLUUID&,const LLUUID&);
+ void rewriteHotGazeReferences(const LLUUID&,const LLUUID&){}
  bool rewriteActorReferences(const LLUUID&,const LLUUID&);
  static void invalidateGazeCache(Gaze& g,bool){g.invalidated=true;}
  void clearDirectorLookAtRuntime(LLUUID){}
@@ -105,6 +107,11 @@ struct LLActorMover {
   if(mHistory.count(old)){mHistory[next]=mHistory.at(old);mHistory.erase(old);}
  }
 };
+namespace ALGazeHot {
+ struct Slot{LLActorMover::GazeTarget mTarget;LLUUID mWho;bool mHasTarget=true;std::string mTargetName;};
+ using Slots=std::array<Slot,4>;
+ bool rewrite(Slots&,const LLUUID&,const LLUUID&);
+}
 struct ALKitHistory {
  struct CustomEntry{std::function<void(const LLUUID&,const LLUUID&)> rewrite_actor;};
  struct Step{std::vector<CustomEntry> custom;};
@@ -201,6 +208,7 @@ struct LLDirectorCast {
  struct GazeCue{GazeTarget mTarget;};using GazeCueList=std::vector<GazeCue>;
  struct CastMember{LLUUID mId;std::string mLastName;GazeTarget mGazeTarget,mEyeGazeTarget;GazeCueList mGazeCues;};
  std::vector<CastMember> mCast;std::vector<LLUUID> mIds;
+ ALGazeHot::Slots mHotGazeSlots;U64 mHotGazeRevision=0;
  GazeTarget mSelfGazeTarget,mSelfEyeGazeTarget;GazeCueList mSelfGazeCues;
  struct Start{LLUUID mId;};std::vector<Start> mPendingStarts;
  LLUUID mSubjectA,mSubjectB,mSubjectC,mSubjectD,mActiveActorId;
@@ -224,6 +232,7 @@ struct LLDirectorCast {
  int sceneTouches=0; void rebuildMemberIndex(){} void touchScene(){++sceneTouches;}
 };
 '''
+    fixture += 'namespace ALGazeHot {\n' + method(nv / 'algazehotslots.h', 'inline bool rewrite(') + '\n}\n'
     fixture += r'''
 namespace ALAvatarSubjectPicker {
 std::vector<std::weak_ptr<LLUUID>> pendingSubjects;
@@ -359,7 +368,11 @@ int main(){
  ALKitHistory history;actorReferenceHistories().insert(&history);
  history.mUndo={{{{rewrite_snapshot}}}};history.mRedo=history.mUndo;
  history.mOpen=std::make_unique<ALKitHistory::Step>(history.mUndo.front());
+ cast.mHotGazeSlots[0].mWho=R;
+ cast.mHotGazeSlots[0].mTarget=target(R);
  auto verify=[&](LLUUID id){
+  assert(cast.mHotGazeSlots[0].mWho==id && cast.mHotGazeSlots[0].mTarget.mCastRef==id);
+  if(id.isNull()) assert(!cast.mHotGazeSlots[0].mHasTarget);
   assert(cast.mCast.front().mGazeTarget.mCastRef==id);
   assert(cast.mCast.front().mEyeGazeTarget.mCastRef==id);
   assert(cast.mCast.front().mGazeCues.front().mTarget.mCastRef==id);
@@ -502,7 +515,7 @@ int main(){
  assert(response.mEntries.empty() && response.mPersistSuppressed.empty());
  assert(cast.sceneTouches==touches);
  actorReferenceHistories().erase(&history);
- std::cout<<"PASS: production clone reference transaction R -> parked S -> N; Head/Eyes/self/cues/runtime; path undo+redo; tracker/camera/Studio targets; custom history; deletion; collision and unenrolled branches\n";
+ std::cout<<"PASS: production clone reference transaction R -> parked S -> N; Head/Eyes/self/cues/runtime/Hot-slot Who+Target; path undo+redo; tracker/camera/Studio targets; custom history; deletion; collision and unenrolled branches\n";
 }
 '''
     directory = Path(".tmp/rekey_20261102/contract").resolve()

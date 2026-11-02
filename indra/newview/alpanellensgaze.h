@@ -66,6 +66,17 @@ private:
     // callback registered from the ctor, so it keeps running with the floater
     // closed. (Formerly the panel method updateRandomPerformance, driven by draw.)
 
+    void buildHotControls();
+    void refreshHotControls();
+    void commitHotControls();
+    S32 mHotSlotIndex = 0, mHotButtonSlot = -1;
+    LLComboBox *mHotSlot = nullptr, *mHotWho = nullptr, *mHotTarget = nullptr, *mHotActor = nullptr;
+    LLComboBox *mHotAfter = nullptr, *mHotMode = nullptr;
+    LLSpinCtrl *mHotSnap = nullptr, *mHotDwell = nullptr, *mHotReturn = nullptr;
+    LLSliderCtrl *mHotHead = nullptr, *mHotEyes = nullptr, *mHotTorso = nullptr;
+    LLTextBox* mHotName = nullptr;
+    LLButton* mHotPick = nullptr;
+    boost::signals2::scoped_connection mHotPropertiesConnection;
     void onMasterEnableCommit();
     void onEditActorCommit();
     void onSlotLookAtCommit(S32 slot_index);
@@ -231,6 +242,7 @@ private:
     U64 mSelectionRevision = 1;
     U64 mSettingsRevision = 1;
     ALRevisionGate mStructureGate;
+    ALRevisionGate mHotChoiceGate;
     ALLiveReadoutClock mLiveClock{10.f};
     std::vector<boost::signals2::scoped_connection> mSettingConnections;
 };

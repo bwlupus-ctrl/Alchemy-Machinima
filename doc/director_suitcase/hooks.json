@@ -33504,6 +33504,7 @@
     },
     {
       "features": [
+        "actor-path",
         "camera",
         "clones",
         "composition",
@@ -33515,12 +33516,14 @@
           "base_count": 8,
           "base_start": 24,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
           ],
           "features": [
+            "actor-path",
             "director-shell"
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
@@ -33530,14 +33533,18 @@
           "git_context": "",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 18,
-          "head_end": 41,
+          "head_count": 19,
+          "head_end": 42,
           "head_start": 24,
-          "id": "indra/newview/llviewerwindow.cpp@24,18",
-          "patch": "  * $/LicenseInfo$\n  */\n \n+// [BDMerge C6] Snapshot conveniences: gated high-res snapshot limit override\n+// (bdmerge_max_snapshot_image_size) and toggleable date/time in local\n+// snapshot filenames. donor: Black Dragon (NiranV Dean) 16143bb98b \"Added:\n+// Option to toggle adding date and time to snapshot names.\" + BD's\n+// MAX_SNAPSHOT_IMAGE_SIZE raise. See doc/BD_MERGE_PATCHLOG.md.\n+\n #include \"llviewerprecompiledheaders.h\"\n #include \"llviewerwindow.h\"\n+#include \"alkithistory.h\"\n+#include \"alhidecursor.h\"\n+\n+#include <cmath>\n \n \n // system library includes\n",
+          "id": "indra/newview/llviewerwindow.cpp@24,19",
+          "patch": "  * $/LicenseInfo$\n  */\n \n+// [BDMerge C6] Snapshot conveniences: gated high-res snapshot limit override\n+// (bdmerge_max_snapshot_image_size) and toggleable date/time in local\n+// snapshot filenames. donor: Black Dragon (NiranV Dean) 16143bb98b \"Added:\n+// Option to toggle adding date and time to snapshot names.\" + BD's\n+// MAX_SNAPSHOT_IMAGE_SIZE raise. See doc/BD_MERGE_PATCHLOG.md.\n+\n #include \"llviewerprecompiledheaders.h\"\n+#include \"llactormover.h\"\n #include \"llviewerwindow.h\"\n+#include \"alkithistory.h\"\n+#include \"alhidecursor.h\"\n+\n+#include <cmath>\n \n \n // system library includes\n",
           "purpose": "Comment evidence: [BDMerge C6] Snapshot conveniences: gated high-res snapshot limit override (bdmerge_max_snapshot_image_size) and toggleable date/time in local snapshot filenames. donor: Black Dragon (NiranV Dean) 16143bb98b \"Added: Option to toggle adding date and time to snapshot names.\" + BD's",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33553,10 +33560,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -33567,6 +33570,7 @@
           "base_count": 6,
           "base_start": 66,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -33581,13 +33585,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 82,
-          "head_start": 76,
-          "id": "indra/newview/llviewerwindow.cpp@76,7",
+          "head_end": 83,
+          "head_start": 77,
+          "id": "indra/newview/llviewerwindow.cpp@77,7",
           "patch": " #include \"lldate.h\"\n #include \"llerrorcontrol.h\"\n #include \"llfontgl.h\"\n+#include \"llfontregistry.h\"\n #include \"llmousehandler.h\"\n #include \"llrect.h\"\n #include \"llsky.h\"\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33603,10 +33611,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -33617,6 +33621,7 @@
           "base_count": 7,
           "base_start": 84,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -33633,13 +33638,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 103,
-          "head_start": 95,
-          "id": "indra/newview/llviewerwindow.cpp@95,9",
+          "head_end": 104,
+          "head_start": 96,
+          "id": "indra/newview/llviewerwindow.cpp@96,9",
           "patch": " \n // newview includes\n #include \"alchatbar.h\"\n+#include \"aldirectorhotkeys.h\"\n #include \"alfloaterprogressview.h\"\n+#include \"aluiperfselftest.h\"\n #include \"llaccordionctrl.h\"\n // [SL:KB] - Patch: Build-DragNDrop | Checked: 2013-07-22 (Catznip-3.6)\n #include \"llagentbenefits.h\"\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33655,10 +33664,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -33669,6 +33674,7 @@
           "base_count": 6,
           "base_start": 164,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -33686,13 +33692,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 184,
-          "head_start": 177,
-          "id": "indra/newview/llviewerwindow.cpp@177,8",
+          "head_end": 185,
+          "head_start": 178,
+          "id": "indra/newview/llviewerwindow.cpp@178,8",
           "patch": " #include \"lltoolfocus.h\"\n #include \"lltoolgrab.h\"\n #include \"lltoolmgr.h\"\n+#include \"altoolghostedit.h\"        // [GhostStudio] Esc exits edit mode post-handoff\n+#include \"altoolcrowdplace.h\"       // [GhostStudio] world wheel rotates staged crowds\n #include \"lltoolmorph.h\"\n #include \"lltoolpie.h\"\n #include \"lltoolselectland.h\"\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33708,10 +33718,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -33722,6 +33728,7 @@
           "base_count": 6,
           "base_start": 185,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -33738,13 +33745,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 206,
-          "head_start": 200,
-          "id": "indra/newview/llviewerwindow.cpp@200,7",
+          "head_end": 207,
+          "head_start": 201,
+          "id": "indra/newview/llviewerwindow.cpp@201,7",
           "patch": " #include \"llviewerregion.h\"\n #include \"llviewershadermgr.h\"\n #include \"llviewerstats.h\"\n+#include \"alviewfinder.h\"\n #include \"llvoavatarself.h\"\n #include \"llvopartgroup.h\"\n #include \"llvovolume.h\"\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33760,10 +33771,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -33774,6 +33781,7 @@
           "base_count": 6,
           "base_start": 235,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -33788,13 +33796,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 257,
-          "head_start": 251,
-          "id": "indra/newview/llviewerwindow.cpp@251,7",
+          "head_end": 258,
+          "head_start": 252,
+          "id": "indra/newview/llviewerwindow.cpp@252,7",
           "patch": " extern bool gDepthDirty;\n extern bool gResizeScreenTexture;\n extern bool gCubeSnapshot;\n+extern bool gSnapshot;\n extern bool gSnapshotNoPost;\n \n LLViewerWindow  *gViewerWindow = NULL;\n",
           "purpose": "Edits gSnapshot",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33810,10 +33822,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -33824,6 +33832,7 @@
           "base_count": 6,
           "base_start": 244,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -33867,13 +33876,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 272,
-          "head_end": 532,
-          "head_start": 261,
-          "id": "indra/newview/llviewerwindow.cpp@261,272",
+          "head_end": 533,
+          "head_start": 262,
+          "id": "indra/newview/llviewerwindow.cpp@262,272",
           "patch": " \n bool            gShowOverlayTitle = false;\n \n+// Target-frame rectangle shared by the frame guide, the viewfinder and the\n+// composition guide (pipeline.cpp). Returns false when no aspect is active\n+// (Off / Native, bad values) or the frame is as-near-native as the window, so\n+// there is nothing to mark.\n+bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame)\n+{\n+    static LLCachedControl<F32> configured_aspect(\n+        gSavedSettings, \"CinematicFrameAspectRatio\", 0.f);\n+    static LLCachedControl<F32> custom_aspect(\n+        gSavedSettings, \"CinematicFrameCustomRatio\", 2.35f);\n+\n+    F32 target_aspect = configured_aspect;\n+    if (target_aspect < 0.f)\n+    {\n+        target_aspect = custom_aspect;\n+    }\n+    if (!std::isfinite(target_aspect) || target_aspect <= 0.f)\n+    {\n+        return false;\n+    }\n+\n+    const F32 window_aspect = (F32)width / (F32)height;\n+    if (!std::isfinite(window_aspect) || window_aspect <= 0.f)\n+    {\n+        return false;\n+    }\n+\n+    frame = LLRect(0, height, width, 0);\n+    if (target_aspect > window_aspect)\n+    {\n+        const S32 frame_height = llclamp(ll_round((F32)width / target_aspect), 1, height);\n+        frame.mBottom = (height - frame_height) / 2;\n+        frame.mTop = frame.mBottom + frame_height;\n+    }\n+    else\n+    {\n+        const S32 frame_width = llclamp(ll_round((F32)height * target_aspect), 1, width);\n+        frame.mLeft = (width - frame_width) / 2;\n+        frame.mRight = frame.mLeft + frame_width;\n+    }\n+\n+    // Native/as-near-native formats produce no useful guide and no draw call.\n+    return !(frame.getWidth() >= width - 1 && frame.getHeight() >= height - 1);\n+}\n+\n+namespace\n+{\n+\n+// Drawn only in LLViewerWindow::draw() for the live UI composite. It is\n+// deliberately absent from snapshot renders and is placed before mRootView so\n+// the framing aid covers the world without obscuring Director controls.\n+void drawCinematicFrameGuide(S32 width, S32 height)\n+{\n+    static LLCachedControl<bool> guide_enabled(\n+        gSavedSettings, \"CinematicFrameGuideEnabled\", false);\n+    if (!guide_enabled || width <= 0 || height <= 0)\n+    {\n+        return;\n+    }\n+\n+    static LLCachedControl<S32> guide_style(\n+        gSavedSettings, \"CinematicFrameGuideStyle\", 0);\n+    static LLCachedControl<F32> guide_opacity(\n+        gSavedSettings, \"CinematicFrameGuideOpacity\", 0.65f);\n+\n+    LLRect frame;\n+    if (!cinematicTargetFrameRect(width, height, frame))\n+    {\n+        return;\n+    }\n+\n+    const S32 style = llclamp((S32)guide_style, 0, 2);\n+    const F32 opacity = llclamp((F32)guide_opacity, 0.f, 1.f);\n+    if (style == 2)\n+    {\n+        const LLColor4 line_color(1.f, 1.f, 1.f, 1.f);\n+        if (frame.getWidth() == width)\n+        {\n+            gl_line_2d(0, frame.mBottom, width, frame.mBottom, line_color);\n+            gl_line_2d(0, frame.mTop, width, frame.mTop, line_color);\n+        }\n+        else\n+        {\n+            gl_line_2d(frame.mLeft, 0, frame.mLeft, height, line_color);\n+            gl_line_2d(frame.mRight, 0, frame.mRight, height, line_color);\n+        }\n+        return;\n+    }\n+\n+    // Dim is intentionally gentler than Solid at the same user opacity.\n+    const F32 alpha = style == 0 ? opacity * 0.55f : opacity;\n+    const LLColor4 bar_color(0.f, 0.f, 0.f, alpha);\n+    if (frame.getWidth() == width)\n+    {\n+        gl_rect_2d(LLRect(0, frame.mBottom, width, 0), bar_color, true);\n+        gl_rect_2d(LLRect(0, height, width, frame.mTop), bar_color, true);\n+    }\n+    else\n+    {\n+        gl_rect_2d(LLRect(0, height, frame.mLeft, 0), bar_color, true);\n+        gl_rect_2d(LLRect(frame.mRight, height, width, 0), bar_color, true);\n+    }\n+}\n+\n+// Viewfinder overlay: thin corner brackets, a small centre \"+\" and a five-line\n+// labelled readout (FOV, View, Lens, Roll, FPS: vertical FOV, raw view angle,\n+// 35 mm-equivalent focal length, camera roll and frames per second).\n+// Unlike the frame guide this is drawn from LLViewerWindow::drawDebugText(),\n+// which render_ui() runs after both UI-hiding mechanisms (HideUI and the UI\n+// debug-feature mask) have been applied, so it stays visible with the UI\n+// hidden. The caller keeps it out of snapshots (gSnapshot). world_rect is the\n+// 3D view in the same scaled UI units; width/height are the scaled window size\n+// the frame guide uses.\n+void drawCinematicViewfinder(const LLRect& world_rect, S32 width, S32 height)\n+{\n+    static LLCachedControl<bool> viewfinder_enabled(\n+        gSavedSettings, \"CinematicViewfinderEnabled\", false);\n+    if (!viewfinder_enabled || width <= 0 || height <= 0)\n+    {\n+        return;\n+    }\n+\n+    // Inside the active target frame when one exists (same computation as the\n+    // frame guide), otherwise inside the whole 3D view.\n+    LLRect box;\n+    if (!cinematicTargetFrameRect(width, height, box))\n+    {\n+        box = world_rect;\n+    }\n+\n+    // One Size multiplier scales every dimension together. All values are in\n+    // scaled UI units, so Size stacks on top of the UI scale.\n+    static LLCachedControl<F32> viewfinder_scale(\n+        gSavedSettings, \"CinematicViewfinderScale\", 1.f);\n+    const F32 scale = ALViewfinder::clampScale(viewfinder_scale);\n+    const ALViewfinder::Layout lay = ALViewfinder::layout(scale);\n+\n+    box.mLeft += lay.margin;\n+    box.mRight -= lay.margin;\n+    box.mBottom += lay.margin;\n+    box.mTop -= lay.margin;\n+    if (box.getWidth() < lay.min_box || box.getHeight() < lay.min_box)\n+    {\n+        return;\n+    }\n+\n+    const S32 arm = ALViewfinder::armLength(lay, box.getWidth(), box.getHeight());\n+    const S32 cx = (box.mLeft + box.mRight) / 2;\n+    const S32 cy = (box.mBottom + box.mTop) / 2;\n+    const S32 cross = lay.cross;\n+    const S32 thick = lay.line;\n+\n+    // Same white-on-dark-shadow look for lines and text.\n+    const LLColor4 line_color(1.f, 1.f, 1.f, 0.9f);\n+    const LLColor4 shadow_color(0.f, 0.f, 0.f, 0.6f);\n+\n+    // Lines are thin quads rather than GL lines: wide GL lines are not\n+    // available on every driver profile, and quads scale with Size and with the\n+    // UI scale. The quad edge is the line edge, so brackets sit inside the box.\n+    auto bar = [](S32 x0, S32 y0, S32 x1, S32 y1)\n+    {\n+        gGL.vertex2i(x0, y0); gGL.vertex2i(x1, y0); gGL.vertex2i(x1, y1);\n+        gGL.vertex2i(x0, y0); gGL.vertex2i(x1, y1); gGL.vertex2i(x0, y1);\n+    };\n+\n+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);\n+    for (S32 pass = 0; pass < 2; ++pass)\n+    {\n+        // Pass 0: dark shadow, down-right. Pass 1: the lines.\n+        const S32 ox = pass == 0 ? lay.shadow : 0;\n+        const S32 oy = pass == 0 ? -lay.shadow : 0;\n+        const S32 l = box.mLeft + ox;\n+        const S32 r = box.mRight + ox;\n+        const S32 b = box.mBottom + oy;\n+        const S32 t = box.mTop + oy;\n+        gGL.color4fv((pass == 0 ? shadow_color : line_color).mV);\n+        gGL.begin(LLRender::TRIANGLES);\n+        // Corner brackets: bottom-left, bottom-right, top-left, top-right.\n+        bar(l, b, l + arm, b + thick);          bar(l, b, l + thick, b + arm);\n+        bar(r - arm, b, r, b + thick);          bar(r - thick, b, r, b + arm);\n+        bar(l, t - thick, l + arm, t);          bar(l, t - arm, l + thick, t);\n+        bar(r - arm, t - thick, r, t);          bar(r - thick, t - arm, r, t);\n+        // Centre crosshair, centred on (cx, cy).\n+        bar(cx - cross + ox, cy - thick / 2 + oy, cx + cross + ox, cy - thick / 2 + thick + oy);\n+        bar(cx - thick / 2 + ox, cy - cross + oy, cx - thick / 2 + thick + ox, cy + cross + oy);\n+        gGL.end();\n+    }\n+\n+    // FPS from the same source as the status bar FPS readout, sampled at the\n+    // same 0.1 s cadence so the number is readable.\n+    static LLFrameTimer fps_timer;\n+    static F32 fps = 0.f;\n+    static bool have_fps = false;\n+    if (!have_fps || fps_timer.getElapsedTimeF32() > 0.1f)\n+    {\n+        fps_timer.reset();\n+        have_fps = true;\n+        fps = (F32)LLTrace::get_frame_recording().getLastRecording().getMean(LLStatViewer::FPS_SAMPLE);\n+    }\n+\n+    // Five labelled lines (FOV / View / Lens / Roll / FPS) as two aligned columns.\n+    // Values are formatted on the stack every frame (no heap); a wide string is\n+    // rebuilt only when that value's text actually changed.\n+    constexpr S32 LINES = ALViewfinder::LINE_COUNT;\n+    static LLWString wide_labels[LINES];\n+    static LLWString wide_values[LINES];\n+    static char last_values[LINES][32] = {};\n+    static bool labels_ready = false;\n+    if (!labels_ready)\n+    {\n+        for (S32 i = 0; i < LINES; ++i)\n+        {\n+            wide_labels[i] = utf8str_to_wstring(std::string(ALViewfinder::label(i)));\n+        }\n+        labels_ready = true;\n+    }\n+\n+    const F32 fov = LLViewerCamera::getInstance()->getView();\n+    const F32 roll = gAgentCamera.getRollAngle();\n+    for (S32 i = 0; i < LINES; ++i)\n+    {\n+        char value[sizeof(last_values[0])];\n+        ALViewfinder::formatValue(i, value, sizeof(value), fov, roll, fps);\n+        if (std::strcmp(value, last_values[i]) != 0)\n+        {\n+            std::memcpy(last_values[i], value, sizeof(value));\n+            wide_values[i] = utf8str_to_wstring(std::string(value));\n+        }\n+    }\n+\n+    // Size picks the nearest rung of the Viewfinder font ladder (fonts.xml), so\n+    // glyphs are rasterised at their real size rather than stretched. The rung\n+    // is created on first use; a missing size falls back to the Small UI font.\n+    static const LLFontGL* step_fonts[ALViewfinder::FONT_STEPS] = {};\n+    static bool step_tried[ALViewfinder::FONT_STEPS] = {};\n+    const S32 step = ALViewfinder::fontStep(scale);\n+    if (!step_fonts[step] && !step_tried[step])\n+    {\n+        step_tried[step] = true;\n+        step_fonts[step] = LLFontGL::getFont(\n+            LLFontDescriptor(\"SansSerif\", ALViewfinder::fontSizeName(step), 0));\n+    }\n+    const LLFontGL* font = step_fonts[step] ? step_fonts[step] : LLFontGL::getFontSansSerifSmall();\n+\n+    // Just below-right of the crosshair, left-aligned; the value column starts\n+    // after the widest label.\n+    S32 label_width = 0;\n+    for (S32 i = 0; i < LINES; ++i)\n+    {\n+        label_width = llmax(label_width, font->getWidth(wide_labels[i].c_str()));\n+    }\n+    const S32 label_x = cx + lay.text_dx;\n+    const S32 value_x = label_x + label_width + lay.col_gap;\n+    const S32 line_height = font->getLineHeight() + lay.line_extra;\n+    S32 text_y = cy - lay.text_dy;\n+    for (S32 i = 0; i < LINES; ++i)\n+    {\n+        font->render(wide_labels[i], 0, (F32)label_x, (F32)text_y, line_color,\n+            LLFontGL::LEFT, LLFontGL::TOP, LLFontGL::NORMAL, LLFontGL::DROP_SHADOW);\n+        font->render(wide_values[i], 0, (F32)value_x, (F32)text_y, line_color,\n+            LLFontGL::LEFT, LLFontGL::TOP, LLFontGL::NORMAL, LLFontGL::DROP_SHADOW);\n+        text_y -= line_height;\n+    }\n+}\n+} // anonymous namespace\n+\n LLViewerObject*  gDebugRaycastObject = NULL;\n LLVOPartGroup* gDebugRaycastParticle = NULL;\n LLVector4a       gDebugRaycastIntersection;\n",
           "purpose": "Comment evidence: Target-frame rectangle shared by the frame guide, the viewfinder and the composition guide (pipeline.cpp). Returns false when no aspect is active (Off / Native, bad values) or the frame is as-near-native as the window, so there is nothing to mark. Native/as-near-native formats pr",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33889,10 +33902,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -33912,6 +33921,7 @@
           "base_count": 14,
           "base_start": 1019,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -33936,13 +33946,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 55,
-          "head_end": 1356,
-          "head_start": 1302,
-          "id": "indra/newview/llviewerwindow.cpp@1302,55",
+          "head_end": 1357,
+          "head_start": 1303,
+          "id": "indra/newview/llviewerwindow.cpp@1303,55",
           "patch": "     }\n }\n \n+// Functional self-test (in-world): while world input is suspended, only UI views may hold the\n+// mouse capture.  A tool (grab, select, pie ...) holding it would receive hover, clicks and\n+// wheel and could send ObjectGrabUpdate / ObjectDeGrab / ObjectSelect.  Drop it WITHOUT the\n+// onMouseCaptureLost() callback (which some tools turn into a network message).  Returns true\n+// when a non-UI capture was dropped.  A no-op in every normal session.\n+bool LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended()\n+{\n+    if (!gViewerInput.worldInputSuspended()) return false;\n+    LLMouseHandler* captor = gFocusMgr.getMouseCapture();\n+    if (!captor || dynamic_cast<LLView*>(captor)) return false;\n+    gFocusMgr.removeMouseCaptureWithoutCallback(captor);\n+    // The callback was skipped on purpose (it can send ObjectGrabUpdate / ObjectDeGrab), so\n+    // forget the grab state locally instead; nothing is sent.\n+    // Reset the exact instance that held the capture (the singleton, or the mouselook\n+    // composite's own grab), and the composite owners themselves.\n+    if (LLToolGrabBase* grab = dynamic_cast<LLToolGrabBase*>(captor))\n+    {\n+        grab->resetStateWithoutSending();\n+    }\n+    LLToolGrab::getInstance()->resetStateWithoutSending();\n+    LLToolCompGun::getInstance()->resetGrabStateWithoutSending();\n+    if (mWindow) mWindow->setMouseClipping(false);\n+    return true;\n+}\n+\n bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool& is_toolmgr_action)\n {\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n+    // Functional self-test (in-world): native clicks are ignored entirely; the harness own\n+    // marked clicks are LEFT single clicks only (no right/middle/double/extra-button path, so\n+    // no pie menu, no world double-click action, no empty-pick deselect).\n+    if (gViewerInput.worldInputSuspended() &&\n+        (gViewerInput.dropsNativeInput() || clicktype != CLICK_LEFT))\n+    {\n+        return true;\n+    }\n+    dropToolMouseCaptureWhileWorldSuspended();\n     const char* buttonname = \"\";\n     const char* buttonstatestr = \"\";\n     S32 x = pos.mX;\n     S32 y = pos.mY;\n     x = ll_round((F32)x / mDisplayScale.mV[VX]);\n     y = ll_round((F32)y / mDisplayScale.mV[VY]);\n+    // Only an open dropdown/top control can be a kit view here; Director views start their own gestures.\n+    LLUICtrl* top = gFocusMgr.getTopCtrl();\n+    if (top && top->calcScreenRect().pointInRect(x, y))\n+    {\n+        ALKitHistory::notePointer(top);\n+    }\n \n     // Handle non-consuming global keybindings, like voice\n     gViewerInput.handleGlobalBindsMouse(clicktype, mask, down);\n",
           "purpose": "Comment evidence: Functional self-test (in-world): while world input is suspended, only UI views may hold the mouse capture.  A tool (grab, select, pie ...) holding it would receive hover, clicks and wheel and could send ObjectGrabUpdate / ObjectDeGrab / ObjectSelect.  Drop it WITHOUT the onMouseC",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -33958,10 +33972,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -33972,6 +33982,7 @@
           "base_count": 7,
           "base_start": 1111,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -33991,13 +34002,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 17,
-          "head_end": 1451,
-          "head_start": 1435,
-          "id": "indra/newview/llviewerwindow.cpp@1435,17",
+          "head_end": 1452,
+          "head_start": 1436,
+          "id": "indra/newview/llviewerwindow.cpp@1436,17",
           "patch": "                 LL_INFOS() << buttonname << \" Mouse \" << buttonstatestr << \" handled by captor \" << mouse_captor->getName() << LL_ENDL;\n             }\n \n-            bool r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);\n+            bool r;\n+            {\n+                LL_PROFILE_ZONE_NAMED_CATEGORY_UI(\"mouse click - captor dispatch\");\n+                // Captor dispatch bypasses LLView's child traversal, so mirror\n+                // its optional diagnostic hook for input-test attribution.\n+                if (LLView::sMouseHandlerRecorder)\n+                    if (LLView* captor_view = dynamic_cast<LLView*>(mouse_captor))\n+                        LLView::sMouseHandlerRecorder(captor_view);\n+                ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(mouse_captor)));\n+                r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);\n+            }\n             if (r) {\n \n                 LL_DEBUGS() << \"LLViewerWindow::handleAnyMouseClick viewer with mousecaptor calling updatemouseeventinfo - local_x|global x  \"<< local_x << \" \" << x  << \"local/global y \" << local_y << \" \" << y << LL_ENDL;\n",
           "purpose": "Comment evidence: Captor dispatch bypasses LLView's child traversal, so mirror its optional diagnostic hook for input-test attribution.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34013,10 +34028,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -34027,6 +34038,7 @@
           "base_count": 7,
           "base_start": 1135,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34041,13 +34053,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 1479,
-          "head_start": 1469,
-          "id": "indra/newview/llviewerwindow.cpp@1469,11",
+          "head_end": 1480,
+          "head_start": 1470,
+          "id": "indra/newview/llviewerwindow.cpp@1470,11",
           "patch": "         }\n         // Give the UI views a chance to process the click\n \n-        bool r= mRootView->handleAnyMouseClick(x, y, mask, clicktype, down) ;\n+        bool r;\n+        {\n+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI(\"mouse click - root dispatch\");\n+            r = mRootView->handleAnyMouseClick(x, y, mask, clicktype, down);\n+        }\n         if (r)\n         {\n \n",
           "purpose": "Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34063,10 +34079,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34077,6 +34089,7 @@
           "base_count": 8,
           "base_start": 1164,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34096,13 +34109,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 22,
-          "head_end": 1523,
-          "head_start": 1502,
-          "id": "indra/newview/llviewerwindow.cpp@1502,22",
+          "head_end": 1524,
+          "head_start": 1503,
+          "id": "indra/newview/llviewerwindow.cpp@1503,22",
           "patch": "             }\n     }\n \n+    // Functional self-test (in-world): UI dispatch only.  A click the UI did not take (or any\n+    // click while the UI is disabled) is DROPPED: it never reaches the tool manager (grab,\n+    // sit, select ...) or the pie menu.  Up-clicks stay \"handled\" as for the OS.\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        return !down;\n+    }\n+\n     // Do not allow tool manager to handle mouseclicks if we have disconnected\n-    if(!gDisconnected && LLToolMgr::getInstance()->getCurrentTool()->handleAnyMouseClick( x, y, mask, clicktype, down ) )\n+    bool tool_handled = false;\n+    if (!gDisconnected)\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI(\"mouse click - tool dispatch\");\n+        tool_handled = LLToolMgr::getInstance()->getCurrentTool()->handleAnyMouseClick(x, y, mask, clicktype, down);\n+    }\n+    if (tool_handled)\n     {\n         LLViewerEventRecorder::instance().clear_xui();\n         is_toolmgr_action = true;\n",
           "purpose": "Comment evidence: Functional self-test (in-world): UI dispatch only.  A click the UI did not take (or any click while the UI is disabled) is DROPPED: it never reaches the tool manager (grab, sit, select ...) or the pie menu.  Up-clicks stay \"handled\" as for the OS.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34118,10 +34135,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34134,6 +34147,7 @@
           "base_count": 6,
           "base_start": 1186,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34150,13 +34164,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 8,
-          "head_end": 1545,
-          "head_start": 1538,
-          "id": "indra/newview/llviewerwindow.cpp@1538,8",
+          "head_end": 1546,
+          "head_start": 1539,
+          "id": "indra/newview/llviewerwindow.cpp@1539,8",
           "patch": " \n bool LLViewerWindow::handleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     mAllowMouseDragging = false;\n     if (!mMouseDownTimer.getStarted())\n     {\n",
           "purpose": "Edits gViewerInput, LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34172,10 +34190,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34186,6 +34200,7 @@
           "base_count": 6,
           "base_start": 1202,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34202,13 +34217,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 1562,
-          "head_start": 1556,
-          "id": "indra/newview/llviewerwindow.cpp@1556,7",
+          "head_end": 1563,
+          "head_start": 1557,
+          "id": "indra/newview/llviewerwindow.cpp@1557,7",
           "patch": " \n bool LLViewerWindow::handleDoubleClick(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     // try handling as a double-click first, then a single-click if that\n     // wasn't handled.\n     bool down = true;\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34224,10 +34243,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34238,6 +34253,7 @@
           "base_count": 6,
           "base_start": 1214,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34254,13 +34270,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 8,
-          "head_end": 1576,
-          "head_start": 1569,
-          "id": "indra/newview/llviewerwindow.cpp@1569,8",
+          "head_end": 1577,
+          "head_start": 1570,
+          "id": "indra/newview/llviewerwindow.cpp@1570,8",
           "patch": " \n bool LLViewerWindow::handleMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     if (mMouseDownTimer.getStarted())\n     {\n         mMouseDownTimer.stop();\n",
           "purpose": "Edits gViewerInput, LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34276,10 +34296,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34290,6 +34306,7 @@
           "base_count": 18,
           "base_start": 1223,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34310,13 +34327,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 21,
-          "head_end": 1600,
-          "head_start": 1580,
-          "id": "indra/newview/llviewerwindow.cpp@1580,21",
+          "head_end": 1601,
+          "head_start": 1581,
+          "id": "indra/newview/llviewerwindow.cpp@1581,21",
           "patch": " }\n bool LLViewerWindow::handleRightMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     bool down = true;\n     return gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);\n }\n \n bool LLViewerWindow::handleRightMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     bool down = false;\n     return gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);\n }\n \n bool LLViewerWindow::handleMiddleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     bool down = true;\n     gViewerInput.handleMouse(window, pos, mask, CLICK_MIDDLE, down);\n \n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34332,10 +34353,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34346,6 +34363,7 @@
           "base_count": 6,
           "base_start": 1247,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34362,13 +34380,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 9,
-          "head_end": 1615,
-          "head_start": 1607,
-          "id": "indra/newview/llviewerwindow.cpp@1607,9",
+          "head_end": 1616,
+          "head_start": 1608,
+          "id": "indra/newview/llviewerwindow.cpp@1608,9",
           "patch": "                                                                    LLWindowCallbacks::DragNDropType type, const std::vector<std::string>& data)\n {\n     LLWindowCallbacks::DragNDropResult result = LLWindowCallbacks::DND_NONE;\n+    // Functional self-test (in-world): no drag-and-drop at all (SLURL dispatch, file upload,\n+    // media drop), even for marked events -- the harness never needs one.\n+    if (gViewerInput.worldInputSuspended()) return result;\n     switch (type)\n     {\n         case LLWindowCallbacks::DNDT_FILE:\n",
           "purpose": "Comment evidence: Functional self-test (in-world): no drag-and-drop at all (SLURL dispatch, file upload, media drop), even for marked events -- the harness never needs one.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34384,10 +34406,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34398,6 +34416,7 @@
           "base_count": 6,
           "base_start": 1631,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34414,13 +34433,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2000,
-          "head_start": 1994,
-          "id": "indra/newview/llviewerwindow.cpp@1994,7",
+          "head_end": 2001,
+          "head_start": 1995,
+          "id": "indra/newview/llviewerwindow.cpp@1995,7",
           "patch": " \n bool LLViewerWindow::handleMiddleMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     bool down = false;\n     gViewerInput.handleMouse(window, pos, mask, CLICK_MIDDLE, down);\n \n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34436,10 +34459,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34450,6 +34469,7 @@
           "base_count": 6,
           "base_start": 1640,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34466,13 +34486,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2010,
-          "head_start": 2004,
-          "id": "indra/newview/llviewerwindow.cpp@2004,7",
+          "head_end": 2011,
+          "head_start": 2005,
+          "id": "indra/newview/llviewerwindow.cpp@2005,7",
           "patch": " \n bool LLViewerWindow::handleOtherMouse(LLWindow *window, LLCoordGL pos, MASK mask, S32 button, bool down)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     switch (button)\n     {\n     case 4:\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34488,10 +34512,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34502,6 +34522,7 @@
           "base_count": 6,
           "base_start": 1669,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34518,13 +34539,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2040,
-          "head_start": 2034,
-          "id": "indra/newview/llviewerwindow.cpp@2034,7",
+          "head_end": 2041,
+          "head_start": 2035,
+          "id": "indra/newview/llviewerwindow.cpp@2035,7",
           "patch": " // WARNING: this is potentially called multiple times per frame\n void LLViewerWindow::handleMouseMove(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     S32 x = pos.mX;\n     S32 y = pos.mY;\n \n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34540,10 +34565,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34554,6 +34575,7 @@
           "base_count": 6,
           "base_start": 1705,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34570,13 +34592,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2077,
-          "head_start": 2071,
-          "id": "indra/newview/llviewerwindow.cpp@2071,7",
+          "head_end": 2078,
+          "head_start": 2072,
+          "id": "indra/newview/llviewerwindow.cpp@2072,7",
           "patch": " \n void LLViewerWindow::handleMouseDragged(LLWindow *window,  LLCoordGL pos, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     if (mMouseDownTimer.getStarted())\n     {\n         if (mMouseDownTimer.getElapsedTimeF32() > 0.1)\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34592,10 +34618,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34606,6 +34628,7 @@
           "base_count": 6,
           "base_start": 1721,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34622,13 +34645,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2094,
-          "head_start": 2088,
-          "id": "indra/newview/llviewerwindow.cpp@2088,7",
+          "head_end": 2095,
+          "head_start": 2089,
+          "id": "indra/newview/llviewerwindow.cpp@2089,7",
           "patch": " \n void LLViewerWindow::handleMouseLeave(LLWindow *window)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     // SDL3 delivers SDL_EVENT_WINDOW_MOUSE_LEAVE whenever the cursor crosses\n     // the window edge, including while we have capture (e.g. mid-drag). In\n     // that case the mouse is still logically ours, so don't drop the\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34644,10 +34671,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34658,6 +34681,7 @@
           "base_count": 6,
           "base_start": 1792,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34674,13 +34698,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2166,
-          "head_start": 2160,
-          "id": "indra/newview/llviewerwindow.cpp@2160,7",
+          "head_end": 2167,
+          "head_start": 2161,
+          "id": "indra/newview/llviewerwindow.cpp@2161,7",
           "patch": " // The top-level window has gained focus (e.g. via ALT-TAB)\n void LLViewerWindow::handleFocus(LLWindow *window)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     gFocusMgr.setAppHasFocus(true);\n     LLModalDialog::onAppFocusGained();\n \n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34696,10 +34724,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34710,6 +34734,7 @@
           "base_count": 6,
           "base_start": 1812,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34726,13 +34751,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2187,
-          "head_start": 2181,
-          "id": "indra/newview/llviewerwindow.cpp@2181,7",
+          "head_end": 2188,
+          "head_start": 2182,
+          "id": "indra/newview/llviewerwindow.cpp@2182,7",
           "patch": " // The top-level window has lost focus (e.g. via ALT-TAB)\n void LLViewerWindow::handleFocusLost(LLWindow *window)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     gFocusMgr.setAppHasFocus(false);\n     //LLModalDialog::onAppFocusLost();\n     LLToolMgr::getInstance()->onAppFocusLost();\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34748,10 +34777,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34762,6 +34787,7 @@
           "base_count": 6,
           "base_start": 1842,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34778,13 +34804,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2218,
-          "head_start": 2212,
-          "id": "indra/newview/llviewerwindow.cpp@2212,7",
+          "head_end": 2219,
+          "head_start": 2213,
+          "id": "indra/newview/llviewerwindow.cpp@2213,7",
           "patch": " \n bool LLViewerWindow::handleTranslatedKeyDown(KEY key,  MASK mask, bool repeated)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     // Handle non-consuming global keybindings, like voice\n     // Never affects event processing.\n     gViewerInput.handleGlobalBindsKeyDown(key, mask);\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34800,10 +34830,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34814,6 +34840,7 @@
           "base_count": 6,
           "base_start": 1874,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34830,13 +34857,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2251,
-          "head_start": 2245,
-          "id": "indra/newview/llviewerwindow.cpp@2245,7",
+          "head_end": 2252,
+          "head_start": 2246,
+          "id": "indra/newview/llviewerwindow.cpp@2246,7",
           "patch": " \n bool LLViewerWindow::handleTranslatedKeyUp(KEY key,  MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     // Handle non-consuming global keybindings, like voice\n     // Never affects event processing.\n     gViewerInput.handleGlobalBindsKeyUp(key, mask);\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34852,10 +34883,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34866,6 +34893,7 @@
           "base_count": 6,
           "base_start": 1890,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34882,13 +34910,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2268,
-          "head_start": 2262,
-          "id": "indra/newview/llviewerwindow.cpp@2262,7",
+          "head_end": 2269,
+          "head_start": 2263,
+          "id": "indra/newview/llviewerwindow.cpp@2263,7",
           "patch": " \n void LLViewerWindow::handleScanKey(KEY key, bool key_down, bool key_up, bool key_level)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     LLViewerJoystick::getInstance()->setCameraNeedsUpdate(true);\n     gViewerInput.scanKey(key, key_down, key_up, key_level);\n     return; // Be clear this function returns nothing\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34904,10 +34936,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34918,6 +34946,7 @@
           "base_count": 6,
           "base_start": 1900,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34934,13 +34963,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2279,
-          "head_start": 2273,
-          "id": "indra/newview/llviewerwindow.cpp@2273,7",
+          "head_end": 2280,
+          "head_start": 2274,
+          "id": "indra/newview/llviewerwindow.cpp@2274,7",
           "patch": " \n bool LLViewerWindow::handleActivate(LLWindow *window, bool activated)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     if (activated)\n     {\n         mActive = true;\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -34956,10 +34989,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -34970,6 +34999,7 @@
           "base_count": 6,
           "base_start": 1936,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -34986,13 +35016,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2316,
-          "head_start": 2310,
-          "id": "indra/newview/llviewerwindow.cpp@2310,7",
+          "head_end": 2317,
+          "head_start": 2311,
+          "id": "indra/newview/llviewerwindow.cpp@2311,7",
           "patch": " \n bool LLViewerWindow::handleActivateApp(LLWindow *window, bool activating)\n {\n+    if (gViewerInput.dropsNativeInput()) return false; // functional self-test: real OS input is ignored\n     //if (!activating) gAgentCamera.changeCameraToDefault();\n \n     LLViewerJoystick::getInstance()->setNeedsReset(true);\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35008,10 +35042,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35022,6 +35052,7 @@
           "base_count": 26,
           "base_start": 1994,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35046,13 +35077,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 31,
-          "head_end": 2399,
-          "head_start": 2369,
-          "id": "indra/newview/llviewerwindow.cpp@2369,31",
+          "head_end": 2400,
+          "head_start": 2370,
+          "id": "indra/newview/llviewerwindow.cpp@2370,31",
           "patch": " \n void LLViewerWindow::handleScrollWheel(LLWindow *window,  LLScrollDelta delta)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     handleScrollWheel( delta );\n }\n \n void LLViewerWindow::handleScrollHWheel(LLWindow *window,  LLScrollDelta delta)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     handleScrollHWheel(delta);\n }\n \n void LLViewerWindow::handleWindowBlock(LLWindow *window)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     send_agent_pause();\n }\n \n void LLViewerWindow::handleWindowUnblock(LLWindow *window)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     send_agent_resume();\n }\n \n void LLViewerWindow::handleDataCopy(LLWindow *window, S32 data_type, void *data)\n {\n+    if (gViewerInput.dropsNativeInput()) return; // functional self-test: real OS input is ignored\n     const S32 SLURL_MESSAGE_TYPE = 0;\n     switch (data_type)\n     {\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35068,10 +35103,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35082,6 +35113,7 @@
           "base_count": 6,
           "base_start": 2045,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35098,13 +35130,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 2435,
-          "head_start": 2425,
-          "id": "indra/newview/llviewerwindow.cpp@2425,11",
+          "head_end": 2436,
+          "head_start": 2426,
+          "id": "indra/newview/llviewerwindow.cpp@2426,11",
           "patch": " \n bool LLViewerWindow::handleDeviceChange(LLWindow *window)\n {\n+    // The Xbox auto-detect enumerates DirectInput ONLY when this flag is set\n+    // (event-driven; the old periodic main-thread EnumDevices walk caused a\n+    // micro-stutter every few seconds while filming).\n+    LLViewerJoystick::getInstance()->setDeviceListDirty();\n+\n     // give a chance to use a joystick after startup (hot-plugging)\n     if (!LLViewerJoystick::getInstance()->isJoystickInitialized() )\n     {\n",
           "purpose": "Comment evidence: The Xbox auto-detect enumerates DirectInput ONLY when this flag is set (event-driven; the old periodic main-thread EnumDevices walk caused a micro-stutter every few seconds while filming).",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35120,10 +35156,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35134,6 +35166,7 @@
           "base_count": 14,
           "base_start": 2599,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35152,13 +35185,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 37,
-          "head_end": 3020,
-          "head_start": 2984,
-          "id": "indra/newview/llviewerwindow.cpp@2984,37",
+          "head_end": 3021,
+          "head_start": 2985,
+          "id": "indra/newview/llviewerwindow.cpp@2985,37",
           "patch": " \n     if (!gNonInteractive)\n     {\n+        // [WebIdle] AlchemyWebPreloadToolbarPages (default off): the Destination\n+        // Guide, Avatar Welcome Pack and Marketplace floaters are otherwise built\n+        // (and their web pages navigated + rendered) at login without ever being\n+        // opened. When off they are created the first time the user opens them\n+        // (LLFloaterReg builds on demand and their postBuild navigates).\n+        // The Avatar Welcome Pack is still created on the very first login of an\n+        // install, because llstartup.cpp shows it then via findInstance().\n+        static LLCachedControl<bool> preload_toolbar_pages(gSavedSettings, \"AlchemyWebPreloadToolbarPages\", false);\n         if (physical_mem > MIN_PHYSICAL_MEMORY)\n         {\n-            LL_INFOS() << \"Preloading cef instances\" << LL_ENDL;\n+            if (preload_toolbar_pages)\n+            {\n+                LL_INFOS() << \"Preloading cef instances\" << LL_ENDL;\n \n-            LLFloaterReg::getInstance(\"destinations\");\n-            LLFloaterReg::getInstance(\"avatar_welcome_pack\");\n-            LLFloaterReg::getInstance(\"search\");\n-            LLFloaterReg::getInstance(\"marketplace\");\n+                LLFloaterReg::getInstance(\"destinations\");\n+                LLFloaterReg::getInstance(\"avatar_welcome_pack\");\n+                LLFloaterReg::getInstance(\"search\");\n+                LLFloaterReg::getInstance(\"marketplace\");\n+            }\n+            else\n+            {\n+                LL_INFOS() << \"Skipping toolbar web page preload (AlchemyWebPreloadToolbarPages is off)\" << LL_ENDL;\n+\n+                if (gSavedSettings.getBOOL(\"FirstLoginThisInstall\"))\n+                {\n+                    LLFloaterReg::getInstance(\"avatar_welcome_pack\");\n+                }\n+                // \"search\" is not one of the three toolbar pages and its web page\n+                // is not navigated until the user searches, so keep it as before.\n+                LLFloaterReg::getInstance(\"search\");\n+            }\n         }\n         else if (gSavedSettings.getBOOL(\"FirstLoginThisInstall\"))\n         {\n",
           "purpose": "Comment evidence: [WebIdle] AlchemyWebPreloadToolbarPages (default off): the Destination Guide, Avatar Welcome Pack and Marketplace floaters are otherwise built (and their web pages navigated + rendered) at login without ever being opened. When off they are created the first time the user opens th",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35174,10 +35211,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35195,6 +35228,7 @@
           "base_count": 6,
           "base_start": 2957,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35213,13 +35247,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 3378,
-          "head_start": 3365,
-          "id": "indra/newview/llviewerwindow.cpp@3365,14",
+          "head_end": 3379,
+          "head_start": 3366,
+          "id": "indra/newview/llviewerwindow.cpp@3366,14",
           "patch": "         // scale view by UI global scale factor and aspect ratio correction factor\n         gGL.scaleUI(mDisplayScale.mV[VX], mDisplayScale.mV[VY], 1.f);\n         mDebugText->draw();\n+\n+        // Cinematic Viewfinder: drawn here, not in draw(), so it survives\n+        // both UI-hiding mechanisms. gSnapshot keeps it out of every capture\n+        // (render_ui() also runs for snapshots).\n+        if (!gSnapshot)\n+        {\n+            drawCinematicViewfinder(getWorldViewRectScaled(), getWindowWidthScaled(), getWindowHeightScaled());\n+        }\n     }\n     gGL.popUIMatrix();\n     gGL.popMatrix();\n",
           "purpose": "Comment evidence: Cinematic Viewfinder: drawn here, not in draw(), so it survives both UI-hiding mechanisms. gSnapshot keeps it out of every capture (render_ui() also runs for snapshots).",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35235,10 +35273,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35249,6 +35283,7 @@
           "base_count": 10,
           "base_start": 3044,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35265,13 +35300,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 28,
-          "head_end": 3487,
-          "head_start": 3460,
-          "id": "indra/newview/llviewerwindow.cpp@3460,28",
+          "head_end": 3488,
+          "head_start": 3461,
+          "id": "indra/newview/llviewerwindow.cpp@3461,28",
           "patch": "             stop_glerror();\n         }\n \n+        // UI-only, live-composite framing aid. getIndicatorsVisible() covers\n+        // both mUIVisible and the RENDER_DEBUG_FEATURE_UI mask; gSnapshot keeps\n+        // the guide out of every capture buffer even when \"Render UI\" is on.\n+        if (!gSnapshot && getIndicatorsVisible())\n+        {\n+            drawCinematicFrameGuide(getWindowWidthScaled(), getWindowHeightScaled());\n+        }\n+\n         // Draw all nested UI views.\n         // No translation needed, this view is glued to 0,0\n         mRootView->draw();\n \n+        LL_PROFILE_PLOT(\"UI views drawn\", LLView::sDrawnViewCount);\n+        LL_PROFILE_PLOT(\"UI views folder-culled\", LLView::sClipCulledViewCount);\n+        ALUIPerfSelfTest::recordViewCounts(\n+            LLView::sDrawnViewCount, LLView::sClipCulledViewCount,\n+            LLView::sFindChildCallCount, LLView::sFindChildVisitedCount);\n+        LLView::sDrawnViewCount = 0;\n+        LLView::sClipCulledViewCount = 0;\n+        LLView::sFindChildCallCount = 0;\n+        LLView::sFindChildVisitedCount = 0;\n+\n         if (LLView::sDebugRects)\n         {\n             gToolTipView->drawStickyRect();\n",
           "purpose": "Comment evidence: UI-only, live-composite framing aid. getIndicatorsVisible() covers both mUIVisible and the RENDER_DEBUG_FEATURE_UI mask; gSnapshot keeps the guide out of every capture buffer even when \"Render UI\" is on.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35287,10 +35326,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35301,6 +35336,7 @@
           "base_count": 6,
           "base_start": 3093,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35317,13 +35353,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 3533,
-          "head_start": 3527,
-          "id": "indra/newview/llviewerwindow.cpp@3527,7",
+          "head_end": 3534,
+          "head_start": 3528,
+          "id": "indra/newview/llviewerwindow.cpp@3528,7",
           "patch": " // Takes a single keyup event, usually when UI is visible\n bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     if (LLSetKeyBindDialog::recordKey(key, mask, false))\n     {\n         LL_DEBUGS() << \"KeyUp handled by LLSetKeyBindDialog\" << LL_ENDL;\n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35339,10 +35379,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35353,6 +35389,7 @@
           "base_count": 6,
           "base_start": 3131,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35369,13 +35406,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 3577,
-          "head_start": 3566,
-          "id": "indra/newview/llviewerwindow.cpp@3566,12",
+          "head_end": 3578,
+          "head_start": 3567,
+          "id": "indra/newview/llviewerwindow.cpp@3567,12",
           "patch": "         }\n     }\n \n+    // Functional self-test (in-world): a key release never reaches a gesture.\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        return true;\n+    }\n+\n     // Try for a new-format gesture\n     if (LLGestureMgr::instance().triggerGestureRelease(key, mask))\n     {\n",
           "purpose": "Comment evidence: Functional self-test (in-world): a key release never reaches a gesture.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35391,10 +35432,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35405,6 +35442,7 @@
           "base_count": 6,
           "base_start": 3149,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35421,13 +35459,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 3596,
-          "head_start": 3590,
-          "id": "indra/newview/llviewerwindow.cpp@3590,7",
+          "head_end": 3597,
+          "head_start": 3591,
+          "id": "indra/newview/llviewerwindow.cpp@3591,7",
           "patch": " // Takes a single keydown event, usually when UI is visible\n bool LLViewerWindow::handleKey(KEY key, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     // hide tooltips on keypress\n     LLToolTipMgr::instance().blockToolTips();\n \n",
           "purpose": "Edits gViewerInput",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35443,10 +35485,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35457,6 +35495,7 @@
           "base_count": 7,
           "base_start": 3161,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35473,13 +35512,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 3612,
-          "head_start": 3603,
-          "id": "indra/newview/llviewerwindow.cpp@3603,10",
+          "head_end": 3613,
+          "head_start": 3604,
+          "id": "indra/newview/llviewerwindow.cpp@3604,10",
           "patch": "         return true;\n     }\n \n+    ALKitHistory::noteKey();\n+\n     LLFocusableElement* keyboard_focus = gFocusMgr.getKeyboardFocus();\n+    ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(keyboard_focus)));\n \n     if (keyboard_focus\n         && !gFocusMgr.getKeystrokesOnly())\n",
           "purpose": "Edits ALKitHistory, LLView",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35495,10 +35538,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35509,6 +35548,7 @@
           "base_count": 6,
           "base_start": 3253,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35528,13 +35568,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 20,
-          "head_end": 3717,
-          "head_start": 3698,
-          "id": "indra/newview/llviewerwindow.cpp@3698,20",
+          "head_end": 3718,
+          "head_start": 3699,
+          "id": "indra/newview/llviewerwindow.cpp@3699,20",
           "patch": "         }\n     }\n \n+    // Functional self-test (in-world): after the keyboard-focus dispatch NOTHING below may\n+    // run -- no menu navigation or accelerator (Edit.Undo would send 'Undo' to the sim),\n+    // no tool key, no gesture trigger (a user gesture bound to a key sends chat or an\n+    // animation), no Director hotkey, no auto-chat.  Process-local flag; never set in a\n+    // normal session.\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        if (keyboard_focus)\n+        {\n+            keyboard_focus->handleKey(key, mask, false);\n+        }\n+        return true;\n+    }\n+\n     // let menus handle navigation keys for navigation\n     if ((gMenuBarView && gMenuBarView->handleKey(key, mask, true))\n         ||(gLoginMenuBarView && gLoginMenuBarView->handleKey(key, mask, true))\n",
           "purpose": "Comment evidence: Functional self-test (in-world): after the keyboard-focus dispatch NOTHING below may run -- no menu navigation or accelerator (Edit.Undo would send 'Undo' to the sim), no tool key, no gesture trigger (a user gesture bound to a key sends chat or an animation), no Director hotkey, ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35550,10 +35594,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35564,6 +35604,7 @@
           "base_count": 6,
           "base_start": 3369,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35583,13 +35624,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 28,
-          "head_end": 3855,
-          "head_start": 3828,
-          "id": "indra/newview/llviewerwindow.cpp@3828,28",
+          "head_end": 3856,
+          "head_start": 3829,
+          "id": "indra/newview/llviewerwindow.cpp@3829,28",
           "patch": "         }\n     }\n \n+    // [GhostStudio] Esc leaves ghost edit-mode even after the build-mode handoff.\n+    // Once a ghost is selected the transient ALToolGhostEdit is no longer current\n+    // (a stock Translate/Rotate/Scale composite is), so that tool's own handleKey()\n+    // can never see Esc. Handle it here -- AFTER focused UI/menus get their chance\n+    // -- but only for unmodified Esc while editing, and only when a stock manip\n+    // composite is current (State B, where the picker IS current, is handled by\n+    // ALToolGhostEdit::handleKey() below). Restore the pre-edit toolset and consume.\n+    if (key == KEY_ESCAPE && mask == MASK_NONE\n+        && ALToolGhostEdit::instanceExists()\n+        && ALToolGhostEdit::getInstance()->isEditModeActive())\n+    {\n+        const LLTool* cur_tool = LLToolMgr::getInstance()->getCurrentTool();\n+        if (cur_tool == LLToolCompTranslate::getInstance()\n+            || cur_tool == LLToolCompRotate::getInstance()\n+            || cur_tool == LLToolCompScale::getInstance())\n+        {\n+            ALToolGhostEdit::getInstance()->stopEditMode(/*restore_toolset*/ true);\n+            LLViewerEventRecorder::instance().logKeyEvent(key, mask);\n+            return true;\n+        }\n+    }\n+\n     if( LLToolMgr::getInstance()->getCurrentTool()->handleKey(key, mask) )\n     {\n         LL_DEBUGS() << \"LLviewerWindow::handleKey toolbar handling?\" << LL_ENDL;\n",
           "purpose": "Comment evidence: [GhostStudio] Esc leaves ghost edit-mode even after the build-mode handoff. Once a ghost is selected the transient ALToolGhostEdit is no longer current (a stock Translate/Rotate/Scale composite is), so that tool's own handleKey() can never see Esc. Handle it here -- AFTER focused",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35605,10 +35650,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35619,6 +35660,7 @@
           "base_count": 6,
           "base_start": 3393,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35637,13 +35679,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 18,
-          "head_end": 3891,
-          "head_start": 3874,
-          "id": "indra/newview/llviewerwindow.cpp@3874,18",
+          "head_end": 3892,
+          "head_start": 3875,
+          "id": "indra/newview/llviewerwindow.cpp@3875,18",
           "patch": "         return true;\n     }\n \n+    // [Director] Transport plus switcher number punches. Gestures and focused\n+    // UI/tools above retain precedence. This must run before printable-key\n+    // auto-chat so an armed, visible switcher can reserve 1..9; its fast gate\n+    // returns false everywhere else and ordinary typing remains untouched.\n+    if (ALDirectorHotkeys::handleKey(\n+            key, mask, gKeyboard->getKeyRepeated(key),\n+            keyboard_focus != nullptr))\n+    {\n+        LLViewerEventRecorder::instance().logKeyEvent(key, mask);\n+        return true;\n+    }\n+\n     // If \"Pressing letter keys starts local chat\" option is selected, we are not in mouselook,\n     // no view has keyboard focus, this is a printable character key (and no modifier key is\n     // pressed except shift), then give focus to nearby chat (STORM-560)\n",
           "purpose": "Comment evidence: [Director] Transport plus switcher number punches. Gestures and focused UI/tools above retain precedence. This must run before printable-key auto-chat so an armed, visible switcher can reserve 1..9; its fast gate returns false everywhere else and ordinary typing remains untouched",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35659,10 +35705,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35673,6 +35715,7 @@
           "base_count": 11,
           "base_start": 3457,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35693,13 +35736,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 24,
-          "head_end": 3973,
-          "head_start": 3950,
-          "id": "indra/newview/llviewerwindow.cpp@3950,24",
+          "head_end": 3974,
+          "head_start": 3951,
+          "id": "indra/newview/llviewerwindow.cpp@3951,24",
           "patch": " \n bool LLViewerWindow::handleUnicodeChar(llwchar uni_char, MASK mask)\n {\n+    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n+    ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus())));\n     // HACK:  We delay processing of return keys until they arrive as a Unicode char,\n     // so that if you're typing chat text at low frame rate, we don't send the chat\n     // until all keystrokes have been entered. JC\n     // HACK: Numeric keypad <enter> on Mac is Unicode 3\n     // HACK: Control-M on Windows is Unicode 13\n+    // Functional self-test (in-world): no Return remap into the user key bindings, and no\n+    // menu jump-key handling; the character goes only to the keyboard-focus control.\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        if (LLFocusableElement* suspended_focus = gFocusMgr.getKeyboardFocus())\n+        {\n+            suspended_focus->handleUnicodeChar(uni_char, false);\n+            return true;\n+        }\n+        return false;\n+    }\n     if ((uni_char == 13 && mask != MASK_CONTROL && mask != MASK_SHIFT)\n         || (uni_char == 3 && mask == MASK_NONE) )\n     {\n",
           "purpose": "Comment evidence: Functional self-test (in-world): no Return remap into the user key bindings, and no menu jump-key handling; the character goes only to the keyboard-focus control.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35715,10 +35762,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35729,6 +35772,7 @@
           "base_count": 12,
           "base_start": 3503,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35745,13 +35789,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 14,
-          "head_end": 4022,
-          "head_start": 4009,
-          "id": "indra/newview/llviewerwindow.cpp@4009,14",
+          "head_end": 4023,
+          "head_start": 4010,
+          "id": "indra/newview/llviewerwindow.cpp@4010,14",
           "patch": "     static LLCachedControl<F32> scroll_sensitivity(gSavedSettings, \"MouseWheelScrollSensitivity\", 1.f);\n     delta.mPrecise *= scroll_sensitivity;\n \n+    dropToolMouseCaptureWhileWorldSuspended();\n     LLMouseHandler* mouse_captor = gFocusMgr.getMouseCapture();\n     if( mouse_captor )\n     {\n         S32 local_x;\n         S32 local_y;\n         mouse_captor->screenPointToLocal( mCurrentMousePoint.mX, mCurrentMousePoint.mY, &local_x, &local_y );\n+        ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(mouse_captor)));\n         mouse_captor->handleScrollWheel(local_x, local_y, delta);\n         if (LLView::sDebugMouseHandling)\n         {\n",
           "purpose": "Edits ALKitHistory, LLView",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35767,10 +35815,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35781,6 +35825,7 @@
           "base_count": 6,
           "base_start": 3539,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [
@@ -35800,13 +35845,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 19,
-          "head_end": 4065,
-          "head_start": 4047,
-          "id": "indra/newview/llviewerwindow.cpp@4047,19",
+          "head_end": 4066,
+          "head_start": 4048,
+          "id": "indra/newview/llviewerwindow.cpp@4048,19",
           "patch": "         LL_INFOS() << \"Scroll Wheel not handled by view\" << LL_ENDL;\n     }\n \n+    // Ghost Studio's staged-crowd tool owns world-space wheel rotation after\n+    // all UI layers decline it. Keep this narrow so existing media, pie, gun,\n+    // mouselook, and camera wheel behavior is unchanged. A mouse-capturing\n+    // tool was already dispatched above and cannot receive the event twice.\n+    LLTool* current_tool = LLToolMgr::getInstance()->getCurrentTool();\n+    if (current_tool == ALToolCrowdPlace::getInstance() &&\n+        current_tool->handleScrollWheel(mCurrentMousePoint.mX,\n+                                        mCurrentMousePoint.mY,\n+                                        delta))\n+    {\n+        return;\n+    }\n+\n     // Zoom the camera in and out behavior\n \n     if(top_ctrl == 0\n",
           "purpose": "Comment evidence: Ghost Studio's staged-crowd tool owns world-space wheel rotation after all UI layers decline it. Keep this narrow so existing media, pie, gun, mouselook, and camera wheel behavior is unchanged. A mouse-capturing tool was already dispatched above and cannot receive the event twice",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35822,10 +35871,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "creative-candidate",
@@ -35836,6 +35881,7 @@
           "base_count": 11,
           "base_start": 3758,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35850,13 +35896,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 21,
-          "head_end": 4299,
-          "head_start": 4279,
-          "id": "indra/newview/llviewerwindow.cpp@4279,21",
+          "head_end": 4300,
+          "head_start": 4280,
+          "id": "indra/newview/llviewerwindow.cpp@4280,21",
           "patch": "         gDebugRaycastParticle = gPipeline.lineSegmentIntersectParticle(gDebugRaycastStart, gDebugRaycastEnd, &gDebugRaycastParticleIntersection, NULL);\n     }\n \n+    // Functional self-test (in-world): a tool holding the mouse capture must not receive the\n+    // captor hover below (ObjectGrabUpdate while the synthetic mouse is parked).\n+    dropToolMouseCaptureWhileWorldSuspended();\n+\n     updateMouseDelta();\n     updateKeyboardFocus();\n \n     bool handled = false;\n \n+    // Functional self-test (in-world): the world gets NO hover at all -- no tool hover pick\n+    // (LLToolPie::handleHover -> setHoverObject -> RequestObjectPropertiesFamily), no land or\n+    // object hover tip, no media hover -- whatever the synthetic or real cursor is over,\n+    // for the whole run and its logout.  UI hover (floaters, mouse captors) is unaffected.\n+    const bool world_input_suspended = gViewerInput.worldInputSuspended();\n+\n     LLUICtrl* top_ctrl = gFocusMgr.getTopCtrl();\n     LLMouseHandler* mouse_captor = gFocusMgr.getMouseCapture();\n     LLView* captor_view = dynamic_cast<LLView*>(mouse_captor);\n",
           "purpose": "Comment evidence: Functional self-test (in-world): a tool holding the mouse capture must not receive the captor hover below (ObjectGrabUpdate while the synthetic mouse is parked). Functional self-test (in-world): the world gets NO hover at all -- no tool hover pick (LLToolPie::handleHover -> setHo",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35872,10 +35922,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35886,6 +35932,7 @@
           "base_count": 7,
           "base_start": 4029,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35903,13 +35950,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 4566,
-          "head_start": 4560,
-          "id": "indra/newview/llviewerwindow.cpp@4560,7",
+          "head_end": 4567,
+          "head_start": 4561,
+          "id": "indra/newview/llviewerwindow.cpp@4561,7",
           "patch": "             {\n                 LLTool *tool = LLToolMgr::getInstance()->getCurrentTool();\n \n-                if(mMouseInWindow && tool)\n+                if(mMouseInWindow && tool && !world_input_suspended)\n                 {\n                     handled = tool->handleHover(x, y, mask);\n                 }\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35925,10 +35976,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35939,6 +35986,7 @@
           "base_count": 7,
           "base_start": 4120,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -35956,13 +36004,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 4657,
-          "head_start": 4651,
-          "id": "indra/newview/llviewerwindow.cpp@4651,7",
+          "head_end": 4658,
+          "head_start": 4652,
+          "id": "indra/newview/llviewerwindow.cpp@4652,7",
           "patch": "                 }\n \n                 LLTool* current_tool = LLToolMgr::getInstance()->getCurrentTool();\n-                if (!tool_tip_handled && current_tool)\n+                if (!tool_tip_handled && current_tool && !world_input_suspended)\n                 {\n                     current_tool->screenPointToLocal(x, y, &local_x, &local_y);\n                     tool_tip_handled = current_tool->handleToolTip(local_x, local_y, mask );\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -35978,10 +36030,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -35992,6 +36040,7 @@
           "base_count": 7,
           "base_start": 4132,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36009,13 +36058,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 4669,
-          "head_start": 4663,
-          "id": "indra/newview/llviewerwindow.cpp@4663,7",
+          "head_end": 4670,
+          "head_start": 4664,
+          "id": "indra/newview/llviewerwindow.cpp@4664,7",
           "patch": "     {   // just have tools handle hover when UI is turned off\n         LLTool *tool = LLToolMgr::getInstance()->getCurrentTool();\n \n-        if(mMouseInWindow && tool)\n+        if(mMouseInWindow && tool && !world_input_suspended)\n         {\n             handled = tool->handleHover(x, y, mask);\n         }\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36031,10 +36084,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36045,6 +36094,7 @@
           "base_count": 6,
           "base_start": 4200,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36062,13 +36112,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 17,
-          "head_end": 4747,
-          "head_start": 4731,
-          "id": "indra/newview/llviewerwindow.cpp@4731,17",
+          "head_end": 4748,
+          "head_start": 4732,
+          "id": "indra/newview/llviewerwindow.cpp@4732,17",
           "patch": "         //gMenuBarView->setItemVisible(\"BuildTools\", gFloaterTools->getVisible());\n     }\n \n+    // Arm once per frame after tools choose their cursor. Win32 checks live\n+    // client bounds/focus on its window thread, including captured motion;\n+    // cached viewer mouse/focus events could otherwise flash on client re-entry.\n+    static LLCachedControl<bool> hide_cursor_with_ui(gSavedSettings, \"HideCursorWithUI\", false);\n+    const bool hide_cursor = ALHideCursor::wantHidden(hide_cursor_with_ui, !getIndicatorsVisible(), true, true);\n+    if (hide_cursor != mHideCursorWithUI)\n+    {\n+        mHideCursorWithUI = hide_cursor;\n+        mWindow->setHideCursorWithUI(hide_cursor);\n+    }\n+\n     // Always update console\n     if(gConsole)\n     {\n",
           "purpose": "Comment evidence: Arm once per frame after tools choose their cursor. Win32 checks live client bounds/focus on its window thread, including captured motion; cached viewer mouse/focus events could otherwise flash on client re-entry.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36084,10 +36138,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36100,6 +36150,7 @@
           "base_count": 6,
           "base_start": 4441,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36116,13 +36167,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 15,
-          "head_end": 4997,
-          "head_start": 4983,
-          "id": "indra/newview/llviewerwindow.cpp@4983,15",
+          "head_end": 4998,
+          "head_start": 4984,
+          "id": "indra/newview/llviewerwindow.cpp@4984,15",
           "patch": " //  render_hud_elements:    false, false, false\n void LLViewerWindow::renderSelections( bool for_gl_pick, bool pick_parcel_walls, bool for_hud )\n {\n+    // [BDMerge HideUI] Selection indicators (silhouettes + manipulator tools) are\n+    // interface: skip them entirely while the interface is hidden so a shot never\n+    // carries \"something is selected\" tells. GL picking must keep working (it\n+    // renders into the pick buffer, not the screen), so that path is exempt.\n+    if (!for_gl_pick && !getIndicatorsVisible())\n+    {\n+        return;\n+    }\n+\n     LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();\n \n     if (!for_hud && !for_gl_pick)\n",
           "purpose": "Comment evidence: [BDMerge HideUI] Selection indicators (silhouettes + manipulator tools) are interface: skip them entirely while the interface is hidden so a shot never carries \"something is selected\" tells. GL picking must keep working (it renders into the pick buffer, not the screen), so that p",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36138,10 +36193,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36152,6 +36203,7 @@
           "base_count": 6,
           "base_start": 4656,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36168,13 +36220,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 5217,
-          "head_start": 5207,
-          "id": "indra/newview/llviewerwindow.cpp@5207,11",
+          "head_end": 5218,
+          "head_start": 5208,
+          "id": "indra/newview/llviewerwindow.cpp@5208,11",
           "patch": "                                 bool pick_unselectable,\n                                 bool pick_reflection_probes)\n {\n+    // Functional self-test (in-world): no world pick is scheduled (tool dispatch is dropped too).\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        return;\n+    }\n     static LLCachedControl<bool> select_invisible_objects(gSavedSettings, \"SelectInvisibleObjects\");\n     // \"Show Debug Alpha\" means no object actually transparent\n     bool in_build_mode = LLFloaterReg::instanceVisible(\"build\");\n",
           "purpose": "Comment evidence: Functional self-test (in-world): no world pick is scheduled (tool dispatch is dropped too).",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36190,10 +36246,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36204,6 +36256,7 @@
           "base_count": 6,
           "base_start": 4721,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36220,13 +36273,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 5287,
-          "head_start": 5277,
-          "id": "indra/newview/llviewerwindow.cpp@5277,11",
+          "head_end": 5288,
+          "head_start": 5278,
+          "id": "indra/newview/llviewerwindow.cpp@5278,11",
           "patch": " // Performs the GL object/land pick.\n LLPickInfo LLViewerWindow::pickImmediate(S32 x, S32 y_from_bot, bool pick_transparent, bool pick_rigged, bool pick_particle, bool pick_unselectable, bool pick_reflection_probe)\n {\n+    // Functional self-test (in-world): world picks return nothing.\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        return LLPickInfo();\n+    }\n     static LLCachedControl<bool> select_invisible_objects(gSavedSettings, \"SelectInvisibleObjects\");\n     bool in_build_mode = LLFloaterReg::instanceVisible(\"build\");\n     if ((in_build_mode && select_invisible_objects) || LLDrawPoolAlpha::sShowDebugAlpha)\n",
           "purpose": "Comment evidence: Functional self-test (in-world): world picks return nothing.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36242,10 +36299,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36256,6 +36309,7 @@
           "base_count": 6,
           "base_start": 5176,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36273,13 +36327,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 15,
-          "head_end": 5751,
-          "head_start": 5737,
-          "id": "indra/newview/llviewerwindow.cpp@5737,15",
+          "head_end": 5752,
+          "head_start": 5738,
+          "id": "indra/newview/llviewerwindow.cpp@5738,15",
           "patch": " }\n \n \n+// [BDMerge C6] runtime max snapshot side length (see llviewerwindow.h);\n+// 12288 with the gated high-res override on, stock 7680 otherwise\n+S32 bdmerge_max_snapshot_image_size()\n+{\n+    static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, \"BDMergeSnapshotExtras\", false);\n+    static LLCachedControl<bool> bdmerge_res_unlock(gSavedSettings, \"BDMergeSnapshotResolutionUnlock\", false);\n+    return (bdmerge_snapshot_extras && bdmerge_res_unlock) ? 12288 : (S32)MAX_SNAPSHOT_IMAGE_SIZE;\n+}\n+\n void LLViewerWindow::saveImageLocal(LLImageFormatted *image, const snapshot_saved_signal_t::slot_type& success_cb, const snapshot_saved_signal_t::slot_type& failure_cb)\n {\n     std::string lastSnapshotDir = LLViewerWindow::getLastSnapshotDir();\n",
           "purpose": "Comment evidence: [BDMerge C6] runtime max snapshot side length (see llviewerwindow.h); 12288 with the gated high-res override on, stock 7680 otherwise",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36295,10 +36353,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36312,6 +36366,7 @@
           "base_count": 8,
           "base_start": 5242,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36331,13 +36386,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 21,
-          "head_end": 5832,
-          "head_start": 5812,
-          "id": "indra/newview/llviewerwindow.cpp@5812,21",
+          "head_end": 5833,
+          "head_start": 5813,
+          "id": "indra/newview/llviewerwindow.cpp@5813,21",
           "patch": "         filepath = sSnapshotDir;\n         filepath += gDirUtilp->getDirDelimiter();\n         filepath += sSnapshotBaseName;\n-        filepath += now.toLocalDateString(\"_%Y-%m-%d_%H%M%S\");\n-        filepath += llformat(\"%.2d\", i);\n+        // [BDMerge C6] toggleable date/time in snapshot filenames (donor:\n+        // Black Dragon 16143bb98b). Stock (gate off or toggle on) keeps the\n+        // timestamp; with the gate on and the toggle off, fall back to plain\n+        // sequential numbering like BD.\n+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, \"BDMergeSnapshotExtras\", false);\n+        static LLCachedControl<bool> bdmerge_add_datetime(gSavedSettings, \"BDMergeSnapshotAddDateTime\", true);\n+        if (!bdmerge_snapshot_extras || bdmerge_add_datetime)\n+        {\n+            filepath += now.toLocalDateString(\"_%Y-%m-%d_%H%M%S\");\n+            filepath += llformat(\"%.2d\", i);\n+        }\n+        else if (is_snapshot_name_loc_set)\n+        {\n+            filepath += llformat(\"_%.3d\", i);\n+        }\n         filepath += extension;\n \n         llstat stat_info;\n",
           "purpose": "Comment evidence: [BDMerge C6] toggleable date/time in snapshot filenames (donor: Black Dragon 16143bb98b). Stock (gate off or toggle on) keeps the timestamp; with the gate on and the toggle off, fall back to plain sequential numbering like BD.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36353,10 +36412,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36367,9 +36422,116 @@
           "slice": 99
         },
         {
+          "base_count": 6,
+          "base_start": 5736,
+          "candidate_features_from_subjects": [
+            "clones",
+            "composition"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "actor-path"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLViewerWindow::rawSnapshot"
+          ],
+          "git_context": "bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 6326,
+          "head_start": 6320,
+          "id": "indra/newview/llviewerwindow.cpp@6320,7",
+          "patch": "     }\n     setBalanceVisible(true);\n \n+    LLActorMover::releaseStudioSnapshotScratch();\n     return ret;\n }\n \n",
+          "purpose": "Edits LLActorMover",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
+            {
+              "commit": "bd255e73a66",
+              "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
+            },
+            {
+              "commit": "90adb44d80b",
+              "subject": "Hide cursor with interface (HideCursorWithUI, default off)"
+            },
+            {
+              "commit": "e2ceb48a8db",
+              "subject": "Rim smooth normals FIX3: remove the tiled-snapshot overlap path (live view only; external capture workflow)"
+            },
+            {
+              "commit": "1ae75a658d3",
+              "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 3
+        },
+        {
+          "base_count": 6,
+          "base_start": 5843,
+          "candidate_features_from_subjects": [
+            "clones",
+            "composition"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "actor-path"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLViewerWindow::simpleSnapshot"
+          ],
+          "git_context": "bool LLViewerWindow::simpleSnapshot(LLImageRaw* raw, S32 image_width, S32 image_",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 6434,
+          "head_start": 6428,
+          "id": "indra/newview/llviewerwindow.cpp@6428,7",
+          "patch": "     scratch_space.release();\n     gPipeline.allocateScreenBuffer(original_width, original_height);\n \n+    LLActorMover::releaseStudioSnapshotScratch();\n     return true;\n }\n \n",
+          "purpose": "Edits LLActorMover",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
+            {
+              "commit": "bd255e73a66",
+              "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
+            },
+            {
+              "commit": "90adb44d80b",
+              "subject": "Hide cursor with interface (HideCursorWithUI, default off)"
+            },
+            {
+              "commit": "e2ceb48a8db",
+              "subject": "Rim smooth normals FIX3: remove the tiled-snapshot overlap path (live view only; external capture workflow)"
+            },
+            {
+              "commit": "1ae75a658d3",
+              "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 3
+        },
+        {
           "base_count": 7,
           "base_start": 5889,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36384,13 +36546,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 6478,
-          "head_start": 6472,
-          "id": "indra/newview/llviewerwindow.cpp@6472,7",
+          "head_end": 6481,
+          "head_start": 6475,
+          "id": "indra/newview/llviewerwindow.cpp@6475,7",
           "patch": " \n     gPipeline.pushRenderTypeMask();\n \n-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT); // stencil buffer is deprecated | GL_STENCIL_BUFFER_BIT);\n+    // [PerfB1] No default-framebuffer clear: cube rendering clears its capture targets in display_cube_face().\n \n     U32 dynamic_render_types[] = {\n         LLPipeline::RENDER_TYPE_AVATAR,\n",
           "purpose": "Comment evidence: [PerfB1] No default-framebuffer clear: cube rendering clears its capture targets in display_cube_face().",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36406,10 +36572,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -36420,6 +36582,7 @@
           "base_count": 6,
           "base_start": 6613,
           "candidate_features_from_subjects": [
+            "clones",
             "composition"
           ],
           "feature_evidence": [],
@@ -36434,13 +36597,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 14,
-          "head_end": 7209,
-          "head_start": 7196,
-          "id": "indra/newview/llviewerwindow.cpp@7196,14",
+          "head_end": 7212,
+          "head_start": 7199,
+          "id": "indra/newview/llviewerwindow.cpp@7199,14",
           "patch": "     return mUIVisible;\n }\n \n+// [BDMerge HideUI] Indicator overlays follow the interface: hidden under either\n+// hide-UI mechanism (see header). Used by renderSelections, the selection-beam\n+// effects, beacon lines and face highlights.\n+bool LLViewerWindow::getIndicatorsVisible()\n+{\n+    return mUIVisible && gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);\n+}\n+\n ////////////////////////////////////////////////////////////////////////////\n //\n // LLPickInfo\n",
           "purpose": "Comment evidence: [BDMerge HideUI] Indicator overlays follow the interface: hidden under either hide-UI mechanism (see header). Used by renderSelections, the selection-beam effects, beacon lines and face highlights.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
             {
               "commit": "bd255e73a66",
               "subject": "Composition guide: fit the frame format, new styles, show with UI hidden"
@@ -36456,10 +36623,6 @@
             {
               "commit": "1ae75a658d3",
               "subject": "Rim smooth normals FIX2: shared tap barriers, snapshot overlap scope rollback, internal-resolution margin, core-size effect sizing, zero-Smoothness seed permutation"
-            },
-            {
-              "commit": "48f3b6cf255",
-              "subject": "Rim smooth normals FIX1: adaptive surface-aware filter at full resolution (4K verified), separate geometric guide for silhouette seeds, precision/curvature barriers, low-angle detail transfer, tiled-snapshot overlap"
             }
           ],
           "scope": "unknown-review",
@@ -78175,6 +78338,139 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/llflexibleobject.cpp",
+      "slice": 3
+    },
+    {
+      "features": [
+        "actor-path"
+      ],
+      "hunks": [
+        {
+          "base_count": 7,
+          "base_start": 25,
+          "candidate_features_from_subjects": [
+            "clones"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "actor-path"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 12,
+          "head_end": 36,
+          "head_start": 25,
+          "id": "indra/newview/llfloater360capture.cpp@25,12",
+          "patch": "  * $/LicenseInfo$\n  */\n \n+// [BDMerge B3] Freeze World interaction guard: don't clear FreezeTime while\n+// the Freeze World toggle (UseFreezeWorld) is holding the scene. donor:\n+// Black Dragon (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.\n+\n #include \"llviewerprecompiledheaders.h\"\n+#include \"llactormover.h\"\n \n #include \"llfloater360capture.h\"\n \n",
+          "purpose": "Comment evidence: [BDMerge B3] Freeze World interaction guard: don't clear FreezeTime while the Freeze World toggle (UseFreezeWorld) is holding the scene. donor: Black Dragon (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
+            {
+              "commit": "7002f575a32",
+              "subject": "[BDMerge B3] Freeze World: full-scene freeze with free camera"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 3
+        },
+        {
+          "base_count": 6,
+          "base_start": 601,
+          "candidate_features_from_subjects": [
+            "clones"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "actor-path"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater360Capture::capture360Images"
+          ],
+          "git_context": "void LLFloater360Capture::capture360Images()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 613,
+          "head_start": 606,
+          "id": "indra/newview/llfloater360capture.cpp@606,8",
+          "patch": "     // (newview/skins/default/html/common/equirectangular/display_eqr.html)\n     writeDataURLFooter(cubemap_js_full_path);\n \n+    LLActorMover::releaseStudioSnapshotScratch();\n+\n     // unfreeze the world now we have our shots\n     freezeWorld(false);\n \n",
+          "purpose": "Edits LLActorMover",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
+            {
+              "commit": "7002f575a32",
+              "subject": "[BDMerge B3] Freeze World: full-scene freeze with free camera"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 3
+        },
+        {
+          "base_count": 7,
+          "base_start": 834,
+          "candidate_features_from_subjects": [
+            "clones"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater360Capture::freezeWorld"
+          ],
+          "git_context": "void LLFloater360Capture::freezeWorld(bool enable)",
+          "guard_evidence": [
+            "if (!gSavedSettings.getBOOL(\"UseFreezeWorld\"))"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 12,
+          "head_end": 852,
+          "head_start": 841,
+          "id": "indra/newview/llfloater360capture.cpp@841,12",
+          "patch": "         mAvatarPauseHandles.clear();\n \n         // thaw everything else\n-        gSavedSettings.setBOOL(\"FreezeTime\", false);\n+        // [BDMerge B3] unless Freeze World is holding the scene: its own\n+        // toggle owns FreezeTime for the duration of the freeze\n+        if (!gSavedSettings.getBOOL(\"UseFreezeWorld\"))\n+        {\n+            gSavedSettings.setBOOL(\"FreezeTime\", false);\n+        }\n \n         //enable particle system\n         LLViewerPartSim::getInstance()->enable(true);\n",
+          "purpose": "Comment evidence: [BDMerge B3] unless Freeze World is holding the scene: its own toggle owns FreezeTime for the duration of the freeze",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "34d0234e17d",
+              "subject": "Clone looks phase 2 fix round 3: take-aware Datamosh identity, unseeded jump guard, capture-end scratch release"
+            },
+            {
+              "commit": "7002f575a32",
+              "subject": "[BDMerge B3] Freeze World: full-scene freeze with free camera"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "FreezeTime",
+            "UseFreezeWorld"
+          ],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/llfloater360capture.cpp",
       "slice": 3
     },
     {
@@ -158359,99 +158655,6 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/llfilepicker.h",
-      "slice": 99
-    },
-    {
-      "features": [
-        "actor-path",
-        "camera",
-        "capture-sidecar",
-        "clones",
-        "composition",
-        "director-shell",
-        "environment",
-        "looks",
-        "rig",
-        "roto-tron",
-        "sensor",
-        "shafts-volumetrics",
-        "stepped-animation",
-        "vcam",
-        "weather"
-      ],
-      "hunks": [
-        {
-          "base_count": 6,
-          "base_start": 25,
-          "candidate_features_from_subjects": [],
-          "feature_evidence": [],
-          "features": [
-            "unknown"
-          ],
-          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
-          "functions": [
-            "unknown/non-function (declaration, XML, build list or global scope)"
-          ],
-          "git_context": "",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 10,
-          "head_end": 34,
-          "head_start": 25,
-          "id": "indra/newview/llfloater360capture.cpp@25,10",
-          "patch": "  * $/LicenseInfo$\n  */\n \n+// [BDMerge B3] Freeze World interaction guard: don't clear FreezeTime while\n+// the Freeze World toggle (UseFreezeWorld) is holding the scene. donor:\n+// Black Dragon (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.\n+\n #include \"llviewerprecompiledheaders.h\"\n \n #include \"llfloater360capture.h\"\n",
-          "purpose": "Comment evidence: [BDMerge B3] Freeze World interaction guard: don't clear FreezeTime while the Freeze World toggle (UseFreezeWorld) is holding the scene. donor: Black Dragon (NiranV Dean) b4cfc2cb83. See doc/BD_MERGE_PATCHLOG.md.",
-          "range_note": "includes three context lines; count=0 is deletion anchor",
-          "recent_file_subjects": [
-            {
-              "commit": "7002f575a32",
-              "subject": "[BDMerge B3] Freeze World: full-scene freeze with free camera"
-            }
-          ],
-          "scope": "unknown-review",
-          "settings_references": [],
-          "slice": 99
-        },
-        {
-          "base_count": 7,
-          "base_start": 834,
-          "candidate_features_from_subjects": [],
-          "feature_evidence": [],
-          "features": [
-            "unknown"
-          ],
-          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
-          "functions": [
-            "LLFloater360Capture::freezeWorld"
-          ],
-          "git_context": "void LLFloater360Capture::freezeWorld(bool enable)",
-          "guard_evidence": [
-            "if (!gSavedSettings.getBOOL(\"UseFreezeWorld\"))"
-          ],
-          "guarded": "unknown; conditional evidence present",
-          "head_count": 12,
-          "head_end": 849,
-          "head_start": 838,
-          "id": "indra/newview/llfloater360capture.cpp@838,12",
-          "patch": "         mAvatarPauseHandles.clear();\n \n         // thaw everything else\n-        gSavedSettings.setBOOL(\"FreezeTime\", false);\n+        // [BDMerge B3] unless Freeze World is holding the scene: its own\n+        // toggle owns FreezeTime for the duration of the freeze\n+        if (!gSavedSettings.getBOOL(\"UseFreezeWorld\"))\n+        {\n+            gSavedSettings.setBOOL(\"FreezeTime\", false);\n+        }\n \n         //enable particle system\n         LLViewerPartSim::getInstance()->enable(true);\n",
-          "purpose": "Comment evidence: [BDMerge B3] unless Freeze World is holding the scene: its own toggle owns FreezeTime for the duration of the freeze",
-          "range_note": "includes three context lines; count=0 is deletion anchor",
-          "recent_file_subjects": [
-            {
-              "commit": "7002f575a32",
-              "subject": "[BDMerge B3] Freeze World: full-scene freeze with free camera"
-            }
-          ],
-          "scope": "unknown-review",
-          "settings_references": [
-            "FreezeTime",
-            "UseFreezeWorld"
-          ],
-          "slice": 99
-        }
-      ],
-      "note": "HEAD coordinates; guards/features are candidate evidence",
-      "path": "indra/newview/llfloater360capture.cpp",
       "slice": 99
     },
     {

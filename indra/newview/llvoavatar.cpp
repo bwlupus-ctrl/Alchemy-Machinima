@@ -5803,6 +5803,7 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     // [Director] remove last frame's render-only camera-facing pose before any
     // root-orientation or motion update consumes it.
     LLActorMover& actor_mover = LLActorMover::instance();
+    actor_mover.restoreHotGazePose(this);
     actor_mover.restoreDirectorLookAtPose(this);
 
     bool visible = isVisible();
@@ -5840,6 +5841,8 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
         // otherwise a deselection/safety change can leave its root and local
         // turn motion owned until the next detailed impostor update.
         actor_mover.applyDirectorLookAt(this);
+        if (!isGhostAvatar() || !static_cast<LLGhostAvatar*>(this)->isPoseStampDriven())
+            actor_mover.applyHotGaze(this);
         return false;
     }
 
@@ -5943,6 +5946,8 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     {
         actor_mover.applyGaze(this);
     }
+    if (!isGhostAvatar() || !static_cast<LLGhostAvatar*>(this)->isPoseStampDriven())
+        actor_mover.applyHotGaze(this);
 
     // Special handling for sitting on ground.
     if (!getParent() && (isSitting() || was_sit_ground_constrained))

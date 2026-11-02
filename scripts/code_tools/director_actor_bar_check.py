@@ -5,7 +5,38 @@ import re
 import subprocess
 import xml.etree.ElementTree as ET
 
-from relight_area_policy_check import method
+from relight_area_policy_check import method as source_method
+
+
+def hot_gaze_baseline(source, name):
+    # Exact feature hunks with context, pinned by content. Restore only Hot Gaze
+    # before applying the existing phase-2/rekey/actor-bar baseline guards.
+    import hashlib
+    import json
+    data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes()
+    assert hashlib.sha256(data).hexdigest() == "1c9f82103e7805216c0b14e3f547d416572b9d3a8f5be5942ae42b3e763045e0"
+    allowed = json.loads(data)
+    if name not in allowed["files"]:
+        return source
+    original = subprocess.check_output(["git", "show", allowed["base"] + ":indra/newview/" + name]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowed["files"][name]:
+        assert original.count(hunk["before"]) == 1, "Hot Gaze baseline hunk"
+        assert source.count(hunk["after"]) == 1, "Hot Gaze exact feature hunk"
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    return source
+
+
+def method(path, signature):
+    # The old actor-bar fixture still executes the same production transaction
+    # code. New Hot Gaze behavior is exercised by its own native contract and
+    # the extended clone transaction fixture, without broadening old stubs.
+    if path.name in ("llactormover.cpp", "lldirectorcast.cpp") and path.parent.name == "newview":
+        source = hot_gaze_baseline(path.read_text(encoding="utf-8"), path.name)
+        baseline = Path(".tmp/hotgaze_20261102/actorbar_baseline") / path.name
+        baseline.parent.mkdir(parents=True, exist_ok=True)
+        baseline.write_text(source, encoding="utf-8")
+        return source_method(baseline, signature)
+    return source_method(path, signature)
 
 
 def main():
@@ -80,7 +111,7 @@ def main():
         'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',
         'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
-    guarded_mover = current_mover
+    guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
     # Phase 2 is permitted by exact before/after hunks, including context. Undo
     # ONLY those hunks before the original baseline/rekey/look guard runs.
     # Pin the allow-list itself: editing it cannot silently bless extra code.

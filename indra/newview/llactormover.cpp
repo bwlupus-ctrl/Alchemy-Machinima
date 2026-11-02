@@ -4322,6 +4322,7 @@ void LLActorMover::resetEditSession()
         ALToolPathEdit::getInstance()->endSession();    // and an unowned one
     }
     LLPathCamera::instance().stopPreview();
+    clearHotGazes();
     mGazeCuePreviews.clear();   // [Director Gaze Cues] a previewed cue never survives a logout
 }
 
@@ -4356,6 +4357,10 @@ bool LLActorMover::isInEffectiveRoster(const LLUUID& actor_id)
 void LLActorMover::onAvatarRemoved(const LLVOAvatar* avatar)
 {
     if (!avatar) return;
+    const auto hot = mHotGazes.find(avatar->getID());
+    if (hot != mHotGazes.end() && hot->second.mPaint.mGaze.mOwner.matches(
+            avatar, avatar->getID(), avatar->getCreationSerial()))
+        mHotGazes.erase(hot); // removed skeleton cannot be painted/restored
     const auto gaze = mGazes.find(avatar->getID());
     if (gaze != mGazes.end() && gaze->second.mOwner.matches(
             avatar, avatar->getID(), avatar->getCreationSerial()))
@@ -5500,6 +5505,12 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
     {
         return;
     }
+    if (LLVOAvatar* body = resolve_actor(actor_id))
+    {
+        const auto hot = mHotGazes.find(body->getID());
+        if (hot != mHotGazes.end())
+        { restoreDirectorLookAtPose(body, hot->second.mPaint); mHotGazes.erase(hot); }
+    }
     auto it = mMoves.find(actor_id);
     if (it != mMoves.end())
     {
@@ -6271,6 +6282,11 @@ ALGhostAnimMirrorMath::GazeWeights LLActorMover::getGazeWrittenWeights(const LLU
     if (actor != mGazes.end()) weights.merge(actor->second.mWrittenGaze);
     const auto director = mDirectorGazes.find(actor_id);
     if (director != mDirectorGazes.end()) weights.merge(director->second.mGaze.mWrittenGaze);
+    if (!mHotGazes.empty())
+    {
+        const auto hot = mHotGazes.find(actor_id);
+        if (hot != mHotGazes.end()) weights.merge(hot->second.mPaint.mGaze.mWrittenGaze);
+    }
     return weights;
 }
 
@@ -7693,7 +7709,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         (director_runtime->mReactionPending || director_runtime->mCueOverride)) ||
         g.mParamTransition.mActive || g.mAppliedSlewing || g.mBehindSweeping;
     const auto animation_dt = ALAvatarAnimationTime::forAvatar(gFrameIntervalSeconds.value(), *av);
-    const bool clock_frozen = ALAvatarAnimationTime::frozen(animation_dt);
+    const bool clock_frozen = g.mHotSnap < 0.f && ALAvatarAnimationTime::frozen(animation_dt);
     const bool seed_hold = ALAvatarAnimationTime::seedFrozenLayer(clock_frozen, cache_changed);
     const bool frozen = clock_frozen && !seed_hold;
     if (clock_frozen) { advance = false; dt = 0.f; }
@@ -8060,7 +8076,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         (gaze_target_gen << 6) + (gaze_target_gen >> 2);
     gaze_target_gen ^= g.mObjectTarget.getCRC32() + 0x9E3779B9u +
         (gaze_target_gen << 6) + (gaze_target_gen >> 2);
-    const bool motor_acquire = !frozen && (bool)gaze_motion_programs &&
+    if (g.mHotSnap >= 0.f) gaze_target_gen ^= g.mHotGeneration * 2246822519u;
+    const bool motor_acquire = !frozen && (gaze_motion_programs || g.mHotSnap >= 0.f) &&
         g.mGazeMotor.mHasTargetGen &&
         g.mGazeMotor.mLastTargetGen != gaze_target_gen;
 
@@ -8619,7 +8636,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // envelopes, priority, cue weights, capture/restore) is shared. The branch
     // returns before the legacy applied stage, so the gate-off code below runs
     // completely unmodified -- byte-identical to today.
-    if (gaze_motion_programs)
+    if (gaze_motion_programs || g.mHotSnap >= 0.f)
     {
         ALGazeMotor::GazeMotorSettings ms;
         ms.mMasterGate          = true;
@@ -8627,6 +8644,17 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         ms.mEyeDurationPerDegMs = (F32)gaze_mp_eye_dur_perdeg;
         ms.mHeadLatencyBaseMs   = (F32)gaze_mp_head_latency;
         ms.mHeadDurationBaseMs  = (F32)gaze_mp_head_dur_base;
+        if (g.mHotSnap >= 0.f)
+        {
+            ms.mHeadLatencyBaseMs = 0.f;
+            ms.mEyeDurationBaseMs = g.mHotSnap * 500.f;
+            ms.mEyeDurationPerDegMs = 0.f;
+            ms.mHeadDurationBaseMs = llmax(g.mHotSnap * 1000.f, 1.f);
+            ms.mHeadDurationMaxMs = ms.mHeadDurationBaseMs;
+            ms.mHeadDurationPerDegMs = 0.f;
+            ms.mNeckDurationScale = ms.mTorsoDurationScale = 1.f;
+            ms.mTempoArousalGain = 0.f;
+        }
         ms.mSoftRecruitBandDeg  = llmax((F32)gaze_mp_soft_recruit, 0.f);
         // [Machinima] Goal 3a: the custom profile's final applied-eye caps drive
         // the motor VOR comfort cone when enabled; the legacy comfort settings
@@ -8775,6 +8803,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         g.mClockSafety.mOpenMs = ms.mBlinkOpenMs;
         g.mClockSafety.mPartialChance = ms.mBlinkPartialChance;
         g.mClockSafety.mRefractory = ms.mBlinkRefractorySec;
+        if (g.mHotSnap > 0.f && !g.mGazeMotor.mInitialized)
+        {
+            LLVector3 start;
+            if (currentAnimatedGazeDirection(av, start))
+            {
+                const LLVector3 local = start * invRoot;
+                auto initial = in;
+                initial.mTargetYaw = atan2f(local.mV[VY], local.mV[VX]);
+                initial.mTargetPitch = -atan2f(local.mV[VZ],
+                    sqrtf(local.mV[VX] * local.mV[VX] + local.mV[VY] * local.mV[VY]));
+                ALGazeMotor::detail::initializeState(g.mGazeMotor, initial, t_sec);
+                in.mAcquire = true;
+            }
+        }
         ALGazeMotor::GazeMotorPose pose;
         ALGazeMotor::step(g.mGazeMotor, in, pose);
 
@@ -10030,7 +10072,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // channel and ownership gate as the legacy lid stage.
         static LLCachedControl<F32> gaze_mp_lid_follow(
             gSavedSettings, "DirectorGazeLidFollow", 0.6f);
-        if (director_runtime &&
+        if (director_runtime && g.mHotSnap < 0.f &&
             (life_params.mBlinks || (F32)gaze_mp_lid_follow > 0.001f ||
              persona_mod.mLidNarrow > 0.001f ||
              (director_runtime->mCueOverride &&
@@ -11388,7 +11430,7 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // contributes zero closure on avatars without a dedicated lid-raise param.
     static LLCachedControl<F32> gaze_lid_follow(
         gSavedSettings, "DirectorGazeLidFollow", 0.6f);
-    if (director_runtime &&
+    if (director_runtime && g.mHotSnap < 0.f &&
         (life_params.mBlinks || (F32)gaze_lid_follow > 0.001f ||
          persona_mod.mLidNarrow > 0.001f ||
          (director_runtime->mCueOverride &&
@@ -19625,4 +19667,114 @@ void LLActorMover::renderSharedProxySilCover(U32 phase)
                               &pbr_static_faces, &pbr_complete);
         }
     }
+}
+
+// Live HOT TARGETS: normal gaze has already painted this frame. Capture that
+// result and paint a weighted replacement through the ordinary coordinated
+// motor. Restore in reverse order before next frame's animation evaluation.
+void LLActorMover::fireHotGaze(const LLUUID& actor, S32 slot, const GazeTarget& target,
+    F32 snap, F32 dwell, F32 back, bool hold, bool stay, F32 head, F32 eyes, F32 torso)
+{
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    LLVOAvatar* body = LLDirectorCast::instance().resolve(actor);
+    if (!body) return;
+    HotGaze& hot = mHotGazes[body->getID()];
+    ensureDirectorOwner(body, hot.mPaint);
+    if (hot.mState.finished(now)) hot.mPaint.mGaze.mGazeMotor = {};
+    if (!hold && hot.mState.mSlot == slot && !hot.mState.finished(now) && !hot.mState.returning(now))
+    { hot.mState.release(now); return; }
+    const F32 prior = hot.mState.acquireFraction(now);
+    hot.mFromHead = hot.mFromHead + (hot.mHead - hot.mFromHead) * prior;
+    hot.mFromEyes = hot.mFromEyes + (hot.mEyes - hot.mFromEyes) * prior;
+    hot.mFromTorso = hot.mFromTorso + (hot.mTorso - hot.mFromTorso) * prior;
+    if (hot.mState.mSlot < 0)
+    { hot.mFromHead = head; hot.mFromEyes = eyes; hot.mFromTorso = torso; }
+    hot.mState.fire(slot, now, snap, dwell, back, hold, stay);
+    ++hot.mPaint.mGaze.mHotGeneration;
+    hot.mTarget = target; hot.mHead = head; hot.mEyes = eyes; hot.mTorso = torso;
+    if (snap == 0.f) hot.mPaint.mGaze.resetHotAim();
+}
+
+void LLActorMover::hotGazeInput(S32 slot, bool down)
+{
+    if (down) return;
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    for (auto& entry : mHotGazes)
+        if (entry.second.mState.mSlot == slot && entry.second.mState.mHold)
+            entry.second.mState.release(now);
+}
+
+void LLActorMover::restoreHotGazePose(LLVOAvatar* av)
+{
+    if (mHotGazes.empty() || !av) return;
+    const auto it = mHotGazes.find(av->getID());
+    if (it != mHotGazes.end()) restoreDirectorLookAtPose(av, it->second.mPaint);
+}
+
+void LLActorMover::applyHotGaze(LLVOAvatar* av)
+{
+    if (mHotGazes.empty() || !av) return;
+    const auto it = mHotGazes.find(av->getID());
+    if (it == mHotGazes.end()) return;
+    auto& hot = it->second;
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    if (hot.mState.finished(now) || av->isDead())
+    { restoreDirectorLookAtPose(av, hot.mPaint); mHotGazes.erase(it); return; }
+    if (!av->getRootJoint() || !gazeCameraSafe(av, false)) return;
+    auto& paint = hot.mPaint;
+    ensureDirectorOwner(av, paint);
+    Gaze& g = paint.mGaze;
+    const F32 dt = LLPresentationTime::presentationDelta();
+    g.mAnimationClock.mTime = now; g.mLifeClock.mTime = now;
+    const bool advance = g.mLastFrame != LLFrameTimer::getFrameCount();
+    g.mLastFrame = LLFrameTimer::getFrameCount();
+    g.mEnabled = true; g.mHotSnap = hot.mState.mAcquire;
+    g.mTarget = static_cast<S32>(hot.mTarget.mMode);
+    g.mCastTarget = hot.mTarget.mCastRef; g.mObjectTarget = hot.mTarget.mObjectRef;
+    g.mPoint = hot.mTarget.mFixedPoint;
+    g.mEnv = hot.mState.weight(now); g.mIntensity = 1.f;
+    const F32 acquire = hot.mState.acquireFraction(now);
+    g.mHeadEyeBlend = 1.f;
+    g.mTorsoAmount = hot.mFromTorso + (hot.mTorso - hot.mFromTorso) * acquire;
+    g.mSmoothing = 0.f;
+    g.mMicroLifeOverride = 0.f; g.mBlinksOverride = 0; g.mBreakFrequencyOverride = 0.f;
+    g.mVariationOverride = 0.f; g.mDeadZoneDegOverride = 0.f;
+    g.mGazePriorityOverride = GAZE_PRIORITY_BLEND;
+    g.mCompositionOverride = GAZE_COMPOSE_REPLACE; g.mAnimPriorityOverride = -1;
+    g.mDirValid = g.mBodyAimValid = g.mAppliedValid = false;
+    if (g.mHotSnap == 0.f) g.resetHotAim();
+    paint.mCueOverride = true;
+    paint.mCueFromTarget = hot.mTarget; paint.mCueTargetBlend = 1.f;
+    paint.mCueEyeWeight = hot.mFromEyes + (hot.mEyes - hot.mFromEyes) * acquire;
+    paint.mCueHeadWeight = hot.mFromHead + (hot.mHead - hot.mFromHead) * acquire;
+    paint.mCueBodyWeight = 1.f;
+    captureDirectorLookAtPose(av, paint, false);
+    gazePaint(av, g, nullptr, dt, advance, true, false, &paint);
+}
+
+void LLActorMover::clearHotGazes()
+{
+    for (auto& entry : mHotGazes)
+        restoreDirectorLookAtPose(LLDirectorCast::instance().resolve(entry.first), entry.second.mPaint);
+    mHotGazes.clear();
+}
+
+void LLActorMover::rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    const auto actor = mHotGazes.find(old_id);
+    if (actor != mHotGazes.end())
+    {
+        restoreDirectorLookAtPose(LLDirectorCast::instance().resolve(old_id), actor->second.mPaint);
+        if (new_id.notNull() && LLDirectorCast::instance().resolve(new_id))
+        {
+            auto saved = actor->second;
+            saved.mPaint = {}; // joint pointers and captures belong to the old incarnation
+            mHotGazes.erase(new_id);
+            mHotGazes.emplace(new_id, std::move(saved));
+        }
+        mHotGazes.erase(old_id);
+    }
+    for (auto& entry : mHotGazes)
+        if (rewriteGazeTarget(entry.second.mTarget, old_id, new_id) && new_id.isNull())
+            entry.second.mState.release(LLPresentationTime::currentFrame().presentation_time);
 }
