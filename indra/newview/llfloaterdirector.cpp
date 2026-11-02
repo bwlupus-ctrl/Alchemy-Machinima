@@ -2790,6 +2790,33 @@ void LLFloaterDirector::refreshAnimSpeed()
     setTextIfChanged(mAnimSpeedStatus, mAnimSpeedContextLabel + llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
 }
 
+void LLFloaterDirector::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    auto* director = LLFloaterReg::findTypedInstance<LLFloaterDirector>("director");
+    if (!director) return;
+    const bool speed_changed = director->mAnimSpeedSelection == old_id;
+    for (LLUUID* ref : { &director->mAnimSpeedSelection, &director->mPrimaryCastActor,
+            &director->mCastRightClickId, &director->mGroupShownFor,
+            &director->mActorStyleShownFor, &director->mActorStyleLastCastSelection,
+            &director->mLocomotionEditorMember, &director->mAnimAvatarId })
+        if (*ref == old_id) *ref = new_id;
+    if (speed_changed)
+    {
+        director->mAnimSpeedContextLabel.clear();
+        director->mAnimSpeedClock.forceDue();
+        director->rebuildAnimSpeedAvatars();
+    }
+    if (director->mCastList)
+    {
+        uuid_vec_t selected = director->selectedCastIds();
+        for (auto& id : selected) if (id == old_id) id = new_id;
+        selected.erase(std::remove(selected.begin(), selected.end(), LLUUID::null), selected.end());
+        director->refreshCastList();
+        director->mCastList->selectMultiple(selected);
+        if (director->mShell) director->mShell->setCastSelection(selected);
+    }
+}
+
 void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
 {
     if (mShell) mShell->navigateTo("cast_group/move_tab/anim_speed");

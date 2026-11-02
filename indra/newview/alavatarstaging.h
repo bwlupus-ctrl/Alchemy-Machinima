@@ -126,6 +126,7 @@ public:
     bool reset(const LLUUID& id, bool eased = true);
     void resetAll(bool eased = true);
     bool remove(const LLUUID& id);
+    void removeActorReferences(const LLUUID& stable_id);
     bool setEntryEnabled(const LLUUID& id, bool enabled);
     void update();
 

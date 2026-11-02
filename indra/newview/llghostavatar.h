@@ -199,6 +199,7 @@ public:
     // All live runtimes, including disabled/frozen clones. Updated only when
     // appearance acquires a source, changes source, or the runtime dies.
     static bool hasLiveSource(const LLUUID& id);
+    static void rewriteAnimationSourceReferences(const LLUUID& old_id, const LLUUID& new_id);
 
     virtual bool isImpostor() { return false; }
     virtual bool isBuddy() const { return false; }

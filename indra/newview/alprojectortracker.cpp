@@ -161,6 +161,27 @@ bool ALProjectorTracker::serverEditTransform(LLViewerObject* object, Pose& pose)
     }
     return true;
 }
+void ALProjectorTracker::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    for (auto& item : mStates)
+    {
+        State& s = item.second;
+        if (s.subject != old_id) continue;
+        s.subject = new_id;
+        s.missingSince = 0.;
+        if (new_id.isNull())
+        {
+            // Null subjects otherwise mean You. Use the existing clear/restore
+            // path, including its pending server-pose protection.
+            s.hasSubject = false;
+            s.captured = false;
+            s.capturePending = false;
+            stop(item.first, "Choose a subject");
+        }
+        ++mRevision;
+    }
+}
+
 void ALProjectorTracker::configure(const LLUUID& id, const LLUUID& subject,
     bool has_subject, S32 joint, Mode mode, F32 smoothing)
 {

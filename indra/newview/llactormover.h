@@ -585,6 +585,9 @@ public:
         F32        mLeanMaxDegOverride = -1.f;
     };
 
+    // Identity changes are event-only; also used by authored cue history copies.
+    static bool rewriteGazeTarget(GazeTarget& target, const LLUUID& old_id, const LLUUID& new_id);
+
     void        setGazeEnabled(const LLUUID& actor_id, bool on);
     U64         getGazeRevision() const { return mGazeRevision; }
     bool        isGazeEnabled(const LLUUID& actor_id) const;
@@ -1288,6 +1291,7 @@ private:
     // live move's anims on the new body); dropActor() erases an actor's
     // records outright with the same guarded anim stop cancelSuspended() uses.
     void   migrateActor(const LLUUID& old_id, const LLUUID& new_id);
+    void   rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     void   dropActor(const LLUUID& actor_id);
     // resolve the ground Z (agent frame) under an actor for ground-follow:
     // a capped downward object raycast for stairs/prims, else terrain land

@@ -621,7 +621,7 @@ bool LLCloneFidelityAudit::arm(const std::vector<LLUUID>& instance_ids)
         // An UNRESOLVED source (out of world / left region) is skipped entirely
         // -- arming on its raw/null id would insert a phantom that matches
         // nothing and falsely report total data loss.
-        LLVOAvatar* src = LLDirectorCast::instance().resolve(inst->mSource);
+        LLVOAvatar* src = ALGhostStudio::resolveSourceAvatar(*inst);
         if (!src || src->isDead())
         {
             continue;

@@ -12,6 +12,7 @@
 class LLUICtrl;
 class LLView;
 class LLControlVariable;
+class LLUUID;
 class ALKitHistory
 {
 public:
@@ -37,6 +38,7 @@ public:
         std::string                             key;
         std::function<bool(bool, std::string&)> replay;
         std::function<bool(bool, std::string&)> validate;
+        std::function<void(const LLUUID&, const LLUUID&)> rewrite_actor;
     };
     struct Step
     {
@@ -59,7 +61,10 @@ public:
     void        watchSettings(const std::string&, const std::vector<std::string>&);
     void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
     void        recordCustom(LLView*, const std::string&, const std::string&, std::function<bool(bool, std::string&)>, bool join_gesture = false,
-                             std::function<bool(bool, std::string&)> validate = {});
+                             std::function<bool(bool, std::string&)> validate = {},
+                             std::function<void(const LLUUID&, const LLUUID&)> rewrite_actor = {});
+    // Custom snapshots own their schema; visit them once in the clone identity transaction.
+    static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     void        barrier(const std::string&);
     static void globalBarrier(const std::string&);
     bool        canUndo(const std::string& page) const;

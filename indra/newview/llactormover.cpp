@@ -5404,6 +5404,80 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
                            << LL_ENDL;
 }
 
+bool LLActorMover::rewriteGazeTarget(GazeTarget& target, const LLUUID& old_id, const LLUUID& new_id)
+{
+    bool changed = false;
+    if (target.mCastRef == old_id)
+    {
+        target.mCastRef = new_id;
+        if (new_id.isNull() && target.mMode == GazeTarget::CAST_MEMBER)
+            target.mMode = GazeTarget::MOTION;
+        changed = true;
+    }
+    if (target.mObjectRef == old_id)
+    {
+        target.mObjectRef = new_id;
+        if (new_id.isNull() && target.mMode == GazeTarget::OBJECT)
+            target.mMode = GazeTarget::MOTION;
+        changed = true;
+    }
+    return changed;
+}
+
+void LLActorMover::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    // Scan authored targets AND history/runtime copies once in the Cast
+    // transaction. Never scan or canonicalize these references per frame.
+    auto arrival = [&](auto& path)
+    {
+        if (path.mArrivalTarget == old_id)
+        {
+            path.mArrivalTarget = new_id;
+            // Retain the captured compass bearing when the actor is deleted.
+            if (new_id.isNull() && path.mArrivalFacingMode == 2)
+                path.mArrivalFacingMode = 1;
+        }
+    };
+    for (auto& item : mPaths) arrival(item.second);
+    for (auto& item : mHistory)
+    {
+        for (auto& state : item.second.mUndo) arrival(state);
+        for (auto& state : item.second.mRedo) arrival(state);
+    }
+    auto gaze = [&](Gaze& g)
+    {
+        bool changed = false;
+        if (g.mCastTarget == old_id)
+        {
+            g.mCastTarget = new_id;
+            if (new_id.isNull() && g.mTarget == GAZE_CAST) g.mTarget = GAZE_TANGENT;
+            changed = true;
+        }
+        if (g.mObjectTarget == old_id)
+        {
+            g.mObjectTarget = new_id;
+            if (new_id.isNull() && g.mTarget == GAZE_OBJECT) g.mTarget = GAZE_TANGENT;
+            changed = true;
+        }
+        changed |= rewriteGazeTarget(g.mParamTransition.mAuthored, old_id, new_id);
+        if (changed) invalidateGazeCache(g, false);
+    };
+    for (auto& item : mGazes) gaze(item.second);
+    for (auto& item : mDirectorGazes)
+    {
+        auto& runtime = item.second;
+        gaze(runtime.mGaze);
+        rewriteGazeTarget(runtime.mLastTarget, old_id, new_id);
+        rewriteGazeTarget(runtime.mCueFromBaseTarget, old_id, new_id);
+        rewriteGazeTarget(runtime.mCueFromTarget, old_id, new_id);
+    }
+    for (auto& item : mFollows)
+        if (item.second.mLeader == old_id) item.second.mLeader = new_id;
+    // A null leader cannot alias You: advanceFollower uses exact map lookup,
+    // and path_key stores You under gAgentID. It keeps the leader-gone hold.
+    ++mGazeRevision;
+}
+
 void LLActorMover::dropActor(const LLUUID& actor_id)
 {
     if (actor_id.isNull())
@@ -15225,7 +15299,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         }
         ++mGhostDeferredCounters.mLiveInstancesConsidered;
 
-        LLVOAvatar* av = resolve_actor(inst.mSource);
+        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);
         if (!av || av->isDead() || !av->getRootJoint())
         {
             ++mGhostDeferredCounters.mUnresolvedSources;
@@ -15484,7 +15558,7 @@ void LLActorMover::renderStudioGhosts()
         {
             continue;
         }
-        LLVOAvatar* av = resolve_actor(inst.mSource);
+        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);
         if (!av || av->isDead())
         {
             continue;
@@ -15658,7 +15732,7 @@ void LLActorMover::renderStudioGhosts()
             {
                 ring_tint.setHSL(fmodf(llmax(inst->mHue, 0.f), 360.f) / 360.f, 0.9f, 0.6f);
             }
-            else if (LLVOAvatar* av = resolve_actor(inst->mSource))
+            else if (LLVOAvatar* av = inst->mSourceRemoved ? nullptr : resolve_actor(inst->mSource))
             {
                 ring_tint = actorPathColor(av->getID());
             }

@@ -71,17 +71,39 @@ def main():
     base_cast = subprocess.check_output(["git", "show", "890f04b10d6:indra/newview/lldirectorcast.cpp"]).decode()
     base_mover = subprocess.check_output(["git", "show", "890f04b10d6:indra/newview/llactormover.cpp"]).decode()
     normalize = lambda text: text.replace('\r\n', '\n')
-    # Round-2 mover plus ONLY the independently merged Clone Studio look registration
-    # (c5dd757d341..ba1e2f1e0bb). Any other changed mover line fails.
+    # Round-2 mover plus Clone Studio look registration and the two exact
+    # transaction-time reference-rewrite methods below. Hashes pin their full
+    # content: an unrelated mover edit still fails the original baseline guard.
     current_mover = normalize((nv / "llactormover.cpp").read_text(encoding="utf-8"))
-    if current_mover != normalize(base_mover):
+    import hashlib
+    rekey_methods = {
+        'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',
+        'void LLActorMover::rewriteActorReferences(': '56927dae33d71e920b66bf0cc6e15042cd48c033d8e2ffa41f5d51606020c0ff',
+    }
+    guarded_mover = current_mover
+    for signature, digest in rekey_methods.items():
+        body = normalize(method(nv / "llactormover.cpp", signature))
+        assert hashlib.sha256(body.encode()).hexdigest() == digest, signature
+        assert guarded_mover.count(body) == 1, signature
+        guarded_mover = guarded_mover.replace(body + "\n\n", "", 1)
+    # Three existing overlay source reads must reject a deleted dependency;
+    # each exact replacement is count-checked before restoring the baseline.
+    for old, new, count in (
+        ("LLVOAvatar* av = resolve_actor(inst.mSource);",
+         "LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);", 2),
+        ("else if (LLVOAvatar* av = resolve_actor(inst->mSource))",
+         "else if (LLVOAvatar* av = inst->mSourceRemoved ? nullptr : resolve_actor(inst->mSource))", 1),
+    ):
+        assert guarded_mover.count(new) == count, new
+        guarded_mover = guarded_mover.replace(new, old)
+    if guarded_mover != normalize(base_mover):
         import difflib
         def changed(a, b):
             return {l for l in difflib.unified_diff(a.splitlines(), b.splitlines(), lineterm="", n=0)
                     if l[:1] in "+-" and not l.startswith(("+++", "---"))}
         looks_old = normalize(subprocess.check_output(["git", "show", "c5dd757d341:indra/newview/llactormover.cpp"]).decode())
         looks_new = normalize(subprocess.check_output(["git", "show", "ba1e2f1e0bb:indra/newview/llactormover.cpp"]).decode())
-        extra = changed(normalize(base_mover), current_mover) - changed(looks_old, looks_new)
+        extra = changed(normalize(base_mover), guarded_mover) - changed(looks_old, looks_new)
         assert not extra, sorted(extra)[:10]
     baseline = Path(".tmp/actorbar_20261101/actor_round2_cast.cpp")
     baseline.parent.mkdir(parents=True, exist_ok=True)
@@ -119,11 +141,11 @@ def main():
         assert "mActiveActorId" not in body
     studio = (nv / "alghoststudio.cpp").read_text()
     consumer = studio[studio.index('mRuntimeConsumers.emplace_back('):studio.index('mRuntimeConsumers.emplace_back(', studio.index('mRuntimeConsumers.emplace_back(') + 1)]
-    assert 'cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination)' in consumer
+    assert 'cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination, stable_id)' in consumer
     assert 'removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id' in consumer
     assert 'cast.remove(' not in consumer and 'mWasDirectorSubject' not in consumer
     rekey = method(nv / "lldirectorcast.cpp", "void LLDirectorCast::replaceActorId(")
-    assert rekey.index('CastMember saved = *old') < rekey.index('mover.dropActor(new_id)') < rekey.index('mover.migrateActor(old_id, new_id)') < rekey.index('mCast.erase(old)') < rekey.index('touchScene()')
+    assert rekey.index('CastMember saved = *old') < rekey.index('mover.dropActor(new_id)') < rekey.index('mover.migrateActor(old_id, new_id)') < rekey.index('mCast.erase(old)') < rekey.rindex('touchScene()')
     assert 'Actor alias collision on recovery' in rekey and 'keeping migrating record' in rekey
     assert rekey.count('LL_WARNS') == 1 and '<< old_id' in rekey and '<< new_id' in rekey
     assert load.count('Actor alias collision on load') == 1
@@ -133,9 +155,11 @@ def main():
                       'void LLActorMover::snapshotForUndo(const LLUUID& actor_id, LLView* owner)'):
         body = method(nv / "llactormover.cpp", signature)
         assert 'pathSceneData' not in body and 'sceneData' not in body and 'mCast' not in body
-    # Deliberate scope boundary: this round does not rekey embedded targets.
-    assert 'mArrivalTarget' not in method(nv / "llactormover.cpp", 'void LLActorMover::migrateActor(')
-    assert 'mCastRef' not in rekey
+    # The new pass also runs in the loaded-destination collision branch.
+    assert len(re.findall(r"^    +rewriteActorReferences\(old_id, new_id\);", rekey, re.M)) == 2
+    assert "rewriteActorReferences(stable_id, new_id)" in rekey
+    from director_clone_rekey_check import check as check_clone_rekey
+    check_clone_rekey()
     gaze_draw = method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::draw(")
     assert 'cast.getCastRevision()' in gaze_draw and 'refreshEditActorCombo()' in gaze_draw
     assert 'refreshApplyGroupCombo()' in method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::refreshEditActorCombo(")
@@ -259,6 +283,13 @@ struct Scene : std::map<std::string, SceneValue> {
     const SceneValue& operator[](const std::string& key) const { return at(key); }
     SceneValue& operator[](const std::string& key) { return std::map<std::string, SceneValue>::operator[](key); }
 };
+struct ActorEditorStub { static void rewriteActorReferences(LLUUID, LLUUID) {} };
+struct ALPanelGhostStudio {static void rewriteActorReferences(LLUUID,LLUUID){}};
+struct ALFloaterGazeCues { static void rewriteActorReferences(LLUUID, LLUUID) {} };
+struct ALClientHeight {static ALClientHeight& instance(){static ALClientHeight s;return s;} void reset(LLUUID){}};
+struct ALAvatarLightResponse {static bool instanceExists(){return false;} static ALAvatarLightResponse& instance(){static ALAvatarLightResponse s;return s;} void inherit(LLUUID,bool){}};
+struct ALAvatarStaging { static ALAvatarStaging& instance() { static ALAvatarStaging s; return s; } void removeActorReferences(LLUUID) {} };
+struct ALDanceBall { static ALDanceBall& instance() { static ALDanceBall s; return s; } void removeActorReferences(LLUUID) {} };
 struct LLDirectorCast {
     struct CastMember {
         LLUUID mId; std::string mLastName, mGroup;
@@ -281,7 +312,8 @@ struct LLDirectorCast {
     void touchScene() { ++mSceneRevision; }
     void remove(const LLUUID&);
     void cancelPendingStart(LLUUID id) { mPendingStarts.erase(std::remove_if(mPendingStarts.begin(),mPendingStarts.end(),[&](const PendingStart& start){return start.mId==id;}),mPendingStarts.end()); }
-    void replaceActorId(const LLUUID&, const LLUUID&);
+    void replaceActorId(const LLUUID&, const LLUUID&, const LLUUID& = LLUUID::null);
+    void rewriteActorReferences(const LLUUID&, const LLUUID&) {} // exercised by focused production harness
     uuid_vec_t membersInGroup(const std::string&) const;
     bool contains(LLUUID id) const { for(const auto& m:mCast) if(m.mId==id) return true; return false; }
     CastMember* getMember(LLUUID id) { for(auto& m:mCast) if(m.mId==id) return &m; return nullptr; }
@@ -346,6 +378,7 @@ struct LLFloaterDirector {
     void retargetPathFromCastSelection() { pathActor = LLDirectorCast::instance().getActiveActorId(); }
     void refreshGazeSelection(const uuid_vec_t& ids) { gaze = ids; }
     void syncActiveActor();
+    static void rewriteActorReferences(LLUUID,LLUUID) {}
 };
 '''
     fixture += method(nv / "llactormover.cpp", "void LLActorMover::migrateActor(")
@@ -368,7 +401,7 @@ namespace ALAvatarSubjectPicker {
     write = re.search(r'    data\["stepped_actor"\] = getSteppedActorId\(\);', save)[0]
     fixture += "void LLDirectorCast::saveStepped(Scene& data) const {\n" + write + "\n}\n"
     fixture += method(nv / "lldirectorcast.cpp", "void LLDirectorCast::remove(")
-    fixture += method(nv / "lldirectorcast.cpp", "void LLDirectorCast::replaceActorId(")
+    fixture += method(nv / "lldirectorcast.cpp", "void LLDirectorCast::replaceActorId(").replace("ALPanelLensGaze::", "ActorEditorStub::")
     # Execute production collision arbitration and publication; payload copies
     # stand in for the unchanged LLSD codecs, with -1 representing absent path.
     collision = load[load.index('        CastMember* alias = getMember(m.mId);'):load.index('        m.mLastName = e["name"].asString();')]
@@ -447,7 +480,7 @@ struct ALPanelLensGaze {
     LLUUID activeSlotActor() const { return LLDirectorCast::instance().getActiveActorId(); }
     uuid_vec_t editActors() const;
     LLUUID editDisplayActor() const;
-    void refreshCastCombo();
+    void refreshCastCombo(bool force=false);
     void refreshApplyGroupCombo();
     void onPerformanceCommit();
 };

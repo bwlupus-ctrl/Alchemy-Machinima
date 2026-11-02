@@ -80,6 +80,7 @@ public:
 
     // Release the active program across every current target. Idempotent.
     void stopAll();
+    void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
     S32  activeSlot() const { return mActiveSlot; }
 

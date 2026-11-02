@@ -16,6 +16,7 @@
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "llfloaterreg.h"
 #include "llpresentationtime.h"
 #include "llscrolllistctrl.h"
 #include "llscrolllistitem.h"
@@ -102,6 +103,38 @@ ALFloaterGazeCues::ALFloaterGazeCues(const LLSD& key)
     : LLFloater(key),
       mActorId(key.asUUID())
 {
+}
+
+void ALFloaterGazeCues::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    // Copy the registry list: deleting an owner's editor removes it from the registry.
+    const auto floaters = LLFloaterReg::getFloaterList("gaze_cues");
+    for (LLFloater* base : floaters)
+    {
+        auto* floater = dynamic_cast<ALFloaterGazeCues*>(base);
+        if (!floater) continue;
+        if (floater->mActorId == old_id)
+        {
+            if (new_id.isNull())
+            {
+                LLFloaterReg::destroyInstance("gaze_cues", floater->getKey());
+                continue;
+            }
+            floater->mActorId = new_id;
+            floater->setKey(LLSD(new_id.asString()));
+            if (floater->mSubject) floater->mSubject->setText("Track: " + actorName(new_id));
+        }
+        if (!floater->mCastTarget) continue; // not built yet
+        // Include the current widget selection, which may be an uncommitted edit.
+        auto& target = floater->mEditorTarget;
+        target.mMode = static_cast<LLActorMover::GazeTarget::EMode>(floater->mTargetMode->getValue().asInteger());
+        target.mCastRef = LLUUID(floater->mCastTarget->getSelectedValue().asString());
+        LLActorMover::rewriteGazeTarget(target, old_id, new_id);
+        floater->mTargetMode->setValue(static_cast<S32>(target.mMode));
+        floater->refreshCastCombo(true);
+        floater->refreshEditorVisibility();
+    }
 }
 
 bool ALFloaterGazeCues::postBuild()

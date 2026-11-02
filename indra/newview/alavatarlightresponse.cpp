@@ -515,7 +515,7 @@ void ALAvatarLightResponse::dirtyImpostors(const LLUUID& key) const
         {
             const ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().findInstanceByRuntime(av->getID());
-            hit = inst && (inst->mId == key || inst->mSource == key || (inst->mSource.isNull() && key == gAgentID));
+            hit = inst && (inst->mId == key || (!inst->mSourceRemoved && (inst->mSource == key || (inst->mSource.isNull() && key == gAgentID))));
         }
         if (!hit && av->isControlAvatar())
         {
@@ -598,7 +598,7 @@ void ALAvatarLightResponse::ensureTable()
             continue;
         }
         auto it = mTable.find(inst.mId);
-        if (it == mTable.end())
+        if (it == mTable.end() && !inst.mSourceRemoved)
         {
             it = mTable.find(inst.mSource.isNull() ? gAgentID : inst.mSource);
         }

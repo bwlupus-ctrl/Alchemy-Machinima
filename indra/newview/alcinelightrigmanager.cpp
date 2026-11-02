@@ -724,6 +724,32 @@ ALCineLightRigManager::ParamBlob ALCineLightRigManager::captureSelected() const
     return ParamBlob::fromSettings(&selected());
 }
 
+void ALCineLightRigManager::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    bool changed = false;
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        if (mBlobs[i].mAnchor != old_id && mInstances[i].getAnchor() != old_id) continue;
+        mBlobs[i].mAnchor = new_id;
+        mInstances[i].setAnchor(new_id);
+        // An explicit legacy anchor must not silently become the self rig.
+        if (new_id.isNull())
+        {
+            mBlobs[i].mEnabled = false;
+            shutdownSlot(i);
+        }
+        changed = true;
+    }
+    removeMirror(old_id); // derived light objects belong to the old body
+    if (changed)
+    {
+        writeSelectedSettings();
+        persist();
+        ++mConfigurationRevision;
+    }
+}
+
 void ALCineLightRigManager::setSelectedSlot(Slot slot)
 {
     if (!mRigSession.canSelect(slot) || slot == mSelected)

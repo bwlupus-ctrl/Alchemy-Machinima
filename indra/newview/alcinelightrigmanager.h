@@ -1400,6 +1400,7 @@ public:
     const std::vector<ActorOnlyRecipient>& actorOnlyRecipients() const;
     bool isActorOnlyRecipient(const LLVOAvatar* av) const;
     void removeMirror(const LLUUID& clone_id);
+    void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
     void tick(F64 presentation_time);
     void shutdown();

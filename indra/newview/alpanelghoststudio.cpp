@@ -43,6 +43,7 @@
 #include "llkeyframemotion.h"
 #include "llghostavatar.h"
 #include "llscrolllistctrl.h"
+#include "llscrolllistitem.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
 #include "lltabcontainer.h"
@@ -64,6 +65,12 @@ static LLPanelInjector<ALPanelGhostStudio> t_panel_ghost_studio("panel_ghost_stu
 
 namespace
 {
+std::set<ALPanelGhostStudio*>& ghostStudioPanels()
+{
+    static std::set<ALPanelGhostStudio*> panels;
+    return panels;
+}
+
 // Name of column `index` of a scroll list. The standalone floater names the ghost list columns
 // "on", "name", "kind"...; the Director's generated kit page keeps names unique across pages, so
 // it renames them (ghost_on, ghost_name_col...). Rows are addressed by position, so the same
@@ -321,17 +328,74 @@ CrowdParameterDescriptor crowd_parameter_descriptor(
 
 ALPanelGhostStudio::ALPanelGhostStudio()
 {
+    ghostStudioPanels().insert(this);
     mPlacementOwner.generate();
 }
 
 ALPanelGhostStudio::~ALPanelGhostStudio()
 {
+    ghostStudioPanels().erase(this);
     // If owner-scoped cancellation invokes the stored callback while this
     // derived destructor is running, make it a no-op before touching the tool.
     mCrowdFacingPrototype.setNull();
     exitPlaceMode();
     exitEditMode();
     releaseOwnedCrowdPlacement();
+}
+
+void ALPanelGhostStudio::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    auto rewrite = [&](LLComboBox* combo, bool prefixed)
+    {
+        if (!combo) return false;
+        auto map_value = [&](const LLSD& value, bool& removed)
+        {
+            if (!prefixed)
+            {
+                if (value.asUUID() != old_id) return value;
+                removed = new_id.isNull();
+                return LLSD(new_id);
+            }
+            const std::string text = value.asString();
+            const bool actor = text == "actor:" + old_id.asString();
+            const bool ghost = text == "ghost:" + old_id.asString();
+            if (!actor && !(ghost && new_id.isNull())) return value;
+            removed = new_id.isNull();
+            return removed ? LLSD("camera") : LLSD("actor:" + new_id.asString());
+        };
+        bool selected_removed = false;
+        const LLSD selected = map_value(combo->getSelectedValue(), selected_removed);
+        struct Row { std::string label; LLSD value; bool enabled; };
+        std::vector<Row> rows;
+        for (LLScrollListItem* item : combo->getAllData())
+        {
+            bool removed = false;
+            const LLSD value = map_value(item->getValue(), removed);
+            if (!removed && item->getColumn(0))
+                rows.push_back({item->getColumn(0)->getValue().asString(), value, item->getEnabled()});
+        }
+        combo->clearRows();
+        for (const Row& row : rows) combo->add(row.label, row.value, ADD_BOTTOM, row.enabled);
+        combo->setSelectedByValue(selected, true);
+        return selected_removed;
+    };
+    for (ALPanelGhostStudio* panel : ghostStudioPanels())
+    {
+        if (rewrite(panel->mSourceCombo, false))
+        {
+            panel->mSourceSelectionRemoved = true;
+            if (panel->mAddBtn) panel->mAddBtn->setEnabled(false);
+        }
+        if (rewrite(panel->mLensGazeCastTarget, false) && panel->mLensGazeTargetMode)
+            panel->mLensGazeTargetMode->setValue(static_cast<S32>(LLActorMover::GAZE_TANGENT));
+        rewrite(panel->mLookTargetCombo, true);
+        if (panel->mShownLookTargetId == old_id) panel->mShownLookTargetId = new_id;
+        if (panel->mSourceAnimationsSource == old_id) panel->mSourceAnimationsSource = new_id;
+        panel->mSourceGate.reset();
+        panel->mLookTargetGate.reset();
+        panel->mDetailDirty = true;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -342,6 +406,11 @@ bool ALPanelGhostStudio::postBuild()
     mHint          = getChild<LLTextBox>("studio_hint");
     mList         = getChild<LLScrollListCtrl>("ghost_list");
     mSourceCombo  = getChild<LLComboBox>("source_combo");
+    mSourceCombo->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        mSourceSelectionRemoved = false;
+        mAddBtn->setEnabled(true);
+    });
     mCloneTypeCombo = getChild<LLComboBox>("clone_type_combo");
     mAddBtn       = getChild<LLButton>("btn_ghost_add");
     mDupBtn       = getChild<LLButton>("btn_ghost_dup");
@@ -1306,7 +1375,7 @@ std::string ALPanelGhostStudio::listSignature() const
         sig += (inst.mPose == ALGhostStudio::POSE_FROZEN) ? 'F' : 'L';
         sig += llformat("%d", (S32)inst.mDriveMode);
         sig += inst.mDirectedAnim.asString();
-        sig += sourceName(inst.mSource);
+        sig += inst.mSourceRemoved ? "Source removed" : sourceName(inst.mSource);
         sig += inst.mGroupId.asString();
         sig += llformat("%d", (S32)inst.mLockMode);
         sig += '|';
@@ -1449,9 +1518,8 @@ void ALPanelGhostStudio::refreshSourceAnimations(const ALGhostStudio::Instance& 
 {
     if (!isWidgetOnScreen(mSourceAnimationsCombo) || alIsBeingEdited(mSourceAnimationsCombo)) return;
     ALGhostStudio& studio = ALGhostStudio::instance();
-    const LLUUID source_id = inst.mSource.isNull() ? gAgent.getID() : inst.mSource;
-    LLViewerObject* object = gObjectList.findObject(source_id);
-    LLVOAvatar* source = object ? object->asAvatar() : nullptr;
+    LLVOAvatar* source = ALGhostStudio::resolveSourceAvatar(inst);
+    const LLUUID source_id = source ? source->getID() : LLUUID::null;
     std::set<LLUUID> ids;
     if (source && !source->isDead())
     {
@@ -1542,7 +1610,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
         row["columns"][3]["value"] = state_name(inst);
         row["columns"][4]["column"] = column_name(mList, 4, "source");
         row["columns"][4]["value"] = inst.mSourceLabel.empty()
-            ? sourceName(inst.mSource) : inst.mSourceLabel;
+            ? (inst.mSourceRemoved ? "Source removed" : sourceName(inst.mSource)) : inst.mSourceLabel;
         row["columns"][5]["column"] = column_name(mList, 5, "style");
         row["columns"][5]["value"] =
             inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE
@@ -2141,7 +2209,7 @@ void ALPanelGhostStudio::refreshDetail()
         }
         else
         {
-            LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
+            LLVOAvatar* av = ALGhostStudio::resolveSourceAvatar(*inst);
             pose = (av && LLActorMover::instance().ghostBatchesFor(av->getID()))
                  ? "Following live pose"
                  : "Source not rendering (no clone)";
@@ -2357,6 +2425,7 @@ void ALPanelGhostStudio::onListDoubleClick()
 
 void ALPanelGhostStudio::onClickAdd()
 {
+    if (mSourceSelectionRemoved) return;
     const LLUUID source = mSourceCombo->getSelectedValue().asUUID();
     ALGhostStudio::Instance* inst = nullptr;
     const S32 kind = mCloneTypeCombo->getValue().asInteger();
@@ -3186,7 +3255,7 @@ void ALPanelGhostStudio::onClickToActor()
     {
         return;
     }
-    LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
+    LLVOAvatar* av = ALGhostStudio::resolveSourceAvatar(*inst);
     if (av && av->getRootJoint())
     {
         LLVector3 foot = av->getBaseRootPosition();   // [ClientHeight] Ghost placements are BASE space

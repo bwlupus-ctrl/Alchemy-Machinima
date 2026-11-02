@@ -42,6 +42,7 @@ public:
     void capture(const LLUUID& id);
     void update(F32 dt);
     void clear();
+    void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     bool tracked(const LLUUID& id) const { return mActive.count(id) != 0; }
     U64 revision() const { return mRevision; }
     // Remove the override before partial packets; snapshot decoded transforms

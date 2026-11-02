@@ -12,6 +12,18 @@
 #include "lldirectorcast.h"
 
 #include "aldirectorswitcher.h"
+#include "aldirectoranimswitcher.h"
+#include "alavatarstaging.h"
+#include "alclientheight.h"
+#include "alcinelightrigmanager.h"
+#include "aldanceball.h"
+#include "alkithistory.h"
+#include "alfloatergazecues.h"
+#include "alpanellensgaze.h"
+#include "alpanelghoststudio.h"
+#include "alprojectortracker.h"
+#include "llcinematiccamera.h"
+#include "llfloaterdirector.h"
 #include "alghoststudio.h"
 #include "alsteppedanim.h"          // group rate offsets, per-actor override (de)serialisation
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
@@ -1224,7 +1236,31 @@ void LLDirectorCast::remove(const LLUUID& id)
     if (mActiveActorId == actor_id) setActiveActorId(LLUUID::null);
 }
 
-void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
+void LLDirectorCast::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    auto targets = [&](auto& head, auto& eyes, auto& cues)
+    {
+        LLActorMover::rewriteGazeTarget(head, old_id, new_id);
+        LLActorMover::rewriteGazeTarget(eyes, old_id, new_id);
+        for (auto& cue : cues)
+            LLActorMover::rewriteGazeTarget(cue.mTarget, old_id, new_id);
+    };
+    targets(mSelfGazeTarget, mSelfEyeGazeTarget, mSelfGazeCues);
+    for (auto& member : mCast)
+        targets(member.mGazeTarget, member.mEyeGazeTarget, member.mGazeCues);
+    LLActorMover::instance().rewriteActorReferences(old_id, new_id);
+    ALKitHistory::rewriteActorReferences(old_id, new_id);
+    ALProjectorTracker::instance().rewriteActorReferences(old_id, new_id);
+    ALDirectorAnimSwitcher::instance().rewriteActorReferences(old_id, new_id);
+    LLCinematicCamera::onRuntimeTargetReplaced(old_id, new_id);
+    ALGhostStudio::instance().rewriteActorReferences(old_id, new_id);
+    if (ALCineLightRigManager::instanceExists())
+        ALCineLightRigManager::instance().rewriteActorReferences(old_id, new_id);
+    ++mGazeCueRevision;
+}
+
+void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
+                                   const LLUUID& stable_id)
 {
     if (old_id.isNull() || old_id == new_id) return;
     // One identity transaction for every per-actor store. Park under the
@@ -1233,11 +1269,41 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
     LLActorMover& mover = LLActorMover::instance();
     if (new_id.isNull())
     {
+        rewriteActorReferences(old_id, new_id);
+        // Some systems deliberately author stable Studio IDs. They never
+        // migrate on parking, but must retire on final instance deletion.
+        if (stable_id.notNull() && stable_id != old_id)
+            rewriteActorReferences(stable_id, new_id);
+        const LLUUID stable = stable_id.notNull() ? stable_id : old_id;
+        ALAvatarStaging::instance().removeActorReferences(stable);
+        ALDanceBall::instance().removeActorReferences(stable);
+        ALClientHeight::instance().reset(stable);
+        if (ALAvatarLightResponse::instanceExists())
+            ALAvatarLightResponse::instance().inherit(stable, false);
         mover.dropActor(old_id);
         remove(old_id);
+        // remove() is a membership operation and can early-return for an
+        // unenrolled clone; subject assignment is independent of membership.
+        for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
+            if (*subject == old_id || *subject == stable) { subject->setNull(); ++mSubjectRevision; }
+        mLookAtCameraIds.erase(old_id);
+        mLookAtCameraIds.erase(stable);
+        cancelPendingStart(old_id);
         // Choosing a clone need not enroll it in Cast. Final removal still
         // clears that shared selection when there was no member to remove.
-        if (mActiveActorId == old_id) setActiveActorId(LLUUID::null);
+        if (mActiveActorId == old_id || mActiveActorId == stable) setActiveActorId(LLUUID::null);
+        ALFloaterGazeCues::rewriteActorReferences(old_id, new_id);
+        ALPanelLensGaze::rewriteActorReferences(old_id, new_id);
+        LLFloaterDirector::rewriteActorReferences(old_id, new_id);
+        ALPanelGhostStudio::rewriteActorReferences(old_id, new_id);
+        if (stable != old_id)
+        {
+            ALFloaterGazeCues::rewriteActorReferences(stable, new_id);
+            ALPanelLensGaze::rewriteActorReferences(stable, new_id);
+            LLFloaterDirector::rewriteActorReferences(stable, new_id);
+            ALPanelGhostStudio::rewriteActorReferences(stable, new_id);
+        }
+        touchScene();
         return;
     }
     auto old = std::find_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == old_id; });
@@ -1273,12 +1339,18 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
         mover.dropActor(old_id);
         mLookAtCameraIds.erase(old_id);
     }
+    rewriteActorReferences(old_id, new_id);
     for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
         if (*subject == old_id) { *subject = new_id; ++mSubjectRevision; }
     if (mLookAtCameraIds.erase(old_id)) mLookAtCameraIds.insert(new_id);
     for (auto& start : mPendingStarts)
         if (start.mId == old_id) start.mId = new_id;
     if (mActiveActorId == old_id) setActiveActorId(new_id);
+    // Editors rebuild from the completed roster/subject/active-actor state.
+    ALFloaterGazeCues::rewriteActorReferences(old_id, new_id);
+    ALPanelLensGaze::rewriteActorReferences(old_id, new_id);
+    LLFloaterDirector::rewriteActorReferences(old_id, new_id);
+    ALPanelGhostStudio::rewriteActorReferences(old_id, new_id);
     touchScene();
 }
 

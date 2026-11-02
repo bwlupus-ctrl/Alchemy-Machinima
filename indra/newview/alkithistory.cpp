@@ -32,6 +32,12 @@ static bool sKitInputSourceSet = false;
 
 namespace
 {
+std::unordered_set<ALKitHistory*>& actorReferenceHistories()
+{
+    static std::unordered_set<ALKitHistory*> histories;
+    return histories;
+}
+
 std::string rowPage(LLView* view)
 {
     if (ALKitRow* row = dynamic_cast<ALKitRow*>(view ? view->getParent() : nullptr))
@@ -124,8 +130,27 @@ private:
     ALKitHistory* mHistory;
 };
 
-ALKitHistory::ALKitHistory()  = default;
-ALKitHistory::~ALKitHistory() = default;
+ALKitHistory::ALKitHistory()
+{ actorReferenceHistories().insert(this); }
+ALKitHistory::~ALKitHistory()
+{ actorReferenceHistories().erase(this); }
+
+void ALKitHistory::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    auto rewrite = [&](Step& step)
+    {
+        for (CustomEntry& entry : step.custom)
+            if (entry.rewrite_actor) entry.rewrite_actor(old_id, new_id);
+    };
+    for (ALKitHistory* history : actorReferenceHistories())
+    {
+        for (Step& step : history->mUndo) rewrite(step);
+        for (Step& step : history->mRedo) rewrite(step);
+        if (history->mOpen) rewrite(*history->mOpen);
+        ++history->mRevision;
+    }
+}
 
 void ALKitHistory::setOwner(LLView* owner)
 { mOwner = owner ? owner->getHandle() : LLHandle<LLView>(); }
@@ -225,7 +250,8 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
 
 void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std::string& label,
                                  std::function<bool(bool, std::string&)> fn, bool join_gesture,
-                                 std::function<bool(bool, std::string&)> validate)
+                                 std::function<bool(bool, std::string&)> validate,
+                                 std::function<void(const LLUUID&, const LLUUID&)> rewrite_actor)
 {
     if (suspended() || mReplaying)
         return;
@@ -235,7 +261,7 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
         return;
     if (join_gesture && mOpen && mOpen->page == page)
     {
-        mOpen->custom.push_back({ key, std::move(fn), std::move(validate) });
+        mOpen->custom.push_back({ key, std::move(fn), std::move(validate), std::move(rewrite_actor) });
         mOpen->sequence = alNextUndoSequence();
         ++mRevision;
         return;
@@ -243,7 +269,7 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
     // A list command is one complete action, including a keyboard Add with no open gesture.
     finishGesture();
     beginGesture(KEY, page, label);
-    mOpen->custom.push_back({ key, std::move(fn), std::move(validate) });
+    mOpen->custom.push_back({ key, std::move(fn), std::move(validate), std::move(rewrite_actor) });
     mOpen->sequence = alNextUndoSequence();
     if (mOpen->label.empty())
         mOpen->label = label;

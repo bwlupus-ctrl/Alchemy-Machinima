@@ -70,6 +70,7 @@ constexpr F32 GHOST_SCALE_MIN = 0.05f;
 constexpr F32 GHOST_SCALE_MAX = 150.f;
 
 class LLGhostAvatar;
+class LLVOAvatar;
 class ALGhostNameplates;
 struct ALGhostCloneRequest;
 struct ALGhostCloneUpdate;
@@ -382,6 +383,7 @@ public:
         LLUUID      mId;                // instance key (minted at Add)
         std::string mName;              // session-only display name; not an identity key
         LLUUID      mSource;            // cast member id; null = "my avatar"
+        bool        mSourceRemoved = false; // deleted dependency; null must not become You
         EBackingKind mKind = BACKING_OVERLAY;
         LLUUID      mEntityId;          // weak runtime id; never owns the clone
         std::string mSourceLabel;       // cached UI label
@@ -423,7 +425,6 @@ public:
         bool        mWasDirectorSubjectB = false;
         bool        mWasDirectorSubjectC = false;
         bool        mWasDirectorSubjectD = false;
-        bool        mWasCinematicFollow = false;
 
         // ---- placement ----
         LLVector3d  mFootGlobal;        // ghost FOOT position, global coords
@@ -663,6 +664,8 @@ public:
     bool updateClone(const LLUUID& id, const ALGhostCloneUpdate& update);
     bool lockClone(const LLUUID& id);
     bool despawnClone(const LLUUID& id);
+    void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
+    static LLVOAvatar* resolveSourceAvatar(const Instance& inst);
 
     Instance* spawnEntityClone(const LLUUID& source, const std::string& source_label);
     Instance* duplicateInstance(const LLUUID& id);

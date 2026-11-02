@@ -1020,6 +1020,22 @@ bool LLGhostAvatar::hasLiveSource(const LLUUID& id)
     return sLiveSourceCounts.find(id) != sLiveSourceCounts.end();
 }
 
+void LLGhostAvatar::rewriteAnimationSourceReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    for (LLCharacter* character : LLCharacter::sInstances)
+    {
+        auto* ghost = dynamic_cast<LLGhostAvatar*>(character);
+        if (!ghost || ghost->mAnimationSourceId != old_id) continue;
+        ghost->releaseSourceReference();
+        if (new_id.notNull())
+        {
+            ghost->mAnimationSourceId = new_id;
+            ++sLiveSourceCounts[new_id];
+        }
+    }
+}
+
 void LLGhostAvatar::releaseSourceReference()
 {
     auto found = sLiveSourceCounts.find(mAnimationSourceId);

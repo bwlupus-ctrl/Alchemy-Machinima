@@ -211,6 +211,7 @@ bool valid_crowd_source(
         }
         return false;
     };
+    if (source.mSourceRemoved) return reject("The prototype source was removed.");
     if (!source.mEnabled)
     {
         return reject(
@@ -265,7 +266,7 @@ ALGhostStudio::ALGhostStudio()
             const LLUUID destination = removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id;
             // Cast owns the single rekey transaction, including mover/path
             // state. Absence uses the stable id for every authored store.
-            cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination);
+            cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination, stable_id);
             if (new_id.notNull() && !removing_instance) cast.add(new_id);
         });
     mRuntimeConsumers.emplace_back(
@@ -279,28 +280,7 @@ ALGhostStudio::ALGhostStudio()
                 setSelected(LLUUID::null);
             }
         });
-    mRuntimeConsumers.emplace_back(
-        [this](const LLUUID& stable_id, const LLUUID& old_id,
-               const LLUUID& new_id, bool removing_instance)
-        {
-            Instance* inst = getInstance(stable_id);
-            const bool followed =
-                LLCinematicCamera::isFollowTarget(old_id) ||
-                (inst && inst->mWasCinematicFollow);
-            if (followed)
-            {
-                LLCinematicCamera::onRuntimeTargetReplaced(old_id, new_id);
-                if (old_id.isNull() && new_id.notNull())
-                {
-                    LLCinematicCamera::toggleFollowTarget(new_id);
-                }
-            }
-            if (inst)
-            {
-                inst->mWasCinematicFollow =
-                    !removing_instance && followed;
-            }
-        });
+
 }
 
 ALGhostStudio::~ALGhostStudio() = default;
@@ -331,7 +311,7 @@ LLGhostAvatar* ALGhostStudio::createEntityRuntime(Instance& inst,
                                                   S32& attachments)
 {
     LLViewerRegion* region = gAgent.getRegion();
-    LLVOAvatar* source = LLDirectorCast::instance().resolve(inst.mSource);
+    LLVOAvatar* source = resolveSourceAvatar(inst);
     if (!region || !source)
     {
         return nullptr;
@@ -847,7 +827,7 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
     {
         return false;
     }
-    LLVOAvatar* source = LLDirectorCast::instance().resolve(inst->mSource);
+    LLVOAvatar* source = resolveSourceAvatar(*inst);
     LLGhostAvatar* old_ghost = resolveEntityClone(id);
     if (!source || !gAgent.getRegion())
     {
@@ -974,6 +954,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
 
     // Entity records cannot share mEntityId: create a fresh local clone, then
     // transfer the authored instance state while preserving its runtime keys.
+    if (proto.mSourceRemoved) return nullptr;
     Instance* copy = spawnEntityClone(proto.mSource, proto.mSourceLabel);
     if (!copy)
     {
@@ -1005,7 +986,6 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy->mWasDirectorSubjectB = false;
     copy->mWasDirectorSubjectC = false;
     copy->mWasDirectorSubjectD = false;
-    copy->mWasCinematicFollow = false;
     copy->setTransform(proto.mFootGlobal, proto.mRotation);
     copy->setScale(proto.mScale);
     // [AutoAnimate] Copies share only sealed pools, before any runtime configuration.
@@ -1295,7 +1275,7 @@ bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
         return false;
     if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh)
         return true;
-    LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
+    LLVOAvatar* av = resolveSourceAvatar(*inst);
     const std::vector<LLActorMover::GhostBatch>* batches =
         av ? LLActorMover::instance().ghostBatchesFor(av->getID()) : nullptr;
     if (!av || !batches || batches->empty()) return !inst->mCadencePalettes.empty();
@@ -1540,6 +1520,63 @@ bool ALGhostStudio::aimInstanceAt(const LLUUID& id,
         inst->mScale);
 }
 
+void ALGhostStudio::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    // Actor sources use the same live/parked Cast key as their path, geometry
+    // and animation consumers. Only explicit GHOST targets stay instance keyed.
+    LLGhostAvatar::rewriteAnimationSourceReferences(old_id, new_id);
+    for (auto& inst : mInstances)
+    {
+        if (inst.mSource == old_id)
+        {
+            inst.mSource = new_id;
+            inst.mSourceRemoved = new_id.isNull();
+            ++mInstanceRevision;
+        }
+        // GHOST targets are stable instance IDs and only retire on deletion;
+        // ACTOR targets follow the Cast identity through runtime/parked IDs.
+        if (inst.mLookTargetId == old_id &&
+            (inst.mLookTarget == LOOK_TARGET_ACTOR ||
+             (new_id.isNull() && inst.mLookTarget == LOOK_TARGET_GHOST)))
+        {
+            inst.mLookTargetId = new_id;
+            if (new_id.isNull())
+            {
+                inst.mLookTarget = LOOK_TARGET_POINT;
+                inst.mLookPointGlobal = inst.mFootGlobal;
+                inst.mKeepFacing = false;
+            }
+        }
+        if (inst.mTurnTargetId == old_id &&
+            (inst.mTurnTarget == LOOK_TARGET_ACTOR ||
+             (new_id.isNull() && inst.mTurnTarget == LOOK_TARGET_GHOST)))
+        {
+            inst.mTurnTargetId = new_id;
+            if (new_id.isNull()) inst.mTurnMode = TURN_MODE_OFF;
+        }
+    }
+    if (mCrowdDraft.mActive)
+    {
+        auto& source = mCrowdDraft.mSource;
+        if (new_id.isNull() &&
+            (source.mSourceId == old_id || source.mEntityId == old_id))
+        {
+            mCrowdDraft = CrowdPlacementDraft();
+        }
+        else
+        {
+            if (source.mSourceId == old_id) source.mSourceId = new_id;
+            if (source.mEntityId == old_id) source.mEntityId = new_id;
+        }
+    }
+}
+
+LLVOAvatar* ALGhostStudio::resolveSourceAvatar(const Instance& inst)
+{
+    return inst.mSourceRemoved ? nullptr : LLDirectorCast::instance().resolve(inst.mSource);
+}
+
 bool ALGhostStudio::resolveTargetGlobal(const Instance& inst, ELookTarget target,
                                         const LLUUID& target_id,
                                         const LLVector3d& point_global,
@@ -1773,7 +1810,7 @@ bool ALGhostStudio::nameplateAnchor(
         return false;
     }
 
-    LLVOAvatar* source = LLDirectorCast::instance().resolve(inst.mSource);
+    LLVOAvatar* source = resolveSourceAvatar(inst);
     if (!source || !source->getRootJoint())
     {
         return false;
@@ -1969,7 +2006,8 @@ void ALGhostStudio::applyStepAnimNameplateOffsets(
     mNameplates->applyOffsets([this, &avatar_offset](const LLUUID& key)
     {
         if (const Instance* instance = getInstance(key))
-            return avatar_offset(instance->mEntityId.notNull() ? instance->mEntityId : instance->mSource);
+            return instance->mSourceRemoved && instance->mEntityId.isNull() ? LLVector3::zero
+                : avatar_offset(instance->mEntityId.notNull() ? instance->mEntityId : instance->mSource);
         if (const ALGhostGroupModel::Group* group = mGroups.findGroup(key))
         {
             LLVector3 sum;
@@ -1977,6 +2015,7 @@ void ALGhostStudio::applyStepAnimNameplateOffsets(
             for (const ALGhostGroupModel::Member& member : group->mMembers)
                 if (const Instance* instance = getInstance(member.mInstanceId))
                 {
+                    if (instance->mSourceRemoved && instance->mEntityId.isNull()) continue;
                     sum += avatar_offset(instance->mEntityId.notNull() ? instance->mEntityId : instance->mSource);
                     ++count;
                 }
@@ -2590,16 +2629,20 @@ S32 ALGhostStudio::setFormationMotion(const std::vector<LLUUID>& ids,
         // baseline. A consistent default keeps a pathless member from retaining
         // a stale per-member yaw.
         LLUUID path_src = inst->mSource;
+        bool path_source_removed = inst->mSourceRemoved;
         if (inst->mGroupId.notNull())
         {
             const std::vector<LLUUID> unit = groupMembers(inst->mId);
             if (!unit.empty())
                 if (Instance* anchor = getInstance(unit.front()))
+                {
                     path_src = anchor->mSource;
+                    path_source_removed = anchor->mSourceRemoved;
+                }
         }
         inst->mMotionPathYaw = 0.f;
         if (const LLActorMover::Path* path =
-                LLActorMover::instance().getPath(path_src))
+                path_source_removed ? nullptr : LLActorMover::instance().getPath(path_src))
         {
             LLVector3d pos, tangent;
             path->evalAtDistance(0.f, pos, tangent);
@@ -2683,15 +2726,19 @@ void ALGhostStudio::updateFormationMotion(F64 now)
             // source path -- so a mixed-source unit keeps its rigid offsets
             // instead of each member evaluating a different path and drifting apart.
             LLUUID path_src = inst.mSource;
+            bool path_source_removed = inst.mSourceRemoved;
             if (inst.mGroupId.notNull())
             {
                 const std::vector<LLUUID> unit = groupMembers(inst.mId);
                 if (!unit.empty())
                     if (Instance* anchor = getInstance(unit.front()))
+                    {
                         path_src = anchor->mSource;
+                        path_source_removed = anchor->mSourceRemoved;
+                    }
             }
             const LLActorMover::Path* path =
-                LLActorMover::instance().getPath(path_src);
+                path_source_removed ? nullptr : LLActorMover::instance().getPath(path_src);
             if (path && path->mNodes.size() >= 2 && path->mTotalLength > 0.f)
             {
                 LLVector3d path_pos, tangent;
@@ -2897,7 +2944,7 @@ void ALGhostStudio::refreshLifecycleStates()
         }
         else
         {
-            inst.mState = LLDirectorCast::instance().resolve(inst.mSource)
+            inst.mState = resolveSourceAvatar(inst)
                 ? STATE_READY : STATE_SOURCE_MISSING;
         }
         if (inst.mState != previous_state)
@@ -3619,7 +3666,7 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
     {
         return false;
     }
-    LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
+    LLVOAvatar* av = resolveSourceAvatar(*inst);
     if (!av || !av->getRootJoint())
     {
         return false;
@@ -4027,7 +4074,7 @@ ALGhostStudio::FormationSlot ALGhostStudio::formationSlotAt(
     case FORMATION_PATH:
     {
         LLActorMover::Path path;
-        const LLActorMover::Path* source_path = LLActorMover::instance().getPath(p.mSource);
+        const LLActorMover::Path* source_path = p.mSourceRemoved ? nullptr : LLActorMover::instance().getPath(p.mSource);
         if (!source_path || source_path->mNodes.size() < 2) return finish(r);
         path = *source_path; path.rebuild();
         LLVector3d tangent;
@@ -4091,7 +4138,7 @@ void ALGhostStudio::updateFreezeStrips(F64 now)
         FreezeStrip& job = *it;
         Instance* source = getInstance(job.mSourceId);
         LLVOAvatar* source_avatar =
-            source ? LLDirectorCast::instance().resolve(source->mSource) : nullptr;
+            source ? resolveSourceAvatar(*source) : nullptr;
         if (!source || !source_avatar || source_avatar->isDead())
         {
             mLastStripStatus = llformat("Strip %u stopped: source missing (%d/%d kept)",
@@ -5503,7 +5550,7 @@ void ALGhostStudio::getWantedSources(uuid_vec_t& out) const
     }
     for (const Instance& inst : mInstances)
     {
-        if (inst.mKind == BACKING_OVERLAY && inst.mEnabled
+        if (inst.mKind == BACKING_OVERLAY && inst.mEnabled && !inst.mSourceRemoved
             && std::find(out.begin(), out.end(), inst.mSource) == out.end())
         {
             out.push_back(inst.mSource);

@@ -36,6 +36,7 @@ public:
     static const char* macroLabel(ALGazeMath::EGazeCueMacro macro);
     // Select one cue of this actor's list and load it into the editor (the page opens the floater here).
     void selectCueIndex(S32 index);
+    static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
 private:
     LLDirectorCast::GazeCue defaultCue() const;

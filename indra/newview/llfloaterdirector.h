@@ -73,6 +73,7 @@ public:
     bool handleScrollWheel(S32 x,S32 y,LLScrollDelta delta) override;
     ALKitHistory* kitHistory();
     void showAnimSpeed(const LLUUID& avatar);
+    static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     static void showProjectorTrack(const LLUUID& projector);
     static void startRecoveryService();
     static void prepareRecoveryForShutdown();
