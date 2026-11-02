@@ -23,14 +23,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "501805da118c4a27455d7473a12292f6013323757246ba8a1aff8ae112702898",
+        "csv_sha256": "ba84193667eccfc302e50f4bfb26fdb7e246ae05e0b504ec0300842416164133",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 39,
           "popovers": 6
         },
-        "entries": 4591,
+        "entries": 4587,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -73,7 +73,7 @@
         ],
         "generated_kit_rows": 2467,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2078,
+        "interactive_rows": 2074,
         "pages": 38,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -188,12 +188,12 @@
         "rows": 2191,
         "unresolved_rows": 57
       },
-      "wiring_rows": 2195
+      "wiring_rows": 2191
     },
-    "head_source_tree": "30df763fd7e37c510925e277a77924d365408721",
+    "head_source_tree": "1159d3e1c532f8744499f9b89b870c733e53750b",
     "hook_files": 498,
     "hunks": 3011,
-    "input_sha256": "f65da87e957ce984ba0c8e0ce105f30a314e26a4b9e37b3baad14c8ecfcba416",
+    "input_sha256": "3346af094fabc562cf21b1bee424ea4196b9161670fe75988152d34be2b208ca",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1996
   },
