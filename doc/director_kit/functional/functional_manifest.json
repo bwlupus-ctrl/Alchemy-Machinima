@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "d2e365c5815000c541658a30823ee021357c7aef5c620dc3d7132a414f25ea92",
+  "csv_sha256": "a482c9a5597d3afbbaf8be8629d08c3fb15af5ea66fbfa75733e79c9dcf1757a",
   "interactive_rows": 2090,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -48,7 +48,7 @@
   "entries": 4620,
   "pages": 38,
   "settings_declared": 3854,
-  "xui_files": 844,
+  "xui_files": 845,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -40177,7 +40177,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLActorMover::advancePath",
-   "evidence": "setting FlycamRecLoopMode (settings.xml); literal-only llactormover.cpp:5642 LLActorMover::advancePath",
+   "evidence": "setting FlycamRecLoopMode (settings.xml); literal-only llactormover.cpp:5648 LLActorMover::advancePath",
    "options": [
     {
      "label": "Hold last frame",
