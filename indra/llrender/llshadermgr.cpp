@@ -2356,6 +2356,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("local_light_ev_scale");
     mReservedUniforms.push_back("local_light_ev_scales");
     mReservedUniforms.push_back("ssao_irradiance_max_stock");
+    mReservedUniforms.push_back("ghostSceneMap");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

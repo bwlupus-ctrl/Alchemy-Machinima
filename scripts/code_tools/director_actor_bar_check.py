@@ -81,6 +81,19 @@ def main():
         'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
     guarded_mover = current_mover
+    # Phase 2 is permitted by exact before/after hunks, including context. Undo
+    # ONLY those hunks before the original baseline/rekey/look guard runs.
+    # Pin the allow-list itself: editing it cannot silently bless extra code.
+    import json
+    phase2_bytes = normalize((Path(__file__).parent / 'clone_looks2_mover_hunks.json').read_text(encoding='utf-8')).encode()
+    assert hashlib.sha256(phase2_bytes).hexdigest() == '9b59dcdeda8001cd702e6a66e4769bef124f4a75fda3b4d8578fe275d973c869'
+    phase2 = json.loads(phase2_bytes)
+    phase2_base = normalize(subprocess.check_output([
+        'git', 'show', phase2['base'] + ':indra/newview/llactormover.cpp']).decode())
+    for hunk in phase2['hunks']:
+        assert phase2_base.count(hunk['before']) == 1, 'phase-2 baseline hunk'
+        assert guarded_mover.count(hunk['after']) == 1, 'phase-2 exact feature hunk'
+        guarded_mover = guarded_mover.replace(hunk['after'], hunk['before'], 1)
     for signature, digest in rekey_methods.items():
         body = normalize(method(nv / "llactormover.cpp", signature))
         assert hashlib.sha256(body.encode()).hexdigest() == digest, signature

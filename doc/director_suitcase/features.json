@@ -4098,6 +4098,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -4105,6 +4106,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -4174,6 +4176,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -4445,6 +4448,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -13371,6 +13375,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -13378,6 +13383,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -13447,6 +13453,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -13718,6 +13725,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -23735,6 +23743,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -23742,6 +23751,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -23811,6 +23821,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -24082,6 +24093,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -32756,13 +32768,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -35028,6 +35040,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -35035,6 +35048,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -35104,6 +35118,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -35375,6 +35390,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -42603,6 +42619,7 @@
     "checkpoint": "Spawn/delete independent clones, attachments, pitch/roll and looks; real avatar never teleports/detaches.",
     "checks": [
       "scripts/code_tools/clone_looks_gl_check.py",
+      "scripts/code_tools/clone_looks_runtime_check.py",
       "scripts/code_tools/director_clone_rekey_check.py",
       "scripts/code_tools/test_clone_pitch_roll.py",
       "scripts/code_tools/test_clone_stamp_attachments.py"
@@ -44604,14 +44621,14 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@1878,60",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -51521,6 +51538,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -51528,6 +51546,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -51597,6 +51616,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -51868,6 +51888,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -68333,6 +68354,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -68340,6 +68362,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -68409,6 +68432,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -68680,6 +68704,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -73458,6 +73483,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -73465,6 +73491,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -73534,6 +73561,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -73805,6 +73833,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -81372,6 +81401,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -81379,6 +81409,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -81448,6 +81479,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -81719,6 +81751,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -92318,6 +92351,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -92325,6 +92359,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -92394,6 +92429,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -92665,6 +92701,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -102823,7 +102860,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -109221,6 +109258,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -109228,6 +109266,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -109297,6 +109336,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -109568,6 +109608,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -119164,6 +119205,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -119171,6 +119213,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -119240,6 +119283,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -119511,6 +119555,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -129233,13 +129278,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -145011,13 +145056,13 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@819,36",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -150168,6 +150213,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -150175,6 +150221,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -150244,6 +150291,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -150515,6 +150563,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -158089,7 +158138,7 @@
           "indra/llrender/llshadermgr.cpp@1567,8",
           "indra/llrender/llshadermgr.cpp@1832,12",
           "indra/llrender/llshadermgr.cpp@1878,60",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -158098,7 +158147,7 @@
           "indra/llrender/llshadermgr.h@139,8",
           "indra/llrender/llshadermgr.h@391,12",
           "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -168187,14 +168236,14 @@
           "indra/llrender/llshadermgr.cpp@358,10",
           "indra/llrender/llshadermgr.cpp@385,9",
           "indra/llrender/llshadermgr.cpp@429,15",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -190245,6 +190294,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -190252,6 +190302,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -190321,6 +190372,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -190592,6 +190644,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",
@@ -199612,15 +199665,15 @@
           "indra/llrender/llshadermgr.cpp@69,95",
           "indra/llrender/llshadermgr.cpp@283,57",
           "indra/llrender/llshadermgr.cpp@1468,13",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@51,13",
-          "indra/llrender/llshadermgr.h@589,395",
-          "indra/llrender/llshadermgr.h@993,21"
+          "indra/llrender/llshadermgr.h@589,396",
+          "indra/llrender/llshadermgr.h@994,21"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -201650,6 +201703,7 @@
           "indra/llprimitive/llmaterial.h",
           "indra/llrender/llgl.h",
           "indra/llrender/llglstates.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
@@ -201657,6 +201711,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -201726,6 +201781,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -201997,6 +202053,7 @@
           "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLGhostAvatar::updateEntityOuterTransform",
+          "LLImageGL::setManualImage",
           "LLMotion::setPriorityOverride",
           "LLMotionController::getGlobalTimeFactor",
           "LLPathCamera::instance",

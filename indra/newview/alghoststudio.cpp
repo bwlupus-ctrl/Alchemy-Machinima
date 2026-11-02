@@ -1268,13 +1268,25 @@ bool ALGhostStudio::setEffectFps(const LLUUID& id, F32 fps)
     return true;
 }
 
+static F32 clone_capture_radius(LLVOAvatar* av, const LLVector3& pivot)
+{
+    const LLVector3* ext = av->getLastAnimExtents();
+    if (!ext[0].isFinite() || !ext[1].isFinite()) return 2.f;
+    return llmax(2.f, ((ext[0] + ext[1]) * 0.5f - pivot).length()
+                       + (ext[1] - ext[0]).length() * 0.5f);
+}
+
 bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
 {
     Instance* inst = getInstance(id);
     if (!inst || inst->mPose != POSE_LIVE || inst->mPoseRateHz <= 0.f)
         return false;
-    if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh)
-        return true;
+    const bool need_bounds = inst->mStyle == 64 || inst->mStyle == 68
+        || inst->mStyle == 72 || inst->mStyle == 75;
+    // Changing from a historical look to phase 2 refreshes an uncaptured bound
+    // once, rather than culling against a smaller current live pose.
+    if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh
+        && (!need_bounds || inst->mCadenceBoundsRadius > 0.f)) return true;
     LLVOAvatar* av = resolveSourceAvatar(*inst);
     const std::vector<LLActorMover::GhostBatch>* batches =
         av ? LLActorMover::instance().ghostBatchesFor(av->getID()) : nullptr;
@@ -1301,6 +1313,8 @@ bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
     }
     inst->mCadenceFootAgent.set(root.mV[VX], root.mV[VY],
                                 root.mV[VZ] - llmax(0.f, pelvis_to_foot));
+    inst->mCadenceBoundsRadius = need_bounds
+        ? clone_capture_radius(av, inst->mCadenceFootAgent) : 0.f;
     inst->mCadenceHeadValid = false;
     if (LLJoint* head = av->getJoint("mHead"))
     {
@@ -3743,6 +3757,7 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
     }
     foot.mV[VZ] -= llmax(0.f, pelvis_to_foot);
     inst->mFrozenFootAgent = foot;
+    inst->mFrozenBoundsRadius = clone_capture_radius(av, foot);
     inst->mFrozenHeadValid = false;
     if (LLJoint* head = av->getJoint("mHead"))
     {

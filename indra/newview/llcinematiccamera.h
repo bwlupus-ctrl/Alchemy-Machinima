@@ -147,6 +147,10 @@ public:
     // True when the system should own the render camera this frame.
     bool isActive() const;
 
+    // Changes only when update() resets a presented take, including manual
+    // mode/target/trigger changes. Lens evolution within a take is continuous.
+    U64 takeGeneration() const { return mTakeGeneration; }
+
     // True while Bone Lock or an object attachment is mounted on this avatar.
     bool isActiveMountedTarget(const LLUUID& avatar_id) const;
 
@@ -299,6 +303,7 @@ private:
     U64          mLastSwitcherCutSerial = 0;
     F64          mSwitcherPhaseAnchor = 0.0;
     U64          mTriggerSerial = 0;
+    U64          mTakeGeneration = 0;
     U64          mConsumedTriggerSerial = 0;
     bool         mTriggeredLookAtHead = false;
     EMode        mTriggeredLookAtHeadMode = MODE_OFF;

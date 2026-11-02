@@ -978,6 +978,7 @@ public:
         LOCAL_LIGHT_EV_SCALE,
         LOCAL_LIGHT_EV_SCALES,
         SSAO_IRRADIANCE_MAX_STOCK,
+        GHOST_SCENE_MAP,                   // "ghostSceneMap" Studio-only sampler
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

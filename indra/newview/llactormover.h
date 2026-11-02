@@ -785,6 +785,8 @@ public:
     // hidden and every floater closed. Self-contained overlay state; zero
     // cost when the studio has no enabled instances.
     void renderStudioGhosts();
+    // Capture-end hook: call after the final overlay texture binding scope.
+    static void releaseStudioSnapshotScratch();
 
     // [ActorStyle/SharedActivation] Frame-local live-replay stream. Actor FX
     // reuses the exact harvested avatar/attachment geometry and is merged with

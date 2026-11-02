@@ -505,6 +505,7 @@ public:
         F32         mEffectFps = 0.f;     // 0 = smooth shader time, 1..30 = stepped
         F64         mNextPoseRefresh = 0.0;
         LLVector3   mCadenceFootAgent;
+        F32         mCadenceBoundsRadius = 2.f; // capture-frame extents about the pivot, transient
         LLVector3   mCadenceHeadAgent;
         bool        mCadenceHeadValid = false;
         palette_map_t mCadencePalettes;
@@ -591,6 +592,7 @@ public:
         // the same frame the frozen palettes bake their vertices into, which is
         // what makes the pivot math region-crossing-proof (see file header)
         LLVector3   mFrozenFootAgent;
+        F32         mFrozenBoundsRadius = 2.f; // captured pose visibility, transient (not saved)
         LLVector3   mFrozenHeadAgent;
         bool        mFrozenHeadValid = false;
         palette_map_t mFrozenPalettes;
