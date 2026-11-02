@@ -5466,6 +5466,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alprojectortracker.cpp",
+    "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alprojectortracker.cpp",
     "dependency": "indra/newview/llprismlens.h",
     "excluded": false,
     "origin": "fork-added",
@@ -7870,6 +7879,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/lldirectorcast.cpp",
     "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.cpp",
+    "dependency": "indra/newview/alavatarsubjectpicker.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

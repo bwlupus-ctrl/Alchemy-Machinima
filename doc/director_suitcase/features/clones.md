@@ -96,6 +96,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alpanelweathersettings.cpp`
 - `indra/newview/alposepolish.h`
 - `indra/newview/alposesecondary.h`
+- `indra/newview/alprojectortracker.cpp`
 - `indra/newview/alreflectanim.cpp`
 - `indra/newview/alreflectmath.h`
 - `indra/newview/alscrollfit.cpp`
@@ -531,6 +532,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1369, "text": "alpanelpropmover.h", "source": "indra/newview/alpanelpropmover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 413, "text": "alpaneltemporalcapture.cpp", "source": "indra/newview/alpaneltemporalcapture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 437, "text": "alpanelweathersettings.cpp", "source": "indra/newview/alpanelweathersettings.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alprojectortracker.cpp", "source": "indra/newview/alprojectortracker.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 390, "text": "alreflectanim.cpp", "source": "indra/newview/alreflectanim.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1354, "text": "alreflectmath.h", "source": "indra/newview/alreflectmath.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 232, "text": "alscrollfit.cpp # [ScrollFit]", "source": "indra/newview/alscrollfit.cpp"}

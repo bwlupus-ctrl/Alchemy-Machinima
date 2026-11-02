@@ -2815,6 +2815,17 @@ void LLFloaterDirector::rewriteActorReferences(const LLUUID& old_id, const LLUUI
         for (S32 i = static_cast<S32>(rows.size()) - 1; i >= 0; --i)
             if (rows[i]->getValue().asUUID() == old_id) director->mAnimSpeedAvatar->remove(i);
     }
+    // syncActiveActor may already have mirrored the new active actor into the
+    // list through setActiveActorId's synchronous callback. Migrate the shell's
+    // independent cache even when that list no longer contains the old ID.
+    // Do not publish the selection signal: independent Who adapters stay put.
+    if (director->mShell)
+    {
+        uuid_vec_t cached = director->mShell->castSelection();
+        for (auto& id : cached) if (id == old_id) id = new_id;
+        cached.erase(std::remove(cached.begin(), cached.end(), LLUUID::null), cached.end());
+        director->mShell->cacheCastSelection(cached);
+    }
     if (director->mCastList)
     {
         uuid_vec_t selected = director->selectedCastIds();
@@ -2824,7 +2835,6 @@ void LLFloaterDirector::rewriteActorReferences(const LLUUID& old_id, const LLUUI
         selected.erase(std::remove(selected.begin(), selected.end(), LLUUID::null), selected.end());
         director->refreshCastList();
         director->mCastList->selectMultiple(selected);
-        if (director->mShell) director->mShell->cacheCastSelection(selected);
     }
 }
 

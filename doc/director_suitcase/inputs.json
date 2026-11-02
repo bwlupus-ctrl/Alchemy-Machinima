@@ -11,22 +11,7 @@
       "TOOLING": 357
     },
     "dirty_product_inputs": [
-      "indra/newview/alavatarlightresponse.cpp",
-      "indra/newview/alavatarlightresponse.h",
-      "indra/newview/alavatarsubjectpicker.cpp",
-      "indra/newview/alavatarsubjectpicker.h",
-      "indra/newview/alghoststudio.cpp",
-      "indra/newview/alkitshell.h",
-      "indra/newview/alpanelgazecues.cpp",
-      "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/alprojectortracker.cpp",
-      "indra/newview/alprojectortracker.h",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
       "indra/newview/llfloaterdirector.cpp",
-      "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_clone_rekey_check.py"
     ],
     "evidence": {
@@ -208,10 +193,10 @@
       },
       "wiring_rows": 2195
     },
-    "head_source_tree": "ee687f543de69349ed776db7a059663965a15692",
+    "head_source_tree": "277b4d73acc10ed49f8e45a534591a08f33f7078",
     "hook_files": 498,
     "hunks": 3011,
-    "input_sha256": "723cfde8d1de88b532373a83c83731015a603d6d3fec4bc46d77632421c225e4",
+    "input_sha256": "7cbcaf5414460d766a05fc47e9cdd78a25acbcad4a40e0da8413bf7af8247465",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1996
   },
@@ -3596,7 +3581,7 @@
     "indra/newview/llfloaterdeleteprefpreset.h": "e554c1fb4c82352b759969c9945552cc86ce93233640baf128f12fc2c5e8c002",
     "indra/newview/llfloaterdestinations.cpp": "1a48df39bf5d9b061ac8551016b332434dd8f069abd39c9fd92dc450a1f96794",
     "indra/newview/llfloaterdestinations.h": "2aaf70aeb21481d136da377fe353d413ad13818e4694b567c3861190d74edb07",
-    "indra/newview/llfloaterdirector.cpp": "5d858242f364cc94c48bb138f975cd1c658fc4f47ecb06169a2f02dee4358f84",
+    "indra/newview/llfloaterdirector.cpp": "0af5213a3e7fff1bd5fb939291fa2e620c04b2a1ec75401612f474692dc23bb7",
     "indra/newview/llfloaterdirector.h": "a5dad77bfebabf86e99d8aa256f53a67910af1fc0f5efe238dc050d8383fdfc5",
     "indra/newview/llfloaterdirectory.cpp": "fc3bdba9abb11c24f059798828fceb38078584dfd07b61d14537bd5d126532f8",
     "indra/newview/llfloaterdirectory.h": "d078c71e5b8cfd8366950f85f0e4acabc964505fe9de324f7f172e21200f73b5",
@@ -12313,7 +12298,7 @@
     "scripts/code_tools/colorchart_gen.py": "1c2d280a680f9523a1d336282e234f941cc5469036ce3e207730a54a4bcd0eb9",
     "scripts/code_tools/colorchart_policy_check.py": "f81b73cae2d849a3480bc75f24000568e9891315b419fe8ed305a67943b8ffb0",
     "scripts/code_tools/director_actor_bar_check.py": "7093d712fc1418fa9a8ca9f0db79d6dda4f82357953e8865dc2d788d1a05a8d0",
-    "scripts/code_tools/director_clone_rekey_check.py": "8bd3bf67d1ef2d8fb2dd8a30acf20b419e9aad418f590fef28c9eda0ba52a4d8",
+    "scripts/code_tools/director_clone_rekey_check.py": "a8e5d3fe37485ef31e751cc0a09e9e0c34c29aaca11552ebed6325099086bc71",
     "scripts/code_tools/director_content_map.py": "1dee803d82a4178f20492de0734d89d802888b5080dd5f9e89d9cd7436b5296c",
     "scripts/code_tools/director_curation_check.py": "b65cffd8afc25a799489e8783fc62224d21862864aa171a524069e0043398ec2",
     "scripts/code_tools/director_functional_manifest.py": "6f6d09584d59674ca338554523bef0dffcc29f720fa67351f963a34c32994ce0",

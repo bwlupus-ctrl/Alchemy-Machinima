@@ -71,7 +71,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [composition](features/composition.md) | 3 | 40 | 23 | 12 |
 | [gaze](features/gaze.md) | 3 | 53 | 18 | 87 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 26 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 170 | 77 | 68 |
+| [clones](features/clones.md) | 4 | 171 | 77 | 68 |
 | [crowd](features/crowd.md) | 4 | 49 | 10 | 10 |
 | [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 226 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 66 | 58 | 17 |

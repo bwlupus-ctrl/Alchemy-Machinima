@@ -215,7 +215,11 @@ struct LLDirectorCast {
  CastMember* getMember(LLUUID id){for(auto& m:mCast)if(m.mId==id)return &m;return nullptr;}
  bool contains(LLUUID id) const{return std::any_of(mCast.begin(),mCast.end(),[&](auto& m){return m.mId==id;});}
  void remove(LLUUID id){mCast.erase(std::remove_if(mCast.begin(),mCast.end(),[&](auto& m){return m.mId==id;}),mCast.end());}
- void setActiveActorId(LLUUID id){mActiveActorId=id;}
+ std::function<void()> mActiveActorChanged=[]{};
+ LLUUID getActiveActorId()const{return mActiveActorId;}
+ static LLUUID runtimeActorId(LLUUID id){return id;}
+ LLUUID getSteppedActorId()const{return mActiveActorId;}
+ void setActiveActorId(const LLUUID&);
  void cancelPendingStart(LLUUID id){mPendingStarts.erase(std::remove_if(mPendingStarts.begin(),mPendingStarts.end(),[&](auto& s){return s.mId==id;}),mPendingStarts.end());}
  int sceneTouches=0; void rebuildMemberIndex(){} void touchScene(){++sceneTouches;}
 };
@@ -233,12 +237,16 @@ struct Combo {
  std::vector<LLScrollListItem*> getAllData(){std::vector<LLScrollListItem*> result;for(auto& r:rows)result.push_back(&r);return result;}
  void remove(S32 i){rows.erase(rows.begin()+i);}
 };
-struct CastList {uuid_vec_t selected;void selectMultiple(const uuid_vec_t& ids){selected=ids;}};
+struct CastList {
+ uuid_vec_t selected;void selectMultiple(const uuid_vec_t& ids){selected=ids;}
+ void deselectAllItems(){selected.clear();}void selectByID(LLUUID id){selected={id};}
+};
 struct ALKitShell {
  uuid_vec_t mCurrentCastSelection; int whoCommits=0; LLUUID lightRigWho,gazeWho,steppedWho,styleWho;
  void mCastSelection(const uuid_vec_t& ids){++whoCommits;lightRigWho=gazeWho=steppedWho=styleWho=ids.empty()?LLUUID{}:ids.front();}
 '''
     fixture += method(nv / 'alkitshell.h', 'void                        setCastSelection(') + '\n'
+    fixture += method(nv / 'alkitshell.h', 'const uuid_vec_t&           castSelection(') + '\n'
     fixture += method(nv / 'alkitshell.h', 'void                        cacheCastSelection(') + '\n};\n'
     fixture += r'''
 struct LLFloaterDirector {
@@ -249,7 +257,14 @@ struct LLFloaterDirector {
  Combo speed;Combo* mAnimSpeedAvatar=&speed;CastList list;CastList* mCastList=&list;
  ALKitShell shell;ALKitShell* mShell=&shell;int refreshes=0;
  uuid_vec_t selectedCastIds(){return list.selected;}
- void refreshCastList(){++refreshes;}
+ // Model the widget boundary: roster rebuild removes retired selected rows.
+ void refreshCastList(){++refreshes;auto& cast=LLDirectorCast::instance();
+  list.selected.erase(std::remove_if(list.selected.begin(),list.selected.end(),
+   [&](LLUUID id){return !cast.contains(id);}),list.selected.end());}
+ bool mSyncingActiveActor=false,mActorStyleHadTarget=false,mActorStyleTabDirty=false,mAnimateTabDirty=false;
+ LLUUID firstSelectedCastId()const{return list.selected.empty()?LLUUID{}:list.selected.front();}
+ void retargetPathFromCastSelection(){}void refreshGazeSelection(const uuid_vec_t&){}
+ void syncActiveActor();
  void rebuildAnimSpeedAvatars(){speed.rows.push_back({mAnimSpeedSelection});speed.selected=mAnimSpeedSelection;}
  static void rewriteActorReferences(const LLUUID&,const LLUUID&);
 };
@@ -266,6 +281,8 @@ struct LLFloaterReg{template<class T>static T* findTypedInstance(const char*){re
         ("llactormover.cpp", "bool LLActorMover::getFollow("),
         ("alpanelpatheditor.cpp", "void ALPanelPathEditor::onFollowOffsetCommit("),
         ("llfloaterdirector.cpp", "void LLFloaterDirector::rewriteActorReferences("),
+        ("llfloaterdirector.cpp", "void LLFloaterDirector::syncActiveActor("),
+        ("lldirectorcast.cpp", "void LLDirectorCast::setActiveActorId("),
         ("alkithistory.cpp", "void ALKitHistory::rewriteActorReferences("),
         ("alprojectortracker.cpp", "void ALProjectorTracker::rewriteActorReferences("),
         ("alprojectortracker.cpp", "void ALProjectorTracker::stop("),
@@ -298,6 +315,7 @@ int main(){
  self.id=gAgentID;
  LLDirectorCast& cast=LLDirectorCast::instance();
  LLFloaterDirector director;LLFloaterDirector::current=&director;
+ cast.mActiveActorChanged=[&]{director.syncActiveActor();};
  director.list.selected={A};director.shell.mCurrentCastSelection={A};
  director.shell.lightRigWho=director.shell.gazeWho=director.shell.steppedWho=director.shell.styleWho=gAgentID;
  director.mAnimSpeedSelection=A;director.speed.selected=A;director.speed.rows={{{A}},{{R}}};
@@ -313,7 +331,7 @@ int main(){
  cast.mCast={a,clone};cast.mSelfGazeTarget=target(R);cast.mSelfEyeGazeTarget=target(R);
  cast.mSelfGazeCues={{target(R)}};
  cast.mSubjectA=R;cast.mSubjectB=R;cast.mSubjectC=R;cast.mSubjectD=R;
- cast.mActiveActorId=R;cast.mLookAtCameraIds={R};cast.mPendingStarts={{R}};
+ cast.mActiveActorId=A;cast.mLookAtCameraIds={R};cast.mPendingStarts={{R}};
  auto& mover=LLActorMover::instance();
  mover.mPaths[A]={R,2};mover.mHistory[A].mUndo={{R,2}};mover.mHistory[A].mRedo={{R,2}};
  mover.mPaths[other]={other,2};
@@ -387,19 +405,38 @@ int main(){
  assert(director.shell.mCurrentCastSelection==uuid_vec_t{A});
  assert(director.mAnimSpeedSelection==A && director.speed.selected==A);
  for(auto* row:director.speed.getAllData())assert(row->getValue().asUUID()!=R);
+ // Repeat parking with the clone active/selected. The production setter emits
+ // synchronously, so syncActiveActor has selected S before the rewrite runs.
+ cast.replaceActorId(S,R,S);verify(R);
+ cast.setActiveActorId(R);director.shell.cacheCastSelection({R});
+ const int beforePark=director.refreshes;
+ cast.replaceActorId(R,S,S);verify(S);
+ assert(director.refreshes>beforePark && director.list.selected==uuid_vec_t{S});
+ assert(director.shell.castSelection()==uuid_vec_t{S});
+ assert(director.shell.whoCommits==0 && director.shell.lightRigWho==gAgentID);
  auto& track=tracker.mStates.at(projector);tracker.mActive.insert(projector);
  assert(track.subjectPending && track.enabled);
  assert(tracker.holdMissingSubject(projector,track,10.));
  assert(tracker.holdMissingSubject(projector,track,100.));
  assert(track.enabled && tracker.mActive.count(projector));
  // Recovery also rewrites a selected clone without firing any Who adapter.
- director.list.selected={S};director.shell.mCurrentCastSelection={S};
  assert(studio.mInstances.front().mSource==S && studio.mCrowdDraft.mSource.mEntityId==R);
  assert(cast.mActiveActorId==S && cast.mSubjectA==S && cast.mSubjectD==S);
  gObjectList.objects[N]=&newClone;studio.mInstances[1].mEntityId=N;
  cast.replaceActorId(S,N,S);verify(N);
  assert(director.list.selected==uuid_vec_t{N} && director.shell.mCurrentCastSelection==uuid_vec_t{N});
  assert(director.shell.whoCommits==0 && director.shell.lightRigWho==gAgentID);
+ // Lazy connectWho / unpin both apply shell.castSelection(). Model that
+ // boundary with the current cine_rig_slot Subject A lookup: retired IDs fail.
+ auto applyLightRigWho=[&](const uuid_vec_t& ids){
+  assert(ids.size()==1 && ids.front()!=R && ids.front()!=S);
+  assert(ids.front()==cast.mSubjectA && cast.resolve(ids.front())==&newClone);
+  director.shell.lightRigWho=ids.front();
+ };
+ applyLightRigWho(director.shell.castSelection()); // lazy page connectWho
+ director.shell.lightRigWho=gAgentID; // pinned to another slot
+ applyLightRigWho(director.shell.castSelection()); // Follow Cast / unpin
+ assert(director.shell.lightRigWho==N && director.shell.whoCommits==0);
  assert(!track.subjectPending && track.enabled && tracker.mActive.count(projector));
  pathEditor.onFollowOffsetCommit();assert(mover.mFollows.at(A).mLeader==N);
  // With no own path, deletion must take clearFollow's actual stop path.
@@ -415,6 +452,8 @@ int main(){
  gObjectList.objects.erase(N);newClone.dead=true;
  tracker.restoreSucceeds=false;
  cast.replaceActorId(N,LLUUID::null,S);verify(LLUUID::null);
+ assert(director.list.selected.empty() && director.shell.castSelection().empty());
+ assert(director.shell.whoCommits==0);
  LLUUID leader;S32 mode=0;F32 offset=0;
  assert(!mover.getFollow(A,leader,mode,offset));
  pathEditor.onFollowOffsetCommit();assert(!mover.getFollow(A,leader,mode,offset));

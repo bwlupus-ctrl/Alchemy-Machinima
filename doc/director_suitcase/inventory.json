@@ -11,22 +11,7 @@
       "TOOLING": 357
     },
     "dirty_product_inputs": [
-      "indra/newview/alavatarlightresponse.cpp",
-      "indra/newview/alavatarlightresponse.h",
-      "indra/newview/alavatarsubjectpicker.cpp",
-      "indra/newview/alavatarsubjectpicker.h",
-      "indra/newview/alghoststudio.cpp",
-      "indra/newview/alkitshell.h",
-      "indra/newview/alpanelgazecues.cpp",
-      "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/alprojectortracker.cpp",
-      "indra/newview/alprojectortracker.h",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
       "indra/newview/llfloaterdirector.cpp",
-      "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_clone_rekey_check.py"
     ],
     "evidence": {
@@ -208,10 +193,10 @@
       },
       "wiring_rows": 2195
     },
-    "head_source_tree": "ee687f543de69349ed776db7a059663965a15692",
+    "head_source_tree": "277b4d73acc10ed49f8e45a534591a08f33f7078",
     "hook_files": 498,
     "hunks": 3011,
-    "input_sha256": "723cfde8d1de88b532373a83c83731015a603d6d3fec4bc46d77632421c225e4",
+    "input_sha256": "7cbcaf5414460d766a05fc47e9cdd78a25acbcad4a40e0da8413bf7af8247465",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1996
   },
@@ -12448,6 +12433,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "looks"
       ],
@@ -12605,6 +12591,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron",
@@ -12631,6 +12618,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "vcam"
       ],
@@ -15146,8 +15134,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15784,6 +15771,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron"
@@ -16769,8 +16757,7 @@
         "clones",
         "crowd",
         "director-shell",
-        "gaze",
-        "sensor"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -17607,6 +17594,7 @@
       "features": [
         "actor-bar",
         "capture-sidecar",
+        "clones",
         "director-shell",
         "tracking",
         "vcam"
@@ -26481,8 +26469,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -26513,8 +26500,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27302,8 +27288,7 @@
         "clones",
         "director-shell",
         "gaze",
-        "roto-tron",
-        "sensor"
+        "roto-tron"
       ],
       "class": "OWNED",
       "deleted": false,
