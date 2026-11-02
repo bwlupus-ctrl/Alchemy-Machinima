@@ -12043,8 +12043,7 @@ struct StudioView
 bool studio_same_view(const StudioView& a, const StudioView& b)
 {
     return a.mCameraId == b.mCameraId && a.mOrdinal == b.mOrdinal && a.mSnapshot == b.mSnapshot && a.mFbo == b.mFbo
-        && std::equal(a.mViewport, a.mViewport + 4, b.mViewport)
-        && a.mProjection == b.mProjection;
+        && std::equal(a.mViewport, a.mViewport + 4, b.mViewport);
 }
 
 struct StudioMotion
@@ -12056,6 +12055,9 @@ struct StudioMotion
     LLVector3d mFoot;
     LLVector2 mScreen;
     LLVector2 mVelocity;
+    LLVector3 mCameraVelocity;
+    LLVector3 mAtVelocity;
+    bool mCameraVelocityValid = false;
     bool mValid = false;
     bool mTrailing = false;
 };
@@ -12070,18 +12072,36 @@ LLVector2 studio_screen_velocity(StudioMotion& previous, const StudioView& view,
     LLVector2 velocity;
     bool trailing = false;
     const F64 dt = now - previous.mTime;
-    // Use the switcher's cut serial and agent teleport signal even without a
-    // ReShade consumer. Also reject unannounced camera-transform discontinuities
-    // (0.5 m or ~2 degrees); a 100px cut need not hit the old 20% pixel guard.
-    const bool camera_cut = view.mTeleport || view.mCut != previous.mView.mCut
-        || (view.mCamera - previous.mView.mCamera).lengthSquared() > 0.25f
-        || (view.mAt - previous.mView.mAt).lengthSquared() > 0.001218f;
-    if (valid && previous.mValid && same_view && !camera_cut
+    // Lens breathing/zoom changes projection, not persistent live-view identity.
+    // Snapshot tiles/faces and auxiliary invocations never carry live history.
+    const bool continuous = valid && previous.mValid && same_view && !view.mSnapshot
         && previous.mView.mInvocation + 1 == view.mInvocation
         && previous.mView.mFrame + 1 == view.mFrame
         && previous.mSource == source && previous.mAvatar == avatar
-        && dt > 0.0 && dt < 0.25 && (foot - previous.mFoot).lengthSquared() < 4.0)
+        && dt > 0.0 && dt < 0.25 && (foot - previous.mFoot).lengthSquared() < 4.0;
+    const LLVector3 camera_delta = view.mCamera - previous.mView.mCamera;
+    const LLVector3 at_delta = view.mAt - previous.mView.mAt;
+    const F32 step = (F32)dt;
+    // Predict this frame from recent velocity in seconds, so a continuous pan
+    // or dolly is independent of render cadence. A residual must exceed both
+    // an absolute floor (0.5m / ~2 degrees) and 75% of the motion to be a cut.
+    const auto discontinuous = [step](const LLVector3& delta, const LLVector3& rate, F32 floor2)
     {
+        const LLVector3 predicted = rate * step;
+        const F32 residual2 = (delta - predicted).lengthSquared();
+        return residual2 > floor2
+            && residual2 > 0.5625f * llmax(delta.lengthSquared(), predicted.lengthSquared());
+    };
+    const bool camera_cut = view.mTeleport || view.mCut != previous.mView.mCut
+        || (continuous && previous.mCameraVelocityValid
+            && (discontinuous(camera_delta, previous.mCameraVelocity, 0.25f)
+                || discontinuous(at_delta, previous.mAtVelocity, 0.001218f)));
+    if (continuous && !camera_cut)
+    {
+        // Seed the predictor on the first comparable pair; never learn a cut.
+        const F32 weight = previous.mCameraVelocityValid ? 1.f - expf(-12.f * step) : 1.f;
+        previous.mCameraVelocity = previous.mCameraVelocity * (1.f - weight) + camera_delta * (weight / step);
+        previous.mAtVelocity = previous.mAtVelocity * (1.f - weight) + at_delta * (weight / step);
         LLVector2 raw = screen - previous.mScreen;
         const F32 speed = raw.length();
         if (llfinite(speed) && speed <= view.mViewport[3] * 0.20f)
@@ -12092,6 +12112,12 @@ LLVector2 studio_screen_velocity(StudioMotion& previous, const StudioView& view,
             // Schmitt trigger: slow drift and jitter cannot toggle every frame.
             trailing = velocity.length() > (previous.mTrailing ? 0.5f : 1.f);
         }
+    }
+    previous.mCameraVelocityValid = continuous && !camera_cut;
+    if (!previous.mCameraVelocityValid)
+    {
+        previous.mCameraVelocity.clear();
+        previous.mAtVelocity.clear();
     }
     previous.mVelocity = velocity;
     previous.mTrailing = trailing;
@@ -12212,6 +12238,25 @@ struct StudioSceneCache
     void expire(F64 now)
     {
         if (mScene && now - mLastUse > 3.0) mScene = nullptr;
+    }
+};
+
+// LLImageGL deletion is deferred until idle. Keep one scratch per size across
+// the synchronous tiles/faces/passes of a capture, rather than retiring a full
+// allocation on every invocation. The next live call ends the capture even
+// when Studio/Glass is disabled; all prior texture binding scopes have ended.
+struct StudioSceneCaches
+{
+    StudioSceneCache mLive;
+    std::map<std::pair<GLint, GLint>, StudioSceneCache> mSnapshot;
+    void begin(bool snapshot, F64 now)
+    {
+        mLive.expire(now);
+        if (!snapshot) mSnapshot.clear();
+    }
+    StudioSceneCache& get(bool snapshot, const GLint (&viewport)[4])
+    {
+        return snapshot ? mSnapshot[{viewport[2], viewport[3]}] : mLive;
     }
 };
 
@@ -15893,11 +15938,8 @@ void LLActorMover::renderStudioGhosts()
     ordinal = frame == last_frame ? ordinal + 1 : 0;
     last_frame = frame;
     const F64 pose_now = LLTimer::getTotalSeconds();
-    static StudioSceneCache live_scene;
-    live_scene.expire(pose_now);
-    // Snapshot allocations die at invocation exit, even if Glass is then off.
-    StudioSceneCache snapshot_scene;
-    StudioSceneCache& scene_cache = gSnapshot ? snapshot_scene : live_scene;
+    static StudioSceneCaches scene_caches;
+    scene_caches.begin(gSnapshot, pose_now);
     ALGhostStudio& studio = ALGhostStudio::instance();
     if (!studio.anyEnabled())
     {
@@ -16160,7 +16202,7 @@ void LLActorMover::renderStudioGhosts()
             {
                 const auto rect = studio_glass_rect(item.mFootAgent, radius, clip_from_agent,
                                                     look_frame->mViewport);
-                LLImageGL* scene = studio_scene_copy(scene_cache, invocation, pose_now,
+                LLImageGL* scene = studio_scene_copy(scene_caches.get(gSnapshot, look_frame->mViewport), invocation, pose_now,
                                                       look_frame->mViewport, rect);
                 if (scene)
                 {

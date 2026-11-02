@@ -11,13 +11,8 @@
       "TOOLING": 359
     },
     "dirty_product_inputs": [
-      "indra/llrender/llshadermgr.cpp",
-      "indra/llrender/llshadermgr.h",
-      "indra/newview/alghoststudio.cpp",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
       "indra/newview/llactormover.cpp",
       "scripts/code_tools/clone_looks2_mover_hunks.json",
-      "scripts/code_tools/clone_looks_gl_check.py",
       "scripts/code_tools/clone_looks_runtime_check.py",
       "scripts/code_tools/director_actor_bar_check.py"
     ],
@@ -200,10 +195,10 @@
       },
       "wiring_rows": 2191
     },
-    "head_source_tree": "0490de50520fdad317a70c9c2a48db858df37ab9",
+    "head_source_tree": "bce6665ef9ecbe395c0832d53415be39b07b2714",
     "hook_files": 498,
     "hunks": 3011,
-    "input_sha256": "8da79765512aabbe70eea952eeee856d95039d8e87497b7bd6947992c329cfaa",
+    "input_sha256": "83c02daaa0f60331fbe18ec37a5f6a885643a20f4e3f2b649224d219d3ac69e6",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1996
   },
@@ -11073,6 +11068,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "roto-tron",
         "sensor",
         "weather"
@@ -11101,6 +11097,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "roto-tron",
         "sensor",
         "weather"
@@ -15139,7 +15136,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones"
       ],
       "class": "OWNED",

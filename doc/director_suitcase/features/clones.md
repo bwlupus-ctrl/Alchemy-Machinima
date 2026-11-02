@@ -226,8 +226,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/llrender/llrender.cpp", "hunks": ["indra/llrender/llrender.cpp@1310,15"]}
 - {"path": "indra/llrender/llrender.h", "hunks": ["indra/llrender/llrender.h@411,17"]}
 - {"path": "indra/llrender/llrendertarget.h", "hunks": ["indra/llrender/llrendertarget.h@173,21"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@1878,60", "indra/llrender/llshadermgr.cpp@2001,362"]}
-- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@437,89", "indra/llrender/llshadermgr.h@589,395"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@1878,60", "indra/llrender/llshadermgr.cpp@2001,363"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@437,89", "indra/llrender/llshadermgr.h@589,396"]}
 - {"path": "indra/llwindow/llwindowwin32.cpp", "hunks": ["indra/llwindow/llwindowwin32.cpp@2114,226"]}
 - {"path": "indra/newview/alderenderlist.cpp", "hunks": ["indra/newview/alderenderlist.cpp@13,23", "indra/newview/alderenderlist.cpp@156,72", "indra/newview/alderenderlist.cpp@411,16", "indra/newview/alderenderlist.cpp@454,96"]}
 - {"path": "indra/newview/alderenderlist.h", "hunks": ["indra/newview/alderenderlist.h@183,33"]}

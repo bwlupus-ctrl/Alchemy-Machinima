@@ -765,9 +765,9 @@ All 3011 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llrender/llshadermgr.cpp@1162,7`
 - `indra/llrender/llshadermgr.cpp@1502,9`
 - `indra/llrender/llshadermgr.cpp@1686,16`
-- `indra/llrender/llshadermgr.cpp@2370,3`
+- `indra/llrender/llshadermgr.cpp@2371,3`
 - `indra/llrender/llshadermgr.h@245,14`
-- `indra/llrender/llshadermgr.h@1021,9`
+- `indra/llrender/llshadermgr.h@1022,9`
 - `indra/llwindow/llwindowwin32.cpp@205,43`
 - `indra/llwindow/llwindowwin32.cpp@718,21`
 - `indra/llwindow/llwindowwin32.cpp@805,11`
@@ -2213,7 +2213,7 @@ All 3011 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llrender/llrendertarget.h@205,35`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.cpp@34,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llrender/llshadermgr.cpp@47,7`: unknown/non-function (using std::make_pair;)
-- `indra/llrender/llshadermgr.cpp@2370,3`: unknown/non-function (void LLShaderMgr::initAttribsAndUniforms())
+- `indra/llrender/llshadermgr.cpp@2371,3`: unknown/non-function (void LLShaderMgr::initAttribsAndUniforms())
 - `indra/llrender/llshadermgr.h@39,9`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.h@51,13`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.h@82,9`: unknown/non-function (public:)
@@ -2222,8 +2222,8 @@ All 3011 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llrender/llshadermgr.h@245,14`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.h@391,12`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.h@437,89`: unknown/non-function (public:)
-- `indra/llrender/llshadermgr.h@589,395`: unknown/non-function (public:)
-- `indra/llrender/llshadermgr.h@1021,9`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@589,396`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@1022,9`: unknown/non-function (public:)
 - `indra/newview/alderenderlist.cpp@13,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/alderenderlist.h@13,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/alderenderlist.h@38,7`: unknown/non-function (declaration, XML, build list or global scope)

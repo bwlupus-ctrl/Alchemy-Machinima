@@ -123,7 +123,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/strings.xml", "hunks": ["indra/newview/skins/default/xui/en/strings.xml@4233,10", "indra/newview/skins/default/xui/en/strings.xml@4283,10"]}
 - {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@1474,26"]}
 - {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@429,15"]}
-- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@589,395"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@589,396"]}
 - {"path": "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@130,9"]}
 - {"path": "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@45,15", "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@104,30"]}
 - {"path": "indra/newview/llsettingsvo.cpp", "hunks": ["indra/newview/llsettingsvo.cpp@528,20", "indra/newview/llsettingsvo.cpp@566,110", "indra/newview/llsettingsvo.cpp@1167,20", "indra/newview/llsettingsvo.cpp@1524,20"]}

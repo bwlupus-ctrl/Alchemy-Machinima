@@ -96106,6 +96106,7 @@
           "base_count": 6,
           "base_start": 34,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96130,6 +96131,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96144,10 +96149,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96158,6 +96159,7 @@
           "base_count": 6,
           "base_start": 46,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96184,6 +96186,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96198,10 +96204,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96212,6 +96214,7 @@
           "base_count": 6,
           "base_start": 67,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96255,6 +96258,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96269,10 +96276,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96289,6 +96292,7 @@
           "base_count": 7,
           "base_start": 192,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96327,6 +96331,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96341,10 +96349,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96357,6 +96361,7 @@
           "base_count": 7,
           "base_start": 217,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96386,6 +96391,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96400,10 +96409,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96416,6 +96421,7 @@
           "base_count": 7,
           "base_start": 241,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96445,6 +96451,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96459,10 +96469,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96475,6 +96481,7 @@
           "base_count": 6,
           "base_start": 283,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96504,6 +96511,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96518,10 +96529,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96532,6 +96539,7 @@
           "base_count": 6,
           "base_start": 299,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96560,6 +96568,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96574,10 +96586,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96588,6 +96596,7 @@
           "base_count": 6,
           "base_start": 473,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96616,6 +96625,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96630,10 +96643,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96646,6 +96655,7 @@
           "base_count": 7,
           "base_start": 572,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96674,6 +96684,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96688,10 +96702,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96702,6 +96712,7 @@
           "base_count": 6,
           "base_start": 629,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96728,6 +96739,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96742,10 +96757,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96756,6 +96767,7 @@
           "base_count": 7,
           "base_start": 640,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96784,6 +96796,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96798,10 +96814,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -96814,6 +96826,7 @@
           "base_count": 6,
           "base_start": 856,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96842,6 +96855,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96856,10 +96873,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96870,6 +96883,7 @@
           "base_count": 7,
           "base_start": 900,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96897,6 +96911,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96911,10 +96929,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96925,6 +96939,7 @@
           "base_count": 6,
           "base_start": 934,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -96949,6 +96964,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -96963,10 +96982,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -96977,6 +96992,7 @@
           "base_count": 6,
           "base_start": 1117,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97005,6 +97021,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97019,10 +97039,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97033,6 +97049,7 @@
           "base_count": 6,
           "base_start": 1164,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97061,6 +97078,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97075,10 +97096,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97089,6 +97106,7 @@
           "base_count": 6,
           "base_start": 1220,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97115,6 +97133,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97129,10 +97151,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97151,6 +97169,7 @@
           "base_count": 6,
           "base_start": 1247,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97175,6 +97194,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97189,10 +97212,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -97207,6 +97226,7 @@
           "base_count": 6,
           "base_start": 1295,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97233,6 +97253,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97247,10 +97271,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97264,6 +97284,7 @@
           "base_count": 6,
           "base_start": 1307,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97290,6 +97311,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97304,10 +97329,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97321,6 +97342,7 @@
           "base_count": 8,
           "base_start": 1424,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97345,6 +97367,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97359,10 +97385,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -97382,6 +97404,7 @@
           "base_count": 6,
           "base_start": 1562,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97409,6 +97432,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97423,10 +97450,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97444,6 +97467,7 @@
           "base_count": 6,
           "base_start": 1602,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97472,6 +97496,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97486,10 +97514,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97541,6 +97565,7 @@
           "base_count": 6,
           "base_start": 1671,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97564,14 +97589,18 @@
           "git_context": "void LLShaderMgr::initAttribsAndUniforms()",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 362,
-          "head_end": 2362,
+          "head_count": 363,
+          "head_end": 2363,
           "head_start": 2001,
-          "id": "indra/llrender/llshadermgr.cpp@2001,362",
-          "patch": " \n     // End Alchemy Effects Stack\n \n+    // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)\n+    mReservedUniforms.push_back(\"godray_res\");\n+    mReservedUniforms.push_back(\"godray_multiplier\");\n+    mReservedUniforms.push_back(\"falloff_multiplier\");\n+\n+    // [BDMerge G3.3] per-projector volumetric light cones\n+    mReservedUniforms.push_back(\"projvol_g\");\n+\n+    // [BDMerge G3.3 Phase 1] projector-volumetric cinema levers\n+    mReservedUniforms.push_back(\"projvol_feather\");\n+    mReservedUniforms.push_back(\"projvol_shadow_samples\");\n+    mReservedUniforms.push_back(\"projvol_dither\");\n+    mReservedUniforms.push_back(\"projvol_frame\");\n+    mReservedUniforms.push_back(\"projvol_max\");\n+\n+    // [BDMerge G3.3 Phase 3] atmosphere levers\n+    mReservedUniforms.push_back(\"projvol_density\");\n+    mReservedUniforms.push_back(\"projvol_noise_strength\");\n+    mReservedUniforms.push_back(\"projvol_noise_scale\");\n+    mReservedUniforms.push_back(\"projvol_noise_speed\");\n+    mReservedUniforms.push_back(\"projvol_time\");\n+    mReservedUniforms.push_back(\"projvol_fog_strength\");\n+    mReservedUniforms.push_back(\"projvol_fog_ground_density\");\n+    mReservedUniforms.push_back(\"projvol_fog_falloff\");\n+    mReservedUniforms.push_back(\"projvol_fog_base\");\n+    mReservedUniforms.push_back(\"projvol_inv_modelview\");\n+    mReservedUniforms.push_back(\"projvol_bloom_feed\");\n+    mReservedUniforms.push_back(\"projvol_bloom_anamorphic\");\n+\n+    // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows (B)\n+    mReservedUniforms.push_back(\"projvol_shadow_tint\");\n+    mReservedUniforms.push_back(\"projvol_history\");\n+    mReservedUniforms.push_back(\"projvol_prev_viewproj\");\n+    mReservedUniforms.push_back(\"projvol_prev_modelview\");\n+    mReservedUniforms.push_back(\"projvol_temporal_blend\");\n+\n+    // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)\n+    mReservedUniforms.push_back(\"projvol_temporal_reject\");\n+    mReservedUniforms.push_back(\"projvol_temporal_beam_depth\");\n+\n+    // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow\n+    mReservedUniforms.push_back(\"projvol_rim_strength\");\n+    mReservedUniforms.push_back(\"projvol_rim_power\");\n+    mReservedUniforms.push_back(\"projvol_rim_threshold\");\n+    mReservedUniforms.push_back(\"projvol_rim_wrap\");\n+    mReservedUniforms.push_back(\"projvol_rim_softness\"); // [F4] skin softness\n+    mReservedUniforms.push_back(\"projvol_wind\"); // [F5] shared dust-wind * cone NoiseSpeed\n+\n+    // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)\n+    mReservedUniforms.push_back(\"projvol_frustum_clip\");\n+    mReservedUniforms.push_back(\"projvol_frustum_planes\");\n+    mReservedUniforms.push_back(\"projvol_shadow_jitter_tap\");\n+\n+    // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate\n+    mReservedUniforms.push_back(\"projvol_conservative_shadow\");\n+\n+    // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup\n+    mReservedUniforms.push_back(\"projvol_dust\");\n+    mReservedUniforms.push_back(\"projvol_dust_intensity\");\n+    mReservedUniforms.push_back(\"projvol_dust_scale\");\n+    mReservedUniforms.push_back(\"projvol_dust_wind\");\n+    mReservedUniforms.push_back(\"projvol_dust_map\");\n+\n+    // [BDMerge Batch 2] Feature 1: soft shadows\n+    mReservedUniforms.push_back(\"soft_shadow_enable\");\n+    mReservedUniforms.push_back(\"soft_shadow_scale\");\n+    mReservedUniforms.push_back(\"soft_shadow_max\");\n+    mReservedUniforms.push_back(\"soft_shadow_fill\");\n+    mReservedUniforms.push_back(\"soft_shadow_sun\");\n+    // [Vogel A/B] soft-shadow kernel selector + Vogel tap count (lockstep with\n+    // the SOFT_SHADOW_VOGEL / SOFT_SHADOW_TAPS enum block in llshadermgr.h)\n+    mReservedUniforms.push_back(\"soft_shadow_vogel\");\n+    mReservedUniforms.push_back(\"soft_shadow_taps\");\n+    mReservedUniforms.push_back(\"spot_shadow_softness\");\n+    // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering\n+    mReservedUniforms.push_back(\"gobo_aniso\");\n+    // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.\n+    mReservedUniforms.push_back(\"gobo_time\");\n+    mReservedUniforms.push_back(\"gobo_pattern\");\n+    mReservedUniforms.push_back(\"gobo_anim_params\");\n+    // [Gobo v2] colored gel tint + per-pattern variation params.\n+    mReservedUniforms.push_back(\"gobo_tint\");\n+    mReservedUniforms.push_back(\"gobo_pattern_params\");\n+\n+    // [Cine Outline Phase 1] deferred normal/depth outline post pass.\n+    mReservedUniforms.push_back(\"outline_color\");\n+    mReservedUniforms.push_back(\"outline_params\");\n+    mReservedUniforms.push_back(\"outline_params2\");\n+\n+    // [Pedro Cam Phase 1] fisheye / peephole late post pass.\n+    mReservedUniforms.push_back(\"fisheye_params\");\n+    mReservedUniforms.push_back(\"fisheye_params2\");\n+\n+    // [BDMerge A5.4-1a] velocity / motion-vector buffer (must stay in lockstep\n+    // with the enum block in llshadermgr.h)\n+    mReservedUniforms.push_back(\"current_modelview_matrix\");\n+    mReservedUniforms.push_back(\"last_modelview_matrix\");\n+    mReservedUniforms.push_back(\"last_object_matrix\");\n+    mReservedUniforms.push_back(\"projection_matrix_unjittered\");\n+    mReservedUniforms.push_back(\"velocityMap\");\n+    mReservedUniforms.push_back(\"motion_blur_strength\");\n+    // [BDMerge A5.4-1b] previous-frame skinning palettes\n+    mReservedUniforms.push_back(\"lastMatrixPalette\");\n+\n+    // [BDMerge Froxel F0] hybrid froxel volumetrics (must stay in lockstep with the\n+    // FROXEL_* enum block in llshadermgr.h - same position, same order).\n+    mReservedUniforms.push_back(\"froxelMedia\");\n+    mReservedUniforms.push_back(\"froxel_grid\");\n+    mReservedUniforms.push_back(\"froxel_atlas\");\n+    mReservedUniforms.push_back(\"froxel_near_far\");\n+    mReservedUniforms.push_back(\"froxel_tan_half_fov\");\n+    mReservedUniforms.push_back(\"froxel_inv_modelview\");\n+    mReservedUniforms.push_back(\"froxel_density\");\n+    mReservedUniforms.push_back(\"froxel_fog_strength\");\n+    mReservedUniforms.push_back(\"froxel_fog_ground_density\");\n+    mReservedUniforms.push_back(\"froxel_fog_falloff\");\n+    mReservedUniforms.push_back(\"froxel_fog_base\");\n+    mReservedUniforms.push_back(\"froxel_noise_strength\");\n+    mReservedUniforms.push_back(\"froxel_noise_scale\");\n+    mReservedUniforms.push_back(\"froxel_noise_speed\");\n+    mReservedUniforms.push_back(\"froxel_wind\"); // [F5] wind_dir * noise_speed\n+    mReservedUniforms.push_back(\"froxel_time\");\n+    // [Local Fog] Flattened eight-volume media arrays.\n+    mReservedUniforms.push_back(\"localfog_center\");\n+    mReservedUniforms.push_back(\"localfog_extents\");\n+    mReservedUniforms.push_back(\"localfog_inv_rot\");\n+    mReservedUniforms.push_back(\"localfog_params\");\n+    mReservedUniforms.push_back(\"localfog_tint\");\n+    mReservedUniforms.push_back(\"localfog_noise\");\n+    mReservedUniforms.push_back(\"localfog_count\");\n+    mReservedUniforms.push_back(\"froxel_debug_mode\");\n+    mReservedUniforms.push_back(\"froxel_debug_slice\");\n+\n+    // [BDMerge Froxel F1] integrate + apply (lockstep with the FROXEL_INTEGRATED /\n+    // FROXEL_AMBIENT enums appended to the FROXEL_* block in llshadermgr.h).\n+    mReservedUniforms.push_back(\"froxelIntegrated\");\n+    mReservedUniforms.push_back(\"froxel_ambient\");\n+\n+    // [BDMerge Froxel F2] per-light injection (lockstep with the FROXEL_LIGHT /\n+    // FROXEL_LIGHT_ENABLE enums appended to the FROXEL_* block in llshadermgr.h).\n+    mReservedUniforms.push_back(\"froxelLight\");\n+    mReservedUniforms.push_back(\"froxel_light_enable\");\n+\n+    // [BDMerge Froxel F3] temporal accumulation (lockstep with the FROXEL_LIGHT_HISTORY\n+    // / FROXEL_PREV_MODELVIEW / FROXEL_TEMPORAL_BLEND / FROXEL_JITTER / FROXEL_FRAME\n+    // enums appended to the FROXEL_* block in llshadermgr.h - same position, same order).\n+    mReservedUniforms.push_back(\"froxelLightHistory\");\n+    mReservedUniforms.push_back(\"froxel_prev_modelview\");\n+    mReservedUniforms.push_back(\"froxel_temporal_blend\");\n+    mReservedUniforms.push_back(\"froxel_temporal_reject\");\n+    mReservedUniforms.push_back(\"froxel_jitter\");\n+    mReservedUniforms.push_back(\"froxel_frame\");\n+\n+    mReservedUniforms.push_back(\"weather_rain_map\");\n+    mReservedUniforms.push_back(\"weather_rain_occlusion_map\");\n+\n+    // [Ultimate Diopter] must stay in lockstep with the enum block in llshadermgr.h\n+    mReservedUniforms.push_back(\"diopter_shape\");\n+    mReservedUniforms.push_back(\"diopter_shape2\");\n+    mReservedUniforms.push_back(\"diopter_shape3\");\n+    mReservedUniforms.push_back(\"diopter_shape4\");\n+    mReservedUniforms.push_back(\"diopter_shape5\");\n+    mReservedUniforms.push_back(\"diopter_shape6\");\n+    mReservedUniforms.push_back(\"diopter_shape7\");\n+    mReservedUniforms.push_back(\"diopter_focus\");\n+    mReservedUniforms.push_back(\"diopter_focus2\");\n+    mReservedUniforms.push_back(\"diopter_focus3\");\n+    mReservedUniforms.push_back(\"diopter_focus4\");\n+    mReservedUniforms.push_back(\"diopter_aperture\");\n+    mReservedUniforms.push_back(\"diopter_aperture2\");\n+    mReservedUniforms.push_back(\"diopter_glass\");\n+    mReservedUniforms.push_back(\"diopter_glass2\");\n+    mReservedUniforms.push_back(\"diopter_halo\");\n+    mReservedUniforms.push_back(\"diopter_halo2\");\n+    mReservedUniforms.push_back(\"diopter_pattern\");\n+    mReservedUniforms.push_back(\"diopter_comp\");\n+    mReservedUniforms.push_back(\"diopter_comp2\");\n+    mReservedUniforms.push_back(\"diopter_ghost\");\n+    mReservedUniforms.push_back(\"diopter_ghost2\");\n+\n+    // [Ultimate Diopter] warped present depth for ReShade alignment (lockstep\n+    // with the enum block appended in llshadermgr.h)\n+    mReservedUniforms.push_back(\"diopterWarpMap\");\n+    mReservedUniforms.push_back(\"depth_warp_params\");\n+\n+    // [Ultimate Kaleidoscope] (lockstep with the enum block in llshadermgr.h)\n+    mReservedUniforms.push_back(\"kal_pattern\");\n+    mReservedUniforms.push_back(\"kal_shape\");\n+    mReservedUniforms.push_back(\"kal_center\");\n+    mReservedUniforms.push_back(\"kal_source\");\n+    mReservedUniforms.push_back(\"kal_fx\");\n+    mReservedUniforms.push_back(\"kal_protect\");\n+    mReservedUniforms.push_back(\"kal_depth\");\n+    mReservedUniforms.push_back(\"kal_wave\");\n+    mReservedUniforms.push_back(\"kal_look\");\n+    mReservedUniforms.push_back(\"kal_cell\");\n+    mReservedUniforms.push_back(\"kal_cell2\");\n+\n+    // [Cine Haze] Cinematic Depth Atmosphere (lockstep with the enum block\n+    // appended in llshadermgr.h)\n+    mReservedUniforms.push_back(\"cine_haze_active\");\n+    mReservedUniforms.push_back(\"cine_haze_params\");\n+    mReservedUniforms.push_back(\"cine_haze_height\");\n+    mReservedUniforms.push_back(\"cine_haze_up\");\n+    mReservedUniforms.push_back(\"cine_haze_color\");\n+    mReservedUniforms.push_back(\"cine_haze_color_mode\");\n+    mReservedUniforms.push_back(\"cine_haze_sun\");\n+    mReservedUniforms.push_back(\"cine_haze_debug\");\n+    mReservedUniforms.push_back(\"cine_haze_additive\");\n+\n+    // [RigRim] Rig Rim Light (lockstep with the enum block appended in\n+    // llshadermgr.h)\n+    mReservedUniforms.push_back(\"rig_rim_mode\");\n+    mReservedUniforms.push_back(\"rig_rim_globals\");\n+    mReservedUniforms.push_back(\"rig_rim_light\");\n+    mReservedUniforms.push_back(\"rig_rim_lights\");\n+    mReservedUniforms.push_back(\"rig_rim_shadow\"); // [RigRim] Rim shadow\n+\n+    // [RotoInk] Rotoscope Ink post pass (cineOutlineF.glsl); lockstep with\n+    // the ROTO_* block at the end of the enum in llshadermgr.h.\n+    mReservedUniforms.push_back(\"rotoScene\");\n+    mReservedUniforms.push_back(\"roto_line\");\n+    mReservedUniforms.push_back(\"roto_ink\");\n+    mReservedUniforms.push_back(\"roto_subject\");\n+    mReservedUniforms.push_back(\"roto_subject2\");\n+    mReservedUniforms.push_back(\"roto_subject3\");\n+    mReservedUniforms.push_back(\"roto_sketch\");\n+    mReservedUniforms.push_back(\"roto_sketch2\");\n+    mReservedUniforms.push_back(\"roto_motion\");\n+    mReservedUniforms.push_back(\"roto_motion2\");\n+\n+    // [RotoInk Anim] animated patterns + extended subject isolation;\n+    // lockstep with the ROTO_MOTION3.. block at the end of the enum.\n+    mReservedUniforms.push_back(\"roto_motion3\");\n+    mReservedUniforms.push_back(\"roto_motion4\");\n+    mReservedUniforms.push_back(\"roto_motion5\");\n+    mReservedUniforms.push_back(\"roto_pattern\");\n+    mReservedUniforms.push_back(\"roto_pattern2\");\n+    mReservedUniforms.push_back(\"roto_color2\");\n+    mReservedUniforms.push_back(\"roto_color2b\");\n+    mReservedUniforms.push_back(\"roto_subject4\");\n+    mReservedUniforms.push_back(\"roto_targets\");\n+    mReservedUniforms.push_back(\"roto_targets2\");\n+\n+    // [TronT1] Tron World post pass (tronWorldF.glsl); lockstep with the\n+    // TRON_* block at the end of the enum in llshadermgr.h. TRON_TRACE* /\n+    // TRON_RIM* are T2 reservations.\n+    mReservedUniforms.push_back(\"tronScene\");\n+    mReservedUniforms.push_back(\"tron_inv_proj\");\n+    mReservedUniforms.push_back(\"tron_inv_modelview\");\n+    mReservedUniforms.push_back(\"tron_cam_rel\");\n+    mReservedUniforms.push_back(\"tron_master\");\n+    mReservedUniforms.push_back(\"tron_palette0\");\n+    mReservedUniforms.push_back(\"tron_palette1\");\n+    mReservedUniforms.push_back(\"tron_palette2\");\n+    mReservedUniforms.push_back(\"tron_palette3\");\n+    mReservedUniforms.push_back(\"tron_grade\");\n+    mReservedUniforms.push_back(\"tron_grade2\");\n+    mReservedUniforms.push_back(\"tron_grade3\");\n+    mReservedUniforms.push_back(\"tron_grid\");\n+    mReservedUniforms.push_back(\"tron_grid2\");\n+    mReservedUniforms.push_back(\"tron_grid3\");\n+    mReservedUniforms.push_back(\"tron_grid4\");\n+    mReservedUniforms.push_back(\"tron_grid5\");\n+    mReservedUniforms.push_back(\"tron_water\");\n+    mReservedUniforms.push_back(\"tron_pulse\");\n+    mReservedUniforms.push_back(\"tron_pulse2\");\n+    mReservedUniforms.push_back(\"tron_subject\");\n+    mReservedUniforms.push_back(\"tron_subject2\");\n+    mReservedUniforms.push_back(\"tron_targets\");\n+    mReservedUniforms.push_back(\"tron_targets2\");\n+    mReservedUniforms.push_back(\"tron_anchors\");\n+    mReservedUniforms.push_back(\"tron_anchor_count\");\n+    mReservedUniforms.push_back(\"tron_lattice_r\");\n+    mReservedUniforms.push_back(\"tron_lattice_k\");\n+    mReservedUniforms.push_back(\"tron_trace\");   // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_trace2\");  // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_trace3\");  // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_rim\");     // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_rim2\");    // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_rim3\");    // [T2 reserved]\n+\n+    // [TronT1] Rig Rim \"Tron\" palette tint (deferredUtil.glsl rigRimTerm());\n+    // lockstep with RIG_RIM_TRON / RIG_RIM_TRON_COLOR in llshadermgr.h.\n+    mReservedUniforms.push_back(\"rig_rim_tron\");\n+    mReservedUniforms.push_back(\"rig_rim_tron_color\");\n+\n+    // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl);\n+    // lockstep with TRON_TRAIL_COLOR..TRON_TRAIL_PARAMS3 in llshadermgr.h.\n+    mReservedUniforms.push_back(\"tron_trail_color\");\n+    mReservedUniforms.push_back(\"tron_trail_params\");\n+    mReservedUniforms.push_back(\"tron_trail_params2\");\n+    mReservedUniforms.push_back(\"tron_trail_params3\");\n+\n+    // [EnvIntensity v2] exposure strip uniforms; lockstep with\n+    // SKY_AMB_SCALE..SHADOW_LIFT_GAIN in llshadermgr.h (same order).\n+    mReservedUniforms.push_back(\"sky_amb_scale\");       // SKY_AMB_SCALE\n+    mReservedUniforms.push_back(\"sky_probe_rad_scale\"); // SKY_PROBE_RAD_SCALE\n+    mReservedUniforms.push_back(\"sky_sun_tint\");        // SKY_SUN_TINT\n+    mReservedUniforms.push_back(\"sky_amb_tint\");        // SKY_AMB_TINT\n+    mReservedUniforms.push_back(\"shadow_lift_gain\");    // SHADOW_LIFT_GAIN\n+    mReservedUniforms.push_back(\"actorMaskMap\");        // [ActorMask] ACTOR_MASK_MAP\n+    mReservedUniforms.push_back(\"actor_mask_bits\");     // [ActorMask] ACTOR_MASK_BITS\n+\n+    // [ProbeCost] Append in lockstep with llshadermgr.h.\n+    mReservedUniforms.push_back(\"shadow_probe_mode\");\n+    mReservedUniforms.push_back(\"shadow_reuse_matrix\");\n+    mReservedUniforms.push_back(\"shadow_reuse_valid\");\n+    mReservedUniforms.push_back(\"shadow_reuse_res\");\n+    mReservedUniforms.push_back(\"shadow_reuse_res_h\");\n+    mReservedUniforms.push_back(\"render_debug_lighting_term\");\n+    mReservedUniforms.push_back(\"rig_rim_quality\");\n+    mReservedUniforms.push_back(\"rig_rim_sil\");\n+    mReservedUniforms.push_back(\"rig_rim_aux_params\");\n+    mReservedUniforms.push_back(\"rigRimAuxMap\");\n+    mReservedUniforms.push_back(\"rigRimSilMap\");\n+    mReservedUniforms.push_back(\"rig_rim_wrap\");\n+    mReservedUniforms.push_back(\"rig_rim_wrap2\");\n+    mReservedUniforms.push_back(\"rigRimWrapSrc\");\n+    mReservedUniforms.push_back(\"rig_rim_smooth_params\");\n+    mReservedUniforms.push_back(\"rigRimSmoothMap\");\n+    mReservedUniforms.push_back(\"rigRimBarrierMap\");\n+    mReservedUniforms.push_back(\"rigRimEdgeMap\");\n+    mReservedUniforms.push_back(\"rig_rim_smooth_stage\");\n+    mReservedUniforms.push_back(\"onLensAlbedoMap\");\n+    mReservedUniforms.push_back(\"lensPyramid0\");\n+    mReservedUniforms.push_back(\"lensPyramid1\");\n+    mReservedUniforms.push_back(\"lensPyramid2\");\n+    mReservedUniforms.push_back(\"lensPyramid3\");\n+    mReservedUniforms.push_back(\"lensPyramid4\");\n+\n+    mReservedUniforms.push_back(\"light_shape\");\n+    mReservedUniforms.push_back(\"light_shapes\");\n+    mReservedUniforms.push_back(\"area_shadow_map0\");\n+    mReservedUniforms.push_back(\"area_shadow_map1\");\n+    mReservedUniforms.push_back(\"area_source\");\n+    mReservedUniforms.push_back(\"relight_enabled\");\n+    mReservedUniforms.push_back(\"area_world_atlas\");\n+\n+    // Append cover after all existing samplers: scalar diffuseMap must retain\n+    // unit zero for tree/grass draws which bind their diffuse texture directly.\n+    mReservedUniforms.push_back(\"weather_surface_cover_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_close_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_distant_map\");\n+    mReservedUniforms.push_back(\"weather_surface_cover_min_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_close_min_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_distant_min_map\");\n+    mReservedUniforms.push_back(\"weather_veil_map\");\n+\n+    mReservedUniforms.push_back(\"env_only_mode\");\n+    mReservedUniforms.push_back(\"avatar_tag_draw\");\n+    mReservedUniforms.push_back(\"gbuffer_tag_preferred\");\n+    mReservedUniforms.push_back(\"local_light_ev_scale\");\n+    mReservedUniforms.push_back(\"local_light_ev_scales\");\n+    mReservedUniforms.push_back(\"ssao_irradiance_max_stock\");\n+\n     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);\n \n     std::set<std::string> dupe_check;\n",
+          "id": "indra/llrender/llshadermgr.cpp@2001,363",
+          "patch": " \n     // End Alchemy Effects Stack\n \n+    // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)\n+    mReservedUniforms.push_back(\"godray_res\");\n+    mReservedUniforms.push_back(\"godray_multiplier\");\n+    mReservedUniforms.push_back(\"falloff_multiplier\");\n+\n+    // [BDMerge G3.3] per-projector volumetric light cones\n+    mReservedUniforms.push_back(\"projvol_g\");\n+\n+    // [BDMerge G3.3 Phase 1] projector-volumetric cinema levers\n+    mReservedUniforms.push_back(\"projvol_feather\");\n+    mReservedUniforms.push_back(\"projvol_shadow_samples\");\n+    mReservedUniforms.push_back(\"projvol_dither\");\n+    mReservedUniforms.push_back(\"projvol_frame\");\n+    mReservedUniforms.push_back(\"projvol_max\");\n+\n+    // [BDMerge G3.3 Phase 3] atmosphere levers\n+    mReservedUniforms.push_back(\"projvol_density\");\n+    mReservedUniforms.push_back(\"projvol_noise_strength\");\n+    mReservedUniforms.push_back(\"projvol_noise_scale\");\n+    mReservedUniforms.push_back(\"projvol_noise_speed\");\n+    mReservedUniforms.push_back(\"projvol_time\");\n+    mReservedUniforms.push_back(\"projvol_fog_strength\");\n+    mReservedUniforms.push_back(\"projvol_fog_ground_density\");\n+    mReservedUniforms.push_back(\"projvol_fog_falloff\");\n+    mReservedUniforms.push_back(\"projvol_fog_base\");\n+    mReservedUniforms.push_back(\"projvol_inv_modelview\");\n+    mReservedUniforms.push_back(\"projvol_bloom_feed\");\n+    mReservedUniforms.push_back(\"projvol_bloom_anamorphic\");\n+\n+    // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows (B)\n+    mReservedUniforms.push_back(\"projvol_shadow_tint\");\n+    mReservedUniforms.push_back(\"projvol_history\");\n+    mReservedUniforms.push_back(\"projvol_prev_viewproj\");\n+    mReservedUniforms.push_back(\"projvol_prev_modelview\");\n+    mReservedUniforms.push_back(\"projvol_temporal_blend\");\n+\n+    // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)\n+    mReservedUniforms.push_back(\"projvol_temporal_reject\");\n+    mReservedUniforms.push_back(\"projvol_temporal_beam_depth\");\n+\n+    // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow\n+    mReservedUniforms.push_back(\"projvol_rim_strength\");\n+    mReservedUniforms.push_back(\"projvol_rim_power\");\n+    mReservedUniforms.push_back(\"projvol_rim_threshold\");\n+    mReservedUniforms.push_back(\"projvol_rim_wrap\");\n+    mReservedUniforms.push_back(\"projvol_rim_softness\"); // [F4] skin softness\n+    mReservedUniforms.push_back(\"projvol_wind\"); // [F5] shared dust-wind * cone NoiseSpeed\n+\n+    // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)\n+    mReservedUniforms.push_back(\"projvol_frustum_clip\");\n+    mReservedUniforms.push_back(\"projvol_frustum_planes\");\n+    mReservedUniforms.push_back(\"projvol_shadow_jitter_tap\");\n+\n+    // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate\n+    mReservedUniforms.push_back(\"projvol_conservative_shadow\");\n+\n+    // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup\n+    mReservedUniforms.push_back(\"projvol_dust\");\n+    mReservedUniforms.push_back(\"projvol_dust_intensity\");\n+    mReservedUniforms.push_back(\"projvol_dust_scale\");\n+    mReservedUniforms.push_back(\"projvol_dust_wind\");\n+    mReservedUniforms.push_back(\"projvol_dust_map\");\n+\n+    // [BDMerge Batch 2] Feature 1: soft shadows\n+    mReservedUniforms.push_back(\"soft_shadow_enable\");\n+    mReservedUniforms.push_back(\"soft_shadow_scale\");\n+    mReservedUniforms.push_back(\"soft_shadow_max\");\n+    mReservedUniforms.push_back(\"soft_shadow_fill\");\n+    mReservedUniforms.push_back(\"soft_shadow_sun\");\n+    // [Vogel A/B] soft-shadow kernel selector + Vogel tap count (lockstep with\n+    // the SOFT_SHADOW_VOGEL / SOFT_SHADOW_TAPS enum block in llshadermgr.h)\n+    mReservedUniforms.push_back(\"soft_shadow_vogel\");\n+    mReservedUniforms.push_back(\"soft_shadow_taps\");\n+    mReservedUniforms.push_back(\"spot_shadow_softness\");\n+    // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering\n+    mReservedUniforms.push_back(\"gobo_aniso\");\n+    // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.\n+    mReservedUniforms.push_back(\"gobo_time\");\n+    mReservedUniforms.push_back(\"gobo_pattern\");\n+    mReservedUniforms.push_back(\"gobo_anim_params\");\n+    // [Gobo v2] colored gel tint + per-pattern variation params.\n+    mReservedUniforms.push_back(\"gobo_tint\");\n+    mReservedUniforms.push_back(\"gobo_pattern_params\");\n+\n+    // [Cine Outline Phase 1] deferred normal/depth outline post pass.\n+    mReservedUniforms.push_back(\"outline_color\");\n+    mReservedUniforms.push_back(\"outline_params\");\n+    mReservedUniforms.push_back(\"outline_params2\");\n+\n+    // [Pedro Cam Phase 1] fisheye / peephole late post pass.\n+    mReservedUniforms.push_back(\"fisheye_params\");\n+    mReservedUniforms.push_back(\"fisheye_params2\");\n+\n+    // [BDMerge A5.4-1a] velocity / motion-vector buffer (must stay in lockstep\n+    // with the enum block in llshadermgr.h)\n+    mReservedUniforms.push_back(\"current_modelview_matrix\");\n+    mReservedUniforms.push_back(\"last_modelview_matrix\");\n+    mReservedUniforms.push_back(\"last_object_matrix\");\n+    mReservedUniforms.push_back(\"projection_matrix_unjittered\");\n+    mReservedUniforms.push_back(\"velocityMap\");\n+    mReservedUniforms.push_back(\"motion_blur_strength\");\n+    // [BDMerge A5.4-1b] previous-frame skinning palettes\n+    mReservedUniforms.push_back(\"lastMatrixPalette\");\n+\n+    // [BDMerge Froxel F0] hybrid froxel volumetrics (must stay in lockstep with the\n+    // FROXEL_* enum block in llshadermgr.h - same position, same order).\n+    mReservedUniforms.push_back(\"froxelMedia\");\n+    mReservedUniforms.push_back(\"froxel_grid\");\n+    mReservedUniforms.push_back(\"froxel_atlas\");\n+    mReservedUniforms.push_back(\"froxel_near_far\");\n+    mReservedUniforms.push_back(\"froxel_tan_half_fov\");\n+    mReservedUniforms.push_back(\"froxel_inv_modelview\");\n+    mReservedUniforms.push_back(\"froxel_density\");\n+    mReservedUniforms.push_back(\"froxel_fog_strength\");\n+    mReservedUniforms.push_back(\"froxel_fog_ground_density\");\n+    mReservedUniforms.push_back(\"froxel_fog_falloff\");\n+    mReservedUniforms.push_back(\"froxel_fog_base\");\n+    mReservedUniforms.push_back(\"froxel_noise_strength\");\n+    mReservedUniforms.push_back(\"froxel_noise_scale\");\n+    mReservedUniforms.push_back(\"froxel_noise_speed\");\n+    mReservedUniforms.push_back(\"froxel_wind\"); // [F5] wind_dir * noise_speed\n+    mReservedUniforms.push_back(\"froxel_time\");\n+    // [Local Fog] Flattened eight-volume media arrays.\n+    mReservedUniforms.push_back(\"localfog_center\");\n+    mReservedUniforms.push_back(\"localfog_extents\");\n+    mReservedUniforms.push_back(\"localfog_inv_rot\");\n+    mReservedUniforms.push_back(\"localfog_params\");\n+    mReservedUniforms.push_back(\"localfog_tint\");\n+    mReservedUniforms.push_back(\"localfog_noise\");\n+    mReservedUniforms.push_back(\"localfog_count\");\n+    mReservedUniforms.push_back(\"froxel_debug_mode\");\n+    mReservedUniforms.push_back(\"froxel_debug_slice\");\n+\n+    // [BDMerge Froxel F1] integrate + apply (lockstep with the FROXEL_INTEGRATED /\n+    // FROXEL_AMBIENT enums appended to the FROXEL_* block in llshadermgr.h).\n+    mReservedUniforms.push_back(\"froxelIntegrated\");\n+    mReservedUniforms.push_back(\"froxel_ambient\");\n+\n+    // [BDMerge Froxel F2] per-light injection (lockstep with the FROXEL_LIGHT /\n+    // FROXEL_LIGHT_ENABLE enums appended to the FROXEL_* block in llshadermgr.h).\n+    mReservedUniforms.push_back(\"froxelLight\");\n+    mReservedUniforms.push_back(\"froxel_light_enable\");\n+\n+    // [BDMerge Froxel F3] temporal accumulation (lockstep with the FROXEL_LIGHT_HISTORY\n+    // / FROXEL_PREV_MODELVIEW / FROXEL_TEMPORAL_BLEND / FROXEL_JITTER / FROXEL_FRAME\n+    // enums appended to the FROXEL_* block in llshadermgr.h - same position, same order).\n+    mReservedUniforms.push_back(\"froxelLightHistory\");\n+    mReservedUniforms.push_back(\"froxel_prev_modelview\");\n+    mReservedUniforms.push_back(\"froxel_temporal_blend\");\n+    mReservedUniforms.push_back(\"froxel_temporal_reject\");\n+    mReservedUniforms.push_back(\"froxel_jitter\");\n+    mReservedUniforms.push_back(\"froxel_frame\");\n+\n+    mReservedUniforms.push_back(\"weather_rain_map\");\n+    mReservedUniforms.push_back(\"weather_rain_occlusion_map\");\n+\n+    // [Ultimate Diopter] must stay in lockstep with the enum block in llshadermgr.h\n+    mReservedUniforms.push_back(\"diopter_shape\");\n+    mReservedUniforms.push_back(\"diopter_shape2\");\n+    mReservedUniforms.push_back(\"diopter_shape3\");\n+    mReservedUniforms.push_back(\"diopter_shape4\");\n+    mReservedUniforms.push_back(\"diopter_shape5\");\n+    mReservedUniforms.push_back(\"diopter_shape6\");\n+    mReservedUniforms.push_back(\"diopter_shape7\");\n+    mReservedUniforms.push_back(\"diopter_focus\");\n+    mReservedUniforms.push_back(\"diopter_focus2\");\n+    mReservedUniforms.push_back(\"diopter_focus3\");\n+    mReservedUniforms.push_back(\"diopter_focus4\");\n+    mReservedUniforms.push_back(\"diopter_aperture\");\n+    mReservedUniforms.push_back(\"diopter_aperture2\");\n+    mReservedUniforms.push_back(\"diopter_glass\");\n+    mReservedUniforms.push_back(\"diopter_glass2\");\n+    mReservedUniforms.push_back(\"diopter_halo\");\n+    mReservedUniforms.push_back(\"diopter_halo2\");\n+    mReservedUniforms.push_back(\"diopter_pattern\");\n+    mReservedUniforms.push_back(\"diopter_comp\");\n+    mReservedUniforms.push_back(\"diopter_comp2\");\n+    mReservedUniforms.push_back(\"diopter_ghost\");\n+    mReservedUniforms.push_back(\"diopter_ghost2\");\n+\n+    // [Ultimate Diopter] warped present depth for ReShade alignment (lockstep\n+    // with the enum block appended in llshadermgr.h)\n+    mReservedUniforms.push_back(\"diopterWarpMap\");\n+    mReservedUniforms.push_back(\"depth_warp_params\");\n+\n+    // [Ultimate Kaleidoscope] (lockstep with the enum block in llshadermgr.h)\n+    mReservedUniforms.push_back(\"kal_pattern\");\n+    mReservedUniforms.push_back(\"kal_shape\");\n+    mReservedUniforms.push_back(\"kal_center\");\n+    mReservedUniforms.push_back(\"kal_source\");\n+    mReservedUniforms.push_back(\"kal_fx\");\n+    mReservedUniforms.push_back(\"kal_protect\");\n+    mReservedUniforms.push_back(\"kal_depth\");\n+    mReservedUniforms.push_back(\"kal_wave\");\n+    mReservedUniforms.push_back(\"kal_look\");\n+    mReservedUniforms.push_back(\"kal_cell\");\n+    mReservedUniforms.push_back(\"kal_cell2\");\n+\n+    // [Cine Haze] Cinematic Depth Atmosphere (lockstep with the enum block\n+    // appended in llshadermgr.h)\n+    mReservedUniforms.push_back(\"cine_haze_active\");\n+    mReservedUniforms.push_back(\"cine_haze_params\");\n+    mReservedUniforms.push_back(\"cine_haze_height\");\n+    mReservedUniforms.push_back(\"cine_haze_up\");\n+    mReservedUniforms.push_back(\"cine_haze_color\");\n+    mReservedUniforms.push_back(\"cine_haze_color_mode\");\n+    mReservedUniforms.push_back(\"cine_haze_sun\");\n+    mReservedUniforms.push_back(\"cine_haze_debug\");\n+    mReservedUniforms.push_back(\"cine_haze_additive\");\n+\n+    // [RigRim] Rig Rim Light (lockstep with the enum block appended in\n+    // llshadermgr.h)\n+    mReservedUniforms.push_back(\"rig_rim_mode\");\n+    mReservedUniforms.push_back(\"rig_rim_globals\");\n+    mReservedUniforms.push_back(\"rig_rim_light\");\n+    mReservedUniforms.push_back(\"rig_rim_lights\");\n+    mReservedUniforms.push_back(\"rig_rim_shadow\"); // [RigRim] Rim shadow\n+\n+    // [RotoInk] Rotoscope Ink post pass (cineOutlineF.glsl); lockstep with\n+    // the ROTO_* block at the end of the enum in llshadermgr.h.\n+    mReservedUniforms.push_back(\"rotoScene\");\n+    mReservedUniforms.push_back(\"roto_line\");\n+    mReservedUniforms.push_back(\"roto_ink\");\n+    mReservedUniforms.push_back(\"roto_subject\");\n+    mReservedUniforms.push_back(\"roto_subject2\");\n+    mReservedUniforms.push_back(\"roto_subject3\");\n+    mReservedUniforms.push_back(\"roto_sketch\");\n+    mReservedUniforms.push_back(\"roto_sketch2\");\n+    mReservedUniforms.push_back(\"roto_motion\");\n+    mReservedUniforms.push_back(\"roto_motion2\");\n+\n+    // [RotoInk Anim] animated patterns + extended subject isolation;\n+    // lockstep with the ROTO_MOTION3.. block at the end of the enum.\n+    mReservedUniforms.push_back(\"roto_motion3\");\n+    mReservedUniforms.push_back(\"roto_motion4\");\n+    mReservedUniforms.push_back(\"roto_motion5\");\n+    mReservedUniforms.push_back(\"roto_pattern\");\n+    mReservedUniforms.push_back(\"roto_pattern2\");\n+    mReservedUniforms.push_back(\"roto_color2\");\n+    mReservedUniforms.push_back(\"roto_color2b\");\n+    mReservedUniforms.push_back(\"roto_subject4\");\n+    mReservedUniforms.push_back(\"roto_targets\");\n+    mReservedUniforms.push_back(\"roto_targets2\");\n+\n+    // [TronT1] Tron World post pass (tronWorldF.glsl); lockstep with the\n+    // TRON_* block at the end of the enum in llshadermgr.h. TRON_TRACE* /\n+    // TRON_RIM* are T2 reservations.\n+    mReservedUniforms.push_back(\"tronScene\");\n+    mReservedUniforms.push_back(\"tron_inv_proj\");\n+    mReservedUniforms.push_back(\"tron_inv_modelview\");\n+    mReservedUniforms.push_back(\"tron_cam_rel\");\n+    mReservedUniforms.push_back(\"tron_master\");\n+    mReservedUniforms.push_back(\"tron_palette0\");\n+    mReservedUniforms.push_back(\"tron_palette1\");\n+    mReservedUniforms.push_back(\"tron_palette2\");\n+    mReservedUniforms.push_back(\"tron_palette3\");\n+    mReservedUniforms.push_back(\"tron_grade\");\n+    mReservedUniforms.push_back(\"tron_grade2\");\n+    mReservedUniforms.push_back(\"tron_grade3\");\n+    mReservedUniforms.push_back(\"tron_grid\");\n+    mReservedUniforms.push_back(\"tron_grid2\");\n+    mReservedUniforms.push_back(\"tron_grid3\");\n+    mReservedUniforms.push_back(\"tron_grid4\");\n+    mReservedUniforms.push_back(\"tron_grid5\");\n+    mReservedUniforms.push_back(\"tron_water\");\n+    mReservedUniforms.push_back(\"tron_pulse\");\n+    mReservedUniforms.push_back(\"tron_pulse2\");\n+    mReservedUniforms.push_back(\"tron_subject\");\n+    mReservedUniforms.push_back(\"tron_subject2\");\n+    mReservedUniforms.push_back(\"tron_targets\");\n+    mReservedUniforms.push_back(\"tron_targets2\");\n+    mReservedUniforms.push_back(\"tron_anchors\");\n+    mReservedUniforms.push_back(\"tron_anchor_count\");\n+    mReservedUniforms.push_back(\"tron_lattice_r\");\n+    mReservedUniforms.push_back(\"tron_lattice_k\");\n+    mReservedUniforms.push_back(\"tron_trace\");   // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_trace2\");  // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_trace3\");  // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_rim\");     // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_rim2\");    // [T2 reserved]\n+    mReservedUniforms.push_back(\"tron_rim3\");    // [T2 reserved]\n+\n+    // [TronT1] Rig Rim \"Tron\" palette tint (deferredUtil.glsl rigRimTerm());\n+    // lockstep with RIG_RIM_TRON / RIG_RIM_TRON_COLOR in llshadermgr.h.\n+    mReservedUniforms.push_back(\"rig_rim_tron\");\n+    mReservedUniforms.push_back(\"rig_rim_tron_color\");\n+\n+    // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl);\n+    // lockstep with TRON_TRAIL_COLOR..TRON_TRAIL_PARAMS3 in llshadermgr.h.\n+    mReservedUniforms.push_back(\"tron_trail_color\");\n+    mReservedUniforms.push_back(\"tron_trail_params\");\n+    mReservedUniforms.push_back(\"tron_trail_params2\");\n+    mReservedUniforms.push_back(\"tron_trail_params3\");\n+\n+    // [EnvIntensity v2] exposure strip uniforms; lockstep with\n+    // SKY_AMB_SCALE..SHADOW_LIFT_GAIN in llshadermgr.h (same order).\n+    mReservedUniforms.push_back(\"sky_amb_scale\");       // SKY_AMB_SCALE\n+    mReservedUniforms.push_back(\"sky_probe_rad_scale\"); // SKY_PROBE_RAD_SCALE\n+    mReservedUniforms.push_back(\"sky_sun_tint\");        // SKY_SUN_TINT\n+    mReservedUniforms.push_back(\"sky_amb_tint\");        // SKY_AMB_TINT\n+    mReservedUniforms.push_back(\"shadow_lift_gain\");    // SHADOW_LIFT_GAIN\n+    mReservedUniforms.push_back(\"actorMaskMap\");        // [ActorMask] ACTOR_MASK_MAP\n+    mReservedUniforms.push_back(\"actor_mask_bits\");     // [ActorMask] ACTOR_MASK_BITS\n+\n+    // [ProbeCost] Append in lockstep with llshadermgr.h.\n+    mReservedUniforms.push_back(\"shadow_probe_mode\");\n+    mReservedUniforms.push_back(\"shadow_reuse_matrix\");\n+    mReservedUniforms.push_back(\"shadow_reuse_valid\");\n+    mReservedUniforms.push_back(\"shadow_reuse_res\");\n+    mReservedUniforms.push_back(\"shadow_reuse_res_h\");\n+    mReservedUniforms.push_back(\"render_debug_lighting_term\");\n+    mReservedUniforms.push_back(\"rig_rim_quality\");\n+    mReservedUniforms.push_back(\"rig_rim_sil\");\n+    mReservedUniforms.push_back(\"rig_rim_aux_params\");\n+    mReservedUniforms.push_back(\"rigRimAuxMap\");\n+    mReservedUniforms.push_back(\"rigRimSilMap\");\n+    mReservedUniforms.push_back(\"rig_rim_wrap\");\n+    mReservedUniforms.push_back(\"rig_rim_wrap2\");\n+    mReservedUniforms.push_back(\"rigRimWrapSrc\");\n+    mReservedUniforms.push_back(\"rig_rim_smooth_params\");\n+    mReservedUniforms.push_back(\"rigRimSmoothMap\");\n+    mReservedUniforms.push_back(\"rigRimBarrierMap\");\n+    mReservedUniforms.push_back(\"rigRimEdgeMap\");\n+    mReservedUniforms.push_back(\"rig_rim_smooth_stage\");\n+    mReservedUniforms.push_back(\"onLensAlbedoMap\");\n+    mReservedUniforms.push_back(\"lensPyramid0\");\n+    mReservedUniforms.push_back(\"lensPyramid1\");\n+    mReservedUniforms.push_back(\"lensPyramid2\");\n+    mReservedUniforms.push_back(\"lensPyramid3\");\n+    mReservedUniforms.push_back(\"lensPyramid4\");\n+\n+    mReservedUniforms.push_back(\"light_shape\");\n+    mReservedUniforms.push_back(\"light_shapes\");\n+    mReservedUniforms.push_back(\"area_shadow_map0\");\n+    mReservedUniforms.push_back(\"area_shadow_map1\");\n+    mReservedUniforms.push_back(\"area_source\");\n+    mReservedUniforms.push_back(\"relight_enabled\");\n+    mReservedUniforms.push_back(\"area_world_atlas\");\n+\n+    // Append cover after all existing samplers: scalar diffuseMap must retain\n+    // unit zero for tree/grass draws which bind their diffuse texture directly.\n+    mReservedUniforms.push_back(\"weather_surface_cover_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_close_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_distant_map\");\n+    mReservedUniforms.push_back(\"weather_surface_cover_min_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_close_min_map\");\n+    mReservedUniforms.push_back(\"weather_shelter_distant_min_map\");\n+    mReservedUniforms.push_back(\"weather_veil_map\");\n+\n+    mReservedUniforms.push_back(\"env_only_mode\");\n+    mReservedUniforms.push_back(\"avatar_tag_draw\");\n+    mReservedUniforms.push_back(\"gbuffer_tag_preferred\");\n+    mReservedUniforms.push_back(\"local_light_ev_scale\");\n+    mReservedUniforms.push_back(\"local_light_ev_scales\");\n+    mReservedUniforms.push_back(\"ssao_irradiance_max_stock\");\n+    mReservedUniforms.push_back(\"ghostSceneMap\");\n+\n     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);\n \n     std::set<std::string> dupe_check;\n",
           "purpose": "Comment evidence: [BDMerge G3.2] volumetric lighting (donor: Black Dragon) [BDMerge G3.3] per-projector volumetric light cones [BDMerge G3.3 Phase 1] projector-volumetric cinema levers [BDMerge G3.3 Phase 3] atmosphere levers [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
             {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
@@ -97587,10 +97616,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97670,6 +97695,7 @@
             "froxel_time",
             "froxel_wind",
             "gbuffer_tag_preferred",
+            "ghostSceneMap",
             "gobo_anim_params",
             "gobo_aniso",
             "gobo_pattern",
@@ -97870,6 +97896,7 @@
           "base_count": 4,
           "base_start": 1684,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97886,13 +97913,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 3,
-          "head_end": 2372,
-          "head_start": 2370,
-          "id": "indra/llrender/llshadermgr.cpp@2370,3",
+          "head_end": 2373,
+          "head_start": 2371,
+          "id": "indra/llrender/llshadermgr.cpp@2371,3",
           "patch": "         dupe_check.insert(mReservedUniforms[i]);\n     }\n }\n-\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
             {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
@@ -97908,10 +97939,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -97941,6 +97968,7 @@
           "base_count": 6,
           "base_start": 39,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -97967,6 +97995,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -97981,10 +98013,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -97995,6 +98023,7 @@
           "base_count": 6,
           "base_start": 48,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98021,6 +98050,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98035,10 +98068,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98057,6 +98086,7 @@
           "base_count": 6,
           "base_start": 72,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98083,6 +98113,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98097,10 +98131,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98115,6 +98145,7 @@
           "base_count": 6,
           "base_start": 112,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98141,6 +98172,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98155,10 +98190,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98172,6 +98203,7 @@
           "base_count": 6,
           "base_start": 124,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98198,6 +98230,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98212,10 +98248,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98229,6 +98261,7 @@
           "base_count": 6,
           "base_start": 228,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98253,6 +98286,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98267,10 +98304,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",
@@ -98290,6 +98323,7 @@
           "base_count": 6,
           "base_start": 366,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98317,6 +98351,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98331,10 +98369,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98352,6 +98386,7 @@
           "base_count": 6,
           "base_start": 406,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98381,6 +98416,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
+            {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
             },
@@ -98395,10 +98434,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98450,6 +98485,7 @@
           "base_count": 6,
           "base_start": 475,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98474,14 +98510,18 @@
           "git_context": "public:",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 395,
-          "head_end": 983,
+          "head_count": 396,
+          "head_end": 984,
           "head_start": 589,
-          "id": "indra/llrender/llshadermgr.h@589,395",
-          "patch": " \n         // End Alchemy Effects Stack\n \n+        // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)\n+        GODRAY_RES,                        //  \"godray_res\"\n+        GODRAY_MULTIPLIER,                 //  \"godray_multiplier\"\n+        FALLOFF_MULTIPLIER,                //  \"falloff_multiplier\"\n+\n+        // [BDMerge G3.3] per-projector volumetric light cones\n+        PROJVOL_G,                         //  \"projvol_g\"\n+\n+        // [BDMerge G3.3 Phase 1] projector-volumetric cinema levers\n+        PROJVOL_FEATHER,                   //  \"projvol_feather\"     (item 6)\n+        PROJVOL_SHADOW_SAMPLES,            //  \"projvol_shadow_samples\" (item 7)\n+        PROJVOL_DITHER,                    //  \"projvol_dither\"      (item 2)\n+        PROJVOL_FRAME,                     //  \"projvol_frame\"       (item 2)\n+        PROJVOL_MAX,                       //  \"projvol_max\"         (item 1)\n+\n+        // [BDMerge G3.3 Phase 3] atmosphere levers (all default to a no-op)\n+        PROJVOL_DENSITY,                   //  \"projvol_density\"           (item 3)\n+        PROJVOL_NOISE_STRENGTH,            //  \"projvol_noise_strength\"    (item 1)\n+        PROJVOL_NOISE_SCALE,               //  \"projvol_noise_scale\"       (item 1)\n+        PROJVOL_NOISE_SPEED,               //  \"projvol_noise_speed\"       (item 1)\n+        PROJVOL_TIME,                      //  \"projvol_time\"              (item 1)\n+        PROJVOL_FOG_STRENGTH,              //  \"projvol_fog_strength\"      (item 2)\n+        PROJVOL_FOG_GROUND,                //  \"projvol_fog_ground_density\"(item 2)\n+        PROJVOL_FOG_FALLOFF,               //  \"projvol_fog_falloff\"       (item 2)\n+        PROJVOL_FOG_BASE,                  //  \"projvol_fog_base\"          (item 2)\n+        PROJVOL_INV_MODELVIEW,             //  \"projvol_inv_modelview\"     (items 1/2)\n+        PROJVOL_BLOOM_FEED,                //  \"projvol_bloom_feed\"        (item 4)\n+        PROJVOL_BLOOM_ANAMORPHIC,          //  \"projvol_bloom_anamorphic\"  (item 4: X-stretch)\n+\n+        // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored occluder\n+        // shadows (B)\n+        PROJVOL_SHADOW_TINT,               //  \"projvol_shadow_tint\"  (B)\n+        PROJVOL_HISTORY,                   //  \"projvol_history\"      (A, sampler)\n+        PROJVOL_PREV_VIEWPROJ,             //  \"projvol_prev_viewproj\"(A)\n+        PROJVOL_PREV_MODELVIEW,            //  \"projvol_prev_modelview\"(A)\n+        PROJVOL_TEMPORAL_BLEND,            //  \"projvol_temporal_blend\"(A)\n+\n+        // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)\n+        PROJVOL_TEMPORAL_REJECT,           //  \"projvol_temporal_reject\"      (R2)\n+        PROJVOL_TEMPORAL_BEAM_DEPTH,       //  \"projvol_temporal_beam_depth\"  (R1 gate)\n+\n+        // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow (physical auto-rim)\n+        PROJVOL_RIM_STRENGTH,              //  \"projvol_rim_strength\"\n+        PROJVOL_RIM_POWER,                 //  \"projvol_rim_power\"\n+        PROJVOL_RIM_THRESHOLD,             //  \"projvol_rim_threshold\"\n+        PROJVOL_RIM_WRAP,                  //  \"projvol_rim_wrap\"\n+        PROJVOL_RIM_SOFTNESS,              //  \"projvol_rim_softness\" (F4 skin softness)\n+        PROJVOL_WIND,                      //  \"projvol_wind\" (F5: shared dust-wind * cone NoiseSpeed)\n+\n+        // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)\n+        PROJVOL_FRUSTUM_CLIP,              //  \"projvol_frustum_clip\"     (E1 gate)\n+        PROJVOL_FRUSTUM_PLANES,            //  \"projvol_frustum_planes\"   (E1 vec4[6])\n+        PROJVOL_SHADOW_JITTER_TAP,         //  \"projvol_shadow_jitter_tap\"(E2 gate)\n+\n+        // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate\n+        PROJVOL_CONSERVATIVE_SHADOW,       //  \"projvol_conservative_shadow\" (default on)\n+\n+        // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup (default off)\n+        PROJVOL_DUST,                      //  \"projvol_dust\"           (gate)\n+        PROJVOL_DUST_INTENSITY,            //  \"projvol_dust_intensity\"\n+        PROJVOL_DUST_SCALE,                //  \"projvol_dust_scale\"     (cycles/metre)\n+        PROJVOL_DUST_WIND,                 //  \"projvol_dust_wind\"      (unit dir * DustDrift, CPU-folded)\n+        PROJVOL_DUST_MAP,                  //  \"projvol_dust_map\"       (sampler3D)\n+\n+        // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows\n+        SOFT_SHADOW_ENABLE,                //  \"soft_shadow_enable\"\n+        SOFT_SHADOW_SCALE,                 //  \"soft_shadow_scale\"   (penumbra rate)\n+        SOFT_SHADOW_MAX,                   //  \"soft_shadow_max\"     (max penumbra texels)\n+        SOFT_SHADOW_FILL,                  //  \"soft_shadow_fill\"    (ambient floor)\n+        SOFT_SHADOW_SUN,                   //  \"soft_shadow_sun\"     (apply to sun too)\n+        // [Vogel A/B] soft-shadow kernel selector + Vogel tap count (must stay in\n+        // lockstep with the mReservedUniforms push_back block in llshadermgr.cpp)\n+        SOFT_SHADOW_VOGEL,                 //  \"soft_shadow_vogel\"   (0 = fixed disk, 1 = Vogel)\n+        SOFT_SHADOW_TAPS,                  //  \"soft_shadow_taps\"    (Vogel tap count)\n+        SPOT_SHADOW_SOFTNESS,              //  \"spot_shadow_softness\" (per shadow slot, 0 = global)\n+        // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering\n+        GOBO_ANISO,                        //  \"gobo_aniso\"\n+        // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.\n+        GOBO_TIME,                         //  \"gobo_time\"\n+        GOBO_PATTERN,                      //  \"gobo_pattern\"\n+        GOBO_ANIM_PARAMS,                  //  \"gobo_anim_params\"\n+        // [Gobo v2] colored gel tint + per-pattern variation params.\n+        GOBO_TINT,                         //  \"gobo_tint\"\n+        GOBO_PATTERN_PARAMS,               //  \"gobo_pattern_params\"\n+\n+        // [Cine Outline Phase 1] deferred normal/depth outline post pass.\n+        OUTLINE_COLOR,                     //  \"outline_color\"\n+        OUTLINE_PARAMS,                    //  \"outline_params\"\n+        OUTLINE_PARAMS2,                   //  \"outline_params2\"\n+\n+        // [Pedro Cam Phase 1] fisheye / peephole late post pass.\n+        FISHEYE_PARAMS,                    //  \"fisheye_params\"\n+        FISHEYE_PARAMS2,                   //  \"fisheye_params2\"\n+\n+        // [BDMerge A5.4-1a] velocity / motion-vector buffer. CURRENT_MODELVIEW and\n+        // MOTION_BLUR_STRENGTH are declared now for forward-compat (Phase 3 motion\n+        // blur, debug-viz gain). PROJECTION_MATRIX_UNJITTERED carries the T2x\n+        // jitter-free projection so motion vectors stay clean (brief pitfall 1).\n+        CURRENT_MODELVIEW_MATRIX,          //  \"current_modelview_matrix\"\n+        LAST_MODELVIEW_MATRIX,             //  \"last_modelview_matrix\"\n+        LAST_OBJECT_MATRIX,                //  \"last_object_matrix\"\n+        PROJECTION_MATRIX_UNJITTERED,      //  \"projection_matrix_unjittered\"\n+        DEFERRED_VELOCITY,                 //  \"velocityMap\"\n+        MOTION_BLUR_STRENGTH,              //  \"motion_blur_strength\"\n+        // [BDMerge A5.4-1b] previous-frame skinning palettes (rigged + classic\n+        // avatar velocity). Lockstep with llshadermgr.cpp push_back block.\n+        AVATAR_LAST_MATRIX,                //  \"lastMatrixPalette\"\n+\n+        // [BDMerge Froxel F0] hybrid froxel volumetrics (grid/atlas media pass +\n+        // debug visualizer). MUST stay in lockstep with the matching push_back\n+        // block in llshadermgr.cpp - same position, same order.\n+        FROXEL_MEDIA,                      //  \"froxelMedia\"          (sampler: media atlas)\n+        FROXEL_GRID,                       //  \"froxel_grid\"          (GridX,GridY,GridZ)\n+        FROXEL_ATLAS,                      //  \"froxel_atlas\"         (tilesX,tilesY,atlasW,atlasH)\n+        FROXEL_NEAR_FAR,                   //  \"froxel_near_far\"      (near, far)\n+        FROXEL_TAN_HALF_FOV,               //  \"froxel_tan_half_fov\"  (tan(fovx/2),tan(fovy/2))\n+        FROXEL_INV_MODELVIEW,              //  \"froxel_inv_modelview\" (view -> agent)\n+        FROXEL_DENSITY,                    //  \"froxel_density\"\n+        FROXEL_FOG_STRENGTH,               //  \"froxel_fog_strength\"\n+        FROXEL_FOG_GROUND,                 //  \"froxel_fog_ground_density\"\n+        FROXEL_FOG_FALLOFF,                //  \"froxel_fog_falloff\"\n+        FROXEL_FOG_BASE,                   //  \"froxel_fog_base\"\n+        FROXEL_NOISE_STRENGTH,             //  \"froxel_noise_strength\"\n+        FROXEL_NOISE_SCALE,                //  \"froxel_noise_scale\"\n+        FROXEL_NOISE_SPEED,                //  \"froxel_noise_speed\"\n+        FROXEL_WIND,                       //  \"froxel_wind\"          [F5] (wind_dir * noise_speed)\n+        FROXEL_TIME,                       //  \"froxel_time\"\n+        // [Local Fog] Flattened eight-volume media arrays.\n+        LOCALFOG_CENTER,                   //  \"localfog_center\"\n+        LOCALFOG_EXTENTS,                  //  \"localfog_extents\"\n+        LOCALFOG_INV_ROT,                  //  \"localfog_inv_rot\"\n+        LOCALFOG_PARAMS,                   //  \"localfog_params\"\n+        LOCALFOG_TINT,                     //  \"localfog_tint\"\n+        LOCALFOG_NOISE,                    //  \"localfog_noise\"\n+        LOCALFOG_COUNT,                    //  \"localfog_count\"\n+        FROXEL_DEBUG_MODE,                 //  \"froxel_debug_mode\"\n+        FROXEL_DEBUG_SLICE,                //  \"froxel_debug_slice\"\n+\n+        // [BDMerge Froxel F1] integrate + apply. FROXEL_INTEGRATED is the second\n+        // atlas (rgb = integrated in-scatter L, a = transmittance T); FROXEL_AMBIENT\n+        // is the uniform ambient in-scatter radiance of the medium. Appended after\n+        // the F0 block, in lockstep with the matching push_back block in .cpp.\n+        FROXEL_INTEGRATED,                 //  \"froxelIntegrated\"     (sampler: integrated atlas)\n+        FROXEL_AMBIENT,                    //  \"froxel_ambient\"\n+\n+        // [BDMerge Froxel F2] per-light injection. FROXEL_LIGHT is the light atlas\n+        // (rgb = injected in-scatter source radiance from all projectors, a unused);\n+        // FROXEL_LIGHT_ENABLE gates the integrate pass's light term so that with it\n+        // 0 the integrate output is exactly F1 (ambient-only). Appended after the F1\n+        // block, in lockstep with the matching push_back block in .cpp.\n+        FROXEL_LIGHT,                      //  \"froxelLight\"          (sampler: light atlas)\n+        FROXEL_LIGHT_ENABLE,               //  \"froxel_light_enable\"\n+\n+        // [BDMerge Froxel F3] froxel-space temporal accumulation. FROXEL_LIGHT_HISTORY\n+        // is the previous frame's RESOLVED light atlas (sampled trilinear via the\n+        // world-space grid-to-grid reprojection); FROXEL_PREV_MODELVIEW is last frame's\n+        // world->view matrix (reproject a current froxel's world pos into the prev\n+        // grid); FROXEL_TEMPORAL_BLEND is the EMA history weight; FROXEL_JITTER gates\n+        // the per-frame injection jitter and FROXEL_FRAME is the wrapped frame counter\n+        // that walks it. Appended after the F2 block, in lockstep with the matching\n+        // push_back block in .cpp.\n+        FROXEL_LIGHT_HISTORY,              //  \"froxelLightHistory\"   (sampler: prev resolved atlas)\n+        FROXEL_PREV_MODELVIEW,             //  \"froxel_prev_modelview\"\n+        FROXEL_TEMPORAL_BLEND,             //  \"froxel_temporal_blend\"\n+        FROXEL_TEMPORAL_REJECT,            //  \"froxel_temporal_reject\"\n+        FROXEL_JITTER,                     //  \"froxel_jitter\"\n+        FROXEL_FRAME,                      //  \"froxel_frame\"\n+\n+        WEATHER_RAIN_MAP,                  //  \"weather_rain_map\"\n+        WEATHER_RAIN_OCCLUSION_MAP,        //  \"weather_rain_occlusion_map\"\n+\n+        // [Ultimate Diopter] native lens-front diopter / halo post pass.\n+        // vec4 bundles, appended at the end in lockstep with the matching\n+        // push_back block in llshadermgr.cpp.\n+        DIOPTER_SHAPE,                     //  \"diopter_shape\"      center.xy, size, stretch\n+        DIOPTER_SHAPE2,                    //  \"diopter_shape2\"     angleRad, feather, invert, content\n+        DIOPTER_SHAPE3,                    //  \"diopter_shape3\"     shape, hollow, cornerRound, splitCurvature\n+        DIOPTER_SHAPE4,                    //  \"diopter_shape4\"     wobbleAmt, wobbleFreq, wavePhase, waveGain\n+        DIOPTER_SHAPE5,                    //  \"diopter_shape5\"     polySides, starPoints, starInner, squirclePow\n+        DIOPTER_SHAPE6,                    //  \"diopter_shape6\"     petalCount, petalDepth, blobSeed, blobAmt\n+        DIOPTER_SHAPE7,                    //  \"diopter_shape7\"     crescentBite, crescentShift, arcLenRad, brokenCount\n+        DIOPTER_FOCUS,                     //  \"diopter_focus\"      baseFocusM, lensFocusM, focusWidthM, falloffRate\n+        DIOPTER_FOCUS2,                    //  \"diopter_focus2\"     falloffCurve, nearStr, farStr, maxBlurPx\n+        DIOPTER_FOCUS3,                    //  \"diopter_focus3\"     floorMaxPx, spotBlur, bokehHi, magnify\n+        DIOPTER_FOCUS4,                    //  \"diopter_focus4\"     axialCA_M, fieldCurve, depthEdgeM, reserved\n+        DIOPTER_APERTURE,                  //  \"diopter_aperture\"   apShape, blades, bladeRotRad, bladeCurve\n+        DIOPTER_APERTURE2,                 //  \"diopter_aperture2\"  apInner, anamorph, anamAngleRad, catEye\n+        DIOPTER_GLASS,                     //  \"diopter_glass\"      profile, ior1, thickness, rimWidth\n+        DIOPTER_GLASS2,                    //  \"diopter_glass2\"     rimWarp, placementMode, reserved, reserved\n+        DIOPTER_HALO,                      //  \"diopter_halo\"       ringCount, ringFold, twistRad, ringPhase\n+        DIOPTER_HALO2,                     //  \"diopter_halo2\"      lobeAmt, lobeCount, lobePhaseRad, warpActive\n+        DIOPTER_PATTERN,                   //  \"diopter_pattern\"    mode, segments, feedRad, srcZoom\n+        DIOPTER_COMP,                      //  \"diopter_comp\"       seamGhostPx, seamGhostAmt, caMag, edgeVig\n+        DIOPTER_COMP2,                     //  \"diopter_comp2\"      rimCaustic, rimDarken, blend, debugView\n+        DIOPTER_GHOST,                     //  \"diopter_ghost\"      ghostCount, ghostSpacing, radialSmear, tangentSmear\n+        DIOPTER_GHOST2,                    //  \"diopter_ghost2\"     ghostThreshold, ghostKnee, dispersion, ghostGain\n+\n+        // [Ultimate Diopter] warped present depth for ReShade alignment.\n+        // Appended at the end in lockstep with the matching push_back block\n+        // in llshadermgr.cpp.\n+        DIOPTER_WARP_MAP,                  //  \"diopterWarpMap\"     (sampler: RG16F diopter source-uv map)\n+        DEPTH_WARP_PARAMS,                 //  \"depth_warp_params\"  diopterActive (0/1), fisheyeActive (0/1), reserved, reserved\n+\n+        // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post\n+        // pass. vec4 bundles, appended at the end in lockstep with the\n+        // matching push_back block in llshadermgr.cpp.\n+        KAL_PATTERN,                       //  \"kal_pattern\"        mode, segments, ringCount, edgeWrap\n+        KAL_SHAPE,                         //  \"kal_shape\"          rotRadTotal, twistRadTotal, starSharp, shapeBias\n+        KAL_CENTER,                        //  \"kal_center\"         center.xy, protectCenter.xy (uv, y-up)\n+        KAL_SOURCE,                        //  \"kal_source\"         feedRadTotal, srcZoom, srcOffset.xy\n+        KAL_FX,                            //  \"kal_fx\"             fxBand, fxAmount, ftPhase, fxFreq\n+        KAL_PROTECT,                       //  \"kal_protect\"        protectMode, discRadius, discFeather, depthInvert\n+        KAL_DEPTH,                         //  \"kal_depth\"          depthCutM, depthFeatherM, reserved, reserved\n+        KAL_WAVE,                          //  \"kal_wave\"           wavePhase, waveGain, waveAmp, waveFreq\n+        KAL_LOOK,                          //  \"kal_look\"           seamSoften, blend, debugView, reserved\n+        KAL_CELL,                          //  \"kal_cell\"           cellSizeVar, cellBreathe, cellSubdiv, cellMerge\n+        KAL_CELL2,                         //  \"kal_cell2\"          cellTint, reserved, reserved, reserved\n+\n+        // [Cine Haze] Cinematic Depth Atmosphere (windlight/cineHazeF.glsl),\n+        // uploaded by ALCineHaze::bind() from LLPipeline::bindDeferredShader()\n+        // and the alpha pool's prepare_alpha_shader().  Appended at the end in\n+        // lockstep with the matching push_back block in llshadermgr.cpp.\n+        CINE_HAZE_ACTIVE,                  //  \"cine_haze_active\"      int  0 = bypass (bit-exact off path)\n+        CINE_HAZE_PARAMS,                  //  \"cine_haze_params\"      vec4 density, start distance, max opacity, master strength\n+        CINE_HAZE_HEIGHT,                  //  \"cine_haze_height\"      vec4 height enable, reference height, falloff, camera world height\n+        CINE_HAZE_UP,                      //  \"cine_haze_up\"          vec3 world +Z in eye space\n+        CINE_HAZE_COLOR,                   //  \"cine_haze_color\"       vec4 manual colour (sRGB) + intensity\n+        CINE_HAZE_COLOR_MODE,              //  \"cine_haze_color_mode\"  int  0 manual, 1 environment-linked\n+        CINE_HAZE_SUN,                     //  \"cine_haze_sun\"         vec4 linear sun tint * strength, lobe exponent\n+        CINE_HAZE_DEBUG,                   //  \"cine_haze_debug\"       int  developer view selector\n+        CINE_HAZE_ADDITIVE,                //  \"cine_haze_additive\"    int  1 = additive-blended draw (transmittance only)\n+\n+        // [RigRim] Rig Rim Light (Cine Light Rig Phase A; deferredUtil.glsl\n+        // rigRimTerm()).  Globals are uploaded by ALCineRigRim::bindGlobals()\n+        // from LLPipeline::bindDeferredShader() and prepare_alpha_shader();\n+        // the per-light params by the deferred light loops / setupSpotLight()\n+        // and LLRender::syncLightState().  Appended at the end in lockstep with\n+        // the matching push_back block in llshadermgr.cpp.\n+        RIG_RIM_MODE,                      //  \"rig_rim_mode\"          int  0 off (bit-exact no-op), 1 on, 2 debug rim-only\n+        RIG_RIM_GLOBALS,                   //  \"rig_rim_globals\"       vec4 master gain, roughness softening, back softness, surface tint\n+        RIG_RIM_LIGHT,                     //  \"rig_rim_light\"         vec4 single light: gain, k, wrap, back bias (pointLightF / spotLightF)\n+        RIG_RIM_LIGHTS,                    //  \"rig_rim_lights\"        vec4[] batched: multiPointLightF[LIGHT_COUNT], forward alpha[LL_NUM_LIGHT_UNITS]\n+        RIG_RIM_SHADOW,                    //  \"rig_rim_shadow\"        float 0 rim ignores the projector shadow .. 1 fully shadowed (spotLightF)\n+\n+        // [RotoInk] Rotoscope Ink (cineOutlineF.glsl), uploaded by\n+        // LLPipeline::renderCineOutline(). OUTLINE_COLOR/PARAMS/PARAMS2 above\n+        // are reused (see the shader header for their new packing). Appended\n+        // in lockstep with the matching push_back block in llshadermgr.cpp.\n+        ROTO_SCENE,                        //  \"rotoScene\"             sampler2D copy of the destination (mWaterDis scratch)\n+        ROTO_LINE,                         //  \"roto_line\"             vec4 sil threshold, crease threshold (1-cos), sil weight, crease weight\n+        ROTO_INK,                          //  \"roto_ink\"              vec4 opacity, match-light reach px, reserved, reserved\n+        ROTO_SUBJECT,                      //  \"roto_subject\"          vec4 mode, subject depth m, slab half depth m, slab feather m\n+        ROTO_SUBJECT2,                     //  \"roto_subject2\"         vec4 ellipse centre uv, ellipse radii uv\n+        ROTO_SUBJECT3,                     //  \"roto_subject3\"         vec4 ellipse amount, ellipse feather, ellipse valid, reserved\n+        ROTO_SKETCH,                       //  \"roto_sketch\"           vec4 enable, boil px, detail, redraw fps\n+        ROTO_SKETCH2,                      //  \"roto_sketch2\"          vec4 strokes, roughness, seed, reserved\n+        ROTO_MOTION,                       //  \"roto_motion\"           vec4 style, speed, amount, scale\n+        ROTO_MOTION2,                      //  \"roto_motion2\"          vec4 layer-1 angle rad, time s, reserved, reserved\n+\n+        // [RotoInk Anim] animated patterns (round A) + extended subject\n+        // isolation. Lockstep with the matching push_back block in\n+        // llshadermgr.cpp. Off values (all 0) reproduce the pre-Anim output.\n+        ROTO_MOTION3,                      //  \"roto_motion3\"          vec4 layer-1 shape, motion seed, hold-frame fps (0 off), tempo beats/s (0 off)\n+        ROTO_MOTION4,                      //  \"roto_motion4\"          vec4 layer-2 style, speed, amount, scale\n+        ROTO_MOTION5,                      //  \"roto_motion5\"          vec4 layer-2 shape, layer-2 angle rad, tempo phase beats, reserved\n+        ROTO_PATTERN,                      //  \"roto_pattern\"          vec4 type, size px, ratio, drift px/s\n+        ROTO_PATTERN2,                     //  \"roto_pattern2\"         vec4 hatch angle rad, hatch reach px, seed, cross 0/1\n+        ROTO_COLOR2,                       //  \"roto_color2\"           vec4 secondary colour rgb (linear), colour mode\n+        ROTO_COLOR2B,                      //  \"roto_color2b\"          vec4 colour speed, colour length px, reserved, reserved\n+        ROTO_SUBJECT4,                     //  \"roto_subject4\"         vec4 target shape, invert, per-target palette, target count\n+        ROTO_TARGETS,                      //  \"roto_targets\"          vec4[16] per target: centre uv, half extents uv\n+        ROTO_TARGETS2,                     //  \"roto_targets2\"         vec4[16] per target: view depth m, slab half depth m, palette index, valid\n+\n+        // [TronT1] Tron World post pass (tronWorldF.glsl), uploaded by\n+        // LLPipeline::renderTronWorld(). Appended in lockstep with the\n+        // matching push_back block in llshadermgr.cpp. Every \"off\" value is\n+        // 0. TRON_TRACE*/TRON_RIM* are reserved for T2 (circuit traces /\n+        // post neon rim) so the enum never reshuffles; the T1 shader does not\n+        // declare them.\n+        TRON_SCENE,                        //  \"tronScene\"             sampler2D copy of the destination (mWaterDis scratch)\n+        TRON_INV_PROJ,                     //  \"tron_inv_proj\"         mat4 inverse of the pass's own projection (gGLLast* / live)\n+        TRON_INV_MODELVIEW,                //  \"tron_inv_modelview\"    mat4 inverse of the pass's own modelview\n+        TRON_CAM_REL,                      //  \"tron_cam_rel\"          vec4 camera - anchor (m), camera agent z\n+        TRON_MASTER,                       //  \"tron_master\"           vec4 layer, pulse01, reserved, no-post neon scale\n+        TRON_PALETTE0,                     //  \"tron_palette0\"         vec4 primary rgb, pulse amount\n+        TRON_PALETTE1,                     //  \"tron_palette1\"         vec4 secondary rgb, clamp-display flag\n+        TRON_PALETTE2,                     //  \"tron_palette2\"         vec4 accent rgb, reserved\n+        TRON_PALETTE3,                     //  \"tron_palette3\"         vec4 pulse rgb, reserved\n+        TRON_GRADE,                        //  \"tron_grade\"            vec4 strength, darken EV, desaturate, crush\n+        TRON_GRADE2,                       //  \"tron_grade2\"           vec4 tint rgb, tint amount\n+        TRON_GRADE3,                       //  \"tron_grade3\"           vec4 keep-bright lo, hi, keep subject, sky darken\n+        TRON_GRID,                         //  \"tron_grid\"             vec4 intensity, spacing m, half width m, min width px\n+        TRON_GRID2,                        //  \"tron_grid2\"            vec4 major every N, major width x, major intensity x, far fade m\n+        TRON_GRID3,                        //  \"tron_grid3\"            vec4 floor w, wall w, ceiling w, triplanar sharpness\n+        TRON_GRID4,                        //  \"tron_grid4\"            vec4 normal source, glow alpha feed, subject exclude, reserved\n+        TRON_GRID5,                        //  \"tron_grid5\"            vec4 subject radius m, radius feather m, water mode, water tolerance m\n+        TRON_WATER,                        //  \"tron_water\"            vec4 agent water height, camera underwater, detection on, reserved\n+        TRON_PULSE,                        //  \"tron_pulse\"            vec4 amount, CPU phase 0..1, length, wavelength m\n+        TRON_PULSE2,                       //  \"tron_pulse2\"           vec4 density, direction mode, seed, colour mode\n+        TRON_SUBJECT,                      //  \"tron_subject\"          vec4 target count, shape, shape feather, slab feather m\n+        TRON_SUBJECT2,                     //  \"tron_subject2\"         vec4 grid mask source, rim mask source, invert, reserved\n+        TRON_TARGETS,                      //  \"tron_targets\"          vec4[16] culled: centre uv, half extents uv\n+        TRON_TARGETS2,                     //  \"tron_targets2\"         vec4[16] culled: view depth m, slab half depth m, palette idx, valid\n+        TRON_ANCHORS,                      //  \"tron_anchors\"          vec4[16] un-culled: centre xyz (anchor frame), radius m\n+        TRON_ANCHOR_COUNT,                 //  \"tron_anchor_count\"     int  number of valid tron_anchors\n+        TRON_LATTICE_R,                    //  \"tron_lattice_r\"        vec4[4] lattice remainder xyz (m), scale (grid / major / wavelength / trace cell)\n+        TRON_LATTICE_K,                    //  \"tron_lattice_k\"        uvec4[4] lattice cell index xyz (mod 2^32), 0\n+        TRON_TRACE,                        //  \"tron_trace\"            [T2 reserved] vec4 intensity, cell m, width m, density\n+        TRON_TRACE2,                       //  \"tron_trace2\"           [T2 reserved] vec4 pad radius m, diagonal chance, walls w, floors w\n+        TRON_TRACE3,                       //  \"tron_trace3\"           [T2 reserved] vec4 pulse amount, CPU phase, length, seed\n+        TRON_RIM,                          //  \"tron_rim\"              [T2 reserved] vec4 gain, exponent, silhouette gain, silhouette thr\n+        TRON_RIM2,                         //  \"tron_rim2\"             [T2 reserved] vec4 pulse amount, scan amount, scan CPU phase, scan width\n+        TRON_RIM3,                         //  \"tron_rim3\"             [T2 reserved] vec4 colour mode, reject floors, shape, feather\n+\n+        // [TronT1] Rig Rim \"Tron\" palette tint (deferredUtil.glsl rigRimTerm()),\n+        // uploaded by ALCineRigRim::bindGlobals() (slow path) and\n+        // ALCineRigRim::bindAnimated() (bindDeferredShaderFast fast path).\n+        // rig_rim_tron.x == 0 is the bit-exact no-op (branch untaken).\n+        RIG_RIM_TRON,                      //  \"rig_rim_tron\"          vec4 mode (0 off, 1 tint, 2 tint+pulse), mix 0..1, pulse multiplier, reserved\n+        RIG_RIM_TRON_COLOR,                //  \"rig_rim_tron_color\"    vec4 palette colour rgb (linear), reserved\n+\n+        // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl),\n+        // uploaded by ALTron::renderTrails() on every draw (the program is\n+        // never bound with stale uniforms; \"off\" == never bound).\n+        TRON_TRAIL_COLOR,                  //  \"tron_trail_color\"      vec4 palette rgb (linear), glow feed 0..1\n+        TRON_TRAIL_PARAMS,                 //  \"tron_trail_params\"     vec4 edge/core width (fraction), edge gain, body gain, fade exponent\n+        TRON_TRAIL_PARAMS2,                //  \"tron_trail_params2\"    vec4 intensity, style 0/1/2, no-post scale, clamp-display flag\n+        TRON_TRAIL_PARAMS3,                //  \"tron_trail_params3\"    vec4 fog mode, fog density 1/m, reserved, reserved\n+\n+        // [EnvIntensity v2] Personal Lighting exposure strip, uploaded from\n+        // LLSettingsVOSky::applySpecial (SG_ANY) via ALEnvIntensity::compute().\n+        // Every one of these is exactly identity (1.0 / vec3(1) / 0.0) at the\n+        // default settings, in classic mode, and (sampling-time terms) during\n+        // reflection-probe captures. Keep in LOCKSTEP with the push_back list\n+        // in llshadermgr.cpp (llassert there is compiled out in Release).\n+        SKY_AMB_SCALE,                     //  \"sky_amb_scale\"         float 2^(GI master + GI ambient offset): amblit in calcAtmosphericVarsLinear\n+        SKY_PROBE_RAD_SCALE,               //  \"sky_probe_rad_scale\"   float 2^(probe reflections EV): probe radiance (glossenv/legacyenv), before SSR + hero\n+        SKY_SUN_TINT,                      //  \"sky_sun_tint\"          vec3 luminance-normalised Kelvin x swatch tint on sunlit (sun) / swatch tint (moon)\n+        SKY_AMB_TINT,                      //  \"sky_amb_tint\"          vec3 luminance-normalised swatch tint on amblit / probe irradiance / SSAO ceiling\n+        SHADOW_LIFT_GAIN,                  //  \"shadow_lift_gain\"      float 2^(shadow lift EV) - 1; 0 = off (deferredUtil.glsl applyShadowLift)\n+\n+        ACTOR_MASK_MAP,  // [ActorMask] actorMaskMap\n+        ACTOR_MASK_BITS, // [ActorMask] actor_mask_bits\n+        // [ProbeCost] Append in lockstep with llshadermgr.cpp.\n+        SHADOW_PROBE_MODE,\n+        SHADOW_REUSE_MATRIX,\n+        SHADOW_REUSE_VALID,\n+        SHADOW_REUSE_RES,\n+        SHADOW_REUSE_RES_H,\n+        RENDER_DEBUG_LIGHTING_TERM,         //  \"render_debug_lighting_term\" int: deferred opaque lighting diagnostic\n+        RIG_RIM_QUALITY,\n+        RIG_RIM_SIL,\n+        RIG_RIM_AUX_PARAMS,\n+        RIG_RIM_AUX_MAP,\n+        RIG_RIM_SIL_MAP,\n+        RIG_RIM_WRAP,\n+        RIG_RIM_WRAP2,\n+        RIG_RIM_WRAP_SRC,\n+        RIG_RIM_SMOOTH_PARAMS, // radius metres, focal pixels xy, texture detail\n+        RIG_RIM_SMOOTH_MAP,\n+        RIG_RIM_BARRIER_MAP,\n+        RIG_RIM_EDGE_MAP,\n+        RIG_RIM_SMOOTH_STAGE,\n+        ON_LENS_ALBEDO,\n+        LENS_PYRAMID0,\n+        LENS_PYRAMID1,\n+        LENS_PYRAMID2,\n+        LENS_PYRAMID3,\n+        LENS_PYRAMID4,\n+        LIGHT_SHAPE,\n+        LIGHT_SHAPES,\n+        AREA_SHADOW_MAP0,\n+        AREA_SHADOW_MAP1,\n+        AREA_SHADOW_SOURCE,\n+        RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off\n+        AREA_WORLD_ATLAS,                  // P1-lite world cube shadow atlas (D32F, compare mode none)\n+        WEATHER_SURFACE_COVER_MAP,         // \"weather_surface_cover_map\"; after all existing samplers\n+        WEATHER_SHELTER_CLOSE_MAP,\n+        WEATHER_SHELTER_DISTANT_MAP,\n+        WEATHER_SURFACE_COVER_MIN_MAP,\n+        WEATHER_SHELTER_CLOSE_MIN_MAP,\n+        WEATHER_SHELTER_DISTANT_MIN_MAP,\n+        WEATHER_VEIL_MAP,\n+        ENV_ONLY_MODE,\n+        AVATAR_TAG_DRAW,\n+        GBUFFER_TAG_PREFERRED,\n+        LOCAL_LIGHT_EV_SCALE,\n+        LOCAL_LIGHT_EV_SCALES,\n+        SSAO_IRRADIANCE_MAX_STOCK,\n         END_RESERVED_UNIFORMS\n     } eGLSLReservedUniforms;\n     // clang-format on\n",
+          "id": "indra/llrender/llshadermgr.h@589,396",
+          "patch": " \n         // End Alchemy Effects Stack\n \n+        // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)\n+        GODRAY_RES,                        //  \"godray_res\"\n+        GODRAY_MULTIPLIER,                 //  \"godray_multiplier\"\n+        FALLOFF_MULTIPLIER,                //  \"falloff_multiplier\"\n+\n+        // [BDMerge G3.3] per-projector volumetric light cones\n+        PROJVOL_G,                         //  \"projvol_g\"\n+\n+        // [BDMerge G3.3 Phase 1] projector-volumetric cinema levers\n+        PROJVOL_FEATHER,                   //  \"projvol_feather\"     (item 6)\n+        PROJVOL_SHADOW_SAMPLES,            //  \"projvol_shadow_samples\" (item 7)\n+        PROJVOL_DITHER,                    //  \"projvol_dither\"      (item 2)\n+        PROJVOL_FRAME,                     //  \"projvol_frame\"       (item 2)\n+        PROJVOL_MAX,                       //  \"projvol_max\"         (item 1)\n+\n+        // [BDMerge G3.3 Phase 3] atmosphere levers (all default to a no-op)\n+        PROJVOL_DENSITY,                   //  \"projvol_density\"           (item 3)\n+        PROJVOL_NOISE_STRENGTH,            //  \"projvol_noise_strength\"    (item 1)\n+        PROJVOL_NOISE_SCALE,               //  \"projvol_noise_scale\"       (item 1)\n+        PROJVOL_NOISE_SPEED,               //  \"projvol_noise_speed\"       (item 1)\n+        PROJVOL_TIME,                      //  \"projvol_time\"              (item 1)\n+        PROJVOL_FOG_STRENGTH,              //  \"projvol_fog_strength\"      (item 2)\n+        PROJVOL_FOG_GROUND,                //  \"projvol_fog_ground_density\"(item 2)\n+        PROJVOL_FOG_FALLOFF,               //  \"projvol_fog_falloff\"       (item 2)\n+        PROJVOL_FOG_BASE,                  //  \"projvol_fog_base\"          (item 2)\n+        PROJVOL_INV_MODELVIEW,             //  \"projvol_inv_modelview\"     (items 1/2)\n+        PROJVOL_BLOOM_FEED,                //  \"projvol_bloom_feed\"        (item 4)\n+        PROJVOL_BLOOM_ANAMORPHIC,          //  \"projvol_bloom_anamorphic\"  (item 4: X-stretch)\n+\n+        // [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored occluder\n+        // shadows (B)\n+        PROJVOL_SHADOW_TINT,               //  \"projvol_shadow_tint\"  (B)\n+        PROJVOL_HISTORY,                   //  \"projvol_history\"      (A, sampler)\n+        PROJVOL_PREV_VIEWPROJ,             //  \"projvol_prev_viewproj\"(A)\n+        PROJVOL_PREV_MODELVIEW,            //  \"projvol_prev_modelview\"(A)\n+        PROJVOL_TEMPORAL_BLEND,            //  \"projvol_temporal_blend\"(A)\n+\n+        // [BDMerge G3.3 Batch B] temporal correctness (R2 contrast reject, R1 beam depth)\n+        PROJVOL_TEMPORAL_REJECT,           //  \"projvol_temporal_reject\"      (R2)\n+        PROJVOL_TEMPORAL_BEAM_DEPTH,       //  \"projvol_temporal_beam_depth\"  (R1 gate)\n+\n+        // [BDMerge G3.3 Rim] surface-coupled rim / wrap glow (physical auto-rim)\n+        PROJVOL_RIM_STRENGTH,              //  \"projvol_rim_strength\"\n+        PROJVOL_RIM_POWER,                 //  \"projvol_rim_power\"\n+        PROJVOL_RIM_THRESHOLD,             //  \"projvol_rim_threshold\"\n+        PROJVOL_RIM_WRAP,                  //  \"projvol_rim_wrap\"\n+        PROJVOL_RIM_SOFTNESS,              //  \"projvol_rim_softness\" (F4 skin softness)\n+        PROJVOL_WIND,                      //  \"projvol_wind\" (F5: shared dust-wind * cone NoiseSpeed)\n+\n+        // [BDMerge G3.3 Batch A] look-neutral performance (E1 frustum clip, E2 jitter tap)\n+        PROJVOL_FRUSTUM_CLIP,              //  \"projvol_frustum_clip\"     (E1 gate)\n+        PROJVOL_FRUSTUM_PLANES,            //  \"projvol_frustum_planes\"   (E1 vec4[6])\n+        PROJVOL_SHADOW_JITTER_TAP,         //  \"projvol_shadow_jitter_tap\"(E2 gate)\n+\n+        // [BDMerge G3.3 ConservativeShadow] airborne-march shadow sampler A/B gate\n+        PROJVOL_CONSERVATIVE_SHADOW,       //  \"projvol_conservative_shadow\" (default on)\n+\n+        // [BDMerge G3.3 Dust] baked 64^3 dust-volume particulate breakup (default off)\n+        PROJVOL_DUST,                      //  \"projvol_dust\"           (gate)\n+        PROJVOL_DUST_INTENSITY,            //  \"projvol_dust_intensity\"\n+        PROJVOL_DUST_SCALE,                //  \"projvol_dust_scale\"     (cycles/metre)\n+        PROJVOL_DUST_WIND,                 //  \"projvol_dust_wind\"      (unit dir * DustDrift, CPU-folded)\n+        PROJVOL_DUST_MAP,                  //  \"projvol_dust_map\"       (sampler3D)\n+\n+        // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadows\n+        SOFT_SHADOW_ENABLE,                //  \"soft_shadow_enable\"\n+        SOFT_SHADOW_SCALE,                 //  \"soft_shadow_scale\"   (penumbra rate)\n+        SOFT_SHADOW_MAX,                   //  \"soft_shadow_max\"     (max penumbra texels)\n+        SOFT_SHADOW_FILL,                  //  \"soft_shadow_fill\"    (ambient floor)\n+        SOFT_SHADOW_SUN,                   //  \"soft_shadow_sun\"     (apply to sun too)\n+        // [Vogel A/B] soft-shadow kernel selector + Vogel tap count (must stay in\n+        // lockstep with the mReservedUniforms push_back block in llshadermgr.cpp)\n+        SOFT_SHADOW_VOGEL,                 //  \"soft_shadow_vogel\"   (0 = fixed disk, 1 = Vogel)\n+        SOFT_SHADOW_TAPS,                  //  \"soft_shadow_taps\"    (Vogel tap count)\n+        SPOT_SHADOW_SOFTNESS,              //  \"spot_shadow_softness\" (per shadow slot, 0 = global)\n+        // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering\n+        GOBO_ANISO,                        //  \"gobo_aniso\"\n+        // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.\n+        GOBO_TIME,                         //  \"gobo_time\"\n+        GOBO_PATTERN,                      //  \"gobo_pattern\"\n+        GOBO_ANIM_PARAMS,                  //  \"gobo_anim_params\"\n+        // [Gobo v2] colored gel tint + per-pattern variation params.\n+        GOBO_TINT,                         //  \"gobo_tint\"\n+        GOBO_PATTERN_PARAMS,               //  \"gobo_pattern_params\"\n+\n+        // [Cine Outline Phase 1] deferred normal/depth outline post pass.\n+        OUTLINE_COLOR,                     //  \"outline_color\"\n+        OUTLINE_PARAMS,                    //  \"outline_params\"\n+        OUTLINE_PARAMS2,                   //  \"outline_params2\"\n+\n+        // [Pedro Cam Phase 1] fisheye / peephole late post pass.\n+        FISHEYE_PARAMS,                    //  \"fisheye_params\"\n+        FISHEYE_PARAMS2,                   //  \"fisheye_params2\"\n+\n+        // [BDMerge A5.4-1a] velocity / motion-vector buffer. CURRENT_MODELVIEW and\n+        // MOTION_BLUR_STRENGTH are declared now for forward-compat (Phase 3 motion\n+        // blur, debug-viz gain). PROJECTION_MATRIX_UNJITTERED carries the T2x\n+        // jitter-free projection so motion vectors stay clean (brief pitfall 1).\n+        CURRENT_MODELVIEW_MATRIX,          //  \"current_modelview_matrix\"\n+        LAST_MODELVIEW_MATRIX,             //  \"last_modelview_matrix\"\n+        LAST_OBJECT_MATRIX,                //  \"last_object_matrix\"\n+        PROJECTION_MATRIX_UNJITTERED,      //  \"projection_matrix_unjittered\"\n+        DEFERRED_VELOCITY,                 //  \"velocityMap\"\n+        MOTION_BLUR_STRENGTH,              //  \"motion_blur_strength\"\n+        // [BDMerge A5.4-1b] previous-frame skinning palettes (rigged + classic\n+        // avatar velocity). Lockstep with llshadermgr.cpp push_back block.\n+        AVATAR_LAST_MATRIX,                //  \"lastMatrixPalette\"\n+\n+        // [BDMerge Froxel F0] hybrid froxel volumetrics (grid/atlas media pass +\n+        // debug visualizer). MUST stay in lockstep with the matching push_back\n+        // block in llshadermgr.cpp - same position, same order.\n+        FROXEL_MEDIA,                      //  \"froxelMedia\"          (sampler: media atlas)\n+        FROXEL_GRID,                       //  \"froxel_grid\"          (GridX,GridY,GridZ)\n+        FROXEL_ATLAS,                      //  \"froxel_atlas\"         (tilesX,tilesY,atlasW,atlasH)\n+        FROXEL_NEAR_FAR,                   //  \"froxel_near_far\"      (near, far)\n+        FROXEL_TAN_HALF_FOV,               //  \"froxel_tan_half_fov\"  (tan(fovx/2),tan(fovy/2))\n+        FROXEL_INV_MODELVIEW,              //  \"froxel_inv_modelview\" (view -> agent)\n+        FROXEL_DENSITY,                    //  \"froxel_density\"\n+        FROXEL_FOG_STRENGTH,               //  \"froxel_fog_strength\"\n+        FROXEL_FOG_GROUND,                 //  \"froxel_fog_ground_density\"\n+        FROXEL_FOG_FALLOFF,                //  \"froxel_fog_falloff\"\n+        FROXEL_FOG_BASE,                   //  \"froxel_fog_base\"\n+        FROXEL_NOISE_STRENGTH,             //  \"froxel_noise_strength\"\n+        FROXEL_NOISE_SCALE,                //  \"froxel_noise_scale\"\n+        FROXEL_NOISE_SPEED,                //  \"froxel_noise_speed\"\n+        FROXEL_WIND,                       //  \"froxel_wind\"          [F5] (wind_dir * noise_speed)\n+        FROXEL_TIME,                       //  \"froxel_time\"\n+        // [Local Fog] Flattened eight-volume media arrays.\n+        LOCALFOG_CENTER,                   //  \"localfog_center\"\n+        LOCALFOG_EXTENTS,                  //  \"localfog_extents\"\n+        LOCALFOG_INV_ROT,                  //  \"localfog_inv_rot\"\n+        LOCALFOG_PARAMS,                   //  \"localfog_params\"\n+        LOCALFOG_TINT,                     //  \"localfog_tint\"\n+        LOCALFOG_NOISE,                    //  \"localfog_noise\"\n+        LOCALFOG_COUNT,                    //  \"localfog_count\"\n+        FROXEL_DEBUG_MODE,                 //  \"froxel_debug_mode\"\n+        FROXEL_DEBUG_SLICE,                //  \"froxel_debug_slice\"\n+\n+        // [BDMerge Froxel F1] integrate + apply. FROXEL_INTEGRATED is the second\n+        // atlas (rgb = integrated in-scatter L, a = transmittance T); FROXEL_AMBIENT\n+        // is the uniform ambient in-scatter radiance of the medium. Appended after\n+        // the F0 block, in lockstep with the matching push_back block in .cpp.\n+        FROXEL_INTEGRATED,                 //  \"froxelIntegrated\"     (sampler: integrated atlas)\n+        FROXEL_AMBIENT,                    //  \"froxel_ambient\"\n+\n+        // [BDMerge Froxel F2] per-light injection. FROXEL_LIGHT is the light atlas\n+        // (rgb = injected in-scatter source radiance from all projectors, a unused);\n+        // FROXEL_LIGHT_ENABLE gates the integrate pass's light term so that with it\n+        // 0 the integrate output is exactly F1 (ambient-only). Appended after the F1\n+        // block, in lockstep with the matching push_back block in .cpp.\n+        FROXEL_LIGHT,                      //  \"froxelLight\"          (sampler: light atlas)\n+        FROXEL_LIGHT_ENABLE,               //  \"froxel_light_enable\"\n+\n+        // [BDMerge Froxel F3] froxel-space temporal accumulation. FROXEL_LIGHT_HISTORY\n+        // is the previous frame's RESOLVED light atlas (sampled trilinear via the\n+        // world-space grid-to-grid reprojection); FROXEL_PREV_MODELVIEW is last frame's\n+        // world->view matrix (reproject a current froxel's world pos into the prev\n+        // grid); FROXEL_TEMPORAL_BLEND is the EMA history weight; FROXEL_JITTER gates\n+        // the per-frame injection jitter and FROXEL_FRAME is the wrapped frame counter\n+        // that walks it. Appended after the F2 block, in lockstep with the matching\n+        // push_back block in .cpp.\n+        FROXEL_LIGHT_HISTORY,              //  \"froxelLightHistory\"   (sampler: prev resolved atlas)\n+        FROXEL_PREV_MODELVIEW,             //  \"froxel_prev_modelview\"\n+        FROXEL_TEMPORAL_BLEND,             //  \"froxel_temporal_blend\"\n+        FROXEL_TEMPORAL_REJECT,            //  \"froxel_temporal_reject\"\n+        FROXEL_JITTER,                     //  \"froxel_jitter\"\n+        FROXEL_FRAME,                      //  \"froxel_frame\"\n+\n+        WEATHER_RAIN_MAP,                  //  \"weather_rain_map\"\n+        WEATHER_RAIN_OCCLUSION_MAP,        //  \"weather_rain_occlusion_map\"\n+\n+        // [Ultimate Diopter] native lens-front diopter / halo post pass.\n+        // vec4 bundles, appended at the end in lockstep with the matching\n+        // push_back block in llshadermgr.cpp.\n+        DIOPTER_SHAPE,                     //  \"diopter_shape\"      center.xy, size, stretch\n+        DIOPTER_SHAPE2,                    //  \"diopter_shape2\"     angleRad, feather, invert, content\n+        DIOPTER_SHAPE3,                    //  \"diopter_shape3\"     shape, hollow, cornerRound, splitCurvature\n+        DIOPTER_SHAPE4,                    //  \"diopter_shape4\"     wobbleAmt, wobbleFreq, wavePhase, waveGain\n+        DIOPTER_SHAPE5,                    //  \"diopter_shape5\"     polySides, starPoints, starInner, squirclePow\n+        DIOPTER_SHAPE6,                    //  \"diopter_shape6\"     petalCount, petalDepth, blobSeed, blobAmt\n+        DIOPTER_SHAPE7,                    //  \"diopter_shape7\"     crescentBite, crescentShift, arcLenRad, brokenCount\n+        DIOPTER_FOCUS,                     //  \"diopter_focus\"      baseFocusM, lensFocusM, focusWidthM, falloffRate\n+        DIOPTER_FOCUS2,                    //  \"diopter_focus2\"     falloffCurve, nearStr, farStr, maxBlurPx\n+        DIOPTER_FOCUS3,                    //  \"diopter_focus3\"     floorMaxPx, spotBlur, bokehHi, magnify\n+        DIOPTER_FOCUS4,                    //  \"diopter_focus4\"     axialCA_M, fieldCurve, depthEdgeM, reserved\n+        DIOPTER_APERTURE,                  //  \"diopter_aperture\"   apShape, blades, bladeRotRad, bladeCurve\n+        DIOPTER_APERTURE2,                 //  \"diopter_aperture2\"  apInner, anamorph, anamAngleRad, catEye\n+        DIOPTER_GLASS,                     //  \"diopter_glass\"      profile, ior1, thickness, rimWidth\n+        DIOPTER_GLASS2,                    //  \"diopter_glass2\"     rimWarp, placementMode, reserved, reserved\n+        DIOPTER_HALO,                      //  \"diopter_halo\"       ringCount, ringFold, twistRad, ringPhase\n+        DIOPTER_HALO2,                     //  \"diopter_halo2\"      lobeAmt, lobeCount, lobePhaseRad, warpActive\n+        DIOPTER_PATTERN,                   //  \"diopter_pattern\"    mode, segments, feedRad, srcZoom\n+        DIOPTER_COMP,                      //  \"diopter_comp\"       seamGhostPx, seamGhostAmt, caMag, edgeVig\n+        DIOPTER_COMP2,                     //  \"diopter_comp2\"      rimCaustic, rimDarken, blend, debugView\n+        DIOPTER_GHOST,                     //  \"diopter_ghost\"      ghostCount, ghostSpacing, radialSmear, tangentSmear\n+        DIOPTER_GHOST2,                    //  \"diopter_ghost2\"     ghostThreshold, ghostKnee, dispersion, ghostGain\n+\n+        // [Ultimate Diopter] warped present depth for ReShade alignment.\n+        // Appended at the end in lockstep with the matching push_back block\n+        // in llshadermgr.cpp.\n+        DIOPTER_WARP_MAP,                  //  \"diopterWarpMap\"     (sampler: RG16F diopter source-uv map)\n+        DEPTH_WARP_PARAMS,                 //  \"depth_warp_params\"  diopterActive (0/1), fisheyeActive (0/1), reserved, reserved\n+\n+        // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post\n+        // pass. vec4 bundles, appended at the end in lockstep with the\n+        // matching push_back block in llshadermgr.cpp.\n+        KAL_PATTERN,                       //  \"kal_pattern\"        mode, segments, ringCount, edgeWrap\n+        KAL_SHAPE,                         //  \"kal_shape\"          rotRadTotal, twistRadTotal, starSharp, shapeBias\n+        KAL_CENTER,                        //  \"kal_center\"         center.xy, protectCenter.xy (uv, y-up)\n+        KAL_SOURCE,                        //  \"kal_source\"         feedRadTotal, srcZoom, srcOffset.xy\n+        KAL_FX,                            //  \"kal_fx\"             fxBand, fxAmount, ftPhase, fxFreq\n+        KAL_PROTECT,                       //  \"kal_protect\"        protectMode, discRadius, discFeather, depthInvert\n+        KAL_DEPTH,                         //  \"kal_depth\"          depthCutM, depthFeatherM, reserved, reserved\n+        KAL_WAVE,                          //  \"kal_wave\"           wavePhase, waveGain, waveAmp, waveFreq\n+        KAL_LOOK,                          //  \"kal_look\"           seamSoften, blend, debugView, reserved\n+        KAL_CELL,                          //  \"kal_cell\"           cellSizeVar, cellBreathe, cellSubdiv, cellMerge\n+        KAL_CELL2,                         //  \"kal_cell2\"          cellTint, reserved, reserved, reserved\n+\n+        // [Cine Haze] Cinematic Depth Atmosphere (windlight/cineHazeF.glsl),\n+        // uploaded by ALCineHaze::bind() from LLPipeline::bindDeferredShader()\n+        // and the alpha pool's prepare_alpha_shader().  Appended at the end in\n+        // lockstep with the matching push_back block in llshadermgr.cpp.\n+        CINE_HAZE_ACTIVE,                  //  \"cine_haze_active\"      int  0 = bypass (bit-exact off path)\n+        CINE_HAZE_PARAMS,                  //  \"cine_haze_params\"      vec4 density, start distance, max opacity, master strength\n+        CINE_HAZE_HEIGHT,                  //  \"cine_haze_height\"      vec4 height enable, reference height, falloff, camera world height\n+        CINE_HAZE_UP,                      //  \"cine_haze_up\"          vec3 world +Z in eye space\n+        CINE_HAZE_COLOR,                   //  \"cine_haze_color\"       vec4 manual colour (sRGB) + intensity\n+        CINE_HAZE_COLOR_MODE,              //  \"cine_haze_color_mode\"  int  0 manual, 1 environment-linked\n+        CINE_HAZE_SUN,                     //  \"cine_haze_sun\"         vec4 linear sun tint * strength, lobe exponent\n+        CINE_HAZE_DEBUG,                   //  \"cine_haze_debug\"       int  developer view selector\n+        CINE_HAZE_ADDITIVE,                //  \"cine_haze_additive\"    int  1 = additive-blended draw (transmittance only)\n+\n+        // [RigRim] Rig Rim Light (Cine Light Rig Phase A; deferredUtil.glsl\n+        // rigRimTerm()).  Globals are uploaded by ALCineRigRim::bindGlobals()\n+        // from LLPipeline::bindDeferredShader() and prepare_alpha_shader();\n+        // the per-light params by the deferred light loops / setupSpotLight()\n+        // and LLRender::syncLightState().  Appended at the end in lockstep with\n+        // the matching push_back block in llshadermgr.cpp.\n+        RIG_RIM_MODE,                      //  \"rig_rim_mode\"          int  0 off (bit-exact no-op), 1 on, 2 debug rim-only\n+        RIG_RIM_GLOBALS,                   //  \"rig_rim_globals\"       vec4 master gain, roughness softening, back softness, surface tint\n+        RIG_RIM_LIGHT,                     //  \"rig_rim_light\"         vec4 single light: gain, k, wrap, back bias (pointLightF / spotLightF)\n+        RIG_RIM_LIGHTS,                    //  \"rig_rim_lights\"        vec4[] batched: multiPointLightF[LIGHT_COUNT], forward alpha[LL_NUM_LIGHT_UNITS]\n+        RIG_RIM_SHADOW,                    //  \"rig_rim_shadow\"        float 0 rim ignores the projector shadow .. 1 fully shadowed (spotLightF)\n+\n+        // [RotoInk] Rotoscope Ink (cineOutlineF.glsl), uploaded by\n+        // LLPipeline::renderCineOutline(). OUTLINE_COLOR/PARAMS/PARAMS2 above\n+        // are reused (see the shader header for their new packing). Appended\n+        // in lockstep with the matching push_back block in llshadermgr.cpp.\n+        ROTO_SCENE,                        //  \"rotoScene\"             sampler2D copy of the destination (mWaterDis scratch)\n+        ROTO_LINE,                         //  \"roto_line\"             vec4 sil threshold, crease threshold (1-cos), sil weight, crease weight\n+        ROTO_INK,                          //  \"roto_ink\"              vec4 opacity, match-light reach px, reserved, reserved\n+        ROTO_SUBJECT,                      //  \"roto_subject\"          vec4 mode, subject depth m, slab half depth m, slab feather m\n+        ROTO_SUBJECT2,                     //  \"roto_subject2\"         vec4 ellipse centre uv, ellipse radii uv\n+        ROTO_SUBJECT3,                     //  \"roto_subject3\"         vec4 ellipse amount, ellipse feather, ellipse valid, reserved\n+        ROTO_SKETCH,                       //  \"roto_sketch\"           vec4 enable, boil px, detail, redraw fps\n+        ROTO_SKETCH2,                      //  \"roto_sketch2\"          vec4 strokes, roughness, seed, reserved\n+        ROTO_MOTION,                       //  \"roto_motion\"           vec4 style, speed, amount, scale\n+        ROTO_MOTION2,                      //  \"roto_motion2\"          vec4 layer-1 angle rad, time s, reserved, reserved\n+\n+        // [RotoInk Anim] animated patterns (round A) + extended subject\n+        // isolation. Lockstep with the matching push_back block in\n+        // llshadermgr.cpp. Off values (all 0) reproduce the pre-Anim output.\n+        ROTO_MOTION3,                      //  \"roto_motion3\"          vec4 layer-1 shape, motion seed, hold-frame fps (0 off), tempo beats/s (0 off)\n+        ROTO_MOTION4,                      //  \"roto_motion4\"          vec4 layer-2 style, speed, amount, scale\n+        ROTO_MOTION5,                      //  \"roto_motion5\"          vec4 layer-2 shape, layer-2 angle rad, tempo phase beats, reserved\n+        ROTO_PATTERN,                      //  \"roto_pattern\"          vec4 type, size px, ratio, drift px/s\n+        ROTO_PATTERN2,                     //  \"roto_pattern2\"         vec4 hatch angle rad, hatch reach px, seed, cross 0/1\n+        ROTO_COLOR2,                       //  \"roto_color2\"           vec4 secondary colour rgb (linear), colour mode\n+        ROTO_COLOR2B,                      //  \"roto_color2b\"          vec4 colour speed, colour length px, reserved, reserved\n+        ROTO_SUBJECT4,                     //  \"roto_subject4\"         vec4 target shape, invert, per-target palette, target count\n+        ROTO_TARGETS,                      //  \"roto_targets\"          vec4[16] per target: centre uv, half extents uv\n+        ROTO_TARGETS2,                     //  \"roto_targets2\"         vec4[16] per target: view depth m, slab half depth m, palette index, valid\n+\n+        // [TronT1] Tron World post pass (tronWorldF.glsl), uploaded by\n+        // LLPipeline::renderTronWorld(). Appended in lockstep with the\n+        // matching push_back block in llshadermgr.cpp. Every \"off\" value is\n+        // 0. TRON_TRACE*/TRON_RIM* are reserved for T2 (circuit traces /\n+        // post neon rim) so the enum never reshuffles; the T1 shader does not\n+        // declare them.\n+        TRON_SCENE,                        //  \"tronScene\"             sampler2D copy of the destination (mWaterDis scratch)\n+        TRON_INV_PROJ,                     //  \"tron_inv_proj\"         mat4 inverse of the pass's own projection (gGLLast* / live)\n+        TRON_INV_MODELVIEW,                //  \"tron_inv_modelview\"    mat4 inverse of the pass's own modelview\n+        TRON_CAM_REL,                      //  \"tron_cam_rel\"          vec4 camera - anchor (m), camera agent z\n+        TRON_MASTER,                       //  \"tron_master\"           vec4 layer, pulse01, reserved, no-post neon scale\n+        TRON_PALETTE0,                     //  \"tron_palette0\"         vec4 primary rgb, pulse amount\n+        TRON_PALETTE1,                     //  \"tron_palette1\"         vec4 secondary rgb, clamp-display flag\n+        TRON_PALETTE2,                     //  \"tron_palette2\"         vec4 accent rgb, reserved\n+        TRON_PALETTE3,                     //  \"tron_palette3\"         vec4 pulse rgb, reserved\n+        TRON_GRADE,                        //  \"tron_grade\"            vec4 strength, darken EV, desaturate, crush\n+        TRON_GRADE2,                       //  \"tron_grade2\"           vec4 tint rgb, tint amount\n+        TRON_GRADE3,                       //  \"tron_grade3\"           vec4 keep-bright lo, hi, keep subject, sky darken\n+        TRON_GRID,                         //  \"tron_grid\"             vec4 intensity, spacing m, half width m, min width px\n+        TRON_GRID2,                        //  \"tron_grid2\"            vec4 major every N, major width x, major intensity x, far fade m\n+        TRON_GRID3,                        //  \"tron_grid3\"            vec4 floor w, wall w, ceiling w, triplanar sharpness\n+        TRON_GRID4,                        //  \"tron_grid4\"            vec4 normal source, glow alpha feed, subject exclude, reserved\n+        TRON_GRID5,                        //  \"tron_grid5\"            vec4 subject radius m, radius feather m, water mode, water tolerance m\n+        TRON_WATER,                        //  \"tron_water\"            vec4 agent water height, camera underwater, detection on, reserved\n+        TRON_PULSE,                        //  \"tron_pulse\"            vec4 amount, CPU phase 0..1, length, wavelength m\n+        TRON_PULSE2,                       //  \"tron_pulse2\"           vec4 density, direction mode, seed, colour mode\n+        TRON_SUBJECT,                      //  \"tron_subject\"          vec4 target count, shape, shape feather, slab feather m\n+        TRON_SUBJECT2,                     //  \"tron_subject2\"         vec4 grid mask source, rim mask source, invert, reserved\n+        TRON_TARGETS,                      //  \"tron_targets\"          vec4[16] culled: centre uv, half extents uv\n+        TRON_TARGETS2,                     //  \"tron_targets2\"         vec4[16] culled: view depth m, slab half depth m, palette idx, valid\n+        TRON_ANCHORS,                      //  \"tron_anchors\"          vec4[16] un-culled: centre xyz (anchor frame), radius m\n+        TRON_ANCHOR_COUNT,                 //  \"tron_anchor_count\"     int  number of valid tron_anchors\n+        TRON_LATTICE_R,                    //  \"tron_lattice_r\"        vec4[4] lattice remainder xyz (m), scale (grid / major / wavelength / trace cell)\n+        TRON_LATTICE_K,                    //  \"tron_lattice_k\"        uvec4[4] lattice cell index xyz (mod 2^32), 0\n+        TRON_TRACE,                        //  \"tron_trace\"            [T2 reserved] vec4 intensity, cell m, width m, density\n+        TRON_TRACE2,                       //  \"tron_trace2\"           [T2 reserved] vec4 pad radius m, diagonal chance, walls w, floors w\n+        TRON_TRACE3,                       //  \"tron_trace3\"           [T2 reserved] vec4 pulse amount, CPU phase, length, seed\n+        TRON_RIM,                          //  \"tron_rim\"              [T2 reserved] vec4 gain, exponent, silhouette gain, silhouette thr\n+        TRON_RIM2,                         //  \"tron_rim2\"             [T2 reserved] vec4 pulse amount, scan amount, scan CPU phase, scan width\n+        TRON_RIM3,                         //  \"tron_rim3\"             [T2 reserved] vec4 colour mode, reject floors, shape, feather\n+\n+        // [TronT1] Rig Rim \"Tron\" palette tint (deferredUtil.glsl rigRimTerm()),\n+        // uploaded by ALCineRigRim::bindGlobals() (slow path) and\n+        // ALCineRigRim::bindAnimated() (bindDeferredShaderFast fast path).\n+        // rig_rim_tron.x == 0 is the bit-exact no-op (branch untaken).\n+        RIG_RIM_TRON,                      //  \"rig_rim_tron\"          vec4 mode (0 off, 1 tint, 2 tint+pulse), mix 0..1, pulse multiplier, reserved\n+        RIG_RIM_TRON_COLOR,                //  \"rig_rim_tron_color\"    vec4 palette colour rgb (linear), reserved\n+\n+        // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl),\n+        // uploaded by ALTron::renderTrails() on every draw (the program is\n+        // never bound with stale uniforms; \"off\" == never bound).\n+        TRON_TRAIL_COLOR,                  //  \"tron_trail_color\"      vec4 palette rgb (linear), glow feed 0..1\n+        TRON_TRAIL_PARAMS,                 //  \"tron_trail_params\"     vec4 edge/core width (fraction), edge gain, body gain, fade exponent\n+        TRON_TRAIL_PARAMS2,                //  \"tron_trail_params2\"    vec4 intensity, style 0/1/2, no-post scale, clamp-display flag\n+        TRON_TRAIL_PARAMS3,                //  \"tron_trail_params3\"    vec4 fog mode, fog density 1/m, reserved, reserved\n+\n+        // [EnvIntensity v2] Personal Lighting exposure strip, uploaded from\n+        // LLSettingsVOSky::applySpecial (SG_ANY) via ALEnvIntensity::compute().\n+        // Every one of these is exactly identity (1.0 / vec3(1) / 0.0) at the\n+        // default settings, in classic mode, and (sampling-time terms) during\n+        // reflection-probe captures. Keep in LOCKSTEP with the push_back list\n+        // in llshadermgr.cpp (llassert there is compiled out in Release).\n+        SKY_AMB_SCALE,                     //  \"sky_amb_scale\"         float 2^(GI master + GI ambient offset): amblit in calcAtmosphericVarsLinear\n+        SKY_PROBE_RAD_SCALE,               //  \"sky_probe_rad_scale\"   float 2^(probe reflections EV): probe radiance (glossenv/legacyenv), before SSR + hero\n+        SKY_SUN_TINT,                      //  \"sky_sun_tint\"          vec3 luminance-normalised Kelvin x swatch tint on sunlit (sun) / swatch tint (moon)\n+        SKY_AMB_TINT,                      //  \"sky_amb_tint\"          vec3 luminance-normalised swatch tint on amblit / probe irradiance / SSAO ceiling\n+        SHADOW_LIFT_GAIN,                  //  \"shadow_lift_gain\"      float 2^(shadow lift EV) - 1; 0 = off (deferredUtil.glsl applyShadowLift)\n+\n+        ACTOR_MASK_MAP,  // [ActorMask] actorMaskMap\n+        ACTOR_MASK_BITS, // [ActorMask] actor_mask_bits\n+        // [ProbeCost] Append in lockstep with llshadermgr.cpp.\n+        SHADOW_PROBE_MODE,\n+        SHADOW_REUSE_MATRIX,\n+        SHADOW_REUSE_VALID,\n+        SHADOW_REUSE_RES,\n+        SHADOW_REUSE_RES_H,\n+        RENDER_DEBUG_LIGHTING_TERM,         //  \"render_debug_lighting_term\" int: deferred opaque lighting diagnostic\n+        RIG_RIM_QUALITY,\n+        RIG_RIM_SIL,\n+        RIG_RIM_AUX_PARAMS,\n+        RIG_RIM_AUX_MAP,\n+        RIG_RIM_SIL_MAP,\n+        RIG_RIM_WRAP,\n+        RIG_RIM_WRAP2,\n+        RIG_RIM_WRAP_SRC,\n+        RIG_RIM_SMOOTH_PARAMS, // radius metres, focal pixels xy, texture detail\n+        RIG_RIM_SMOOTH_MAP,\n+        RIG_RIM_BARRIER_MAP,\n+        RIG_RIM_EDGE_MAP,\n+        RIG_RIM_SMOOTH_STAGE,\n+        ON_LENS_ALBEDO,\n+        LENS_PYRAMID0,\n+        LENS_PYRAMID1,\n+        LENS_PYRAMID2,\n+        LENS_PYRAMID3,\n+        LENS_PYRAMID4,\n+        LIGHT_SHAPE,\n+        LIGHT_SHAPES,\n+        AREA_SHADOW_MAP0,\n+        AREA_SHADOW_MAP1,\n+        AREA_SHADOW_SOURCE,\n+        RELIGHT_ENABLED,                   // runtime master; stale shape data is ignored while off\n+        AREA_WORLD_ATLAS,                  // P1-lite world cube shadow atlas (D32F, compare mode none)\n+        WEATHER_SURFACE_COVER_MAP,         // \"weather_surface_cover_map\"; after all existing samplers\n+        WEATHER_SHELTER_CLOSE_MAP,\n+        WEATHER_SHELTER_DISTANT_MAP,\n+        WEATHER_SURFACE_COVER_MIN_MAP,\n+        WEATHER_SHELTER_CLOSE_MIN_MAP,\n+        WEATHER_SHELTER_DISTANT_MIN_MAP,\n+        WEATHER_VEIL_MAP,\n+        ENV_ONLY_MODE,\n+        AVATAR_TAG_DRAW,\n+        GBUFFER_TAG_PREFERRED,\n+        LOCAL_LIGHT_EV_SCALE,\n+        LOCAL_LIGHT_EV_SCALES,\n+        SSAO_IRRADIANCE_MAX_STOCK,\n+        GHOST_SCENE_MAP,                   // \"ghostSceneMap\" Studio-only sampler\n         END_RESERVED_UNIFORMS\n     } eGLSLReservedUniforms;\n     // clang-format on\n",
           "purpose": "Comment evidence: [BDMerge G3.2] volumetric lighting (donor: Black Dragon) [BDMerge G3.3] per-projector volumetric light cones [BDMerge G3.3 Phase 1] projector-volumetric cinema levers [BDMerge G3.3 Phase 3] atmosphere levers (all default to a no-op) [BDMerge G3.3 Batch 1] temporal reprojection (A",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
             {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
@@ -98497,10 +98537,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98571,6 +98607,7 @@
             "froxel_temporal_reject",
             "froxel_time",
             "froxel_wind",
+            "ghostSceneMap",
             "gobo_anim_params",
             "gobo_aniso",
             "gobo_pattern",
@@ -98736,6 +98773,7 @@
           "base_count": 11,
           "base_start": 490,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98756,13 +98794,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 21,
-          "head_end": 1013,
-          "head_start": 993,
-          "id": "indra/llrender/llshadermgr.h@993,21",
+          "head_end": 1014,
+          "head_start": 994,
+          "id": "indra/llrender/llshadermgr.h@994,21",
           "patch": "     bool    linkProgramObject(GLuint obj, bool suppress_errors = false);\n     bool    validateProgramObject(GLuint obj);\n     GLuint loadShaderFile(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines = NULL, S32 texture_index_channels = -1);\n+    static bool computeShadersSupported();\n+    // Shader teardown accompanies GL-context teardown/reload.\n+    inline static U32 sContextGeneration = 0;\n+    static S32 shaderLanguageVersion(GLenum stage);\n+    void clearShaderObjects();\n+    bool ownsShaderObject(GLuint object) const;\n \n     // Implemented in the application to actually point to the shader directory.\n     virtual std::string getShaderDirPrefix(void) = 0; // Pure Virtual\n \n     // Implemented in the application to actually update out of date uniforms for a particular shader\n+    void prepareWeatherFeatures(LLGLSLShader* shader);\n+    virtual bool weatherMaterialsEnabled() const { return false; }\n+    virtual bool weatherMaterialsSupported() const { return false; }\n+    virtual void updateWeatherUniforms(LLGLSLShader* shader) {} // Per-view material bindings, no simulation.\n     virtual void updateShaderUniforms(LLGLSLShader * shader) = 0; // Pure Virtual\n \n     void initShaderCache(bool enabled, const LLUUID& old_cache_version, const LLUUID& current_cache_version, bool second_instance);\n",
           "purpose": "Comment evidence: Shader teardown accompanies GL-context teardown/reload.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
             {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
@@ -98778,10 +98820,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "creative-candidate",
@@ -98792,6 +98830,7 @@
           "base_count": 6,
           "base_start": 508,
           "candidate_features_from_subjects": [
+            "clones",
             "roto-tron",
             "sensor",
             "weather"
@@ -98808,13 +98847,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 1029,
-          "head_start": 1021,
-          "id": "indra/llrender/llshadermgr.h@1021,9",
+          "head_end": 1030,
+          "head_start": 1022,
+          "id": "indra/llrender/llshadermgr.h@1022,9",
           "patch": "     // Map of shader names to compiled\n     std::map<std::string, GLuint> mVertexShaderObjects;\n     std::map<std::string, GLuint> mFragmentShaderObjects;\n+    // Owns compiled objects. The filename maps above are aliases for preloaded\n+    // graphics feature modules, not a permutation cache.\n+    std::map<std::string, GLuint> mShaderObjects;\n \n     //global (reserved slot) shader parameters\n     std::vector<std::string> mReservedAttribs;\n",
           "purpose": "Comment evidence: Owns compiled objects. The filename maps above are aliases for preloaded graphics feature modules, not a permutation cache.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b3f04b2c92a",
+              "subject": "Clone looks phase 2 fix round 1: per-Glass subrect copy, view-keyed caches, safe resets"
+            },
             {
               "commit": "0f48b416c81",
               "subject": "S-Log: Log gamut (default S-Gamut3) + Sensor purity (default 0.90)"
@@ -98830,10 +98873,6 @@
             {
               "commit": "c64408b5985",
               "subject": "Weather in-world fixes: library snow/lightning reachable, no runtime shader reloads, logout crash guard"
-            },
-            {
-              "commit": "2f81bd85e4d",
-              "subject": "Weather WP3 fix round 2 + WP7 cost groundwork: shared regional invalidation, refresh gate, texel veil"
             }
           ],
           "scope": "unknown-review",

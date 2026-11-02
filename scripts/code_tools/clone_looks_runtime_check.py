@@ -31,8 +31,9 @@ def check():
                      'saved_shader->bind()', 'ScopedStudioTexture texture(0)'):
         assert required in draw, required
     assert 'std::any_of' not in overlay
-    assert 'gSnapshot ? snapshot_scene : live_scene' in overlay
-    assert 'live_scene.expire(pose_now)' in overlay
+    assert 'static StudioSceneCaches scene_caches;' in overlay
+    assert overlay.index('scene_caches.begin(gSnapshot, pose_now)') < overlay.index('if (!studio.anyEnabled())')
+    assert 'scene_caches.get(gSnapshot, look_frame->mViewport)' in overlay
     studio = Path('indra/newview/alghoststudio.cpp').read_text()
     assert 'inst->mCadenceBoundsRadius = need_bounds' in studio
     assert '(!need_bounds || inst->mCadenceBoundsRadius > 0.f)' in studio
@@ -66,6 +67,7 @@ struct LLVector3 {
  LLVector3 operator*(float s)const{return {mV[0]*s,mV[1]*s,mV[2]*s};}
  static const LLVector3 zero;
  void set(float x,float y,float z){mV[0]=x;mV[1]=y;mV[2]=z;}
+ void clear(){set(0,0,0);}
  float lengthSquared()const{return mV[0]*mV[0]+mV[1]*mV[1]+mV[2]*mV[2];}
  float length()const{return std::sqrt(mV[0]*mV[0]+mV[1]*mV[1]+mV[2]*mV[2]);}
  bool isFinite()const{return std::isfinite(mV[0])&&std::isfinite(mV[1])&&std::isfinite(mV[2]);}
@@ -110,7 +112,7 @@ enum {GL_TEXTURE_BINDING_2D=1,GL_DRAW_FRAMEBUFFER_BINDING,GL_READ_FRAMEBUFFER_BI
 #define LL_PROFILE_GPU_ZONE(x)
 U32 frame=1;
 struct LLFrameTimer { static U32 getFrameCount(){return frame;} };
-int draw_fbo=7,read_fbo=2,draw_buffer=103,copies=0,allocations=0;
+int draw_fbo=7,read_fbo=2,draw_buffer=103,copies=0,allocations=0,resident=0,retired=0;
 std::map<int,int> read_buffers={{7,101},{2,102}};
 std::array<int,8> binding2d={};
 int copied_source=0,copied_buffer=0,copy_w=0,copy_h=0,copy_x=0,copy_y=0,source_x=0,source_y=0;
@@ -154,9 +156,11 @@ void glCopyTexSubImage2D(int,int,int x,int y,int sx,int sy,int w,int h){
 }
 struct LLImageGL {
  int w=0,h=0;U32 name=0;
+ ~LLImageGL(){if(name)++retired;} // production queues deletion; storage survives until idle
+ static void updateClass(){resident-=retired;retired=0;}
  LLImageGL(bool,bool){} bool getHasGLTexture(){return name!=0;}
  int getWidth(){return w;} int getHeight(){return h;}
- void setSize(int x,int y,int){w=x;h=y;} bool createGLTexture(){name=500+allocations++;return true;}
+ void setSize(int x,int y,int){w=x;h=y;} bool createGLTexture(){name=500+allocations++;++resident;return true;}
  U32 getTexName(){return name;}
  static void setManualImage(int,int,int,int,int,int,int,void*,bool){}
 };
@@ -188,7 +192,7 @@ int sGhostDisplace,sGhostVelocity,sGhostSceneValid,sGhostScreenSize,sGhostScreen
                       'template<class Visible, class Prepare>', 'template<class Apply>',
                       'template<class Copy, class Draw>', 'template<class Draw>',
                       'void studio_apply_phase2(', 'class ScopedStudioTexture',
-                      'struct StudioSceneCache', 'std::array<GLint, 4> studio_glass_rect(',
+                      'struct StudioSceneCache', 'struct StudioSceneCaches', 'std::array<GLint, 4> studio_glass_rect(',
                       'LLImageGL* studio_scene_copy('):
         fixture += method(path, signature) + (';' if signature.startswith(('class','struct')) else '') + '\n'
     fixture += r'''
@@ -250,6 +254,25 @@ int main(){
  red_bits=0;assert(!studio_scene_copy(cache,++invocation,2.,viewport,{0,0,10,10}));
  assert(copies==old_copies && allocations==old_allocations);red_bits=8;
  cache.expire(3.9);assert(cache.mScene);cache.expire(4.1);assert(!cache.mScene);
+ assert(retired==1 && resident==1);LLImageGL::updateClass();assert(resident==0);
+ // No idle/updateClass occurs inside a synchronous capture. Alternate two
+ // sizes, six faces x three passes each, and two Glass copies per invocation.
+ StudioSceneCaches capture;const int capture_allocations=allocations,capture_copies=copies;
+ GLint small[4]={0,0,2048,2048};
+ U32 names[2]={};
+ for(int face=0;face<6;++face)for(int pass=0;pass<3;++pass)for(int size=0;size<2;++size){
+  const auto& vp=size?viewport:small;capture.begin(true,5.);
+  auto& scratch=capture.get(true,vp);++invocation;
+  for(int glass=0;glass<2;++glass){
+   auto* image=studio_scene_copy(scratch,invocation,5.,vp,{0,0,10,10});assert(image);
+   if(!names[size])names[size]=image->getTexName();assert(names[size]==image->getTexName());
+  }
+  assert(allocations-capture_allocations<=2 && resident<=2 && retired==0);
+ }
+ assert(allocations==capture_allocations+2 && copies==capture_copies+72 && resident==2);
+ capture.begin(false,5.1); // also runs before the production disabled/empty return
+ assert(capture.mSnapshot.empty() && retired==2 && resident==2);
+ LLImageGL::updateClass();assert(resident==0 && retired==0);
  auto rect=studio_glass_rect({0,0,0},.1f,glm::mat4(1),viewport);
  assert(rect[0]<1728 && rect[1]<972 && rect[0]+rect[2]>2112 && rect[1]+rect[3]>1188);
  auto full=studio_glass_rect({0,0,0},3,glm::mat4(1),viewport);
@@ -270,10 +293,12 @@ int main(){
  assert(velocity(13,21,0).length()==0);
  // Explicit cut under the old 216px threshold, plus transform-only backstop.
  ++view.mCut;assert(velocity(14,121,0).length()==0);
- view.mCamera={.6f,0,0};assert(velocity(15,221,0).length()==0);
- view.mAt={.998f,.07f,0};assert(velocity(16,321,0).length()==0);
- view.mTeleport=true;assert(velocity(17,322,0).length()==0);view.mTeleport=false;
- assert(velocity(19,323,0).length()==0); // gap
+ velocity(15,122,0);velocity(16,123,0); // re-seed after cut
+ view.mCamera={.6f,0,0};assert(velocity(17,124,0).length()==0);
+ velocity(18,125,0);velocity(19,126,0);
+ view.mAt={.998f,.07f,0};assert(velocity(20,127,0).length()==0);
+ view.mTeleport=true;assert(velocity(21,128,0).length()==0);view.mTeleport=false;
+ assert(velocity(23,129,0).length()==0); // gap
  // Subpixel noise never enters trails; sustained drift enters, noisy drift
  // stays active, and stillness exits once after smoothing (no strobe).
  motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
@@ -283,7 +308,44 @@ int main(){
  int transitions=0;bool on=true;
  for(int f=110;f<140;++f){bool next=velocity(f,x,0).length()>0;if(next!=on)++transitions;on=next;}
  assert(!on && transitions==1);
- std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis\n";
+ // The real 1.5% / 0.25Hz VCam breathing and Slow Zoom change the
+ // projection every frame while a directional Datamosh subject keeps moving.
+ for(bool zoom:{false,true}){
+  motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
+  for(U32 f=1;f<=600;++f){
+   const float t=f/60.f;
+   const float fov=zoom?60.f-2.f*t:60.f*(1.f+.015f*std::sin(2.f*3.14159265f*.25f*t));
+   view.mProjection.m[0][0]=view.mProjection.m[1][1]=1.f/std::tan(fov*3.14159265f/360.f);
+   v=velocity(f,2.f*f,-.5f*f);
+   if(f>3)assert(v.mV[0]>1 && v.mV[1]<0 && v.length()<=48);
+  }
+ }
+ // 60 degrees/s pan plus 13 m/s dolly, at each cadence and with a
+ // cadence change every frame. Prediction uses elapsed seconds, not frames.
+ for(int fps:{24,30,60,0}){
+  motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
+  double t=0;float sx=0;
+  for(U32 f=1;f<=240;++f){
+   const double dt=1./(fps?fps:(f%3==0?24:f%3==1?30:60));t+=dt;sx+=120.f*(float)dt;
+   view.mFrame=f;view.mInvocation=f;view.mCamera={13.f*(float)t,0,0};
+   view.mAt={std::cos((float)t*1.04719755f),std::sin((float)t*1.04719755f),0};
+   v=studio_screen_velocity(motion,view,id,&av,t,{},{sx,0},true);
+   if(f>2)assert(v.mV[0]>1 && v.length()<=48);
+  }
+  // Only 1px screen movement: the transform residual must catch this jump.
+  ++view.mFrame;++view.mInvocation;view.mCamera.mV[0]+=10.f;
+  assert(studio_screen_velocity(motion,view,id,&av,t+1./60.,{},{sx+1,0},true).length()==0);
+ }
+ // Equal-size tiles/faces change projection on the same FBO; snapshot
+ // history must reset even across consecutive application frames.
+ motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
+ for(U32 f=1;f<8;++f)v=velocity(f,2.f*f,0);assert(v.length()>1);
+ view.mSnapshot=true;assert(velocity(8,18,0).length()==0);
+ view.mProjection.m[0][0]=2;assert(velocity(9,20,0).length()==0);
+ view.mCameraId=5;view.mAt={0,1,0};assert(velocity(10,22,0).length()==0);
+ view.mSnapshot=false;view.mOrdinal=1;assert(velocity(11,24,0).length()==0);
+ view.mOrdinal=0;assert(velocity(12,26,0).length()==0);
+ std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis; 10s breathing/zoom; 24/30/60/variable cadence pan+dolly and jump; tiles/faces/aux reset; deferred snapshot allocations 1 per size\n";
 }
 '''
     directory = Path('.tmp/looks2_20261102/runtime').resolve()
@@ -305,7 +367,12 @@ int main(){
     for name,before,after in (
         ('forced_copy_off','if (frame && studio_scene_needed(look, alpha, visible)) frame->mScene = copy();',
          'if (true) { auto* unexpected = copy(); if(frame) frame->mScene = unexpected; }'),
-        ('forced_sweep_off','if (displacement > 0.f) draw(displacement);','if (true) draw(1.f);')):
+        ('forced_sweep_off','if (displacement > 0.f) draw(displacement);','if (true) draw(1.f);'),
+        ('projection_identity','&& std::equal(a.mViewport, a.mViewport + 4, b.mViewport);',
+         '&& std::equal(a.mViewport, a.mViewport + 4, b.mViewport) && a.mProjection == b.mProjection;'),
+        ('fixed_frame_cut','const bool camera_cut = view.mTeleport || view.mCut != previous.mView.mCut',
+         'const bool camera_cut = (view.mCamera - previous.mView.mCamera).lengthSquared() > .25f || (view.mAt - previous.mView.mAt).lengthSquared() > .001218f || view.mTeleport || view.mCut != previous.mView.mCut'),
+        ('snapshot_per_invocation','if (!snapshot) mSnapshot.clear();','mSnapshot.clear();')):
         assert fixture.count(before)==1
         results.append(execute(name,fixture.replace(before,after),False))
     (directory/'results.json').write_text(json.dumps(results,indent=2))

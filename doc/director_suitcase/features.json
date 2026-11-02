@@ -4106,6 +4106,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -4175,6 +4176,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -13381,6 +13383,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -13450,6 +13453,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -23747,6 +23751,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -23816,6 +23821,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -32762,13 +32768,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -35042,6 +35048,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -35111,6 +35118,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -44613,14 +44621,14 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@1878,60",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -51538,6 +51546,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -51607,6 +51616,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -68352,6 +68362,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -68421,6 +68432,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -73479,6 +73491,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -73548,6 +73561,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -81395,6 +81409,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -81464,6 +81479,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -92343,6 +92359,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -92412,6 +92429,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -102842,7 +102860,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -109248,6 +109266,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -109317,6 +109336,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -119193,6 +119213,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -119262,6 +119283,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -129256,13 +129278,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -145034,13 +145056,13 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@819,36",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -150199,6 +150221,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -150268,6 +150291,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -158114,7 +158138,7 @@
           "indra/llrender/llshadermgr.cpp@1567,8",
           "indra/llrender/llshadermgr.cpp@1832,12",
           "indra/llrender/llshadermgr.cpp@1878,60",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -158123,7 +158147,7 @@
           "indra/llrender/llshadermgr.h@139,8",
           "indra/llrender/llshadermgr.h@391,12",
           "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -168212,14 +168236,14 @@
           "indra/llrender/llshadermgr.cpp@358,10",
           "indra/llrender/llshadermgr.cpp@385,9",
           "indra/llrender/llshadermgr.cpp@429,15",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,395"
+          "indra/llrender/llshadermgr.h@589,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -190278,6 +190302,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -190347,6 +190372,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
@@ -199639,15 +199665,15 @@
           "indra/llrender/llshadermgr.cpp@69,95",
           "indra/llrender/llshadermgr.cpp@283,57",
           "indra/llrender/llshadermgr.cpp@1468,13",
-          "indra/llrender/llshadermgr.cpp@2001,362"
+          "indra/llrender/llshadermgr.cpp@2001,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@51,13",
-          "indra/llrender/llshadermgr.h@589,395",
-          "indra/llrender/llshadermgr.h@993,21"
+          "indra/llrender/llshadermgr.h@589,396",
+          "indra/llrender/llshadermgr.h@994,21"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -201685,6 +201711,7 @@
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectorswitcher.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
@@ -201754,6 +201781,7 @@
           "ALAvatarLightResponse::instance",
           "ALAvatarStaging::applyIfStaged",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorSwitcher::instance",
           "ALGazeMath::additiveOverlayLocal",
           "ALGazeMath::applyPersona",
           "ALGazeMath::applySideEye",
