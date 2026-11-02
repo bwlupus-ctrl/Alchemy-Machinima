@@ -1287,7 +1287,7 @@ private:
     // migrateActor() rekeys every id-keyed record old -> new (and restarts a
     // live move's anims on the new body); dropActor() erases an actor's
     // records outright with the same guarded anim stop cancelSuspended() uses.
-    void   migrateActor(const LLUUID& old_id, const LLUUID& new_id, bool keep_destination_path = false);
+    void   migrateActor(const LLUUID& old_id, const LLUUID& new_id);
     void   dropActor(const LLUUID& actor_id);
     // resolve the ground Z (agent frame) under an actor for ground-follow:
     // a capped downward object raycast for stairs/prims, else terrain land

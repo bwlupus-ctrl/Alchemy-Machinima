@@ -33,7 +33,6 @@
 #define LL_LLDIRECTORCAST_H
 
 #include "aldirectoractorchoice.h"
-#include "aldirectoractorstate.h"
 #include "algazemath.h"
 #include "llactormover.h"
 #include "llsd.h"
@@ -266,7 +265,6 @@ public:
         GazeCueList             mGazeCues;        // ordered presentation-time performance track
         GazeInfluenceKeyList    mGazeInfluenceKeys; // parallel influence lane (empty = influence 1)
         ActorStyle              mActorStyle;      // client-only live actor presentation
-        mutable ALDirectorActorState<LLSD> mAuthoredState; // merge metadata, not scene values
     };
 
     // Pure helper types live in aldirectoractorchoice.h (unit-testable without the viewer).
@@ -328,9 +326,6 @@ public:
     void touchCast() { ++mCastRevision; touchScene(); }
     U64 getSceneRevision() const { return mSceneRevision; }
     void touchScene();
-    // Snapshot merge metadata before a mover edit starts. This observes the
-    // preceding edit without dirtying the scene or publishing a change.
-    void captureActorEdits() const;
     boost::signals2::connection addChangedCallback(
         const boost::signals2::signal<void()>::slot_type& callback)
         { return mChangedSignal.connect(callback); }
@@ -535,7 +530,6 @@ private:
     U64 mSubjectRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names
     U64 mSceneRevision = 1;     // every authored value captured by sceneData()
-    mutable U64 mActorAuthorOrder = 0;
     boost::signals2::signal<void()> mChangedSignal;
 
     // transport state: what THIS action() run started, so cut() undoes
