@@ -41,7 +41,8 @@ void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
 enum { SUBJECT_A, SUBJECT_B, SUBJECT_C, SUBJECT_D };
 bool valid(const LLVOAvatar* avatar, bool ghosts, bool animesh)
 {
-    return avatar && !avatar->isDead() && (animesh || !avatar->isControlAvatar()) &&
+    return avatar && !avatar->isDead() && !ALGhostStudio::instance().isDeleting(avatar->getID()) &&
+        !ALGhostStudio::instance().isPrivateOverlayRuntime(avatar->getID()) && (animesh || !avatar->isControlAvatar()) &&
         (!avatar->mIsDummy || (ghosts && avatar->isGhostAvatar()) ||
          (animesh && avatar->isControlAvatar())) &&
         (ghosts || !avatar->isGhostAvatar());

@@ -354,8 +354,9 @@ def validate_data(data: dict) -> None:
     # Sensor noise on/off row on Light > Exposure, 2397 -> 2398.
     # Crowd axes: +4 Width, Depth, Columns and Rows controls; 2398 -> 2402.
     # Unified shell Actor: remove four per-page actor choices; add two Gaze scope rows, 2402 -> 2400.
-    if len(pages) != 38 or row_count != 2400:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2400")
+    # Clone QoL: +17 rows for stagger, swap, mixed looks, fades and solo; session state stays out of scenes.
+    if len(pages) != 38 or row_count != 2417:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2417")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2144,6 +2145,22 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                      "CONTROL_NAME cine_rimq_actors_alpha: data widget spelling differs; v1 setting CineRigRimActorsOnlyAlpha is authoritative"]
     report_path = REPORT if out_dir.resolve() == DEFAULT_OUT.resolve() else out_dir / "gen_report.txt"
     outputs[report_path] = ("\n".join(report_lines) + "\n").encode("utf-8")
+    if out_dir.resolve() == DEFAULT_OUT.resolve():
+        backing_path = out_dir / "panel_ghost_studio.xml"
+        backing_text = backing_path.read_text(encoding="utf-8")
+        backing = ET.fromstring(backing_text)
+        for name in ("pose_scroll_body", "crowd_scroll_body"):
+            document = next(node for node in backing.iter("panel") if node.get("name") == name)
+            height = max((int(child.get("top", "0")) + int(child.get("height", "0"))
+                          for child in document), default=0) + 12  # ALScrollFit::FIT_PAD
+            pattern = r'<panel\b[^>]*\bname="' + re.escape(name) + r'"[^>]*>'
+            def size_document(match: re.Match[str]) -> str:
+                tag = re.sub(r'\sheight="[^" ]*"', '', match.group())
+                return tag[:-1] + f' height="{height}">'
+            backing_text, count = re.subn(pattern, size_document, backing_text)
+            if count != 1:
+                raise GenError(f"Clone Studio document ownership drift: {name}")
+        outputs[backing_path] = backing_text.encode("utf-8")
     return outputs, classes
 
 

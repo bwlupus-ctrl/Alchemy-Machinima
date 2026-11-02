@@ -81,6 +81,22 @@ def main():
         'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
     guarded_mover = current_mover
+    # Clone QoL renderer allowance: exact, count-checked hunk content only.
+    # Reverse visibility, history/deferred routing and fade-alpha edits before
+    # applying the unchanged actor-bar/rekey/looks baseline guards below.
+    qol_edits = [
+        ('            !inst.mEnabled ||\n', '            !studio.isVisible(inst) ||\n', 1),
+        ('        if (inst.mPoseRateHz > 0.f)\n', '        if (inst.mPoseRateHz > 0.f || inst.mStartOffset > 0.f || inst.mFadeAlpha < 1.f)\n', 1),
+        ('        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);\n', '        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);\n', 2),
+        ('        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)\n', '        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst))\n', 1),
+        ('', '        if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, pose_now);\n        if (inst.mOverlayAvatar.notNull() && inst.mPose == ALGhostStudio::POSE_FROZEN && inst.mFrozenPalettes.empty()) studio.freezeInstance(inst.mId);\n', 1),
+        ('            tint = actorPathColor(item.mAv->getID());\n', '            tint = actorPathColor(inst.mHasAnimationSource ? inst.mAppearanceSwapTintSeed : item.mAv->getID());\n', 1),
+        ('', '        else if (inst.mOffsetPose && inst.mStartOffset > 0.f)\n        {\n            gp.mHavePivot = true;\n            gp.mPivotFootAgent = inst.mOffsetPose->mFrozenFootAgent;\n            gp.mFrozenPalettes = &inst.mOffsetPose->mFrozenPalettes;\n            gp.mFrozenAttachMats = &inst.mOffsetPose->mFrozenAttachMats;\n            gp.mRotation = ~inst.mOffsetPose->mRotation * inst.mRotation;\n        }\n', 1),
+        ('                          llclamp(inst.mAlpha, 0.f, 1.f),\n', '                          llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,\n', 1),
+    ]
+    for old, new, count in qol_edits:
+        assert guarded_mover.count(new) == count, ("Clone QoL hunk drift", new)
+        guarded_mover = guarded_mover.replace(new, old)
     for signature, digest in rekey_methods.items():
         body = normalize(method(nv / "llactormover.cpp", signature))
         assert hashlib.sha256(body.encode()).hexdigest() == digest, signature
@@ -226,6 +242,7 @@ struct LLVOAvatar : LLViewerObject {
     bool dead = false, control = false, ghost = false, mIsDummy = false;
     bool isDead() const { return dead; }
     bool isControlAvatar() const { return control; }
+    LLUUID getID() const { return {}; } // picker fixture has no runtime identities
     bool isGhostAvatar() const { return ghost; }
     bool isUIAvatar() const { return false; }
     void* getRootJoint() const { return nullptr; }
@@ -239,6 +256,8 @@ struct ALGhostStudio {
     static ALGhostStudio& instance() { static ALGhostStudio studio; return studio; }
     const Instance* getInstance(LLUUID id) const { auto it=clones.find(id); return it==clones.end()?nullptr:&it->second; }
     const Instance* findInstanceByRuntime(LLUUID id) const { for(auto& item:clones) if(id.notNull() && item.second.mEntityId==id) return &item.second; return nullptr; }
+    bool isPrivateOverlayRuntime(LLUUID) const { return false; }
+    bool isDeleting(LLUUID) const { return false; } // this fixture has no retiring bodies
     void setInstanceAnimSpeed(LLUUID id, float speed) { clones.at(id).mAnimSpeed=speed; }
 };
 LLVOAvatar* resolve_actor(LLUUID) { return nullptr; }

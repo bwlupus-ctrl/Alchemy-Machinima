@@ -12,6 +12,7 @@
 #include "../test/lltut.h"
 
 #include "../alformationsolver.h"
+#include "../alcloneqol.h"
 
 #include <algorithm>
 #include <cmath>
@@ -948,4 +949,82 @@ namespace tut
                     compact.mSlots[0].mLocalY, 1.0);
     }
 
+
+    // Stagger uses the formation frame, independent of heading and jitter.
+    template<> template<>
+    void formation_solver_object::test<22>()
+    {
+        using namespace ALCloneQol;
+        Request request = makeRequest(Shape::Grid, 6);
+        request.mGridColumns = 2;
+        request.mGridRows = 3;
+        request.mColumnSpacingMeters = 2.;
+        request.mRowSpacingMeters = 3.;
+        for (F64 heading : {0., PI/2., -PI/3.})
+        {
+            request.mYawRadians = heading;
+            const auto result = solve(request);
+            std::vector<F64> values;
+            for (const auto& slot : result.mSlots)
+            {
+                const F64 x = slot.mLocalX*cos(heading)+slot.mLocalY*sin(heading);
+                const F64 y = -slot.mLocalX*sin(heading)+slot.mLocalY*cos(heading);
+                values.push_back(ripple(x, y, 0));
+                ensure("solver row carried through rotation", slot.mRowIndex == slot.mInputIndex/2);
+            }
+            const auto bounds = std::minmax_element(values.begin(), values.end());
+            ensureClose("front starts at zero", normalise(values[0], *bounds.first, *bounds.second), 0.);
+            ensureClose("back receives full spread", normalise(values[4], *bounds.first, *bounds.second), 1.);
+            ensureClose("middle is half", normalise(values[2], *bounds.first, *bounds.second), .5);
+        }
+        ensure("left first", ripple(0., 2., 1) < ripple(0., -2., 1));
+        ensure("centre first", ripple(0., 0., 2) < ripple(2., 0., 2));
+        ensureClose("radial symmetry", ripple(3., 4., 2), ripple(-3., -4., 2));
+        ensureClose("degenerate range finite", normalise(3., 3., 3.), 0.);
+        request.mShape = Shape::Ring;
+        for (const auto& slot : solve(request).mSlots)
+            ensure("non-row shapes retain slot fallback", slot.mRowIndex == slot.mInputIndex);
+    }
+    template<> template<>
+    void formation_solver_object::test<23>()
+    {
+        using namespace ALCloneQol;
+        bool changed = false;
+        for (U64 id=1; id<256; ++id)
+        {
+            const F64 first = randomUnit(42, id);
+            ensureClose("stable phase hash", first, randomUnit(42, id), 0.);
+            ensure("offset in spread", first >= 0. && first < 1.);
+            ensure("look in palette", lookIndex(42, id, 0, false, 6) < 6);
+            ensure("same seed same mix", lookIndex(42, id, 0, false, 6) == lookIndex(42, id, 0, false, 6));
+            changed = changed || lookIndex(42, id, 0, false, 6) != lookIndex(43, id, 0, false, 6);
+        }
+        ensure("seed reshuffles mix", changed);
+        for (unsigned row=0; row<10; ++row)
+            ensure("by-row ignores id and seed", lookIndex(1, 9, row, true, 3) == row%3 &&
+                lookIndex(99, 200, row, true, 3) == row%3);
+    }
+    template<> template<>
+    void formation_solver_object::test<24>()
+    {
+        using namespace ALCloneQol;
+        Fade appear{10., 2., 0.f, false};
+        ensureClose("fade begins invisible", appear.alpha(10.), 0.);
+        ensureClose("smooth midpoint", appear.alpha(11.), .5);
+        ensure("appearance finishes", appear.done(12.) && appear.alpha(12.) == 1.f);
+        Fade remove{11., 2., appear.alpha(11.), true};
+        ensureClose("delete during entry continuous", remove.alpha(11.), .5);
+        ensure("deferred before end", !remove.done(12.99));
+        ensure("deferred deletion ready at end", remove.done(13.) && remove.alpha(13.) == 0.f);
+        Fade instant{0., 0., 1.f, true};
+        ensure("instant deletion", instant.done(0.) && instant.alpha(0.) == 0.f);
+        // Solo composes with visibility; ending it restores both hidden and shown flags.
+        for (bool enabled : {false, true})
+        {
+            ensure("solo hides nonmember", !visible(true, enabled, true, false));
+            ensure("solo member respects hidden flag", visible(true, enabled, true, true) == enabled);
+            ensure("solo restores prior visibility", visible(true, enabled, false, false) == enabled);
+            ensure("master remains authoritative", !visible(false, enabled, true, true));
+        }
+    }
 }

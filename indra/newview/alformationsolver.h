@@ -181,6 +181,7 @@ struct Slot
 {
     U64 mMemberId = 0;
     U32 mInputIndex = 0;
+    U32 mRowIndex = 0; // non-row formations use input/slot order
     F64 mLocalX = 0.0;
     F64 mLocalY = 0.0;
     F64 mFootprintRadiusMeters = 0.0;

@@ -167,7 +167,7 @@ bool group_scale_limits(
 // recursively to attachment children; clearState restores. Entirely viewer-
 // local -- no sim traffic. (Entity clones render through the real-avatar path,
 // so the old overlay show/hide gate does not cover them.)
-void set_entity_clone_visible(LLGhostAvatar* ghost, bool visible)
+void set_entity_clone_visible(LLGhostAvatar* ghost, bool visible, bool render_only = false)
 {
     if (!ghost || ghost->isDead())
     {
@@ -176,7 +176,8 @@ void set_entity_clone_visible(LLGhostAvatar* ghost, bool visible)
     // Persistent local gate for the avatar pool. FORCE_INVISIBLE alone is not
     // sufficient for already-enrolled rigged faces and can be cleared by
     // ordinary viewer-object update bookkeeping.
-    ghost->setEntityCloneVisible(visible);
+    ghost->setEntityCloneVisible(visible || render_only);
+    ghost->setRenderOnlyHidden(render_only);
     if (visible)
     {
         ghost->clearDrawableState(LLDrawable::FORCE_INVISIBLE, true);
@@ -255,6 +256,20 @@ bool valid_crowd_source(
 ALGhostStudio::ALGhostStudio()
 :   mNameplates(std::make_unique<ALGhostNameplates>())
 {
+    // Setting-based reset, paste, Quick and undo reach the same live update as
+    // widget commits. The source seed belongs to the session crowd, not a scene.
+    for (const char* name : {"GhostStudioStartMode", "GhostStudioStartSpread", "GhostStudioRippleFrom",
+             "GhostStudioLooksMode", "GhostStudioLookSpread", "GhostStudioMixLook1", "GhostStudioMixLook2",
+             "GhostStudioMixLook3", "GhostStudioMixLook4", "GhostStudioMixLook5", "GhostStudioMixLook6"})
+        if (LLControlVariable* control = gSavedSettings.getControl(name))
+            mVariationConnections.emplace_back(control->getSignal()->connect(
+                [this](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    LLUUID id = mSelected;
+                    if (const auto* group = groupForMember(id)) id = mGroups.representative(group->mId);
+                    if (const auto* inst = getInstance(id)) applyCrowdVariation(id, inst->mCrowdSeed);
+                }));
+
     // Runtime UUID consumers enroll here. Replacement and removal always walk
     // this registry, so adding a new consumer cannot require editing every
     // refresh/death path.
@@ -311,7 +326,7 @@ LLGhostAvatar* ALGhostStudio::createEntityRuntime(Instance& inst,
                                                   S32& attachments)
 {
     LLViewerRegion* region = gAgent.getRegion();
-    LLVOAvatar* source = resolveSourceAvatar(inst);
+    LLVOAvatar* source = resolveCopiedAvatar(inst);
     if (!region || !source)
     {
         return nullptr;
@@ -352,8 +367,15 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
     ghost->setEntityPhysicsEnabled(inst.mPhysicsEnabled);
     ghost->setEntityLoopMode(inst.mLoopMode);
     ghost->setDirectedMirror(inst.mDirectedMirror);
+    ghost->setStartOffset(inst.mStartOffset);
+    if (inst.mHasAnimationSource)
+    {
+        const LLUUID animation_id = inst.mAnimationSourceRemoved ? LLUUID::null :
+            LLDirectorCast::isSelf(inst.mAnimationSource) ? gAgentID : inst.mAnimationSource;
+        ghost->setAnimationSource(animation_id);
+    }
     ghost->setEntityLook(inst.mLook, inst.mLookAlpha);
-    set_entity_clone_visible(ghost, mShowAll && inst.mEnabled);
+    set_entity_clone_visible(ghost, isVisible(inst), mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible);
 
     // A fresh skeleton has no evaluated pose to hold. Let its stored resume
     // mode evaluate first, then finish the requested frozen state from the
@@ -630,6 +652,8 @@ void ALGhostStudio::setShowAll(bool on)
 {
     assert_main_thread();
     mShowAll = on;
+    if (on) mSolo = false;
+    ++mInstanceRevision;
     for (const Instance& inst : mInstances)
     {
         if (inst.mKind == BACKING_ENTITY_CLONE)
@@ -638,7 +662,7 @@ void ALGhostStudio::setShowAll(bool on)
                 dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst.mEntityId));
             if (ghost && !ghost->isDead())
             {
-                set_entity_clone_visible(ghost, on && inst.mEnabled);
+                set_entity_clone_visible(ghost, isVisible(inst), mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible);
             }
         }
     }
@@ -652,7 +676,7 @@ bool ALGhostStudio::anyEnabled() const
     }
     for (const Instance& inst : mInstances)
     {
-        if (inst.mKind == BACKING_OVERLAY && inst.mEnabled)
+        if (inst.mKind == BACKING_OVERLAY && isVisible(inst))
         {
             return true;
         }
@@ -719,6 +743,7 @@ ALGhostStudio::Instance* ALGhostStudio::addInstance(const LLUUID& source)
         inst.mRotation = avatar->getRotation();
     }
     mInstances.push_back(inst);
+    beginAppearance(inst.mId);
     ++mInstanceRevision; // [GhostPanelPerf]
     return &mInstances.back();
 }
@@ -807,6 +832,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
         return nullptr;
     }
     committed->mState = STATE_READY;
+    beginAppearance(stable_id);
     ++mInstanceRevision; // [GhostPanelPerf]
     LL_INFOS("GhostStudio") << "entity instance " << stable_id
                             << " committed runtime=" << committed->mEntityId
@@ -827,7 +853,7 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
     {
         return false;
     }
-    LLVOAvatar* source = resolveSourceAvatar(*inst);
+    LLVOAvatar* source = resolveCopiedAvatar(*inst);
     LLGhostAvatar* old_ghost = resolveEntityClone(id);
     if (!source || !gAgent.getRegion())
     {
@@ -915,6 +941,10 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     }
     Instance copy = *src;       // includes any frozen palette snapshot
     copy.mId.generate();
+    copy.mOverlayAvatar.setNull();
+    copy.mDeleting = false;
+    copy.mFadeAlpha = 1.f;
+    copy.mOffsetPose.reset();
     copy.mName = makeDefaultName();
     copy.mGroupId.setNull();
     copy.mLockMode = LOCK_OFF;
@@ -923,6 +953,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     const F32 yaw = copy.getYaw();
     copy.mFootGlobal += LLVector3d(-sinf(yaw), cosf(yaw), 0.0);
     mInstances.push_back(copy);
+    beginAppearance(copy.mId);
     ++mInstanceRevision; // [GhostPanelPerf]
     return &mInstances.back();
 }
@@ -940,14 +971,20 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceInPlace(const LLUUID& i
 ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     Instance proto)
 {
+    if (proto.mDeleting) return nullptr;
     if (proto.mKind == BACKING_OVERLAY)
     {
         Instance copy = proto;
         copy.mId.generate();
+        copy.mOverlayAvatar.setNull();
+        copy.mDeleting = false;
+        copy.mFadeAlpha = 1.f;
+        copy.mOffsetPose.reset();
         copy.mName = makeDefaultName();
         copy.mGroupId.setNull();
         copy.mLockMode = LOCK_OFF;
         mInstances.push_back(copy);
+        beginAppearance(copy.mId);
         ++mInstanceRevision; // [GhostPanelPerf]
         return &mInstances.back();
     }
@@ -955,7 +992,8 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     // Entity records cannot share mEntityId: create a fresh local clone, then
     // transfer the authored instance state while preserving its runtime keys.
     if (proto.mSourceRemoved) return nullptr;
-    Instance* copy = spawnEntityClone(proto.mSource, proto.mSourceLabel);
+    if (proto.mHasAnimationSource && proto.mAppearanceSourceRemoved) return nullptr;
+    Instance* copy = spawnEntityClone(proto.mHasAnimationSource ? proto.mAppearanceSource : proto.mSource, proto.mSourceLabel);
     if (!copy)
     {
         return nullptr;
@@ -972,6 +1010,9 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy->mReflectHasLastPlane = false;
     copy->mReflectWasDriven = false;
     copy->mId = new_id;
+    copy->mDeleting = false;
+    copy->mFadeAlpha = 1.f;
+    copy->mOffsetPose.reset();
     copy->mEntityId = entity_id;
     copy->mState = state;
     copy->mName = new_name;
@@ -994,6 +1035,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     {
         applyEntityRuntimeState(*copy, ghost);
     }
+    beginAppearance(new_id);
     return copy;
 }
 
@@ -1134,6 +1176,7 @@ std::vector<LLUUID> ALGhostStudio::duplicateGroup(
             return result;
         }
         copy->mGroupId = clone_group_id;
+        if (copy->mCrowdId.notNull()) copy->mCrowdId = clone_group_id;
         copy->mLockMode = lock_mode;
     }
     ++mInstanceRevision; // [GhostPanelPerf] group created + members adopted
@@ -1200,7 +1243,7 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
                 item->mEnabled = enabled;
                 if (item->mKind == BACKING_ENTITY_CLONE)
                     if (LLGhostAvatar* ghost = resolveEntityClone(member))
-                        set_entity_clone_visible(ghost, mShowAll && enabled);
+                        set_entity_clone_visible(ghost, isVisible(*item), mShowAll && item->mEnabled && mSolo && !item->mSoloVisible);
                 changed = true;
             }
         return changed;
@@ -1221,7 +1264,7 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
             inst->mState = STATE_RECOVERABLE;
             return false;
         }
-        set_entity_clone_visible(ghost, mShowAll && enabled);
+        set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
     }
     return true;
 }
@@ -1533,6 +1576,17 @@ void ALGhostStudio::rewriteActorReferences(const LLUUID& old_id, const LLUUID& n
             inst.mSource = new_id;
             inst.mSourceRemoved = new_id.isNull();
             ++mInstanceRevision;
+        }
+        if (inst.mHasAnimationSource && inst.mAppearanceSource == old_id)
+        {
+            inst.mAppearanceSource = new_id;
+            inst.mAppearanceSourceRemoved = new_id.isNull();
+        }
+        if (inst.mHasAnimationSource && inst.mAnimationSource == old_id)
+        {
+            inst.mAnimationSource = new_id;
+            // Deleted animation sources hold their last pose; null must not mean You.
+            inst.mAnimationSourceRemoved = new_id.isNull();
         }
         // GHOST targets are stable instance IDs and only retire on deletion;
         // ACTOR targets follow the Cast identity through runtime/parked IDs.
@@ -1926,7 +1980,7 @@ void ALGhostStudio::updateNameplates()
         {
             grouped_members.insert(member.mInstanceId);
             const Instance* inst = getInstance(member.mInstanceId);
-            if (!inst || !inst->mEnabled)
+            if (!inst || !isVisible(*inst) || inst->mDeleting)
             {
                 continue;
             }
@@ -1961,7 +2015,7 @@ void ALGhostStudio::updateNameplates()
             for (const ALGhostGroupModel::Member& member : group.mMembers)
             {
                 const Instance* inst = getInstance(member.mInstanceId);
-                if (!inst || !inst->mEnabled ||
+                if (!inst || !isVisible(*inst) || inst->mDeleting ||
                     (mode == 1 && inst->mId != mSelected))
                 {
                     continue;
@@ -1982,7 +2036,7 @@ void ALGhostStudio::updateNameplates()
 
     for (const Instance& inst : mInstances)
     {
-        if (!inst.mEnabled ||
+        if (!isVisible(inst) || inst.mDeleting ||
             grouped_members.find(inst.mId) != grouped_members.end())
         {
             continue;
@@ -2073,6 +2127,29 @@ void ALGhostStudio::updatePerFrame()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     assert_main_thread();
+    if (!mFades.empty()) updateFades();
+    if (!mPrivateOverlayRuntimes.empty() && LLTimer::getTotalSeconds() >= mNextOverlayRecovery)
+    {
+        mNextOverlayRecovery = LLTimer::getTotalSeconds()+0.5;
+        std::vector<LLUUID> missing;
+        for (const auto& entry : mPrivateOverlayRuntimes)
+        {
+            LLViewerObject* object = gObjectList.findObject(entry.second);
+            if (!object || object->isDead()) missing.push_back(entry.first);
+        }
+        for (const auto& id : missing)
+            if (Instance* inst = getInstance(id); inst && !inst->mDeleting)
+            {
+                const bool solo_visible = inst->mSoloVisible;
+                mOverlayHistory.erase(inst->mOverlayAvatar);
+                inst->mOverlayAvatar.setNull();
+                inst->mOffsetPose.reset();
+                beginAppearance(id, false);
+                if (Instance* current = getInstance(id)) current->mSoloVisible = solo_visible;
+            }
+    }
+    for (const auto& id : mOffsetInstances)
+        if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->restoreOffsetPose();
     advanceMotionClock(); // [GhostMotionModes] before any early return
     if (mAnimLibraryScanRequested)
     {
@@ -2334,11 +2411,12 @@ void ALGhostStudio::updatePostObjectList()
     // FROZEN) without touching the Studio model, and must not be stamped over.
     for (Instance& inst : mInstances)
     {
-        if (inst.mKind != BACKING_ENTITY_CLONE)
+        if (inst.mKind != BACKING_ENTITY_CLONE && inst.mOverlayAvatar.isNull())
         {
             continue;
         }
-        if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+        if (LLGhostAvatar* ghost = inst.mKind == BACKING_ENTITY_CLONE ? resolveEntityClone(inst.mId) :
+            dynamic_cast<LLGhostAvatar*>(resolveOverlayAvatar(inst)))
         {
             const S32 mode = ghost->getEntityDriveMode();
             if (mode == DRIVE_REFLECT)
@@ -2399,7 +2477,7 @@ void ALGhostStudio::updatePostObjectList()
                     inst.mReflectPlaneValid = false;
                     inst.mReflectWasDriven = false;
                 }
-                if (inst.mDriveMode == DRIVE_TRUE_MIRROR) ghost->applyTrueMirrorStamp();
+                if (inst.mDriveMode == DRIVE_TRUE_MIRROR || inst.mKind == BACKING_OVERLAY) ghost->applyTrueMirrorStamp();
                 // Flip the clone's evaluated pose in place: after its controller
                 // for Mirror/Directed, or after the source stamp for True mirror.
                 // Matching runtime ownership leaves Director overrides in charge.
@@ -2407,6 +2485,7 @@ void ALGhostStudio::updatePostObjectList()
                         inst.mDirectedMirrorFreezeDrive, inst.mDirectedMirror, mode))
                     ghost->applyDirectedMirrorStamp(inst.mDriveMode, inst.mDirectedMirrorFreezeDrive);
             }
+            if (inst.mKind == BACKING_ENTITY_CLONE && inst.mStartOffset > 0.f) ghost->applyOffsetHistory(LLTimer::getTotalSeconds());
         }
     }
 
@@ -2958,7 +3037,8 @@ void ALGhostStudio::refreshLifecycleStates()
 void ALGhostStudio::removeInstance(const LLUUID& id)
 {
     assert_main_thread();
-    if (mCrowdDraft.mActive && mCrowdDraft.mSource.mInstanceId == id)
+    const LLUUID retiring_id = id; // callers may pass a vector-backed Instance::mId
+    if (mCrowdDraft.mActive && mCrowdDraft.mSource.mInstanceId == retiring_id)
     {
         // A draft can never outlive its prototype. The placement tool notices
         // the session loss and restores the prior base tool on its next event.
@@ -2973,7 +3053,7 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
             cancelCrowdPlacement();
         }
     }
-    Instance* inst = getInstance(id);
+    Instance* inst = getInstance(retiring_id);
     if (!inst)
     {
         return;
@@ -2984,7 +3064,7 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
     if (inst->mGroupId.notNull())
     {
         const LLUUID group_id = inst->mGroupId;
-        const std::vector<LLUUID> unit = groupMembers(id);
+        const std::vector<LLUUID> unit = groupMembers(retiring_id);
         if (mSelected == group_id)
         {
             setSelected(LLUUID::null);
@@ -2994,6 +3074,15 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
             if (Instance* item = getInstance(member)) item->mGroupId.setNull();
         for (const LLUUID& member : unit) removeInstance(member);
         return;
+    }
+    const LLUUID history_key = inst->mOverlayAvatar.notNull() ? inst->mOverlayAvatar : inst->mSource;
+    mFades.erase(retiring_id);
+    mOffsetInstances.erase(retiring_id);
+    mPrivateOverlayRuntimes.erase(retiring_id);
+    if (LLGhostAvatar* helper = dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst->mOverlayAvatar)))
+    {
+        helper->releaseClonedAttachments();
+        helper->markForDeath();
     }
     inst->mState = STATE_TEARING_DOWN;
     inst->mEnabled = false;
@@ -3010,16 +3099,24 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
             ghost->markForDeath();
         }
     }
-    else if (mSelected == id)
+    else
     {
-        // Overlay instances have no runtime transaction.
-        setSelected(LLUUID::null);
+        // Overlay identity is its stable id. Retire its outside references at
+        // the same final boundary as entities, including deferred fade removal.
+        LLDirectorCast::instance().replaceActorId(retiring_id, LLUUID::null, retiring_id);
+        if (mSelected == retiring_id) setSelected(LLUUID::null);
     }
     mInstances.erase(
         std::remove_if(mInstances.begin(), mInstances.end(),
-                       [&id](const Instance& i) { return i.mId == id; }),
+                       [&retiring_id](const Instance& i) { return i.mId == retiring_id; }),
         mInstances.end());
     ++mInstanceRevision; // [GhostPanelPerf]
+    const bool history_used = std::any_of(mInstances.begin(), mInstances.end(), [&history_key](const Instance& item)
+    { return item.mKind == BACKING_OVERLAY && item.mStartOffset > 0.f &&
+        (item.mOverlayAvatar.notNull() ? item.mOverlayAvatar : item.mSource) == history_key; });
+    if (!history_used) mOverlayHistory.erase(history_key);
+    if (mSolo && std::none_of(mInstances.begin(), mInstances.end(),
+        [](const Instance& item) { return item.mSoloVisible && !item.mDeleting; })) setSolo({});
 }
 
 std::vector<LLUUID> ALGhostStudio::groupMembers(const LLUUID& id) const
@@ -3058,6 +3155,7 @@ ALGhostGroupModel::Group* ALGhostStudio::groupForMember(const LLUUID& id)
 
 void ALGhostStudio::setSelected(const LLUUID& id)
 {
+    if (isDeleting(id)) return;
     ++mSelectionRevision;
     if (const ALGhostGroupModel::Group* group = groupForMember(id);
         group && !group->mEditMembers)
@@ -3542,6 +3640,8 @@ bool ALGhostStudio::transformUnit(const LLUUID& id, const LLVector3d& foot,
 
 void ALGhostStudio::removeAll()
 {
+    mOverlayHistory.clear();
+    mSolo = false;
     while (!mInstances.empty())
     {
         removeInstance(mInstances.back().mId);
@@ -3556,7 +3656,7 @@ S32 ALGhostStudio::removeEntityClones()
             mInstances.begin(), mInstances.end(),
             [](const Instance& inst)
             {
-                return inst.mKind == BACKING_ENTITY_CLONE;
+                return inst.mKind == BACKING_ENTITY_CLONE && !inst.mDeleting;
             });
     };
     const S32 before = entity_count();
@@ -3565,7 +3665,7 @@ S32 ALGhostStudio::removeEntityClones()
     std::set<LLUUID> group_ids;
     for (const Instance& inst : mInstances)
     {
-        if (inst.mKind == BACKING_ENTITY_CLONE)
+        if (inst.mKind == BACKING_ENTITY_CLONE && !inst.mDeleting)
         {
             if (inst.mGroupId.notNull())
             {
@@ -3580,7 +3680,7 @@ S32 ALGhostStudio::removeEntityClones()
 
     // A mixed backing group is first dissolved, then only its entity records
     // are removed. This makes the command's "overlays preserved" contract
-    // literal instead of letting removeInstance() delete the entire group.
+    // literal instead of letting requestRemoveInstance() delete the entire group.
     for (const LLUUID& group_id : group_ids)
     {
         const ALGhostGroupModel::Group* group =
@@ -3607,7 +3707,7 @@ S32 ALGhostStudio::removeEntityClones()
         if (entities.size() == members.size())
         {
             // Whole-entity crowds retain normal atomic group deletion.
-            removeInstance(entities.front());
+            requestRemoveInstance(entities.front());
             continue;
         }
 
@@ -3621,7 +3721,7 @@ S32 ALGhostStudio::removeEntityClones()
             if (current && current->mKind == BACKING_ENTITY_CLONE &&
                 current->mGroupId.isNull())
             {
-                removeInstance(entity_id);
+                requestRemoveInstance(entity_id);
             }
         }
     }
@@ -3632,7 +3732,7 @@ S32 ALGhostStudio::removeEntityClones()
         if (current && current->mKind == BACKING_ENTITY_CLONE &&
             current->mGroupId.isNull())
         {
-            removeInstance(id);
+            requestRemoveInstance(id);
         }
     }
     return llmax(0, before - entity_count());
@@ -3663,11 +3763,15 @@ const ALGhostStudio::Instance* ALGhostStudio::getInstance(const LLUUID& id) cons
 bool ALGhostStudio::freezeInstance(const LLUUID& id)
 {
     Instance* inst = getInstance(id);
-    if (!inst)
-    {
-        return false;
-    }
-    LLVOAvatar* av = resolveSourceAvatar(*inst);
+    if (!inst || inst->mDeleting || !captureOverlayPose(*inst)) return false;
+    ++mInstanceRevision;
+    return true;
+}
+
+bool ALGhostStudio::captureOverlayPose(Instance& record)
+{
+    Instance* inst = &record;
+    LLVOAvatar* av = resolveOverlayAvatar(*inst);
     if (!av || !av->getRootJoint())
     {
         return false;
@@ -3712,6 +3816,13 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
     }
 
     inst->mFrozenPalettes.swap(frozen);
+    inst->mFrozenJointRotations.clear();
+    inst->mFrozenJointPositions.clear();
+    for (LLJoint* joint : av->getSkeleton())
+    {
+        inst->mFrozenJointRotations.push_back(joint ? joint->getRotation() : LLQuaternion());
+        inst->mFrozenJointPositions.push_back(joint ? joint->getPosition() : LLVector3::zero);
+    }
 
     // [R2-2] freeze the NON-RIGGED attachment placement too: capture each
     // collected static face's owning-object render matrix (capture agent
@@ -3754,7 +3865,6 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
         }
     }
     inst->mPose = POSE_FROZEN;
-    ++mInstanceRevision; // [GhostPanelPerf] Pose column / state label
     return true;
 }
 
@@ -3764,6 +3874,10 @@ void ALGhostStudio::unfreezeInstance(const LLUUID& id)
     {
         ++mInstanceRevision; // [GhostPanelPerf]
         inst->mPose = POSE_LIVE;
+        inst->mOffsetPose.reset();
+        if (inst->mOverlayAvatar.notNull())
+            if (auto* helper = dynamic_cast<LLGhostAvatar*>(resolveOverlayAvatar(*inst)))
+                helper->setEntityDriveMode(DRIVE_TRUE_MIRROR, LLUUID::null);
         inst->mFrozenHeadValid = false;
         inst->mFrozenPalettes.clear();
         inst->mFrozenAttachMats.clear();
@@ -4244,6 +4358,10 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
                 formationSlotAt(proto, i, count, spacing, formation, parameter, options);
             Instance copy = proto;
             copy.mId.generate();
+        copy.mOverlayAvatar.setNull();
+        copy.mDeleting = false;
+        copy.mFadeAlpha = 1.f;
+        copy.mOffsetPose.reset();
             copy.mName = makeDefaultName();
             copy.mGroupId.setNull();
             copy.mLockMode = LOCK_OFF;
@@ -4253,6 +4371,7 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
                 copy.setYaw(s.mYaw);
             }
             mInstances.push_back(copy);
+        beginAppearance(copy.mId);
             ++mInstanceRevision; // [GhostPanelPerf]
             created.push_back(copy.mId);
             ++made;
@@ -4823,6 +4942,9 @@ bool ALGhostStudio::resolveCrowdPlacement()
         ResolvedFormationSlot slot;
         slot.mMemberId = source_slot.mMemberId;
         slot.mInputIndex = source_slot.mInputIndex;
+        slot.mRowIndex = source_slot.mRowIndex;
+        slot.mLocalX = source_slot.mLocalX*cos(draft.mPatternYaw) + source_slot.mLocalY*sin(draft.mPatternYaw);
+        slot.mLocalY = -source_slot.mLocalX*sin(draft.mPatternYaw) + source_slot.mLocalY*cos(draft.mPatternYaw);
         slot.mFoot = draft.mAnchor +
             LLVector3d(source_slot.mLocalX, source_slot.mLocalY, 0.0);
         slot.mFoot.mdV[VZ] += draft.mHeight;
@@ -5321,6 +5443,10 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
         // never asked for it.
         member->mCrowdFacing = FACING_AUTHOR;
         member->mCrowdSlot = (U32)i;
+        member->mCrowdId = draft.mSessionId;
+        member->mCrowdRow = draft.mSlots[i].mRowIndex;
+        member->mCrowdLocalX = draft.mSlots[i].mLocalX;
+        member->mCrowdLocalY = draft.mSlots[i].mLocalY;
         member->mCrowdBaseYaw = draft.mPatternYaw;
         // Persist the independent facing-offset bias onto the runtime
         // driver too -- the preview already composed it in (see the
@@ -5356,6 +5482,7 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
         }
     }
 
+    applyCrowdVariation(ids.front(), draft.mSpec.mSeed);
     result.mSuccess = true;
     result.mPlacedCount = (S32)ids.size();
     result.mCreatedCount = (S32)created.size();
@@ -5551,10 +5678,376 @@ void ALGhostStudio::getWantedSources(uuid_vec_t& out) const
     }
     for (const Instance& inst : mInstances)
     {
-        if (inst.mKind == BACKING_OVERLAY && inst.mEnabled && !inst.mSourceRemoved
-            && std::find(out.begin(), out.end(), inst.mSource) == out.end())
+        if (inst.mKind == BACKING_OVERLAY && isVisible(inst) && !inst.mSourceRemoved
+            && std::find(out.begin(), out.end(), inst.mOverlayAvatar.notNull() ? inst.mOverlayAvatar : inst.mSource) == out.end())
         {
-            out.push_back(inst.mSource);
+            out.push_back(inst.mOverlayAvatar.notNull() ? inst.mOverlayAvatar : inst.mSource);
         }
     }
+}
+
+
+bool ALGhostStudio::isDeleting(const LLUUID& actor) const
+{
+    if (const Instance* inst = getInstance(actor)) return inst->mDeleting;
+    if (const Instance* inst = findInstanceByRuntime(actor)) return inst->mDeleting;
+    if (const auto* group = groupForMember(actor))
+        for (const auto& member : group->mMembers)
+            if (const auto* inst = getInstance(member.mInstanceId); inst && inst->mDeleting) return true;
+    return false;
+}
+void ALGhostStudio::refreshSoloVisibility()
+{
+    ++mInstanceRevision;
+    for (const auto& inst : mInstances)
+        if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+            set_entity_clone_visible(ghost, isVisible(inst), mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible);
+}
+void ALGhostStudio::setSolo(const std::vector<LLUUID>& ids)
+{
+    std::set<LLUUID> members;
+    for (const auto& id : ids)
+        for (const auto& member : groupMembers(id))
+            if (!isDeleting(member)) members.insert(member);
+    mSolo = !members.empty();
+    for (auto& inst : mInstances) inst.mSoloVisible = members.count(inst.mId) != 0;
+    refreshSoloVisibility();
+}
+void ALGhostStudio::beginAppearance(const LLUUID& id, bool fade)
+{
+    Instance* inst = getInstance(id);
+    if (!inst) return;
+    if (inst->mStartOffset > 0.f) mOffsetInstances.insert(id);
+    inst->mSoloVisible = true; // additions join the session's solo set
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) set_entity_clone_visible(ghost, isVisible(*inst));
+    static LLCachedControl<F32> duration(gSavedSettings, "GhostStudioFadeIn", 0.f);
+    const F32 seconds = llclamp(F32(duration), 0.f, 5.f);
+    if (inst->mKind == BACKING_OVERLAY && inst->mHasAnimationSource && inst->mOverlayAvatar.isNull())
+    {
+        S32 attachments = 0;
+        if (LLGhostAvatar* helper = createEntityRuntime(*inst, attachments))
+        {
+            inst = getInstance(id);
+            if (!inst) { helper->releaseClonedAttachments(); helper->markForDeath(); return; }
+            applyEntityRuntimeState(*inst, helper);
+            helper->setEntityScale(1.f); // overlay draw applies the authored scale exactly once
+            if (inst->mPose != POSE_FROZEN) helper->setEntityDriveMode(DRIVE_TRUE_MIRROR, LLUUID::null);
+            else
+            {
+                const auto& joints = helper->getSkeleton();
+                for (size_t i=0; i<joints.size() && i<inst->mFrozenJointRotations.size(); ++i)
+                    if (joints[i])
+                    {
+                        joints[i]->setRotation(inst->mFrozenJointRotations[i]);
+                        joints[i]->setPosition(inst->mFrozenJointPositions[i]);
+                    }
+                helper->copyHeldPoseFrom(helper); // propagate the held skeleton/attachments
+                inst->mFrozenPalettes.clear();
+                inst->mFrozenAttachMats.clear();
+            }
+            set_entity_clone_visible(helper, false, true);
+            inst->mOverlayAvatar = helper->getID();
+            mPrivateOverlayRuntimes[id] = helper->getID();
+        }
+    }
+    if (!fade) return; // region recovery restores the prior visibility without a fade
+    if (seconds > 0.f)
+    {
+        inst->mFadeAlpha = 0.f;
+        if (gAgent.getRegion()) mFadeRegion = gAgent.getRegion()->getRegionID();
+        mFades[id].mFade = {LLTimer::getTotalSeconds(), seconds, 0.f, false};
+        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, 0.f);
+    }
+}
+void ALGhostStudio::requestRemoveInstance(const LLUUID& id)
+{
+    const auto members = groupMembers(id);
+    static LLCachedControl<F32> duration(gSavedSettings, "GhostStudioFadeOut", 0.f);
+    const F32 seconds = llclamp(F32(duration), 0.f, 5.f);
+    if (seconds <= 0.f) { removeInstance(id); return; }
+    const F64 now = LLTimer::getTotalSeconds();
+    if (gAgent.getRegion()) mFadeRegion = gAgent.getRegion()->getRegionID();
+    for (const LLUUID& member : members)
+        if (Instance* inst = getInstance(member); inst && !inst->mDeleting)
+        {
+            inst->mDeleting = true;
+            inst->mState = STATE_TEARING_DOWN;
+            mFades[member].mFade = {now, seconds, inst->mFadeAlpha, true};
+        }
+    if (isDeleting(mSelected)) setSelected(LLUUID::null);
+    ++mInstanceRevision;
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    if (isDeleting(cast.getActiveActorId())) cast.setActiveActorId(LLUUID::null);
+    cast.touchCast();
+    if (mSolo && std::none_of(mInstances.begin(), mInstances.end(),
+        [](const Instance& item) { return item.mSoloVisible && !item.mDeleting; })) setSolo({});
+}
+void ALGhostStudio::updateFades()
+{
+    const F64 now = LLTimer::getTotalSeconds();
+    const bool interrupted = !gAgent.getRegion() || gAgent.getRegion()->getRegionID() != mFadeRegion ||
+        gAgent.getTeleportState() != LLAgent::TELEPORT_NONE;
+    std::vector<LLUUID> finished;
+    for (auto it = mFades.begin(); it != mFades.end(); )
+    {
+        Instance* inst = getInstance(it->first);
+        if (!inst) { it = mFades.erase(it); continue; }
+        const bool missing = inst->mKind == BACKING_ENTITY_CLONE && !resolveEntityClone(inst->mId);
+        const bool done = interrupted || missing || it->second.mFade.done(now);
+        inst->mFadeAlpha = done ? (it->second.mFade.removing ? 0.f : 1.f) : it->second.mFade.alpha(now);
+        if (inst->mEntityId.notNull())
+            LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha);
+        if (!done) { ++it; continue; }
+        if (it->second.mFade.removing) finished.push_back(it->first);
+        it = mFades.erase(it);
+    }
+    // Whole groups were retired together, with identical duration; removeInstance
+    // owns their authoritative final rekey/deletion transaction.
+    for (const auto& id : finished) removeInstance(id);
+}
+
+bool ALGhostStudio::swapSource(const LLUUID& id, const LLUUID& source_id, const std::string& label)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mDeleting) return false;
+    const LLUUID current_source = inst->mHasAnimationSource ? inst->mAppearanceSource : inst->mSource;
+    const bool removed = inst->mHasAnimationSource ? inst->mAppearanceSourceRemoved : inst->mSourceRemoved;
+    if (!removed && (current_source == source_id ||
+        (LLDirectorCast::isSelf(current_source) && LLDirectorCast::isSelf(source_id)))) return true;
+    LLVOAvatar* source = LLDirectorCast::instance().resolve(source_id);
+    if (!source || source->isDead() || !source->isBuilt() || !source->isFullyLoaded() || isDeleting(source_id)) return false;
+    const Instance before = *inst;
+    LLVOAvatar* old_draw = resolveOverlayAvatar(before);
+    const LLUUID tint_seed = before.mHasAnimationSource ? before.mAppearanceSwapTintSeed :
+        old_draw ? old_draw->getID() : before.mSource;
+    Instance candidate = before;
+    if (!candidate.mHasAnimationSource)
+    {
+        candidate.mHasAnimationSource = true;
+        candidate.mAnimationSource = before.mSource;
+        candidate.mAnimationSourceRemoved = before.mSourceRemoved;
+    }
+    candidate.mAppearanceSource = source_id;
+    candidate.mAppearanceSourceRemoved = false;
+    candidate.mSourceLabel = label;
+    S32 attachments = 0;
+    LLGhostAvatar* replacement = createEntityRuntime(candidate, attachments);
+    inst = getInstance(id);
+    if (!replacement || !inst || inst->mDeleting || inst->mEntityId != before.mEntityId || inst->mSource != before.mSource)
+    {
+        if (replacement) { replacement->releaseClonedAttachments(); replacement->markForDeath(); }
+        return false;
+    }
+    // Preserve authored state on the stable record. The transaction performs the
+    // only entity identity change, so all outside references follow atomically.
+    inst->mAppearanceSource = candidate.mAppearanceSource;
+    inst->mAppearanceSourceRemoved = false;
+    inst->mSourceLabel = label;
+    inst->mAnimationSource = candidate.mAnimationSource;
+    inst->mAnimationSourceRemoved = candidate.mAnimationSourceRemoved;
+    inst->mAppearanceSwapTintSeed = tint_seed;
+    inst->mHasAnimationSource = true;
+    if (before.mKind == BACKING_ENTITY_CLONE)
+    {
+        LLGhostAvatar* old = resolveEntityClone(id);
+        onEntityRuntimeReplaced(*inst, replacement->getID(), replacement);
+        if (old && before.mDriveMode == DRIVE_FROZEN)
+        {
+            replacement->copyHeldPoseFrom(old);
+            if (Instance* current = getInstance(id)) current->mPendingFreezeFrames = 0;
+        }
+        if (old) { set_entity_clone_visible(old, false); old->releaseClonedAttachments(); old->markForDeath(); }
+    }
+    else
+    {
+        LLGhostAvatar* old = dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(before.mOverlayAvatar));
+        applyEntityRuntimeState(*inst, replacement);
+        replacement->setEntityScale(1.f); // overlay draw owns placement/scale
+        if (before.mPose != POSE_FROZEN) replacement->setEntityDriveMode(DRIVE_TRUE_MIRROR, LLUUID::null);
+        set_entity_clone_visible(replacement, false, true); // harvest-only body; never a second visible actor
+        inst->mOverlayAvatar = replacement->getID();
+        mPrivateOverlayRuntimes[id] = replacement->getID();
+        if (before.mPose == POSE_FROZEN)
+        {
+            const auto& joints = replacement->getSkeleton();
+            for (size_t i=0; i<joints.size() && i<before.mFrozenJointRotations.size(); ++i)
+                if (joints[i])
+                {
+                    joints[i]->setRotation(before.mFrozenJointRotations[i]);
+                    joints[i]->setPosition(before.mFrozenJointPositions[i]);
+                }
+            replacement->copyHeldPoseFrom(replacement);
+            inst->mFrozenPalettes.clear();
+            inst->mFrozenAttachMats.clear();
+            // Reharvest the held new body once geometry is ready, in the render path.
+        }
+        if (old) { old->releaseClonedAttachments(); old->markForDeath(); }
+    }
+    if (Instance* current = getInstance(id))
+    {
+        current->mOffsetPose.reset();
+        current->mState = STATE_READY;
+        beginAppearance(id);
+    }
+    const LLUUID old_key = before.mOverlayAvatar.notNull() ? before.mOverlayAvatar : before.mSource;
+    const bool history_used = std::any_of(mInstances.begin(), mInstances.end(), [&old_key](const Instance& item)
+    { return item.mKind == BACKING_OVERLAY && item.mStartOffset > 0.f &&
+        (item.mOverlayAvatar.notNull() ? item.mOverlayAvatar : item.mSource) == old_key; });
+    if (!history_used) mOverlayHistory.erase(old_key);
+    ++mInstanceRevision;
+    return true;
+}
+
+bool ALGhostStudio::setStartOffset(const LLUUID& id, F32 seconds)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mDeleting || !std::isfinite(seconds)) return false;
+    inst->mStartOffset = llclamp(seconds, 0.f, 10.f);
+    if (inst->mStartOffset > 0.f) mOffsetInstances.insert(id);
+    else mOffsetInstances.erase(id);
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setStartOffset(inst->mStartOffset);
+    if (seconds == 0.f)
+    {
+        inst->mOffsetPose.reset();
+        const LLUUID key = inst->mOverlayAvatar.notNull() ? inst->mOverlayAvatar : inst->mSource;
+        const bool used = std::any_of(mInstances.begin(), mInstances.end(), [&key](const Instance& item)
+        { return item.mKind == BACKING_OVERLAY && item.mStartOffset > 0.f &&
+            (item.mOverlayAvatar.notNull() ? item.mOverlayAvatar : item.mSource) == key; });
+        if (!used) mOverlayHistory.erase(key);
+    }
+    ++mInstanceRevision;
+    return true;
+}
+std::string ALGhostStudio::offsetStatus(const Instance& inst) const
+{
+    if (inst.mStartOffset <= 0.f) return "Start offset off";
+    if (inst.mKind == BACKING_ENTITY_CLONE && inst.mDriveMode == DRIVE_DIRECTED)
+        return llformat("Animation phase +%.2fs (loops wrap)", inst.mStartOffset);
+    if (inst.mDriveMode == DRIVE_FROZEN || inst.mPose == POSE_FROZEN)
+        return "Start offset held while frozen";
+    if (inst.mKind == BACKING_OVERLAY && !inst.mOffsetPose)
+        return "Offset inactive: no renderable rigged pose history (source may still be loading)";
+    F32 available = 0.f;
+    if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId)) available = ghost->offsetHistoryLength();
+    else if (const auto found = mOverlayHistory.find(inst.mOverlayAvatar.notNull() ? inst.mOverlayAvatar : inst.mSource); found != mOverlayHistory.end() && found->second.mFrames.size() > 1)
+        available = F32(found->second.mFrames.back().first-found->second.mFrames.front().first);
+    return llformat("Live pose delay %.2fs; history cap 2s (%.2fs available)",
+        llmin(llmin(inst.mStartOffset, 2.f), available), available);
+}
+void ALGhostStudio::syncOffsets(const std::vector<LLUUID>& ids)
+{
+    std::set<LLUUID> selected(ids.begin(), ids.end());
+    std::set<LLUUID> crowds;
+    for (const auto& id : ids)
+        if (const Instance* inst = getInstance(id); inst && inst->mCrowdId.notNull()) crowds.insert(inst->mCrowdId);
+    for (const auto& crowd : crowds)
+    {
+        bool whole = true;
+        for (const auto& inst : mInstances)
+            if (inst.mCrowdId == crowd && !inst.mDeleting && !selected.count(inst.mId)) whole = false;
+        if (whole) gSavedSettings.setS32("GhostStudioStartMode", 0);
+    }
+    for (const auto& id : ids) setStartOffset(id, 0.f);
+}
+void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed)
+{
+    const Instance* member = getInstance(member_id);
+    if (!member || member->mCrowdId.isNull()) return;
+    const LLUUID crowd = member->mCrowdId;
+    const S32 mode = gSavedSettings.getS32("GhostStudioStartMode");
+    const S32 direction = gSavedSettings.getS32("GhostStudioRippleFrom");
+    const F32 spread = llclamp(gSavedSettings.getF32("GhostStudioStartSpread"), 0.f, 10.f);
+    const bool mix = gSavedSettings.getS32("GhostStudioLooksMode") == 1;
+    const bool by_row = gSavedSettings.getS32("GhostStudioLookSpread") == 1;
+    std::vector<S32> looks;
+    for (S32 i=1; i<=6; ++i)
+    {
+        const S32 look = gSavedSettings.getS32("GhostStudioMixLook"+std::to_string(i));
+        if (isOverlayStyle(look) && std::find(looks.begin(), looks.end(), look) == looks.end()) looks.push_back(look);
+    }
+    F64 low = std::numeric_limits<F64>::max(), high = -low;
+    for (const auto& inst : mInstances)
+        if (inst.mCrowdId == crowd && !inst.mDeleting)
+        {
+            const F64 v = ALCloneQol::ripple(inst.mCrowdLocalX, inst.mCrowdLocalY, direction);
+            low = llmin(low, v); high = llmax(high, v);
+        }
+    std::vector<std::pair<LLUUID, F32>> offsets;
+    for (auto& inst : mInstances)
+        if (inst.mCrowdId == crowd && !inst.mDeleting)
+        {
+            inst.mCrowdSeed = seed;
+            U64 stable = 14695981039346656037ULL;
+            for (U8 byte : inst.mId.mData) stable = (stable ^ byte)*1099511628211ULL;
+            const F64 unit = mode == 1 ? ALCloneQol::randomUnit(seed, stable) : mode == 2 ?
+                ALCloneQol::normalise(ALCloneQol::ripple(inst.mCrowdLocalX, inst.mCrowdLocalY, direction), low, high) : 0.;
+            offsets.emplace_back(inst.mId, F32(unit*spread));
+            if (inst.mKind == BACKING_OVERLAY)
+            {
+                if (mix && !looks.empty())
+                {
+                    if (!inst.mCrowdMixed) inst.mCrowdSingleStyle = inst.mStyle;
+                    inst.mCrowdMixed = true;
+                    inst.mStyle = looks[ALCloneQol::lookIndex(seed, stable, inst.mCrowdRow, by_row, (U32)looks.size())];
+                }
+                else if (inst.mCrowdMixed)
+                {
+                    inst.mStyle = inst.mCrowdSingleStyle;
+                    inst.mCrowdMixed = false;
+                }
+            }
+        }
+    for (const auto& offset : offsets) setStartOffset(offset.first, offset.second);
+    ++mInstanceRevision;
+}
+void ALGhostStudio::refreshOverlayOffset(Instance& inst, F64 now)
+{
+    if (inst.mStartOffset <= 0.f || inst.mPose == POSE_FROZEN) return;
+    auto& history = mOverlayHistory[inst.mOverlayAvatar.notNull() ? inst.mOverlayAvatar : inst.mSource];
+    if (now >= history.mNextCapture || history.mFrames.empty())
+    {
+        auto pose = std::make_shared<Instance>();
+        pose->mSource = inst.mSource;
+        pose->mOverlayAvatar = inst.mOverlayAvatar;
+        if (captureOverlayPose(*pose))
+        {
+            if (LLVOAvatar* source = resolveOverlayAvatar(inst)) pose->mRotation = source->getRotation();
+            history.mFrames.emplace_back(now, std::move(pose));
+            while (history.mFrames.size() > 241 ||
+                (history.mFrames.size() > 1 && history.mFrames.front().first < now-2.)) history.mFrames.pop_front();
+        }
+        history.mNextCapture = now+1./120.; // every frame at the 4K/60 recording rate
+    }
+    const F64 target = now-llmin(inst.mStartOffset, 2.f);
+    for (const auto& frame : history.mFrames)
+    {
+        inst.mOffsetPose = frame.second;
+        if (frame.first >= target) break;
+    }
+}
+
+LLVOAvatar* ALGhostStudio::resolveOverlayAvatar(const Instance& inst)
+{
+    if (inst.mOverlayAvatar.notNull())
+    {
+        LLViewerObject* object = gObjectList.findObject(inst.mOverlayAvatar);
+        LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+        return avatar && !avatar->isDead() ? avatar : nullptr;
+    }
+    if (inst.mHasAnimationSource && inst.mKind == BACKING_OVERLAY) return nullptr;
+    return resolveSourceAvatar(inst);
+}
+
+bool ALGhostStudio::isPrivateOverlayRuntime(const LLUUID& actor) const
+{
+    if (actor.isNull()) return false;
+    return std::any_of(mInstances.begin(), mInstances.end(), [&actor](const Instance& inst)
+    { return inst.mOverlayAvatar == actor; });
+}
+
+LLVOAvatar* ALGhostStudio::resolveCopiedAvatar(const Instance& inst)
+{
+    if (inst.mHasAnimationSource)
+        return inst.mAppearanceSourceRemoved ? nullptr : LLDirectorCast::instance().resolve(inst.mAppearanceSource);
+    return resolveSourceAvatar(inst);
 }

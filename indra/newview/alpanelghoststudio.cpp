@@ -408,10 +408,64 @@ bool ALPanelGhostStudio::postBuild()
     mHint          = getChild<LLTextBox>("studio_hint");
     mList         = getChild<LLScrollListCtrl>("ghost_list");
     mSourceCombo  = getChild<LLComboBox>("source_combo");
+    mSwapSourceBtn = getChild<LLButton>("btn_ghost_swap");
+    mSoloBtn = getChild<LLButton>("btn_ghost_solo");
+    mStartOffset = getChild<LLSpinCtrl>("clone_start_offset_spinner");
+    mOffsetStatus = getChild<LLTextBox>("clone_offset_status");
+    mCrowdStartMode = getChild<LLComboBox>("crowd_start_mode_combo");
+    mCrowdStartSpread = getChild<LLSpinCtrl>("crowd_start_spread_spinner");
+    mCrowdRippleFrom = getChild<LLComboBox>("crowd_ripple_from_combo");
+    mCrowdLooksMode = getChild<LLComboBox>("crowd_looks_mode_combo");
+    mCrowdLookSpread = getChild<LLComboBox>("crowd_look_spread_combo");
+    for (S32 i=1; i<=6; ++i)
+        mCrowdMixLooks.push_back(getChild<LLComboBox>("crowd_mix_look_"+std::to_string(i)));
+    for (LLView* control : {static_cast<LLView*>(mCrowdRippleFrom), static_cast<LLView*>(mCrowdLooksMode),
+             static_cast<LLView*>(mCrowdLookSpread)})
+        if (LLView* label = findChild<LLView>(control->getName()+"_label")) mQolLabels[control] = label;
+    for (auto* control : mCrowdMixLooks)
+        if (LLView* label = findChild<LLView>(control->getName()+"_label")) mQolLabels[control] = label;
+    mSwapSourceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        const LLUUID source = mSourceCombo->getValue().asUUID();
+        const std::string label = sourceName(source);
+        // Snapshot selection: a runtime replacement synchronously rewrites outside UI references.
+        auto ids = selectedInstances();
+        if (const auto* source_clone = studio.findInstanceByRuntime(source))
+        {
+            const LLUUID source_instance = source_clone->mId;
+            // A picked source can itself be in the batch. Replace it last so
+            // earlier copies never resolve a retired runtime UUID.
+            std::stable_partition(ids.begin(), ids.end(), [&source_instance](const LLUUID& id)
+            { return id != source_instance; });
+        }
+        for (const auto& id : ids) studio.swapSource(id, source, label);
+        refreshList(true);
+        mDetailDirty = true;
+    });
+    mSoloBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        studio.setSolo(studio.getSolo() ? std::vector<LLUUID>() : selectedInstances());
+        mDetailDirty = true;
+    });
+    mStartOffset->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        for (const auto& id : selectedInstances())
+            ALGhostStudio::instance().setStartOffset(id, mStartOffset->getValueF32());
+    });
+    for (LLUICtrl* control : {static_cast<LLUICtrl*>(mCrowdStartMode),
+             static_cast<LLUICtrl*>(mCrowdStartSpread), static_cast<LLUICtrl*>(mCrowdRippleFrom),
+             static_cast<LLUICtrl*>(mCrowdLooksMode), static_cast<LLUICtrl*>(mCrowdLookSpread)})
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCrowdVariationCommit(); });
+    for (auto* control : mCrowdMixLooks)
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCrowdVariationCommit(); });
+
     mSourceCombo->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         mSourceSelectionRemoved = false;
         mAddBtn->setEnabled(true);
+        mDetailDirty = true;
     });
     mCloneTypeCombo = getChild<LLComboBox>("clone_type_combo");
     mAddBtn       = getChild<LLButton>("btn_ghost_add");
@@ -860,6 +914,11 @@ bool ALPanelGhostStudio::postBuild()
             control->setCommitCallback(
                 [this](LLUICtrl*, const LLSD&) { updateOwnedCrowdPlacement(); });
     }
+    mFormationSeed->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        updateOwnedCrowdPlacement();
+        onCrowdVariationCommit();
+    });
     // Independent of FormationSpec: the facing-offset bias lives directly on
     // the crowd draft (CrowdPlacementDraft::mFacingYawOffset), not the spec,
     // so it goes through its own dedicated setter rather than
@@ -963,6 +1022,15 @@ bool ALPanelGhostStudio::postBuild()
         const std::string target_name(entry.second);
         reset_button->setCommitCallback(
             [this, target_name](LLUICtrl*, const LLSD&) { onResetNumeric(target_name); });
+    }
+    for (const char* name : {"clone_start_offset_spinner", "crowd_start_spread_spinner",
+                            "clone_fade_in_spinner", "clone_fade_out_spinner"})
+    {
+        if (LLButton* reset = findChild<LLButton>(std::string("reset_")+name))
+        {
+            const std::string target(name);
+            reset->setCommitCallback([this, target](LLUICtrl*, const LLSD&) { onResetNumeric(target); });
+        }
     }
     onFormationCommit();
 
@@ -1099,9 +1167,10 @@ LLUUID ALPanelGhostStudio::selectedInstance() const
             ALGhostStudio::instance().groupForMember(value);
         group && value == group->mId && !group->mMembers.empty())
     {
-        return group->mMembers.front().mInstanceId;
+        const LLUUID id = group->mMembers.front().mInstanceId;
+        return ALGhostStudio::instance().isDeleting(id) ? LLUUID::null : id;
     }
-    return value;
+    return ALGhostStudio::instance().isDeleting(value) ? LLUUID::null : value;
 }
 
 LLUUID ALPanelGhostStudio::selectedListValue() const
@@ -1141,6 +1210,8 @@ std::vector<LLUUID> ALPanelGhostStudio::selectedInstances() const
             ids.push_back(value);
         }
     }
+    ids.erase(std::remove_if(ids.begin(), ids.end(), [](const LLUUID& id)
+    { return ALGhostStudio::instance().isDeleting(id); }), ids.end());
     return ids;
 }
 
@@ -1468,11 +1539,13 @@ void ALPanelGhostStudio::refreshLookTargetCombo()
     mLookTargetCombo->add("Me", "me");
     for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
     {
+        if (studio.isDeleting(m.mId)) continue;
         mLookTargetCombo->add("Actor: " + sourceName(m.mId),
                               "actor:" + m.mId.asString());
     }
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
+        if (inst.mDeleting) continue;
         mLookTargetCombo->add("Clone: " + inst.mName,
                               "ghost:" + inst.mId.asString());
     }
@@ -1597,6 +1670,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
     auto add_instance_row =
         [this, &studio](const ALGhostStudio::Instance& inst, bool indented)
     {
+        if (inst.mDeleting) return;
         LLSD row;
         row["value"] = inst.mId;
         row["columns"][0]["column"] = column_name(mList, 0, "on");
@@ -1633,6 +1707,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
 
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
+        if (inst.mDeleting) continue;
         const ALGhostGroupModel::Group* group =
             studio.groupForMember(inst.mId);
         if (!group)
@@ -1705,7 +1780,7 @@ void ALPanelGhostStudio::refreshDetail()
     const LLUUID row_value = selected.mRow;
     const LLUUID sel = selected.mInstance;
     ALGhostStudio::Instance* inst = studio.getInstance(sel);
-    const bool have = inst != nullptr;
+    const bool have = inst != nullptr && !inst->mDeleting;
     const bool overlay = have && inst->mKind == ALGhostStudio::BACKING_OVERLAY;
     const ALGhostGroupModel::Group* group =
         studio.groupForMember(row_value);
@@ -1744,6 +1819,7 @@ void ALPanelGhostStudio::refreshDetail()
         return;
     }
     mDetailDirty = false;
+    refreshCloneQol(inst);
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost refreshDetail apply");
     // strings / metadata / pose status refresh at 4 Hz (or immediately on a key change)
     const bool slow_tick = key_changed || mStatusTick;
@@ -2234,7 +2310,7 @@ void ALPanelGhostStudio::refreshStatus()
     S32 shown = 0;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (inst.mEnabled)
+        if (studio.isVisible(inst))
         {
             ++shown;
         }
@@ -2364,6 +2440,7 @@ void ALPanelGhostStudio::onListSelect()
     studio.setSelected(
         group && row_value == group->mId
             ? group->mId : selectedInstance());
+    if (studio.getSolo()) studio.setSolo(selectedInstances());
     mObservedSelectionRevision = studio.getSelectionRevision();
     syncCrowdFacingPointPrototype();
     refreshDetail();
@@ -2624,12 +2701,12 @@ void ALPanelGhostStudio::onClickDelete()
             {
                 continue;
             }
-            studio.removeInstance(group->mMembers.front().mInstanceId);
+            studio.requestRemoveInstance(group->mMembers.front().mInstanceId);
             removed_any = true;
         }
         else if (removed_units.insert(value).second)
         {
-            studio.removeInstance(value);
+            studio.requestRemoveInstance(value);
             removed_any = true;
         }
     }
@@ -3138,10 +3215,10 @@ void ALPanelGhostStudio::onLoopModeCommit()
 void ALPanelGhostStudio::onClickAnimSync()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        studio.restartInstanceAnimation(id);
-    }
+    const auto ids = selectedInstances();
+    studio.syncOffsets(ids);
+    for (const LLUUID& id : ids) studio.restartInstanceAnimation(id);
+    mDetailDirty = true;
 }
 
 void ALPanelGhostStudio::onLensGazeToggle()
@@ -4890,4 +4967,46 @@ void ALPanelGhostStudio::onResetNumeric(const std::string& target_name)
     }
     target->setValue(target->getInitialValue());
     target->onCommit();
+}
+
+void ALPanelGhostStudio::onCrowdVariationCommit()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::set<LLUUID> crowds;
+    for (const LLUUID& id : selectedInstances())
+        if (const auto* inst = studio.getInstance(id); inst && inst->mCrowdId.notNull() && crowds.insert(inst->mCrowdId).second)
+            studio.applyCrowdVariation(id, (U32)mFormationSeed->getValue().asInteger());
+    mDetailDirty = true;
+}
+void ALPanelGhostStudio::refreshCloneQol(const ALGhostStudio::Instance* inst)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const bool have = inst && !inst->mDeleting;
+    const LLUUID source_id = mSourceCombo->getValue().asUUID();
+    LLVOAvatar* source = LLDirectorCast::instance().resolve(source_id);
+    const bool loaded = !mSourceSelectionRemoved && source && !source->isDead() && source->isBuilt() && source->isFullyLoaded() && !studio.isDeleting(source_id);
+    setEnabledIfChanged(mSwapSourceBtn, have && loaded);
+    setToolTipIfChanged(mSwapSourceBtn, loaded ?
+        "Swap the selected clones' copied avatar, preserving authored state and original animation source" :
+        "Swap source unavailable: the chosen source must be loaded in this region");
+    setEnabledIfChanged(mSoloBtn, studio.getSolo() || have);
+    setValueIfChanged(mSoloBtn, LLSD(studio.getSolo()));
+    setEnabledIfChanged(mStartOffset, have);
+    setValueIfChanged(mStartOffset, LLSD(have ? inst->mStartOffset : 0.f));
+    setTextIfChanged(mOffsetStatus, have ? studio.offsetStatus(*inst) : "Select a clone");
+    static LLCachedControl<S32> mode(gSavedSettings, "GhostStudioStartMode", 0);
+    static LLCachedControl<S32> looks(gSavedSettings, "GhostStudioLooksMode", 0);
+    const auto show = [this](LLView* control, bool visible)
+    {
+        setRowVisibleIfChanged(control, visible);
+        const auto found = mQolLabels.find(control);
+        if (found != mQolLabels.end()) setVisibleIfChanged(found->second, visible);
+    };
+    show(mCrowdRippleFrom, mode == 2);
+    const auto& draft = studio.getCrowdPlacementDraft();
+    const bool overlay = draft.mActive ? draft.mSource.mKind == ALGhostStudio::BACKING_OVERLAY :
+        have && inst->mKind == ALGhostStudio::BACKING_OVERLAY;
+    show(mCrowdLooksMode, overlay);
+    show(mCrowdLookSpread, overlay && looks == 1);
+    for (auto* control : mCrowdMixLooks) show(control, overlay && looks == 1);
 }

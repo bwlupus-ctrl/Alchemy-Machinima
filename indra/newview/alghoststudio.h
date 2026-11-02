@@ -42,6 +42,10 @@
 #include "alghostrotation.h"
 #include "alghostplacementresolver.h"
 #include "alformationsolver.h"
+#include "alcloneqol.h"
+#include <deque>
+#include <boost/signals2/connection.hpp>
+#include <set>
 #include "lluuid.h"
 #include "alghostautoanimmodel.h" // [AutoAnimate] llcommon-only API, no avatar include.
 #include "v3math.h"
@@ -272,6 +276,8 @@ public:
     {
         U64 mMemberId = 0;
         U32 mInputIndex = 0;
+        U32 mRowIndex = 0;
+        F64 mLocalX = 0., mLocalY = 0.;
         LLVector3d mFoot;
         LLQuaternion mRotation;
         F32 mScale = 1.f;
@@ -385,11 +391,29 @@ public:
         LLUUID      mSource;            // cast member id; null = "my avatar"
         bool        mSourceRemoved = false; // deleted dependency; null must not become You
         EBackingKind mKind = BACKING_OVERLAY;
+        LLUUID      mOverlayAvatar; // private drawing body after an overlay appearance swap
         LLUUID      mEntityId;          // weak runtime id; never owns the clone
         std::string mSourceLabel;       // cached UI label
         ERenderIntent mRenderIntent = RENDER_INHERIT_GLOBAL;
         ELifecycleState mState = STATE_READY;
         bool        mEnabled = true;
+        bool        mDeleting = false;
+        bool        mSoloVisible = true;
+        F32         mFadeAlpha = 1.f;
+        F32         mStartOffset = 0.f;
+        LLUUID      mCrowdId; // independent of grouping; session only
+        U32         mCrowdRow = 0;
+        U32         mCrowdSeed = 0;
+        bool        mCrowdMixed = false;
+        S32         mCrowdSingleStyle = 0;
+        F64         mCrowdLocalX = 0., mCrowdLocalY = 0.;
+        // Appearance swaps retain the original animation source.
+        LLUUID      mAppearanceSource;
+        bool        mAppearanceSourceRemoved = false;
+        LLUUID      mAppearanceSwapTintSeed; // hash seed only, never an actor reference
+        LLUUID      mAnimationSource;
+        bool        mHasAnimationSource = false;
+        bool        mAnimationSourceRemoved = false;
         LLUUID      mGroupId;            // non-null = locked, indivisible unit
         ELockMode   mLockMode = LOCK_OFF;
 
@@ -593,7 +617,10 @@ public:
         LLVector3   mFrozenFootAgent;
         LLVector3   mFrozenHeadAgent;
         bool        mFrozenHeadValid = false;
+        std::vector<LLQuaternion> mFrozenJointRotations;
+        std::vector<LLVector3> mFrozenJointPositions;
         palette_map_t mFrozenPalettes;
+        std::shared_ptr<const Instance> mOffsetPose;
         // [R2-2] frozen NON-RIGGED attachment placement: object id -> that
         // object's render matrix at freeze time (capture agent frame, like
         // the palettes). A draw-time miss keeps the LIVE matrix; FLEXI
@@ -602,6 +629,22 @@ public:
         // limitation, see the freeze tooltip).
         std::map<LLUUID, LLMatrix4> mFrozenAttachMats;
     };
+
+    // Session-only authoring and visibility. No scene serializer owns these.
+    bool swapSource(const LLUUID& id, const LLUUID& source, const std::string& label);
+    bool setStartOffset(const LLUUID& id, F32 seconds);
+    std::string offsetStatus(const Instance& inst) const;
+    void applyCrowdVariation(const LLUUID& member, U32 seed);
+    void syncOffsets(const std::vector<LLUUID>& ids);
+    void setSolo(const std::vector<LLUUID>& ids);
+    bool getSolo() const { return mSolo; }
+    bool isVisible(const Instance& inst) const
+    { return ALCloneQol::visible(mShowAll, inst.mEnabled, mSolo, inst.mSoloVisible); }
+    bool isDeleting(const LLUUID& actor) const;
+    bool isPrivateOverlayRuntime(const LLUUID& actor) const;
+    void requestRemoveInstance(const LLUUID& id);
+    void beginAppearance(const LLUUID& id, bool fade = true);
+    void refreshOverlayOffset(Instance& inst, F64 now);
 
     // Avatar placement clipboard, shared by all panels; session memory only.
     bool copyAvatarPosition(const LLUUID& source);
@@ -666,6 +709,8 @@ public:
     bool despawnClone(const LLUUID& id);
     void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     static LLVOAvatar* resolveSourceAvatar(const Instance& inst);
+    static LLVOAvatar* resolveOverlayAvatar(const Instance& inst);
+    static LLVOAvatar* resolveCopiedAvatar(const Instance& inst);
 
     Instance* spawnEntityClone(const LLUUID& source, const std::string& source_label);
     Instance* duplicateInstance(const LLUUID& id);
@@ -942,6 +987,27 @@ private:
 
     std::vector<Instance> mInstances;
     bool mShowAll = true;
+    bool mSolo = false;
+    std::vector<boost::signals2::scoped_connection> mVariationConnections;
+    std::set<LLUUID> mOffsetInstances;
+    LLUUID mFadeRegion;
+    std::map<LLUUID, LLUUID> mPrivateOverlayRuntimes;
+    F64 mNextOverlayRecovery = 0.;
+    struct FadeRuntime
+    {
+        ALCloneQol::Fade mFade;
+        // ActorStyle is saved separately, only for fading entities.
+    };
+    std::map<LLUUID, FadeRuntime> mFades;
+    struct OverlayHistory
+    {
+        F64 mNextCapture = 0.;
+        std::deque<std::pair<F64, std::shared_ptr<const Instance>>> mFrames;
+    };
+    std::map<LLUUID, OverlayHistory> mOverlayHistory;
+    bool captureOverlayPose(Instance& inst);
+    void updateFades();
+    void refreshSoloVisibility();
     bool mHasAvatarPosition = false;
     LLVector3d mAvatarPositionFoot;
     LLQuaternion mAvatarPositionRotation;

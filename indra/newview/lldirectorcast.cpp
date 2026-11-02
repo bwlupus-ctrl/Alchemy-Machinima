@@ -1107,7 +1107,8 @@ std::vector<LLDirectorCast::ActorChoice> LLDirectorCast::getActorChoices() const
     sources.reserve(mCast.size());
     for (const CastMember& member : mCast)
     {
-        sources.push_back({ member.mId, member.mLastName });
+        if (!ALGhostStudio::instance().isDeleting(member.mId))
+            sources.push_back({ member.mId, member.mLastName });
     }
     return buildActorChoices(gAgentID,
         { mSubjectA, mSubjectB, mSubjectC, mSubjectD }, sources);
@@ -1402,7 +1403,8 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
     if (primary_it != mMemberIndex.end() && primary_it->second < mCast.size())
     {
         resolved_id = primary;
-        return mCast[primary_it->second].mActorStyle;
+        const auto& member = mCast[primary_it->second];
+        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
     }
 
     // Preserve the established animesh/control-avatar fallback semantics even
@@ -1418,7 +1420,8 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
         const auto fallback_it = mMemberIndex.find(fallback);
         if (fallback_it != mMemberIndex.end() && fallback_it->second < mCast.size())
         {
-            return mCast[fallback_it->second].mActorStyle;
+            const auto& member = mCast[fallback_it->second];
+            return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
         }
         return default_style;
     }
@@ -1452,7 +1455,8 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(const LLUUID& id
     const auto it = mMemberIndex.find(id);
     if (it != mMemberIndex.end() && it->second < mCast.size())
     {
-        return mCast[it->second].mActorStyle;
+        const auto& member = mCast[it->second];
+        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
     }
     return default_style;
 }
@@ -3021,4 +3025,20 @@ void LLDirectorCast::cut()
     }
     mRunning = false;
     LL_INFOS("DirectorCast") << "CUT" << LL_ENDL;
+}
+
+// This override belongs to a live synthetic body only, outside authored scene state.
+void LLDirectorCast::setCloneFadeAlpha(const LLUUID& id, F32 alpha)
+{
+    CastMember* member = getMember(id);
+    if (!member || !LLGhostAvatar::isGhostId(id)) return;
+    member->mCloneFading = alpha < 1.f;
+    if (!member->mCloneFading) return;
+    auto& style = member->mCloneFadeStyle;
+    style = member->mActorStyle;
+    style.mEnabled = true;
+    style.mMode = ACTOR_STYLE_REPLACE;
+    style.mStyle = 10; // the existing native noise-threshold dissolve, including shadows
+    style.mAlpha = 1.f;
+    style.mDissolveProgress = 1.f-alpha;
 }

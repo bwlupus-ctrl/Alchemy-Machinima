@@ -15280,7 +15280,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||
-            !inst.mEnabled ||
+            !studio.isVisible(inst) ||
             inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)
         {
             continue;
@@ -15302,14 +15302,14 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         // the forward overlay replays (mCadencePalettes). The deferred G-buffer
         // can't consume that snapshot, so reject them here (like frozen) instead of
         // letting covered geometry update every frame and defeat the stutter.
-        if (inst.mPoseRateHz > 0.f)
+        if (inst.mPoseRateHz > 0.f || inst.mStartOffset > 0.f || inst.mFadeAlpha < 1.f)
         {
             ++mGhostDeferredCounters.mFrozenInstancesRejected;
             continue;
         }
         ++mGhostDeferredCounters.mLiveInstancesConsidered;
 
-        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);
+        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);
         if (!av || av->isDead() || !av->getRootJoint())
         {
             ++mGhostDeferredCounters.mUnresolvedSources;
@@ -15564,15 +15564,17 @@ void LLActorMover::renderStudioGhosts()
     const F64 pose_now = LLTimer::getTotalSeconds();
     for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
-        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !inst.mEnabled)
+        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst))
         {
             continue;
         }
-        LLVOAvatar* av = inst.mSourceRemoved ? nullptr : resolve_actor(inst.mSource);
+        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);
         if (!av || av->isDead())
         {
             continue;
         }
+        if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, pose_now);
+        if (inst.mOverlayAvatar.notNull() && inst.mPose == ALGhostStudio::POSE_FROZEN && inst.mFrozenPalettes.empty()) studio.freezeInstance(inst.mId);
         const std::vector<GhostBatch>* batches = ghostBatchesFor(av->getID());
         const std::vector<GhostStaticFace>* statics = ghostStaticFacesFor(av->getID());
         if (!batches && !statics)
@@ -15664,7 +15666,7 @@ void LLActorMover::renderStudioGhosts()
         LLColor4 tint;
         if (inst.mUseActorTint)
         {
-            tint = actorPathColor(item.mAv->getID());
+            tint = actorPathColor(inst.mHasAnimationSource ? inst.mAppearanceSwapTintSeed : item.mAv->getID());
         }
         else
         {
@@ -15692,6 +15694,14 @@ void LLActorMover::renderStudioGhosts()
                 gp.mFrozenAttachMats = &inst.mFrozenAttachMats;
             }
         }
+        else if (inst.mOffsetPose && inst.mStartOffset > 0.f)
+        {
+            gp.mHavePivot = true;
+            gp.mPivotFootAgent = inst.mOffsetPose->mFrozenFootAgent;
+            gp.mFrozenPalettes = &inst.mOffsetPose->mFrozenPalettes;
+            gp.mFrozenAttachMats = &inst.mOffsetPose->mFrozenAttachMats;
+            gp.mRotation = ~inst.mOffsetPose->mRotation * inst.mRotation;
+        }
         else if (inst.mPoseRateHz > 0.f && !inst.mCadencePalettes.empty())
         {
             gp.mHavePivot = true;
@@ -15717,7 +15727,7 @@ void LLActorMover::renderStudioGhosts()
         gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
-                          llclamp(inst.mAlpha, 0.f, 1.f),
+                          llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,
                           ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,
                           item.mStatic);
     }
