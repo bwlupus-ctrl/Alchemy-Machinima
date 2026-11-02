@@ -63096,7 +63096,7 @@
       "owner_classes": [
         {
           "class": "ALPanelGhostStudio",
-          "reference_count": 299
+          "reference_count": 300
         },
         {
           "class": "ALGhostStudio",
@@ -63149,7 +63149,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 342,
+              "line": 408,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63217,7 +63217,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 340,
+              "line": 406,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63228,7 +63228,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 637,
+              "line": 708,
               "class": "ALPanelGhostStudio",
               "function": "onShowAllToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -63309,7 +63309,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 341,
+              "line": 407,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63320,7 +63320,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 638,
+              "line": 709,
               "class": "ALPanelGhostStudio",
               "function": "onToggleEditMode",
               "wired_class": "ALPanelGhostStudio",
@@ -63406,7 +63406,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 343,
+              "line": 409,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63417,7 +63417,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 639,
+              "line": 710,
               "class": "ALPanelGhostStudio",
               "function": "onListSelect",
               "wired_class": "ALPanelGhostStudio",
@@ -63428,7 +63428,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 641,
+              "line": 712,
               "class": "ALPanelGhostStudio",
               "function": "onListMouseUp",
               "wired_class": "ALPanelGhostStudio",
@@ -63496,7 +63496,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 597,
+              "line": 668,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63564,7 +63564,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 347,
+              "line": 418,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63575,7 +63575,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 646,
+              "line": 717,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicate",
               "wired_class": "ALPanelGhostStudio",
@@ -63643,7 +63643,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 348,
+              "line": 419,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63654,7 +63654,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 647,
+              "line": 718,
               "class": "ALPanelGhostStudio",
               "function": "onClickDelete",
               "wired_class": "ALPanelGhostStudio",
@@ -63722,7 +63722,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 349,
+              "line": 420,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63733,7 +63733,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 648,
+              "line": 719,
               "class": "ALPanelGhostStudio",
               "function": "onClickRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -63806,7 +63806,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 344,
+              "line": 410,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63817,7 +63817,18 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 2358,
+              "line": 411,
+              "class": "ALPanelGhostStudio",
+              "function": "<inline callback>",
+              "wired_class": "ALPanelGhostStudio",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mSourceCombo->setCommitCallback([this](LLUICtrl*, const LLSD&)"
+            },
+            {
+              "file": "indra/newview/alpanelghoststudio.cpp",
+              "line": 2428,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -63888,7 +63899,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 345,
+              "line": 416,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63899,7 +63910,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 2358,
+              "line": 2428,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -63967,7 +63978,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 346,
+              "line": 417,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -63978,7 +63989,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 644,
+              "line": 715,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -64046,7 +64057,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 482,
+              "line": 553,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64057,7 +64068,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 717,
+              "line": 788,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicateInPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -64125,7 +64136,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 483,
+              "line": 554,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64136,7 +64147,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 718,
+              "line": 789,
               "class": "ALPanelGhostStudio",
               "function": "onClickCopyTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -64204,7 +64215,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 484,
+              "line": 555,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64215,7 +64226,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 719,
+              "line": 790,
               "class": "ALPanelGhostStudio",
               "function": "onClickPasteTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -64283,7 +64294,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 350,
+              "line": 421,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64351,7 +64362,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 475,
+              "line": 546,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64419,7 +64430,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 351,
+              "line": 422,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64430,7 +64441,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 645,
+              "line": 716,
               "class": "ALPanelGhostStudio",
               "function": "onNameCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -64498,7 +64509,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 353,
+              "line": 424,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64509,7 +64520,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 650,
+              "line": 721,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -64590,7 +64601,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 354,
+              "line": 425,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64601,7 +64612,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 651,
+              "line": 722,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -64682,7 +64693,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 355,
+              "line": 426,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64693,7 +64704,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 652,
+              "line": 723,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -64774,7 +64785,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 357,
+              "line": 428,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64785,7 +64796,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 657,
+              "line": 728,
               "class": "ALPanelGhostStudio",
               "function": "onYawCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -64796,7 +64807,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 850,
+              "line": 921,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64877,7 +64888,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 356,
+              "line": 427,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -64888,7 +64899,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 655,
+              "line": 726,
               "class": "ALPanelGhostStudio",
               "function": "onHeadingDialCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65010,7 +65021,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 358,
+              "line": 429,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65021,7 +65032,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 658,
+              "line": 729,
               "class": "ALPanelGhostStudio",
               "function": "asReal",
               "wired_class": "ALPanelGhostStudio",
@@ -65032,7 +65043,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 851,
+              "line": 922,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65126,7 +65137,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 359,
+              "line": 430,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65137,7 +65148,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 660,
+              "line": 731,
               "class": "ALPanelGhostStudio",
               "function": "asReal",
               "wired_class": "ALPanelGhostStudio",
@@ -65148,7 +65159,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 852,
+              "line": 923,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65251,7 +65262,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 360,
+              "line": 431,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65262,7 +65273,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 662,
+              "line": 733,
               "class": "ALPanelGhostStudio",
               "function": "onScaleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65273,7 +65284,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 853,
+              "line": 924,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65425,7 +65436,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 485,
+              "line": 556,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65436,7 +65447,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 720,
+              "line": 791,
               "class": "ALPanelGhostStudio",
               "function": "onClickPastePosition",
               "wired_class": "ALPanelGhostStudio",
@@ -65504,7 +65515,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 476,
+              "line": 547,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65515,7 +65526,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 711,
+              "line": 782,
               "class": "ALPanelGhostStudio",
               "function": "onClickPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -65583,7 +65594,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 477,
+              "line": 548,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65594,7 +65605,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 712,
+              "line": 783,
               "class": "ALPanelGhostStudio",
               "function": "onClickToActor",
               "wired_class": "ALPanelGhostStudio",
@@ -65662,7 +65673,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 478,
+              "line": 549,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65673,7 +65684,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 713,
+              "line": 784,
               "class": "ALPanelGhostStudio",
               "function": "onClickToMe",
               "wired_class": "ALPanelGhostStudio",
@@ -65741,7 +65752,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 479,
+              "line": 550,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65752,7 +65763,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 714,
+              "line": 785,
               "class": "ALPanelGhostStudio",
               "function": "onClickDrop",
               "wired_class": "ALPanelGhostStudio",
@@ -65820,7 +65831,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 480,
+              "line": 551,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65831,7 +65842,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 715,
+              "line": 786,
               "class": "ALPanelGhostStudio",
               "function": "onClickAlignFeet",
               "wired_class": "ALPanelGhostStudio",
@@ -65904,7 +65915,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 486,
+              "line": 557,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65915,7 +65926,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 721,
+              "line": 792,
               "class": "ALPanelGhostStudio",
               "function": "onLookTargetCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -65983,7 +65994,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 487,
+              "line": 558,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65994,7 +66005,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 723,
+              "line": 794,
               "class": "ALPanelGhostStudio",
               "function": "onClickFaceNow",
               "wired_class": "ALPanelGhostStudio",
@@ -66062,7 +66073,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 488,
+              "line": 559,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66073,7 +66084,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 725,
+              "line": 796,
               "class": "ALPanelGhostStudio",
               "function": "onKeepFacingCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66141,7 +66152,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 481,
+              "line": 552,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66152,7 +66163,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 716,
+              "line": 787,
               "class": "ALPanelGhostStudio",
               "function": "onClickUpright",
               "wired_class": "ALPanelGhostStudio",
@@ -66263,7 +66274,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 490,
+              "line": 561,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66274,7 +66285,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 728,
+              "line": 799,
               "class": "ALPanelGhostStudio",
               "function": "onStyleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66352,7 +66363,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 498,
+              "line": 569,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66363,7 +66374,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 736,
+              "line": 807,
               "class": "ALPanelGhostStudio",
               "function": "onDistortCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66431,7 +66442,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 499,
+              "line": 570,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66442,7 +66453,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 737,
+              "line": 808,
               "class": "ALPanelGhostStudio",
               "function": "onDistortAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66453,7 +66464,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 874,
+              "line": 945,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66521,7 +66532,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 491,
+              "line": 562,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66532,7 +66543,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 729,
+              "line": 800,
               "class": "ALPanelGhostStudio",
               "function": "onActorTintToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -66600,7 +66611,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 492,
+              "line": 563,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66611,7 +66622,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 730,
+              "line": 801,
               "class": "ALPanelGhostStudio",
               "function": "onHueCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66622,7 +66633,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 868,
+              "line": 939,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66690,7 +66701,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 493,
+              "line": 564,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66701,7 +66712,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 731,
+              "line": 802,
               "class": "ALPanelGhostStudio",
               "function": "onAlphaCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66712,7 +66723,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 869,
+              "line": 940,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66780,7 +66791,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 500,
+              "line": 571,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66791,7 +66802,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 738,
+              "line": 809,
               "class": "ALPanelGhostStudio",
               "function": "onBrightnessCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66802,7 +66813,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 875,
+              "line": 946,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66870,7 +66881,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 496,
+              "line": 567,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66881,7 +66892,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 734,
+              "line": 805,
               "class": "ALPanelGhostStudio",
               "function": "onPixelCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66892,7 +66903,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 870,
+              "line": 941,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66960,7 +66971,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 495,
+              "line": 566,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66971,7 +66982,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 733,
+              "line": 804,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66982,7 +66993,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 872,
+              "line": 943,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67050,7 +67061,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 494,
+              "line": 565,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67061,7 +67072,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 732,
+              "line": 803,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67072,7 +67083,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 871,
+              "line": 942,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67140,7 +67151,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 497,
+              "line": 568,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67151,7 +67162,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 735,
+              "line": 806,
               "class": "ALPanelGhostStudio",
               "function": "onGlitchCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67162,7 +67173,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 873,
+              "line": 944,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67230,7 +67241,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 501,
+              "line": 572,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67241,7 +67252,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 739,
+              "line": 810,
               "class": "ALPanelGhostStudio",
               "function": "onEffectFpsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67252,7 +67263,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 854,
+              "line": 925,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67320,7 +67331,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 528,
+              "line": 599,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67331,7 +67342,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 742,
+              "line": 813,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",
@@ -67427,7 +67438,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 533,
+              "line": 604,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67438,7 +67449,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 743,
+              "line": 814,
               "class": "ALPanelGhostStudio",
               "function": "onClickLive",
               "wired_class": "ALPanelGhostStudio",
@@ -67512,7 +67523,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 380,
+              "line": 451,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67523,7 +67534,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 679,
+              "line": 750,
               "class": "ALPanelGhostStudio",
               "function": "onDriveModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67669,7 +67680,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 534,
+              "line": 605,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67818,7 +67829,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 382,
+              "line": 453,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67829,7 +67840,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 405,
+              "line": 476,
               "class": "ALPanelGhostStudio",
               "function": "applyEntityTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -67900,7 +67911,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 381,
+              "line": 452,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67911,7 +67922,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 418,
+              "line": 489,
               "class": "ALPanelGhostStudio",
               "function": "invalidateReflectPlane",
               "wired_class": "ALPanelGhostStudio",
@@ -67979,7 +67990,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 387,
+              "line": 458,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67990,7 +68001,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 429,
+              "line": 500,
               "class": "ALPanelGhostStudio",
               "function": "asBoolean",
               "wired_class": "ALPanelGhostStudio",
@@ -68058,7 +68069,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 388,
+              "line": 459,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68069,7 +68080,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 389,
+              "line": 460,
               "class": "ALPanelGhostStudio",
               "function": "removeMirror",
               "wired_class": "ALPanelGhostStudio",
@@ -68137,7 +68148,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 402,
+              "line": 473,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68148,7 +68159,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 440,
+              "line": 511,
               "class": "ALPanelGhostStudio",
               "function": "getSelected",
               "wired_class": "ALPanelGhostStudio",
@@ -68225,7 +68236,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 856,
+              "line": 927,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68306,7 +68317,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 403,
+              "line": 474,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68317,7 +68328,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 446,
+              "line": 517,
               "class": "ALPanelGhostStudio",
               "function": "getSelected",
               "wired_class": "ALPanelGhostStudio",
@@ -68385,7 +68396,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 404,
+              "line": 475,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68453,7 +68464,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 362,
+              "line": 433,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68464,7 +68475,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 664,
+              "line": 735,
               "class": "ALPanelGhostStudio",
               "function": "onChaosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68475,7 +68486,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 876,
+              "line": 947,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68543,7 +68554,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 363,
+              "line": 434,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68554,7 +68565,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 665,
+              "line": 736,
               "class": "ALPanelGhostStudio",
               "function": "onAnimSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68565,7 +68576,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 855,
+              "line": 926,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68640,7 +68651,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 502,
+              "line": 573,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68651,7 +68662,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 740,
+              "line": 811,
               "class": "ALPanelGhostStudio",
               "function": "onEntityLookCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68719,7 +68730,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 377,
+              "line": 448,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68730,7 +68741,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 676,
+              "line": 747,
               "class": "ALPanelGhostStudio",
               "function": "onPhysicsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68801,7 +68812,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 463,
+              "line": 534,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68812,7 +68823,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 691,
+              "line": 762,
               "class": "ALPanelGhostStudio",
               "function": "onLoopModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68880,7 +68891,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 378,
+              "line": 449,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68891,7 +68902,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 677,
+              "line": 748,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimPause",
               "wired_class": "ALPanelGhostStudio",
@@ -68959,7 +68970,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 379,
+              "line": 450,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68970,7 +68981,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 678,
+              "line": 749,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimResume",
               "wired_class": "ALPanelGhostStudio",
@@ -69038,7 +69049,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 464,
+              "line": 535,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69049,7 +69060,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 692,
+              "line": 763,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimSync",
               "wired_class": "ALPanelGhostStudio",
@@ -69117,7 +69128,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 451,
+              "line": 522,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69128,7 +69139,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 680,
+              "line": 751,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedAnimCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69196,7 +69207,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 459,
+              "line": 530,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69207,7 +69218,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 681,
+              "line": 752,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedMirrorCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69275,7 +69286,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 460,
+              "line": 531,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69286,7 +69297,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 682,
+              "line": 753,
               "class": "ALPanelGhostStudio",
               "function": "onSourceAnimationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69359,7 +69370,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 461,
+              "line": 532,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69370,7 +69381,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 683,
+              "line": 754,
               "class": "ALPanelGhostStudio",
               "function": "onAnimationLibraryCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69438,7 +69449,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 462,
+              "line": 533,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69449,7 +69460,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 684,
+              "line": 755,
               "class": "ALGhostStudio",
               "function": "scanAnimLibrary",
               "wired_class": "ALPanelGhostStudio",
@@ -69517,7 +69528,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 474,
+              "line": 545,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69585,7 +69596,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 366,
+              "line": 437,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69596,7 +69607,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 668,
+              "line": 739,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimWindow",
               "wired_class": "ALPanelGhostStudio",
@@ -69607,7 +69618,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 857,
+              "line": 928,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69675,7 +69686,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 369,
+              "line": 440,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69686,7 +69697,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 672,
+              "line": 743,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -69754,7 +69765,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 368,
+              "line": 439,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69765,7 +69776,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 673,
+              "line": 744,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -69833,7 +69844,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 375,
+              "line": 446,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69844,7 +69855,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 669,
+              "line": 740,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -69912,7 +69923,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 371,
+              "line": 442,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69923,7 +69934,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 670,
+              "line": 741,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -69991,7 +70002,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 367,
+              "line": 438,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70059,7 +70070,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 372,
+              "line": 443,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70070,7 +70081,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 671,
+              "line": 742,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -70138,7 +70149,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 374,
+              "line": 445,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70149,7 +70160,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 674,
+              "line": 745,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -70217,7 +70228,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 370,
+              "line": 441,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70228,7 +70239,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 675,
+              "line": 746,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -70296,7 +70307,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 466,
+              "line": 537,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70307,7 +70318,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 695,
+              "line": 766,
               "class": "ALPanelGhostStudio",
               "function": "onClickLensGazeSelection",
               "wired_class": "ALPanelGhostStudio",
@@ -70380,7 +70391,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 468,
+              "line": 539,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70391,7 +70402,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 699,
+              "line": 770,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70464,7 +70475,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 469,
+              "line": 540,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70475,7 +70486,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 701,
+              "line": 772,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70543,7 +70554,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 467,
+              "line": 538,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70554,7 +70565,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 697,
+              "line": 768,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeTorsoCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70565,7 +70576,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 877,
+              "line": 948,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70633,7 +70644,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 470,
+              "line": 541,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70644,7 +70655,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 703,
+              "line": 774,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70655,7 +70666,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 878,
+              "line": 949,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70723,7 +70734,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 471,
+              "line": 542,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70734,7 +70745,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 705,
+              "line": 776,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70745,7 +70756,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 879,
+              "line": 950,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70813,7 +70824,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 472,
+              "line": 543,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70824,7 +70835,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 707,
+              "line": 778,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70835,7 +70846,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 880,
+              "line": 951,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70903,7 +70914,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 473,
+              "line": 544,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70971,7 +70982,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 545,
+              "line": 616,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70982,7 +70993,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 747,
+              "line": 818,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -71050,7 +71061,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 546,
+              "line": 617,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71061,7 +71072,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 749,
+              "line": 820,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -71155,7 +71166,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 547,
+              "line": 618,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71166,7 +71177,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 751,
+              "line": 822,
               "class": "ALPanelGhostStudio",
               "function": "onFormationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71177,7 +71188,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71245,7 +71256,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 538,
+              "line": 609,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71256,7 +71267,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 858,
+              "line": 929,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71267,7 +71278,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71335,7 +71346,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 539,
+              "line": 610,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71346,7 +71357,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 859,
+              "line": 930,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71357,7 +71368,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71411,7 +71422,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 541,
+              "line": 612,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71422,7 +71433,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 860,
+              "line": 931,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71433,7 +71444,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71487,7 +71498,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 542,
+              "line": 613,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71498,7 +71509,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 861,
+              "line": 932,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71509,7 +71520,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71563,7 +71574,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 543,
+              "line": 614,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71574,7 +71585,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 862,
+              "line": 933,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71585,7 +71596,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71639,7 +71650,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 544,
+              "line": 615,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71650,7 +71661,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 863,
+              "line": 934,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71661,7 +71672,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71729,7 +71740,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 556,
+              "line": 627,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71740,7 +71751,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71808,7 +71819,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 551,
+              "line": 622,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71819,7 +71830,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71887,7 +71898,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 550,
+              "line": 621,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71898,7 +71909,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -71966,7 +71977,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 564,
+              "line": 635,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71977,7 +71988,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72062,7 +72073,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 563,
+              "line": 634,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72073,7 +72084,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72141,7 +72152,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 565,
+              "line": 636,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72152,7 +72163,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 796,
+              "line": 867,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -72220,7 +72231,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 571,
+              "line": 642,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72231,7 +72242,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 821,
+              "line": 892,
               "class": "ALPanelGhostStudio",
               "function": "onClickPickFacingTarget",
               "wired_class": "ALPanelGhostStudio",
@@ -72299,7 +72310,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 567,
+              "line": 638,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72310,7 +72321,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72382,7 +72393,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 553,
+              "line": 624,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72393,7 +72404,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72461,7 +72472,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 555,
+              "line": 626,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72472,7 +72483,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72544,7 +72555,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 568,
+              "line": 639,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72555,7 +72566,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72627,7 +72638,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 569,
+              "line": 640,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72638,7 +72649,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72710,7 +72721,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 578,
+              "line": 649,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72721,7 +72732,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 841,
+              "line": 912,
               "class": "ALPanelGhostStudio",
               "function": "onNameplateModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -72804,7 +72815,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -72885,7 +72896,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 572,
+              "line": 643,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72896,7 +72907,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 811,
+              "line": 882,
               "class": "ALPanelGhostStudio",
               "function": "onClickBuildArray",
               "wired_class": "ALPanelGhostStudio",
@@ -72964,7 +72975,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 573,
+              "line": 644,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72975,7 +72986,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 812,
+              "line": 883,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdConfirm",
               "wired_class": "ALPanelGhostStudio",
@@ -73043,7 +73054,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 574,
+              "line": 645,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73054,7 +73065,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 814,
+              "line": 885,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdUnpin",
               "wired_class": "ALPanelGhostStudio",
@@ -73122,7 +73133,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 575,
+              "line": 646,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73133,7 +73144,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 816,
+              "line": 887,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdCancel",
               "wired_class": "ALPanelGhostStudio",
@@ -73201,7 +73212,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 576,
+              "line": 647,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73269,7 +73280,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 577,
+              "line": 648,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73337,7 +73348,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 580,
+              "line": 651,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73348,7 +73359,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 835,
+              "line": 906,
               "class": "ALPanelGhostStudio",
               "function": "onGroupEditMembersCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -73420,7 +73431,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 570,
+              "line": 641,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73431,7 +73442,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 825,
+              "line": 896,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -73499,7 +73510,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 582,
+              "line": 653,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73510,7 +73521,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 837,
+              "line": 908,
               "class": "ALPanelGhostStudio",
               "function": "onGroupMemberPinnedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -73578,7 +73589,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 583,
+              "line": 654,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73589,7 +73600,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 839,
+              "line": 910,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroupMemberReset",
               "wired_class": "ALPanelGhostStudio",
@@ -73657,7 +73668,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 557,
+              "line": 628,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73668,7 +73679,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73736,7 +73747,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 558,
+              "line": 629,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73747,7 +73758,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73815,7 +73826,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 560,
+              "line": 631,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73826,7 +73837,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73894,7 +73905,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 562,
+              "line": 633,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73905,7 +73916,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -73973,7 +73984,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 548,
+              "line": 619,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73984,7 +73995,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 752,
+              "line": 823,
               "class": "ALPanelGhostStudio",
               "function": "captureFormationParameter",
               "wired_class": "ALPanelGhostStudio",
@@ -73995,7 +74006,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4780,
+              "line": 4851,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelGhostStudio",
@@ -74006,7 +74017,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74074,7 +74085,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 584,
+              "line": 655,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74085,7 +74096,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 864,
+              "line": 935,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74096,7 +74107,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4458,
+              "line": 4529,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -74164,7 +74175,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 585,
+              "line": 656,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74175,7 +74186,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 865,
+              "line": 936,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74186,7 +74197,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4458,
+              "line": 4529,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -74254,7 +74265,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 586,
+              "line": 657,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74265,7 +74276,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 818,
+              "line": 889,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -74333,7 +74344,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 587,
+              "line": 658,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74344,7 +74355,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 819,
+              "line": 890,
               "class": "ALPanelGhostStudio",
               "function": "onClickCancelStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -74412,7 +74423,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 588,
+              "line": 659,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74495,7 +74506,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 589,
+              "line": 660,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74506,7 +74517,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4489,
+              "line": 4560,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74574,7 +74585,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 590,
+              "line": 661,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74585,7 +74596,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 866,
+              "line": 937,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74596,7 +74607,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74664,7 +74675,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 591,
+              "line": 662,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74675,7 +74686,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 867,
+              "line": 938,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74686,7 +74697,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4050,
+              "line": 4121,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74754,7 +74765,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 592,
+              "line": 663,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74765,7 +74776,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 820,
+              "line": 891,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74833,7 +74844,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 595,
+              "line": 666,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74844,7 +74855,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 843,
+              "line": 914,
               "class": "ALPanelGhostStudio",
               "function": "onPoseRateCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74990,7 +75001,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 593,
+              "line": 664,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75001,7 +75012,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 823,
+              "line": 894,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroup",
               "wired_class": "ALPanelGhostStudio",
@@ -75069,7 +75080,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 594,
+              "line": 665,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75080,7 +75091,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 824,
+              "line": 895,
               "class": "ALPanelGhostStudio",
               "function": "onClickUngroup",
               "wired_class": "ALPanelGhostStudio",
@@ -75204,7 +75215,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 536,
+              "line": 607,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75215,7 +75226,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 744,
+              "line": 815,
               "class": "ALPanelGhostStudio",
               "function": "onClickRigDiagRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -75283,7 +75294,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 535,
+              "line": 606,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75731,7 +75742,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3086,
+              "line": 3134,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -82755,7 +82766,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2912,
+              "line": 2960,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -82839,7 +82850,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2913,
+              "line": 2961,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -82955,7 +82966,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2915,
+              "line": 2963,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -82966,7 +82977,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2965,
+              "line": 3013,
               "class": "LLFloaterDirector",
               "function": "onAnimCopyUUID",
               "wired_class": "LLFloaterDirector",
@@ -83056,7 +83067,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2916,
+              "line": 2964,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83067,7 +83078,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2966,
+              "line": 3014,
               "class": "LLFloaterDirector",
               "function": "onAnimSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -83157,7 +83168,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2917,
+              "line": 2965,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83168,7 +83179,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2967,
+              "line": 3015,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -83258,7 +83269,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2918,
+              "line": 2966,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83269,7 +83280,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2968,
+              "line": 3016,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -83348,7 +83359,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2914,
+              "line": 2962,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83483,7 +83494,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2919,
+              "line": 2967,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83584,7 +83595,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2920,
+              "line": 2968,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83595,7 +83606,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2969,
+              "line": 3017,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -83685,7 +83696,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2921,
+              "line": 2969,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83696,7 +83707,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2970,
+              "line": 3018,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -83786,7 +83797,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2922,
+              "line": 2970,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83797,7 +83808,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2971,
+              "line": 3019,
               "class": "LLFloaterDirector",
               "function": "onPasteSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -83978,7 +83989,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2923,
+              "line": 2971,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -83989,7 +84000,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2973,
+              "line": 3021,
               "class": "LLFloaterDirector",
               "function": "onLocomotionRoleChanged",
               "wired_class": "LLFloaterDirector",
@@ -84068,7 +84079,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2924,
+              "line": 2972,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -84158,7 +84169,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2925,
+              "line": 2973,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -84248,7 +84259,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2926,
+              "line": 2974,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -84338,7 +84349,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2927,
+              "line": 2975,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -84428,7 +84439,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2928,
+              "line": 2976,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -84439,7 +84450,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2972,
+              "line": 3020,
               "class": "LLFloaterDirector",
               "function": "onClickClearLoco",
               "wired_class": "LLFloaterDirector",
@@ -84518,7 +84529,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2984,
+              "line": 3032,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -84666,7 +84677,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2929,
+              "line": 2977,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87879,7 +87890,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 395,
+              "line": 435,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -87890,7 +87901,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 397,
+              "line": 437,
               "class": "ALPanelLensGaze",
               "function": "refreshEditActorCombo",
               "wired_class": "ALPanelLensGaze",
@@ -87944,7 +87955,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 396,
+              "line": 436,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -87955,7 +87966,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 400,
+              "line": 440,
               "class": "ALPanelLensGaze",
               "function": "<inline callback>",
               "wired_class": "ALPanelLensGaze",
@@ -88023,7 +88034,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 404,
+              "line": 444,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88034,7 +88045,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 490,
+              "line": 530,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88102,7 +88113,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 405,
+              "line": 445,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88113,7 +88124,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 491,
+              "line": 531,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88181,7 +88192,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 406,
+              "line": 446,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88192,7 +88203,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 492,
+              "line": 532,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88260,7 +88271,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 407,
+              "line": 447,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88271,7 +88282,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 493,
+              "line": 533,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88339,7 +88350,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 408,
+              "line": 448,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88350,7 +88361,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 494,
+              "line": 534,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88418,7 +88429,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 393,
+              "line": 433,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88548,7 +88559,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 411,
+              "line": 451,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88559,7 +88570,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 497,
+              "line": 537,
               "class": "ALPanelLensGaze",
               "function": "onTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88635,7 +88646,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 412,
+              "line": 452,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88646,7 +88657,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 498,
+              "line": 538,
               "class": "ALPanelLensGaze",
               "function": "onEyeTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88717,7 +88728,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 417,
+              "line": 457,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88728,7 +88739,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 503,
+              "line": 543,
               "class": "ALPanelLensGaze",
               "function": "onTargetDetailScopeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88801,7 +88812,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 418,
+              "line": 458,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88812,7 +88823,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 505,
+              "line": 545,
               "class": "ALPanelLensGaze",
               "function": "onCastCommit",
               "wired_class": "ALPanelLensGaze",
@@ -88906,7 +88917,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 419,
+              "line": 459,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88917,7 +88928,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 506,
+              "line": 546,
               "class": "ALPanelLensGaze",
               "function": "onSetPoint",
               "wired_class": "ALPanelLensGaze",
@@ -88985,7 +88996,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 420,
+              "line": 460,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -88996,7 +89007,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 507,
+              "line": 547,
               "class": "ALPanelLensGaze",
               "function": "onPickObject",
               "wired_class": "ALPanelLensGaze",
@@ -89064,7 +89075,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 421,
+              "line": 461,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89075,7 +89086,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 508,
+              "line": 548,
               "class": "ALPanelLensGaze",
               "function": "onClearObject",
               "wired_class": "ALPanelLensGaze",
@@ -89143,7 +89154,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 569,
+              "line": 609,
               "class": "ALPanelLensGaze",
               "function": "onTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89211,7 +89222,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 575,
+              "line": 615,
               "class": "ALPanelLensGaze",
               "function": "onEyeTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89279,7 +89290,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 424,
+              "line": 464,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89290,7 +89301,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 511,
+              "line": 551,
               "class": "ALPanelLensGaze",
               "function": "onIntensityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89358,7 +89369,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 422,
+              "line": 462,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89369,7 +89380,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 509,
+              "line": 549,
               "class": "ALPanelLensGaze",
               "function": "onBlendCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89437,7 +89448,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 423,
+              "line": 463,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89448,7 +89459,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 510,
+              "line": 550,
               "class": "ALPanelLensGaze",
               "function": "onTorsoCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89516,7 +89527,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 455,
+              "line": 495,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89527,7 +89538,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 541,
+              "line": 581,
               "class": "ALPanelLensGaze",
               "function": "onSmoothingCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89595,7 +89606,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 427,
+              "line": 467,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89674,7 +89685,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 428,
+              "line": 468,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89685,7 +89696,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 514,
+              "line": 554,
               "class": "ALPanelLensGaze",
               "function": "onInfluenceSet",
               "wired_class": "ALPanelLensGaze",
@@ -89753,7 +89764,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 429,
+              "line": 469,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -89764,7 +89775,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 515,
+              "line": 555,
               "class": "ALPanelLensGaze",
               "function": "onInfluenceDelete",
               "wired_class": "ALPanelLensGaze",
@@ -89832,7 +89843,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 613,
+              "line": 653,
               "class": "ALPanelLensGaze",
               "function": "onIntensityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89900,7 +89911,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 601,
+              "line": 641,
               "class": "ALPanelLensGaze",
               "function": "onBlendCommit",
               "wired_class": "ALPanelLensGaze",
@@ -89968,7 +89979,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 607,
+              "line": 647,
               "class": "ALPanelLensGaze",
               "function": "onTorsoCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90036,7 +90047,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 619,
+              "line": 659,
               "class": "ALPanelLensGaze",
               "function": "onSmoothingCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90106,7 +90117,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 467,
+              "line": 507,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90117,7 +90128,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 545,
+              "line": 585,
               "class": "ALPanelLensGaze",
               "function": "onPerformanceCommit",
               "wired_class": "ALPanelLensGaze",
@@ -90185,7 +90196,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 581,
+              "line": 621,
               "class": "ALPanelLensGaze",
               "function": "onResetPerformance",
               "wired_class": "ALPanelLensGaze",
@@ -90581,7 +90592,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3073,
+              "line": 3121,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -90677,7 +90688,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 563,
+              "line": 603,
               "class": "LLFloaterReg",
               "function": "toggleInstance",
               "wired_class": "ALPanelLensGaze",
@@ -90745,7 +90756,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 474,
+              "line": 514,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90756,7 +90767,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 562,
+              "line": 602,
               "class": "ALPanelLensGaze",
               "function": "onGazeCues",
               "wired_class": "ALPanelLensGaze",
@@ -90827,7 +90838,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 473,
+              "line": 513,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -90838,7 +90849,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 561,
+              "line": 601,
               "class": "ALPanelLensGaze",
               "function": "onModeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91374,7 +91385,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 709,
+              "line": 749,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -91442,7 +91453,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 465,
+              "line": 505,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91453,7 +91464,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 543,
+              "line": 583,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91521,7 +91532,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 466,
+              "line": 506,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91532,7 +91543,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 544,
+              "line": 584,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91600,7 +91611,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 471,
+              "line": 511,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91611,7 +91622,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 559,
+              "line": 599,
               "class": "ALPanelLensGaze",
               "function": "onCameraRollCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91679,7 +91690,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 463,
+              "line": 503,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91690,7 +91701,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 542,
+              "line": 582,
               "class": "ALPanelLensGaze",
               "function": "onBreakoffCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91767,7 +91778,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 464,
+              "line": 504,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -91848,7 +91859,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 625,
+              "line": 665,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91916,7 +91927,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 631,
+              "line": 671,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -91984,7 +91995,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 697,
+              "line": 737,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -92052,7 +92063,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 460,
+              "line": 500,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92063,7 +92074,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 556,
+              "line": 596,
               "class": "ALPanelLensGaze",
               "function": "onEaseAcquireCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92131,7 +92142,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 461,
+              "line": 501,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92142,7 +92153,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 557,
+              "line": 597,
               "class": "ALPanelLensGaze",
               "function": "onEaseReleaseCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92210,7 +92221,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 462,
+              "line": 502,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92221,7 +92232,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 558,
+              "line": 598,
               "class": "ALPanelLensGaze",
               "function": "onDeadZoneCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92289,7 +92300,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 658,
+              "line": 698,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -92357,7 +92368,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 664,
+              "line": 704,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -92425,7 +92436,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 670,
+              "line": 710,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -92498,7 +92509,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 413,
+              "line": 453,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92509,7 +92520,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 499,
+              "line": 539,
               "class": "ALPanelLensGaze",
               "function": "onPriorityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92588,7 +92599,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 416,
+              "line": 456,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92599,7 +92610,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 502,
+              "line": 542,
               "class": "ALPanelLensGaze",
               "function": "onIkLeanCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92676,7 +92687,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 414,
+              "line": 454,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92687,7 +92698,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 500,
+              "line": 540,
               "class": "ALPanelLensGaze",
               "function": "onAnimPriorityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92759,7 +92770,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 425,
+              "line": 465,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92770,7 +92781,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 512,
+              "line": 552,
               "class": "ALPanelLensGaze",
               "function": "onCompositionCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92838,7 +92849,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 430,
+              "line": 470,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92849,7 +92860,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 516,
+              "line": 556,
               "class": "ALPanelLensGaze",
               "function": "onChestShareCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92917,7 +92928,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 426,
+              "line": 466,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92928,7 +92939,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 513,
+              "line": 553,
               "class": "ALPanelLensGaze",
               "function": "onCompositionMixCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92996,7 +93007,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 676,
+              "line": 716,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93064,7 +93075,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 695,
+              "line": 735,
               "class": "ALPanelLensGaze",
               "function": "LLSD",
               "wired_class": "ALPanelLensGaze",
@@ -93132,7 +93143,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 682,
+              "line": 722,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93200,7 +93211,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 719,
+              "line": 759,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93268,7 +93279,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 725,
+              "line": 765,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93336,7 +93347,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 731,
+              "line": 771,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93413,7 +93424,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 415,
+              "line": 455,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93424,7 +93435,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 501,
+              "line": 541,
               "class": "ALPanelLensGaze",
               "function": "onRangePresetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93496,7 +93507,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 431,
+              "line": 471,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93507,7 +93518,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 517,
+              "line": 557,
               "class": "ALPanelLensGaze",
               "function": "onLimitModeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93575,7 +93586,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 472,
+              "line": 512,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93586,7 +93597,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 560,
+              "line": 600,
               "class": "ALPanelLensGaze",
               "function": "onExaggerateCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93654,7 +93665,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 693,
+              "line": 733,
               "class": "ALPanelLensGaze",
               "function": "LLSD",
               "wired_class": "ALPanelLensGaze",
@@ -93722,7 +93733,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 737,
+              "line": 777,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93790,7 +93801,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 703,
+              "line": 743,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -93861,7 +93872,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 451,
+              "line": 491,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93872,7 +93883,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 537,
+              "line": 577,
               "class": "ALPanelLensGaze",
               "function": "onLeanCurveCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93940,7 +93951,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 452,
+              "line": 492,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93951,7 +93962,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 538,
+              "line": 578,
               "class": "ALPanelLensGaze",
               "function": "onLeanThresholdCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94019,7 +94030,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 453,
+              "line": 493,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94030,7 +94041,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 539,
+              "line": 579,
               "class": "ALPanelLensGaze",
               "function": "onLeanSoftnessCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94098,7 +94109,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 454,
+              "line": 494,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94109,7 +94120,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 540,
+              "line": 580,
               "class": "ALPanelLensGaze",
               "function": "onLeanMaxCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94255,7 +94266,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 753,
+              "line": 793,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94323,7 +94334,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 759,
+              "line": 799,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94391,7 +94402,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 765,
+              "line": 805,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94459,7 +94470,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 771,
+              "line": 811,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -94527,7 +94538,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 432,
+              "line": 472,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94538,7 +94549,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 518,
+              "line": 558,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94606,7 +94617,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 435,
+              "line": 475,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94617,7 +94628,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 521,
+              "line": 561,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94685,7 +94696,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 438,
+              "line": 478,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94696,7 +94707,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 524,
+              "line": 564,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94764,7 +94775,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 441,
+              "line": 481,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94775,7 +94786,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 527,
+              "line": 567,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94843,7 +94854,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 444,
+              "line": 484,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94854,7 +94865,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 530,
+              "line": 570,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -94922,7 +94933,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 433,
+              "line": 473,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94933,7 +94944,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 519,
+              "line": 559,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95001,7 +95012,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 434,
+              "line": 474,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95012,7 +95023,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 520,
+              "line": 560,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95080,7 +95091,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 436,
+              "line": 476,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95091,7 +95102,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 522,
+              "line": 562,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95159,7 +95170,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 437,
+              "line": 477,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95170,7 +95181,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 523,
+              "line": 563,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95238,7 +95249,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 439,
+              "line": 479,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95249,7 +95260,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 525,
+              "line": 565,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95317,7 +95328,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 440,
+              "line": 480,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95328,7 +95339,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 526,
+              "line": 566,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95396,7 +95407,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 442,
+              "line": 482,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95407,7 +95418,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 528,
+              "line": 568,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95475,7 +95486,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 443,
+              "line": 483,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95486,7 +95497,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 529,
+              "line": 569,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95554,7 +95565,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 445,
+              "line": 485,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95565,7 +95576,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 531,
+              "line": 571,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95633,7 +95644,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 446,
+              "line": 486,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95644,7 +95655,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 532,
+              "line": 572,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95712,7 +95723,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 450,
+              "line": 490,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95723,7 +95734,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 536,
+              "line": 576,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95791,7 +95802,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 447,
+              "line": 487,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95802,7 +95813,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 533,
+              "line": 573,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95870,7 +95881,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 448,
+              "line": 488,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95881,7 +95892,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 534,
+              "line": 574,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95949,7 +95960,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 449,
+              "line": 489,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95960,7 +95971,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 535,
+              "line": 575,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96196,7 +96207,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 743,
+              "line": 783,
               "class": "ALGazeMath",
               "function": "AnatomicalLimitProfile",
               "wired_class": "ALPanelLensGaze",
@@ -96264,7 +96275,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 468,
+              "line": 508,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96275,7 +96286,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 546,
+              "line": 586,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96343,7 +96354,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 469,
+              "line": 509,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96354,7 +96365,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 547,
+              "line": 587,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96422,7 +96433,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 470,
+              "line": 510,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96433,7 +96444,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 548,
+              "line": 588,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96501,7 +96512,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 583,
+              "line": 623,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96569,7 +96580,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 589,
+              "line": 629,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96637,7 +96648,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 595,
+              "line": 635,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96705,7 +96716,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 456,
+              "line": 496,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96716,7 +96727,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 552,
+              "line": 592,
               "class": "ALPanelLensGaze",
               "function": "onMicroLifeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96784,7 +96795,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 457,
+              "line": 497,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96795,7 +96806,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 553,
+              "line": 593,
               "class": "ALPanelLensGaze",
               "function": "onBlinksCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96863,7 +96874,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 458,
+              "line": 498,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96874,7 +96885,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 554,
+              "line": 594,
               "class": "ALPanelLensGaze",
               "function": "onVariationCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96942,7 +96953,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 459,
+              "line": 499,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96953,7 +96964,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 555,
+              "line": 595,
               "class": "ALPanelLensGaze",
               "function": "onBreakFreqCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97177,7 +97188,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 640,
+              "line": 680,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -97245,7 +97256,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 646,
+              "line": 686,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -97313,7 +97324,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 652,
+              "line": 692,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -97437,7 +97448,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3090,
+              "line": 3138,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -98608,7 +98619,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 110,
+              "line": 143,
               "class": "ALFloaterGazeCues",
               "function": "postBuild",
               "wired_class": "ALFloaterGazeCues",
@@ -98619,7 +98630,7 @@
             },
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 138,
+              "line": 171,
               "class": "ALFloaterGazeCues",
               "function": "onCueSelected",
               "wired_class": "ALFloaterGazeCues",
@@ -98819,7 +98830,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 111,
+              "line": 144,
               "class": "ALFloaterGazeCues",
               "function": "postBuild",
               "wired_class": "ALFloaterGazeCues",
@@ -98830,7 +98841,7 @@
             },
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 140,
+              "line": 173,
               "class": "ALFloaterGazeCues",
               "function": "onAdd",
               "wired_class": "ALFloaterGazeCues",
@@ -98924,7 +98935,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 113,
+              "line": 146,
               "class": "ALFloaterGazeCues",
               "function": "postBuild",
               "wired_class": "ALFloaterGazeCues",
@@ -98935,7 +98946,7 @@
             },
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 142,
+              "line": 175,
               "class": "ALFloaterGazeCues",
               "function": "onDelete",
               "wired_class": "ALFloaterGazeCues",
@@ -99208,7 +99219,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7572,
+              "line": 7620,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -103930,7 +103941,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7573,
+              "line": 7621,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -106955,7 +106966,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7574,
+              "line": 7622,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -122894,7 +122905,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4209,
+              "line": 4257,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -122998,7 +123009,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4210,
+              "line": 4258,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123102,7 +123113,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4211,
+              "line": 4259,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123206,7 +123217,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4212,
+              "line": 4260,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123310,7 +123321,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4213,
+              "line": 4261,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123414,7 +123425,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4214,
+              "line": 4262,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123518,7 +123529,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4215,
+              "line": 4263,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123622,7 +123633,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4216,
+              "line": 4264,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -123726,7 +123737,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4217,
+              "line": 4265,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -125111,7 +125122,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3124,
+              "line": 3172,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125201,7 +125212,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3128,
+              "line": 3176,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125543,7 +125554,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3060,
+              "line": 3108,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125633,7 +125644,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3064,
+              "line": 3112,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125723,7 +125734,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3061,
+              "line": 3109,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125813,7 +125824,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3065,
+              "line": 3113,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125903,7 +125914,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3062,
+              "line": 3110,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -125993,7 +126004,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3066,
+              "line": 3114,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -126083,7 +126094,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3063,
+              "line": 3111,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -126173,7 +126184,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3067,
+              "line": 3115,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -130307,7 +130318,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7576,
+              "line": 7624,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -130397,7 +130408,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3107,
+              "line": 3155,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -130763,7 +130774,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7575,
+              "line": 7623,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -130853,7 +130864,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3112,
+              "line": 3160,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131146,7 +131157,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3117,
+              "line": 3165,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131761,7 +131772,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3160,
+              "line": 3208,
               "class": "LLFloaterDirector",
               "function": "bindOperatorPage",
               "wired_class": "LLFloaterDirector",
@@ -133528,7 +133539,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4232,
+              "line": 4280,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -138163,7 +138174,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3187,
+              "line": 3235,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -139175,7 +139186,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3180,
+              "line": 3228,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -139348,7 +139359,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3243,
+              "line": 3291,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -139721,7 +139732,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3251,
+              "line": 3299,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -139825,7 +139836,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3252,
+              "line": 3300,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -139929,7 +139940,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3253,
+              "line": 3301,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -140033,7 +140044,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3254,
+              "line": 3302,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -140331,7 +140342,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4220,
+              "line": 4268,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140422,7 +140433,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4225,
+              "line": 4273,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140513,7 +140524,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4222,
+              "line": 4270,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140604,7 +140615,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4226,
+              "line": 4274,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140695,7 +140706,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4223,
+              "line": 4271,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140786,7 +140797,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4221,
+              "line": 4269,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -140877,7 +140888,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4224,
+              "line": 4272,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143493,7 +143504,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3098,
+              "line": 3146,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -143581,7 +143592,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3102,
+              "line": 3150,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -170008,7 +170019,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3559,
+              "line": 3607,
               "class": "LLFloaterDirector",
               "function": "refreshLauncherCards",
               "wired_class": "LLFloaterDirector",
@@ -174435,7 +174446,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3094,
+              "line": 3142,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -176711,7 +176722,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 285,
+              "line": 309,
               "class": "ALProjectorTracker",
               "function": "enable",
               "wired_class": "ALPanelPracticals",
@@ -176746,7 +176757,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8151,
+              "line": 8199,
               "class": "LLFloaterDirector",
               "function": "showProjectorTrack",
               "wired_class": "LLFloaterDirector",
@@ -176778,7 +176789,7 @@
           "cpp": [
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 164,
+              "line": 187,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176851,7 +176862,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 164,
+              "line": 187,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176919,7 +176930,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 164,
+              "line": 187,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -176984,7 +176995,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 164,
+              "line": 187,
               "class": "ALProjectorTracker",
               "function": "configure",
               "wired_class": "ALPanelPracticals",
@@ -177060,7 +177071,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 311,
+              "line": 335,
               "class": "ALProjectorTracker",
               "function": "capture",
               "wired_class": "ALPanelPracticals",
@@ -177125,7 +177136,7 @@
             },
             {
               "file": "indra/newview/alprojectortracker.cpp",
-              "line": 110,
+              "line": 111,
               "class": "ALProjectorTracker",
               "function": "state",
               "wired_class": "ALPanelPracticals",
@@ -185336,7 +185347,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3128,
+              "line": 3176,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -187596,7 +187607,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3325,
+              "line": 3373,
               "class": "LLFloaterDirector",
               "function": "onOpen",
               "wired_class": "LLFloaterDirector",
@@ -215811,7 +215822,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2855,
+              "line": 2903,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -215912,7 +215923,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2854,
+              "line": 2902,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -215923,7 +215934,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2905,
+              "line": 2953,
               "class": "LLFloaterDirector",
               "function": "onActorStyleReset",
               "wired_class": "LLFloaterDirector",
@@ -216146,7 +216157,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2841,
+              "line": 2889,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216239,7 +216250,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2840,
+              "line": 2888,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216329,7 +216340,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2844,
+              "line": 2892,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216419,7 +216430,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2845,
+              "line": 2893,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216573,7 +216584,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2842,
+              "line": 2890,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216663,7 +216674,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2843,
+              "line": 2891,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216753,7 +216764,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2852,
+              "line": 2900,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216843,7 +216854,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2848,
+              "line": 2896,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -216933,7 +216944,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2847,
+              "line": 2895,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -217023,7 +217034,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2849,
+              "line": 2897,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -217113,7 +217124,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2853,
+              "line": 2901,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -217213,7 +217224,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2850,
+              "line": 2898,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -217303,7 +217314,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2851,
+              "line": 2899,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -217393,7 +217404,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2846,
+              "line": 2894,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -232983,7 +232994,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 528,
+              "line": 599,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -232996,7 +233007,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 742,
+              "line": 813,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",

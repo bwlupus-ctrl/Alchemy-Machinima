@@ -5,28 +5,28 @@ Per-control rows: `doc/director_kit/wiring/wiring_table.csv`.
 
 Versions: **ORIG** = commit 9c25f75491a (git blobs); **V1** = working tree `floater_director.xml` + owner panels; **V2** = working tree `floater_director_v2.xml` + `panel_dpage_*.xml` + kit rows.
 
-Interactive controls: 2078 (of 2195 catalog rows; readout/text rows excluded from counts).
+Interactive controls: 2074 (of 2191 catalog rows; readout/text rows excluded from counts).
 
 ## Totals
 
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ORIG | 1619 | 1035 | 1 | 583 | 0 | 54 | 405 |
-| V1 | 1686 | 1075 | 1 | 610 | 0 | 55 | 337 |
-| V2 | 1875 | 1328 | 0 | 547 | 71 | 95 | 37 |
+| ORIG | 1617 | 1035 | 1 | 581 | 0 | 54 | 403 |
+| V1 | 1683 | 1075 | 1 | 607 | 0 | 55 | 336 |
+| V2 | 1875 | 1328 | 0 | 547 | 71 | 95 | 33 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
 | Page | Group | Interactive | ORIG wired | V1 wired | V2 wired | V2 suspect | V2 unwired | V2 missing | V2 loss |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| move_tab (Move) | Cast | 23 | 16 | 22 | 14 | 7 | 0 | 2 | 1 |
+| move_tab (Move) | Cast | 22 | 16 | 21 | 14 | 7 | 0 | 1 | 0 |
 | path_tab (Path) | Cast | 55 | 55 | 55 | 55 | 0 | 0 | 0 | 0 |
 | props_tab (Props) | Cast | 31 | 31 | 31 | 29 | 0 | 0 | 2 | 0 |
 | ghosts_tab (Clones) | Cast | 130 | 113 | 126 | 129 | 0 | 0 | 1 | 0 |
 | dance_tab (Dance) | Cast | 76 | 76 | 76 | 75 | 1 | 0 | 0 | 0 |
 | animate_tab (Animate) | Performance | 20 | 20 | 20 | 6 | 14 | 0 | 0 | 0 |
 | switchboard_tab (Switchboard) | Performance | 28 | 16 | 16 | 16 | 0 | 12 | 0 | 0 |
-| gaze_tab (Gaze) | Performance | 121 | 119 | 119 | 119 | 1 | 0 | 1 | 1 |
+| gaze_tab (Gaze) | Performance | 120 | 118 | 118 | 119 | 1 | 0 | 0 | 0 |
 | polish_tab (Polish) | Performance | 14 | 14 | 14 | 13 | 1 | 0 | 0 | 0 |
 | gaze_cues_tab (Gaze Cues) | Performance | 5 | 3 | 3 | 3 | 0 | 2 | 0 | 0 |
 | shot_tab (Shot) | Camera | 342 | 297 | 306 | 310 | 10 | 22 | 0 | 0 |
@@ -49,8 +49,8 @@ Interactive controls: 2078 (of 2195 catalog rows; readout/text rows excluded fro
 | bloom_glow_tab (Bloom & Glow) | Look | 17 | 7 | 7 | 16 | 0 | 1 | 0 | 0 |
 | stylize_tab (Roto Ink) | Look | 80 | 77 | 77 | 77 | 0 | 3 | 0 | 0 |
 | tron_tab (Tron) | Look | 131 | 123 | 123 | 120 | 0 | 8 | 3 | 0 |
-| stepped_tab (Stepped) | Look | 66 | 0 | 0 | 61 | 0 | 4 | 1 | 0 |
-| actor_style_tab (Actor FX) | Look | 17 | 16 | 16 | 1 | 15 | 0 | 1 | 1 |
+| stepped_tab (Stepped) | Look | 65 | 0 | 0 | 61 | 0 | 4 | 0 | 0 |
+| actor_style_tab (Actor FX) | Look | 16 | 15 | 15 | 1 | 15 | 0 | 0 | 0 |
 | weather_tab (Weather) | World | 99 | 50 | 50 | 92 | 7 | 0 | 0 | 0 |
 | atmosphere_tab (Atmosphere) | World | 40 | 37 | 37 | 15 | 0 | 3 | 22 | 22 |
 | shadows_probes_tab (Shadows) | World | 40 | 37 | 37 | 38 | 0 | 2 | 0 | 0 |
@@ -60,19 +60,19 @@ Interactive controls: 2078 (of 2195 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1827 mockup rows + 368 page_sources-only (page, widget) rows = 2195 controls. page_sources.json lists 2193 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
-Of the page_sources-only rows, 364 are interactive.
+Catalog = 1827 mockup rows + 364 page_sources-only (page, widget) rows = 2191 controls. page_sources.json lists 2191 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Of the page_sources-only rows, 360 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
 
-Total: 29 (excludes 9 rows that are present on another V2 page, listed below)
+Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 ### frame_orbit_tab (2)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3187 LLFloaterDirector::bindFrameOrbitPage |
-| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3180 LLFloaterDirector::bindFrameOrbitPage |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3235 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3228 LLFloaterDirector::bindFrameOrbitPage |
 
 ### vcam_tab (1)
 
@@ -112,24 +112,6 @@ Total: 29 (excludes 9 rows that are present on another V2 page, listed below)
 | `localfog_noise_scale` | Noise scale | WIRED_CPP | WIRED_CPP | MISSING | - |
 | `localfog_noise_speed` | Noise speed | WIRED_CPP | WIRED_CPP | MISSING | - |
 | `localfog_tint` | Tint | WIRED_CPP | WIRED_CPP | MISSING | - |
-
-### move_tab (1)
-
-| Widget | Label | ORIG | V1 | V2 | V2 evidence |
-|---|---|---|---|---|---|
-| `anim_speed_avatar` | Avatar | MISSING | WIRED_CPP | MISSING | - |
-
-### gaze_tab (1)
-
-| Widget | Label | ORIG | V1 | V2 | V2 evidence |
-|---|---|---|---|---|---|
-| `gaze_edit_actor` | Edit actor | WIRED_CPP | WIRED_CPP | MISSING | - |
-
-### actor_style_tab (1)
-
-| Widget | Label | ORIG | V1 | V2 | V2 evidence |
-|---|---|---|---|---|---|
-| `actor_style_target` | Actor | WIRED_CPP | WIRED_CPP | MISSING | - |
 
 
 ### Relocated in V2 (missing on this page, present on another V2 page)
@@ -207,11 +189,11 @@ Names present in the ORIG page closure but absent from the V1 closure: 252 entri
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-kit=1, kit=18, none=37, xui=2022.
+- V2 resolution by source: alias-kit=1, kit=18, none=33, xui=2022.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
 - Launcher-stub pages (V2 opens V1 floater): none.
-- Interactive rows missing in ALL three versions (mockup-only, never implemented): 2.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 39 of 2078 interactive.
+- Interactive rows missing in ALL three versions (mockup-only, never implemented): 1.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2074 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 
@@ -220,7 +202,7 @@ Names present in the ORIG page closure but absent from the V1 closure: 252 entri
 - Static analysis only. A C++ match inside a FLOATER-owned postBuild (LLFloaterDirector) does not prove the V2 copy is wired; such V2 controls are flagged `V2_SUSPECT_FLOATER_SCOPED` unless the enclosing function mentions `DirectorUIV2`. This flag is conservative and needs in-world confirmation.
 - A panel class counts as instantiated for a V2 page only when its XML is embedded in that page closure (`LLPanelInjector` registration name = file stem).
 - Kit rows (V2 `kit_row`/`kit_switch` with `widget=`) have no per-widget C++; WIRED_SETTING means the bound setting is declared (kit binding is generic in alkit*.cpp), not that the in-world behaviour was checked.
-- Control universe = the mockup rows (2078 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
+- Control universe = the mockup rows (2074 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
 - ORIG page owners are the HEAD owner files that exist at ORIG; ORIG floater_director.xml is always searched. ORIG C++ is read from the commit; V1/V2 C++ is the working tree.
 - Callbacks count as WIRED only when the name is referenced (not just defined) in top-level indra/newview/*.cpp. Registry names are matched as literals or identifiers.
 - Widget literal hits require a getChild/findChild/childSet/setCommitCallback/Registrar token within 3 lines before (or 1 line after) the literal, and the enclosing class must be one of the page owner classes from page_sources.json.
