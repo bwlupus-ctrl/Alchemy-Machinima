@@ -413,6 +413,15 @@ bool ALAvatarLightResponse::set(const LLUUID& key, EKind kind, const std::string
     return true;
 }
 
+void ALAvatarLightResponse::retireClone(const LLUUID& key)
+{
+    // Clone settings are session-only and are never loaded from the file.
+    // No resurrection tombstone is needed after the instance is deleted.
+    if (mEntries.erase(key)) markChanged(key);
+    mPersistExtras.erase(key);
+    mPersistSuppressed.erase(key);
+}
+
 void ALAvatarLightResponse::inherit(const LLUUID& key, bool save_now)
 {
     // An explicit clear removes the file-only copy too, so no later save can bring it back.
@@ -515,7 +524,7 @@ void ALAvatarLightResponse::dirtyImpostors(const LLUUID& key) const
         {
             const ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().findInstanceByRuntime(av->getID());
-            hit = inst && (inst->mId == key || inst->mSource == key || (inst->mSource.isNull() && key == gAgentID));
+            hit = inst && (inst->mId == key || (!inst->mSourceRemoved && (inst->mSource == key || (inst->mSource.isNull() && key == gAgentID))));
         }
         if (!hit && av->isControlAvatar())
         {
@@ -598,7 +607,7 @@ void ALAvatarLightResponse::ensureTable()
             continue;
         }
         auto it = mTable.find(inst.mId);
-        if (it == mTable.end())
+        if (it == mTable.end() && !inst.mSourceRemoved)
         {
             it = mTable.find(inst.mSource.isNull() ? gAgentID : inst.mSource);
         }

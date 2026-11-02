@@ -734,6 +734,26 @@ bool ALAvatarStaging::remove(const LLUUID& id)
     return true;
 }
 
+void ALAvatarStaging::removeActorReferences(const LLUUID& stable_id)
+{
+    remove(stable_id);
+    mRestorePending.erase(stable_id);
+    mBallCentreDancers.erase(stable_id);
+    bool changed_target = false;
+    for (auto& item : mEntries)
+    {
+        Entry& entry = item.second;
+        if (entry.mTrackTarget != stable_id) continue;
+        entry.mLockYaw = currentWorldYaw(item.first, entry);
+        entry.mTrackTarget.setNull();
+        entry.mMode = FacingMode::LOCK;
+        entry.mTrackSource = TrackSource::POINT;
+        entry.mTrackPointValid = false;
+        changed_target = true;
+    }
+    if (changed_target) changed("target removed", stable_id, true);
+}
+
 void ALAvatarStaging::setEnabled(bool enabled)
 {
     if (mEnabled == enabled) return;

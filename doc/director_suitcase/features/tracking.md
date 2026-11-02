@@ -12,6 +12,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alprojectortracker.h`
 - `indra/newview/alprojectortrackmath.h`
 - `indra/newview/alvcammonitorstrip.cpp`
+- `indra/newview/lldirectorcast.cpp`
 - `indra/newview/llfloaterdirector.cpp`
 - `indra/newview/llfloaterdirector.h`
 
@@ -63,6 +64,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 277, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 301, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 317, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 406, "text": "lldirectorcast.cpp", "source": "indra/newview/lldirectorcast.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 478, "text": "lldrawable.cpp", "source": "indra/newview/lldrawable.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1380, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}

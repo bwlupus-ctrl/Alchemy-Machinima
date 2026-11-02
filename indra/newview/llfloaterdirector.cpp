@@ -2790,6 +2790,54 @@ void LLFloaterDirector::refreshAnimSpeed()
     setTextIfChanged(mAnimSpeedStatus, mAnimSpeedContextLabel + llformat("%d avatars changed  |  %.2fx", mAnimSpeedChanged, speed));
 }
 
+void LLFloaterDirector::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    auto* director = LLFloaterReg::findTypedInstance<LLFloaterDirector>("director");
+    if (!director) return;
+    const bool speed_changed = director->mAnimSpeedSelection == old_id;
+    for (LLUUID* ref : { &director->mAnimSpeedSelection, &director->mPrimaryCastActor,
+            &director->mCastRightClickId, &director->mGroupShownFor,
+            &director->mActorStyleShownFor, &director->mActorStyleLastCastSelection,
+            &director->mLocomotionEditorMember, &director->mAnimAvatarId })
+        if (*ref == old_id) *ref = new_id;
+    if (speed_changed)
+    {
+        director->mAnimSpeedContextLabel.clear();
+        director->mAnimSpeedClock.forceDue();
+    }
+    // An open picker can contain the retired body even when another actor is
+    // selected. Remove that row directly; rebuilding from live objects here
+    // could re-add a body that has not finished leaving gObjectList yet.
+    if (director->mAnimSpeedAvatar)
+    {
+        if (speed_changed) director->rebuildAnimSpeedAvatars();
+        const auto rows = director->mAnimSpeedAvatar->getAllData();
+        for (S32 i = static_cast<S32>(rows.size()) - 1; i >= 0; --i)
+            if (rows[i]->getValue().asUUID() == old_id) director->mAnimSpeedAvatar->remove(i);
+    }
+    // syncActiveActor may already have mirrored the new active actor into the
+    // list through setActiveActorId's synchronous callback. Migrate the shell's
+    // independent cache even when that list no longer contains the old ID.
+    // Do not publish the selection signal: independent Who adapters stay put.
+    if (director->mShell)
+    {
+        uuid_vec_t cached = director->mShell->castSelection();
+        for (auto& id : cached) if (id == old_id) id = new_id;
+        cached.erase(std::remove(cached.begin(), cached.end(), LLUUID::null), cached.end());
+        director->mShell->cacheCastSelection(cached);
+    }
+    if (director->mCastList)
+    {
+        uuid_vec_t selected = director->selectedCastIds();
+        const bool selection_changed = std::find(selected.begin(), selected.end(), old_id) != selected.end();
+        if (!selection_changed) return;
+        for (auto& id : selected) if (id == old_id) id = new_id;
+        selected.erase(std::remove(selected.begin(), selected.end(), LLUUID::null), selected.end());
+        director->refreshCastList();
+        director->mCastList->selectMultiple(selected);
+    }
+}
+
 void LLFloaterDirector::showAnimSpeed(const LLUUID& avatar)
 {
     if (mShell) mShell->navigateTo("cast_group/move_tab/anim_speed");

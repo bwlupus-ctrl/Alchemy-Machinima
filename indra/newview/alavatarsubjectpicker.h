@@ -17,6 +17,7 @@ LLVOAvatar* fromSelection(bool animesh = false);
 void choose(LLUICtrl* anchor, LLView* owner, LLHandle<LLContextMenu>& menu,
             bool ghosts, std::function<void(const LLUUID&)> picked, bool animesh = false);
 void cancelFor(LLView* owner);
+void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 bool handleKey(KEY key, MASK mask);
 }
 #endif

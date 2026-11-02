@@ -101,6 +101,7 @@ public:
     static size_t maxStoredEntries();
     size_t storedEntryCount() const;    // non-clone live entries plus file-only extras (the ones that are saved)
     void inherit(const LLUUID& key, bool save_now = true);
+    void retireClone(const LLUUID& key);
     // user_action = true only for the explicit "Reset all" confirmation: it counts as an edit even on an empty store.
     void clearAll(bool save_now = true, bool user_action = false);
 

@@ -42,6 +42,7 @@ void apply_request_metadata(ALGhostStudio::Instance& instance,
                             const ALGhostCloneRequest& request)
 {
     instance.mSource = source.mPersistentSourceHandle;
+    instance.mSourceRemoved = false;
     instance.mSourceLabel = source.mLabel;
     instance.mRenderIntent = render_intent(request);
 }
@@ -360,6 +361,11 @@ ALGhostSpawnStatus ALGhostSourceResolver::resolve(
         if (const ALGhostStudio::Instance* instance =
                 studio.getInstance(candidate))
         {
+            if (instance->mSourceRemoved)
+            {
+                diagnostic = "clone source was removed";
+                return ALGhostSpawnStatus::SOURCE_UNAVAILABLE;
+            }
             if (request.mMustRejectCloneOfClone)
             {
                 diagnostic =
@@ -398,7 +404,7 @@ ALGhostSpawnStatus ALGhostSourceResolver::resolve(
             }
             const ALGhostStudio::Instance* owner =
                 find_entity_runtime_owner(studio, avatar->getID());
-            if (!owner)
+            if (!owner || owner->mSourceRemoved)
             {
                 diagnostic =
                     "orphan ghost runtime cannot be safely unwrapped";

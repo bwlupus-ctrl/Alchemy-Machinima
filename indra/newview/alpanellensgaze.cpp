@@ -34,11 +34,18 @@
 
 #include <algorithm>
 #include <tuple>
+#include <unordered_set>
 
 static LLPanelInjector<ALPanelLensGaze> t_panel_lens_gaze("panel_lens_gaze");
 
 namespace
 {
+std::unordered_set<ALPanelLensGaze*>& actorGazePanels()
+{
+    static std::unordered_set<ALPanelLensGaze*> panels;
+    return panels;
+}
+
 std::string actorName(const LLUUID& id)
 {
     if (const LLDirectorCast::CastMember* member =
@@ -371,9 +378,42 @@ static void gazeRandomPerfTick(void* user);
 
 ALPanelLensGaze::ALPanelLensGaze()
 {
+    actorGazePanels().insert(this);
     // The settings-backed rows use the same compact XUI reset callback as the
     // Cinematic Camera parameter panels. Register it before our children build.
     alRegisterMachinimaResetControl();
+}
+
+ALPanelLensGaze::~ALPanelLensGaze()
+{
+    actorGazePanels().erase(this);
+}
+
+void ALPanelLensGaze::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    for (ALPanelLensGaze* panel : actorGazePanels())
+    {
+        LLUUID selected_target = panel->mCast
+            ? LLUUID(panel->mCast->getSelectedValue().asString()) : LLUUID::null;
+        if (selected_target == old_id) selected_target = new_id;
+        for (LLUUID& actor : panel->mSelected)
+            if (actor == old_id) actor = new_id;
+        if (new_id.isNull())
+            panel->mSelected.erase(std::remove(panel->mSelected.begin(), panel->mSelected.end(), LLUUID::null), panel->mSelected.end());
+        if (panel->mCastComboActor == old_id) panel->mCastComboActor = new_id;
+        if (panel->mCastComboSelection == old_id) panel->mCastComboSelection = new_id;
+        ++panel->mSelectionRevision;
+        panel->mCastComboRevision = U64(-1);
+        // Force during identity replacement even while the combo has focus;
+        // its next commit must never publish a retired UUID.
+        if (panel->mCast)
+        {
+            panel->refreshCastCombo(true);
+            if (selected_target.notNull())
+                panel->mCast->setSelectedByValue(LLSD(selected_target.asString()), true);
+        }
+    }
 }
 
 // Register the random-performance idle tick from viewer startup (see
@@ -1129,7 +1169,7 @@ void ALPanelLensGaze::refreshEditActorCombo()
     }
 }
 
-void ALPanelLensGaze::refreshCastCombo()
+void ALPanelLensGaze::refreshCastCombo(bool force)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshCastCombo");
     LLDirectorCast& cast = LLDirectorCast::instance();
@@ -1142,7 +1182,7 @@ void ALPanelLensGaze::refreshCastCombo()
     const U64 cast_revision = cast.getCastRevision();
     const bool stale = cast_revision != mCastComboRevision ||
         displayed != mCastComboActor || current != mCastComboSelection;
-    if (stale && !isEditing(mCast))
+    if (stale && (force || !isEditing(mCast)))
     {
         mCastComboRevision = cast_revision;
         mCastComboActor = displayed;

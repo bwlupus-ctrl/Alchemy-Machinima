@@ -400,6 +400,13 @@ bool ALDanceBall::removeDancer(const LLUUID& id)
     return true;
 }
 
+void ALDanceBall::removeActorReferences(const LLUUID& stable_id)
+{
+    removeDancer(stable_id);
+    mRuntime.erase(stable_id);
+    if (mExcluded.erase(stable_id)) ++mRosterRevision;
+}
+
 void ALDanceBall::setBlockingEnabled(bool enabled)
 {
     ALAvatarStaging::instance().setEnabled(enabled);

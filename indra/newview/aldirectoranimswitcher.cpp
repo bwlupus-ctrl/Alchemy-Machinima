@@ -317,6 +317,18 @@ void ALDirectorAnimSwitcher::releasePoseFromAvatar(LLVOAvatar* av)
     mPosedAvatars.erase(id);
 }
 
+void ALDirectorAnimSwitcher::rewriteActorReferences(const LLUUID& old_id, const LLUUID&)
+{
+    // Pose ownership is body-local, unlike the bank's enum targets. Release
+    // the old body's joints; a later punch resolves the migrated Cast roster.
+    if (mPosedAvatars.count(old_id))
+    {
+        if (auto* avatar = LLDirectorCast::instance().resolve(old_id))
+            releasePoseFromAvatar(avatar);
+        mPosedAvatars.erase(old_id);
+    }
+}
+
 void ALDirectorAnimSwitcher::applySlotToAvatar(
     LLVOAvatar* av, const Slot& slot, const Slot& prev)
 {

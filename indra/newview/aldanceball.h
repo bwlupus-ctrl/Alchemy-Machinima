@@ -121,6 +121,7 @@ public:
     bool addDancer(const LLUUID& id, DancerKind kind);
     bool addDancer(const LLUUID& id); // auto-classifies and canonicalizes
     bool removeDancer(const LLUUID& id);
+    void removeActorReferences(const LLUUID& stable_id);
     void exclude(const LLUUID& id);
     void include(const LLUUID& id);
     bool isExcluded(const LLUUID& id) const;

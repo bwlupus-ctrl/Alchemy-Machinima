@@ -60,6 +60,7 @@ public:
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
+    static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
 private:
     friend struct ALCloneRotationProbe;
@@ -321,6 +322,7 @@ private:
     LLTextBox*        mHint = nullptr;              // [R2-3] swaps in edit mode
     LLScrollListCtrl* mList = nullptr;
     LLComboBox*       mSourceCombo = nullptr;
+    bool             mSourceSelectionRemoved = false;
     LLComboBox*       mCloneTypeCombo = nullptr;
     LLButton*         mAddBtn = nullptr;
     LLButton*         mDupBtn = nullptr;

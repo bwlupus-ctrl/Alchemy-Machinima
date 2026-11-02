@@ -290,7 +290,8 @@ public:
     static LLUUID runtimeActorId(const LLUUID& id);
     // Rekey CastMember (marks, gaze lanes, Actor FX/Stepped), mover/path and
     // history, subjects and selections together, before scene observers run.
-    void replaceActorId(const LLUUID& old_id, const LLUUID& new_id);
+    void replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
+                        const LLUUID& stable_id = LLUUID::null);
 
     // The Director's one edit actor. Null is Clear; consumers
     // which historically defaulted to You resolve null as self. Never Subjects A-D.
@@ -493,6 +494,7 @@ public:
     F32  countdownRemaining() const;    // seconds; 0 when not counting down
 
 private:
+    bool rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     LLDirectorCast();
     ~LLDirectorCast();
 

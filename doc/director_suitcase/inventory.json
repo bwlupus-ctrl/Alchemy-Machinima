@@ -8,11 +8,14 @@
       "GENERATED": 723,
       "HOOK": 498,
       "OWNED": 883,
-      "TOOLING": 356
+      "TOOLING": 357
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/llfloaterdirector.cpp",
+      "scripts/code_tools/director_clone_rekey_check.py"
+    ],
     "evidence": {
-      "functional_csv_hash_matches": true,
+      "functional_csv_hash_matches": false,
       "functional_meta": {
         "actions": [
           "RUN",
@@ -190,10 +193,10 @@
       },
       "wiring_rows": 2195
     },
-    "head_source_tree": "1ff023951e4e7c718ce037cd5fb160a113519e0d",
+    "head_source_tree": "277b4d73acc10ed49f8e45a534591a08f33f7078",
     "hook_files": 498,
     "hunks": 3011,
-    "input_sha256": "da85693b6d34e72130c7f7f7648f9f492216361b163fcc4495a6b6eb0696d1fb",
+    "input_sha256": "7cbcaf5414460d766a05fc47e9cdd78a25acbcad4a40e0da8413bf7af8247465",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1996
   },
@@ -12406,7 +12409,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "composition",
+        "clones",
         "director-shell",
         "looks"
       ],
@@ -12430,6 +12433,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "looks"
       ],
@@ -12524,6 +12528,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "sensor"
       ],
       "class": "OWNED",
@@ -12586,6 +12591,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron",
@@ -12612,6 +12618,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "vcam"
       ],
@@ -12861,6 +12868,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "rig"
       ],
       "class": "OWNED",
@@ -12885,8 +12893,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
-        "rig"
+        "clones",
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -13131,6 +13139,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "sensor"
       ],
@@ -13154,6 +13163,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "sensor"
       ],
@@ -14070,6 +14080,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "gaze",
         "sensor"
@@ -14094,6 +14105,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "gaze",
         "sensor"
@@ -15122,9 +15134,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15360,6 +15370,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "shafts-volumetrics",
         "vcam",
@@ -15395,6 +15406,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "clones",
         "director-shell"
       ],
       "git_status": "A",
@@ -15759,6 +15771,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron"
@@ -16744,8 +16757,7 @@
         "clones",
         "crowd",
         "director-shell",
-        "gaze",
-        "sensor"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -16849,6 +16861,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron"
@@ -16876,6 +16889,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron"
@@ -17568,6 +17582,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "vcam"
       ],
       "class": "OWNED",
@@ -17579,6 +17594,7 @@
       "features": [
         "actor-bar",
         "capture-sidecar",
+        "clones",
         "director-shell",
         "tracking",
         "vcam"
@@ -17590,6 +17606,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "vcam"
       ],
       "class": "OWNED",
@@ -26452,9 +26469,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -26473,7 +26488,8 @@
         "looks",
         "rig",
         "roto-tron",
-        "stepped-animation"
+        "stepped-animation",
+        "tracking"
       ],
       "git_status": "A",
       "layer": 2,
@@ -26484,9 +26500,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27271,11 +27285,10 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
-        "roto-tron",
-        "sensor",
-        "vcam"
+        "roto-tron"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27310,6 +27323,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron",
@@ -38927,6 +38941,22 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_actor_bar_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_clone_rekey_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

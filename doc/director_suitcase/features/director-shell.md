@@ -1024,6 +1024,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## checks
 
 - `scripts/code_tools/director_actor_bar_check.py`
+- `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/director_curation_check.py`
 - `scripts/code_tools/director_header_check.py`
 - `scripts/code_tools/director_kit/check_kit_pages.py`

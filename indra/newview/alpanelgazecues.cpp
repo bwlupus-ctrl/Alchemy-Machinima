@@ -186,17 +186,45 @@ void ALPanelGazeCues::commitListEdit(const LLUUID& actor, const LLDirectorCast::
     const LLDirectorCast::GazeCueList stored = cast.getGazeCues(actor);
     if (ALKitShell* shell = ALKitShell::find(this))
     {
-        shell->history().recordCustom(this, "gaze_cue_list", label,
-            [actor, before, stored](bool redo, std::string& reason)
+        struct CueHistory
+        {
+            LLUUID actor;
+            LLDirectorCast::GazeCueList before;
+            LLDirectorCast::GazeCueList after;
+        };
+        // Replay and identity replacement share the same mutable snapshots;
+        // neither undo nor redo can put a retired runtime UUID back into a cue.
+        auto snapshot = std::make_shared<CueHistory>(CueHistory{actor, before, stored});
+        auto validate = [snapshot](bool, std::string& reason)
+        {
+            if (snapshot->actor.isNull())
             {
-                LLDirectorCast& cast = LLDirectorCast::instance();
-                if (!cast.getMember(actor) && actor != gAgentID)
+                reason = "That actor is no longer in the cast";
+                return false;
+            }
+            return true;
+        };
+        shell->history().recordCustom(this, "gaze_cue_list", label,
+            [snapshot, validate](bool redo, std::string& reason)
+            {
+                if (!validate(redo, reason)) return false;
+                // Preserve the original replay-time failure for residents
+                // removed from Cast, including grouped replay ordering.
+                if (!LLDirectorCast::instance().getMember(snapshot->actor) && snapshot->actor != gAgentID)
                 {
                     reason = "That actor is no longer in the cast";
                     return false;
                 }
-                cast.setGazeCues(actor, redo ? stored : before);
+                LLDirectorCast::instance().setGazeCues(snapshot->actor,
+                    redo ? snapshot->after : snapshot->before);
                 return true;
+            }, false, validate,
+            [snapshot](const LLUUID& old_id, const LLUUID& new_id)
+            {
+                if (snapshot->actor == old_id) snapshot->actor = new_id;
+                for (auto* cues : {&snapshot->before, &snapshot->after})
+                    for (auto& cue : *cues)
+                        LLActorMover::rewriteGazeTarget(cue.mTarget, old_id, new_id);
             });
     }
     refreshRows(true);

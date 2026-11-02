@@ -363,7 +363,7 @@ def settings_rows(paths, head, base, scene_source, membership):
             record = after if after is not None else before
             if old_declarations == new_declarations or not isinstance(record, dict) or "Type" not in record or "Value" not in record:
                 continue
-            comment = str(scalar(record.get("Comment", {})))
+            comment = str(scalar(record.get("Comment", {}))).strip()
             scene_refs = []
             for scene_path, source in scene_source.items():
                 for i, line in enumerate(source.splitlines(), 1):
