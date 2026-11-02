@@ -4672,6 +4672,11 @@ const LLVector3 LLViewerObject::getPivotPositionAgent() const
 
 LLVector3 LLViewerObject::getManipPivotPositionAgent() const
 {
+    if (const auto* ghost = dynamic_cast<const LLGhostAvatar*>(this))
+    {
+        LLVector3 center, size;
+        if (ghost->getVisualBounds(center, size)) return center;
+    }
     return getPivotPositionAgent();
 }
 
@@ -6205,6 +6210,12 @@ void LLViewerObject::fitFaceTexture(const U8 face)
 
 LLBBox LLViewerObject::getBoundingBoxAgent() const
 {
+    if (const auto* ghost = dynamic_cast<const LLGhostAvatar*>(this))
+    {
+        LLVector3 center, size;
+        if (ghost->getVisualBounds(center, size))
+            return LLBBox(center, LLQuaternion(), size * -.5f, size * .5f);
+    }
     LLVector3 position_agent;
     LLQuaternion rot;
     LLViewerObject* avatar_parent = NULL;

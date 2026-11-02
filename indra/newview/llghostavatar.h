@@ -104,6 +104,14 @@ public:
     // Never call the base slamPosition() on a ghost.
     void ghostSlamPosition(const LLVector3& pos_agent);
 
+    // Fitted agent-space bounds (outer scale included), ONLY for displaced
+    // poses. False preserves the exact historical standing box and pivot.
+    // refresh never changes the authored foot/root transform.
+    bool getVisualBounds(LLVector3& center, LLVector3& size) const;
+    // Per-frame forcing is selected || fitted; true is reserved for event-driven
+    // late transform writes. Other clones retain native extent throttling.
+    void refreshVisualBounds(bool force_refresh = false);
+
     // Copy shape + baked textures from a source avatar. Thin wrapper over
     // LLVOAvatar::copyAppearanceFrom, kept here so callers read intent.
     // MANDATORY, not cosmetic: without a first appearance message the avatar
@@ -296,6 +304,9 @@ private:
     bool mMarkedForDeath;
     LLUUID mClientHeightKey;   // [ClientHeight] see setClientHeightKey()
     bool mEntityCloneVisible;
+    bool mUseVisualBounds = false;
+    bool mDirectSelectionBoundsDirty = false;
+    bool mBoundsPoseSeated = false; // retained while the pose is held/frozen
     // Global coordinates survive agent-origin changes at region crossings.
     LLVector3d mDesiredGhostFootGlobal;
     bool mDesiredGhostFootValid = false;

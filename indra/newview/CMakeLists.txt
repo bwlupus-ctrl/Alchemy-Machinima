@@ -1333,6 +1333,7 @@ set(viewer_HEADER_FILES
     alghostplacementresolver.h
     alghostplacementadapter.h
     alghostmanipproxy.h
+    alghostbounds.h
     alcolorchart.h
     alcolorchartdata.h
     alghostnameplates.h
@@ -2960,6 +2961,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alreflectmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alprojectortrackmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alghostanimmirror "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alghostbounds "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alvramrecovery "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alavataranimationtime "" "${test_libs};llcharacter" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alghostanimnames "" "${test_libs};llcharacter" "${test_project}")

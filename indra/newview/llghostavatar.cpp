@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alghostbounds.h"
 #include "llghostavatar.h"
 #include "alghostanimmirrormath.h"
 #include "alreflectmath.h"
@@ -66,6 +67,9 @@
 #include "llfetchedgltfmaterial.h"
 #include "llcontrolavatar.h"
 #include "llspatialpartition.h"
+#include "llselectmgr.h"
+#include "lltoolcomp.h"
+#include "lltoolmgr.h"
 
 #include <boost/unordered_map.hpp>   // clone-prim -> source-prim LOD index
 #include "llface.h"
@@ -1052,6 +1056,97 @@ void LLGhostAvatar::initInstance()
     mInitFlags |= 1 << 3;
 }
 
+bool LLGhostAvatar::getVisualBounds(LLVector3& center, LLVector3& size) const
+{
+    ALGhostBounds::Point c, s;
+    const LLVector3* ext = getLastAnimExtents();
+    if (!mUseVisualBounds || !isBuilt() || !ALGhostBounds::centerAndSize(
+            {ext[0][0], ext[0][1], ext[0][2]},
+            {ext[1][0], ext[1][1], ext[1][2]}, c, s)) return false;
+    center.setVec(c[0], c[1], c[2]);
+    size.setVec(s[0], s[1], s[2]);
+    return true;
+}
+
+void LLGhostAvatar::refreshVisualBounds(bool force_refresh)
+{
+    if (!isBuilt() || !mRoot || mDrawable.isNull() || mDrawable->isDead()) return;
+    const bool previous_mode = mUseVisualBounds;
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED)
+    {
+        mBoundsPoseSeated = false;
+    }
+    else if (mEntityDriveMode != ALGhostStudio::DRIVE_FROZEN)
+    {
+        // Missing sources hold their last pose. Frozen clones likewise retain
+        // the seated classification even if the original subsequently stands.
+        if (auto* source = dynamic_cast<LLVOAvatar*>(
+                gObjectList.findObject(mAnimationSourceId)))
+            mBoundsPoseSeated = source->isSitting();
+    }
+    const bool seated = isSitting() || mBoundsPoseSeated;
+    const auto classify = [this, seated]()
+    {
+        ALGhostBounds::Point center, size;
+        const LLVector3* ext = getLastAnimExtents();
+        if (ALGhostBounds::centerAndSize(
+                {ext[0][0], ext[0][1], ext[0][2]},
+                {ext[1][0], ext[1][1], ext[1][2]}, center, size))
+        {
+            const LLVector3 root = getPositionAgent();
+            mUseVisualBounds = ALGhostBounds::displaced(mUseVisualBounds,
+                seated, center, {root[0], root[1], root[2]});
+        }
+    };
+    // Observe native throttled extents before gating: entering fitted mode must
+    // refresh in this pass, rather than waiting until the following frame.
+    classify();
+    const auto& studio = ALGhostStudio::instance();
+    const auto* group = studio.groupForMember(mClientHeightKey);
+    const bool selected =
+        LLSelectMgr::getInstance()->getSelection()->contains(this) ||
+        studio.getSelected() == mClientHeightKey ||
+        (group && !group->mEditMembers &&
+            studio.groupForMember(studio.getSelected()) == group);
+    // Studio selection also owns the manip proxy, including collapsed groups.
+    // Keep one final refresh when leaving fitted mode, and allow a seated pose
+    // to enter even if its native extents have not yet been initialized.
+    const bool fitted = previous_mode || mUseVisualBounds || seated;
+    if (selected || fitted || force_refresh)
+    {
+        // The early object-list move precedes final mirror/reflect/tilt stamps.
+        // Only selected/fitted clones pay this per-frame skeleton/octree cost.
+        mRoot->updateWorldMatrixChildren();
+        setNeedsExtentUpdate(true);
+        mDrawable->updateSpatialExtents();
+        mDrawable->movePartition();
+        mUseVisualBounds = previous_mode;
+        classify();
+    }
+    mDirectSelectionBoundsDirty |= previous_mode != mUseVisualBounds;
+    // Compare with the published SELECTION box: the base avatar update may
+    // already have refreshed its animation extents before this post-pose pass.
+    // Retain a pending mode change throughout a drag, including a return to
+    // standing, without modifying the stock saved drag box.
+    if ((mUseVisualBounds || mDirectSelectionBoundsDirty) &&
+        LLSelectMgr::getInstance()->getSelection()->getObjectCount() == 1 &&
+        LLSelectMgr::getInstance()->getSelection()->getFirstObject() == this)
+    {
+        const auto* comp = dynamic_cast<const LLToolComposite*>(
+            LLToolMgr::getInstance()->getCurrentTool());
+        if (!comp || !comp->isManipulating())
+        {
+            const LLBBox expected = getBoundingBoxAgent();
+            const LLBBox& published = LLSelectMgr::getInstance()->getBBoxOfSelection();
+            if (expected.getCenterAgent() != published.getCenterAgent() ||
+                expected.getExtentLocal() != published.getExtentLocal() ||
+                expected.getRotation() != published.getRotation())
+                LLSelectMgr::getInstance()->updateSelectionCenter();
+            mDirectSelectionBoundsDirty = false;
+        }
+    }
+}
+
 void LLGhostAvatar::ghostSlamPosition(const LLVector3& pos_agent)
 {
     // Set the REAL object position, not just the render root. LLActorMover's
@@ -1664,6 +1759,16 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
     if (mode == mEntityDriveMode && directed_anim == mEntityDirectedAnim)
     {
         return;
+    }
+    // Capture seated state before freezing, even before the first post-pose
+    // bounds refresh. A frozen pose keeps this value after its source stands.
+    if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR ||
+        mEntityDriveMode == ALGhostStudio::DRIVE_REFLECT)
+    {
+        if (auto* source = dynamic_cast<LLVOAvatar*>(
+                gObjectList.findObject(mAnimationSourceId)))
+            mBoundsPoseSeated = source->isSitting();
     }
     // An eligible pause/resume retains the pose flip until the next avatar
     // evaluation restores its input. Other owners receive an unflipped pose.
