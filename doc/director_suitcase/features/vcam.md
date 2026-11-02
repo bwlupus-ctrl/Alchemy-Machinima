@@ -27,7 +27,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alpanelghoststudio.cpp`
 - `indra/newview/alpanelpracticals.cpp`
 - `indra/newview/alpanelpracticals.h`
-- `indra/newview/alpovblink.cpp`
 - `indra/newview/alprobedirty.cpp`
 - `indra/newview/alprojectortracker.cpp`
 - `indra/newview/alrelighttakerecord.h`
@@ -105,10 +104,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
 - {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@496,1373"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@30,24", "indra/newview/llreflectionmapmanager.cpp@261,106", "indra/newview/llreflectionmapmanager.cpp@593,2064"]}
-- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@64,11", "indra/newview/llviewerdisplay.cpp@884,16", "indra/newview/llviewerdisplay.cpp@965,10", "indra/newview/llviewerdisplay.cpp@1170,16", "indra/newview/llviewerdisplay.cpp@2067,28"]}
+- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@65,11", "indra/newview/llviewerdisplay.cpp@885,16", "indra/newview/llviewerdisplay.cpp@966,10", "indra/newview/llviewerdisplay.cpp@1171,16", "indra/newview/llviewerdisplay.cpp@1883,31", "indra/newview/llviewerdisplay.cpp@2077,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@10937,40"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,41", "indra/newview/pipeline.cpp@121,11", "indra/newview/pipeline.cpp@295,32", "indra/newview/pipeline.cpp@568,71", "indra/newview/pipeline.cpp@919,32", "indra/newview/pipeline.cpp@1693,29137", "indra/newview/pipeline.cpp@30870,30", "indra/newview/pipeline.cpp@30921,16", "indra/newview/pipeline.cpp@30961,430", "indra/newview/pipeline.cpp@31405,38", "indra/newview/pipeline.cpp@31554,37", "indra/newview/pipeline.cpp@31592,17", "indra/newview/pipeline.cpp@31794,695", "indra/newview/pipeline.cpp@32501,15", "indra/newview/pipeline.cpp@32562,15", "indra/newview/pipeline.cpp@32624,222", "indra/newview/pipeline.cpp@32932,301", "indra/newview/pipeline.cpp@33302,1054", "indra/newview/pipeline.cpp@34852,47", "indra/newview/pipeline.cpp@35266,78", "indra/newview/pipeline.cpp@36021,363", "indra/newview/pipeline.cpp@36385,1056", "indra/newview/pipeline.cpp@38310,153"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,41", "indra/newview/pipeline.cpp@121,11", "indra/newview/pipeline.cpp@295,32", "indra/newview/pipeline.cpp@568,71", "indra/newview/pipeline.cpp@919,32", "indra/newview/pipeline.cpp@1693,29126", "indra/newview/pipeline.cpp@30859,30", "indra/newview/pipeline.cpp@30910,16", "indra/newview/pipeline.cpp@30950,430", "indra/newview/pipeline.cpp@31394,38", "indra/newview/pipeline.cpp@31543,37", "indra/newview/pipeline.cpp@31581,17", "indra/newview/pipeline.cpp@31783,695", "indra/newview/pipeline.cpp@32490,15", "indra/newview/pipeline.cpp@32551,15", "indra/newview/pipeline.cpp@32613,222", "indra/newview/pipeline.cpp@32921,301", "indra/newview/pipeline.cpp@33291,1054", "indra/newview/pipeline.cpp@34841,47", "indra/newview/pipeline.cpp@35255,78", "indra/newview/pipeline.cpp@36010,363", "indra/newview/pipeline.cpp@36374,1056", "indra/newview/pipeline.cpp@38299,153"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@171,39", "indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@708,90", "indra/newview/pipeline.h@801,68", "indra/newview/pipeline.h@878,67", "indra/newview/pipeline.h@949,42", "indra/newview/pipeline.h@1353,31", "indra/newview/pipeline.h@1491,409", "indra/newview/pipeline.h@2299,58", "indra/newview/pipeline.h@2582,32"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@22,249"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
@@ -341,7 +340,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 399, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 427, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1403, "text": "alpanelpracticals.h", "source": "indra/newview/alpanelpracticals.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 195, "text": "alpovblink.cpp", "source": "indra/newview/alpovblink.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 430, "text": "alprobedirty.cpp # [ProbeOnDemand]", "source": "indra/newview/alprobedirty.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 397, "text": "alprojectortracker.cpp", "source": "indra/newview/alprojectortracker.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1346, "text": "alrelighttakerecord.h", "source": "indra/newview/alrelighttakerecord.h"}

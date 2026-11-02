@@ -131,6 +131,24 @@ int main() {
     integration_contract()
 
 
+def compile_controls(compiler, source, name, mutations):
+    path=OUT/(name+'.cpp');exe=OUT/(name+'.exe')
+    for mutation, pair in [*mutations.items(), (None, None)]:
+        text=source
+        if pair:
+            old,new=pair;assert old in text
+            text=text.replace(old,new)
+        path.write_text(text,encoding='utf8')
+        subprocess.run([compiler,'/nologo','/std:c++17','/EHsc','/W4','/WX',
+            '/I'+str(ROOT/'indra/newview'),str(path),'/Fe:'+str(exe),
+            '/Fo:'+str(OUT/(name+'.obj'))],check=True)
+        result=subprocess.run([str(exe)])
+        if mutation:
+            assert result.returncode!=0,'Mutation survived: '+mutation
+            print('PASS negative control:',mutation,'fails production-body assertions',flush=True)
+        else:result.check_returncode()
+
+
 def production_allocation(compiler):
     cpp=(ROOT/'indra/newview/alpovblink.cpp').read_text(encoding='utf8')
     a=cpp.index('    bool acquire(int width, int height)');b=cpp.index('    void copy(int y, int height)',a)
@@ -157,7 +175,7 @@ struct LLRenderTarget {
   w=width;h=height;fmt=format;return true;
  }
 };
-LLRenderTarget sample_target;
+LLRenderTarget sample_target, debug_scratch;
 unsigned failed_width=0,failed_height=0;
 struct Overlay {LLRenderTarget* scratch;U32 source=0;
 '''+method+r'''
@@ -172,21 +190,31 @@ int main() {
  for(int i=0;i<100;++i) assert(!o.acquire(3840,2160));
  assert(allocations==1);assert(!o.acquire(1920,1080) && allocations==2);
  fail=false;sample_target.release();allocations=0;failed_width=failed_height=0;
- scratch.w=3840;scratch.h=2160;
- assert(o.acquire(3840,2160) && allocations==0 && o.source==scratch.getTexture());
+ scratch.w=3840;scratch.h=2160;debug_scratch=scratch;
+ assert(o.acquire(3840,2160));
+ // Two-frame debug/capture oracle: the live blink writes its selected source;
+ // subsequent sensor FXAA bypasses scratch refresh, then debug/capture reads it.
+ U32 debug_content=1234, before=debug_content;
+ if(o.source==debug_scratch.getTexture()) debug_content=9999;
+ for(bool capture : {false,true}) {
+  (void)capture;assert(debug_content==before);
+ }
+ assert(o.acquire(3840,2160) && allocations==1 && o.source==sample_target.getTexture());
  scratch.stencil=true;assert(o.acquire(3840,2160) && allocations==1 && o.source==sample_target.getTexture());
  assert(!sample_target.depth);scratch.stencil=false;
  destination_bits=10;scratch.fmt=GL_RGBA16;
- assert(o.acquire(3840,2160) && o.source==scratch.getTexture() && !sample_target.isComplete());
+ assert(o.acquire(3840,2160) && o.source==sample_target.getTexture() && sample_target.isComplete());
+ // Precision at first allocation, as in production screen-buffer teardown.
+ sample_target.release();
  scratch.w=0;
  assert(o.acquire(3840,2160) && sample_target.fmt==GL_RGB10_A2);
- std::cout<<"PASS production allocation policy: safe scratch reuse 0 allocations; colour-only fallback caches; failure retries 0 over 100 frames until resize; 10-bit precision\n";
+ std::cout<<"PASS production allocation policy: AA scratch untouched across live/sensor-debug/capture frames; colour-only fallback caches; failure retries 0 over 100 frames until resize; 10-bit precision\n";
 }
 '''
-    path=OUT/'pov_allocation.cpp';path.write_text(source,encoding='utf8');exe=OUT/'pov_allocation.exe'
-    subprocess.run([compiler,'/nologo','/std:c++17','/EHsc','/W4','/WX',str(path),
-                    '/Fe:'+str(exe),'/Fo:'+str(OUT/'pov_allocation.obj')],check=True)
-    subprocess.run([str(exe)],check=True)
+    compile_controls(compiler, source, 'pov_allocation', {
+        'borrow_scratch': ('        if (failed_width',
+            '        if (debug_scratch.isComplete()) { source=debug_scratch.getTexture(); return true; }\n        if (failed_width')})
+
 
 
 def production_input(compiler):
@@ -213,6 +241,7 @@ template<class T> struct LLCachedControl {
 };
 '''+enums+r'''
 struct LLViewerJoystick {
+ bool mAvatarEnabled=true,mFlycamEnabled=true,mBuildEnabled=false;
  int mMappedButtons[MAX_BUTTONS];
  LLViewerJoystick() {for(int& b:mMappedButtons)b=-1;}
  std::string povBlinkPadConflict(U32) const;
@@ -235,10 +264,32 @@ int main() {
   assert(j.povBlinkPadConflict(masks[k]).empty());
   dragon_enabled=true;j.mMappedButtons[TOGGLE_RUN]=indices[k];
   assert(j.povBlinkPadConflict(masks[k]).find("Run toggle - pick another button")!=std::string::npos);
+  j.mAvatarEnabled=false;assert(j.povBlinkPadConflict(masks[k]).empty());
+  j.mAvatarEnabled=true;assert(!j.povBlinkPadConflict(masks[k]).empty());
   dragon_enabled=false;assert(j.povBlinkPadConflict(masks[k]).empty());
   j.mMappedButtons[TOGGLE_RUN]=-1;j.mMappedButtons[FLYCAM]=indices[k];
   assert(j.povBlinkPadConflict(masks[k]).find("Flycam toggle")!=std::string::npos);
+  j.mFlycamEnabled=false;assert(j.povBlinkPadConflict(masks[k]).empty());
+  j.mFlycamEnabled=true;assert(!j.povBlinkPadConflict(masks[k]).empty());
   j.mMappedButtons[FLYCAM]=-1;
+  j.mMappedButtons[ZOOM_IN]=indices[k];
+  j.mFlycamEnabled=false;assert(j.povBlinkPadConflict(masks[k]).empty());
+  j.mFlycamEnabled=true;assert(!j.povBlinkPadConflict(masks[k]).empty());
+  j.mMappedButtons[ZOOM_IN]=-1;
+  // Every action, every module combination, and re-enable on the same object.
+  for(int i=0;i<MAX_BUTTONS;++i) for(bool avatar : {false,true})
+   for(bool flycam : {false,true}) for(bool build : {false,true})
+    for(bool dragon : {false,true}) {
+     j.mAvatarEnabled=avatar;j.mFlycamEnabled=flycam;j.mBuildEnabled=build;
+     dragon_enabled=dragon;j.mMappedButtons[i]=indices[k];
+     bool expected=(flycam && (i<=CROUCH || i==FLYCAM)) ||
+      (avatar && dragon && (i==JUMP || i==CROUCH || i==FLY || i==MOUSELOOK || i==TOGGLE_RUN)) ||
+      (build && dragon && (i==ROLL_LEFT || i==ROLL_RIGHT || i==JUMP || i==CROUCH));
+     assert(j.povBlinkPadConflict(masks[k]).empty()==!expected);
+     assert(j.mMappedButtons[i]==indices[k]); // predicate never rewrites mapping
+     j.mMappedButtons[i]=-1;
+    }
+  j.mAvatarEnabled=j.mFlycamEnabled=true;j.mBuildEnabled=false;dragon_enabled=false;
  }
  // Personalized Xbox defaults: Run=Back, Flycam/Zoom reset=Start; L3 free.
  j.mMappedButtons[TOGGLE_RUN]=6;j.mMappedButtons[FLYCAM]=7;j.mMappedButtons[ZOOM_DEFAULT]=7;
@@ -254,10 +305,12 @@ int main() {
  std::cout<<"PASS production input: all four pad choices, Run/BlackDragon and flycam conflicts, fork Xbox L3 free, F9 and pad UI-hold escape/rearm\n";
 }
 '''
-    path=OUT/'pov_input.cpp';path.write_text(source,encoding='utf8');exe=OUT/'pov_input.exe'
-    subprocess.run([compiler,'/nologo','/std:c++17','/EHsc','/W4','/WX','/I'+str(ROOT/'indra/newview'),str(path),
-                    '/Fe:'+str(exe),'/Fo:'+str(OUT/'pov_input.obj')],check=True)
-    subprocess.run([str(exe)],check=True)
+    compile_controls(compiler, source, 'pov_input', {
+        'disabled_modules': ('const bool active = (mFlycamEnabled && (i <= CROUCH || i == FLYCAM)) ||',
+                            'const bool active = dragon() || i <= CROUCH || i == FLYCAM ||')})
+    for setting in ('JoystickAvatarEnabled','JoystickFlycamEnabled'):
+        assert 'getControl("'+setting+'")' in joystick
+        assert 'm'+('Avatar' if 'Avatar' in setting else 'Flycam')+'Enabled = gSavedSettings.getBOOL("'+setting+'")' in joystick
     dispatch=joystick[joystick.index('static LLCachedControl<U32> blink_button'):joystick.index('    mXIPrevRaw = raw;')]
     assert dispatch.count('povBlinkPadConflict(')==2 and '? (U16)blink_button() : 0' in dispatch
 
@@ -438,18 +491,25 @@ def integration_contract():
     assert 'LLRenderTarget sample_target' not in cpp
     pipe=(ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf8')
     assert 'beginPresentation' not in pipe and 'endPresentation' not in pipe
-    # Pin reuse proof: every FXAA read lies before the last present shader draw.
+    # Retain the same-frame ordering audit, but never infer next-frame safety
+    # from it: sensor FXAA bypasses scratch prep and debug reads it anyway.
+    assert 'LLRenderTarget& aa_map = mSensorPhysicalOrder ? *src : mFXAAMap;' in pipe
+    aa=pipe[pipe.index('LLRenderTarget& aa_map ='):pipe.index('LLRenderTarget& aa_map =')+400]
+    assert 'if (!mSensorPhysicalOrder)' in aa
+    debug=pipe[pipe.index('void LLPipeline::renderFinalizePresent'):]
+    assert 'mFXAAMap' in debug
     after=pipe[pipe.index('    // [RelightQ] Show the current selected channel'):pipe.index('void LLPipeline::',pipe.index('    // [RelightQ] Show the current selected channel'))]
     assert 'mFXAAMap' not in after
     readers=[]
     for p in (ROOT/'indra').rglob('*.cpp'):
         if 'mFXAAMap' in p.read_text(encoding='utf8',errors='replace'):
             readers.append(p.name)
-    assert sorted(readers)==['llviewerdisplay.cpp','pipeline.cpp'],readers
+    assert sorted(readers)==['pipeline.cpp'],readers
+    assert 'mFXAAMap' not in call and 'scratch->' not in cpp
     conflict=(ROOT/'indra/newview/llkeyconflict.cpp').read_text(encoding='utf8')
     save=conflict[conflict.index('void LLKeyConflictHandler::saveToSettings('):]
     assert save.index('LLViewerInput::loadKeysXML(filename, keys)')<save.index('switch (mLoadMode)')<save.index('setS32("KeyBindingsMigrationVersion", 3)')
-    print('PASS real render_ui order: finalize/gather/HUD/ghosts/blink/UI; no redirection; depth/alpha preserved; scratch has no later reader')
+    print('PASS real render_ui order: finalize/gather/HUD/ghosts/blink/UI; no redirection; depth/alpha preserved; AA scratch never borrowed; later debug/capture cannot observe blink copies')
 
 
 class Runner:
@@ -461,6 +521,8 @@ class Runner:
                 source=source.replace('float arch = blink_shape.y * x*x / (1.0 + x*x);','float arch = 0.0;')
             if file=='povBlinkF.glsl' and mutation=='outside':
                 source=source.replace('if (mask <= 0.0) discard;','mask = max(mask, .01);')
+            if file=='povBlinkF.glsl' and mutation=='double_mask':
+                source=source.replace('lid = clamp(lid + (image-scene)*(1.0-blink_shape.w)*(1.0-c), 0.0, 1.0);','lid = mix(image, lid, mask);')
             sh=g.create_shader(stage); raw=('#version 420\n'+source).encode(); text=C.c_char_p(raw)
             g.source(sh,1,C.byref(text),None);g.compile(sh);ok=g.I();g.getshader(sh,0x8B81,C.byref(ok))
             if not ok.value:
@@ -527,7 +589,7 @@ class Runner:
         g.ui(g.loc(self.pr,b'blink_sampling'),int(sampling))
         def op(code,a,b):
             if code==0:
-                # Existing scratch, no new texture allocation per frame.
+                # Preallocated fixture texture; production fallback policy is tested above.
                 g.bind_tex(0x0DE1,self.source)
                 poison=np.full((self.h,self.w,4),-100.,np.float32)
                 self.upload(0x0DE1,0,0,0,self.w,self.h,0x1908,0x1406,poison.ctypes.data)
@@ -581,6 +643,13 @@ def spatial(r):
                 mask=expected_mask(r,.5,curve,soft)
                 expected=r.pixels[:,:,:3]*(1-mask[:,:,None])+np.array([.004,.003,.005])*mask[:,:,None]
                 assert np.max(np.abs(partial[:,:,:3]-expected))<1e-4,('Curved, oriented, aspect-correct mask mismatch',w,h,curve,soft,float(np.max(np.abs(partial[:,:,:3]-expected))))
+                # Force sampling independently of the no-sample oracle: a uniform
+                # white scene has zero blur delta, so the entire coverage oracle
+                # remains exact even at maximum Blur.
+                sampled=r.draw(.5,0,curve,soft,dark=0.,blur=1.)
+                assert np.max(np.abs(sampled[:,:,:3]-expected))<1e-4,'Sampled full mask oracle'
+                sampled_closed=r.draw(1.,0,curve,soft,dark=0.,blur=1.)
+                assert np.max(np.abs(sampled_closed[:,:,:3]-[.004,.003,.005]))<1e-6
                 # Both edge rows, asymmetric seam, and off-axis curvature matter.
                 assert partial[int(h*.46),w//2,:3].min()>.9
         for bits in (8,10):
@@ -600,6 +669,14 @@ def spatial(r):
                     pad=int(np.ceil(1+10*c))
                     dilation=np.convolve(covered.astype(int),np.ones(2*pad+3,int),'same')>0
                     assert np.all(~copied|dilation),'Copy outside padded lid bands'
+        closed=r.draw(1.,0,dark=.35,blur=1.)
+        assert np.max(np.abs(closed[:,:,:3]-[.004,.003,.005]))<1e-6,'Sampled Dark full closure must stay opaque'
+        for curve in (0.,.35,1.):
+            for soft in (.02,.4,1.):
+                baseline=r.draw(.5,0,curve,soft,dark=0.,blur=0.)
+                for dark,blur in ((1e-6,0.),(0.,1e-6),(1e-6,1e-6)):
+                    sampled=r.draw(.5,0,curve,soft,dark=dark,blur=blur)
+                    assert np.max(np.abs(sampled-baseline))<2e-6,'Darken/Blur zero continuity'
         r.draw(.5,0,dark=0.,blur=0.);assert r.counts==dict(allocations=0,binds=1,draws=1,copies=0)
     print('PASS GL wrapper: curve/orientation/aspect mask oracle; spatial depth and alpha unchanged; 8/10-bit present+ghost gap bit-exact at closure 0+; band-only copies')
 
@@ -671,7 +748,7 @@ def render():
     integration_contract()
     production_present_chain()
     r=Runner();spatial(r)
-    for mutation in ('flat','outside'):
+    for mutation in ('flat','outside','double_mask'):
         try:spatial(Runner(mutation))
         except AssertionError:print('PASS negative control:',mutation,'fails GL assertions')
         else:raise AssertionError('Mutation survived: '+mutation)

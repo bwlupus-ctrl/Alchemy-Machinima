@@ -28,7 +28,8 @@ void main()
     vec3 lid = vec3(.004, .003, .005);
     if (blink_sampling != 0)
     {
-        vec3 image = sample_screen(uv);
+        vec3 scene = sample_screen(uv);
+        vec3 image = scene;
         float near_edge = exp(-abs(distance_to_lid) / max(.015, feather*4.0));
         float blur = blink_look.y * c * (.25 + .75*near_edge);
         if (blur > 0.0)
@@ -47,8 +48,9 @@ void main()
         // Small TPDF dither on transmitted light, before coverage blending.
         warm_lid += vec3((n1-n2)/(uDitherBits >= 10 ? 1023.0 : 255.0));
         lid = mix(lid, warm_lid, blink_shape.w);
-        image *= 1.0 - (1.0-blink_shape.w)*.28*c*near_edge;
-        lid = mix(image, lid, mask);
+        // Covered-fragment colour only; the blend alpha applies coverage once.
+        // Dark sampling adds the blur/darken delta, which vanishes at zero.
+        lid = clamp(lid + (image-scene)*(1.0-blink_shape.w)*(1.0-c), 0.0, 1.0);
     }
     frag_color = vec4(lid, mask);
 }

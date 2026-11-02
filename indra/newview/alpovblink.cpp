@@ -3,7 +3,6 @@
 #include "alpovblinkmath.h"
 #include "llviewercontrol.h"
 #include "llviewershadermgr.h"
-#include "llrendertarget.h"
 #include "llvertexbuffer.h"
 #include "lltimer.h"
 #include "lluuid.h"
@@ -59,7 +58,6 @@ ALPOVBlinkMath::Params params()
 void updateHold() { state.hold(LLTimer::getTotalSeconds(), ui_held || pad_held, params()); }
 struct Overlay
 {
-    LLRenderTarget* scratch;
     LLVertexBuffer* triangle;
     float amount, curve, soft, dark, blur;
     bool warm, sampling;
@@ -73,20 +71,8 @@ struct Overlay
         glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER,
             draw_fbo ? (GLenum)draw_buffer : GL_BACK_LEFT,
             GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, &bits);
-        // FXAA scratch is dead after renderFinalizePresent, including AA debug.
-        // No subsequent render_ui / swap reader exists. Next frame AA clears /
-        // overwrites before reading. Never reuse SMAA's depth/stencil target.
-        const U32 fmt = scratch->getInternalFormat();
-        if (scratch->isComplete() && !scratch->getDepth() && !scratch->hasStencil() &&
-            scratch->getWidth() == (U32)width && scratch->getHeight() == (U32)height &&
-            ((bits <= 8 && (fmt == GL_RGBA8 || fmt == GL_RGBA)) ||
-             (bits <= 10 && (fmt == GL_RGB10_A2 || fmt == GL_RGBA16F)) ||
-             (bits <= 16 && fmt == GL_RGBA16)))
-        {
-            source = scratch->getTexture();
-            sample_target.release(); // Switching AA must not retain a redundant fallback.
-            return true;
-        }
+        // Never borrow AA scratch: a later sensor/debug frame or capture can read
+        // it without refreshing, even after settings change and blinking stops.
         if (failed_width == (U32)width && failed_height == (U32)height) return false;
         if (sample_target.getWidth() != (U32)width || sample_target.getHeight() != (U32)height)
         {
@@ -168,7 +154,7 @@ void ALPOVBlink::setPadHeld(bool held)
     if (pad_held != effective) { pad_held = effective; updateHold(); }
     else if (pad_escape) updateHold();
 }
-void ALPOVBlink::renderLastSceneImage(bool live, LLRenderTarget* scratch, LLVertexBuffer* triangle)
+void ALPOVBlink::renderLastSceneImage(bool live, LLVertexBuffer* triangle)
 {
     if (!live) return;
     static const bool seeded = []
@@ -191,7 +177,7 @@ void ALPOVBlink::renderLastSceneImage(bool live, LLRenderTarget* scratch, LLVert
     const F32 amount = (F32)state.update(now, params(), automatic(), rate());
     if (amount > 0.f) last_active = now;
     else if (!automatic() && now-last_active >= 10.) sample_target.release();
-    Overlay overlay{scratch, triangle, amount,
+    Overlay overlay{triangle, amount,
         (F32)ALPOVBlinkMath::unit(curve()), (F32)ALPOVBlinkMath::unit(soft()),
         (F32)ALPOVBlinkMath::unit(dark()), (F32)ALPOVBlinkMath::unit(blur()),
         style() == 1, style() == 1 || dark() > 0.f || blur() > 0.f};

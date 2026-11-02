@@ -597,8 +597,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@103,8",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30961,430"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30950,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -6352,6 +6352,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -8602,8 +8603,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -9636,12 +9635,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 401,
         "source": "indra/newview/altoolcrowdplace.cpp",
         "text": "altoolcrowdplace.cpp"
@@ -10150,13 +10143,13 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@29,20",
-          "indra/newview/llviewerdisplay.cpp@906,14",
-          "indra/newview/llviewerdisplay.cpp@994,17",
-          "indra/newview/llviewerdisplay.cpp@1119,36",
-          "indra/newview/llviewerdisplay.cpp@1170,16",
-          "indra/newview/llviewerdisplay.cpp@1882,22",
-          "indra/newview/llviewerdisplay.cpp@2067,28"
+          "indra/newview/llviewerdisplay.cpp@25,25",
+          "indra/newview/llviewerdisplay.cpp@907,14",
+          "indra/newview/llviewerdisplay.cpp@995,17",
+          "indra/newview/llviewerdisplay.cpp@1120,36",
+          "indra/newview/llviewerdisplay.cpp@1171,16",
+          "indra/newview/llviewerdisplay.cpp@1883,31",
+          "indra/newview/llviewerdisplay.cpp@2077,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -10207,8 +10200,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@157,12",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@31794,695"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@31783,695"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -10322,7 +10315,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,23",
-          "indra/newview/llviewerjoystick.cpp@1846,1997"
+          "indra/newview/llviewerjoystick.cpp@1875,1998"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -10415,7 +10408,6 @@
       "indra/newview/alposecontinuity.h",
       "indra/newview/alposepolish.h",
       "indra/newview/alposesecondary.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/altoolcrowdplace.cpp",
       "indra/newview/altoolfocuspick.cpp",
       "indra/newview/altoolghostplace.h",
@@ -12962,31 +12954,6 @@
         "qualified_call_candidates": [
           "ALAvatarAnimationTime::frozen",
           "ALAvatarAnimationTime::polishReseed"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": []
       },
@@ -15962,6 +15929,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -17335,6 +17303,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -17391,6 +17360,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -17813,6 +17783,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -19771,8 +19742,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -21708,7 +21677,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@103,8",
-          "indra/newview/pipeline.cpp@1693,29137"
+          "indra/newview/pipeline.cpp@1693,29126"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -21826,20 +21795,21 @@
           "indra/newview/llviewerjoystick.cpp@1418,7",
           "indra/newview/llviewerjoystick.cpp@1428,14",
           "indra/newview/llviewerjoystick.cpp@1450,33",
-          "indra/newview/llviewerjoystick.cpp@1513,8",
-          "indra/newview/llviewerjoystick.cpp@1583,14",
-          "indra/newview/llviewerjoystick.cpp@1622,8",
-          "indra/newview/llviewerjoystick.cpp@1647,7",
-          "indra/newview/llviewerjoystick.cpp@1658,133",
-          "indra/newview/llviewerjoystick.cpp@1797,6",
-          "indra/newview/llviewerjoystick.cpp@1825,18",
-          "indra/newview/llviewerjoystick.cpp@1846,1997",
-          "indra/newview/llviewerjoystick.cpp@3851,41",
-          "indra/newview/llviewerjoystick.cpp@4020,7",
-          "indra/newview/llviewerjoystick.cpp@4035,7",
-          "indra/newview/llviewerjoystick.cpp@4045,7",
-          "indra/newview/llviewerjoystick.cpp@4055,23",
-          "indra/newview/llviewerjoystick.cpp@4117,218"
+          "indra/newview/llviewerjoystick.cpp@1498,35",
+          "indra/newview/llviewerjoystick.cpp@1542,8",
+          "indra/newview/llviewerjoystick.cpp@1612,14",
+          "indra/newview/llviewerjoystick.cpp@1651,8",
+          "indra/newview/llviewerjoystick.cpp@1676,7",
+          "indra/newview/llviewerjoystick.cpp@1687,133",
+          "indra/newview/llviewerjoystick.cpp@1826,6",
+          "indra/newview/llviewerjoystick.cpp@1854,18",
+          "indra/newview/llviewerjoystick.cpp@1875,1998",
+          "indra/newview/llviewerjoystick.cpp@3881,41",
+          "indra/newview/llviewerjoystick.cpp@4050,7",
+          "indra/newview/llviewerjoystick.cpp@4065,7",
+          "indra/newview/llviewerjoystick.cpp@4075,7",
+          "indra/newview/llviewerjoystick.cpp@4085,23",
+          "indra/newview/llviewerjoystick.cpp@4147,218"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -21847,9 +21817,10 @@
         "hunks": [
           "indra/newview/llviewerjoystick.h@28,11",
           "indra/newview/llviewerjoystick.h@51,78",
-          "indra/newview/llviewerjoystick.h@141,19",
-          "indra/newview/llviewerjoystick.h@170,81",
-          "indra/newview/llviewerjoystick.h@260,46"
+          "indra/newview/llviewerjoystick.h@132,7",
+          "indra/newview/llviewerjoystick.h@142,19",
+          "indra/newview/llviewerjoystick.h@171,81",
+          "indra/newview/llviewerjoystick.h@261,46"
         ],
         "path": "indra/newview/llviewerjoystick.h"
       },
@@ -26568,6 +26539,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -29654,6 +29626,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -31399,8 +31372,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -33157,9 +33128,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@99,11",
-          "indra/newview/llviewerdisplay.cpp@1188,82",
-          "indra/newview/llviewerdisplay.cpp@1855,10"
+          "indra/newview/llviewerdisplay.cpp@100,11",
+          "indra/newview/llviewerdisplay.cpp@1189,82",
+          "indra/newview/llviewerdisplay.cpp@1856,10"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -33205,9 +33176,9 @@
           "indra/newview/pipeline.cpp@1363,61",
           "indra/newview/pipeline.cpp@1428,15",
           "indra/newview/pipeline.cpp@1556,106",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30961,430",
-          "indra/newview/pipeline.cpp@31794,695"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30950,430",
+          "indra/newview/pipeline.cpp@31783,695"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -33269,7 +33240,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1846,1997"
+          "indra/newview/llviewerjoystick.cpp@1875,1998"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -35291,6 +35262,8 @@
       "indra/newview/alpovblink.cpp": {
         "includes": [
           "indra/llcommon/lltimer.h",
+          "indra/llcommon/lluuid.h",
+          "indra/llrender/llimagegl.h",
           "indra/llrender/llrendertarget.h",
           "indra/llrender/llvertexbuffer.h",
           "indra/newview/alpovblink.h",
@@ -35300,15 +35273,18 @@
           "indra/newview/llviewershadermgr.h"
         ],
         "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
           "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
+          "ALPOVBlink::renderLastSceneImage",
           "ALPOVBlink::setPadHeld",
           "ALPOVBlink::setUIHeld",
           "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::present",
           "ALPOVBlinkMath::unit",
+          "LLImageGL::deleteTextures",
+          "LLImageGL::generateTextures",
+          "LLImageGL::setManualImage",
+          "LLImageGLMemory::free_cur_tex_image",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": []
@@ -40051,6 +40027,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -40107,6 +40084,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -40592,6 +40570,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -42133,8 +42112,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -43898,12 +43875,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 397,
         "source": "indra/newview/alprojectortracker.cpp",
         "text": "alprojectortracker.cpp"
@@ -44823,14 +44794,14 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@29,20",
-          "indra/newview/llviewerdisplay.cpp@906,14",
-          "indra/newview/llviewerdisplay.cpp@994,17",
-          "indra/newview/llviewerdisplay.cpp@1119,36",
-          "indra/newview/llviewerdisplay.cpp@1170,16",
-          "indra/newview/llviewerdisplay.cpp@1188,82",
-          "indra/newview/llviewerdisplay.cpp@1882,22",
-          "indra/newview/llviewerdisplay.cpp@2067,28"
+          "indra/newview/llviewerdisplay.cpp@25,25",
+          "indra/newview/llviewerdisplay.cpp@907,14",
+          "indra/newview/llviewerdisplay.cpp@995,17",
+          "indra/newview/llviewerdisplay.cpp@1120,36",
+          "indra/newview/llviewerdisplay.cpp@1171,16",
+          "indra/newview/llviewerdisplay.cpp@1189,82",
+          "indra/newview/llviewerdisplay.cpp@1883,31",
+          "indra/newview/llviewerdisplay.cpp@2077,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -44934,11 +44905,11 @@
           "indra/newview/pipeline.cpp@121,11",
           "indra/newview/pipeline.cpp@137,14",
           "indra/newview/pipeline.cpp@157,12",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@32624,222",
-          "indra/newview/pipeline.cpp@33302,1054",
-          "indra/newview/pipeline.cpp@38310,153"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@32613,222",
+          "indra/newview/pipeline.cpp@33291,1054",
+          "indra/newview/pipeline.cpp@38299,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -45058,7 +45029,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,23",
-          "indra/newview/llviewerjoystick.cpp@1846,1997"
+          "indra/newview/llviewerjoystick.cpp@1875,1998"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -45472,7 +45443,6 @@
       "indra/newview/alpanelweathersettings.cpp",
       "indra/newview/alposepolish.h",
       "indra/newview/alposesecondary.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alprojectortracker.cpp",
       "indra/newview/alreflectanim.cpp",
       "indra/newview/alreflectmath.h",
@@ -51195,31 +51165,6 @@
         ],
         "unresolved_includes": []
       },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
-        "unresolved_includes": []
-      },
       "indra/newview/alprojectortracker.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
@@ -55660,6 +55605,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -59225,6 +59171,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -59281,6 +59228,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -60016,6 +59964,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -62780,8 +62729,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -70511,6 +70458,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -72484,7 +72432,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@85,17",
-          "indra/newview/pipeline.cpp@1693,29137"
+          "indra/newview/pipeline.cpp@1693,29126"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -78922,8 +78870,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -80175,7 +80121,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@2067,28"
+          "indra/newview/llviewerdisplay.cpp@2077,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -82721,6 +82667,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -83352,6 +83299,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -83408,6 +83356,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -85885,7 +85834,8 @@
           "indra/newview/app_settings/settings.xml@6548,15868",
           "indra/newview/app_settings/settings.xml@28412,648",
           "indra/newview/app_settings/settings.xml@29206,2466",
-          "indra/newview/app_settings/settings.xml@31673,209"
+          "indra/newview/app_settings/settings.xml@31673,209",
+          "indra/newview/app_settings/settings.xml@31883,189"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -86039,8 +85989,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@906,14",
-          "indra/newview/llviewerdisplay.cpp@1882,22"
+          "indra/newview/llviewerdisplay.cpp@907,14",
+          "indra/newview/llviewerdisplay.cpp@1883,31"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -86127,8 +86077,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@103,8",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30961,430"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30950,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -86754,6 +86704,8 @@
       "KitSearchGlobal",
       "KitShowUIMs",
       "MachinimaDebugLogging",
+      "POVBlinkPadHold",
+      "POVBlinkPadTap",
       "PathCameraEnabled",
       "PathGhostEffectFps",
       "PathGhostUseImpostor",
@@ -95220,6 +95172,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -98252,6 +98205,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -98308,6 +98262,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -101082,8 +101037,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -103215,7 +103168,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1693,29137"
+          "indra/newview/pipeline.cpp@1693,29126"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -106368,8 +106321,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -107316,12 +107267,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 1144,
         "source": "indra/newview/alpovblinkmath.h",
         "text": "alpovblinkmath.h"
@@ -107673,7 +107618,6 @@
       "indra/newview/alpanellensgaze.h",
       "indra/newview/alposepolish.h",
       "indra/newview/alposesecondary.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alpovblinkmath.h",
       "indra/newview/alsteppedanim.cpp",
       "indra/newview/alsteppedanim.h",
@@ -109425,31 +109369,6 @@
         "qualified_call_candidates": [
           "ALAvatarAnimationTime::frozen",
           "ALAvatarAnimationTime::polishReseed"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": []
       },
@@ -111533,6 +111452,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -113805,12 +113725,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 1419,
         "source": "indra/newview/alprobeschedule.h",
         "text": "alprobeschedule.h # [ProbeOnDemand]"
@@ -114504,7 +114418,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@1882,22"
+          "indra/newview/llviewerdisplay.cpp@1883,31"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -114557,11 +114471,11 @@
           "indra/newview/pipeline.cpp@28,41",
           "indra/newview/pipeline.cpp@180,7",
           "indra/newview/pipeline.cpp@1363,61",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@31470,53",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@36385,1056",
-          "indra/newview/pipeline.cpp@38310,153"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@31459,53",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@36374,1056",
+          "indra/newview/pipeline.cpp@38299,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -114692,7 +114606,7 @@
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,23",
           "indra/newview/llviewerjoystick.cpp@901,169",
-          "indra/newview/llviewerjoystick.cpp@4117,218"
+          "indra/newview/llviewerjoystick.cpp@4147,218"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -115466,7 +115380,6 @@
       "indra/newview/alpanelrigrim.cpp",
       "indra/newview/alpanelsteppedanim.cpp",
       "indra/newview/alpanelweathersettings.cpp",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alpresetlook.h",
       "indra/newview/alprobeschedule.h",
       "indra/newview/alprojectorshaftpresets.cpp",
@@ -118481,31 +118394,6 @@
           "LLViewerShaderMgr::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": []
       },
@@ -122256,6 +122144,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -125162,6 +125051,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -125218,6 +125108,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -125733,6 +125624,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -127181,8 +127073,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -128695,12 +128585,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 430,
         "source": "indra/newview/alprobedirty.cpp",
         "text": "alprobedirty.cpp # [ProbeOnDemand]"
@@ -129409,10 +129293,10 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@29,20",
-          "indra/newview/llviewerdisplay.cpp@884,16",
-          "indra/newview/llviewerdisplay.cpp@1485,25",
-          "indra/newview/llviewerdisplay.cpp@2067,28"
+          "indra/newview/llviewerdisplay.cpp@25,25",
+          "indra/newview/llviewerdisplay.cpp@885,16",
+          "indra/newview/llviewerdisplay.cpp@1486,25",
+          "indra/newview/llviewerdisplay.cpp@2077,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -129476,22 +129360,22 @@
           "indra/newview/pipeline.cpp@1224,11",
           "indra/newview/pipeline.cpp@1342,19",
           "indra/newview/pipeline.cpp@1363,61",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30961,430",
-          "indra/newview/pipeline.cpp@31405,38",
-          "indra/newview/pipeline.cpp@31470,53",
-          "indra/newview/pipeline.cpp@31554,37",
-          "indra/newview/pipeline.cpp@31592,17",
-          "indra/newview/pipeline.cpp@31610,20",
-          "indra/newview/pipeline.cpp@31655,18",
-          "indra/newview/pipeline.cpp@31690,27",
-          "indra/newview/pipeline.cpp@31719,30",
-          "indra/newview/pipeline.cpp@31771,18",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@32932,301",
-          "indra/newview/pipeline.cpp@33235,11",
-          "indra/newview/pipeline.cpp@36021,363",
-          "indra/newview/pipeline.cpp@36385,1056"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30950,430",
+          "indra/newview/pipeline.cpp@31394,38",
+          "indra/newview/pipeline.cpp@31459,53",
+          "indra/newview/pipeline.cpp@31543,37",
+          "indra/newview/pipeline.cpp@31581,17",
+          "indra/newview/pipeline.cpp@31599,20",
+          "indra/newview/pipeline.cpp@31644,18",
+          "indra/newview/pipeline.cpp@31679,27",
+          "indra/newview/pipeline.cpp@31708,30",
+          "indra/newview/pipeline.cpp@31760,18",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@32921,301",
+          "indra/newview/pipeline.cpp@33224,11",
+          "indra/newview/pipeline.cpp@36010,363",
+          "indra/newview/pipeline.cpp@36374,1056"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -129584,7 +129468,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,23",
-          "indra/newview/llviewerjoystick.cpp@1846,1997"
+          "indra/newview/llviewerjoystick.cpp@1875,1998"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -129890,7 +129774,6 @@
       "indra/newview/alpanellightcues.h",
       "indra/newview/alpanelrigrim.cpp",
       "indra/newview/alpanelrigrim.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alprobedirty.cpp",
       "indra/newview/alprobedirty.h",
       "indra/newview/alprobereach.h",
@@ -133604,31 +133487,6 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
-        "unresolved_includes": []
-      },
       "indra/newview/alprobedirty.cpp": {
         "includes": [
           "indra/llmath/llquaternion.h",
@@ -136394,6 +136252,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -139384,6 +139243,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -139440,6 +139300,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -139942,6 +139803,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -143000,8 +142862,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -144659,12 +144519,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 1419,
         "source": "indra/newview/alprobeschedule.h",
         "text": "alprobeschedule.h # [ProbeOnDemand]"
@@ -145246,8 +145100,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@1170,16",
-          "indra/newview/llviewerdisplay.cpp@1576,36"
+          "indra/newview/llviewerdisplay.cpp@1171,16",
+          "indra/newview/llviewerdisplay.cpp@1577,36"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -145284,17 +145138,17 @@
           "indra/newview/pipeline.cpp@1059,7",
           "indra/newview/pipeline.cpp@1342,19",
           "indra/newview/pipeline.cpp@1363,61",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30961,430",
-          "indra/newview/pipeline.cpp@31405,38",
-          "indra/newview/pipeline.cpp@31470,53",
-          "indra/newview/pipeline.cpp@31554,37",
-          "indra/newview/pipeline.cpp@31610,20",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@32932,301",
-          "indra/newview/pipeline.cpp@36021,363",
-          "indra/newview/pipeline.cpp@36385,1056",
-          "indra/newview/pipeline.cpp@38310,153"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30950,430",
+          "indra/newview/pipeline.cpp@31394,38",
+          "indra/newview/pipeline.cpp@31459,53",
+          "indra/newview/pipeline.cpp@31543,37",
+          "indra/newview/pipeline.cpp@31599,20",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@32921,301",
+          "indra/newview/pipeline.cpp@36010,363",
+          "indra/newview/pipeline.cpp@36374,1056",
+          "indra/newview/pipeline.cpp@38299,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -145638,7 +145492,6 @@
       "indra/newview/alpanelsteppedanim.cpp",
       "indra/newview/alposecontinuity.h",
       "indra/newview/alposesecondary.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alpresetlook.h",
       "indra/newview/alprobeschedule.h",
       "indra/newview/alprojectorshaftlooks.cpp",
@@ -149743,31 +149596,6 @@
         ],
         "unresolved_includes": []
       },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
-        "unresolved_includes": []
-      },
       "indra/newview/alpresetlook.h": {
         "includes": [
           "indra/llcommon/llsd.h",
@@ -152754,6 +152582,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -154622,6 +154451,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -154678,6 +154508,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -156349,8 +156180,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -157802,12 +157631,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 1345,
         "source": "indra/newview/alrelightmath.h",
         "text": "alrelightmath.h"
@@ -158376,15 +158199,15 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,41",
           "indra/newview/pipeline.cpp@218,16",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30961,430",
-          "indra/newview/pipeline.cpp@31525,13",
-          "indra/newview/pipeline.cpp@31554,37",
-          "indra/newview/pipeline.cpp@31610,20",
-          "indra/newview/pipeline.cpp@31655,18",
-          "indra/newview/pipeline.cpp@31771,18",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@36385,1056"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30950,430",
+          "indra/newview/pipeline.cpp@31514,13",
+          "indra/newview/pipeline.cpp@31543,37",
+          "indra/newview/pipeline.cpp@31599,20",
+          "indra/newview/pipeline.cpp@31644,18",
+          "indra/newview/pipeline.cpp@31760,18",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@36374,1056"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -158439,7 +158262,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1846,1997"
+          "indra/newview/llviewerjoystick.cpp@1875,1998"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -158726,7 +158549,6 @@
       "indra/newview/alpanelexposurepage.cpp",
       "indra/newview/alpanelexposurepage.h",
       "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alpresetlook.h",
       "indra/newview/alrelightmath.h",
       "indra/newview/alsensormodel.cpp",
@@ -160911,31 +160733,6 @@
         ],
         "unresolved_includes": []
       },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
-        "unresolved_includes": []
-      },
       "indra/newview/alpresetlook.h": {
         "includes": [
           "indra/llcommon/llsd.h",
@@ -162994,6 +162791,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -166144,6 +165942,7 @@
           "LLViewerJoystick::playRumble",
           "LLViewerJoystick::pollForXboxController",
           "LLViewerJoystick::pollXInputState",
+          "LLViewerJoystick::povBlinkPadConflict",
           "LLViewerJoystick::refreshFromSettings",
           "LLViewerJoystick::resetDeltas",
           "LLViewerJoystick::resetDroneSettings",
@@ -166964,8 +166763,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -168101,12 +167898,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 431,
         "source": "indra/newview/alprojectorshaftlooks.cpp",
         "text": "alprojectorshaftlooks.cpp"
@@ -168452,8 +168243,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@29,20",
-          "indra/newview/llviewerdisplay.cpp@2067,28"
+          "indra/newview/llviewerdisplay.cpp@25,25",
+          "indra/newview/llviewerdisplay.cpp@2077,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -168464,9 +168255,9 @@
           "indra/newview/pipeline.cpp@328,106",
           "indra/newview/pipeline.cpp@713,16",
           "indra/newview/pipeline.cpp@952,88",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@32932,301"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@32921,301"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -168615,7 +168406,6 @@
       "indra/newview/alpanelpracticals.h",
       "indra/newview/alpanelprojectorshafts.cpp",
       "indra/newview/alpanelprojectorshafts.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alprojectorshaftlooks.cpp",
       "indra/newview/alprojectorshaftlooks.h",
       "indra/newview/alprojectorshaftpresets.cpp",
@@ -169860,31 +169650,6 @@
           "indra/newview/aluirefresh.h"
         ],
         "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
         "unresolved_includes": []
       },
       "indra/newview/alprojectorshaftlooks.cpp": {
@@ -171526,6 +171291,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -172852,6 +172618,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -172908,6 +172675,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -173431,8 +173199,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -178296,6 +178062,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -183160,6 +182927,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -185434,12 +185202,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 430,
         "source": "indra/newview/alprobedirty.cpp",
         "text": "alprobedirty.cpp # [ProbeOnDemand]"
@@ -186160,11 +185922,12 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@64,11",
-          "indra/newview/llviewerdisplay.cpp@884,16",
-          "indra/newview/llviewerdisplay.cpp@965,10",
-          "indra/newview/llviewerdisplay.cpp@1170,16",
-          "indra/newview/llviewerdisplay.cpp@2067,28"
+          "indra/newview/llviewerdisplay.cpp@65,11",
+          "indra/newview/llviewerdisplay.cpp@885,16",
+          "indra/newview/llviewerdisplay.cpp@966,10",
+          "indra/newview/llviewerdisplay.cpp@1171,16",
+          "indra/newview/llviewerdisplay.cpp@1883,31",
+          "indra/newview/llviewerdisplay.cpp@2077,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -186189,24 +185952,24 @@
           "indra/newview/pipeline.cpp@295,32",
           "indra/newview/pipeline.cpp@568,71",
           "indra/newview/pipeline.cpp@919,32",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@30870,30",
-          "indra/newview/pipeline.cpp@30921,16",
-          "indra/newview/pipeline.cpp@30961,430",
-          "indra/newview/pipeline.cpp@31405,38",
-          "indra/newview/pipeline.cpp@31554,37",
-          "indra/newview/pipeline.cpp@31592,17",
-          "indra/newview/pipeline.cpp@31794,695",
-          "indra/newview/pipeline.cpp@32501,15",
-          "indra/newview/pipeline.cpp@32562,15",
-          "indra/newview/pipeline.cpp@32624,222",
-          "indra/newview/pipeline.cpp@32932,301",
-          "indra/newview/pipeline.cpp@33302,1054",
-          "indra/newview/pipeline.cpp@34852,47",
-          "indra/newview/pipeline.cpp@35266,78",
-          "indra/newview/pipeline.cpp@36021,363",
-          "indra/newview/pipeline.cpp@36385,1056",
-          "indra/newview/pipeline.cpp@38310,153"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@30859,30",
+          "indra/newview/pipeline.cpp@30910,16",
+          "indra/newview/pipeline.cpp@30950,430",
+          "indra/newview/pipeline.cpp@31394,38",
+          "indra/newview/pipeline.cpp@31543,37",
+          "indra/newview/pipeline.cpp@31581,17",
+          "indra/newview/pipeline.cpp@31783,695",
+          "indra/newview/pipeline.cpp@32490,15",
+          "indra/newview/pipeline.cpp@32551,15",
+          "indra/newview/pipeline.cpp@32613,222",
+          "indra/newview/pipeline.cpp@32921,301",
+          "indra/newview/pipeline.cpp@33291,1054",
+          "indra/newview/pipeline.cpp@34841,47",
+          "indra/newview/pipeline.cpp@35255,78",
+          "indra/newview/pipeline.cpp@36010,363",
+          "indra/newview/pipeline.cpp@36374,1056",
+          "indra/newview/pipeline.cpp@38299,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -186522,7 +186285,6 @@
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/alpanelpracticals.cpp",
       "indra/newview/alpanelpracticals.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alprobedirty.cpp",
       "indra/newview/alprojectortracker.cpp",
       "indra/newview/alrelighttakerecord.h",
@@ -189623,31 +189385,6 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
-        "unresolved_includes": []
-      },
       "indra/newview/alprobedirty.cpp": {
         "includes": [
           "indra/llmath/llquaternion.h",
@@ -192725,6 +192462,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -196426,6 +196164,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -196482,6 +196221,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -197899,8 +197639,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
@@ -199201,12 +198939,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 195,
-        "source": "indra/newview/alpovblink.cpp",
-        "text": "alpovblink.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 430,
         "source": "indra/newview/alprobedirty.cpp",
         "text": "alprobedirty.cpp # [ProbeOnDemand]"
@@ -199760,8 +199492,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@782,16",
-          "indra/newview/llviewerdisplay.cpp@884,16"
+          "indra/newview/llviewerdisplay.cpp@783,16",
+          "indra/newview/llviewerdisplay.cpp@885,16"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -199781,8 +199513,8 @@
           "indra/newview/pipeline.cpp@28,41",
           "indra/newview/pipeline.cpp@218,16",
           "indra/newview/pipeline.cpp@1205,16",
-          "indra/newview/pipeline.cpp@1693,29137",
-          "indra/newview/pipeline.cpp@33302,1054"
+          "indra/newview/pipeline.cpp@1693,29126",
+          "indra/newview/pipeline.cpp@33291,1054"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -200021,7 +199753,6 @@
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/alpanelweathersettings.cpp",
       "indra/newview/alpanelweathersettings.h",
-      "indra/newview/alpovblink.cpp",
       "indra/newview/alprobedirty.cpp",
       "indra/newview/alrigrimcontroller.cpp",
       "indra/newview/alrotoink.cpp",
@@ -201324,31 +201055,6 @@
           "indra/llui/llpanel.h"
         ],
         "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/alpovblink.cpp": {
-        "includes": [
-          "indra/llcommon/lltimer.h",
-          "indra/llrender/llrendertarget.h",
-          "indra/llrender/llvertexbuffer.h",
-          "indra/newview/alpovblink.h",
-          "indra/newview/alpovblinkmath.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h"
-        ],
-        "qualified_call_candidates": [
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::blink",
-          "ALPOVBlink::endPresentation",
-          "ALPOVBlink::releaseGL",
-          "ALPOVBlink::setPadHeld",
-          "ALPOVBlink::setUIHeld",
-          "ALPOVBlink::uiHeld",
-          "ALPOVBlinkMath::shouldDraw",
-          "ALPOVBlinkMath::unit",
-          "LLTimer::getTotalSeconds"
-        ],
         "unresolved_includes": []
       },
       "indra/newview/alprobedirty.cpp": {
@@ -204085,6 +203791,7 @@
           "LLUUID::validate",
           "LLViewerCamera::getInstance",
           "LLViewerJoystick::getInstance",
+          "LLViewerJoystick::instance",
           "LLViewerShaderMgr::instance"
         ],
         "unresolved_includes": []
@@ -205444,6 +205151,7 @@
           "indra/newview/alframelimiter.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/allocalfogmanager.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/aluiperfselftest.h",
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
@@ -205500,6 +205208,7 @@
           "ALFrameLimiter::pacedPresent",
           "ALGhostStudio::instance",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::renderLastSceneImage",
           "ALUIPerfSelfTest::captureAfterRender",
           "ALUIPerfSelfTest::isActive",
           "ALUIPerfSelfTest::layoutAuditActive",
@@ -206647,8 +206356,6 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
-          "ALPOVBlink::beginPresentation",
-          "ALPOVBlink::endPresentation",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",

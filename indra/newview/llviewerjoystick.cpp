@@ -1520,7 +1520,12 @@ std::string LLViewerJoystick::povBlinkPadConflict(U32 mask) const
     {
         // Flycam mappings remain reserved while avatar controls are active:
         // entering flycam must not silently turn a free blink into two actions.
-        const bool active = dragon() || i <= CROUCH || i == FLYCAM;
+        // Disabled modules cannot dispatch; refreshed settings are checked each poll.
+        const bool active = (mFlycamEnabled && (i <= CROUCH || i == FLYCAM)) ||
+            (mAvatarEnabled && dragon() && (i == JUMP || i == CROUCH ||
+                i == FLY || i == MOUSELOOK || i == TOGGLE_RUN)) ||
+            (mBuildEnabled && dragon() && (i == ROLL_LEFT || i == ROLL_RIGHT ||
+                i == JUMP || i == CROUCH));
         if (active && mMappedButtons[i] == button)
             return std::string(label) + " is used by " + names[i] + " - pick another button";
     }

@@ -1906,7 +1906,7 @@ void render_ui(F32 zoom_factor, int subfield)
             gPipeline.mRT == &gPipeline.mMainRT && !gSnapshot && !gCubeSnapshot &&
             !LLPipeline::sPrismLensRender && !LLPipeline::sPrismPreviewRender &&
             !LLPipeline::sReflectionRender && !LLPipeline::sImpostorRender && !LLPipeline::sRenderingHUDs,
-            &gPipeline.mFXAAMap, gPipeline.mScreenTriangleVB);
+            gPipeline.mScreenTriangleVB);
 
         bool render_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
         if (render_ui)
