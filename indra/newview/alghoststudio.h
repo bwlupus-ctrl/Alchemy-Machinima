@@ -369,6 +369,12 @@ public:
     // (MatrixPaletteCache::mGLMp copies; 12 floats per joint).
     typedef std::map<std::pair<LLUUID, U64>, std::vector<F32> > palette_map_t;
 
+    // Overlay ids are sparse. 28..63 belong to live Actor FX, never Studio.
+    static bool isOverlayStyle(S32 style)
+    {
+        return (style >= 0 && style <= 27) || (style >= 64 && style <= 77);
+    }
+
     struct Instance
     {
         LLUUID      mId;                // instance key (minted at Add)
@@ -557,7 +563,7 @@ public:
         }
 
         // ---- look ----
-        S32         mStyle = 0;         // EGhostStyle id (same values as PathGhostStyle)
+        S32         mStyle = 0;         // EGhostStyle: shared 0..27 or Studio-only 64..77
         F32         mAlpha = 0.6f;      // base opacity (matches the path-ghost default)
         bool        mUseActorTint = true;   // tint from the source's stable path hue
         F32         mHue = 200.f;       // degrees 0..360, used when !mUseActorTint

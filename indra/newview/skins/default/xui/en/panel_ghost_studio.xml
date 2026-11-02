@@ -131,7 +131,7 @@
         <panel follows="left|top" height="280" layout="topleft" left="0" name="look_section" top="44" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="look_lbl" right="-8" top="8">Look</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="style_combo" top="27"
-           tool_tip="Overlay render look. Includes clean spectral, textured FX, graphic, material, and animated spectral styles; all honor the instance hue, alpha, pixelate, shimmer, glitch, and brightness controls." width="142">
+           tool_tip="Overlay render look. Glass uses simulated highlights; Ash Drift embers stay inside the silhouette. Body fields use mesh rest coordinates. Datamosh stacks with Block Glitch and Vertical Tear. Colour, alpha, brightness and distortions still apply." width="142">
             <combo_box.item label="Ghost" name="st_ghost" value="0" />
             <combo_box.item label="Clone" name="st_clone" value="1" />
             <combo_box.item label="Hologram" name="st_hologram" value="2" />
@@ -160,6 +160,20 @@
             <combo_box.item label="Halftone/Comic" name="st_halftone" value="25" />
             <combo_box.item label="Sonar Reveal" name="st_sonar" value="26" />
             <combo_box.item label="Hologram Echo" name="st_holo_echo" value="27" />
+            <combo_box.item label="Glass" name="st_glass" value="64" />
+            <combo_box.item label="Mercury" name="st_mercury" value="65" />
+            <combo_box.item label="Marble" name="st_marble" value="66" />
+            <combo_box.item label="Crystal" name="st_crystal" value="67" />
+            <combo_box.item label="Ash Drift" name="st_ash" value="68" />
+            <combo_box.item label="Magma" name="st_magma" value="69" />
+            <combo_box.item label="Void" name="st_void" value="70" />
+            <combo_box.item label="Sumi-e" name="st_sumie" value="71" />
+            <combo_box.item label="Arc" name="st_arc" value="72" />
+            <combo_box.item label="Lidar" name="st_lidar" value="73" />
+            <combo_box.item label="Code Rain" name="st_coderain" value="74" />
+            <combo_box.item label="Datamosh" name="st_datamosh" value="75" />
+            <combo_box.item label="Scan Build" name="st_scanbuild" value="76" />
+            <combo_box.item label="Contour" name="st_contour" value="77" />
           </combo_box>
           <combo_box follows="left|top" height="22" layout="topleft" left="270" name="distort_combo" top="27"
            tool_tip="Independent distortion layer. Stacks with any selected look." width="190">

@@ -11914,7 +11914,26 @@ enum EGhostStyle : S32
     GHOST_STYLE_HALFTONE  = 25,
     GHOST_STYLE_SONAR     = 26,
     GHOST_STYLE_HOLO_ECHO = 27,
+    // 28..63 reserved for live Actor FX exclusives. Studio overlay only.
+    GHOST_STYLE_STUDIO_BASE = 64,
+    GHOST_STYLE_GLASS = 64,
+    GHOST_STYLE_MERCURY = 65,
+    GHOST_STYLE_MARBLE = 66,
+    GHOST_STYLE_CRYSTAL = 67,
+    GHOST_STYLE_ASH = 68,
+    GHOST_STYLE_MAGMA = 69,
+    GHOST_STYLE_VOID = 70,
+    GHOST_STYLE_SUMIE = 71,
+    GHOST_STYLE_ARC = 72,
+    GHOST_STYLE_LIDAR = 73,
+    GHOST_STYLE_CODERAIN = 74,
+    GHOST_STYLE_DATAMOSH = 75,
+    GHOST_STYLE_SCANBUILD = 76,
+    GHOST_STYLE_CONTOUR = 77,
+    GHOST_STYLE_STUDIO_END = 78, // exclusive; only implemented ids are valid
 };
+static_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,
+              "Live Actor FX ids collide with the Studio overlay range");
 
 // custom uniforms of the actor-ghost FX shader (actorghostF.glsl); hashed once
 static LLStaticHashedString sGhostTime("ghostTime");
@@ -13612,7 +13631,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.setSceneBlendType(LLRender::BT_ALPHA);
         }
     };
-    switch (style)
+    // Range dispatch makes every registered Studio look use real diffuse RGB,
+    // even if a future look is missing a case label. Keep the uploaded style.
+    const S32 sweep_style = !gp.mWorldLinear
+        && style >= GHOST_STYLE_STUDIO_BASE && style < GHOST_STYLE_STUDIO_END
+        ? static_cast<S32>(GHOST_STYLE_THERMAL) : style;
+    switch (sweep_style)
     {
     case GHOST_STYLE_CLONE:
     {
@@ -14341,7 +14365,7 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
                     path_gp.mDistort = (S32)ghost_distort;
                     path_gp.mDistortAmount = (F32)ghost_distort_amount;
                     drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,
-                                             GHOST_ALPHA, (S32)ghost_style,
+                                             GHOST_ALPHA, llclamp((S32)ghost_style, 0, 27),
                                              path_gp,
                                              ghostStaticFacesFor(g.mAv->getID()));
                 }
@@ -15661,7 +15685,8 @@ void LLActorMover::renderStudioGhosts()
         gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
-                          llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,
+                          llclamp(inst.mAlpha, 0.f, 1.f),
+                          ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,
                           item.mStatic);
     }
 

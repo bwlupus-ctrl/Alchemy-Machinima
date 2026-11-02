@@ -107,7 +107,7 @@ bool setRowVisibleIfChanged(LLView* control, bool visible)
 }
 
 // style id -> short list label (keep in sync with EGhostStyle /
-// panel_path_editor.xml's ghost_style_combo)
+// Studio combo ids; Path poses retain only the shared 0..27 range)
 const char* style_name(S32 style)
 {
     switch (style)
@@ -139,6 +139,20 @@ const char* style_name(S32 style)
     case 25: return "Halftone";
     case 26: return "Sonar";
     case 27: return "Holo Echo";
+    case 64: return "Glass";
+    case 65: return "Mercury";
+    case 66: return "Marble";
+    case 67: return "Crystal";
+    case 68: return "Ash Drift";
+    case 69: return "Magma";
+    case 70: return "Void";
+    case 71: return "Sumi-e";
+    case 72: return "Arc";
+    case 73: return "Lidar";
+    case 74: return "Code Rain";
+    case 75: return "Datamosh";
+    case 76: return "Scan Build";
+    case 77: return "Contour";
     default: return "Ghost";
     }
 }
@@ -3427,12 +3441,14 @@ void ALPanelGhostStudio::exitEditMode()
 // ---------------------------------------------------------------------------
 void ALPanelGhostStudio::onStyleCommit()
 {
+    const S32 style = mStyleCombo->getValue().asInteger();
+    if (!ALGhostStudio::isOverlayStyle(style)) return;
     for (const LLUUID& id : selectedInstances())
     {
         if (ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().getInstance(id))
         {
-            inst->mStyle = mStyleCombo->getValue().asInteger();
+            inst->mStyle = style;
             ALGhostStudio::instance().touchInstances(); // [GhostPanelPerf] Style column
         }
     }
