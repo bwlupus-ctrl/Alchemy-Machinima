@@ -71,7 +71,18 @@ def main():
     base_cast = subprocess.check_output(["git", "show", "890f04b10d6:indra/newview/lldirectorcast.cpp"]).decode()
     base_mover = subprocess.check_output(["git", "show", "890f04b10d6:indra/newview/llactormover.cpp"]).decode()
     normalize = lambda text: text.replace('\r\n', '\n')
-    assert normalize((nv / "llactormover.cpp").read_text(encoding="utf-8")) == normalize(base_mover)
+    # Round-2 mover plus ONLY the independently merged Clone Studio look registration
+    # (c5dd757d341..ba1e2f1e0bb). Any other changed mover line fails.
+    current_mover = normalize((nv / "llactormover.cpp").read_text(encoding="utf-8"))
+    if current_mover != normalize(base_mover):
+        import difflib
+        def changed(a, b):
+            return {l for l in difflib.unified_diff(a.splitlines(), b.splitlines(), lineterm="", n=0)
+                    if l[:1] in "+-" and not l.startswith(("+++", "---"))}
+        looks_old = normalize(subprocess.check_output(["git", "show", "c5dd757d341:indra/newview/llactormover.cpp"]).decode())
+        looks_new = normalize(subprocess.check_output(["git", "show", "ba1e2f1e0bb:indra/newview/llactormover.cpp"]).decode())
+        extra = changed(normalize(base_mover), current_mover) - changed(looks_old, looks_new)
+        assert not extra, sorted(extra)[:10]
     baseline = Path(".tmp/actorbar_20261101/actor_round2_cast.cpp")
     baseline.parent.mkdir(parents=True, exist_ok=True)
     baseline.write_text(base_cast, encoding="utf-8")
