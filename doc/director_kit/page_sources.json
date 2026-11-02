@@ -76272,7 +76272,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 879,
+              "line": 882,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -80868,7 +80868,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 880,
+              "line": 883,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -81506,7 +81506,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 882,
+              "line": 885,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -149508,7 +149508,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 876,
+              "line": 879,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -163083,7 +163083,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 877,
+              "line": 880,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -164634,7 +164634,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 878,
+              "line": 881,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -195690,6 +195690,19 @@
                 "name": "stylize_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alkitpage.cpp",
+              "line": 877,
+              "class": "ALKitPage",
+              "function": "postBuild",
+              "wired_class": "ALKitPage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "{ \"ri_subject_target_combo\", 0, 1, 4 },"
             }
           ],
           "unresolved": [],
@@ -210532,6 +210545,19 @@
                 "name": "tron_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alkitpage.cpp",
+              "line": 878,
+              "class": "ALKitPage",
+              "function": "postBuild",
+              "wired_class": "ALKitPage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "{ \"tr_subject_target_combo\", 0, 1, 4 },"
             }
           ],
           "unresolved": [],
@@ -229217,6 +229243,19 @@
                 "name": "shadows_probes_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alkitpage.cpp",
+              "line": 876,
+              "class": "ALKitPage",
+              "function": "postBuild",
+              "wired_class": "ALKitPage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "{ \"sd_subject_target_combo\", 0, 1, 4 },"
             }
           ],
           "unresolved": [],

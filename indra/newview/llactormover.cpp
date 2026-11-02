@@ -4371,10 +4371,9 @@ void LLActorMover::onRosterMemberRemoved(const LLUUID& actor_id)
     if (gaze != mGazes.end()) invalidateGazeCache(gaze->second, true);
     // Director runtime was already cleared by cast remove before roster erase.
     // [DirFix] Called from cast remove(). Targeted on purpose: during a ghost
-    // runtime replace the mover has already migrated mEditActor old->new
-    // (onActorRuntimeReplaced runs before the cast consumer, alghoststudio.cpp)
-    // and new is not yet a member when remove(old) runs, so an effective-roster
-    // check here would wrongly drop the migrated edit actor.
+    // identity transaction the mover and Cast rekey together. Avoid an
+    // effective-roster check here: only an explicit removal of the edit actor
+    // should end its tool session.
     if (actor_id.notNull() && mEditActor == actor_id)
     {
         setEditActor(LLUUID::null);     // -> owner null -> tool session ends
@@ -5233,10 +5232,8 @@ void LLActorMover::cancelSuspended(const LLUUID& actor_id)
 }
 
 // ===========================================================================
-// [GhostWalk] Entity-clone runtime replacement: rekey per-actor state so a
-// refreshed / despawn-recovered clone keeps its walk, path, follows and gaze
-// instead of leaking them under the dead runtime uuid. See the header
-// contract on onActorRuntimeReplaced().
+// [GhostWalk] Release old-body gaze ownership before the Cast identity
+// transaction rekeys every authored store, including mover state below.
 // ===========================================================================
 void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
                                           const LLUUID& old_id,
@@ -5247,16 +5244,10 @@ void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
     {
         return;
     }
-    // The key that actually holds this instance's records: the runtime being
-    // replaced when the caller still has one, else the key parked at the last
-    // despawn (the walk suspended under it when that runtime died). Both are
-    // concrete runtime uuids, so they ARE the path_key the records live under.
-    auto parked = mParkedWalkKeys.find(stable_id);
-    LLUUID from = old_id;
-    if (from.isNull() && parked != mParkedWalkKeys.end())
-    {
-        from = parked->second;
-    }
+    // Authored state uses the stable id throughout an absent runtime gap.
+    // The Cast consumer performs the one rekey transaction after this body
+    // teardown; no alternate parked path/history key may survive it.
+    const LLUUID from = old_id.notNull() ? old_id : stable_id;
 
     // Cast remove(old) restores captures before its roster callback. Prune the
     // departing body's captures here, before ANY runtime consumer is notified.
@@ -5282,49 +5273,6 @@ void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
             static_cast<LLGhostAvatar*>(avatar)->setEntityEyeMotionEnabled(false);
         }
     }
-
-    if (removing_instance)
-    {
-        // deliberate removal: this runtime uuid can never resolve again, so a
-        // kept walk would suspend forever, unreachable -- drop it like a stop
-        if (parked != mParkedWalkKeys.end())
-        {
-            mParkedWalkKeys.erase(parked);
-        }
-        if (from.notNull())
-        {
-            dropActor(from);
-        }
-        return;
-    }
-
-    if (new_id.isNull())
-    {
-        // despawn with the instance kept (RECOVERABLE): leave the records in
-        // place -- the move suspends under `from` via the unresolvable
-        // debounce -- and PARK the key so the recovery replacement can claim
-        // it. Parking only when something is actually keyed there keeps the
-        // map from accreting entries for clones that never walked.
-        if (from.notNull() &&
-            (mMoves.count(from) || mPaths.count(from) ||
-             mFollows.count(from) || mGazes.count(from) ||
-             mHistory.count(from)))
-        {
-            mParkedWalkKeys[stable_id] = from;
-        }
-        else if (parked != mParkedWalkKeys.end())
-        {
-            mParkedWalkKeys.erase(parked);
-        }
-        return;
-    }
-
-    // live replacement / recovery: the new runtime takes over the records
-    if (parked != mParkedWalkKeys.end())
-    {
-        mParkedWalkKeys.erase(parked);
-    }
-    migrateActor(from, new_id);
 }
 
 void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)

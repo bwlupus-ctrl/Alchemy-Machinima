@@ -262,16 +262,11 @@ ALGhostStudio::ALGhostStudio()
                const LLUUID& new_id, bool removing_instance)
         {
             LLDirectorCast& cast = LLDirectorCast::instance();
-            const bool active_actor = cast.getActiveActorId() == stable_id ||
-                (old_id.notNull() && cast.getActiveActorId() == old_id);
             const LLUUID destination = removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id;
-            // Move the entire authored record and current Subject A-D aliases,
-            // even if the user selected another actor while this clone was away.
-            // Current aliases also respect assignments cleared/changed while parked.
-            if (old_id.notNull()) cast.replaceActorId(old_id, destination);
-            if (stable_id != destination) cast.replaceActorId(stable_id, destination);
+            // Cast owns the single rekey transaction, including mover/path
+            // state. Absence uses the stable id for every authored store.
+            cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination);
             if (new_id.notNull() && !removing_instance) cast.add(new_id);
-            if (active_actor) cast.setActiveActorId(destination);
         });
     mRuntimeConsumers.emplace_back(
         [this](const LLUUID& stable_id, const LLUUID&, const LLUUID&,
@@ -429,15 +424,9 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
     }
     inst.mEntityId = new_runtime;
     ++mInstanceRevision; // [GhostPanelPerf] runtime swap: lifecycle/state/rows may differ
-    // [GhostWalk] Actor Mover keys walks / paths / suspend-resume state by the
-    // RUNTIME uuid: migrate them to the replacement (or park them across a
-    // despawn, or drop them on final removal) BEFORE the consumer walk, so any
-    // observer a consumer pumps -- the Director-cast add/remove below -- already
-    // sees the mover consistent under the new id. Without this, a refreshed or
-    // despawn-recovered WALKING clone left its walk permanently suspended under
-    // the dead uuid, unreachable by RESUME_NEAR and the Path tab alike. Runs
-    // AFTER applyEntityRuntimeState so the fresh runtime's drive mode is set
-    // before the migration restarts a live walk's loco anim on it.
+    // Release body-owned gaze captures before the Cast consumer rekeys all
+    // authored state. The fresh body's drive mode is already installed, so
+    // migrating a live walk can restart its locomotion on that body.
     LLActorMover::instance().onActorRuntimeReplaced(
         stable_id, old_runtime, new_runtime, removing_instance);
     for (const runtime_consumer_t& consumer : mRuntimeConsumers)

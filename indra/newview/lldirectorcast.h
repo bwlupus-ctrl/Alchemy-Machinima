@@ -288,10 +288,13 @@ public:
     static LLUUID canonicalActorId(const LLUUID& id);
     // Runtime lanes use null for self; the bar retains explicit You vs Clear.
     static LLUUID runtimeActorId(const LLUUID& id);
+    // Rekey CastMember (marks, gaze lanes, Actor FX/Stepped), mover/path and
+    // history, subjects and selections together, before scene observers run.
     void replaceActorId(const LLUUID& old_id, const LLUUID& new_id);
 
-    // The Director's one session-only edit actor. Null is Clear; consumers
+    // The Director's one edit actor. Null is Clear; consumers
     // which historically defaulted to You resolve null as self. Never Subjects A-D.
+    // Its effective Stepped render identity is saved and dirties the scene.
     const LLUUID& getActiveActorId() const { return mActiveActorId; }
     void setActiveActorId(const LLUUID& id);
     boost::signals2::connection addActiveActorChangedCallback(
@@ -313,8 +316,8 @@ public:
                                               const LLUUID& fallback,
                                               LLUUID& resolved_id) const;
     const std::vector<CastMember>& getCast() const { return mCast; }
-    // [GhostPanelPerf] Bumped when membership or a member's cached display name
-    // (mLastName) changes -- everything a cast picker / list mirror shows. UI
+    // [GhostPanelPerf] Bumped when membership, group tags or a member's cached
+    // display name (mLastName) changes -- everything a cast picker shows. UI
     // compares this instead of rebuilding id+name signature strings per frame.
     // Code that writes mLastName directly must call touchCast() afterwards.
     U64 getCastRevision() const { return mCastRevision; }
@@ -520,7 +523,7 @@ private:
     GazeCueList mSelfGazeCues;
     GazeInfluenceKeyList mSelfGazeInfluenceKeys;
     ActorStyle mSelfActorStyle;
-    LLUUID mActiveActorId; // session-only; null means Clear
+    LLUUID mActiveActorId; // null means Clear; normalized Stepped identity is saved
     boost::signals2::signal<void()> mActiveActorChanged;
     U64 mGazeCueRevision = 0;
     U64 mGazeConfigRevision = 1;

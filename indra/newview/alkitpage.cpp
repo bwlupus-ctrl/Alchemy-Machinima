@@ -873,6 +873,9 @@ bool ALKitPage::postBuild()
         SubjectValueSource value_source = SubjectValueSource::CONTROL;
     };
     static const ComboSpec subject_specs[] = {
+        { "sd_subject_target_combo", 0, 1, 4 },
+        { "ri_subject_target_combo", 0, 1, 4 },
+        { "tr_subject_target_combo", 0, 1, 4 },
         { "cine_easy_probe_target", 0, 1, 4 },
         { "cine_live_probe_target", 0, 1, 4 },
         { "cine_night_mask_target", 0, 1, 4 },

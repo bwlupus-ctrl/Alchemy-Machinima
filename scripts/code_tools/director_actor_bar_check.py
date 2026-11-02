@@ -39,9 +39,16 @@ def main():
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
         assert (nv / path).read_bytes().replace(b"\r\n", b"\n") == subprocess.check_output(
             ["git", "show", "c5dd757d341:indra/newview/" + path]).replace(b"\r\n", b"\n"), path
+    # D1 includes the subject display adapter, not just rows and renderer reads.
+    kit = (nv / "alkitpage.cpp").read_text()
+    base_kit = subprocess.check_output(["git", "show", "c5dd757d341:indra/newview/alkitpage.cpp"]).decode("utf-8")
+    def subject_adapter(source):
+        return source[source.index('    struct ComboSpec'):source.index('\n    return true;', source.index('    struct ComboSpec'))].replace('\r\n', '\n')
+    assert subject_adapter(kit) == subject_adapter(base_kit)
     save = method(nv / "lldirectorcast.cpp", "LLSD LLDirectorCast::sceneData() const")
     load = method(nv / "lldirectorcast.cpp", "void LLDirectorCast::applySceneData(")
     assert 'data["stepped_actor"] = getSteppedActorId()' in save
+    assert 'LLActorMover::instance().pathSceneData(m.mId)' in save
     assert 'data.has("stepped_actor")' in load and 'data["stepped_actor"].asUUID(), scene_actor_ids' in load
     assert 'if (has_stepped_actor) setActiveActorId(isSelf(stepped_actor) ? gAgentID : stepped_actor)' in load
     assert 'if (!has_stepped_actor && !isSelf(getActiveActorId()) && !contains(getActiveActorId()))' in load
@@ -72,8 +79,19 @@ def main():
         assert "mActiveActorId" not in body
     studio = (nv / "alghoststudio.cpp").read_text()
     consumer = studio[studio.index('mRuntimeConsumers.emplace_back('):studio.index('mRuntimeConsumers.emplace_back(', studio.index('mRuntimeConsumers.emplace_back(') + 1)]
-    assert 'cast.replaceActorId(old_id, destination)' in consumer and 'cast.replaceActorId(stable_id, destination)' in consumer
+    assert 'cast.replaceActorId(old_id.notNull() ? old_id : stable_id, destination)' in consumer
+    assert 'removing_instance ? LLUUID::null : new_id.notNull() ? new_id : stable_id' in consumer
     assert 'cast.remove(' not in consumer and 'mWasDirectorSubject' not in consumer
+    rekey = method(nv / "lldirectorcast.cpp", "void LLDirectorCast::replaceActorId(")
+    assert rekey.index('mover.migrateActor(old_id, new_id)') < rekey.index('CastMember saved = *old') < rekey.index('touchScene()')
+    assert 'mParkedWalkKeys' not in (nv / "llactormover.cpp").read_text()
+    gaze_draw = method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::draw(")
+    assert 'cast.getCastRevision()' in gaze_draw and 'refreshEditActorCombo()' in gaze_draw
+    assert 'refreshApplyGroupCombo()' in method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::refreshEditActorCombo(")
+    stamp = method(nv / "llfloaterdirector.cpp", "LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp(")
+    assert 'stamp.mCast = LLDirectorCast::instance().getSceneRevision()' in stamp
+    autosave = method(nv / "llfloaterdirector.cpp", "void LLFloaterDirector::idleSceneRecovery(")
+    assert autosave.index('updateSceneDirty()') < autosave.index('if (!service.mSceneDirty')
     styling = method(nv / "llfloaterdirector.cpp", "bool LLFloaterDirector::hasActorStyleTarget(")
     assert "getMember(actor)" in styling and "isGhostAvatar" not in styling
     selection = method(nv / "alavatarsubjectpicker.cpp", "LLVOAvatar* fromSelection(")
@@ -112,10 +130,51 @@ struct LLUUID {
     bool operator<(LLUUID x) const { return value < x.value; }
     bool operator==(LLUUID x) const { return value == x.value; }
     bool operator!=(LLUUID x) const { return !(*this == x); }
+    std::string asString() const { return std::to_string(value); }
     static const LLUUID null;
 };
 const LLUUID LLUUID::null{};
 const LLUUID gAgentID{1};
+std::ostream& operator<<(std::ostream& out, LLUUID id) { return out << id.value; }
+#define LL_INFOS(x) std::cout
+#define LL_ENDL std::endl
+#define LL_PROFILE_ZONE_NAMED_CATEGORY_UI(x)
+struct LLVOAvatar {
+    bool dead = false, control = false, ghost = false, mIsDummy = false;
+    bool isDead() const { return dead; }
+    bool isControlAvatar() const { return control; }
+    bool isGhostAvatar() const { return ghost; }
+    void* getRootJoint() const { return nullptr; }
+};
+LLVOAvatar* resolve_actor(LLUUID) { return nullptr; }
+namespace ALGazeMotor { struct GazeMotorState {}; }
+struct LLActorMover {
+    struct Handle { void clear() {} };
+    struct Move {
+        int mDwellNode = -1, mEndMode = 0;
+        bool mSuspended = true, mIsPath = true, mArrived = false;
+        float mSpeed = 1, mT = 4, mDistance = 9;
+        LLUUID mDwellAnim, mAnim;
+        Handle mLocomotion, mSecondaryLocomotion, mDwellMotion;
+    };
+    struct Gaze { ALGazeMotor::GazeMotorState mGazeMotor; int authored = 0; };
+    struct Follow { LLUUID mLeader; };
+    std::map<LLUUID, Move> mMoves;
+    std::map<LLUUID, double> mPaths;
+    std::map<LLUUID, std::vector<double>> mHistory;
+    std::map<LLUUID, Gaze> mGazes;
+    std::map<LLUUID, Follow> mFollows;
+    std::map<LLUUID, int> mGhostImpostors;
+    int mGazeRevision = 0;
+    LLUUID mEditActor;
+    static LLActorMover& instance() { static LLActorMover mover; return mover; }
+    void stopLocomotion(LLVOAvatar*, Move&) {}
+    void startLocomotion(LLVOAvatar*, Move&) {}
+    void startLocalMotion(LLVOAvatar*, Handle&, LLUUID, bool, float, bool) {}
+    void invalidateGazeCache(Gaze&, bool) {}
+    void migrateActor(const LLUUID&, const LLUUID&);
+    void dropActor(LLUUID id) { mPaths.erase(id); mHistory.erase(id); mMoves.erase(id); mGazes.erase(id); mFollows.erase(id); }
+};
 using uuid_vec_t = std::vector<LLUUID>;
 using SceneActorIdRemap = std::map<LLUUID, LLUUID>;
 struct SceneValue {
@@ -138,12 +197,29 @@ struct LLDirectorCast {
     uuid_vec_t mIds;
     std::set<LLUUID> mLookAtCameraIds;
     LLUUID mSubjectA, mSubjectB, mSubjectC, mSubjectD;
-    int mCastRevision = 0, mGazeCueRevision = 0, mSubjectRevision = 0;
+    int mCastRevision = 0, mGazeCueRevision = 0, mSubjectRevision = 0, mSceneRevision = 0;
+    struct PendingStart { LLUUID mId; };
+    std::vector<PendingStart> mPendingStarts;
+    std::map<std::string, float> mGroupDelays;
+    std::map<std::string, int> mGroupRates;
     void rebuildMemberIndex() {}
-    void touchScene() {}
+    void touchScene() { ++mSceneRevision; }
     void remove(LLUUID id) { mCast.erase(std::remove_if(mCast.begin(),mCast.end(),[&](const CastMember& m){return m.mId==id;}),mCast.end()); }
     void replaceActorId(const LLUUID&, const LLUUID&);
     uuid_vec_t membersInGroup(const std::string&) const;
+    CastMember* getMember(LLUUID id) { for(auto& m:mCast) if(m.mId==id) return &m; return nullptr; }
+    void pruneGroupData(const std::string&) {}
+    void setGroup(const LLUUID&, const std::string&);
+    bool renameGroup(const std::string&, const std::string&);
+    bool dissolveGroup(const std::string&);
+    std::vector<std::string> getGroupNames() const;
+    const uuid_vec_t& getIds() const { return mIds; }
+    int getCastRevision() const { return mCastRevision; }
+    struct GazeTarget { LLUUID mCastRef; };
+    std::map<LLUUID, GazeTarget> targets, eyeTargets;
+    GazeTarget getGazeTarget(LLUUID id) const { auto it=targets.find(id); return it==targets.end()?GazeTarget{}:it->second; }
+    bool hasEyeGazeTarget(LLUUID id) const { return eyeTargets.count(id)!=0; }
+    GazeTarget getEyeGazeTarget(LLUUID id) const { return eyeTargets.at(id); }
     LLUUID getSubjectA() const { return mSubjectA; }
     LLUUID getSubjectB() const { return mSubjectB; }
     LLUUID getSubjectC() const { return mSubjectC; }
@@ -188,13 +264,11 @@ struct LLFloaterDirector {
     void syncActiveActor();
 };
 '''
+    fixture += method(nv / "llactormover.cpp", "void LLActorMover::migrateActor(")
     fixture += r"""
-struct LLVOAvatar {
-    bool dead = false, control = false, ghost = false, mIsDummy = false;
-    bool isDead() const { return dead; }
-    bool isControlAvatar() const { return control; }
-    bool isGhostAvatar() const { return ghost; }
-};
+namespace ALSteppedAnim { void renameGroupRate(std::map<std::string,int>& rates, const std::string& old, const std::string& name) {
+    if(rates.count(old)) { if(!rates.count(name)) rates[name]=rates[old]; rates.erase(old); }
+} }
 namespace ALAvatarSubjectPicker {
 """
     fixture += method(nv / "alavatarsubjectpicker.cpp", "bool valid(") + "\n}\n"
@@ -209,11 +283,37 @@ namespace ALAvatarSubjectPicker {
     write = re.search(r'    data\["stepped_actor"\] = getSteppedActorId\(\);', save)[0]
     fixture += "void LLDirectorCast::saveStepped(Scene& data) const {\n" + write + "\n}\n"
     fixture += method(nv / "lldirectorcast.cpp", "void LLDirectorCast::replaceActorId(")
+    transaction = consumer[consumer.index('            const LLUUID destination'):consumer.index('            if (new_id.notNull()')]
+    fixture += "void cloneTransition(LLUUID stable_id, LLUUID old_id, LLUUID new_id, bool removing_instance=false) {\n    auto& cast=LLDirectorCast::instance();\n" + transaction + "\n}\n"
     fixture += method(nv / "lldirectorcast.cpp", "uuid_vec_t LLDirectorCast::membersInGroup(")
+    for signature in ("void LLDirectorCast::setGroup(", "bool LLDirectorCast::renameGroup(",
+                      "bool LLDirectorCast::dissolveGroup(", "std::vector<std::string> LLDirectorCast::getGroupNames("):
+        fixture += method(nv / "lldirectorcast.cpp", signature)
     fixture += r'''
 using S32 = int;
-struct Value { int number = 0; std::string name; int asInteger() const { return number; } std::string asString() const { return name; } };
-struct Combo { Value value; Value getValue() const { return value; } };
+using U64 = unsigned long long;
+struct Value {
+    int number = 0; std::string name;
+    Value() = default; Value(int n):number(n) {} Value(std::string s):name(s) {}
+    int asInteger() const { return number; } std::string asString() const { return name; }
+};
+using LLSD = Value;
+struct Combo {
+    Value value; std::vector<std::string> rows; bool visible = false;
+    Value getValue() const { return value; }
+    void removeall() { rows.clear(); clear(); }
+    void clear() { value={}; }
+    void add(const std::string&, Value v) { rows.push_back(v.name); }
+    bool setSelectedByValue(Value v, bool) { if(std::find(rows.begin(),rows.end(),v.name)==rows.end()) return false; value=v; return true; }
+    void selectFirstItem() { if(!rows.empty()) value=rows.front(); }
+    int getItemCount() const { return int(rows.size()); }
+    int getCurrentIndex() const { auto it=std::find(rows.begin(),rows.end(),value.name); return it==rows.end()?-1:int(it-rows.begin()); }
+    Combo* getParent() { return this; }
+};
+void setVisibleIfChanged(Combo* c, bool visible) { c->visible=visible; }
+void setValueIfChanged(Combo* c, Value value, bool) { c->setSelectedByValue(value,true); }
+bool isEditing(Combo*) { return false; }
+std::string actorName(LLUUID id) { return id.asString(); }
 struct AgentAvatar { LLUUID getID() const { return gAgentID; } } agentAvatar;
 AgentAvatar* gAgentAvatarp = &agentAvatar;
 bool isAgentAvatarValid() { return true; }
@@ -222,14 +322,53 @@ constexpr int GAZE_PRESET_COUNT = 24;
 void applyGazePresetBlended(const LLUUID& actor, int preset) { gazeWrites.emplace_back(actor,preset); }
 struct ALPanelLensGaze {
     Combo *mApplyTo = nullptr, *mApplyGroup = nullptr, *mPerformance = nullptr;
+    Combo *mCast = nullptr;
+    std::vector<std::string> mLastApplyGroups;
+    bool mEditingEyeTarget = false;
+    U64 mCastComboRevision = 0;
+    LLUUID mCastComboActor, mCastComboSelection;
     bool mEditAll = false;
     LLUUID activeSlotActor() const { return LLDirectorCast::instance().getActiveActorId(); }
     uuid_vec_t editActors() const;
+    LLUUID editDisplayActor() const;
+    void refreshCastCombo();
+    void refreshApplyGroupCombo();
     void onPerformanceCommit();
 };
 '''
     fixture += method(nv / "alpanellensgaze.cpp", "uuid_vec_t ALPanelLensGaze::editActors(")
+    for signature in ("LLUUID ALPanelLensGaze::editDisplayActor(", "void ALPanelLensGaze::refreshCastCombo(",
+                      "void ALPanelLensGaze::refreshApplyGroupCombo("):
+        fixture += method(nv / "alpanellensgaze.cpp", signature)
     fixture += method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::onPerformanceCommit(")
+    fixture += r'''
+struct LLFloater {};
+struct NullHandle { LLFloater* get() const { return nullptr; } } sRecoveryDirectorHandle;
+template<class T> void setTextIfChanged(T*, const char*) {}
+template<class T> struct LLCachedControl { T value; LLCachedControl(int, const char*, T v):value(v) {} operator T() const { return value; } };
+int gSavedSettings=0;
+using F32=float;
+struct RecoveryProbe : LLFloater {
+    struct Timer { float elapsed=0; void reset() { elapsed=0; } float getElapsedTimeF32() const { return elapsed; } };
+    struct RecoveryServiceState { bool mHaveCleanSceneStamp=true, mSceneDirty=false; int mCleanSceneStamp=0; Timer mAutosaveTimer; };
+    void* mSceneDirtyText=nullptr;
+    static RecoveryServiceState& recoveryServiceState() { static RecoveryServiceState service; return service; }
+    static int currentSceneStamp() { return LLDirectorCast::instance().mSceneRevision; }
+    static void markSceneClean() { auto& s=recoveryServiceState(); s.mCleanSceneStamp=currentSceneStamp(); s.mHaveCleanSceneStamp=true; s.mSceneDirty=false; }
+    static void updateSceneDirty();
+    static void idleSceneRecovery(bool force_write);
+    static int writes;
+    static Scene saved;
+};
+int RecoveryProbe::writes=0;
+Scene RecoveryProbe::saved;
+'''
+    fixture += method(nv / "llfloaterdirector.cpp", "void LLFloaterDirector::updateSceneDirty(").replace("LLFloaterDirector", "RecoveryProbe")
+    # Execute the unmodified autosave entry/eligibility gate. Only its file I/O
+    # is replaced with a payload capture; currentSceneStamp's Cast link is
+    # independently asserted above.
+    entry = autosave[:autosave.index('    // An oversized scene')].replace('LLFloaterDirector', 'RecoveryProbe')
+    fixture += entry + '    ++writes; LLDirectorCast::instance().saveStepped(saved);\n}\n'
     fixture += r'''
 int main() {
     LLVOAvatar resident, animesh, clone;
@@ -262,6 +401,27 @@ int main() {
     cast.setActiveActorId({1});
     assert(cast.events == 5 && director.pathActor == LLUUID{1}); // no feedback loop
     assert(cast.members == members_before); // You cannot re-enrol a removed self
+    // N3: effective render selections dirty clean scenes and reach both timed
+    // and forced autosave; explicit You and Clear do not create false changes.
+    RecoveryProbe::markSceneClean();
+    const int self_revision=cast.mSceneRevision;
+    cast.setActiveActorId({});
+    assert(cast.mSceneRevision==self_revision);
+    RecoveryProbe::idleSceneRecovery(true);
+    assert(RecoveryProbe::writes==0);
+    cast.setActiveActorId({2});
+    assert(cast.mSceneRevision>self_revision);
+    RecoveryProbe::updateSceneDirty();
+    assert(RecoveryProbe::recoveryServiceState().mSceneDirty);
+    RecoveryProbe::idleSceneRecovery(false);
+    assert(RecoveryProbe::writes==0);
+    RecoveryProbe::recoveryServiceState().mAutosaveTimer.elapsed=301;
+    RecoveryProbe::idleSceneRecovery(false);
+    assert(RecoveryProbe::writes==1 && RecoveryProbe::saved["stepped_actor"].asUUID()==LLUUID{2});
+    RecoveryProbe::markSceneClean(); cast.setActiveActorId({3});
+    RecoveryProbe::idleSceneRecovery(true);
+    assert(RecoveryProbe::writes==2 && RecoveryProbe::saved["stepped_actor"].asUUID()==LLUUID{3});
+    cast.setActiveActorId(gAgentID);
     assert(LLDirectorCast::runtimeActorId(gAgentID).isNull());
     // Execute the exact production Selected predicate; Mixed consumes this same flag.
     auto selected_predicate = [](LLUUID selected, LLUUID actor_id, bool is_self) {
@@ -288,6 +448,36 @@ int main() {
     assert(saved.has("stepped_actor") && saved["stepped_actor"].asUUID().isNull());
     cast.setActiveActorId({4}); cast.migrateStepped(Scene{}, {});
     assert(cast.getActiveActorId() == LLUUID{4}); // legacy field absent retains the session choice
+    // N1: the actual Studio destination expression and central rekey execute
+    // with the production mover migration, including an unselected despawn.
+    auto& mover=LLActorMover::instance();
+    LLDirectorCast::CastMember pathActor; pathActor.mId={150}; pathActor.mMark=12;
+    pathActor.mActorStyle=48; pathActor.mGazeCues={9,8}; pathActor.mGazeInfluenceKeys={6,5};
+    cast.mCast={pathActor};
+    cast.mSubjectA=cast.mSubjectB=cast.mSubjectC=cast.mSubjectD={150};
+    cast.setActiveActorId({2});
+    mover.mPaths[{150}]=1.0; mover.mHistory[{150}]={1.0}; mover.mMoves[{150}]={};
+    mover.mGazes[{150}].authored=17; mover.mFollows[{151}].mLeader={150}; mover.mEditActor={150};
+    cloneTransition({160},{150},{});
+    assert(cast.mCast.front().mId==LLUUID{160} && mover.mPaths.at({160})==1.0);
+    assert(!mover.mPaths.count({150}) && mover.mHistory.at({160})==std::vector<double>{1.0});
+    assert(mover.mEditActor==LLUUID{160} && mover.mMoves.at({160}).mT==4);
+    mover.mPaths[{160}]=2.5; mover.mHistory[{160}].push_back(2.5); // edit while parked
+    assert(mover.mPaths.at(cast.mCast.front().mId)==2.5); // same key sceneData serializes
+    cast.setActiveActorId({160}); cast.mCast.front().mActorStyle=49;
+    cloneTransition({160},{},{170});
+    assert(cast.mCast.size()==1 && cast.mCast.front().mId==LLUUID{170});
+    assert(cast.mCast.front().mMark==12 && cast.mCast.front().mActorStyle==49);
+    assert(cast.mCast.front().mGazeCues==pathActor.mGazeCues && cast.mCast.front().mGazeInfluenceKeys==pathActor.mGazeInfluenceKeys);
+    assert(mover.mPaths.size()==1 && mover.mPaths.at({170})==2.5 && !mover.mHistory.count({160}));
+    assert(mover.mHistory.at({170})==std::vector<double>({1.0,2.5}));
+    assert(mover.mMoves.at({170}).mT==4 && mover.mGazes.at({170}).authored==17);
+    assert(mover.mEditActor==LLUUID{170} && mover.mFollows.at({151}).mLeader==LLUUID{170});
+    assert(cast.getSteppedActorId()==LLUUID{170});
+    assert(cast.mSubjectA==LLUUID{170} && cast.mSubjectB==LLUUID{170} && cast.mSubjectC==LLUUID{170} && cast.mSubjectD==LLUUID{170});
+    cast.setActiveActorId({180}); // selection outside Cast must also clear on final removal
+    cloneTransition({180},{},{},true);
+    assert(cast.getActiveActorId().isNull());
     LLDirectorCast::CastMember authored;
     authored.mId = {50}; authored.mGroup = "ensemble"; authored.mLastName = "Parked clone";
     authored.mActorStyle = 77; authored.mGazeTarget = 31; authored.mMark = 9;
@@ -312,15 +502,45 @@ int main() {
     LLDirectorCast::CastMember second; second.mId = {2}; second.mGroup = "ensemble";
     LLDirectorCast::CastMember other; other.mId = {3}; other.mGroup = "other";
     cast.mCast.push_back(second); cast.mCast.push_back(other);
-    Combo scope, group, performance;
+    Combo scope, group, performance, castPicker;
     scope.value.number = 1; group.value.name = "ensemble"; performance.value.number = 5;
     ALPanelLensGaze gaze; gaze.mApplyTo=&scope; gaze.mApplyGroup=&group; gaze.mPerformance=&performance;
+    gaze.mCast=&castPicker;
     assert(gaze.editActors() == uuid_vec_t({{80},{2}}));
     gaze.onPerformanceCommit();
     assert(gazeWrites.size() == 2 && gazeWrites[0] == std::make_pair(LLUUID{80},5) && gazeWrites[1] == std::make_pair(LLUUID{2},5));
+    // N2: Group readback and filtering follow A, with bar X outside the group.
+    cast.setActiveActorId({3}); cast.mIds={{80},{2},{3}};
+    cast.targets[{3}].mCastRef={80}; cast.targets[{80}].mCastRef={2};
+    gaze.refreshCastCombo();
+    assert(castPicker.value.name=="2");
+    assert(castPicker.rows==std::vector<std::string>({"2","3"})); // X remains a valid target
+    cast.eyeTargets[{80}].mCastRef={3}; gaze.mEditingEyeTarget=true;
+    gaze.refreshCastCombo(); assert(castPicker.value.name=="3");
+    cast.setActiveActorId({2}); gaze.refreshCastCombo();
+    assert(castPicker.value.name=="3" && castPicker.rows==std::vector<std::string>({"2","3"}));
+    // N4: execute group mutations and the real combo rebuild; names need not
+    // change for membership/representative invalidation to be required.
+    gaze.refreshApplyGroupCombo(); assert(group.value.name=="ensemble");
+    int revision=cast.mCastRevision;
+    cast.setGroup({80},"new"); assert(cast.mCastRevision>revision);
+    gaze.refreshApplyGroupCombo(); assert(std::find(group.rows.begin(),group.rows.end(),"new")!=group.rows.end());
+    revision=cast.mCastRevision;
+    cast.setGroup({80},"ensemble"); assert(cast.mCastRevision>revision);
+    gaze.refreshApplyGroupCombo(); assert(group.value.name=="ensemble");
+    revision=cast.mCastRevision;
+    assert(cast.renameGroup("other","renamed") && cast.mCastRevision>revision);
+    gaze.refreshApplyGroupCombo(); assert(std::find(group.rows.begin(),group.rows.end(),"renamed")!=group.rows.end());
+    revision=cast.mCastRevision;
+    assert(cast.dissolveGroup("ensemble") && cast.mCastRevision>revision);
+    gaze.refreshApplyGroupCombo();
+    assert(group.value.name.empty() && gaze.editActors().empty()); // no substitution of "renamed"
+    assert(group.rows==std::vector<std::string>{"renamed"});
     group.value.name = "removed"; assert(gaze.editActors().empty());
+    cast.setActiveActorId({80});
     scope.value.number = 0; assert(gaze.editActors() == uuid_vec_t{{80}});
     std::cout << "PASS: full parked-clone authored state, identity, subjects and uniqueness; Gaze existing-group broadcast\n";
+    std::cout << "PASS: parked path/history/move edits survive recovery; Group Head/Eyes picker; dirty/timed/forced autosave; group mutation refresh and removal\n";
     std::cout << "PASS: session actor, canonical identity, two-way Cast sync, batch preservation, Clear speed default, no feedback loop\n";
 }
 '''

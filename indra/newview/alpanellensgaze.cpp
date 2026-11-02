@@ -1065,9 +1065,8 @@ static void gazeRandomPerfTick(void* /*user*/)
     }
 }
 
-void ALPanelLensGaze::refreshEditActorCombo()
+void ALPanelLensGaze::refreshApplyGroupCombo()
 {
-    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshEditActorCombo");
     if (mApplyTo && mApplyGroup)
     {
         const auto groups = LLDirectorCast::instance().getGroupNames();
@@ -1076,11 +1075,19 @@ void ALPanelLensGaze::refreshEditActorCombo()
             const LLSD selected = mApplyGroup->getValue();
             mApplyGroup->removeall();
             for (const auto& group : groups) mApplyGroup->add(group, group);
-            if (!mApplyGroup->setSelectedByValue(selected, true)) mApplyGroup->selectFirstItem();
+            // Never redirect a broadcast when its group disappears. An empty
+            // choice has no edit actors until the operator picks a group.
+            if (!mApplyGroup->setSelectedByValue(selected, true)) mApplyGroup->clear();
             mLastApplyGroups = groups;
         }
         setVisibleIfChanged(mApplyGroup->getParent(), mApplyTo->getValue().asInteger() == 1);
     }
+}
+
+void ALPanelLensGaze::refreshEditActorCombo()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshEditActorCombo");
+    refreshApplyGroupCombo();
     if (!mEditActor || isEditing(mEditActor))
     {
         return;
@@ -1126,7 +1133,9 @@ void ALPanelLensGaze::refreshCastCombo()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshCastCombo");
     LLDirectorCast& cast = LLDirectorCast::instance();
-    const LLUUID displayed = activeSlotActor();
+    // Like the old All editor, read and exclude only the displayed member.
+    // Other group members (and the unrelated Actor-bar actor) remain targets.
+    const LLUUID displayed = editDisplayActor();
     const LLUUID current = mEditingEyeTarget && cast.hasEyeGazeTarget(displayed)
         ? cast.getEyeGazeTarget(displayed).mCastRef
         : cast.getGazeTarget(displayed).mCastRef;

@@ -1217,7 +1217,20 @@ void LLDirectorCast::remove(const LLUUID& id)
 void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
 {
     if (old_id.isNull() || old_id == new_id) return;
-    if (new_id.isNull()) { remove(old_id); return; }
+    // One identity transaction for every per-actor store. Park under the
+    // stable Studio id too, so edits and scene saves during absence use the
+    // very same path/history/move and CastMember that recovery will claim.
+    LLActorMover& mover = LLActorMover::instance();
+    if (new_id.isNull())
+    {
+        mover.dropActor(old_id);
+        remove(old_id);
+        // Choosing a clone need not enroll it in Cast. Final removal still
+        // clears that shared selection when there was no member to remove.
+        if (mActiveActorId == old_id) setActiveActorId(LLUUID::null);
+        return;
+    }
+    mover.migrateActor(old_id, new_id);
     auto old = std::find_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == old_id; });
     if (old != mCast.end())
     {
@@ -1235,6 +1248,8 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
     for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
         if (*subject == old_id) { *subject = new_id; ++mSubjectRevision; }
     if (mLookAtCameraIds.erase(old_id)) mLookAtCameraIds.insert(new_id);
+    for (auto& start : mPendingStarts)
+        if (start.mId == old_id) start.mId = new_id;
     if (mActiveActorId == old_id) setActiveActorId(new_id);
     touchScene();
 }
@@ -1352,7 +1367,12 @@ void LLDirectorCast::setActiveActorId(const LLUUID& id)
 {
     const LLUUID actor = canonicalActorId(id);
     if (actor == mActiveActorId) return;
+    const bool stepped_changed = runtimeActorId(actor) != getSteppedActorId();
     mActiveActorId = actor;
+    // The shared edit actor is also Stepped's saved Selected/Mixed render
+    // selection. Track that functional change through normal scene recovery,
+    // while treating Clear and explicit You as the same render selection.
+    if (stepped_changed) touchScene();
     mActiveActorChanged();
 }
 
@@ -1932,6 +1952,7 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
         if (old != name)
         {
             pruneGroupData(old);   // retagging the last member retires the group
+            ++mCastRevision;       // group pickers and their representatives
             touchScene();
         }
     }
@@ -2010,6 +2031,7 @@ bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string&
     }
     // the stepped rate rides along by the same rule (the target's own rate wins on a merge)
     ALSteppedAnim::renameGroupRate(mGroupRates, old_name, new_name);
+    ++mCastRevision;
     touchScene();
     return true;
 }
@@ -2032,7 +2054,10 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
     mGroupDelays.erase(name);
     mGroupRates.erase(name);
     if (any)
+    {
+        ++mCastRevision;
         touchScene();
+    }
     return any;
 }
 

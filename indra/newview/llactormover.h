@@ -749,15 +749,16 @@ public:
     //     as any other follower's leader), gaze config, edit selection -- and
     //     restart a live move's loco/dwell anim on the new body (the old body
     //     is destroyed right after this returns).
-    //   old -> null (despawn, instance kept): records stay put -- the walk
-    //     suspends under the old key -- and the key is PARKED under the
-    //     stable instance id so the eventual replacement can claim it.
-    //   null -> new (recover): the parked key migrates to the new runtime;
+    //   old -> null (despawn, instance kept): Cast rekeys all records to the
+    //     stable instance id, including paths edited while absent.
+    //   null -> new (recover): the stable key migrates to the new runtime;
     //     the suspended walk then auto-resumes through the ordinary
     //     RESUME_NEAR test, because its anchor and the respawn position are
     //     both the authored Studio placement.
     //   removing_instance: drop the records outright (a removed instance's
-    //     runtime uuid can never resolve again) and forget the parked key.
+    //     runtime uuid can never resolve again).
+    // This hook releases body-owned captures; LLDirectorCast::replaceActorId
+    // owns the subsequent rekey/drop transaction for all per-actor stores.
     // Real avatars never pass through here -- their id is permanent.
     void onActorRuntimeReplaced(const LLUUID& stable_id, const LLUUID& old_id,
                                 const LLUUID& new_id, bool removing_instance);
@@ -1281,6 +1282,7 @@ private:
     // probe and facing). Both operate on an entry already located in mMoves.
     void   enterSuspend(const LLUUID& key, Move& mv, LLVOAvatar* av);
     void   resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av);
+    friend class LLDirectorCast; // the single authored identity transaction
     // [GhostWalk] runtime-replacement internals (see onActorRuntimeReplaced):
     // migrateActor() rekeys every id-keyed record old -> new (and restarts a
     // live move's anims on the new body); dropActor() erases an actor's
@@ -1750,10 +1752,6 @@ private:
     static bool ghostImpostorStale(LLVOAvatar* av, const GhostImpostor& gi);
 
     std::map<LLUUID, Move> mMoves;
-    // [GhostWalk] stable Ghost Studio instance id -> the runtime key whose walk
-    // records are parked while that instance has NO live runtime (despawned).
-    // Written/claimed/forgotten only by onActorRuntimeReplaced().
-    std::map<LLUUID, LLUUID> mParkedWalkKeys;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)
     U64 mPathRevision = 1;
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks

@@ -56,6 +56,7 @@ private:
     uuid_vec_t editActors() const;
     LLUUID     editDisplayActor() const;
     void refreshCastCombo();
+    void refreshApplyGroupCombo();
     void refreshEditActorCombo();
     void refreshControls();
     void refreshLiveControls();
