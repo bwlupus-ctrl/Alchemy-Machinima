@@ -11,9 +11,8 @@ void blink();
 void setUIHeld(bool held);
 bool uiHeld();
 void setPadHeld(bool held);
-// Only call for the admitted live main view. Returns null without GL work idle.
-LLRenderTarget* beginPresentation(unsigned width, unsigned height, float& amount);
-void endPresentation(LLVertexBuffer* triangle, float amount);
+// Single last scene-image write; never redirects the presented destination.
+void renderLastSceneImage(bool live, LLRenderTarget* scratch, LLVertexBuffer* triangle);
 void releaseGL();
 }
 #endif

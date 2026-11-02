@@ -7,21 +7,22 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
       "HOOK": 498,
-      "OWNED": 883,
-      "TOOLING": 359
+      "OWNED": 887,
+      "TOOLING": 361
     },
     "dirty_product_inputs": [
-      "indra/newview/CMakeLists.txt",
-      "indra/newview/alkitpresets.cpp",
-      "indra/newview/app_settings/key_bindings.xml",
+      "indra/newview/alpovblink.cpp",
+      "indra/newview/alpovblink.h",
+      "indra/newview/alpovblinkmath.h",
       "indra/newview/app_settings/settings.xml",
+      "indra/newview/app_settings/shaders/class1/deferred/povBlinkF.glsl",
       "indra/newview/llfloaterdirector.cpp",
+      "indra/newview/llfloaterdirector.h",
       "indra/newview/llkeyconflict.cpp",
-      "indra/newview/llviewerinput.cpp",
+      "indra/newview/llviewerdisplay.cpp",
       "indra/newview/llviewerjoystick.cpp",
-      "indra/newview/llviewershadermgr.cpp",
+      "indra/newview/llviewerjoystick.h",
       "indra/newview/pipeline.cpp",
-      "indra/newview/skins/default/xui/en/control_table_contents_movement.xml",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -66,8 +67,8 @@
       "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json",
-      "scripts/code_tools/director_kit_gen.py"
+      "scripts/code_tools/pov_blink_check.py",
+      "scripts/code_tools/pov_blink_pipeline_hunks.json"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -81,7 +82,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "a7a7b0df17be7ee9a93363ee75b3ead741d547272db6508bedb11d1c82d537da",
+        "csv_sha256": "578ed0feba014a027cce590d582a7f9af3418f6f763fbb532ab5a1159d2dc327",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
@@ -248,12 +249,12 @@
       },
       "wiring_rows": 2206
     },
-    "head_source_tree": "a5e71954d0465498e45b7d4594cc25e5187d005c",
+    "head_source_tree": "ba39e994536c463e51edada06a9c41be69bb0ecd",
     "hook_files": 498,
-    "hunks": 3014,
-    "input_sha256": "3c67a0eed027882974e9449d2eacad4093c4a6b042fe6ed288a83fdecdc8f20f",
+    "hunks": 3016,
+    "input_sha256": "f0bb194bde0dfb1b13fbff1079add74b39adfc4b9023eaba2ef2380d17df9443",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 1996
+    "settings": 2009
   },
   "paths": [
     {
@@ -17480,6 +17481,59 @@
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-path",
+        "capture-sidecar",
+        "clones",
+        "gaze",
+        "looks",
+        "rig",
+        "roto-tron",
+        "sensor",
+        "shafts-volumetrics",
+        "vcam",
+        "weather"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alpovblink.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alpovblink.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alpovblinkmath.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
         "path/prefix",
         "owned source / hook delta identifiers and comments"
       ],
@@ -21745,6 +21799,19 @@
       "layer": 10,
       "path": "indra/newview/app_settings/shaders/class1/deferred/postDeferredF.glsl",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/app_settings/shaders/class1/deferred/povBlinkF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
       "candidate_features_from_subjects": [
@@ -27327,7 +27394,6 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
         "gaze",
         "roto-tron"
       ],
@@ -30683,7 +30749,6 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "composition",
         "director-shell",
         "gaze",
         "roto-tron",
@@ -35807,6 +35872,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "camera",
         "director-shell",
         "looks",
         "roto-tron",
@@ -40285,6 +40351,32 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/nearby_lights_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/pov_blink_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/pov_blink_pipeline_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

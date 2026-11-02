@@ -506,12 +506,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -561,8 +561,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@39,14",
-          "indra/newview/llviewerinput.cpp@504,71"
+          "indra/newview/llviewerinput.cpp@40,14",
+          "indra/newview/llviewerinput.cpp@505,71"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -596,9 +596,9 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@102,8",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30948,430"
+          "indra/newview/pipeline.cpp@103,8",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30961,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -5957,6 +5957,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -6047,6 +6048,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -6060,6 +6062,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -7145,6 +7150,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -7169,6 +7175,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -8438,6 +8445,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -8594,6 +8602,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -9625,6 +9636,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 401,
         "source": "indra/newview/altoolcrowdplace.cpp",
         "text": "altoolcrowdplace.cpp"
@@ -10063,24 +10080,24 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@170,13",
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1118,13",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1119,13",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@22759,511",
-          "indra/newview/app_settings/settings.xml@23381,175",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@22968,203",
+          "indra/newview/app_settings/settings.xml@23964,65",
+          "indra/newview/app_settings/settings.xml@29061,100",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -10189,9 +10206,9 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@156,12",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@31781,695"
+          "indra/newview/pipeline.cpp@157,12",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@31794,695"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -10304,8 +10321,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@27,21",
-          "indra/newview/llviewerjoystick.cpp@1844,1983"
+          "indra/newview/llviewerjoystick.cpp@27,23",
+          "indra/newview/llviewerjoystick.cpp@1846,1997"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -10320,10 +10337,10 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@616,35",
-          "indra/newview/llviewershadermgr.cpp@2691,18",
-          "indra/newview/llviewershadermgr.cpp@4165,11",
-          "indra/newview/llviewershadermgr.cpp@6467,118"
+          "indra/newview/llviewershadermgr.cpp@617,35",
+          "indra/newview/llviewershadermgr.cpp@2694,18",
+          "indra/newview/llviewershadermgr.cpp@4168,11",
+          "indra/newview/llviewershadermgr.cpp@6483,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -10398,6 +10415,7 @@
       "indra/newview/alposecontinuity.h",
       "indra/newview/alposepolish.h",
       "indra/newview/alposesecondary.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/altoolcrowdplace.cpp",
       "indra/newview/altoolfocuspick.cpp",
       "indra/newview/altoolghostplace.h",
@@ -12944,6 +12962,31 @@
         "qualified_call_candidates": [
           "ALAvatarAnimationTime::frozen",
           "ALAvatarAnimationTime::polishReseed"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": []
       },
@@ -15524,6 +15567,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -15614,6 +15658,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -15627,6 +15672,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -17656,6 +17704,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -17684,6 +17734,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -19562,6 +19614,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -19718,6 +19771,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -21513,21 +21569,22 @@
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml"
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml"
     ],
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@240,11",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1189,13",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2874,20",
-          "indra/newview/CMakeLists.txt@2942,179",
-          "indra/newview/CMakeLists.txt@3182,40"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@241,11",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1192,13",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2877,20",
+          "indra/newview/CMakeLists.txt@2945,179",
+          "indra/newview/CMakeLists.txt@3185,40"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -21545,10 +21602,11 @@
           "indra/newview/app_settings/settings.xml@5877,21",
           "indra/newview/app_settings/settings.xml@5899,527",
           "indra/newview/app_settings/settings.xml@6427,120",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@27066,274",
-          "indra/newview/app_settings/settings.xml@27570,193",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@27165,208",
+          "indra/newview/app_settings/settings.xml@27786,229",
+          "indra/newview/app_settings/settings.xml@29206,2466",
+          "indra/newview/app_settings/settings.xml@31883,189"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -21649,8 +21707,8 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@102,8",
-          "indra/newview/pipeline.cpp@1692,29125"
+          "indra/newview/pipeline.cpp@103,8",
+          "indra/newview/pipeline.cpp@1693,29137"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -21742,46 +21800,46 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@27,21",
-          "indra/newview/llviewerjoystick.cpp@50,21",
-          "indra/newview/llviewerjoystick.cpp@78,8",
-          "indra/newview/llviewerjoystick.cpp@89,413",
-          "indra/newview/llviewerjoystick.cpp@536,144",
-          "indra/newview/llviewerjoystick.cpp@707,7",
-          "indra/newview/llviewerjoystick.cpp@755,11",
-          "indra/newview/llviewerjoystick.cpp@775,7",
-          "indra/newview/llviewerjoystick.cpp@785,7",
-          "indra/newview/llviewerjoystick.cpp@808,35",
-          "indra/newview/llviewerjoystick.cpp@857,7",
-          "indra/newview/llviewerjoystick.cpp@875,7",
-          "indra/newview/llviewerjoystick.cpp@887,9",
-          "indra/newview/llviewerjoystick.cpp@899,169",
-          "indra/newview/llviewerjoystick.cpp@1074,25",
-          "indra/newview/llviewerjoystick.cpp@1153,10",
-          "indra/newview/llviewerjoystick.cpp@1174,7",
-          "indra/newview/llviewerjoystick.cpp@1184,13",
-          "indra/newview/llviewerjoystick.cpp@1208,95",
-          "indra/newview/llviewerjoystick.cpp@1337,10",
-          "indra/newview/llviewerjoystick.cpp@1351,10",
-          "indra/newview/llviewerjoystick.cpp@1372,10",
-          "indra/newview/llviewerjoystick.cpp@1387,7",
-          "indra/newview/llviewerjoystick.cpp@1416,7",
-          "indra/newview/llviewerjoystick.cpp@1426,14",
-          "indra/newview/llviewerjoystick.cpp@1448,33",
-          "indra/newview/llviewerjoystick.cpp@1511,8",
-          "indra/newview/llviewerjoystick.cpp@1581,14",
-          "indra/newview/llviewerjoystick.cpp@1620,8",
-          "indra/newview/llviewerjoystick.cpp@1645,7",
-          "indra/newview/llviewerjoystick.cpp@1656,133",
-          "indra/newview/llviewerjoystick.cpp@1795,6",
-          "indra/newview/llviewerjoystick.cpp@1823,18",
-          "indra/newview/llviewerjoystick.cpp@1844,1983",
-          "indra/newview/llviewerjoystick.cpp@3835,41",
-          "indra/newview/llviewerjoystick.cpp@4004,7",
-          "indra/newview/llviewerjoystick.cpp@4019,7",
-          "indra/newview/llviewerjoystick.cpp@4029,7",
-          "indra/newview/llviewerjoystick.cpp@4039,23",
-          "indra/newview/llviewerjoystick.cpp@4101,218"
+          "indra/newview/llviewerjoystick.cpp@27,23",
+          "indra/newview/llviewerjoystick.cpp@52,21",
+          "indra/newview/llviewerjoystick.cpp@80,8",
+          "indra/newview/llviewerjoystick.cpp@91,413",
+          "indra/newview/llviewerjoystick.cpp@538,144",
+          "indra/newview/llviewerjoystick.cpp@709,7",
+          "indra/newview/llviewerjoystick.cpp@757,11",
+          "indra/newview/llviewerjoystick.cpp@777,7",
+          "indra/newview/llviewerjoystick.cpp@787,7",
+          "indra/newview/llviewerjoystick.cpp@810,35",
+          "indra/newview/llviewerjoystick.cpp@859,7",
+          "indra/newview/llviewerjoystick.cpp@877,7",
+          "indra/newview/llviewerjoystick.cpp@889,9",
+          "indra/newview/llviewerjoystick.cpp@901,169",
+          "indra/newview/llviewerjoystick.cpp@1076,25",
+          "indra/newview/llviewerjoystick.cpp@1155,10",
+          "indra/newview/llviewerjoystick.cpp@1176,7",
+          "indra/newview/llviewerjoystick.cpp@1186,13",
+          "indra/newview/llviewerjoystick.cpp@1210,95",
+          "indra/newview/llviewerjoystick.cpp@1339,10",
+          "indra/newview/llviewerjoystick.cpp@1353,10",
+          "indra/newview/llviewerjoystick.cpp@1374,10",
+          "indra/newview/llviewerjoystick.cpp@1389,7",
+          "indra/newview/llviewerjoystick.cpp@1418,7",
+          "indra/newview/llviewerjoystick.cpp@1428,14",
+          "indra/newview/llviewerjoystick.cpp@1450,33",
+          "indra/newview/llviewerjoystick.cpp@1513,8",
+          "indra/newview/llviewerjoystick.cpp@1583,14",
+          "indra/newview/llviewerjoystick.cpp@1622,8",
+          "indra/newview/llviewerjoystick.cpp@1647,7",
+          "indra/newview/llviewerjoystick.cpp@1658,133",
+          "indra/newview/llviewerjoystick.cpp@1797,6",
+          "indra/newview/llviewerjoystick.cpp@1825,18",
+          "indra/newview/llviewerjoystick.cpp@1846,1997",
+          "indra/newview/llviewerjoystick.cpp@3851,41",
+          "indra/newview/llviewerjoystick.cpp@4020,7",
+          "indra/newview/llviewerjoystick.cpp@4035,7",
+          "indra/newview/llviewerjoystick.cpp@4045,7",
+          "indra/newview/llviewerjoystick.cpp@4055,23",
+          "indra/newview/llviewerjoystick.cpp@4117,218"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -22369,6 +22427,8 @@
       "JoystickXInputTriggerDeadZone",
       "JoystickXInputTriggerMode",
       "MachinimaDebugLogging",
+      "POVBlinkPadHold",
+      "POVBlinkPadTap",
       "TronAnimFollowDirector",
       "UseCinematicCamera",
       "BlackDragonControls",
@@ -26113,6 +26173,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -26203,6 +26264,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -26216,6 +26278,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -29480,6 +29545,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -29508,6 +29575,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -31173,6 +31242,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -31329,6 +31399,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -32270,6 +32343,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/skins/default/xui/en/panel_flycam_orbit.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -32317,6 +32395,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
       "indra/newview/skins/default/xui/en/panel_flycam_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_flycam_recorder.xml",
       "indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml",
@@ -32482,6 +32561,12 @@
         "line": 1388,
         "source": "indra/newview/alpaneltemporalcapture.h",
         "text": "alpaneltemporalcapture.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -33009,18 +33094,17 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@906,7",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@1894,8"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@907,7",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@1897,8"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -33115,15 +33199,15 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@120,11",
-          "indra/newview/pipeline.cpp@327,106",
-          "indra/newview/pipeline.cpp@951,88",
-          "indra/newview/pipeline.cpp@1362,61",
-          "indra/newview/pipeline.cpp@1427,15",
-          "indra/newview/pipeline.cpp@1555,106",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30948,430",
-          "indra/newview/pipeline.cpp@31781,695"
+          "indra/newview/pipeline.cpp@121,11",
+          "indra/newview/pipeline.cpp@328,106",
+          "indra/newview/pipeline.cpp@952,88",
+          "indra/newview/pipeline.cpp@1363,61",
+          "indra/newview/pipeline.cpp@1428,15",
+          "indra/newview/pipeline.cpp@1556,106",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30961,430",
+          "indra/newview/pipeline.cpp@31794,695"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -33185,7 +33269,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1844,1983"
+          "indra/newview/llviewerjoystick.cpp@1846,1997"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -33197,16 +33281,16 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@338,32",
-          "indra/newview/llviewershadermgr.cpp@373,20",
-          "indra/newview/llviewershadermgr.cpp@435,143",
-          "indra/newview/llviewershadermgr.cpp@1562,18",
-          "indra/newview/llviewershadermgr.cpp@1596,14",
-          "indra/newview/llviewershadermgr.cpp@2148,40",
-          "indra/newview/llviewershadermgr.cpp@2491,28",
-          "indra/newview/llviewershadermgr.cpp@2803,312",
-          "indra/newview/llviewershadermgr.cpp@3915,67",
-          "indra/newview/llviewershadermgr.cpp@5480,299"
+          "indra/newview/llviewershadermgr.cpp@339,32",
+          "indra/newview/llviewershadermgr.cpp@374,20",
+          "indra/newview/llviewershadermgr.cpp@436,143",
+          "indra/newview/llviewershadermgr.cpp@1564,18",
+          "indra/newview/llviewershadermgr.cpp@1598,14",
+          "indra/newview/llviewershadermgr.cpp@2151,40",
+          "indra/newview/llviewershadermgr.cpp@2494,28",
+          "indra/newview/llviewershadermgr.cpp@2806,312",
+          "indra/newview/llviewershadermgr.cpp@3918,67",
+          "indra/newview/llviewershadermgr.cpp@5496,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -33438,6 +33522,7 @@
       "indra/newview/alghostmaterialresolver.cpp",
       "indra/newview/alpaneltemporalcapture.cpp",
       "indra/newview/alpaneltemporalcapture.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alprojectortracker.cpp",
       "indra/newview/animationexplorer.cpp",
       "indra/newview/animationexplorer.h",
@@ -35201,6 +35286,31 @@
           "indra/newview/aluirefresh.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/alprojectortracker.cpp": {
@@ -40373,6 +40483,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -40401,6 +40513,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -41862,6 +41976,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -42018,6 +42133,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -43780,6 +43898,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 397,
         "source": "indra/newview/alprojectortracker.cpp",
         "text": "alprojectortracker.cpp"
@@ -44590,19 +44714,19 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@660,7",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@1662,7",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@661,7",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@1665,7",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
+          "indra/newview/app_settings/settings.xml@6548,15868",
           "indra/newview/app_settings/settings.xml@31673,209"
         ],
         "path": "indra/newview/app_settings/settings.xml"
@@ -44718,8 +44842,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@39,14",
-          "indra/newview/llviewerinput.cpp@504,71"
+          "indra/newview/llviewerinput.cpp@40,14",
+          "indra/newview/llviewerinput.cpp@505,71"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -44806,15 +44930,15 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@120,11",
-          "indra/newview/pipeline.cpp@136,14",
-          "indra/newview/pipeline.cpp@156,12",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@32611,222",
-          "indra/newview/pipeline.cpp@33289,1054",
-          "indra/newview/pipeline.cpp@38297,153"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@121,11",
+          "indra/newview/pipeline.cpp@137,14",
+          "indra/newview/pipeline.cpp@157,12",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@32624,222",
+          "indra/newview/pipeline.cpp@33302,1054",
+          "indra/newview/pipeline.cpp@38310,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -44933,8 +45057,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@27,21",
-          "indra/newview/llviewerjoystick.cpp@1844,1983"
+          "indra/newview/llviewerjoystick.cpp@27,23",
+          "indra/newview/llviewerjoystick.cpp@1846,1997"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -44968,12 +45092,12 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@689,32",
-          "indra/newview/llviewershadermgr.cpp@1756,259",
-          "indra/newview/llviewershadermgr.cpp@4590,620",
-          "indra/newview/llviewershadermgr.cpp@6337,8",
-          "indra/newview/llviewershadermgr.cpp@6377,70",
-          "indra/newview/llviewershadermgr.cpp@6467,118"
+          "indra/newview/llviewershadermgr.cpp@690,32",
+          "indra/newview/llviewershadermgr.cpp@1758,259",
+          "indra/newview/llviewershadermgr.cpp@4593,633",
+          "indra/newview/llviewershadermgr.cpp@6353,8",
+          "indra/newview/llviewershadermgr.cpp@6393,70",
+          "indra/newview/llviewershadermgr.cpp@6483,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -45348,6 +45472,7 @@
       "indra/newview/alpanelweathersettings.cpp",
       "indra/newview/alposepolish.h",
       "indra/newview/alposesecondary.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alprojectortracker.cpp",
       "indra/newview/alreflectanim.cpp",
       "indra/newview/alreflectmath.h",
@@ -51070,6 +51195,31 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alprojectortracker.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
@@ -55115,6 +55265,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -55205,6 +55356,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -55218,6 +55370,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -59415,6 +59570,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -59439,6 +59595,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -59750,6 +59907,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -59778,6 +59937,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -62462,6 +62623,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -62618,6 +62780,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -64515,18 +64680,18 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@25789,935"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@25525,428"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -69951,6 +70116,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -70041,6 +70207,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -70054,6 +70221,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -72214,9 +72384,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -72224,7 +72394,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5514,32",
           "indra/newview/app_settings/settings.xml@5547,21",
-          "indra/newview/app_settings/settings.xml@6548,14140"
+          "indra/newview/app_settings/settings.xml@6548,15868"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -72267,10 +72437,10 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@979,14",
-          "indra/newview/llviewerinput.cpp@1163,22",
-          "indra/newview/llviewerinput.cpp@1588,83",
-          "indra/newview/llviewerinput.cpp@1740,14"
+          "indra/newview/llviewerinput.cpp@980,20",
+          "indra/newview/llviewerinput.cpp@1170,23",
+          "indra/newview/llviewerinput.cpp@1596,83",
+          "indra/newview/llviewerinput.cpp@1748,14"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -72313,8 +72483,8 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@84,17",
-          "indra/newview/pipeline.cpp@1692,29125"
+          "indra/newview/pipeline.cpp@85,17",
+          "indra/newview/pipeline.cpp@1693,29137"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -72338,10 +72508,10 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/key_bindings.xml@1,7",
-          "indra/newview/app_settings/key_bindings.xml@41,7",
-          "indra/newview/app_settings/key_bindings.xml@124,7",
-          "indra/newview/app_settings/key_bindings.xml@214,7"
+          "indra/newview/app_settings/key_bindings.xml@1,8",
+          "indra/newview/app_settings/key_bindings.xml@42,8",
+          "indra/newview/app_settings/key_bindings.xml@126,8",
+          "indra/newview/app_settings/key_bindings.xml@217,8"
         ],
         "path": "indra/newview/app_settings/key_bindings.xml"
       },
@@ -72372,7 +72542,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/control_table_contents_movement.xml@205,14"
+          "indra/newview/skins/default/xui/en/control_table_contents_movement.xml@205,17"
         ],
         "path": "indra/newview/skins/default/xui/en/control_table_contents_movement.xml"
       },
@@ -76890,6 +77060,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -76914,6 +77085,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -78593,6 +78765,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -78749,6 +78922,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -79968,20 +80144,20 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@22759,511",
-          "indra/newview/app_settings/settings.xml@23381,175",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@22968,203",
+          "indra/newview/app_settings/settings.xml@23964,65",
+          "indra/newview/app_settings/settings.xml@29061,100",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -80031,9 +80207,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@616,35",
-          "indra/newview/llviewershadermgr.cpp@2691,18",
-          "indra/newview/llviewershadermgr.cpp@4165,11"
+          "indra/newview/llviewershadermgr.cpp@617,35",
+          "indra/newview/llviewershadermgr.cpp@2694,18",
+          "indra/newview/llviewershadermgr.cpp@4168,11"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       }
@@ -82150,6 +82326,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -82240,6 +82417,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -82253,6 +82431,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -85687,12 +85868,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -85701,10 +85882,9 @@
           "indra/newview/app_settings/settings.xml@2,3450",
           "indra/newview/app_settings/settings.xml@4498,839",
           "indra/newview/app_settings/settings.xml@5338,175",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@21921,837",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104",
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@28412,648",
+          "indra/newview/app_settings/settings.xml@29206,2466",
           "indra/newview/app_settings/settings.xml@31673,209"
         ],
         "path": "indra/newview/app_settings/settings.xml"
@@ -85874,9 +86054,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@39,14",
-          "indra/newview/llviewerinput.cpp@504,71",
-          "indra/newview/llviewerinput.cpp@1163,22"
+          "indra/newview/llviewerinput.cpp@40,14",
+          "indra/newview/llviewerinput.cpp@505,71",
+          "indra/newview/llviewerinput.cpp@1170,23"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -85946,9 +86126,9 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@102,8",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30948,430"
+          "indra/newview/pipeline.cpp@103,8",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30961,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -94645,6 +94825,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -94735,6 +94916,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -94748,6 +94930,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -98412,6 +98597,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -98436,6 +98622,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -100738,6 +100925,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -100894,6 +101082,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -102962,21 +103153,21 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@170,13",
-          "indra/newview/CMakeLists.txt@551,7",
-          "indra/newview/CMakeLists.txt@649,7",
-          "indra/newview/CMakeLists.txt@1118,13",
-          "indra/newview/CMakeLists.txt@1549,7",
-          "indra/newview/CMakeLists.txt@1651,7"
+          "indra/newview/CMakeLists.txt@552,7",
+          "indra/newview/CMakeLists.txt@650,7",
+          "indra/newview/CMakeLists.txt@1119,13",
+          "indra/newview/CMakeLists.txt@1552,7",
+          "indra/newview/CMakeLists.txt@1654,7"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@26956,109",
-          "indra/newview/app_settings/settings.xml@27352,131",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@25954,1111",
+          "indra/newview/app_settings/settings.xml@27676,109",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -103024,7 +103215,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1692,29125"
+          "indra/newview/pipeline.cpp@1693,29137"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -103061,7 +103252,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@1474,26"
+          "indra/newview/llviewershadermgr.cpp@1476,26"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -106020,6 +106211,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -106176,6 +106368,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -107121,6 +107316,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1144,
+        "source": "indra/newview/alpovblinkmath.h",
+        "text": "alpovblinkmath.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 247,
         "source": "indra/newview/alsteppedanim.cpp",
         "text": "alsteppedanim.cpp"
@@ -107294,17 +107501,17 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@28445,2122"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -107344,9 +107551,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@39,14",
-          "indra/newview/llviewerinput.cpp@504,71",
-          "indra/newview/llviewerinput.cpp@1163,22"
+          "indra/newview/llviewerinput.cpp@40,14",
+          "indra/newview/llviewerinput.cpp@505,71",
+          "indra/newview/llviewerinput.cpp@1170,23"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -107466,6 +107673,8 @@
       "indra/newview/alpanellensgaze.h",
       "indra/newview/alposepolish.h",
       "indra/newview/alposesecondary.h",
+      "indra/newview/alpovblink.cpp",
+      "indra/newview/alpovblinkmath.h",
       "indra/newview/alsteppedanim.cpp",
       "indra/newview/alsteppedanim.h",
       "indra/newview/alsteppedanimruntime.cpp",
@@ -109219,6 +109428,36 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alpovblinkmath.h": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/alsteppedanim.cpp": {
         "includes": [
           "indra/newview/alsteppedanim.h",
@@ -110899,6 +111138,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -110989,6 +111229,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -111002,6 +111243,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -112444,6 +112688,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -112468,6 +112713,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -113559,6 +113805,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1419,
         "source": "indra/newview/alprobeschedule.h",
         "text": "alprobeschedule.h # [ProbeOnDemand]"
@@ -114115,25 +114367,24 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1099,7",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2093,7",
-          "indra/newview/CMakeLists.txt@2837,31"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1100,7",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2096,7",
+          "indra/newview/CMakeLists.txt@2840,31"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@21921,837",
-          "indra/newview/app_settings/settings.xml@22759,511",
-          "indra/newview/app_settings/settings.xml@23293,87",
-          "indra/newview/app_settings/settings.xml@23711,153",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104",
-          "indra/newview/app_settings/settings.xml@31883,98"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@22417,142",
+          "indra/newview/app_settings/settings.xml@23293,142",
+          "indra/newview/app_settings/settings.xml@23436,318",
+          "indra/newview/app_settings/settings.xml@24129,32",
+          "indra/newview/app_settings/settings.xml@29206,2466",
+          "indra/newview/app_settings/settings.xml@31883,189"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -114266,7 +114517,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@504,71"
+          "indra/newview/llviewerinput.cpp@505,71"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -114303,14 +114554,14 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@179,7",
-          "indra/newview/pipeline.cpp@1362,61",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@31457,53",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@36372,1056",
-          "indra/newview/pipeline.cpp@38297,153"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@180,7",
+          "indra/newview/pipeline.cpp@1363,61",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@31470,53",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@36385,1056",
+          "indra/newview/pipeline.cpp@38310,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -114439,75 +114690,75 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@27,21",
-          "indra/newview/llviewerjoystick.cpp@899,169",
-          "indra/newview/llviewerjoystick.cpp@4101,218"
+          "indra/newview/llviewerjoystick.cpp@27,23",
+          "indra/newview/llviewerjoystick.cpp@901,169",
+          "indra/newview/llviewerjoystick.cpp@4117,218"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@373,20",
-          "indra/newview/llviewershadermgr.cpp@400,22",
-          "indra/newview/llviewershadermgr.cpp@435,143",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@810,8",
-          "indra/newview/llviewershadermgr.cpp@824,29",
-          "indra/newview/llviewershadermgr.cpp@1080,31",
-          "indra/newview/llviewershadermgr.cpp@1119,9",
-          "indra/newview/llviewershadermgr.cpp@1273,52",
-          "indra/newview/llviewershadermgr.cpp@1474,26",
-          "indra/newview/llviewershadermgr.cpp@1507,13",
-          "indra/newview/llviewershadermgr.cpp@1756,259",
-          "indra/newview/llviewershadermgr.cpp@2073,10",
-          "indra/newview/llviewershadermgr.cpp@2093,45",
-          "indra/newview/llviewershadermgr.cpp@2196,7",
-          "indra/newview/llviewershadermgr.cpp@2211,117",
-          "indra/newview/llviewershadermgr.cpp@2337,12",
-          "indra/newview/llviewershadermgr.cpp@2352,13",
-          "indra/newview/llviewershadermgr.cpp@2380,13",
-          "indra/newview/llviewershadermgr.cpp@2395,13",
-          "indra/newview/llviewershadermgr.cpp@2439,10",
-          "indra/newview/llviewershadermgr.cpp@2556,11",
-          "indra/newview/llviewershadermgr.cpp@2602,14",
-          "indra/newview/llviewershadermgr.cpp@2627,15",
-          "indra/newview/llviewershadermgr.cpp@2670,12",
-          "indra/newview/llviewershadermgr.cpp@2691,18",
-          "indra/newview/llviewershadermgr.cpp@2757,18",
-          "indra/newview/llviewershadermgr.cpp@2803,312",
-          "indra/newview/llviewershadermgr.cpp@3161,7",
-          "indra/newview/llviewershadermgr.cpp@3174,7",
-          "indra/newview/llviewershadermgr.cpp@3499,17",
-          "indra/newview/llviewershadermgr.cpp@3610,16",
-          "indra/newview/llviewershadermgr.cpp@3635,17",
-          "indra/newview/llviewershadermgr.cpp@3678,13",
-          "indra/newview/llviewershadermgr.cpp@3725,14",
-          "indra/newview/llviewershadermgr.cpp@3774,12",
-          "indra/newview/llviewershadermgr.cpp@3818,12",
-          "indra/newview/llviewershadermgr.cpp@3832,49",
-          "indra/newview/llviewershadermgr.cpp@3883,14",
-          "indra/newview/llviewershadermgr.cpp@4063,7",
-          "indra/newview/llviewershadermgr.cpp@4076,7",
-          "indra/newview/llviewershadermgr.cpp@4095,7",
-          "indra/newview/llviewershadermgr.cpp@4110,7",
-          "indra/newview/llviewershadermgr.cpp@4132,7",
-          "indra/newview/llviewershadermgr.cpp@4148,7",
-          "indra/newview/llviewershadermgr.cpp@4165,11",
-          "indra/newview/llviewershadermgr.cpp@4205,8",
-          "indra/newview/llviewershadermgr.cpp@4238,7",
-          "indra/newview/llviewershadermgr.cpp@4256,7",
-          "indra/newview/llviewershadermgr.cpp@4270,7",
-          "indra/newview/llviewershadermgr.cpp@4282,7",
-          "indra/newview/llviewershadermgr.cpp@4315,15",
-          "indra/newview/llviewershadermgr.cpp@4348,14",
-          "indra/newview/llviewershadermgr.cpp@5480,299",
-          "indra/newview/llviewershadermgr.cpp@6035,80",
-          "indra/newview/llviewershadermgr.cpp@6121,115",
-          "indra/newview/llviewershadermgr.cpp@6269,12",
-          "indra/newview/llviewershadermgr.cpp@6352,12",
-          "indra/newview/llviewershadermgr.cpp@6377,70",
-          "indra/newview/llviewershadermgr.cpp@6467,118"
+          "indra/newview/llviewershadermgr.cpp@374,20",
+          "indra/newview/llviewershadermgr.cpp@401,22",
+          "indra/newview/llviewershadermgr.cpp@436,143",
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@812,8",
+          "indra/newview/llviewershadermgr.cpp@826,29",
+          "indra/newview/llviewershadermgr.cpp@1082,31",
+          "indra/newview/llviewershadermgr.cpp@1121,9",
+          "indra/newview/llviewershadermgr.cpp@1275,52",
+          "indra/newview/llviewershadermgr.cpp@1476,26",
+          "indra/newview/llviewershadermgr.cpp@1509,13",
+          "indra/newview/llviewershadermgr.cpp@1758,259",
+          "indra/newview/llviewershadermgr.cpp@2075,10",
+          "indra/newview/llviewershadermgr.cpp@2095,46",
+          "indra/newview/llviewershadermgr.cpp@2199,7",
+          "indra/newview/llviewershadermgr.cpp@2214,117",
+          "indra/newview/llviewershadermgr.cpp@2340,12",
+          "indra/newview/llviewershadermgr.cpp@2355,13",
+          "indra/newview/llviewershadermgr.cpp@2383,13",
+          "indra/newview/llviewershadermgr.cpp@2398,13",
+          "indra/newview/llviewershadermgr.cpp@2442,10",
+          "indra/newview/llviewershadermgr.cpp@2559,11",
+          "indra/newview/llviewershadermgr.cpp@2605,14",
+          "indra/newview/llviewershadermgr.cpp@2630,15",
+          "indra/newview/llviewershadermgr.cpp@2673,12",
+          "indra/newview/llviewershadermgr.cpp@2694,18",
+          "indra/newview/llviewershadermgr.cpp@2760,18",
+          "indra/newview/llviewershadermgr.cpp@2806,312",
+          "indra/newview/llviewershadermgr.cpp@3164,7",
+          "indra/newview/llviewershadermgr.cpp@3177,7",
+          "indra/newview/llviewershadermgr.cpp@3502,17",
+          "indra/newview/llviewershadermgr.cpp@3613,16",
+          "indra/newview/llviewershadermgr.cpp@3638,17",
+          "indra/newview/llviewershadermgr.cpp@3681,13",
+          "indra/newview/llviewershadermgr.cpp@3728,14",
+          "indra/newview/llviewershadermgr.cpp@3777,12",
+          "indra/newview/llviewershadermgr.cpp@3821,12",
+          "indra/newview/llviewershadermgr.cpp@3835,49",
+          "indra/newview/llviewershadermgr.cpp@3886,14",
+          "indra/newview/llviewershadermgr.cpp@4066,7",
+          "indra/newview/llviewershadermgr.cpp@4079,7",
+          "indra/newview/llviewershadermgr.cpp@4098,7",
+          "indra/newview/llviewershadermgr.cpp@4113,7",
+          "indra/newview/llviewershadermgr.cpp@4135,7",
+          "indra/newview/llviewershadermgr.cpp@4151,7",
+          "indra/newview/llviewershadermgr.cpp@4168,11",
+          "indra/newview/llviewershadermgr.cpp@4208,8",
+          "indra/newview/llviewershadermgr.cpp@4241,7",
+          "indra/newview/llviewershadermgr.cpp@4259,7",
+          "indra/newview/llviewershadermgr.cpp@4273,7",
+          "indra/newview/llviewershadermgr.cpp@4285,7",
+          "indra/newview/llviewershadermgr.cpp@4318,15",
+          "indra/newview/llviewershadermgr.cpp@4351,14",
+          "indra/newview/llviewershadermgr.cpp@5496,299",
+          "indra/newview/llviewershadermgr.cpp@6051,80",
+          "indra/newview/llviewershadermgr.cpp@6137,115",
+          "indra/newview/llviewershadermgr.cpp@6285,12",
+          "indra/newview/llviewershadermgr.cpp@6368,12",
+          "indra/newview/llviewershadermgr.cpp@6393,70",
+          "indra/newview/llviewershadermgr.cpp@6483,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -115215,6 +115466,7 @@
       "indra/newview/alpanelrigrim.cpp",
       "indra/newview/alpanelsteppedanim.cpp",
       "indra/newview/alpanelweathersettings.cpp",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alpresetlook.h",
       "indra/newview/alprobeschedule.h",
       "indra/newview/alprojectorshaftpresets.cpp",
@@ -118229,6 +118481,31 @@
           "LLViewerShaderMgr::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": []
       },
@@ -121584,6 +121861,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -121674,6 +121952,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -121687,6 +121966,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -125225,6 +125507,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -125249,6 +125532,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -125340,6 +125624,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -125368,6 +125654,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -126736,6 +127024,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -126892,6 +127181,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -128403,6 +128695,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 430,
         "source": "indra/newview/alprobedirty.cpp",
         "text": "alprobedirty.cpp # [ProbeOnDemand]"
@@ -129021,22 +129319,21 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@20854,69",
-          "indra/newview/app_settings/settings.xml@21921,837",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@22417,142",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -129128,8 +129425,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@504,71",
-          "indra/newview/llviewerinput.cpp@1163,22"
+          "indra/newview/llviewerinput.cpp@505,71",
+          "indra/newview/llviewerinput.cpp@1170,23"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -129171,30 +129468,30 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@84,17",
-          "indra/newview/pipeline.cpp@327,106",
-          "indra/newview/pipeline.cpp@567,71",
-          "indra/newview/pipeline.cpp@1204,16",
-          "indra/newview/pipeline.cpp@1223,11",
-          "indra/newview/pipeline.cpp@1341,19",
-          "indra/newview/pipeline.cpp@1362,61",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30948,430",
-          "indra/newview/pipeline.cpp@31392,38",
-          "indra/newview/pipeline.cpp@31457,53",
-          "indra/newview/pipeline.cpp@31541,37",
-          "indra/newview/pipeline.cpp@31579,17",
-          "indra/newview/pipeline.cpp@31597,20",
-          "indra/newview/pipeline.cpp@31642,18",
-          "indra/newview/pipeline.cpp@31677,27",
-          "indra/newview/pipeline.cpp@31706,30",
-          "indra/newview/pipeline.cpp@31758,18",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@32919,301",
-          "indra/newview/pipeline.cpp@33222,11",
-          "indra/newview/pipeline.cpp@36008,363",
-          "indra/newview/pipeline.cpp@36372,1056"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@85,17",
+          "indra/newview/pipeline.cpp@328,106",
+          "indra/newview/pipeline.cpp@568,71",
+          "indra/newview/pipeline.cpp@1205,16",
+          "indra/newview/pipeline.cpp@1224,11",
+          "indra/newview/pipeline.cpp@1342,19",
+          "indra/newview/pipeline.cpp@1363,61",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30961,430",
+          "indra/newview/pipeline.cpp@31405,38",
+          "indra/newview/pipeline.cpp@31470,53",
+          "indra/newview/pipeline.cpp@31554,37",
+          "indra/newview/pipeline.cpp@31592,17",
+          "indra/newview/pipeline.cpp@31610,20",
+          "indra/newview/pipeline.cpp@31655,18",
+          "indra/newview/pipeline.cpp@31690,27",
+          "indra/newview/pipeline.cpp@31719,30",
+          "indra/newview/pipeline.cpp@31771,18",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@32932,301",
+          "indra/newview/pipeline.cpp@33235,11",
+          "indra/newview/pipeline.cpp@36021,363",
+          "indra/newview/pipeline.cpp@36385,1056"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -129286,8 +129583,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@27,21",
-          "indra/newview/llviewerjoystick.cpp@1844,1983"
+          "indra/newview/llviewerjoystick.cpp@27,23",
+          "indra/newview/llviewerjoystick.cpp@1846,1997"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -129314,18 +129611,18 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@194,22",
-          "indra/newview/llviewershadermgr.cpp@280,46",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@1756,259",
-          "indra/newview/llviewershadermgr.cpp@2024,8",
-          "indra/newview/llviewershadermgr.cpp@2093,45",
-          "indra/newview/llviewershadermgr.cpp@3215,23",
-          "indra/newview/llviewershadermgr.cpp@3253,23",
-          "indra/newview/llviewershadermgr.cpp@3289,22",
-          "indra/newview/llviewershadermgr.cpp@3324,85",
-          "indra/newview/llviewershadermgr.cpp@3915,67",
-          "indra/newview/llviewershadermgr.cpp@4590,620",
-          "indra/newview/llviewershadermgr.cpp@6121,115"
+          "indra/newview/llviewershadermgr.cpp@280,47",
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@1758,259",
+          "indra/newview/llviewershadermgr.cpp@2026,8",
+          "indra/newview/llviewershadermgr.cpp@2095,46",
+          "indra/newview/llviewershadermgr.cpp@3218,23",
+          "indra/newview/llviewershadermgr.cpp@3256,23",
+          "indra/newview/llviewershadermgr.cpp@3292,22",
+          "indra/newview/llviewershadermgr.cpp@3327,85",
+          "indra/newview/llviewershadermgr.cpp@3918,67",
+          "indra/newview/llviewershadermgr.cpp@4593,633",
+          "indra/newview/llviewershadermgr.cpp@6137,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -129593,6 +129890,7 @@
       "indra/newview/alpanellightcues.h",
       "indra/newview/alpanelrigrim.cpp",
       "indra/newview/alpanelrigrim.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alprobedirty.cpp",
       "indra/newview/alprobedirty.h",
       "indra/newview/alprobereach.h",
@@ -133306,6 +133604,31 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alprobedirty.cpp": {
         "includes": [
           "indra/llmath/llquaternion.h",
@@ -135676,6 +135999,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -135766,6 +136090,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -135779,6 +136104,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -139401,6 +139729,7 @@
           "indra/llui/llfloaterreg.h",
           "indra/llui/llfocusmgr.h",
           "indra/newview/alchatbar.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentcamera.h",
           "indra/newview/llappviewer.h",
@@ -139425,6 +139754,7 @@
         ],
         "qualified_call_candidates": [
           "ALChatBar::startChat",
+          "ALPOVBlink::blink",
           "LLAgent::isActionAllowed",
           "LLAgent::toggleFlying",
           "LLApp::isExiting",
@@ -139503,6 +139833,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -139531,6 +139863,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -142509,6 +142843,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -142665,6 +143000,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -144321,6 +144659,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1419,
         "source": "indra/newview/alprobeschedule.h",
         "text": "alprobeschedule.h # [ProbeOnDemand]"
@@ -144833,8 +145177,8 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1283,160"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1286,160"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -144843,12 +145187,10 @@
           "indra/newview/app_settings/settings.xml@2,3450",
           "indra/newview/app_settings/settings.xml@5338,175",
           "indra/newview/app_settings/settings.xml@5899,527",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@21921,837",
-          "indra/newview/app_settings/settings.xml@25789,935",
-          "indra/newview/app_settings/settings.xml@26912,32",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@25954,1111",
+          "indra/newview/app_settings/settings.xml@27165,208",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -144936,23 +145278,23 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@102,8",
-          "indra/newview/pipeline.cpp@136,14",
-          "indra/newview/pipeline.cpp@1058,7",
-          "indra/newview/pipeline.cpp@1341,19",
-          "indra/newview/pipeline.cpp@1362,61",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30948,430",
-          "indra/newview/pipeline.cpp@31392,38",
-          "indra/newview/pipeline.cpp@31457,53",
-          "indra/newview/pipeline.cpp@31541,37",
-          "indra/newview/pipeline.cpp@31597,20",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@32919,301",
-          "indra/newview/pipeline.cpp@36008,363",
-          "indra/newview/pipeline.cpp@36372,1056",
-          "indra/newview/pipeline.cpp@38297,153"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@103,8",
+          "indra/newview/pipeline.cpp@137,14",
+          "indra/newview/pipeline.cpp@1059,7",
+          "indra/newview/pipeline.cpp@1342,19",
+          "indra/newview/pipeline.cpp@1363,61",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30961,430",
+          "indra/newview/pipeline.cpp@31405,38",
+          "indra/newview/pipeline.cpp@31470,53",
+          "indra/newview/pipeline.cpp@31554,37",
+          "indra/newview/pipeline.cpp@31610,20",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@32932,301",
+          "indra/newview/pipeline.cpp@36021,363",
+          "indra/newview/pipeline.cpp@36385,1056",
+          "indra/newview/pipeline.cpp@38310,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -145017,18 +145359,18 @@
           "indra/newview/llviewershadermgr.cpp@134,24",
           "indra/newview/llviewershadermgr.cpp@194,22",
           "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@280,46",
-          "indra/newview/llviewershadermgr.cpp@689,32",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@1426,23",
-          "indra/newview/llviewershadermgr.cpp@1756,259",
-          "indra/newview/llviewershadermgr.cpp@2033,12",
-          "indra/newview/llviewershadermgr.cpp@2055,9",
-          "indra/newview/llviewershadermgr.cpp@2093,45",
-          "indra/newview/llviewershadermgr.cpp@3324,85",
-          "indra/newview/llviewershadermgr.cpp@3610,16",
-          "indra/newview/llviewershadermgr.cpp@4590,620",
-          "indra/newview/llviewershadermgr.cpp@6121,115"
+          "indra/newview/llviewershadermgr.cpp@280,47",
+          "indra/newview/llviewershadermgr.cpp@690,32",
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@1428,23",
+          "indra/newview/llviewershadermgr.cpp@1758,259",
+          "indra/newview/llviewershadermgr.cpp@2035,12",
+          "indra/newview/llviewershadermgr.cpp@2057,9",
+          "indra/newview/llviewershadermgr.cpp@2095,46",
+          "indra/newview/llviewershadermgr.cpp@3327,85",
+          "indra/newview/llviewershadermgr.cpp@3613,16",
+          "indra/newview/llviewershadermgr.cpp@4593,633",
+          "indra/newview/llviewershadermgr.cpp@6137,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -145296,6 +145638,7 @@
       "indra/newview/alpanelsteppedanim.cpp",
       "indra/newview/alposecontinuity.h",
       "indra/newview/alposesecondary.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alpresetlook.h",
       "indra/newview/alprobeschedule.h",
       "indra/newview/alprojectorshaftlooks.cpp",
@@ -149400,6 +149743,31 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alpresetlook.h": {
         "includes": [
           "indra/llcommon/llsd.h",
@@ -151991,6 +152359,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -152081,6 +152450,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -152094,6 +152464,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -155819,6 +156192,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -155975,6 +156349,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -157425,6 +157802,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1345,
         "source": "indra/newview/alrelightmath.h",
         "text": "alrelightmath.h"
@@ -157866,11 +158249,11 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -157878,13 +158261,13 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
           "indra/newview/app_settings/settings.xml@3453,1044",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@21921,837",
-          "indra/newview/app_settings/settings.xml@22759,511",
-          "indra/newview/app_settings/settings.xml@25789,935",
-          "indra/newview/app_settings/settings.xml@26747,164",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@22560,220",
+          "indra/newview/app_settings/settings.xml@23293,142",
+          "indra/newview/app_settings/settings.xml@23436,318",
+          "indra/newview/app_settings/settings.xml@25954,1111",
+          "indra/newview/app_settings/settings.xml@27066,32",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -157991,17 +158374,17 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@217,16",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30948,430",
-          "indra/newview/pipeline.cpp@31512,13",
-          "indra/newview/pipeline.cpp@31541,37",
-          "indra/newview/pipeline.cpp@31597,20",
-          "indra/newview/pipeline.cpp@31642,18",
-          "indra/newview/pipeline.cpp@31758,18",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@36372,1056"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@218,16",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30961,430",
+          "indra/newview/pipeline.cpp@31525,13",
+          "indra/newview/pipeline.cpp@31554,37",
+          "indra/newview/pipeline.cpp@31610,20",
+          "indra/newview/pipeline.cpp@31655,18",
+          "indra/newview/pipeline.cpp@31771,18",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@36385,1056"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -158056,18 +158439,18 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1844,1983"
+          "indra/newview/llviewerjoystick.cpp@1846,1997"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@373,20",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@1273,52",
-          "indra/newview/llviewershadermgr.cpp@1756,259",
-          "indra/newview/llviewershadermgr.cpp@4590,620"
+          "indra/newview/llviewershadermgr.cpp@374,20",
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@1275,52",
+          "indra/newview/llviewershadermgr.cpp@1758,259",
+          "indra/newview/llviewershadermgr.cpp@4593,633"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -158343,6 +158726,7 @@
       "indra/newview/alpanelexposurepage.cpp",
       "indra/newview/alpanelexposurepage.h",
       "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alpresetlook.h",
       "indra/newview/alrelightmath.h",
       "indra/newview/alsensormodel.cpp",
@@ -160527,6 +160911,31 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alpresetlook.h": {
         "includes": [
           "indra/llcommon/llsd.h",
@@ -162190,6 +162599,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -162280,6 +162690,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -162293,6 +162704,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -165621,6 +166035,8 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
           "indra/newview/alflycamweighted.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alxinputmath.h",
           "indra/newview/llagent.h",
@@ -165649,6 +166065,8 @@
           "ALFlycamWeighted::presetName",
           "ALFlycamWeighted::presetWeight",
           "ALFlycamWeighted::tuningForWeight",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setPadHeld",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
@@ -166389,6 +166807,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -166545,6 +166964,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -167679,6 +168101,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 431,
         "source": "indra/newview/alprojectorshaftlooks.cpp",
         "text": "alprojectorshaftlooks.cpp"
@@ -167972,18 +168400,18 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6548,14140"
+          "indra/newview/app_settings/settings.xml@6548,15868"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -168031,14 +168459,14 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@120,11",
-          "indra/newview/pipeline.cpp@327,106",
-          "indra/newview/pipeline.cpp@712,16",
-          "indra/newview/pipeline.cpp@951,88",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@32919,301"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@121,11",
+          "indra/newview/pipeline.cpp@328,106",
+          "indra/newview/pipeline.cpp@713,16",
+          "indra/newview/pipeline.cpp@952,88",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@32932,301"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -168089,15 +168517,15 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@280,46",
-          "indra/newview/llviewershadermgr.cpp@338,32",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@1474,26",
-          "indra/newview/llviewershadermgr.cpp@1756,259",
-          "indra/newview/llviewershadermgr.cpp@2093,45",
-          "indra/newview/llviewershadermgr.cpp@2148,40",
-          "indra/newview/llviewershadermgr.cpp@4590,620",
-          "indra/newview/llviewershadermgr.cpp@5480,299"
+          "indra/newview/llviewershadermgr.cpp@280,47",
+          "indra/newview/llviewershadermgr.cpp@339,32",
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@1476,26",
+          "indra/newview/llviewershadermgr.cpp@1758,259",
+          "indra/newview/llviewershadermgr.cpp@2095,46",
+          "indra/newview/llviewershadermgr.cpp@2151,40",
+          "indra/newview/llviewershadermgr.cpp@4593,633",
+          "indra/newview/llviewershadermgr.cpp@5496,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -168187,6 +168615,7 @@
       "indra/newview/alpanelpracticals.h",
       "indra/newview/alpanelprojectorshafts.cpp",
       "indra/newview/alpanelprojectorshafts.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alprojectorshaftlooks.cpp",
       "indra/newview/alprojectorshaftlooks.h",
       "indra/newview/alprojectorshaftpresets.cpp",
@@ -169433,6 +169862,31 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alprojectorshaftlooks.cpp": {
         "includes": [
           "indra/llcommon/linden_common.h",
@@ -170677,6 +171131,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -170767,6 +171222,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -170780,6 +171236,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -172815,6 +173274,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -172971,6 +173431,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -174253,18 +174716,18 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@240,11",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1189,13",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@241,11",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1192,13",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140"
+          "indra/newview/app_settings/settings.xml@6548,15868"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -177438,6 +177901,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -177528,6 +177992,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -177541,6 +178006,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -180198,9 +180666,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -182297,6 +182765,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -182387,6 +182856,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -182400,6 +182870,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -184961,6 +185434,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 430,
         "source": "indra/newview/alprobedirty.cpp",
         "text": "alprobedirty.cpp # [ProbeOnDemand]"
@@ -185612,24 +186091,22 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,52",
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@892,11",
-          "indra/newview/CMakeLists.txt@1133,54",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@1878,13",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2874,20",
-          "indra/newview/CMakeLists.txt@2942,179"
+          "indra/newview/CMakeLists.txt@186,53",
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@893,11",
+          "indra/newview/CMakeLists.txt@1134,56",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@1881,13",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2877,20",
+          "indra/newview/CMakeLists.txt@2945,179"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@21921,837",
-          "indra/newview/app_settings/settings.xml@28445,2122",
-          "indra/newview/app_settings/settings.xml@30568,1104"
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@29206,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -185707,29 +186184,29 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@120,11",
-          "indra/newview/pipeline.cpp@294,32",
-          "indra/newview/pipeline.cpp@567,71",
-          "indra/newview/pipeline.cpp@918,32",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@30857,30",
-          "indra/newview/pipeline.cpp@30908,16",
-          "indra/newview/pipeline.cpp@30948,430",
-          "indra/newview/pipeline.cpp@31392,38",
-          "indra/newview/pipeline.cpp@31541,37",
-          "indra/newview/pipeline.cpp@31579,17",
-          "indra/newview/pipeline.cpp@31781,695",
-          "indra/newview/pipeline.cpp@32488,15",
-          "indra/newview/pipeline.cpp@32549,15",
-          "indra/newview/pipeline.cpp@32611,222",
-          "indra/newview/pipeline.cpp@32919,301",
-          "indra/newview/pipeline.cpp@33289,1054",
-          "indra/newview/pipeline.cpp@34839,47",
-          "indra/newview/pipeline.cpp@35253,78",
-          "indra/newview/pipeline.cpp@36008,363",
-          "indra/newview/pipeline.cpp@36372,1056",
-          "indra/newview/pipeline.cpp@38297,153"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@121,11",
+          "indra/newview/pipeline.cpp@295,32",
+          "indra/newview/pipeline.cpp@568,71",
+          "indra/newview/pipeline.cpp@919,32",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@30870,30",
+          "indra/newview/pipeline.cpp@30921,16",
+          "indra/newview/pipeline.cpp@30961,430",
+          "indra/newview/pipeline.cpp@31405,38",
+          "indra/newview/pipeline.cpp@31554,37",
+          "indra/newview/pipeline.cpp@31592,17",
+          "indra/newview/pipeline.cpp@31794,695",
+          "indra/newview/pipeline.cpp@32501,15",
+          "indra/newview/pipeline.cpp@32562,15",
+          "indra/newview/pipeline.cpp@32624,222",
+          "indra/newview/pipeline.cpp@32932,301",
+          "indra/newview/pipeline.cpp@33302,1054",
+          "indra/newview/pipeline.cpp@34852,47",
+          "indra/newview/pipeline.cpp@35266,78",
+          "indra/newview/pipeline.cpp@36021,363",
+          "indra/newview/pipeline.cpp@36385,1056",
+          "indra/newview/pipeline.cpp@38310,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -185787,10 +186264,10 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@175,11",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@1273,52",
-          "indra/newview/llviewershadermgr.cpp@2148,40",
-          "indra/newview/llviewershadermgr.cpp@2211,117"
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@1275,52",
+          "indra/newview/llviewershadermgr.cpp@2151,40",
+          "indra/newview/llviewershadermgr.cpp@2214,117"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -186045,6 +186522,7 @@
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/alpanelpracticals.cpp",
       "indra/newview/alpanelpracticals.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alprobedirty.cpp",
       "indra/newview/alprojectortracker.cpp",
       "indra/newview/alrelighttakerecord.h",
@@ -189145,6 +189623,31 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alprobedirty.cpp": {
         "includes": [
           "indra/llmath/llquaternion.h",
@@ -191827,6 +192330,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -191917,6 +192421,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -191930,6 +192435,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -197234,6 +197742,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -197390,6 +197899,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",
@@ -198689,6 +199201,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 195,
+        "source": "indra/newview/alpovblink.cpp",
+        "text": "alpovblink.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 430,
         "source": "indra/newview/alprobedirty.cpp",
         "text": "alprobedirty.cpp # [ProbeOnDemand]"
@@ -199189,20 +199707,20 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@332,115",
-          "indra/newview/CMakeLists.txt@1283,160",
-          "indra/newview/CMakeLists.txt@2837,31",
-          "indra/newview/CMakeLists.txt@2874,20"
+          "indra/newview/CMakeLists.txt@333,115",
+          "indra/newview/CMakeLists.txt@1286,160",
+          "indra/newview/CMakeLists.txt@2840,31",
+          "indra/newview/CMakeLists.txt@2877,20"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3450",
-          "indra/newview/app_settings/settings.xml@6548,14140",
-          "indra/newview/app_settings/settings.xml@28445,2122",
+          "indra/newview/app_settings/settings.xml@6548,15868",
+          "indra/newview/app_settings/settings.xml@29206,2466",
           "indra/newview/app_settings/settings.xml@31673,209",
-          "indra/newview/app_settings/settings.xml@31883,98"
+          "indra/newview/app_settings/settings.xml@31883,189"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -199260,11 +199778,11 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,40",
-          "indra/newview/pipeline.cpp@217,16",
-          "indra/newview/pipeline.cpp@1204,16",
-          "indra/newview/pipeline.cpp@1692,29125",
-          "indra/newview/pipeline.cpp@33289,1054"
+          "indra/newview/pipeline.cpp@28,41",
+          "indra/newview/pipeline.cpp@218,16",
+          "indra/newview/pipeline.cpp@1205,16",
+          "indra/newview/pipeline.cpp@1693,29137",
+          "indra/newview/pipeline.cpp@33302,1054"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -199315,14 +199833,14 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@280,46",
-          "indra/newview/llviewershadermgr.cpp@724,80",
-          "indra/newview/llviewershadermgr.cpp@1080,31",
-          "indra/newview/llviewershadermgr.cpp@1474,26",
-          "indra/newview/llviewershadermgr.cpp@2093,45",
-          "indra/newview/llviewershadermgr.cpp@4590,620",
-          "indra/newview/llviewershadermgr.cpp@6121,115",
-          "indra/newview/llviewershadermgr.cpp@6955,30"
+          "indra/newview/llviewershadermgr.cpp@280,47",
+          "indra/newview/llviewershadermgr.cpp@725,81",
+          "indra/newview/llviewershadermgr.cpp@1082,31",
+          "indra/newview/llviewershadermgr.cpp@1476,26",
+          "indra/newview/llviewershadermgr.cpp@2095,46",
+          "indra/newview/llviewershadermgr.cpp@4593,633",
+          "indra/newview/llviewershadermgr.cpp@6137,115",
+          "indra/newview/llviewershadermgr.cpp@6971,30"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -199503,6 +200021,7 @@
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/alpanelweathersettings.cpp",
       "indra/newview/alpanelweathersettings.h",
+      "indra/newview/alpovblink.cpp",
       "indra/newview/alprobedirty.cpp",
       "indra/newview/alrigrimcontroller.cpp",
       "indra/newview/alrotoink.cpp",
@@ -200805,6 +201324,31 @@
           "indra/llui/llpanel.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/alpovblink.cpp": {
+        "includes": [
+          "indra/llcommon/lltimer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/newview/alpovblink.h",
+          "indra/newview/alpovblinkmath.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h"
+        ],
+        "qualified_call_candidates": [
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
+          "ALPOVBlink::setPadHeld",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
+          "ALPOVBlinkMath::shouldDraw",
+          "ALPOVBlinkMath::unit",
+          "LLTimer::getTotalSeconds"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/alprobedirty.cpp": {
@@ -203146,6 +203690,7 @@
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alprojectorshaftlooks.h",
           "indra/newview/alprojectorshaftpresets.h",
@@ -203236,6 +203781,7 @@
           "ALFloaterLightBox::showTab",
           "ALGhostStudio::instance",
           "ALKitBar::setCollapsibleVisible",
+          "ALKitBindingRegistry::instance",
           "ALKitPopover::postBuild",
           "ALKitPopover::toggle",
           "ALKitPresetRegistry::instance",
@@ -203249,6 +203795,9 @@
           "ALLensLooks::applyInfraredPreset",
           "ALLensLooks::applySoftEdgePreset",
           "ALLensLooks::bindFilterPresets",
+          "ALPOVBlink::blink",
+          "ALPOVBlink::setUIHeld",
+          "ALPOVBlink::uiHeld",
           "ALPanelCineCamParams::activePresetName",
           "ALPanelCineCamParams::applyPresetNamed",
           "ALPanelCineCamParams::applyShakePreset",
@@ -205941,6 +206490,7 @@
           "indra/newview/allocalfogmanager.h",
           "indra/newview/allpm.h",
           "indra/newview/alpanelweathersettings.h",
+          "indra/newview/alpovblink.h",
           "indra/newview/alprobedirty.h",
           "indra/newview/alrelightmath.h",
           "indra/newview/alrelighttakewriter.h",
@@ -206097,6 +206647,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
           "ALLocalFogManager::instance",
+          "ALPOVBlink::beginPresentation",
+          "ALPOVBlink::endPresentation",
+          "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
           "ALProbeDirty::noteDrawable",
           "ALProbeDirty::recording",

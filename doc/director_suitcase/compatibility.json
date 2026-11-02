@@ -5357,6 +5357,24 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alpovblink.cpp",
+    "dependency": "indra/newview/alpovblink.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpovblink.cpp",
+    "dependency": "indra/newview/alpovblinkmath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alpresetlook.h",
     "dependency": "indra/newview/alsettingsundohistory.h",
     "excluded": false,
@@ -8598,6 +8616,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterdirector.cpp",
+    "dependency": "indra/newview/alpovblink.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.cpp",
     "dependency": "indra/newview/allenslooks.h",
     "excluded": false,
     "origin": "fork-added",
@@ -10587,6 +10614,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llviewerinput.cpp",
+    "dependency": "indra/newview/alpovblink.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerinput.cpp",
     "dependency": "indra/newview/llpresentationtime.h",
     "excluded": false,
     "origin": "fork-added",
@@ -10642,6 +10678,24 @@
     "class": "OWNED",
     "consumer": "indra/newview/llviewerjoystick.cpp",
     "dependency": "indra/newview/alxinputmath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerjoystick.cpp",
+    "dependency": "indra/newview/alpovblink.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerjoystick.cpp",
+    "dependency": "indra/newview/alpovblinkmath.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -11443,6 +11497,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llvovolume.cpp",
     "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/pipeline.cpp",
+    "dependency": "indra/newview/alpovblink.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

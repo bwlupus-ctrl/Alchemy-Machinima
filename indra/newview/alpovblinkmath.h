@@ -21,6 +21,33 @@ inline Params sanitize(Params p)
 }
 inline bool shouldDraw(double amount, bool live) { return live && amount > 0.; }
 
+// The production admission/copy/draw wrapper. Backends own GL state, never the
+// destination. Bands conservatively bound the curved feather, plus blur taps.
+template<class Backend>
+void present(double amount, bool live, int width, int height, double curve,
+             double softness, double blur, bool sampling, Backend& backend)
+{
+    if (!shouldDraw(amount, live) || width <= 0 || height <= 0) return;
+    if (sampling)
+    {
+        if (!backend.acquire(width, height)) return;
+        const double c = unit(amount), f = std::max(unit(softness)*.15, 1./height);
+        const double x = .5*width/height;
+        const double arch = unit(curve)*x*x/(1.+x*x)*c*(1.-c);
+        const int pad = static_cast<int>(std::ceil(1.+10.*unit(blur)*c));
+        int bottom = std::clamp(static_cast<int>(std::ceil((-f+(.42+2.*f)*c+arch+f)*height))+pad, 0, height);
+        int top = std::clamp(static_cast<int>(std::floor((1.+f-(.58+2.*f)*c-arch-f)*height))-pad, 0, height);
+        if (bottom >= top) backend.copy(0, height);
+        else
+        {
+            if (bottom > 0) backend.copy(0, bottom);
+            if (top < height) backend.copy(top, height-top);
+        }
+    }
+    backend.bind();
+    backend.drawSceneImage();
+}
+
 // Shared mapping: short L3 click blinks on release; >=180 ms holds closed.
 // Distinct mappings: tap fires on press, hold follows the button immediately.
 struct PadGesture

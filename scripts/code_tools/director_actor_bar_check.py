@@ -36,11 +36,11 @@ def main():
         assert ET.parse(xui / path).find(".//*[@widget='" + widget + "']") is not None
         assert "\t" + widget + "\t" in index
     import subprocess
-    # Permit ONLY the four exact POV presentation hooks. Strip them before
+    # Permit ONLY the two exact POV lifetime hooks. Strip them before
     # retaining the original actor-renderer byte guard; arbitrary edits still fail.
     import hashlib, json
     blink_bytes = (Path(__file__).parent / 'pov_blink_pipeline_hunks.json').read_bytes().replace(b"\r\n", b"\n")
-    assert hashlib.sha256(blink_bytes).hexdigest() == "888d974fc8c49d79d449f30fbdbc8ef402d0ed1efb9b8943a55c64a97845b9f1"
+    assert hashlib.sha256(blink_bytes).hexdigest() == "acdd6aced21f50d2cae538d9746cffbfa77e51dd38af76988c48201b4f9fb2ee"
     blink = json.loads(blink_bytes)
     blink_base = subprocess.check_output(["git", "show", blink["base"] + ":indra/newview/pipeline.cpp"]).decode("utf-8").replace("\r\n", "\n")
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):

@@ -2348,6 +2348,9 @@ void LLFloaterDirector::bindLensFiltersPage(LLView* root)
             ALKitRow::notifyValueChanged(control);
         });
     }
+    mPOVBlinkPadTap = root->findChild<LLUICtrl>("pov_PadTap");
+    mPOVBlinkPadHold = root->findChild<LLUICtrl>("pov_PadHold");
+    mPOVBlinkHeld = root->findChild<LLUICtrl>("pov_blink_held");
     ALLensLooks::bindFilterPresets(root);
     if (LLComboBox* ir = root->findChild<LLComboBox>("ir_preset_action"))
     {
@@ -8085,6 +8088,21 @@ void LLFloaterDirector::refreshPrismDependents()
 void LLFloaterDirector::refreshStatusStrip()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshStatusStrip"); // [DirFix] D9
+    if (mPOVBlinkPadTap && mPOVBlinkPadTap->isInVisibleChain() &&
+        mPOVBlinkRefreshTimer.getElapsedTimeF32() >= .25f)
+    {
+        mPOVBlinkRefreshTimer.reset();
+        static LLCachedControl<U32> tap(gSavedSettings, "POVBlinkPadTap", 64U);
+        static LLCachedControl<U32> hold(gSavedSettings, "POVBlinkPadHold", 64U);
+        auto tooltip = [](U32 button)
+        {
+            std::string conflict = LLViewerJoystick::instance().povBlinkPadConflict(button);
+            return conflict.empty() ? std::string("Free with your current joystick mappings. Same tap/hold button: click to blink, hold 180 ms to close. F9 or pad blink releases UI Hold.") : conflict;
+        };
+        setToolTipIfChanged(mPOVBlinkPadTap, tooltip(tap()));
+        if (mPOVBlinkPadHold) setToolTipIfChanged(mPOVBlinkPadHold, tooltip(hold()));
+        if (mPOVBlinkHeld) setValueIfChanged(mPOVBlinkHeld, LLSD(ALPOVBlink::uiHeld()));
+    }
     static LLCachedControl<bool> cam_enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  cam_mode(gSavedSettings, "CinematicCamMode", 0);
     static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);

@@ -27040,15 +27040,6 @@ void LLPipeline::renderFinalizePresent(LLRenderTarget* sourceBuffer, bool diopte
         renderVelocityDebug(sourceBuffer);
     }
 
-    // POV eyelids intercept only the LIVE main presentation, independent of UI
-    // visibility. Captures/auxiliary cameras never sample or advance this state.
-    // Redirect present while active so vignette/CVD/grain/dither cannot grade lids.
-    F32 blink_amount = 0.f;
-    LLRenderTarget* blink_target = nullptr;
-    if (mRT == &mMainRT && !gSnapshot && !gCubeSnapshot && !sPrismLensRender &&
-        !sPrismPreviewRender && !sReflectionRender && !sImpostorRender && !sRenderingHUDs)
-        blink_target = ALPOVBlink::beginPresentation(gGLViewport[2], gGLViewport[3], blink_amount);
-
     // Present the screen target.
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderFinalize - final blit");
@@ -27177,8 +27168,6 @@ void LLPipeline::renderFinalizePresent(LLRenderTarget* sourceBuffer, bool diopte
 
         present_program.unbind();
     }
-
-    if (blink_target) ALPOVBlink::endPresentation(mScreenTriangleVB, blink_amount);
 
     // [RelightQ] Show the current selected channel after all post/present effects.
     // Direct grayscale values remain available for tuning. Inactive/excluded views never read stale visibility targets.

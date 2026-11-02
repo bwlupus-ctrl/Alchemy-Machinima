@@ -32055,14 +32055,14 @@
     </map>
     <key>POVBlinkPadTap</key>
     <map>
-        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64). Shared mapping: tap on release, hold after 180 ms. Other buttons may conflict with legacy joystick actions.</string>
+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>U32</string>
         <key>Value</key><integer>64</integer>
     </map>
     <key>POVBlinkPadHold</key>
     <map>
-        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64). Shared mapping: tap on release, hold after 180 ms. Other buttons may conflict with legacy joystick actions.</string>
+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>U32</string>
         <key>Value</key><integer>64</integer>

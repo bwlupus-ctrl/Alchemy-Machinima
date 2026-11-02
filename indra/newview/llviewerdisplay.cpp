@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alpovblink.h"
 
 #include "llviewerdisplay.h"
 
@@ -1897,6 +1898,15 @@ void render_ui(F32 zoom_factor, int subfield)
         // selections / 2D chrome when the UI is on. Zero cost when the studio
         // has no enabled instances.
         LLActorMover::instance().renderStudioGhosts();
+
+        // LAST SCENE-IMAGE WRITE. Future chroma-key composite goes immediately
+        // before this call (after gatherFrame and ghosts). HUD attachments are
+        // below the lids; selection guides and all 2D UI remain above them.
+        ALPOVBlink::renderLastSceneImage(
+            gPipeline.mRT == &gPipeline.mMainRT && !gSnapshot && !gCubeSnapshot &&
+            !LLPipeline::sPrismLensRender && !LLPipeline::sPrismPreviewRender &&
+            !LLPipeline::sReflectionRender && !LLPipeline::sImpostorRender && !LLPipeline::sRenderingHUDs,
+            &gPipeline.mFXAAMap, gPipeline.mScreenTriangleVB);
 
         bool render_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
         if (render_ui)
