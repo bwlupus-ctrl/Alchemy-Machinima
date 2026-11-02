@@ -156,7 +156,7 @@ class Runner:
     def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
                shift_y=0., rotation=0., slot=-1, adjacent_slots=False,
                velocity=(0.,0.), displace=0., scene=False, composite=False, sweeps=False, timing=False,
-               occlude=False):
+               occlude=False, keep=False, stale_scene=False, opacity=.85, attachment_rotation=0., scene_rect=False):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -175,7 +175,7 @@ class Runner:
                                 ghostWorldLinear=int('GHOST_WORLD_PASS' in defs)).items():
             g.ui(loc(name), value)
         for name in ('color', 'ghostSystemColor'):
-            floats(name, .42, .72, .94, .85)
+            floats(name, .42, .72, .94, opacity)
         floats('ghostTime', time)
         floats('ghostParams', 0., 1., 0., 8.)
         floats('ghostAux', .5 if mask else 0., 1., 0., phase)
@@ -186,6 +186,7 @@ class Runner:
         floats('ghostScreenOrigin', 0., 0.)
         floats('ghostVelocity', *velocity)
         floats('ghostDisplace', displace)
+        floats('ghostWorldUp', -np.sin(rotation), np.cos(rotation), 0.)
         g.ui(loc('ghostSceneValid'), int(scene))
         g.ui(loc('ghostSceneMap'), 1)
         floats('ghostDissolveProgress', .28 if look == 10 else 0.)
@@ -203,6 +204,10 @@ class Runner:
         co, si = np.cos(rotation), np.sin(rotation)
         roll = np.array([[co,-si,0,0],[si,co,0,shift_y],[0,0,1,0],[0,0,0,1]], np.float32)
         view = roll @ view
+        # Rotate the attachment's local axes independently of the camera/up.
+        ac, asi = np.cos(attachment_rotation), np.sin(attachment_rotation)
+        attach = np.array([[ac,0,asi,0],[0,1,0,0],[-asi,0,ac,0],[0,0,0,1]],np.float32)
+        view = view @ attach
         # Orthographic camera allows exact integer-pixel reprojection tests.
         proj = np.diag([scale*self.projection_x, scale*.85, -.1, 1.]).astype(np.float32)
         for name, mat in (('modelview_matrix', view), ('projection_matrix', proj),
@@ -245,21 +250,34 @@ class Runner:
             g.fn('glDepthFunc',None,g.U)(0x0203)  # production LEQUAL
             depth_mask(1)
             self.clear(0x1801,0,(g.F*1)(0. if occlude else 1.))
-        self.clear(0x1800,0,(g.F*4)(0,0,0,0))
-        if composite or scene:
+        if not keep: self.clear(0x1800,0,(g.F*4)(0,0,0,0))
+        if not keep and (composite or scene):
             g.bind_tex(0x0DE1, self.target)
             g.fn('glTexSubImage2D',None,g.U,g.I,g.I,g.I,g.I,g.I,g.U,g.U,C.c_void_p)(
                 0x0DE1,0,0,0,self.width,self.height,0x1908,0x1406,self.background.ctypes.data)
             g.bind_tex(0x0DE1, self.diffuse)
-        if scene:
-            # Mirror the viewer operation: copy the composited DRAW target into
-            # an independent texture before any clone, never sample the target.
+        if scene and not stale_scene:
+            # Each Glass copies the already composited DRAW target immediately
+            # before drawing; keep=True retains every farther Studio clone.
             assert self.scene != self.target
             g.active(0x84C1); g.bind_tex(0x0DE1,self.scene)
+            rect = [0,0,self.width,self.height]
+            if scene_rect:
+                # Independent GL coverage check for a padded sub-rectangle.
+                # Production sphere/cube projection is executed in the C++ fixture.
+                points=np.c_[self.verts[:,:3],np.ones(len(self.verts))] @ (proj@view).T
+                xy=(points[:,:2]/points[:,3:4]*.5+.5)*[self.width,self.height]
+                pad=np.ceil(np.array([self.width,self.height])*.0167)+2
+                low=np.maximum(0,np.floor(xy.min(axis=0)-pad)).astype(int)
+                high=np.minimum([self.width,self.height],np.ceil(xy.max(axis=0)+pad)).astype(int)
+                rect=[int(low[0]),int(low[1]),int(high[0]-low[0]),int(high[1]-low[1])]
+                assert rect[2]*rect[3] < self.width*self.height
             g.fn('glCopyTexSubImage2D',None,g.U,g.I,g.I,g.I,g.I,g.I,g.I,g.I)(
-                0x0DE1,0,0,0,0,0,self.width,self.height)
+                0x0DE1,0,rect[0],rect[1],rect[0],rect[1],rect[2],rect[3])
             self.scene_copies += 1
             g.active(0x84C0)
+        if scene:
+            g.active(0x84C1); g.bind_tex(0x0DE1,self.scene); g.active(0x84C0)
         if composite:
             g.enable(0x0BE2)
             g.fn('glBlendFuncSeparate',None,g.U,g.U,g.U,g.U)(0x0302,0x0303,0,1)
@@ -447,6 +465,55 @@ def phase2_checks(runner, pr, out):
     geometry = runner.render(runner.probe,1)[...,3] > 0
     outside = ~geometry
     results = dict(glass_bend_max_delta=bend_error, outside={})
+    # Two-clone regressions, front Glass at full opacity so stale scene pixels
+    # cannot be disguised by alpha blending the rear clone through unchanged.
+    front = dict(scene=True,composite=True,mask=False,opacity=1.,scale=.85,scene_rect=True)
+    bare = runner.render(pr,64,**front)
+    two_clone = {}
+    for rear,name in ((1,'clone'),(64,'glass')):
+        runner.render(pr,rear,scene=rear==64,composite=True,mask=False,
+                      shift=.25,scale=.8,tint=(1.,.1,.06,1.),opacity=1.)
+        composed = runner.render(pr,64,keep=True,**front)
+        save_raw(composed,'phase2_glass_in_front_of_'+name+'.png')
+        # The negative image control reuses bare-scene pixels, as the old
+        # pre-overlay copy did. Require evidence INSIDE front Glass coverage.
+        runner.render(pr,64,**front)
+        runner.render(pr,rear,scene=False,composite=True,mask=False,
+                      shift=.25,scale=.8,tint=(1.,.1,.06,1.),opacity=1.)
+        stale = runner.render(pr,64,keep=True,stale_scene=True,**front)
+        silhouette = runner.render(runner.probe,1,scale=.85,mask=False)[...,3] > .9
+        difference = np.max(np.abs(composed[...,:3]-bare[...,:3]),axis=2)
+        restored = np.max(np.abs(composed[...,:3]-stale[...,:3]),axis=2)
+        pixels = int(np.count_nonzero(silhouette & (difference>.01) & (restored>.01)))
+        assert pixels > 100, ('rear clone erased inside front Glass',name,pixels)
+        save_raw(stale,'phase2_glass_in_front_of_'+name+'_stale_control.png')
+        two_clone[name] = dict(rear_visible_inside_front_pixels=pixels,
+                              stale_control_max_delta=float(np.max(restored[silhouette])))
+    results['two_clone'] = two_clone
+    # Attachment local +Z can point down; the added rise still follows camera
+    # world-up. Use the same rotated mesh at age zero and mid-life and compare
+    # production vertex transforms via a constant geometry probe.
+    class RiseProbe:
+        def read(self,path):
+            text=G.SourceTree('WORKTREE').read(path)
+            if path == F:
+                text='out vec4 frag_color; void main(){frag_color=vec4(1);}'
+            if path == V:
+                text=text.replace('ghost_position += normal * (0.08 + age * 0.42) * seed;',
+                                  'ghost_position += normal * 0.0;')
+            return text
+    rise_pr = runner.program(RiseProbe())
+    rise_centers=[]
+    for t in (0.,.6):
+        # For Ash, render adds 7 seconds; choose fixed phase to align age.
+        a=runner.render(rise_pr,68,time=t-7,phase=0,displace=1,mask=False,
+                        attachment_rotation=np.pi,scale=.5)
+        ys,xs=np.nonzero(a[...,3]>.5)
+        rise_centers.append([float(np.mean(xs)),float(np.mean(ys))])
+    assert rise_centers[1][1] > rise_centers[0][1]+10, ('attachment rise followed local down',rise_centers)
+    assert abs(rise_centers[1][0]-rise_centers[0][0])<1
+    results['upside_down_attachment_rise_centers'] = rise_centers
+
     for look,name,times in ((68,'ash',(0.,.45,.9,1.35,1.8)),
                             (72,'arc',(1.95,2.,2.05,2.10))):
         counts = []
@@ -517,6 +584,16 @@ def four_k_check(out):
     elapsed = C.c_uint64()
     g.fn('glGetQueryObjectui64v',None,g.U,g.U,C.POINTER(C.c_uint64))(query,0x8866,C.byref(elapsed))
     copy_ms = elapsed.value/1e6/32
+    rect_costs = []
+    for w,h in ((384,216),(960,540),(1920,1080),(3840,2160)):
+        for count in (1,4,16):
+            g.fn('glBeginQuery',None,g.U,g.U)(0x88BF,query)
+            for _ in range(32):
+                for clone in range(count): copy(0x0DE1,0,0,0,0,0,w,h)
+            g.fn('glEndQuery',None,g.U)(0x88BF)
+            g.fn('glGetQueryObjectui64v',None,g.U,g.U,C.POINTER(C.c_uint64))(query,0x8866,C.byref(elapsed))
+            rect_costs.append(dict(rect=[w,h],clones=count,gpu_ms=elapsed.value/1e6/32,
+                                   copied_bytes=w*h*4*count))
     g.fn('glDeleteQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
     g.active(0x84C0)
     sweeps = {}
@@ -526,7 +603,7 @@ def four_k_check(out):
         sweeps[str(look)] = r.last_sweep_ms
     assert g.fn('glGetError',g.U)() == 0
     result = dict(size=[3840,2160], renderer=g.renderer, copy_gpu_ms=copy_ms,
-                  displaced_sweep_gpu_ms=sweeps, vertices=len(r.verts),
+                  per_glass_rect_gpu=rect_costs, displaced_sweep_gpu_ms=sweeps, vertices=len(r.verts),
                   note='Synthetic single front hemisphere; excludes viewer scene, CPU submission, resize and readback')
     print('PASS 4K copy/render; GPU timings:',json.dumps(result),flush=True)
     return result

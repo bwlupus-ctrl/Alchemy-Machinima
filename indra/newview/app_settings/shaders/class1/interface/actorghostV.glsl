@@ -30,6 +30,9 @@ uniform mat3 normal_matrix;
 #ifndef GHOST_WORLD_PASS
 uniform float ghostDisplace; // 0 base, 1 Ash, 2 Arc; Studio second sweep only
 uniform float ghostTime;
+#ifndef HAS_SKIN
+uniform vec3 ghostWorldUp; // region +Z in eye space, excludes attachment rotation
+#endif
 uniform vec4 ghostAux;
 #endif
 invariant gl_Position; // [VelZFight] Match the main-view surface depth.
@@ -72,6 +75,9 @@ void main()
 {
     vec3 ghost_position = position.xyz;
 #ifndef GHOST_WORLD_PASS
+    float ghost_rise = 0.0;
+#endif
+#ifndef GHOST_WORLD_PASS
     if (ghostDisplace > 0.0)
     {
         // A smooth shell avoids independent vertex hashes tearing long faces.
@@ -80,7 +86,10 @@ void main()
                           + ghostAux.w * 0.15915494);
         float seed = 0.65 + 0.35 * sin(dot(position.xyz, vec3(3.1, 5.7, 2.3)));
         ghost_position += normal * (0.08 + age * 0.42) * seed;
-        ghost_position.z += ghostDisplace < 1.5 ? age * 0.70 : age * 0.10;
+        ghost_rise = ghostDisplace < 1.5 ? age * 0.70 : age * 0.10;
+#ifdef HAS_SKIN
+        ghost_position.z += ghost_rise;
+#endif
     }
 #endif
 #ifdef HAS_SKIN
@@ -95,6 +104,9 @@ void main()
 #else
     vec4 pos = modelview_matrix * vec4(ghost_position, 1.0);
     vary_normal = normal_matrix * normal;
+#endif
+#if !defined(GHOST_WORLD_PASS) && !defined(HAS_SKIN)
+    if (ghostDisplace > 0.0) pos.xyz += ghostWorldUp * ghost_rise;
 #endif
     vary_position = pos.xyz;
     gl_Position = projection_matrix * pos;

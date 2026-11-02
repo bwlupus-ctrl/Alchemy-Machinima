@@ -1,42 +1,43 @@
-"""Execute production Studio look policy, motion and copy code with GL state spies.
+"""Execute the real Studio scheduling, uniform, motion and copy helpers with spies.
 
-The WGL companion renders real shaders; this isolates the viewer controller so
-an unused Python imitation cannot assert that feature-off does no viewer work.
+Negative controls compile mutated production orchestration and require the same
+feature-off assertions to fail. WGL shader/image parity remains a separate gate.
 """
 from pathlib import Path
+import json
 import os
 import subprocess
-
 from relight_area_policy_check import method
 
 
 def check():
     path = Path('indra/newview/llactormover.cpp')
-    source = path.read_text(encoding='utf-8')
     overlay = method(path, 'void LLActorMover::renderStudioGhosts(')
     draw = method(path, 'S32 drawGeometryGhost(')
-    assert 'studio_scene_needed(item.mInst->mStyle, item.mInst->mAlpha, phase2_visible(item))' in overlay
-    assert overlay.count('studio_scene_copy(look_frame.mViewport)') == 1
-    assert overlay.index('studio_scene_copy(') < overlay.index('drawGeometryGhost(')
-    assert 'studio_displaced_sweep(style, studio_frame != nullptr,' in draw
-    assert 'if (displaced_sweep > 0.f)' in draw
-    displaced = draw.split('if (displaced_sweep > 0.f)',1)[1].split('// Shared live Actor FX beauty',1)[0]
+    assert '++invocation;' in overlay
+    assert 'studio_prepare_item(inst.mStyle, inst.mAlpha, phase2,' in overlay
+    assert 'studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),' in overlay
+    assert overlay.count('studio_scene_copy(') == 1
+    assert overlay.index('std::sort(items.begin()') < overlay.index('studio_scene_copy(') < overlay.index('drawGeometryGhost(')
+    assert 'studio_draw_displaced(style, studio_frame != nullptr,' in draw
+    assert 'studio_reset_loaded(static_shader, shader, apply_program);' in draw
+    assert 'if (!sh || !sh->mProgramObject) return;' in draw
+    assert 'studio_apply_phase2(sh, studio_frame, studio_displace);' in draw
     for required in ('LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL)',
                      'LLRender::BF_ZERO, LLRender::BF_ONE',
                      'draw_batches(SWEEP_SOLID, true, false, true)',
                      'draw_static(SWEEP_SOLID, true, false, true)',
-                     'studio_displace = 0.f', 'apply_program(static_shader)',
-                     'apply_program(shader)', 'gGL.blendFunc(cs, cd, as, ad)',
+                     'studio_displace = 0.f', 'gGL.blendFunc(cs, cd, as, ad)',
                      'saved_shader->bind()', 'ScopedStudioTexture texture(0)'):
-        assert required in displaced, required
-    for required in ('item.mInst->mFrozenBoundsRadius', 'item.mInst->mCadenceBoundsRadius',
-                     'pivot = item.mInst->mFrozenFootAgent', 'pivot = item.mInst->mCadenceFootAgent',
-                     'if (it->second.mFrame != frame) it = motion.erase(it)',
-                     'studio_screen_velocity(previous, frame, item.mAv->getID()'):
-        assert required in overlay, required
-    studio = Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8')
-    assert 'inst->mFrozenBoundsRadius = clone_capture_radius(av, foot)' in studio
-    assert 'inst->mCadenceBoundsRadius = clone_capture_radius(av, inst->mCadenceFootAgent)' in studio
+        assert required in draw, required
+    assert 'std::any_of' not in overlay
+    assert 'gSnapshot ? snapshot_scene : live_scene' in overlay
+    assert 'live_scene.expire(pose_now)' in overlay
+    studio = Path('indra/newview/alghoststudio.cpp').read_text()
+    assert 'inst->mCadenceBoundsRadius = need_bounds' in studio
+    assert '(!need_bounds || inst->mCadenceBoundsRadius > 0.f)' in studio
+    assert 'GHOST_SCENE_MAP,' in Path('indra/llrender/llshadermgr.h').read_text()
+    assert 'mReservedUniforms.push_back("ghostSceneMap")' in Path('indra/llrender/llshadermgr.cpp').read_text()
     fixture = r'''
 #include <algorithm>
 #include <array>
@@ -46,8 +47,13 @@ def check():
 #include <map>
 #include <memory>
 #include <vector>
-using S32=int; using U32=unsigned; using F32=float; using F64=double; using GLint=int;
+#include <optional>
+#include <cstdlib>
+#undef assert
+#define assert(x) do { if (!(x)) { std::cerr << "FAIL line " << __LINE__ << ": " << #x << "\n"; std::exit(3); } } while (0)
+using U64=unsigned long long; using S32=int; using U32=unsigned; using F32=float; using F64=double; using GLint=int;
 bool llfinite(float x){return std::isfinite(x);}
+template<class T>T llmin(T a,T b){return std::min(a,b);}
 template<class T>T llmax(T a,T b){return std::max(a,b);}
 template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}
 struct LLUUID { int value=0; bool operator==(LLUUID b)const{return value==b.value;} };
@@ -58,9 +64,13 @@ struct LLVector3 {
  LLVector3 operator+(LLVector3 b)const{return {mV[0]+b.mV[0],mV[1]+b.mV[1],mV[2]+b.mV[2]};}
  LLVector3 operator-(LLVector3 b)const{return {mV[0]-b.mV[0],mV[1]-b.mV[1],mV[2]-b.mV[2]};}
  LLVector3 operator*(float s)const{return {mV[0]*s,mV[1]*s,mV[2]*s};}
+ static const LLVector3 zero;
+ void set(float x,float y,float z){mV[0]=x;mV[1]=y;mV[2]=z;}
+ float lengthSquared()const{return mV[0]*mV[0]+mV[1]*mV[1]+mV[2]*mV[2];}
  float length()const{return std::sqrt(mV[0]*mV[0]+mV[1]*mV[1]+mV[2]*mV[2]);}
  bool isFinite()const{return std::isfinite(mV[0])&&std::isfinite(mV[1])&&std::isfinite(mV[2]);}
 };
+const LLVector3 LLVector3::zero;
 struct Root {LLVector3 pos;LLVector3 getWorldPosition(){return pos;}};
 struct LLVOAvatar {
  Root root;LLVector3 ext[2]={{-.5f,-.5f,0},{.5f,.5f,2}};
@@ -82,6 +92,8 @@ struct LLViewerCamera {
 };
 struct LLVector2 {
  float mV[2]={}; LLVector2(float x=0,float y=0):mV{x,y}{}
+ LLVector2 operator+(LLVector2 b)const{return {mV[0]+b.mV[0],mV[1]+b.mV[1]};}
+ LLVector2 operator*(float s)const{return {mV[0]*s,mV[1]*s};}
  LLVector2 operator-(LLVector2 b)const{return {mV[0]-b.mV[0],mV[1]-b.mV[1]};}
  float length()const{return std::hypot(mV[0],mV[1]);}
  void clear(){mV[0]=mV[1]=0;} void operator*=(float s){mV[0]*=s;mV[1]*=s;}
@@ -91,9 +103,9 @@ struct LLVector3d {
  LLVector3d operator-(LLVector3d b)const{return {x-b.x,y-b.y,z-b.z};}
  double lengthSquared()const{return x*x+y*y+z*z;}
 };
-enum {GHOST_STYLE_GLASS=64,GHOST_STYLE_ASH=68,GHOST_STYLE_ARC=72};
+enum {GHOST_STYLE_GLASS=64,GHOST_STYLE_ASH=68,GHOST_STYLE_ARC=72,GHOST_STYLE_DATAMOSH=75};
 enum {GL_TEXTURE_BINDING_2D=1,GL_DRAW_FRAMEBUFFER_BINDING,GL_READ_FRAMEBUFFER_BINDING,
- GL_READ_BUFFER,GL_DRAW_BUFFER0,GL_READ_FRAMEBUFFER,GL_TEXTURE_2D,GL_RGBA8,GL_RGBA,GL_UNSIGNED_BYTE};
+ GL_NONE=0, GL_DRAW_FRAMEBUFFER=11, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, GL_READ_BUFFER,GL_DRAW_BUFFER0,GL_READ_FRAMEBUFFER,GL_TEXTURE_2D,GL_RGBA8,GL_RGBA,GL_UNSIGNED_BYTE};
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_UI(x)
 #define LL_PROFILE_GPU_ZONE(x)
 U32 frame=1;
@@ -101,7 +113,9 @@ struct LLFrameTimer { static U32 getFrameCount(){return frame;} };
 int draw_fbo=7,read_fbo=2,draw_buffer=103,copies=0,allocations=0;
 std::map<int,int> read_buffers={{7,101},{2,102}};
 std::array<int,8> binding2d={};
-int copied_source=0,copied_buffer=0,copy_w=0,copy_h=0;
+int copied_source=0,copied_buffer=0,copy_w=0,copy_h=0,copy_x=0,copy_y=0,source_x=0,source_y=0;
+int attachment_type=1,red_bits=8;
+void glGetFramebufferAttachmentParameteriv(int,int,int name,int* out){*out=name==GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE?red_bits:attachment_type;}
 struct LLTexUnit;
 struct Render {
  U32 active=3; std::array<LLTexUnit*,8> units;
@@ -133,7 +147,8 @@ void glGetIntegerv(int name,int* value){
 void glBindTexture(int target,int tex){assert(target==GL_TEXTURE_2D);binding2d[gGL.active]=tex;}
 void glBindFramebuffer(int target,int fbo){assert(target==GL_READ_FRAMEBUFFER);read_fbo=fbo;}
 void glReadBuffer(int buffer){read_buffers[read_fbo]=buffer;}
-void glCopyTexSubImage2D(int,int,int,int,int,int,int w,int h){
+void glCopyTexSubImage2D(int,int,int x,int y,int sx,int sy,int w,int h){
+ copy_x=x;copy_y=y;source_x=sx;source_y=sy;
  ++copies;copied_source=read_fbo;copied_buffer=read_buffers[read_fbo];copy_w=w;copy_h=h;
  assert(binding2d[gGL.active]!=7); // independent destination, not source attachment
 }
@@ -149,96 +164,151 @@ template<class T>struct LLPointer {
  std::shared_ptr<T> p;operator bool()const{return bool(p);} T* get(){return p.get();}
  T* operator->(){return p.get();} void operator=(T* v){p.reset(v);}
 };
+
+namespace glm {
+struct vec4 {float x,y,z,w;vec4(float a=0,float b=0,float c=0,float d=0):x(a),y(b),z(c),w(d){}float operator[](int a)const{return (&x)[a];}};
+struct mat4 {
+ float m[4][4]={}; explicit mat4(float d=1){for(int i=0;i<4;++i)m[i][i]=d;}
+ bool operator==(const mat4& b)const{for(int i=0;i<4;++i)for(int j=0;j<4;++j)if(m[i][j]!=b.m[i][j])return false;return true;}
+};
+vec4 operator*(const mat4& a,vec4 b){vec4 r{};for(int i=0;i<4;++i)for(int j=0;j<4;++j)(&r.x)[i]+=a.m[i][j]*b[j];return r;}
+}
+int uniforms=0,binds=0;
+struct LLGLSLShader {
+ U32 mProgramObject=0;
+ void bind(){assert(mProgramObject);++binds;}
+ void uniform1f(int,float){++uniforms;} void uniform1i(int,int){++uniforms;}
+ void uniform2f(int,float,float){++uniforms;} void uniform3fv(int,int,const float*){++uniforms;}
+} gActorGhostProgram;
+int sGhostDisplace,sGhostVelocity,sGhostSceneValid,sGhostScreenSize,sGhostScreenOrigin,sGhostWorldUp;
 '''
-    for signature in ('bool studio_scene_needed(', 'F32 studio_displaced_sweep(',
+    for signature in ('struct StudioLookFrame', 'bool studio_phase2_look(', 'bool studio_scene_needed(',
+                      'F32 studio_displaced_sweep(', 'struct StudioView', 'bool studio_same_view(',
                       'struct StudioMotion', 'LLVector2 studio_screen_velocity(',
-                      'class ScopedStudioTexture', 'LLImageGL* studio_scene_copy('):
+                      'template<class Visible, class Prepare>', 'template<class Apply>',
+                      'template<class Copy, class Draw>', 'template<class Draw>',
+                      'void studio_apply_phase2(', 'class ScopedStudioTexture',
+                      'struct StudioSceneCache', 'std::array<GLint, 4> studio_glass_rect(',
+                      'LLImageGL* studio_scene_copy('):
         fixture += method(path, signature) + (';' if signature.startswith(('class','struct')) else '') + '\n'
-    fixture += method(path,'const auto phase2_visible = []') + ';\n'
-    fixture += method(Path('indra/newview/alghoststudio.cpp'),'static F32 clone_capture_radius(') + '\n'
     fixture += r'''
+
 int main(){
  std::array<LLTexUnit,8> units;
  for(U32 i=0;i<8;++i){units[i].index=i;gGL.units[i]=&units[i];}
  GLint viewport[4]={17,23,3840,2160};
- // Exact texture cache, hidden 2D binding, mip flag and active unit restore.
  for(auto type:{LLTexUnit::TT_NONE,LLTexUnit::TT_TEXTURE,LLTexUnit::TT_CUBE_MAP,LLTexUnit::TT_RECT_TEXTURE})
  for(U32 texture:{0U,41U}){
-  if(type==LLTexUnit::TT_NONE && texture)continue; // impossible LLRender cache state
+  if(type==LLTexUnit::TT_NONE && texture)continue;
   auto& unit=units[1];unit.type=type;unit.texture=texture;unit.mips=true;binding2d[1]=83;gGL.active=3;
   {ScopedStudioTexture guard(1);unit.bindManual(LLTexUnit::TT_TEXTURE,501);}
   assert(unit.type==type && unit.texture==texture && unit.mips && binding2d[1]==83 && gGL.active==3);
  }
- // Execute actual policy gates and scene copy with no selected feature.
- for(int look=0;look<78;++look){
-  if(look==64 || look==68 || look==72)continue;
-  assert(!studio_scene_needed(look,1,true));
-  assert(studio_displaced_sweep(look,true,1,false,true)==0);
- }
- assert(!studio_scene_needed(64,0,true) && !studio_scene_needed(64,1,false));
- for(int look:{68,72}){
-  assert(studio_displaced_sweep(look,false,1,false,true)==0);
-  assert(studio_displaced_sweep(look,true,0,false,true)==0);
-  assert(studio_displaced_sweep(look,true,1,true,true)==0);
-  assert(studio_displaced_sweep(look,true,1,false,false)==0);
-  assert(studio_displaced_sweep(look,true,1,false,true)>0);
- }
+ StudioSceneCache cache;U64 invocation=1;int sweeps=0,frames=0,radii=0,draws=0;
+ LLGLSLShader rigged;rigged.mProgramObject=2;gActorGhostProgram.mProgramObject=1;
+ auto run=[&](int look,float alpha,bool visible,bool active){
+  auto inputs=studio_prepare_item(look,alpha,active,[&](){++radii;return visible;},[&](){
+   ++frames;StudioLookFrame f;std::copy(viewport,viewport+4,f.mViewport);f.mInvocation=invocation;return f;});
+  studio_draw_item(look,alpha,visible,inputs?&*inputs:nullptr,
+   [&](){return studio_scene_copy(cache,invocation,1.,viewport,{200,300,800,900});},
+   [&](const StudioLookFrame* f){
+    ++draws;rigged.bind();studio_apply_phase2(&rigged,f,0);
+    studio_draw_displaced(look,f!=nullptr,alpha,false,true,[&](float d){
+     ++sweeps;studio_apply_phase2(&rigged,f,d);
+     studio_reset_loaded(&gActorGhostProgram,&rigged,[&](LLGLSLShader* sh){sh->bind();studio_apply_phase2(sh,f,0);});
+    });
+   });
+ };
+ // Actual production lazy preparation -> copy -> draw -> uniform -> sweep chain.
+ for(int look=0;look<78;++look)if(!studio_phase2_look(look))run(look,1,true,false);
+ assert(copies==0 && allocations==0 && sweeps==0 && frames==0 && radii==0 && uniforms==0);
+ for(int look:{64,68,72,75}){run(look,0,true,true);run(look,1,false,true);}
+ assert(copies==0 && sweeps==0 && frames==0 && uniforms==0);
+ // Optional static program failed, rigged program valid: never bind/reset it.
+ gActorGhostProgram.mProgramObject=0;
+ int start_binds=binds;run(68,1,true,true);run(72,1,true,true);
+ assert(sweeps==2 && binds==start_binds+4);
  assert(copies==0 && allocations==0);
- auto* scene=studio_scene_copy(viewport);
- assert(scene && copies==1 && allocations==1 && copy_w==3840 && copy_h==2160);
+ // Leaving an active state resets once; steady inactive draws issue no setters.
+ int active_uniforms=uniforms;run(65,1,true,false);assert(uniforms==active_uniforms+6);
+ int reset_uniforms=uniforms;for(int i=0;i<20;++i)run(65,1,true,false);
+ assert(uniforms==reset_uniforms);
+ gActorGhostProgram.mProgramObject=1;
+ run(64,1,true,true);auto* scene=cache.mScene.get();
+ assert(scene && copies==1 && allocations==1 && copy_w==800 && copy_h==900);
+ assert(copy_x==200 && copy_y==300 && source_x==217 && source_y==323);
  assert(copied_source==7 && copied_buffer==103 && read_fbo==2);
  assert(read_buffers[7]==101 && read_buffers[2]==102 && gGL.active==3);
- assert(studio_scene_copy(viewport)==scene && copies==1); // all Glass clones share
- GLint other[4]={0,0,1920,1080};
- assert(studio_scene_copy(other)==nullptr && copies==1); // never stale cross-view
- ++frame;assert(studio_scene_copy(viewport)==scene && copies==2 && allocations==1);
- ++frame;assert(studio_scene_copy(other) && copies==3 && allocations==2);
- // Consecutive root motion, still fallback, clamp, teleport, respawn, gaps,
- // pause, invalid projection, resized or second view, independent instances.
- StudioMotion motion,independent;LLVOAvatar av,respawn;LLUUID id{1};
- auto velocity=[&](U32 f,float x,float y,LLVector3d foot=LLVector3d{},
-                   const LLVOAvatar* avatar=nullptr,bool valid=true,double time=-1){
-  return studio_screen_velocity(motion,f,id,avatar?avatar:&av,time<0?f/60.:time,foot,{x,y},viewport,valid);
- };
+ run(64,1,true,true);assert(copies==2 && cache.mScene.get()==scene); // rear Glass now included
+ ++invocation;run(64,1,true,true);assert(copies==3 && cache.mInvocation==invocation); // same FBO + viewport, new render
+ int old_copies=copies,old_allocations=allocations;draw_buffer=GL_NONE;
+ assert(!studio_scene_copy(cache,++invocation,2.,viewport,{0,0,10,10}));
+ assert(copies==old_copies && allocations==old_allocations && cache.mInvocation==0);
+ draw_buffer=103;attachment_type=GL_NONE;
+ assert(!studio_scene_copy(cache,++invocation,2.,viewport,{0,0,10,10}));
+ assert(copies==old_copies && allocations==old_allocations);attachment_type=1;
+ red_bits=0;assert(!studio_scene_copy(cache,++invocation,2.,viewport,{0,0,10,10}));
+ assert(copies==old_copies && allocations==old_allocations);red_bits=8;
+ cache.expire(3.9);assert(cache.mScene);cache.expire(4.1);assert(!cache.mScene);
+ auto rect=studio_glass_rect({0,0,0},.1f,glm::mat4(1),viewport);
+ assert(rect[0]<1728 && rect[1]<972 && rect[0]+rect[2]>2112 && rect[1]+rect[3]>1188);
+ auto full=studio_glass_rect({0,0,0},3,glm::mat4(1),viewport);
+ assert(full[0]==0 && full[1]==0 && full[2]==3840 && full[3]==2160);
+ auto near=glm::mat4(1);near.m[3][3]=0;
+ full=studio_glass_rect({},1,near,viewport);assert(full[2]==3840 && full[3]==2160);
+ StudioMotion motion;LLVOAvatar av,respawn;LLUUID id{1};StudioView view;
+ std::copy(viewport,viewport+4,view.mViewport);view.mAt={1,0,0};
+ auto velocity=[&](U32 f,float x,float y){view.mFrame=f;view.mInvocation=f;return studio_screen_velocity(motion,view,id,&av,f/60.,{},{x,y},true);};
  assert(velocity(10,0,0).length()==0);
- auto v=velocity(11,12,-5);assert(v.mV[0]==12 && v.mV[1]==-5);
- assert(velocity(11,200,200).mV[0]==12); // once per frame
- assert(studio_screen_velocity(motion,11,id,&av,11/60.,{}, {},other,true).length()==0);
- assert(velocity(12,12,-5).length()==0);
- assert(std::abs(velocity(13,112,-5).length()-48)<.001);
- assert(velocity(14,2000,-5).length()==0); // camera cut
- assert(velocity(15,2001,-5,{20,0,0}).length()==0); // world teleport
- assert(velocity(16,2002,-5,{20,0,0},&respawn).length()==0);
- assert(velocity(18,2003,-5,{20,0,0},&respawn).length()==0);
- assert(velocity(19,2004,-5,{20,0,0},&respawn,true,9).length()==0);
- assert(velocity(20,2005,-5,{},&av,false).length()==0);
- assert(velocity(21,2006,-5).length()==0);
- assert(studio_screen_velocity(independent,22,id,&av,1,{}, {500,0},viewport,true).length()==0);
- // Captured giant/spread pose with offscreen feet must remain visible after
- // the live source shrinks its pose. The same rule covers stepped cadence.
- ALGhostStudio::Instance inst;StudioItem item{&inst,&av,{-10,0,0}};
- assert(!phase2_visible(item));
- av.ext[0]={-15,-1,-1};av.ext[1]={15,1,2};
- inst.mFrozenBoundsRadius=clone_capture_radius(&av,{});
- av.ext[0]={-.5f,-.5f,0};av.ext[1]={.5f,.5f,2};
- inst.mPose=ALGhostStudio::POSE_FROZEN;inst.mFrozenPalettes={1};assert(phase2_visible(item));
- inst.mPose=ALGhostStudio::POSE_LIVE;inst.mPoseRateHz=2;inst.mCadencePalettes={1};
- inst.mCadenceBoundsRadius=inst.mFrozenBoundsRadius;assert(phase2_visible(item));
- inst.mAlpha=0;assert(!phase2_visible(item));
- std::cout<<"PASS production controller: feature-off copy/sweep zero; shared 4K copy + state restore; motion clamps/resets/identity/views\n";
+ auto v=velocity(11,12,-5);assert(v.mV[0]>1 && v.mV[1]<0 && v.length()<13);
+ auto duplicate=velocity(11,200,200);assert(duplicate.mV[0]==v.mV[0]);
+ view.mFbo=9;assert(velocity(11,200,200).length()==0);view.mFbo=0;
+ // Same-size different camera/view in one frame cannot reuse or difference.
+ view.mInvocation=12;view.mFrame=11;view.mOrdinal=1;
+ assert(studio_screen_velocity(motion,view,id,&av,11/60.,{},{200,200},true).length()==0);
+ assert(velocity(12,20,0).length()==0);view.mOrdinal=0;
+ assert(velocity(13,21,0).length()==0);
+ // Explicit cut under the old 216px threshold, plus transform-only backstop.
+ ++view.mCut;assert(velocity(14,121,0).length()==0);
+ view.mCamera={.6f,0,0};assert(velocity(15,221,0).length()==0);
+ view.mAt={.998f,.07f,0};assert(velocity(16,321,0).length()==0);
+ view.mTeleport=true;assert(velocity(17,322,0).length()==0);view.mTeleport=false;
+ assert(velocity(19,323,0).length()==0); // gap
+ // Subpixel noise never enters trails; sustained drift enters, noisy drift
+ // stays active, and stillness exits once after smoothing (no strobe).
+ motion=StudioMotion{};view=StudioView{};std::copy(viewport,viewport+4,view.mViewport);
+ float x=0;for(int f=30;f<60;++f){x+=(f&1)?.2f:-.25f;assert(velocity(f,x,0).length()==0);}
+ for(int f=60;f<80;++f){x+=2;v=velocity(f,x,0);}assert(v.length()>1);
+ for(int f=80;f<110;++f){x+=(f&1)?.8f:1.2f;assert(velocity(f,x,0).length()>.5f);}
+ int transitions=0;bool on=true;
+ for(int f=110;f<140;++f){bool next=velocity(f,x,0).length()>0;if(next!=on)++transitions;on=next;}
+ assert(!on && transitions==1);
+ std::cout<<"PASS production orchestration: feature-off copy/allocation/sweep/uniform/frame/radius zero; rigged-only Ash/Arc; per-Glass subrect/new invocation/state restore/depth/expiry; view/cut/EMA/hysteresis\n";
 }
 '''
     directory = Path('.tmp/looks2_20261102/runtime').resolve()
     directory.mkdir(parents=True, exist_ok=True)
-    (directory/'runtime.cpp').write_text(fixture, encoding='utf-8')
     vcvars = next((Path(os.environ['ProgramFiles'])/'Microsoft Visual Studio').glob(
         '*/Community/VC/Auxiliary/Build/vcvars64.bat'))
-    (directory/'compile.cmd').write_text(
-        f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /std:c++17 /EHsc '
-        f'/Fo"{directory/"runtime.obj"}" /Fe"{directory/"runtime.exe"}" "{directory/"runtime.cpp"}"\n'
-        'exit /b %ERRORLEVEL%\n', encoding='utf-8')
-    subprocess.run(['cmd','/d','/c',str(directory/'compile.cmd')],check=True)
-    subprocess.run([str(directory/'runtime.exe')],check=True)
+    def execute(name, text, passing):
+        cpp, exe = directory/(name+'.cpp'), directory/(name+'.exe')
+        cpp.write_text(text, encoding='utf-8')
+        cmd = directory/(name+'.cmd')
+        cmd.write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /std:c++17 /EHsc '
+                       f'/Fo"{directory/(name+".obj")}" /Fe"{exe}" "{cpp}"\nexit /b %ERRORLEVEL%\n')
+        subprocess.run(['cmd','/d','/c',str(cmd)],check=True)
+        result = subprocess.run([str(exe)],capture_output=True,text=True)
+        assert (result.returncode == 0) == passing, (name,result.stdout,result.stderr)
+        print(result.stdout if passing else 'PASS negative control rejected: '+name+'; '+result.stderr.strip(),flush=True)
+        return dict(name=name,exit=result.returncode,stdout=result.stdout,stderr=result.stderr)
+    results = [execute('runtime',fixture,True)]
+    for name,before,after in (
+        ('forced_copy_off','if (frame && studio_scene_needed(look, alpha, visible)) frame->mScene = copy();',
+         'if (true) { auto* unexpected = copy(); if(frame) frame->mScene = unexpected; }'),
+        ('forced_sweep_off','if (displacement > 0.f) draw(displacement);','if (true) draw(1.f);')):
+        assert fixture.count(before)==1
+        results.append(execute(name,fixture.replace(before,after),False))
+    (directory/'results.json').write_text(json.dumps(results,indent=2))
 
 
 if __name__ == '__main__':

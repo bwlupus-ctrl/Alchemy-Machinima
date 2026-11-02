@@ -1281,8 +1281,12 @@ bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
     Instance* inst = getInstance(id);
     if (!inst || inst->mPose != POSE_LIVE || inst->mPoseRateHz <= 0.f)
         return false;
-    if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh)
-        return true;
+    const bool need_bounds = inst->mStyle == 64 || inst->mStyle == 68
+        || inst->mStyle == 72 || inst->mStyle == 75;
+    // Changing from a historical look to phase 2 refreshes an uncaptured bound
+    // once, rather than culling against a smaller current live pose.
+    if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh
+        && (!need_bounds || inst->mCadenceBoundsRadius > 0.f)) return true;
     LLVOAvatar* av = resolveSourceAvatar(*inst);
     const std::vector<LLActorMover::GhostBatch>* batches =
         av ? LLActorMover::instance().ghostBatchesFor(av->getID()) : nullptr;
@@ -1309,7 +1313,8 @@ bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
     }
     inst->mCadenceFootAgent.set(root.mV[VX], root.mV[VY],
                                 root.mV[VZ] - llmax(0.f, pelvis_to_foot));
-    inst->mCadenceBoundsRadius = clone_capture_radius(av, inst->mCadenceFootAgent);
+    inst->mCadenceBoundsRadius = need_bounds
+        ? clone_capture_radius(av, inst->mCadenceFootAgent) : 0.f;
     inst->mCadenceHeadValid = false;
     if (LLJoint* head = av->getJoint("mHead"))
     {

@@ -678,6 +678,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## checks
 
 - `scripts/code_tools/clone_looks_gl_check.py`
+- `scripts/code_tools/clone_looks_runtime_check.py`
 - `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`
 - `scripts/code_tools/test_clone_stamp_attachments.py`
