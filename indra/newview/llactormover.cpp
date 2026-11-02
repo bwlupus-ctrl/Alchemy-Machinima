@@ -1840,6 +1840,7 @@ bool LLActorMover::hasWalkablePath(const LLUUID& actor_id) const
 
 void LLActorMover::clearPath(const LLUUID& actor_id)
 {
+    LLDirectorCast::instance().captureActorEdits();
     const LLUUID key = path_key(actor_id);
     // Clearing during a Director group-delay window must also disarm the queued
     // start; otherwise it can later fall through to a surprise legacy move.
@@ -3542,6 +3543,7 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
 
 void LLActorMover::applyState(const LLUUID& key, const PathState& st)
 {
+    LLDirectorCast::instance().captureActorEdits();
     auto active = mMoves.find(key);
     if (active != mMoves.end() && active->second.mIsPath)
     {
@@ -3601,6 +3603,7 @@ void LLActorMover::snapshotForUndo(const LLUUID& actor_id)
 
 void LLActorMover::snapshotForUndo(const LLUUID& actor_id, LLView* owner)
 {
+    LLDirectorCast::instance().captureActorEdits();
     if (ALKitPage* page = dynamic_cast<ALKitPage*>(owner))
         page->historyEdited(true);
     ++mPathRevision;
@@ -5275,7 +5278,7 @@ void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
     }
 }
 
-void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
+void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id, bool keep_destination_path)
 {
     if (old_id.isNull() || new_id.isNull() || old_id == new_id)
     {
@@ -5347,13 +5350,13 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     auto pit = mPaths.find(old_id);
     if (pit != mPaths.end())
     {
-        mPaths[new_id] = std::move(pit->second);
+        if (!keep_destination_path) mPaths[new_id] = std::move(pit->second);
         mPaths.erase(pit);
     }
     auto hit = mHistory.find(old_id);
     if (hit != mHistory.end())
     {
-        mHistory[new_id] = std::move(hit->second);
+        if (!keep_destination_path) mHistory[new_id] = std::move(hit->second);
         mHistory.erase(hit);
     }
     auto git = mGazes.find(old_id);

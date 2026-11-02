@@ -1348,8 +1348,9 @@ bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
     if (!ghost)
     {
         ++mInstanceRevision; // [GhostPanelPerf]
-        inst->mState = STATE_ERROR;
-        return false;
+        // Parked clones have no clock to update. The authored value above is
+        // still valid and recovery reads it when it creates the next body.
+        return true;
     }
     const F32 chaos_factor =
         1.f + (seeded_unit(inst->mId, 5) * 2.f - 1.f) *

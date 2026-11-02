@@ -21,6 +21,7 @@
 #include "lleventtimer.h"           // one-shot countdown timer
 #include "llpresentationtime.h"
 #include "llsdutil_math.h"          // ll_sd_from_vector3 (scene marks)
+#include "llsdutil.h"
 #include "llflycamrecorder.h"       // armed recorder playback/capture
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobjectlist.h"     // gObjectList
@@ -381,6 +382,16 @@ LLUUID canonicalSceneActorId(const LLUUID& id,
     const SceneActorIdRemap::const_iterator found = actor_ids.find(id);
     return LLDirectorCast::canonicalActorId(
         found != actor_ids.end() ? found->second : id);
+}
+
+// Normalize ownership only. Embedded gaze/path target references retain their
+// established resolution rules; a stable Studio target already resolves live.
+LLUUID loadedSceneMemberId(const LLUUID& id, const SceneActorIdRemap& actor_ids)
+{
+    const LLUUID canonical = canonicalSceneActorId(id, actor_ids);
+    const auto* clone = ALGhostStudio::instance().getInstance(canonical);
+    return clone && clone->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && clone->mEntityId.notNull()
+        ? clone->mEntityId : canonical;
 }
 
 // Pre-stable-ID scenes cached animated-object names as AO_<root UUID>.  Only
@@ -1046,6 +1057,91 @@ LLDirectorCast::GazeInfluenceKeyList readGazeInfluenceKeys(const LLSD& array)
     }
     return keys;
 }
+// Keep the merge schema alongside the scene codecs. Maps are merged down to
+// individual settings (including Actor FX and Stepped); ordered tracks remain
+// single fields so their timing/order cannot be spliced into invalid tracks.
+LLSD actorMemberValues(const LLDirectorCast::CastMember& m)
+{
+    LLSD value = LLSD::emptyMap();
+    value["mark"]["set"] = m.mHasMark;
+    value["mark"]["position"] = ll_sd_from_vector3(m.mMark);
+    value["loco_anim"] = m.mLocoAnim;
+    value["locomotion_set"] = writeLocomotionSet(m.mLocomotionSet);
+    value["group"] = m.mGroup;
+    value["gaze_target"] = writeGazeAimTarget(m.mGazeTarget);
+    writeGazeExpression(value["gaze_target"], m.mGazeTarget);
+    value["eye_enabled"] = m.mEyeGazeTargetEnabled;
+    value["eye_target"] = writeGazeAimTarget(m.mEyeGazeTarget);
+    value["gaze_cues"] = writeGazeCues(m.mGazeCues);
+    value["gaze_influence_keys"] = writeGazeInfluenceKeys(m.mGazeInfluenceKeys);
+    value["actor_style"] = writeActorStyle(m.mActorStyle);
+    return value;
+}
+
+void flattenActorValues(const LLSD& value, const std::string& prefix,
+                        ALDirectorActorState<LLSD>::Values& fields)
+{
+    if (value.isMap() && value.size())
+    {
+        for (auto it = value.beginMap(); it != value.endMap(); ++it)
+            flattenActorValues(it->second, prefix.empty() ? it->first : prefix + "/" + it->first, fields);
+    }
+    else fields[prefix] = value;
+}
+
+ALDirectorActorState<LLSD>::Values actorMemberFields(const LLDirectorCast::CastMember& m)
+{
+    ALDirectorActorState<LLSD>::Values fields;
+    flattenActorValues(actorMemberValues(m), "", fields);
+    fields["actor_path"] = LLSD();
+    fields["look_at_camera"] = false;
+    return fields;
+}
+
+void mergeActorMembers(LLDirectorCast::CastMember& member,
+                       const LLDirectorCast::CastMember& alias)
+{
+    member.mAuthoredState.merge(alias.mAuthoredState,
+        [&](const std::string& field, U64 previous, U64 incoming)
+        {
+            LL_WARNS("Director") << "Actor alias conflict " << member.mId << " / " << alias.mId
+                << " field " << field << ": keeping latest authored order "
+                << llmax(previous, incoming) << " (" << previous << ", " << incoming << ")" << LL_ENDL;
+        });
+    LLSD values = LLSD::emptyMap();
+    for (const auto& field : member.mAuthoredState.mValues)
+    {
+        if (field.second.isUndefined()) continue;
+        LLSD* slot = &values;
+        std::string::size_type begin = 0, end;
+        while ((end = field.first.find('/', begin)) != std::string::npos)
+        {
+            slot = &(*slot)[field.first.substr(begin, end - begin)];
+            begin = end + 1;
+        }
+        (*slot)[field.first.substr(begin)] = field.second;
+    }
+    member.mHasMark = values["mark"]["set"].asBoolean();
+    member.mMark = ll_vector3_from_sd(values["mark"]["position"]);
+    member.mLocoAnim = values["loco_anim"].asUUID();
+    member.mLocomotionSet = readLocomotionSet(values["locomotion_set"]);
+    member.mGroup = values["group"].asString();
+    // These are owned configurations, not a rewrite of embedded actor refs.
+    member.mGazeTarget = LLActorMover::GazeTarget();
+    member.mGazeTarget.mMode = static_cast<LLActorMover::GazeTarget::EMode>(values["gaze_target"]["mode"].asInteger());
+    member.mGazeTarget.mCastRef = values["gaze_target"]["cast_ref"].asUUID();
+    member.mGazeTarget.mObjectRef = values["gaze_target"]["object_ref"].asUUID();
+    if (values["gaze_target"].has("fixed_point"))
+        member.mGazeTarget.mFixedPoint = ll_vector3d_from_sd(values["gaze_target"]["fixed_point"]);
+    readGazeExpression(values["gaze_target"], member.mGazeTarget);
+    member.mEyeGazeTargetEnabled = values["eye_enabled"].asBoolean();
+    member.mEyeGazeTarget = LLActorMover::GazeTarget();
+    readEyeGazeAimTarget(values["eye_target"], member.mEyeGazeTarget, {});
+    member.mGazeCues = readGazeCues(values["gaze_cues"], {});
+    member.mGazeInfluenceKeys = readGazeInfluenceKeys(values["gaze_influence_keys"]);
+    member.mActorStyle = readActorStyle(values["actor_style"]);
+    if (member.mLastName.empty()) member.mLastName = alias.mLastName;
+}
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -1132,8 +1228,22 @@ LLDirectorCast::~LLDirectorCast()
 
 void LLDirectorCast::touchScene()
 {
+    captureActorEdits();
     ++mSceneRevision;
     mChangedSignal();
+}
+
+void LLDirectorCast::captureActorEdits() const
+{
+    static const auto defaults = actorMemberFields(CastMember());
+    const U64 order = ++mActorAuthorOrder;
+    for (const auto& member : mCast)
+    {
+        auto fields = actorMemberFields(member);
+        fields["actor_path"] = LLActorMover::instance().pathSceneData(member.mId);
+        fields["look_at_camera"] = isLookAtCamera(member.mId);
+        member.mAuthoredState.observe(fields, defaults, order);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1217,6 +1327,7 @@ void LLDirectorCast::remove(const LLUUID& id)
 void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
 {
     if (old_id.isNull() || old_id == new_id) return;
+    captureActorEdits();
     // One identity transaction for every per-actor store. Park under the
     // stable Studio id too, so edits and scene saves during absence use the
     // very same path/history/move and CastMember that recovery will claim.
@@ -1230,11 +1341,23 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
         if (mActiveActorId == old_id) setActiveActorId(LLUUID::null);
         return;
     }
-    mover.migrateActor(old_id, new_id);
     auto old = std::find_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == old_id; });
     if (old != mCast.end())
     {
         CastMember saved = *old;
+        bool keep_destination_path = false;
+        for (const auto& alias : mCast)
+            if (alias.mId == new_id)
+            {
+                const auto source = saved.mAuthoredState.mAuthored.find("actor_path");
+                const auto destination = alias.mAuthoredState.mAuthored.find("actor_path");
+                keep_destination_path = destination != alias.mAuthoredState.mAuthored.end() &&
+                    (source == saved.mAuthoredState.mAuthored.end() || destination->second > source->second);
+                mergeActorMembers(saved, alias);
+            }
+        // Choose the path/history winner before mover can overwrite either
+        // store. All membership publication still follows mover migration.
+        mover.migrateActor(old_id, new_id, keep_destination_path);
         mCast.erase(old);
         mCast.erase(std::remove_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == new_id; }), mCast.end());
         saved.mId = new_id;
@@ -1245,9 +1368,15 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id)
         ++mCastRevision;
         ++mGazeCueRevision;
     }
+    else mover.migrateActor(old_id, new_id);
     for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
         if (*subject == old_id) { *subject = new_id; ++mSubjectRevision; }
     if (mLookAtCameraIds.erase(old_id)) mLookAtCameraIds.insert(new_id);
+    if (const CastMember* member = getMember(new_id))
+    {
+        if (member->mAuthoredState.mValues["look_at_camera"].asBoolean()) mLookAtCameraIds.insert(new_id);
+        else mLookAtCameraIds.erase(new_id);
+    }
     for (auto& start : mPendingStarts)
         if (start.mId == old_id) start.mId = new_id;
     if (mActiveActorId == old_id) setActiveActorId(new_id);
@@ -2287,6 +2416,7 @@ bool LLDirectorCast::resetToMark(const LLUUID& id)
 // ---------------------------------------------------------------------------
 LLSD LLDirectorCast::sceneData() const
 {
+    captureActorEdits(); // also observes path edits owned by ActorMover
     LLSD data = LLSD::emptyMap();
     LLSD cast_arr = LLSD::emptyArray();
     for (const CastMember& m : mCast)
@@ -2294,6 +2424,10 @@ LLSD LLDirectorCast::sceneData() const
         LLSD e = LLSD::emptyMap();
         e["id"] = m.mId;
         e["name"] = m.mLastName;
+        // Decimal strings retain the full monotonic order in LLSD (whose
+        // integer type is only 32 bits). Older scenes need no metadata.
+        for (const auto& field : m.mAuthoredState.mAuthored)
+            e["authored_fields"][field.first] = std::to_string(field.second);
         e["has_mark"] = m.mHasMark;
         if (m.mHasMark)
         {
@@ -2521,7 +2655,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         mSelfActorStyle = readActorStyle(data["self_actor_style"]);
     }
     const bool has_stepped_actor = data.has("stepped_actor");
-    const LLUUID stepped_actor = has_stepped_actor ? canonicalSceneActorId(
+    const LLUUID stepped_actor = has_stepped_actor ? loadedSceneMemberId(
         data["stepped_actor"].asUUID(), scene_actor_ids) : LLUUID::null;
     if (data.has("self_actor_path"))
     {
@@ -2537,8 +2671,8 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         // scenes could persist that transient UUID; migrate it to the stable
         // linkset-root owner while the object is present so Actor FX, gaze, and
         // marks continue to resolve after the control avatar is regenerated.
-        m.mId = canonicalSceneActorId(e["id"].asUUID(), scene_actor_ids);
-        if (m.mId.isNull() || contains(m.mId))
+        m.mId = loadedSceneMemberId(e["id"].asUUID(), scene_actor_ids);
+        if (m.mId.isNull())
         {
             continue;
         }
@@ -2598,34 +2732,71 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         }
         const GazeCueList loaded_gaze_cues = e.has("gaze_cues")
             ? readGazeCues(e["gaze_cues"], scene_actor_ids) : GazeCueList();
-        mCast.push_back(m);
-        mIds.push_back(m.mId);
-        mMemberIndex[m.mId] = mCast.size() - 1;
+        m.mGazeCues = loaded_gaze_cues;
+        m.mGazeInfluenceKeys = readGazeInfluenceKeys(e["gaze_influence_keys"]);
+        static const auto defaults = actorMemberFields(CastMember());
+        auto fields = actorMemberFields(m);
+        fields["actor_path"] = e["actor_path"];
+        fields["look_at_camera"] = e["look_at_camera"].asBoolean();
+        m.mAuthoredState.observe(fields, defaults, ++mActorAuthorOrder);
+        if (e["authored_fields"].isMap())
+        {
+            for (auto field = e["authored_fields"].beginMap(); field != e["authored_fields"].endMap(); ++field)
+            {
+                const std::string order = field->second.asString();
+                if (order.empty() || order.find_first_not_of("0123456789") != std::string::npos) continue;
+                try
+                {
+                    const U64 authored = std::stoull(order);
+                    if (authored)
+                    {
+                        // Sparse codecs omit inherited/default values. Keep
+                        // their explicit-clear stamps as undefined tombstones
+                        // so an older alias cannot resurrect a removed field.
+                        m.mAuthoredState.mValues.emplace(field->first, LLSD());
+                        m.mAuthoredState.mAuthored[field->first] = authored;
+                        mActorAuthorOrder = llmax(mActorAuthorOrder, authored);
+                    }
+                }
+                catch (const std::exception&) {} // malformed metadata cannot invalidate the actor
+            }
+        }
+        // Old scenes may contain both a stable and runtime record. Reconcile
+        // before insertion, preserving independent fields from both records.
+        if (CastMember* alias = getMember(m.mId))
+        {
+            mergeActorMembers(m, *alias);
+            *alias = m;
+        }
+        else
+        {
+            mCast.push_back(m);
+            mIds.push_back(m.mId);
+            mMemberIndex[m.mId] = mCast.size() - 1;
+        }
+        // Install external stores before any setter can publish/capture this
+        // member, so import does not look like a new clear/path/camera edit.
+        if (m.mAuthoredState.mValues["look_at_camera"].asBoolean()) mLookAtCameraIds.insert(m.mId);
+        else mLookAtCameraIds.erase(m.mId);
+        const LLSD& path = m.mAuthoredState.mValues["actor_path"];
+        if (path.isUndefined()) LLActorMover::instance().clearPath(m.mId);
+        else if (!LLActorMover::instance().applyPathSceneData(m.mId, path))
+        {
+            LL_WARNS("Director") << "Ignored invalid actor path for " << m.mId << LL_ENDL;
+        }
         ++mCastRevision; // [GhostPanelPerf] loaded member
         if (e.has("gaze_cues"))
         {
-            setGazeCues(m.mId, loaded_gaze_cues);
+            setGazeCues(m.mId, m.mGazeCues);
         }
         if (e.has("gaze_influence_keys"))
         {
-            // No public setter for this lane (unlike setGazeCues -- it has no
-            // revision/runtime-clear side effects to fire), so write it
-            // straight into the member just pushed onto mCast.
-            mCast.back().mGazeInfluenceKeys = readGazeInfluenceKeys(e["gaze_influence_keys"]);
+            // Keep the merged lane on the one loaded member.
+            getMember(m.mId)->mGazeInfluenceKeys = m.mGazeInfluenceKeys;
         }
         if (e.has("gaze_target"))
         {
             LLActorMover::instance().setGazeTargetConfig(m.mId, m.mGazeTarget);
-        }
-        if (e["look_at_camera"].asBoolean()) // absent in older scenes -> false
-        {
-            mLookAtCameraIds.insert(m.mId);
-        }
-        if (e.has("actor_path") &&
-            !LLActorMover::instance().applyPathSceneData(m.mId, e["actor_path"]))
-        {
-            LL_WARNS("Director") << "Ignored invalid actor path for "
-                                 << m.mId << LL_ENDL;
         }
         // refresh the cached name when the actor is in world; a resolve
         // failure just leaves the member "(away)" -- never dropped
@@ -2633,10 +2804,10 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     }
 
     // subjects only survive when they point into the loaded cast
-    const LLUUID a = canonicalSceneActorId(data["subject_a"].asUUID(), scene_actor_ids);
-    const LLUUID b = canonicalSceneActorId(data["subject_b"].asUUID(), scene_actor_ids);
-    const LLUUID c = canonicalSceneActorId(data["subject_c"].asUUID(), scene_actor_ids);
-    const LLUUID d = canonicalSceneActorId(data["subject_d"].asUUID(), scene_actor_ids);
+    const LLUUID a = loadedSceneMemberId(data["subject_a"].asUUID(), scene_actor_ids);
+    const LLUUID b = loadedSceneMemberId(data["subject_b"].asUUID(), scene_actor_ids);
+    const LLUUID c = loadedSceneMemberId(data["subject_c"].asUUID(), scene_actor_ids);
+    const LLUUID d = loadedSceneMemberId(data["subject_d"].asUUID(), scene_actor_ids);
     if (contains(a))
     {
         mSubjectA = a;
