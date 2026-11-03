@@ -73,6 +73,7 @@ extern bool gTeleportDisplay;
 #include <boost/lexical_cast.hpp>
 
 LLPointer<LLVOAvatarSelf> gAgentAvatarp = NULL;
+std::set<LLUUID> LLVOAvatarSelf::sLocalOnlyMotionIds;
 
 bool isAgentAvatarValid()
 {
@@ -840,8 +841,34 @@ void LLVOAvatarSelf::requestStopMotion(LLMotion* motion)
 {
     // Only agent avatars should handle the stop motion notifications.
 
+    if (motion && isLocalOnlyMotion(motion->getID()))
+    {
+        // Keep protection until the owner releases the preview. Native/LOD
+        // paths can notify more than once while an instance is fading out.
+        return;
+    }
+
     // Notify agent that motion has stopped
     gAgent.requestStopMotion(motion);
+}
+
+bool LLVOAvatarSelf::isLocalOnlyMotion(const LLUUID& motion_id) const
+{
+    // A simulator-signaled instance retains its normal animation lifecycle.
+    return sLocalOnlyMotionIds.count(motion_id) != 0 &&
+        mSignaledAnimations.find(motion_id) == mSignaledAnimations.end() &&
+        mPlayingAnimations.find(motion_id) == mPlayingAnimations.end();
+}
+
+void LLVOAvatarSelf::registerLocalOnlyMotion(const LLUUID& motion_id)
+{
+    if (motion_id.notNull())
+        sLocalOnlyMotionIds.insert(motion_id);
+}
+
+void LLVOAvatarSelf::unregisterLocalOnlyMotion(const LLUUID& motion_id)
+{
+    sLocalOnlyMotionIds.erase(motion_id);
 }
 
 // virtual

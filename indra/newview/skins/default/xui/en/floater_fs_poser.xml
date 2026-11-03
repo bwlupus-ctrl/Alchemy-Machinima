@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <floater
+ reuse_instance="true"
  positioning="None"
  save_rect="true"
  height="330"
@@ -7,7 +8,7 @@
  name="floater_poser"
  title="Avatar and Animesh Poser"
  help_topic="poser"
- width="450">
+ width="725">
 	<string name="icon_category" translate="false">Inv_BodyShape</string>
 	<string name="icon_bone" translate="false"></string>
 	<string name="icon_object" translate="false">Inv_Object</string>
@@ -460,27 +461,28 @@
 		[year,datetime,local]/[mthnum,datetime,local]/[day,datetime,local] [hour12,datetime,local]:[min,datetime,local]:[second,datetime,local] [ampm,datetime,local]
 	</floater.string>
 
-<!-- The layout is a vertical stack of 3 rows, and each row a horizontal stack of panels -->
+<!-- Author both pose-pane states at full width; postBuild applies the default collapsed width. -->
+<!-- The two visible rows fit the 330px floater; the legacy empty advanced row stays hidden. -->
 	<layout_stack
 	 follows="top|left|right"
-	 height="435"
+	 height="328"
 	 layout="topleft"
 	 left="3"
-	 border_size="-4"
+	 border_size="0"
 	 close_time_constant="0.02"
 	 open_time_constant="0.02"
 	 mouse_opaque="false"
 	 name="poser_stack"
 	 orientation="vertical"
 	 top="0"
-	 width="700">
+	 width="720">
 		<layout_panel
 		 follows="top|left"
 		 layout="topleft"
 		 auto_resize="false"
 		 name="regular_controls_layout"
-		 height="310"
-		 width="700">
+		 height="306"
+		 width="720">
 			<panel
 			 follows="left"
 			 height="300"
@@ -491,6 +493,10 @@
 			 top="0"
 			 left="0"
 			 width="235">
+				<!-- All direct pages, including the nested hand tabs, are mutually exclusive LLTabContainer pages. -->
+				<!-- xui-check: exclusive positionRotation_panel body_joints_panel face_joints_panel hands_tabs misc_joints_panel collision_volumes_panel avatarSelection_panel settings_panel animation_playback_panel -->
+				<!-- The manipulator toggle occupies unused space below the left tab buttons. -->
+				<!-- xui-check: allow-overlap joints_tabs toggleVisualManipulators -->
 				<tab_container
 				 follows="all"
 				 halign="center"
@@ -507,22 +513,22 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="302"
+					 height="293"
 					 layout="topleft"
 					 title="Move"
 					 name="positionRotation_panel"
 					 top="0"
-					 width="235">
+					 width="177">
 						<panel
 						 follows="all"
-						 height="302"
+						 height="293"
 						 background_visible="false"
 						 layout="topleft"
 						 mouse_opaque="false"
-						 left="5"
+						 left="0"
 						 name="move_tab_panel"
 						 top="0"
-						 width="235">
+						 width="177">
 							<text follows="left|top"
 							 name="av_position_updown_label"
 							 height="10"
@@ -562,7 +568,7 @@
 							 name="av_position_updown_spinner"
 							 min_val="-1.5"
 							 max_val="1.5"
-							 width="47">
+							 width="50">
 								<spinner.commit_callback
 								 function="Poser.CommitSpinner"
                                  parameter="0"/>
@@ -607,7 +613,7 @@
 							 name="av_position_leftright_spinner"
 							 min_val="-1.5"
 							 max_val="1.5"
-							 width="47">
+							 width="50">
 								<spinner.commit_callback
 								 function="Poser.CommitSpinner"
                                  parameter="1"/>
@@ -652,7 +658,7 @@
 							 name="av_position_inout_spinner"
 							 min_val="-1.5"
 							 max_val="1.5"
-							 width="47">
+							 width="50">
 								<spinner.commit_callback
 								 function="Poser.CommitSpinner"
                                  parameter="2"/>
@@ -672,15 +678,15 @@
 							<scroll_list
 							 visible="false"
 							 column_padding="2"
-							 height="300"
-							 follows="all"
+							 height="1"
+							 follows="left|top"
 							 can_sort="false"
 							 layout="topleft"
-							 left="2"
-							 width="479"
+							 left="0"
+							 width="1"
 							 multi_select="true"
 							 name="entireAv_joint_scroll"
-							 top="0">
+							 top="290">
 								<scroll_list.columns
 								 label=""
 								 name="icon"
@@ -695,21 +701,21 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="299"
+					 height="293"
 					 layout="topleft"
 					 left="0"
 					 title="Body"
 					 name="body_joints_panel"
 					 top="0"
-					 width="481">
+					 width="177">
 						<scroll_list
 						 column_padding="2"
-						 height="300"
+						 height="293"
 						 follows="all"
 						 can_sort="false"
 						 layout="topleft"
 						 left="2"
-						 width="479"
+						 width="175"
 						 multi_select="true"
 						 name="body_joints_scroll"
 						 top="0">
@@ -726,21 +732,21 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="299"
+					 height="293"
 					 layout="topleft"
 					 left="0"
 					 title="Face"
 					 name="face_joints_panel"
 					 top="0"
-					 width="481">
+					 width="177">
 						<scroll_list
 						 column_padding="2"
-						 height="300"
+						 height="293"
 						 follows="all"
 						 can_sort="false"
 						 layout="topleft"
 						 left="2"
-						 width="479"
+						 width="175"
 						 multi_select="true"
 						 name="face_joints_scroll"
 						 top="0">
@@ -757,35 +763,35 @@
 					<tab_container
 					 follows="all"
 					 halign="center"
-					 height="285"
+					 height="293"
 					 layout="topleft"
-					 left="0"
+					 left="57"
 					 title="Hands"
 					 name="hands_tabs"
 					 tab_height="20"
 					 tab_width="50"
 					 tab_group="1"
 					 tab_position="top"
-					 top="0"
-					 width="235">
+					 top="1"
+					 width="177">
 						<panel
 						 follows="all"
 						 background_visible="false"
-						 height="299"
+						 height="272"
 						 layout="topleft"
 						 left="0"
 						 title="Adjust"
 						 name="hands_joints_panel"
 						 top="0"
-						 width="481">
+						 width="175">
 							<scroll_list
 							 column_padding="2"
-							 height="300"
+							 height="272"
 							 follows="all"
 							 can_sort="false"
 							 layout="topleft"
 							 left="2"
-							 width="479"
+							 width="173"
 							 multi_select="true"
 							 name="hand_joints_scroll"
 							 top="0">
@@ -802,21 +808,21 @@
 						<panel
 						 follows="all"
 						 background_visible="false"
-						 height="299"
+						 height="272"
 						 layout="topleft"
 						 left="0"
 						 title="Presets"
 						 name="hands_presets_panel"
 						 top="0"
-						 width="481">
+						 width="175">
 							<scroll_list
 							 column_padding="2"
-							 height="275"
+							 height="247"
 							 follows="all"
 							 can_sort="false"
 							 layout="topleft"
 							 left="2"
-							 width="479"
+							 width="173"
 							 multi_select="false"
 							 name="hand_presets_scroll"
 							 top="0">
@@ -841,10 +847,9 @@
 							 label="Set Left"
 							 name="button_loadHandPoseLeft"
 							 tool_tip="Click to set your left hand to the selected preset"
-							 top_delta="238"
-							 left_pad="1"
 							 left="2"
-							 width="85" >
+							 top="250"
+								 width="85">
 								<button.commit_callback
 								 function="Poser.LoadLeftHand"/>
 							</button>
@@ -866,21 +871,21 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="299"
+					 height="293"
 					 layout="topleft"
 					 left="0"
 					 title="Misc"
 					 name="misc_joints_panel"
 					 top="0"
-					 width="481">
+					 width="177">
 						<scroll_list
 						 column_padding="2"
-						 height="300"
+						 height="293"
 						 follows="all"
 						 can_sort="false"
 						 layout="topleft"
 						 left="2"
-						 width="479"
+						 width="175"
 						 multi_select="true"
 						 name="misc_joints_scroll"
 						 top="0">
@@ -897,21 +902,21 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="299"
+					 height="293"
 					 layout="topleft"
 					 left="0"
 					 title="Physics"
 					 name="collision_volumes_panel"
 					 top="0"
-					 width="481">
+					 width="177">
 						<scroll_list
 						 column_padding="2"
-						 height="300"
+						 height="293"
 						 follows="all"
 						 can_sort="false"
 						 layout="topleft"
 						 left="2"
-						 width="479"
+						 width="175"
 						 multi_select="true"
 						 name="collision_volumes_scroll"
 						 top="0">
@@ -927,7 +932,7 @@
 					</panel>
 					<panel
 					 follows="all"
-					 height="302"
+					 height="293"
 					 background_visible="false"
 					 layout="topleft"
 					 visible="true"
@@ -936,26 +941,16 @@
 					 name="avatarSelection_panel"
 					 top="0"
 					 left="0"
-					 width="153">
-						<avatar_list
-						 allow_select="true"
-						 follows="all"
-						 height="150"
-						 layout="topleft"
-						 multi_select="true"
-						 name="avatars_online"
-						 keep_one_selected="false"
-						 show_permissions_granted="true"
-						 width="317" />
+					 width="177">
 						<scroll_list
 						 column_padding="0"
-						 height="250"
+						 height="220"
 						 can_sort="false"
 						 follows="all"
 						 layout="topleft"
-						 left="3"
+						 left="2"
 						 tool_tip="Select the Avatar or Animesh you want to animate."
-						 width="151"
+						 width="173"
 						 multi_select="false"
 						 name="avatarSelection_scroll"
 						 top="0">
@@ -1013,12 +1008,23 @@
 							<button.commit_callback
 							 function="Poser.StartStopAnimating"/>
 						</button>
+						<check_box
+						 control_name="BDMergePoserAnyAvatar"
+						 follows="top|left"
+						 height="20"
+						 label="Pose Other Avatars"
+						 layout="topleft"
+						 left="3"
+						 name="poser_any_avatar_local"
+						 top="222"
+						 tool_tip="Allow local posing of unmuted avatars and animeshes in the same region less than 50 m away. Only this viewer sees these changes."
+						 width="172" />
 						<button
 						 height="21"
 						 follows="top|left"
 						 layout="topleft"
 						 left="3"
-						 top_pad="1"
+						 top="266"
 						 label="Set to T-Pose"
 						 image_unselected="Toolbar_Middle_Off"
 						 name="set_t_pose_button"
@@ -1031,13 +1037,13 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="299"
+					 height="293"
 					 layout="topleft"
 					 left="0"
 					 title="Settings"
 					 name="settings_panel"
 					 top="0"
-					 width="481">
+					 width="177">
 						<text
 						 follows="left|top"
 						 name="trackpad_sensitivity_label"
@@ -1045,7 +1051,7 @@
 						 layout="topleft"
 						 left_delta="3"
 						 top_pad="2"
-						 width="200">
+						 width="170">
 							Trackpad Sensitivity:
 						</text>
 						<slider
@@ -1286,12 +1292,13 @@
 			 name="joint_manipulation_panel"
 			 enabled="true"
 			 top="0"
-			 width="235"
-			 left_pad="0">
+			 width="210"
+			 left_pad="0"
+			 height="306">
 				<tab_container
 				 follows="all"
 				 halign="center"
-				 height="263"
+				 height="260"
 				 layout="topleft"
 				 name="modifier_tabs"
 				 tab_height="20"
@@ -1299,10 +1306,10 @@
 				 tab_group="1"
 				 tab_position="top"
 				 top_pad="0"
-				 width="235">
+				 width="210">
 					<panel
 					follows="left|right|top|bottom"
-					height="265"
+					height="239"
 					background_visible="false"
 					layout="topleft"
 					mouse_opaque="false"
@@ -1310,12 +1317,12 @@
 					name="trackball_panel"
 					enabled="false"
 					top="0"
-					width="235"
+					width="208"
 					left="0">
 						<fs_virtual_trackpad
 						name="limb_rotation"
 						follows="left|right|top"
-						top="2"
+						top="0"
 						height="160"
 						width="160"
 						left="26"
@@ -1329,7 +1336,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Up/Down:
 						</text>
 						<slider
@@ -1346,7 +1353,7 @@
 						 max_val="180"
 						 name="limb_pitch_slider"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="4"/>
@@ -1361,7 +1368,7 @@
 						 name="limb_pitch_spinner"
 						 min_val="-180"
 						 max_val="180"
-						 width="53">
+						 width="63">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="4"/>
@@ -1373,7 +1380,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Left/Right:
 						</text>
 						<slider
@@ -1390,7 +1397,7 @@
 						 max_val="180"
 						 name="limb_yaw_slider"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="5"/>
@@ -1405,7 +1412,7 @@
 						 name="limb_yaw_spinner"
 						 min_val="-180"
 						 max_val="180"
-						 width="53">
+						 width="63">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="5"/>
@@ -1417,7 +1424,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Roll:
 						</text>
 						<slider
@@ -1434,7 +1441,7 @@
 						 max_val="180"
 						 name="limb_roll_slider"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="6"/>
@@ -1449,7 +1456,7 @@
 						 name="limb_roll_spinner"
 						 min_val="-180"
 						 max_val="180"
-						 width="53">
+						 width="63">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="6"/>
@@ -1458,13 +1465,13 @@
 					<panel
 					 follows="all"
 					 background_visible="false"
-					 height="99"
+					 height="239"
 					 layout="topleft"
 					 left="0"
 					 title="Move / Scale"
 					 name="position_panel"
 					 top="0"
-					 width="190">
+					 width="208">
 						<text
 						follows="left|top"
 						name="pos_x_label"
@@ -1472,7 +1479,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Position X:
 						</text>
 						<slider
@@ -1489,7 +1496,7 @@
 						 min_val="-1.5"
 						 name="Advanced_Position_X"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="7"/>
@@ -1504,7 +1511,7 @@
 						 name="adv_posx_spinner"
 						 min_val="-1.5"
 						 max_val="1.5"
-						 width="53">
+						 width="56">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="7"/>
@@ -1516,7 +1523,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Position Y:
 						</text>
 						<slider
@@ -1533,7 +1540,7 @@
 						 min_val="-1.5"
 						 name="Advanced_Position_Y"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="8"/>
@@ -1548,7 +1555,7 @@
 						 name="adv_posy_spinner"
 						 min_val="-1.5"
 						 max_val="1.5"
-						 width="53">
+						 width="56">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="8"/>
@@ -1560,7 +1567,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Position Z:
 						</text>
 						<slider
@@ -1577,7 +1584,7 @@
 						 min_val="-1.5"
 						 name="Advanced_Position_Z"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="9"/>
@@ -1592,7 +1599,7 @@
 						 name="adv_posz_spinner"
 						 min_val="-1.5"
 						 max_val="1.5"
-						 width="53">
+						 width="56">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="9"/>
@@ -1604,7 +1611,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="15"
-						width="220">
+						width="200">
 							Scale X:
 						</text>
 						<slider
@@ -1621,7 +1628,7 @@
 						 min_val="-1.5"
 						 name="Advanced_Scale_X"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="10"/>
@@ -1636,7 +1643,7 @@
 						 name="adv_scalex_spinner"
 						 min_val="-1.5"
 						 max_val="1.5"
-						 width="53">
+						 width="56">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="10"/>
@@ -1648,7 +1655,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Scale Y:
 						</text>
 						<slider
@@ -1665,7 +1672,7 @@
 						 min_val="-1.5"
 						 name="Advanced_Scale_Y"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="11"/>
@@ -1680,7 +1687,7 @@
 						 name="adv_scaley_spinner"
 						 min_val="-1.5"
 						 max_val="1.5"
-						 width="53">
+						 width="56">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="11"/>
@@ -1692,7 +1699,7 @@
 						layout="topleft"
 						left="5"
 						top_pad="2"
-						width="220">
+						width="200">
 							Scale Z:
 						</text>
 						<slider
@@ -1709,7 +1716,7 @@
 						 min_val="-1.5"
 						 name="Advanced_Scale_Z"
 						 top_pad="2"
-						 width="150">
+						 width="140">
 							<slider.commit_callback
 							 function="Poser.CommitSlider"
 							 parameter="12"/>
@@ -1724,7 +1731,7 @@
 						 name="adv_scalez_spinner"
 						 min_val="-1.5"
 						 max_val="1.5"
-						 width="53">
+						 width="56">
 							<spinner.commit_callback
 							 function="Poser.CommitSpinner"
 							 parameter="12"/>
@@ -1732,7 +1739,7 @@
 					</panel>
 				</tab_container>
 				<panel
-				follows="left|top|bottom"
+				follows="left|top"
 				height="44"
 				background_visible="false"
 				layout="topleft"
@@ -1740,7 +1747,7 @@
 				left="0"
 				top_pad="2"
 				name="trackball_button_panel"
-				width="252">
+				width="210">
 					<button
 					height="21"
 					follows="top|left"
@@ -1867,7 +1874,6 @@
 					 button_flash_count="64"
 					 button_flash_rate="0.5"
 					 name="poser_world_frame_toggle"
-					 left_pad="1"
 					 left="2"
 					 top_pad="0"
 					 tool_tip="Make rotational changes relative to World"
@@ -1967,7 +1973,7 @@
 			 background_visible="false"
 			 layout="topleft"
 			 mouse_opaque="false"
-			 left_pad="-26"
+			 left_pad="0"
 			 visible="false"
 			 name="poses_loadSave"
 			 top="0"
@@ -2046,6 +2052,7 @@
 				 name="poser_pose_switchboard_status"
 				 top_pad="1"
 				 use_ellipses="true"
+				 left="0"
 				 width="275">
 					</text>
 				<line_editor
@@ -2056,6 +2063,7 @@
 				 commit_on_focus_lost="false"
 				 label="Enter Pose Name To Save..."
 				 name="pose_save_name"
+				 left="0"
 				 width="275"/>
 			</panel>
 		</layout_panel>
@@ -2065,28 +2073,26 @@
 		 height="22"
 		 auto_resize="false"
 		 name="button_controls_layout"
-		 width="800">
+		 width="720">
 			<panel
-			 follows="left|top|bottom"
-			 height="100"
+			 follows="left|top|right|bottom"
+			 height="22"
 			 background_visible="false"
 			 layout="topleft"
 			 mouse_opaque="false"
 			 top="0"
 			 left="0"
 			 name="button_controls_panel"
-			 width="800">
+			 width="720">
 				<panel
 				 follows="left|top|bottom"
 				 height="22"
 				 background_visible="false"
 				 layout="topleft"
 				 mouse_opaque="false"
-				 left_pad="0"
-				 top_delta="0"
 				 name="advbutton_spacer_panel"
 				 width="56"
-				 top_pad="-1"
+				 top="0"
 				 left="2"/>
 				<button
 				 height="21"
@@ -2257,13 +2263,14 @@
 		<layout_panel
 		 follows="top|left|right"
 		 layout="topleft"
-		 height="99"
+		 height="0"
 		 auto_resize="false"
 		 name="advanced_controls_layout"
-		 width="600">
+		 visible="false"
+			 width="600">
 			<panel
 			 follows="top|left|right"
-			 height="99"
+			 height="0"
 			 left="0"
 			 layout="all"
 			 enabled="false"

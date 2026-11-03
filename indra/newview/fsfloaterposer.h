@@ -29,6 +29,7 @@
 #define FS_FLOATER_POSER_H
 
 #include "llfloater.h"
+#include "llframetimer.h"
 #include "lltoolmgr.h"
 #include "fsposeranimator.h"
 #include "fsmaniprotatejoint.h"
@@ -85,6 +86,12 @@ public:
     void onFocusReceived() override;
     void onFocusLost() override;
     void draw() override;
+    void setVisible(bool visible) override;
+    static void onTargetIdle(void* data);
+    void updateTargetIdleRegistration();
+    void revalidateActiveTargets();
+    void acquireClonePoseDrive(LLVOAvatar* avatar);
+    void releaseClonePoseDrive(const LLUUID& avatarId);
 
     /// <summary>
     /// Refreshes the supplied pose list from the supplued subdirectory.
@@ -174,13 +181,6 @@ public:
     uuid_vec_t getNearbyAvatarsAndAnimeshes() const;
 
     /// <summary>
-    /// Gets whether the supplied character is within chat range of gAgentAvatar.
-    /// </summary>
-    /// <param name="character">The character to query whether nearby.</param>
-    /// <returns>True if the supplied character is within chat range, otherwise false.</returns>
-    bool avatarIsNearbyMe(LLCharacter* character) const;
-
-    /// <summary>
     /// Gets a collection of UUIDs for avatars currently being presented on the UI.
     /// </summary>
     /// <returns>A the collection of UUIDs.</returns>
@@ -237,6 +237,7 @@ public:
     void setLoadingProgress(bool started);
     void startPosingSelf();
     void stopPosingAllAvatars();
+    void stopLocallyPlayedAnimations(const LLUUID& avatarId);
     // visual manipulators control
     void enableVisualManipulators();
     void disableVisualManipulators();
@@ -251,7 +252,7 @@ public:
     // is sent to the sim. Motions started via LLCharacter::startMotion survive the
     // server animation-state reconciliation (they are not in mPlayingAnimations), so
     // they persist until explicitly stopped.
-    void refreshAnimationList();
+    void refreshAnimationList(bool periodic = false);
     void onAnimPlay();
     void onAnimStop();
     void onAnimStopAll();
@@ -262,7 +263,7 @@ public:
     void refreshSwitchboardSlotCombo();
 
     // UI Event Handlers
-    void onAvatarsRefresh();
+    void onAvatarsRefresh(bool periodic = false);
     void onAvatarSelect();
     void onJointTabSelect();
     void onToggleMirrorChange();
@@ -302,24 +303,10 @@ public:
 
 
     /// <summary>
-    /// Determines if we have permission to animate the supplied avatar.
+    /// Applies the shared local-only eligibility policy for poser targets.
     /// </summary>
     /// <param name="avatar">The avatar to animate.</param>
-    /// <returns>True if we have permission to animate, otherwise false.</returns>
-    bool havePermissionToAnimateOtherAvatar(LLVOAvatar* avatar) const;
-
-    /// <summary>
-    /// Determines if we have permission to animate the supplied avatar.
-    /// </summary>
-    /// <param name="avatar">The avatar to animate.</param>
-    /// <returns>True if we have permission to animate, otherwise false.</returns>
-    bool havePermissionToAnimateAvatar(LLVOAvatar* avatar) const;
-
-    /// <summary>
-    /// Determines if we could animate the supplied avatar.
-    /// </summary>
-    /// <param name="avatar">The avatar to animate.</param>
-    /// <returns>True if the avatar is non-null, not dead, in the same region as self, otherwise false.</returns>
+    /// <returns>True for a nearby, unmuted target allowed by the local scope setting.</returns>
     bool couldAnimateAvatar(LLVOAvatar* avatar) const;
 
     /// <summary>
@@ -540,6 +527,12 @@ public:
     // [BDMerge] target avatar/animesh id -> set of animation ids WE started locally,
     // so Stop / Stop All can reliably stop exactly what this floater played.
     std::map<LLUUID, std::set<LLUUID>> mLocallyPlayedAnims;
+    // Track active posing independently of visible avatar rows.
+    std::set<LLUUID> mPosingAvatarIds;
+    std::map<LLUUID, bool> mAvatarRowPosing;
+    LLFrameTimer mAvatarRefreshTimer;
+    bool mTargetIdleRegistered = false;
+    std::map<LLUUID, std::pair<S32, LLUUID>> mClonePoseDrives;
 
     LLButton* mToggleVisualManipulators{ nullptr };
     LLButton* mStartStopPosingBtn{ nullptr };

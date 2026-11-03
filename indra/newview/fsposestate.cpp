@@ -1,6 +1,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "fsposestate.h"
+#include "llcharacter.h"
 #include "llvoavatarself.h"   // gAgentAvatarp
 #include "llinventorymodel.h" // gInventory
 #include "llviewerobjectlist.h" // gObjectList
@@ -193,7 +194,7 @@ bool FSPoseState::applyMotionStatesToPosingMotion(LLVOAvatar* avatar, FSPosingMo
 
         LLKeyframeMotion* kfm = dynamic_cast<LLKeyframeMotion*>(avatar->findMotion(it->motionId));
 
-        if (kfm)
+        if (kfm && kfm->isLoaded())
         {
             if (needPriorityReset)
             {
@@ -205,8 +206,20 @@ bool FSPoseState::applyMotionStatesToPosingMotion(LLVOAvatar* avatar, FSPosingMo
         }
         else
         {
-            avatar->startMotion(it->motionId); // only start if not a kfm; then wait until it casts as a kfm
-            avatar->stopMotion(it->motionId);  // only stop if we have used it and we started it
+            // A simulator-signaled motion shares its instance with local users.
+            // Never stop that instance while probing for loaded keyframe data.
+            if (avatar->mSignaledAnimations.find(it->motionId) != avatar->mSignaledAnimations.end() ||
+                avatar->mPlayingAnimations.find(it->motionId) != avatar->mPlayingAnimations.end() ||
+                avatar->isMotionActive(it->motionId))
+            {
+                allMotionsApplied &= it->motionApplied;
+                continue;
+            }
+
+            // Initialization requests the keyframe data asynchronously while
+            // leaving the motion stopped. No preview/AO/STOP lifetime needed.
+            if (!kfm)
+                avatar->createMotion(it->motionId);
         }
 
         allMotionsApplied &= it->motionApplied;
@@ -307,7 +320,10 @@ bool FSPoseState::motionIdIsFromPrimAgentOwnsAgentIsSittingOn(LLVOAvatar* avatar
 
     if (object->isInventoryDirty() || !object->getInventoryRoot())
     {
-        object->requestInventory();
+        // Posing somebody else's local skeleton must not issue simulator
+        // inventory requests, even when their seat happens to belong to us.
+        if (avatarPlayingMotionId->isSelf())
+            object->requestInventory();
         return false; // whatever they are sitting on, we don't have the inventory list for yet
     }
 

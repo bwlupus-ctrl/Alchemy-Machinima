@@ -31,6 +31,7 @@
 #include "llviewertexture.h"
 #include "llvoavatar.h"
 #include <map>
+#include <set>
 #include "lleventcoro.h"
 #include "llcoros.h"
 
@@ -90,6 +91,9 @@ public:
     /*virtual*/ bool        hasMotionFromSource(const LLUUID& source_id);
     /*virtual*/ void        stopMotionFromSource(const LLUUID& source_id);
     /*virtual*/ void        requestStopMotion(LLMotion* motion);
+    bool                    isLocalOnlyMotion(const LLUUID& motion_id) const override;
+    static void             registerLocalOnlyMotion(const LLUUID& motion_id);
+    static void             unregisterLocalOnlyMotion(const LLUUID& motion_id);
     /*virtual*/ LLJoint*    getJoint(std::string_view name);
 
     /*virtual*/ void renderJoints();
@@ -104,6 +108,10 @@ public:
 private:
     // helper function. Passed in param is assumed to be in avatar's parameter list.
     bool setParamWeight(const LLViewerVisualParam *param, F32 weight);
+
+    // Poser previews must not send an automatic STOP when they expire locally.
+    // Simulator-signaled motions still use the normal stop-notification path.
+    static std::set<LLUUID> sLocalOnlyMotionIds;
 
     std::mutex          mJointMapMutex; // getJoint gets used from mesh thread
 

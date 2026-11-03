@@ -22,6 +22,7 @@
 
 #include "aldirectorswitchermodel.h"   // REUSED scheduler; no new model
 #include "fsposeranimator.h"
+#include "llframetimer.h"
 #include "lluuid.h"
 #include "stdtypes.h"
 
@@ -72,7 +73,8 @@ public:
     static ALDirectorAnimSwitcher& instance();
 
     // Called once per viewer frame after presentation time is frozen, beside
-    // the camera switcher tick. Inert while disarmed.
+    // the camera switcher tick. Disarmed scheduling is inert; retained local
+    // poses still get target-safety cleanup while any are owned.
     void tick(F64 presentation_time);
 
     // Manual/auto cut. Armed-gated: returns true only when a real cut issued.
@@ -83,6 +85,7 @@ public:
     void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
     S32  activeSlot() const { return mActiveSlot; }
+    bool ownsPose(const LLUUID& id) const { return mPosedAvatars.count(id) != 0; }
 
     static std::vector<Slot> loadBank();
     static void              saveBank(const std::vector<Slot>& bank);
@@ -107,8 +110,9 @@ private:
     bool mWasArmed = false;
     S32  mActiveSlot = -1;
     Slot mActiveSlotConfig;
-    FSPoserAnimator mPoseAnimator;
+    FSPoserAnimator mPoseAnimator{ false };
     std::set<LLUUID> mPosedAvatars;
+    LLFrameTimer mTargetValidationTimer;
 };
 
 #endif // AL_ALDIRECTORANIMSWITCHER_H

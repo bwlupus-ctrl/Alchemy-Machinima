@@ -177,10 +177,10 @@ bool FSManipRotateJoint::isMouseOverJoint(S32 mouseX, S32 mouseY, const LLVector
     if (mAvatar->isDead() || !mAvatar->isFullyLoaded())
         return false;
 
-    auto joint_center = mAvatar->getPosGlobalFromAgent(jointWorldPos);
+    auto joint_center = mAvatar.get()->getPosGlobalFromAgent(jointWorldPos);
 
     // centre in *agent* space
-    LLVector3 agent_space_center = mAvatar->getPosAgentFromGlobal(joint_center);
+    LLVector3 agent_space_center = mAvatar.get()->getPosAgentFromGlobal(joint_center);
     LLVector3 ray_pt, ray_dir;
     LLManipRotate::mouseToRay(mouseX, mouseY, &ray_pt, &ray_dir);
 
@@ -384,14 +384,18 @@ void FSManipRotateJoint::setJoint(LLJoint* joint)
     mNaturalAlignmentQuat = computeAlignmentQuat(mBoneAxes);
 }
 
+FSManipRotateJoint::~FSManipRotateJoint() = default;
+
 void FSManipRotateJoint::setAvatar(LLVOAvatar* avatar)
 {
+    // Read the old joint while its avatar is retained. Releasing the old
+    // avatar can destroy the skeleton before the replacement is assigned.
+    const S32 joint_number = mAvatar && mJoint ? mJoint->getJointNum() : -1;
+    mJoint = nullptr;
+    mHighlightedJoint = nullptr;
     mAvatar = avatar;
-    if (!avatar)
-        mJoint = nullptr;
-
-    if (mAvatar && mJoint)
-        setJoint(avatar->getJoint(mJoint->getJointNum()));
+    if (avatar && joint_number >= 0)
+        setJoint(avatar->getJoint(joint_number));
 }
 
 /**

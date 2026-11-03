@@ -125,7 +125,8 @@ typedef enum E_BoneAxisNegation
 class FSPoserAnimator
 {
 public:
-    FSPoserAnimator() = default;
+    // Director resolves its own cast and historically has no nearby-distance cap.
+    explicit FSPoserAnimator(bool nearbyTargetsOnly = true) : mNearbyTargetsOnly(nearbyTargetsOnly) {}
 
     virtual ~FSPoserAnimator() = default;
 
@@ -448,6 +449,13 @@ public:
     /// <param name="avatar">The avatar to query posing status for.</param>
     /// <returns>True if this is posing the supplied avatar, otherwise false.</returns>
     bool isPosingAvatar(LLVOAvatar* avatar) const;
+
+    /// <summary>
+    /// Tests whether the avatar is eligible for local poser operations.
+    /// </summary>
+    /// <param name="avatar">The avatar to test.</param>
+    /// <returns>True if the avatar is a valid local poser target, otherwise false.</returns>
+    bool isAvatarSafeToUse(LLVOAvatar* avatar) const;
 
     /// <summary>
     /// Determines whether the supplied PoserJoint for the supplied avatar is being posed.
@@ -823,6 +831,7 @@ public:
     void applyJointMirrorToBaseRotations(FSPosingMotion* posingMotion);
 
   private:
+    bool mNearbyTargetsOnly = true;
     /// <summary>
     /// Translates the supplied rotation vector from UI to a Quaternion for the bone.
     /// Also performs the axis-swapping and other transformations for up/down/left/right to make sense.
@@ -862,13 +871,6 @@ public:
     /// <param name="avatar">The avatar to get the posing motion for.</param>
     /// <returns>The posing motion if found, otherwise nullptr.</returns>
     FSPosingMotion* getPosingMotion(LLVOAvatar* avatar) const;
-
-    /// <summary>
-    /// Determines if the avatar can be used.
-    /// </summary>
-    /// <param name="avatar">The avatar to test if it is safe to animate.</param>
-    /// <returns>True if the avatar is safe to manipulate, otherwise false.</returns>
-    bool isAvatarSafeToUse(LLVOAvatar* avatar) const;
 
     /// <summary>
     /// Gets the depth of descendant joints for the supplied joint.

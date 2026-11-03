@@ -38,7 +38,7 @@ class FSManipTranslateJoint : public LLManipTranslate
 {
 public:
     FSManipTranslateJoint(LLToolComposite* composite);
-    virtual ~FSManipTranslateJoint() = default;
+    virtual ~FSManipTranslateJoint();
 
     /// <summary>
     /// Sets the joint we are going to manipulate.
@@ -92,7 +92,7 @@ private:
     LLVector3 mDragCursorLastGlobal;
 
     LLJoint*              mJoint          = nullptr;
-    LLVOAvatar*           mAvatar         = nullptr;
+    LLPointer<LLVOAvatar> mAvatar;
     E_PoserReferenceFrame mReferenceFrame = POSER_FRAME_BONE;
 };
 

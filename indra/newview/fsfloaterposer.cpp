@@ -26,19 +26,23 @@
 
 #include "fsfloaterposer.h"
 #include "aldirectoranimswitcher.h"
+#include "alghoststudio.h"
 #include "fsposeranimator.h"
 #include "fsvirtualtrackpad.h"
 #include "llagent.h"
 #include "llappviewer.h"
 #include "llavatarnamecache.h"
 #include "llcheckboxctrl.h"
+#include "llcallbacklist.h"
+#include "llcharacter.h"
 #include "llcombobox.h"
 #include "llcommonutils.h"
 #include "llcontrolavatar.h"
 #include "lldiriterator.h"
+#include "llframetimer.h"
+#include "llghostavatar.h"
 #include "llinventoryfunctions.h"
 #include "llloadingindicator.h"
-#include "llmutelist.h"
 #include "llnotificationsutil.h"
 #include "llscrolllistctrl.h"
 #include "llsdserialize.h"
@@ -148,6 +152,9 @@ FSFloaterPoser::FSFloaterPoser(const LLSD& key) : LLFloater(key)
 
 FSFloaterPoser::~FSFloaterPoser()
 {
+    gIdleCallbacks.deleteFunction(onTargetIdle, this);
+    onAnimStopAll();
+    delete mLoadPoseTimer;
     if (sActivePoser == this)
     {
         sActivePoser = nullptr;
@@ -175,7 +182,15 @@ bool FSFloaterPoser::postBuild()
 
     mAvatarSelectionScrollList = getChild<LLScrollListCtrl>("avatarSelection_scroll");
     mAvatarSelectionScrollList->setCommitOnSelectionChange(true);
+    mAvatarSelectionScrollList->setCommitOnDelete(false);
     mAvatarSelectionScrollList->setCommitCallback([this](LLUICtrl *, const LLSD &) { onAvatarSelect(); });
+
+    getChild<LLCheckBoxCtrl>("poser_any_avatar_local")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            onAvatarsRefresh();
+            refreshAnimationList();
+        });
 
     mBodyJointsScrollList = getChild<LLScrollListCtrl>("body_joints_scroll");
     mBodyJointsScrollList->setCommitOnSelectionChange(true);
@@ -311,12 +326,16 @@ bool FSFloaterPoser::postBuild()
 
     mBtnJointRotate = getChild<LLButton>("button_joint_rotate_tool");
 
+    // XML describes the complete expanded layout for static fit validation.
+    // Start with the optional pose browser collapsed, as before.
+    reshape(450, getRect().getHeight());
     return true;
 }
 
 void FSFloaterPoser::onOpen(const LLSD& key)
 {
     createUserPoseDirectoryIfNeeded();
+    mAvatarRefreshTimer.reset();
     onAvatarsRefresh();
     refreshJointScrollListMembers();
     onJointTabSelect();
@@ -326,6 +345,7 @@ void FSFloaterPoser::onOpen(const LLSD& key)
     enableVisualManipulators();
     refreshAnimationList();
     LLFloater::onOpen(key);
+    updateTargetIdleRegistration();
 }
 
 void FSFloaterPoser::onFocusReceived()
@@ -341,9 +361,78 @@ void FSFloaterPoser::onFocusLost()
 
 void FSFloaterPoser::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLFloater::draw();
-
     drawOnHoverJointHint();
+}
+
+void FSFloaterPoser::setVisible(bool visible)
+{
+    LLFloater::setVisible(visible);
+    if (mAvatarSelectionScrollList)
+        updateTargetIdleRegistration();
+}
+
+void FSFloaterPoser::updateTargetIdleRegistration()
+{
+    // Visible UI discovery retains its 1 Hz cadence. Hidden floaters do no
+    // work unless they own a retained pose or a local animation preview.
+    const bool needed = getVisible() || !mPosingAvatarIds.empty() || !mLocallyPlayedAnims.empty();
+    if (needed == mTargetIdleRegistered)
+        return;
+    mTargetIdleRegistered = needed;
+    if (needed)
+        gIdleCallbacks.addFunction(onTargetIdle, this);
+    else
+        gIdleCallbacks.deleteFunction(onTargetIdle, this);
+}
+
+void FSFloaterPoser::onTargetIdle(void* data)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    auto* self = static_cast<FSFloaterPoser*>(data);
+    if (self->mAvatarRefreshTimer.getElapsedTimeF32() >= 1.f)
+    {
+        self->mAvatarRefreshTimer.reset();
+        if (self->getVisible() && !self->isMinimized())
+        {
+            self->onAvatarsRefresh(true);
+            self->refreshAnimationList(true);
+        }
+        else
+        {
+            self->revalidateActiveTargets();
+        }
+        self->updateTargetIdleRegistration();
+    }
+}
+
+void FSFloaterPoser::acquireClonePoseDrive(LLVOAvatar* avatar)
+{
+    auto* ghost = dynamic_cast<LLGhostAvatar*>(avatar);
+    if (!ghost || ghost->isDead() || mClonePoseDrives.count(ghost->getID()))
+        return;
+    mClonePoseDrives.emplace(ghost->getID(),
+        std::make_pair(ghost->getEntityDriveMode(), ghost->getEntityDirectedAnim()));
+    // A live controller with no directed clip lets the private poser overlay
+    // evaluate normally, without Frozen pauses or Mirror/Reflect stamps.
+    ghost->setEntityDriveMode(ALGhostStudio::DRIVE_DIRECTED, LLUUID::null);
+}
+
+void FSFloaterPoser::releaseClonePoseDrive(const LLUUID& avatarId)
+{
+    const auto saved = mClonePoseDrives.find(avatarId);
+    if (saved == mClonePoseDrives.end())
+        return;
+    auto* ghost = dynamic_cast<LLGhostAvatar*>(getAvatarByUuid(avatarId));
+    // A Switchboard punch or Studio action may have taken over meanwhile.
+    if (ghost && !ghost->isDead() &&
+        ghost->getEntityDriveMode() == ALGhostStudio::DRIVE_DIRECTED &&
+        ghost->getEntityDirectedAnim().isNull())
+    {
+        ghost->setEntityDriveMode(saved->second.first, saved->second.second);
+    }
+    mClonePoseDrives.erase(saved);
 }
 
 void FSFloaterPoser::markSelectedJointsToHighlight()
@@ -437,6 +526,9 @@ void FSFloaterPoser::disableVisualManipulators()
 
 void FSFloaterPoser::setVisualManipulators(LLVOAvatar* avatar)
 {
+    if (avatar && !couldAnimateAvatar(avatar))
+        avatar = nullptr;
+
     FSToolCompPose::getInstance()->setAvatar(avatar);
     FSToolCompPoseTranslate::getInstance()->setAvatar(avatar);
 
@@ -452,10 +544,15 @@ void FSFloaterPoser::onClose(bool app_quitting)
     if (gSavedSettings.getBOOL(POSER_STOPPOSINGWHENCLOSED_SAVE_KEY))
     {
         stopPosingAllAvatars();
+        onAnimStopAll();
     }
 
+    // Keep-pose also retains previews. The reusable hidden floater continues
+    // validating both activity sets until they are stopped or expire.
     disableVisualManipulators();
-    delete mLoadPoseTimer;
+    // The floater may be reopened. Cancel pending reloads without destroying
+    // the timer that the next open will reuse.
+    mLoadPoseTimer->completeLoading();
     LLFloater::onClose(app_quitting);
 }
 
@@ -526,7 +623,7 @@ void FSFloaterPoser::onPoseFileSelect()
     if (!avatar)
         return;
 
-    if (!havePermissionToAnimateAvatar(avatar) && !havePermissionToAnimateOtherAvatar(avatar))
+    if (!couldAnimateAvatar(avatar))
         return;
 
     bool enableButtons = mPoserAnimator.isPosingAvatar(avatar);
@@ -581,7 +678,7 @@ void FSFloaterPoser::onClickPoseSave()
     }
 
     LLVOAvatar* avatar = getUiSelectedAvatar();
-    if (!havePermissionToAnimateAvatar(avatar) && !havePermissionToAnimateOtherAvatar(avatar))
+    if (!couldAnimateAvatar(avatar))
     {
         mSavePosesBtn->setImageOverlay(tryGetString(ICON_SAVE_FAILED), mSavePosesBtn->getImageOverlayHAlign());
         return;
@@ -890,11 +987,6 @@ void FSFloaterPoser::updatePosedBones(const std::string& jointName, const LLQuat
     if (!mPoserAnimator.isPosingAvatar(avatar))
         return;
 
-    bool haveImplicitPermission = havePermissionToAnimateAvatar(avatar); // self & control avatars you own
-    bool iCanPoseThem           = havePermissionToAnimateOtherAvatar(avatar);
-    if (!haveImplicitPermission && !iCanPoseThem)
-        return;
-
     const FSPoserAnimator::FSPoserJoint* poserJoint = mPoserAnimator.getPoserJointByName(jointName);
     if (!poserJoint)
         return;
@@ -1137,7 +1229,7 @@ void FSFloaterPoser::timedReload()
     if (!avatar)
         return;
 
-    if (!havePermissionToAnimateAvatar(avatar) && !havePermissionToAnimateOtherAvatar(avatar))
+    if (!couldAnimateAvatar(avatar))
         return;
 
     if (loadPoseFromXml(avatar, mLoadPoseTimer->getPosePath(), mLoadPoseTimer->getLoadMethod()))
@@ -1234,7 +1326,7 @@ void FSFloaterPoser::onClickLoadHandPose(bool isRightHand)
     LLVOAvatar* avatar   = getUiSelectedAvatar();
     if (!avatar)
         return;
-    if (!havePermissionToAnimateAvatar(avatar) && !havePermissionToAnimateOtherAvatar(avatar))
+    if (!couldAnimateAvatar(avatar))
         return;
     if (!mPoserAnimator.isPosingAvatar(avatar))
         return;
@@ -1343,31 +1435,57 @@ void FSFloaterPoser::startPosingSelf()
         return;
 
     bool arePosingSelected = mPoserAnimator.isPosingAvatar(avatar);
-    if (!arePosingSelected && couldAnimateAvatar(avatar))
-        mPoserAnimator.tryPosingAvatar(avatar);
+    if (!arePosingSelected && couldAnimateAvatar(avatar) && mPoserAnimator.tryPosingAvatar(avatar))
+        mPosingAvatarIds.insert(avatar->getID());
 
     onAvatarSelect();
+    updateTargetIdleRegistration();
 }
 
 void FSFloaterPoser::stopPosingAllAvatars()
 {
-    if (!gAgentAvatarp || gAgentAvatarp.isNull() || !mAvatarSelectionScrollList)
-        return;
-
-    for (auto listItem : mAvatarSelectionScrollList->getAllData())
+    for (const LLUUID& avatarId : mPosingAvatarIds)
     {
-        LLScrollListCell* cell = listItem->getColumn(COL_UUID);
-        if (!cell)
+        if (ALDirectorAnimSwitcher::instance().ownsPose(avatarId))
+        {
+            mClonePoseDrives.erase(avatarId);
             continue;
-
-        LLUUID      selectedAvatarId = cell->getValue().asUUID();
-        LLVOAvatar* listAvatar       = getAvatarByUuid(selectedAvatarId);
-
-        if (mPoserAnimator.isPosingAvatar(listAvatar))
-            mPoserAnimator.stopPosingAvatar(listAvatar);
+        }
+        if (LLVOAvatar* avatar = getAvatarByUuid(avatarId))
+            mPoserAnimator.stopPosingAvatar(avatar);
+        if (!mLocallyPlayedAnims.count(avatarId))
+            releaseClonePoseDrive(avatarId);
     }
+    mPosingAvatarIds.clear();
 
     onAvatarSelect();
+    updateTargetIdleRegistration();
+}
+
+void FSFloaterPoser::stopLocallyPlayedAnimations(const LLUUID& avatarId)
+{
+    auto played = mLocallyPlayedAnims.find(avatarId);
+    if (played == mLocallyPlayedAnims.end())
+        return;
+
+    LLVOAvatar* avatar = getAvatarByUuid(avatarId);
+    for (const LLUUID& animId : played->second)
+    {
+        // Do not stop a shared instance if the simulator began signaling it
+        // after our local preview started.
+        if (avatar && !avatar->isDead() &&
+            avatar->mSignaledAnimations.find(animId) == avatar->mSignaledAnimations.end() &&
+            avatar->mPlayingAnimations.find(animId) == avatar->mPlayingAnimations.end())
+        {
+            avatar->LLCharacter::stopMotion(animId, true);
+        }
+        if (avatarId == gAgent.getID())
+            LLVOAvatarSelf::unregisterLocalOnlyMotion(animId);
+    }
+    mLocallyPlayedAnims.erase(played);
+    if (!mPosingAvatarIds.count(avatarId))
+        releaseClonePoseDrive(avatarId);
+    updateTargetIdleRegistration();
 }
 
 void FSFloaterPoser::onPoseStartStop()
@@ -1376,70 +1494,31 @@ void FSFloaterPoser::onPoseStartStop()
     if (!avatar)
         return;
 
-    bool arePosingSelected = mPoserAnimator.isPosingAvatar(avatar);
+    const LLUUID avatarId = avatar->getID();
+    bool arePosingSelected = mPosingAvatarIds.find(avatarId) != mPosingAvatarIds.end() ||
+                             mPoserAnimator.isPosingAvatar(avatar);
     if (arePosingSelected)
     {
         mPoserAnimator.stopPosingAvatar(avatar);
+        mPosingAvatarIds.erase(avatarId);
+        if (!mLocallyPlayedAnims.count(avatarId))
+            releaseClonePoseDrive(avatarId);
     }
     else
     {
         if (!couldAnimateAvatar(avatar))
             return;
 
-        if (!havePermissionToAnimateAvatar(avatar))
-            return;
-
-        mPoserAnimator.tryPosingAvatar(avatar);
+        if (mPoserAnimator.tryPosingAvatar(avatar))
+            mPosingAvatarIds.insert(avatarId);
     }
 
     onAvatarsRefresh();
-    onAvatarSelect();
 }
 
 bool FSFloaterPoser::couldAnimateAvatar(LLVOAvatar* avatar) const
 {
-    if (!avatar || avatar->isDead())
-        return false;
-    if (avatar->getRegion() != gAgent.getRegion())
-        return false;
-
-    return true;
-}
-
-bool FSFloaterPoser::havePermissionToAnimateAvatar(LLVOAvatar* avatar) const
-{
-    if (!avatar || avatar->isDead())
-        return false;
-    if (avatar->isSelf())
-        return true;
-
-    if (avatar->isControlAvatar())
-    {
-        LLControlAvatar*      control_av     = dynamic_cast<LLControlAvatar*>(avatar);
-        const LLVOVolume*     rootVolume     = control_av->mRootVolp;
-        const LLViewerObject* rootEditObject = (rootVolume) ? rootVolume->getRootEdit() : NULL;
-        if (!rootEditObject)
-            return false;
-
-        return rootEditObject->permYouOwner();
-    }
-
-    return false;
-}
-
-bool FSFloaterPoser::havePermissionToAnimateOtherAvatar(LLVOAvatar* avatar) const
-{
-    if (!avatar || avatar->isDead())
-        return false;
-
-    // [BDMerge] Posing is applied as a LOCAL motion on our own copy of the target's
-    // skeleton (FSPosingMotion via LLCharacter::startMotion) and is never transmitted
-    // to the sim, so posing a nearby avatar only affects how they render in THIS
-    // viewer. When enabled, allow posing any same-region avatar / non-owned animesh
-    // regardless of ownership. Off = stock (self + owned animesh only). isAvatarSafeToUse
-    // (same-region, alive) is still enforced by the animator layer.
-    static LLCachedControl<bool> poseAnyAvatar(gSavedSettings, "BDMergePoserAnyAvatar", false);
-    return poseAnyAvatar;
+    return mPoserAnimator.isAvatarSafeToUse(avatar);
 }
 
 void FSFloaterPoser::poseControlsEnable(bool enable)
@@ -1579,15 +1658,10 @@ void FSFloaterPoser::onToggleLoadSavePanel()
     mSavePosesBtn->setVisible(loadSavePanelExpanded);
     mBrowserFolderBtn->setVisible(loadSavePanelExpanded);
 
-    // change the width of the Poser panel for the (dis)appearance of the load/save panel
-    S32 currentWidth       = getRect().getWidth();
-    S32 loadSavePanelWidth = mPosesLoadSavePnl->getRect().getWidth();
-
+    // Canonical widths keep repeated commits and restored old floater sizes
+    // from accumulating a browser-width delta.
     S32 poserFloaterHeight = getRect().getHeight();
-    S32 poserFloaterWidth  = loadSavePanelExpanded ? currentWidth + loadSavePanelWidth : currentWidth - loadSavePanelWidth;
-
-    if (poserFloaterWidth < 0)
-        return;
+    S32 poserFloaterWidth  = loadSavePanelExpanded ? 725 : 450;
 
     reshape(poserFloaterWidth, poserFloaterHeight);
 
@@ -1921,10 +1995,7 @@ void FSFloaterPoser::updateManipWithFirstSelectedJoint(const std::vector<FSPoser
     if (!avatarp)
         return;
 
-    bool haveImplicitPermission = havePermissionToAnimateAvatar(avatarp);
-    bool iCanPoseThem           = havePermissionToAnimateOtherAvatar(avatarp);
-
-    if ((joints.size() >= 1) && (haveImplicitPermission || iCanPoseThem))
+    if ((joints.size() >= 1) && couldAnimateAvatar(avatarp))
     {
         FSToolCompPose::getInstance()->setJoint(avatarp->getJoint(joints[0]->jointName()));
         FSToolCompPoseTranslate::getInstance()->setJoint(avatarp->getJoint(joints[0]->jointName()));
@@ -2447,19 +2518,13 @@ E_PoserReferenceFrame FSFloaterPoser::getReferenceFrame() const
 /// An event handler for selecting an avatar or animesh on the POSES_AVATAR_SCROLL_LIST_NAME.
 /// In general this will refresh the views for joints or their proxies, and (dis/en)able elements of the view.
 /// </summary>
-// [BDMerge] Local animation playback: gather every animation asset UUID currently
-// signaled on nearby avatars (per-avatar mSignaledAnimations) and animesh (the
-// separate LLObjectSignaledAnimationMap), and list them for local playback.
-void FSFloaterPoser::refreshAnimationList()
+// Gather assets only from eligible local targets. Control avatars fold their
+// object animation signals into mSignaledAnimations; a global object-map scan
+// would also include muted, distant and other-region targets.
+void FSFloaterPoser::refreshAnimationList(bool periodic)
 {
     if (!mAnimPlaybackScrollList)
         return;
-
-    LLUUID prevSel;
-    if (LLScrollListItem* sel = mAnimPlaybackScrollList->getFirstSelected())
-        prevSel = sel->getValue().asUUID();
-
-    mAnimPlaybackScrollList->deleteAllItems();
 
     // animation asset id -> number of nearby characters signaling it
     std::map<LLUUID, S32> animCounts;
@@ -2474,12 +2539,24 @@ void FSFloaterPoser::refreshAnimationList()
             animCounts[p.first]++;
     }
 
-    // Animesh animations arrive via ObjectAnimation, not AvatarAnimation, so they live
-    // in a separate global map keyed by object id - fold them in for full coverage.
-    for (const auto& obj : LLObjectSignaledAnimationMap::instance().getMap())
-        for (const auto& p : obj.second)
-            animCounts[p.first]++;
-
+    // Reconcile in place: unchanged rows retain selection and scroll position.
+    const S32 scrollPos = mAnimPlaybackScrollList->getScrollPos();
+    bool membershipChanged = false;
+    for (LLScrollListItem* item : mAnimPlaybackScrollList->getAllData())
+    {
+        const auto found = animCounts.find(item->getValue().asUUID());
+        if (found == animCounts.end())
+        {
+            mAnimPlaybackScrollList->deleteSingleItem(item);
+            membershipChanged = true;
+            continue;
+        }
+        LLScrollListCell* count = item->getColumn(1);
+        const std::string value = llformat("%d", found->second);
+        if (count && count->getValue().asString() != value)
+            count->setValue(value);
+        animCounts.erase(found);
+    }
     for (const auto& a : animCounts)
     {
         LLSD row;
@@ -2489,71 +2566,115 @@ void FSFloaterPoser::refreshAnimationList()
         row["columns"][1]["column"] = "count";
         row["columns"][1]["value"]  = llformat("%d", a.second);
         mAnimPlaybackScrollList->addElement(row);
+        membershipChanged = true;
     }
 
-    if (prevSel.notNull())
-        mAnimPlaybackScrollList->selectByValue(LLSD(prevSel));
+    if (membershipChanged)
+        mAnimPlaybackScrollList->setScrollPos(scrollPos);
 
     // Keep the "send to slot" chooser's occupancy labels in sync with the bank.
-    refreshSwitchboardSlotCombo();
+    if (!periodic)
+        refreshSwitchboardSlotCombo();
 }
 
 void FSFloaterPoser::onAnimPlay()
 {
     LLVOAvatar* target = getUiSelectedAvatar();
     if (!target || target->isDead())
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Select a target avatar"));
         return;
+    }
 
-    // Same local-playback gate as posing (honors BDMergePoserAnyAvatar).
-    if (!havePermissionToAnimateAvatar(target) && !havePermissionToAnimateOtherAvatar(target))
+    if (!couldAnimateAvatar(target))
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Target is no longer eligible"));
         return;
+    }
 
     LLScrollListItem* sel = mAnimPlaybackScrollList ? mAnimPlaybackScrollList->getFirstSelected() : nullptr;
-    if (!sel)
+    if (!sel || sel->getValue().asUUID().isNull())
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Select an animation"));
         return;
+    }
 
     LLUUID animId = sel->getValue().asUUID();
-    if (animId.isNull())
-        return;
+    animId = target->remapMotionID(animId);
 
-    // Local client-side motion: only rendered in our viewer, never sent to the sim.
-    target->startMotion(animId);
-    mLocallyPlayedAnims[target->getID()].insert(animId);
+    // Motion instances are shared by asset UUID. Never claim an already-active
+    // instance, since stopping our preview must not stop a server-driven motion.
+    if (target->mSignaledAnimations.find(animId) != target->mSignaledAnimations.end() ||
+        target->mPlayingAnimations.find(animId) != target->mPlayingAnimations.end() || target->isMotionActive(animId))
+    {
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Animation already active on target"));
+        return;
+    }
+
+    // Suppress automatic self-avatar STOP notifications when a preview expires.
+    if (target->isSelf())
+        LLVOAvatarSelf::registerLocalOnlyMotion(animId);
+    acquireClonePoseDrive(target);
+
+    // Explicit qualification bypasses LLVOAvatar's AO/network hooks.
+    if (target->LLCharacter::startMotion(animId))
+    {
+        mLocallyPlayedAnims[target->getID()].insert(animId);
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Playing local preview"));
+    }
+    else
+    {
+        if (target->isSelf())
+            LLVOAvatarSelf::unregisterLocalOnlyMotion(animId);
+        if (mAnimSwitchboardStatus)
+            mAnimSwitchboardStatus->setText(LLStringExplicit("Could not play animation"));
+    }
+    if (!mLocallyPlayedAnims.count(target->getID()) && !mPosingAvatarIds.count(target->getID()))
+        releaseClonePoseDrive(target->getID());
+    updateTargetIdleRegistration();
 }
 
 void FSFloaterPoser::onAnimStop()
 {
     LLVOAvatar* target = getUiSelectedAvatar();
     LLScrollListItem* sel = mAnimPlaybackScrollList ? mAnimPlaybackScrollList->getFirstSelected() : nullptr;
-    if (!target || !sel)
+    if (!target || target->isDead() || !sel)
         return;
 
     LLUUID animId = sel->getValue().asUUID();
     if (animId.isNull())
         return;
-
-    target->stopMotion(animId);
+    animId = target->remapMotionID(animId);
 
     auto it = mLocallyPlayedAnims.find(target->getID());
-    if (it != mLocallyPlayedAnims.end())
+    if (it == mLocallyPlayedAnims.end() || it->second.find(animId) == it->second.end())
+        return;
+
+    if (target->mSignaledAnimations.find(animId) == target->mSignaledAnimations.end() &&
+        target->mPlayingAnimations.find(animId) == target->mPlayingAnimations.end())
     {
-        it->second.erase(animId);
-        if (it->second.empty())
-            mLocallyPlayedAnims.erase(it);
+        target->LLCharacter::stopMotion(animId, true);
     }
+    if (target->isSelf())
+        LLVOAvatarSelf::unregisterLocalOnlyMotion(animId);
+
+    it->second.erase(animId);
+    if (it->second.empty())
+        mLocallyPlayedAnims.erase(it);
+    if (!mLocallyPlayedAnims.count(target->getID()) && !mPosingAvatarIds.count(target->getID()))
+        releaseClonePoseDrive(target->getID());
+    updateTargetIdleRegistration();
 }
 
 void FSFloaterPoser::onAnimStopAll()
 {
-    for (const auto& entry : mLocallyPlayedAnims)
-    {
-        LLVOAvatar* av = getAvatarByUuid(entry.first);
-        if (!av || av->isDead())
-            continue;
-        for (const LLUUID& animId : entry.second)
-            av->stopMotion(animId);
-    }
-    mLocallyPlayedAnims.clear();
+    while (!mLocallyPlayedAnims.empty())
+        stopLocallyPlayedAnimations(mLocallyPlayedAnims.begin()->first);
 }
 
 // Populate both "send to slot" choosers with the twelve Switchboard slots,
@@ -2698,13 +2819,19 @@ void FSFloaterPoser::onAvatarSelect()
 {
     LLVOAvatar* avatar = getUiSelectedAvatar();
     if (!avatar)
+    {
+        FSToolCompPose::getInstance()->setAvatar(nullptr);
+        FSToolCompPoseTranslate::getInstance()->setAvatar(nullptr);
+        mStartStopPosingBtn->setEnabled(false);
+        mStartStopPosingBtn->setValue(false);
+        mSetToTposeButton->setEnabled(false);
+        poseControlsEnable(false);
         return;
+    }
 
-    bool          isSelf                 = avatar->isSelf();
-    bool          haveImplicitPermission = havePermissionToAnimateAvatar(avatar); // self & control avatars you own
-    bool          haveExplicitPermission = havePermissionToAnimateOtherAvatar(avatar); // as permissions allow
+    const bool canPose = couldAnimateAvatar(avatar);
 
-    if (haveImplicitPermission || haveExplicitPermission)
+    if (canPose)
     {
         FSToolCompPose::getInstance()->setAvatar(avatar);
         FSToolCompPoseTranslate::getInstance()->setAvatar(avatar);
@@ -2716,12 +2843,17 @@ void FSFloaterPoser::onAvatarSelect()
     }
 
     bool arePosingSelected = mPoserAnimator.isPosingAvatar(avatar);
+    // Observing an active overlay does not transfer Director/other ownership.
+    if (canPose && mPosingAvatarIds.count(avatar->getID()) &&
+        !ALDirectorAnimSwitcher::instance().ownsPose(avatar->getID()))
+        acquireClonePoseDrive(avatar);
+    updateTargetIdleRegistration();
 
-    mStartStopPosingBtn->setEnabled(haveImplicitPermission);
-    mStartStopPosingBtn->setValue(arePosingSelected);
+    mStartStopPosingBtn->setEnabled(canPose || mPosingAvatarIds.find(avatar->getID()) != mPosingAvatarIds.end());
+    mStartStopPosingBtn->setValue(arePosingSelected || mPosingAvatarIds.find(avatar->getID()) != mPosingAvatarIds.end());
 
-    mSetToTposeButton->setEnabled(haveImplicitPermission && arePosingSelected);
-    poseControlsEnable(arePosingSelected && haveImplicitPermission);
+    mSetToTposeButton->setEnabled(canPose && arePosingSelected);
+    poseControlsEnable(canPose && arePosingSelected);
 
     refreshTextHighlightingOnAvatarScrollList();
     refreshTextHighlightingOnJointScrollLists();
@@ -2736,32 +2868,20 @@ uuid_vec_t FSFloaterPoser::getNearbyAvatarsAndAnimeshes() const
     for (LLCharacter* character : LLCharacter::sInstances)
     {
         LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(character);
-        if (!avatarIsNearbyMe(avatar))
+        if (!couldAnimateAvatar(avatar))
             continue;
 
-        bool isMuted = LLMuteList::getInstance()->isMuted(avatar->getID());
-        if (isMuted)
-            continue;
+        if (avatar->isGhostAvatar())
+        {
+            const auto* instance = ALGhostStudio::instance().findInstanceByRuntime(avatar->getID());
+            if (!instance || instance->mKind != ALGhostStudio::BACKING_ENTITY_CLONE)
+                continue; // private overlay drawing helpers are not actors
+        }
 
-        bool isSelfOrCtrl = avatar->isControlAvatar() || avatar->isSelf();
-
-        if (!isSelfOrCtrl)
-            continue;
-
-        avatar_ids.emplace_back(character->getID());
+        avatar_ids.emplace_back(avatar->getID());
     }
 
     return avatar_ids;
-}
-
-bool FSFloaterPoser::avatarIsNearbyMe(LLCharacter* character) const
-{
-    if (!gAgentAvatarp || gAgentAvatarp.isNull() || !character)
-        return false;
-
-    LLVector3 separationVector = character->getCharacterPosition() - gAgentAvatarp->getCharacterPosition();
-
-    return separationVector.magVec() < 50.f;
 }
 
 uuid_vec_t FSFloaterPoser::getCurrentlyListedAvatarsAndAnimeshes() const
@@ -2800,10 +2920,79 @@ S32 FSFloaterPoser::getAvatarListIndexForUuid(const LLUUID& toFind) const
     return -1;
 }
 
-void FSFloaterPoser::onAvatarsRefresh()
+void FSFloaterPoser::revalidateActiveTargets()
 {
+    // Keep cleanup independent of visible rows: an active target may disappear
+    // from the list because it moved away, was muted, or the option was disabled.
+    for (auto posed = mPosingAvatarIds.begin(); posed != mPosingAvatarIds.end();)
+    {
+        // A later Switchboard punch takes over the shared overlay. Relinquish
+        // our bookkeeping without stopping it or restoring its clone driver.
+        if (ALDirectorAnimSwitcher::instance().ownsPose(*posed))
+        {
+            mClonePoseDrives.erase(*posed);
+            posed = mPosingAvatarIds.erase(posed);
+            continue;
+        }
+        LLVOAvatar* avatar = getAvatarByUuid(*posed);
+        if (avatar && couldAnimateAvatar(avatar) && mPoserAnimator.isPosingAvatar(avatar))
+        {
+            ++posed;
+            continue;
+        }
+
+        if (avatar)
+            mPoserAnimator.stopPosingAvatar(avatar);
+        stopLocallyPlayedAnimations(*posed);
+        releaseClonePoseDrive(*posed);
+        posed = mPosingAvatarIds.erase(posed);
+    }
+
+    for (auto played = mLocallyPlayedAnims.begin(); played != mLocallyPlayedAnims.end();)
+    {
+        LLVOAvatar* avatar = getAvatarByUuid(played->first);
+        if (couldAnimateAvatar(avatar))
+        {
+            // Retire completed previews as well, so a hidden idle callback
+            // does not survive forever after a non-looping animation ends.
+            for (auto anim = played->second.begin(); anim != played->second.end();)
+            {
+                if (avatar->isMotionActive(*anim) ||
+                    (avatar->findMotion(*anim) && !avatar->findMotion(*anim)->isStopped()))
+                {
+                    ++anim;
+                    continue;
+                }
+                if (avatar->isSelf())
+                    LLVOAvatarSelf::unregisterLocalOnlyMotion(*anim);
+                anim = played->second.erase(anim);
+            }
+            if (played->second.empty())
+            {
+                if (!mPosingAvatarIds.count(played->first))
+                    releaseClonePoseDrive(played->first);
+                played = mLocallyPlayedAnims.erase(played);
+                continue;
+            }
+            ++played;
+            continue;
+        }
+
+        const LLUUID avatarId = played->first;
+        ++played;
+        stopLocallyPlayedAnimations(avatarId);
+    }
+}
+
+void FSFloaterPoser::onAvatarsRefresh(bool periodic)
+{
+    LLUUID previousSelection;
+    if (LLScrollListItem* selected = mAvatarSelectionScrollList->getFirstSelected())
+        previousSelection = selected->getColumn(COL_UUID)->getValue().asUUID();
+    revalidateActiveTargets();
     uuid_vec_t avatarsToAddToList, avatarsToRemoveFromList;
     uuid_vec_t nearbyAvatarIds = getNearbyAvatarsAndAnimeshes();
+
     uuid_vec_t currentlyListedAvatars = getCurrentlyListedAvatarsAndAnimeshes();
     LLCommonUtils::computeDifference(nearbyAvatarIds, currentlyListedAvatars, avatarsToAddToList, avatarsToRemoveFromList);
 
@@ -2812,6 +3001,7 @@ void FSFloaterPoser::onAvatarsRefresh()
         S32 indexToRemove = getAvatarListIndexForUuid(toRemove);
         if (indexToRemove >= 0)
             mAvatarSelectionScrollList->deleteSingleItem(indexToRemove);
+        mAvatarRowPosing.erase(toRemove);
     }
 
     std::string iconObjectName = "Inv_Object";
@@ -2832,22 +3022,27 @@ void FSFloaterPoser::onAvatarsRefresh()
         if (avatar->isControlAvatar())
             continue;
 
-        LLAvatarName av_name;
-        if (!LLAvatarNameCache::get(uuid, &av_name))
-            continue;
-
-        if (LLMuteList::getInstance()->isMuted(uuid))
-            continue;
-
-        if (!avatar->isSelf())
-            continue;
+        std::string displayName;
+        if (avatar->isGhostAvatar())
+        {
+            // Synthetic UUIDs have no name-service identity.
+            const auto* instance = ALGhostStudio::instance().findInstanceByRuntime(uuid);
+            displayName = instance && !instance->mName.empty() ? instance->mName : "Local clone";
+        }
+        else
+        {
+            LLAvatarName av_name;
+            if (!LLAvatarNameCache::get(uuid, &av_name))
+                continue;
+            displayName = av_name.getDisplayName();
+        }
 
         LLSD row;
         row["columns"][COL_ICON]["column"] = "icon";
         row["columns"][COL_ICON]["type"]   = "icon";
         row["columns"][COL_ICON]["value"]  = getIconNameForAvatar(avatar);
         row["columns"][COL_NAME]["column"] = "name";
-        row["columns"][COL_NAME]["value"]  = av_name.getDisplayName();
+        row["columns"][COL_NAME]["value"]  = displayName;
         row["columns"][COL_UUID]["column"] = "uuid";
         row["columns"][COL_UUID]["value"]  = uuid;
         row["columns"][COL_SAVE]["column"] = "saveFileName";
@@ -2866,7 +3061,6 @@ void FSFloaterPoser::onAvatarsRefresh()
         if (!couldAnimateAvatar(avatar))
             continue;
 
-        LLAvatarName av_name;
         std::string animeshName = getControlAvatarName(avatar);
         if (animeshName.empty())
             continue;
@@ -2884,8 +3078,27 @@ void FSFloaterPoser::onAvatarsRefresh()
         mAvatarSelectionScrollList->addElement(row);
     }
 
-    mAvatarSelectionScrollList->updateLayout();
+    if (!avatarsToAddToList.empty() || !avatarsToRemoveFromList.empty())
+        mAvatarSelectionScrollList->updateLayout();
     refreshTextHighlightingOnAvatarScrollList();
+    LLVOAvatar* selected = getUiSelectedAvatar();
+    const LLUUID currentSelection = selected ? selected->getID() : LLUUID::null;
+    if (!periodic || previousSelection != currentSelection)
+        onAvatarSelect();
+    else if (selected)
+    {
+        // Model state can change externally. Update enablement only; never
+        // rebind manipulators, write the save-name editor or reload joint UI.
+        const bool canPose = couldAnimateAvatar(selected);
+        const bool posing = mPoserAnimator.isPosingAvatar(selected);
+        if (mStartStopPosingBtn->getValue().asBoolean() != posing)
+            mStartStopPosingBtn->setValue(posing);
+        if (mSetToTposeButton->getEnabled() != (canPose && posing))
+        {
+            mSetToTposeButton->setEnabled(canPose && posing);
+            poseControlsEnable(canPose && posing);
+        }
+    }
 }
 
 std::string FSFloaterPoser::getIconNameForAvatar(LLVOAvatar* avatar)
@@ -2910,7 +3123,7 @@ std::string FSFloaterPoser::getControlAvatarName(const LLControlAvatar* avatar)
 
     const LLVOVolume* rootVolume = avatar->mRootVolp;
     const LLViewerObject* rootEditObject = rootVolume ? rootVolume->getRootEdit() : nullptr;
-    if (!rootEditObject)
+    if (!rootEditObject || rootVolume->isDead() || rootEditObject->isDead())
         return {};
 
     const LLViewerInventoryItem* attachedItem =
@@ -2919,10 +3132,8 @@ std::string FSFloaterPoser::getControlAvatarName(const LLControlAvatar* avatar)
     if (attachedItem)
         return attachedItem->getName();
 
-    if (rootEditObject->permYouOwner())
-        return avatar->getFullname();
-
-    return {};
+    // Non-owned animesh also needs a stable label when local posing is enabled.
+    return avatar->getFullname();
 }
 
 void FSFloaterPoser::refreshTextHighlightingOnAvatarScrollList()
@@ -2935,15 +3146,24 @@ void FSFloaterPoser::refreshTextHighlightingOnAvatarScrollList()
 
         LLUUID selectedAvatarId = cell->getValue().asUUID();
         LLVOAvatar* listAvatar = getAvatarByUuid(selectedAvatarId);
+        const bool posing = mPoserAnimator.isPosingAvatar(listAvatar);
+        const auto oldState = mAvatarRowPosing.find(selectedAvatarId);
+        if (oldState != mAvatarRowPosing.end() && oldState->second == posing)
+            continue;
+        mAvatarRowPosing[selectedAvatarId] = posing;
 
         // COL_ICON is an LLScrollListIcon, not LLScrollListText; setValue is
         // virtual on LLScrollListCell, so call it through the base.
         if (LLScrollListCell* icon_cell = listItem->getColumn(COL_ICON))
-            icon_cell->setValue(getIconNameForAvatar(listAvatar));
+        {
+            const std::string icon = getIconNameForAvatar(listAvatar);
+            if (icon_cell->getValue().asString() != icon)
+                icon_cell->setValue(icon);
+        }
 
         // setFontStyle only exists on LLScrollListText.
         if (auto* name_cell = dynamic_cast<LLScrollListText*>(listItem->getColumn(COL_NAME)))
-            name_cell->setFontStyle(mPoserAnimator.isPosingAvatar(listAvatar) ? LLFontGL::BOLD : LLFontGL::NORMAL);
+            name_cell->setFontStyle(posing ? LLFontGL::BOLD : LLFontGL::NORMAL);
     }
 }
 

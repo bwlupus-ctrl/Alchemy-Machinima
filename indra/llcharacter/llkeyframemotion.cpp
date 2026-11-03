@@ -725,7 +725,7 @@ bool LLKeyframeMotion::onActivate()
     applyExternalLocomotionSeed();
 
     // If the keyframe anim has an associated emote, trigger it.
-    if (mJointMotionList->mEmoteID.notNull())
+    if (!mCharacter->isLocalOnlyMotion(getID()) && mJointMotionList->mEmoteID.notNull())
     {
         // don't start emote if already active to avoid recursion
         if (!mCharacter->isMotionActive(mJointMotionList->mEmoteID))

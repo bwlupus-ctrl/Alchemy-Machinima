@@ -268,30 +268,7 @@ std::vector<LLVOAvatar*> ALDirectorAnimSwitcher::getTargetAvatars(
 
 bool ALDirectorAnimSwitcher::canPoseAvatar(LLVOAvatar* av) const
 {
-    if (!av || av->isDead() || av->getRegion() != gAgent.getRegion())
-    {
-        return false;
-    }
-    if (av->isSelf() || dynamic_cast<LLGhostAvatar*>(av))
-    {
-        return true;
-    }
-    if (LLControlAvatar* control = dynamic_cast<LLControlAvatar*>(av))
-    {
-        const LLVOVolume* root_volume = control->mRootVolp;
-        const LLViewerObject* root_edit =
-            root_volume ? root_volume->getRootEdit() : nullptr;
-        if (root_edit && root_edit->permYouOwner())
-        {
-            return true;
-        }
-    }
-
-    // This is the same explicit local-render permission used by the poser.
-    // It never sends an animation or pose request to the simulator.
-    static LLCachedControl<bool> pose_any_avatar(
-        gSavedSettings, "BDMergePoserAnyAvatar", false);
-    return pose_any_avatar;
+    return mPoseAnimator.isAvatarSafeToUse(av);
 }
 
 void ALDirectorAnimSwitcher::releasePoseFromAvatar(LLVOAvatar* av)
@@ -494,6 +471,23 @@ bool ALDirectorAnimSwitcher::applySlot(
 
 void ALDirectorAnimSwitcher::tick(F64 presentation_time)
 {
+    // A manual punch can outlive both the Poser floater and arming. Keep its
+    // target cleanup on wall time, independent of the presentation clock.
+    if (!mPosedAvatars.empty() && mTargetValidationTimer.getElapsedTimeF32() >= 1.f)
+    {
+        mTargetValidationTimer.reset();
+        for (auto posed = mPosedAvatars.begin(); posed != mPosedAvatars.end();)
+        {
+            const LLUUID id = *posed++;
+            LLVOAvatar* avatar = LLDirectorCast::instance().resolve(id);
+            if (!avatar || !canPoseAvatar(avatar) || !mPoseAnimator.isPosingAvatar(avatar))
+            {
+                releasePoseFromAvatar(avatar);
+                mPosedAvatars.erase(id);
+            }
+        }
+    }
+
     static LLCachedControl<bool> armed(
         gSavedSettings, "DirectorAnimSwitcherArmed", false);
     if (!armed)

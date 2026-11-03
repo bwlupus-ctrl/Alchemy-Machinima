@@ -37,6 +37,7 @@
 #include "llselectmgr.h"
 #include "llviewerwindow.h"
 #include "llworld.h"
+#include "llvoavatar.h"
 #include "fsfloaterposer.h"
 #include "llfloaterreg.h"
 
@@ -90,9 +91,17 @@ FSManipTranslateJoint::FSManipTranslateJoint(LLToolComposite* composite) :
     }
 }
 
+FSManipTranslateJoint::~FSManipTranslateJoint() = default;
+
 void FSManipTranslateJoint::setAvatar(LLVOAvatar* avatar)
 {
+    // Keep the selected joint on the new skeleton, and drop all old joint
+    // pointers before releasing the avatar that owns them.
+    const S32 joint_number = mAvatar && mJoint ? mJoint->getJointNum() : -1;
+    mJoint = nullptr;
     mAvatar = avatar;
+    if (avatar && joint_number >= 0)
+        setJoint(avatar->getJoint(joint_number));
 }
 
 void FSManipTranslateJoint::setJoint(LLJoint* joint)
@@ -241,7 +250,6 @@ void FSManipTranslateJoint::restoreGL()
 
 void FSManipTranslateJoint::handleSelect()
 {
-    LLSelectMgr::getInstance()->saveSelectedObjectTransform(SELECT_ACTION_TYPE_PICK);
     if (gFloaterTools)
     {
         gFloaterTools->setStatusText("move");
@@ -705,10 +713,8 @@ bool FSManipTranslateJoint::handleMouseUp(S32 x, S32 y, MASK mask)
         mManipPart = LL_NO_PART;
         LLSelectMgr::getInstance()->enableSilhouette(true);
 
-        // Might have missed last update due to UPDATE_DELAY timing.
-        LLSelectMgr::getInstance()->sendMultipleUpdate( UPD_POSITION );
-
-        LLSelectMgr::getInstance()->saveSelectedObjectTransform(SELECT_ACTION_TYPE_PICK);
+        // This tool edits avatar joints, not world objects. Do not flush or
+        // record LLSelectMgr object transforms on mouse-up.
     }
 
     return LLManip::handleMouseUp(x, y, mask);

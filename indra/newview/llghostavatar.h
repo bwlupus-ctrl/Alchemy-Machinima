@@ -161,6 +161,7 @@ public:
     void setEntityEyeMotionEnabled(bool enabled);
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     S32 getEntityDriveMode() const { return mEntityDriveMode; }
+    const LLUUID& getEntityDirectedAnim() const { return mEntityDirectedAnim; }
     void setEntityLoopMode(S32 mode);
     // Retime the clone AND each animesh attachment's control avatar. Each animesh
     // is a separate LLControlAvatar with its own motion controller, so the wearer's

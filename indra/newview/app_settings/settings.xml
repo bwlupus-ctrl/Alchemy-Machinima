@@ -11199,7 +11199,7 @@
     <key>BDMergePoserAnyAvatar</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge] Let the Poser pose ANY nearby (same-region) avatar and non-owned animesh, regardless of ownership/permissions. This is purely LOCAL/client-side: the pose is a local motion on your own skeleton copy and is never sent to the sim, so only you see it (machinima framing). Off = stock Firestorm behavior (self + owned animesh only).</string>
+      <string>[BDMerge] Let the Poser edit any unmuted avatar or animesh in the same region and less than 50 m away, regardless of ownership. This only changes the skeleton rendered by this viewer; it grants no simulator permission and sends no pose/animation request. Off = self and owned animesh only.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

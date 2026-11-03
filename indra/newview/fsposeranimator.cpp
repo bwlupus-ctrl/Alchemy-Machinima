@@ -31,11 +31,14 @@
 #include "llcharacter.h"
 #include "llagent.h"
 #include "llagentcamera.h"
+#include "llcontrolavatar.h"
 #include "fsposingmotion.h"
 #include "lldir.h"
 #include "llfile.h"
+#include "llmutelist.h"
 #include "llsdserialize.h"
 #include "llviewercontrol.h"
+#include "llvoavatarself.h"
 
 #include <boost/algorithm/string.hpp>
 #include <utility>
@@ -1324,7 +1327,7 @@ bool FSPoserAnimator::loadPoseFileOntoAvatar(LLVOAvatar* avatar, const std::stri
     if (!gDirUtilp->fileExists(pathname))
         return loadSuccess;
 
-    if (!this->isPosingAvatar(avatar))
+    if (!isAvatarSafeToUse(avatar) || !this->isPosingAvatar(avatar))
         return loadSuccess;
 
     std::string fullPath = gDirUtilp->getExpandedFilename(
@@ -1644,14 +1647,19 @@ bool FSPoserAnimator::tryPosingAvatar(LLVOAvatar* avatar)
 
     if (posingMotion->isStopped())
     {
-        if (avatar->isSelf())
-            gAgent.stopFidget();
-
         mPosingState.captureMotionStates(avatar);
-        avatar->startDefaultMotions();
-        avatar->startMotion(posingMotion->motionId());
 
-        return true;
+        // Add only our private overlay motion. Virtual avatar animation hooks
+        // can invoke AO/network requests and must not be used for local posing.
+        if (avatar->isSelf())
+            LLVOAvatarSelf::registerLocalOnlyMotion(posingMotion->motionId());
+
+        if (avatar->LLCharacter::startMotion(posingMotion->motionId()))
+            return true;
+
+        if (avatar->isSelf())
+            LLVOAvatarSelf::unregisterLocalOnlyMotion(posingMotion->motionId());
+        mPosingState.purgeMotionStates(avatar);
     }
 
     return false;
@@ -1684,20 +1692,34 @@ void FSPoserAnimator::stopPosingAvatar(LLVOAvatar* avatar)
     if (!avatar || avatar->isDead())
         return;
 
-    FSPosingMotion* posingMotion = getPosingMotion(avatar);
+    // Cleanup must still work after eligibility changes; getPosingMotion()
+    // intentionally denies new edits for muted, distant or disallowed targets.
+    auto registeredMotion = sAvatarIdToRegisteredAnimationId.find(avatar->getID());
+    if (registeredMotion == sAvatarIdToRegisteredAnimationId.end())
+        return;
+
+    FSPosingMotion* posingMotion =
+        dynamic_cast<FSPosingMotion*>(avatar->findMotion(registeredMotion->second));
     if (!posingMotion)
         return;
 
     mPosingState.purgeMotionStates(avatar);
-    avatar->stopMotion(posingMotion->motionId());
+    avatar->LLCharacter::stopMotion(posingMotion->motionId(), true);
+    if (avatar->isSelf())
+        LLVOAvatarSelf::unregisterLocalOnlyMotion(posingMotion->motionId());
 }
 
 bool FSPoserAnimator::isPosingAvatar(LLVOAvatar* avatar) const
 {
-    if (!isAvatarSafeToUse(avatar))
+    // Status and release must remain usable after the target leaves scope.
+    // New edits still pass through the eligibility-gated getPosingMotion().
+    if (!avatar || avatar->isDead())
         return false;
 
-    FSPosingMotion* posingMotion = getPosingMotion(avatar);
+    const auto registered = sAvatarIdToRegisteredAnimationId.find(avatar->getID());
+    if (registered == sAvatarIdToRegisteredAnimationId.end())
+        return false;
+    const auto* posingMotion = dynamic_cast<FSPosingMotion*>(avatar->findMotion(registered->second));
     if (!posingMotion)
         return false;
 
@@ -1733,14 +1755,44 @@ FSPosingMotion* FSPoserAnimator::findOrCreatePosingMotion(LLVOAvatar* avatar)
 
 bool FSPoserAnimator::isAvatarSafeToUse(LLVOAvatar* avatar) const
 {
-    if (!avatar)
+    if (!avatar || avatar->isDead())
         return false;
-    if (avatar->isDead())
+    // Self survives the temporary agent/avatar region disagreement on crossing.
+    // Synthetic local actors likewise do not depend on simulator region scope.
+    if (avatar->isSelf() || avatar->isGhostAvatar())
+        return true;
+    if (!gAgentAvatarp || gAgentAvatarp.isNull() || !gAgent.getRegion())
         return false;
     if (avatar->getRegion() != gAgent.getRegion())
         return false;
 
-    return true;
+    const LLVector3 separation = avatar->getCharacterPosition() - gAgentAvatarp->getCharacterPosition();
+    if (mNearbyTargetsOnly && !(separation.magVec() < 50.f))
+        return false;
+
+    LLMuteList* muteList = LLMuteList::getInstance();
+    if (muteList->isMuted(avatar->getID()))
+        return false;
+
+    if (avatar->isControlAvatar())
+    {
+        LLControlAvatar* controlAvatar = dynamic_cast<LLControlAvatar*>(avatar);
+        LLVOVolume* rootVolume = controlAvatar ? controlAvatar->mRootVolp : nullptr;
+        LLViewerObject* rootObject = rootVolume ? rootVolume->getRootEdit() : nullptr;
+        if (!rootObject || rootVolume->isDead() || rootObject->isDead())
+            return false;
+        if (rootVolume && muteList->isMuted(rootVolume->getID()))
+            return false;
+        if (rootObject && (muteList->isMuted(rootObject->getID()) || rootObject->isOwnerInMuteList()))
+            return false;
+
+        if (rootObject && rootObject->permYouOwner())
+            return true;
+    }
+
+    // Local presentation only: this grants no simulator animation permission.
+    static LLCachedControl<bool> poseAnyAvatar(gSavedSettings, "BDMergePoserAnyAvatar", false);
+    return poseAnyAvatar;
 }
 
 int FSPoserAnimator::getChildJointDepth(const FSPoserJoint* joint, S32 depth) const

@@ -159,6 +159,8 @@ public:
     // Subclasses may optionally override this.
     // The default implementation does nothing.
     virtual void requestStopMotion( LLMotion* motion );
+    // Local previews may not trigger associated motions through avatar hooks.
+    virtual bool isLocalOnlyMotion(const LLUUID&) const { return false; }
 
     // periodic update function, steps the motion controller
     enum e_update_t { NORMAL_UPDATE, HIDDEN_UPDATE, FORCE_UPDATE };

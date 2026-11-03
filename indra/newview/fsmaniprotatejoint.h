@@ -30,6 +30,7 @@
 
 #include "llselectmgr.h"
 #include "llmaniprotate.h"
+#include "llpointer.h"
 
 class LLJoint;
 class LLVOAvatar;  // for LLVOAvatarSelf, etc.
@@ -83,7 +84,7 @@ class FSManipRotateJoint : public LLManipRotate
 
 public:
     FSManipRotateJoint(LLToolComposite* composite);
-    virtual ~FSManipRotateJoint() {}
+    virtual ~FSManipRotateJoint();
     static std::string getManipPartString(EManipPart part);
 
     /// <summary>
@@ -128,7 +129,7 @@ protected:
     LLJoint*     mJoint        = nullptr;
     BoneAxes     mBoneAxes;
     LLQuaternion mNaturalAlignmentQuat;
-    LLVOAvatar*  mAvatar       = nullptr;
+    LLPointer<LLVOAvatar> mAvatar;
     // We'll store the joint's original rotation for reference
     LLQuaternion mSavedJointRot;
     LLJoint * mHighlightedJoint = nullptr;

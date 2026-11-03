@@ -180,10 +180,11 @@ class ViewerManifest(LLManifest):
 
             # skins
             with self.prefix(src_dst="skins"):
-                # include the entire textures directory recursively
+                # Include the supported texture formats and the deeper Director icons.
                 with self.prefix(src_dst="*/textures"):
                         self.path("*/*.jpg")
                         self.path("*/*.png")
+                        self.path("kit/icons/*.png")
                         self.path("*.tga")
                         self.path("*.j2c")
                         self.path("*.png")
