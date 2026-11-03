@@ -119,7 +119,7 @@ struct ALGhostStudio{
  std::vector<LLUUID> groupMembers(LLUUID id){return getInstance(id)?std::vector<LLUUID>{id}:std::vector<LLUUID>{};}
  struct Member{LLUUID mInstanceId;};struct Group{std::vector<Member>mMembers;};const Group* groupForMember(LLUUID)const{return nullptr;}
  bool isVisible(const Instance&i)const{return ALCloneQol::visible(mShowAll,i.mEnabled,mSolo,i.mSoloVisible);}
- static bool isOverlayStyle(int look){return look>=0&&look<100;}
+ @OVERLAY_STYLE_POLICY@
  static LLVOAvatar* resolveSourceAvatar(const Instance&i){return i.mSourceRemoved?nullptr:LLDirectorCast::instance().resolve(i.mSource);}
  static LLVOAvatar* resolveOverlayAvatar(const Instance&);
  LLGhostAvatar* createEntityRuntime(Instance&i,S32&){if(!LLDirectorCast::instance().resolve(i.mAppearanceSource)||i.mAppearanceSource==incompleteAttachments)return nullptr;auto* g=new LLGhostAvatar;g->id=LLUUID(1000+(++created));gObjectList.objects[g->id]=g;return g;}
@@ -171,6 +171,11 @@ int main(){
  gSavedSettings.ints={{"GhostStudioStartMode",2},{"GhostStudioLooksMode",1},{"GhostStudioMixLook1",7},{"GhostStudioMixLook2",8},{"GhostStudioMixLook3",-1},{"GhostStudioMixLook4",-1},{"GhostStudioMixLook5",-1},{"GhostStudioMixLook6",-1},{"GhostStudioLookSpread",1}};
  gSavedSettings.floats["GhostStudioStartSpread"]=2;
  studio.applyCrowdVariation({1},123);assert(studio.mInstances[0].mStartOffset==0&&studio.mInstances[1].mStartOffset==2);assert(studio.mInstances[0].mStyle==7&&studio.mInstances[1].mStyle==8);
+ gSavedSettings.ints["GhostStudioMixLook1"]=68;gSavedSettings.ints["GhostStudioMixLook2"]=72;
+ studio.applyCrowdVariation({1},123,false,true);
+ assert(studio.mInstances[0].mStyle==1&&studio.mInstances[1].mStyle==1); // retired values deduplicate to Clone
+ gSavedSettings.ints["GhostStudioMixLook1"]=7;gSavedSettings.ints["GhostStudioMixLook2"]=8;
+ studio.applyCrowdVariation({1},123,false,true);
  studio.setStartOffset({1},.75f);studio.applyCrowdVariation({1},123,false,true);assert(studio.mInstances[0].mStartOffset==.75f);
  studio.syncOffsets({{1},{2}});assert(gSavedSettings.getS32("GhostStudioStartMode")==0&&studio.mOffsetInstances.empty());
  studio.setStartOffset({1},.75f);studio.applyCrowdVariation({1},123,true,true,true);assert(studio.mInstances[0].mStartOffset==.75f);

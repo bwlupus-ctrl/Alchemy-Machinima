@@ -117,6 +117,7 @@ bool setRowVisibleIfChanged(LLView* control, bool visible)
 // Studio combo ids; Path poses retain only the shared 0..27 range)
 const char* style_name(S32 style)
 {
+    style = ALGhostStudio::resolveOverlayStyle(style);
     switch (style)
     {
     case 1:  return "Clone";
@@ -150,11 +151,9 @@ const char* style_name(S32 style)
     case 65: return "Mercury";
     case 66: return "Marble";
     case 67: return "Crystal";
-    case 68: return "Ash Drift";
     case 69: return "Magma";
     case 70: return "Void";
     case 71: return "Sumi-e";
-    case 72: return "Arc";
     case 73: return "Lidar";
     case 74: return "Code Rain";
     case 75: return "Datamosh";
@@ -2232,7 +2231,7 @@ void ALPanelGhostStudio::refreshDetail()
     mShownFor = row_value;
     const bool force = identity_changed;
     setTextIfChanged(mNameEdit, group_header ? group->mName : inst->mName, force);
-    setValueIfChanged(mStyleCombo, LLSD((S32)inst->mStyle), force);
+    setValueIfChanged(mStyleCombo, LLSD(ALGhostStudio::resolveOverlayStyle(inst->mStyle)), force);
     setValueIfChanged(mActorTintCheck, LLSD(inst->mUseActorTint), true);
     setValueIfChanged(mHueSlider, LLSD((F64)inst->mHue), force);
     setValueIfChanged(mAlphaSlider, LLSD((F64)inst->mAlpha), force);
@@ -3607,7 +3606,7 @@ void ALPanelGhostStudio::exitEditMode()
 // ---------------------------------------------------------------------------
 void ALPanelGhostStudio::onStyleCommit()
 {
-    const S32 style = mStyleCombo->getValue().asInteger();
+    const S32 style = ALGhostStudio::resolveOverlayStyle(mStyleCombo->getValue().asInteger());
     if (!ALGhostStudio::isOverlayStyle(style)) return;
     for (const LLUUID& id : selectedInstances())
     {

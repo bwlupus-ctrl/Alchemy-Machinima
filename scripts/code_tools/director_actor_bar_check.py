@@ -14,6 +14,18 @@ def hot_gaze_baseline(source, name):
     # before applying the existing phase-2/rekey/actor-bar baseline guards.
     import hashlib
     import json
+    if name == 'llactormover.cpp':
+        # Reverse only this brief's exact, reviewable renderer delta before
+        # applying the existing Hot Gaze/QoL/phase-2 baseline guards.
+        raw = (Path(__file__).parent / 'ashfix_mover_hunks.json').read_bytes().replace(b'\r\n', b'\n')
+        assert hashlib.sha256(raw).hexdigest() == '923361662de1a1d8684d3ac9eb94c348467a51e6ad3c8397334237100fe98f21', 'retired-look allowance pin'
+        retired = json.loads(raw)
+        baseline = subprocess.check_output(['git', 'show', retired['base']+':indra/newview/'+name]).decode('utf-8').replace('\r\n', '\n')
+        for hunk in retired['files'][name]:
+            assert baseline.count(hunk['before']) == 1, 'retired-look baseline hunk'
+            assert source.count(hunk['after']) == 1, 'retired-look exact feature hunk'
+            source = source.replace(hunk['after'], hunk['before'], 1)
+        assert source == baseline, 'retired-look reversal must reproduce requested base exactly'
     data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(data).hexdigest() == "5be04f5e918bdb1298df907da8cbe6478a3e345914876f59ab89d1ce0046ed25"
     allowed = json.loads(data)

@@ -3,9 +3,10 @@
 No viewer build. Uses relight_3d_gl's real driver/context, the complete production
 vertex/fragment sources and production skin modules. External atmosphere and
 indexed sampler plumbing are identity fixtures (not a viewer pipeline test).
-The mesh is a front ellipsoid in a conventional z-up bind frame; it cannot
-validate every imported attachment's height/origin. Writes float-test metrics
-and composited PNG previews; failures raise, including unavailable OpenGL.
+Parity uses a front ellipsoid; animation uses a metre-scale avatar body,
+cutout alpha hair cards and a rigid attachment with held palettes/transforms.
+These synthetic fixtures cannot validate every imported asset or the viewer's
+collector. Writes metrics and PNGs; unavailable OpenGL is a failure.
 """
 import argparse
 import ctypes as C
@@ -22,9 +23,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SH = G.SHADERS + '/class1/'
 F = SH + 'interface/actorghostF.glsl'
 V = SH + 'interface/actorghostV.glsl'
-NAMES = ['Glass', 'Mercury', 'Marble', 'Crystal', 'Ash Drift', 'Magma',
-         'Void', 'Sumi-e', 'Arc', 'Lidar', 'Code Rain', 'Datamosh',
-         'Scan Build', 'Contour']
+NAMES = dict(zip((64,65,66,67,69,70,71,73,74,75,76,77),
+                 ('Glass','Mercury','Marble','Crystal','Magma','Void','Sumi-e',
+                  'Lidar','Code Rain','Datamosh','Scan Build','Contour')))
 
 
 class Runner:
@@ -32,7 +33,7 @@ class Runner:
         self.gl = g = G.GL()
         self.definitions = {}
         self.width, self.height = width, height
-        self.scene_copies = self.displaced_sweeps = 0
+        self.scene_copies = 0
         self.projection_x = .7 * height / width
         for cap in (0x0B71, 0x0BE2, 0x0C11, 0x8DB9, 0x0B44, 0x0BD0):
             g.disable(cap)
@@ -154,16 +155,15 @@ class Runner:
 
     def render(self, pr, look, time=2., shift=0., scale=1., distort=0, phase=.73, mask=True, tint=(1,1,1,1), opaque=False,
                shift_y=0., rotation=0., slot=-1, adjacent_slots=False,
-               velocity=(0.,0.), displace=0., scene=False, composite=False, sweeps=False, timing=False,
+               velocity=(0.,0.), scene=False, composite=False,
                occlude=False, keep=False, stale_scene=False, opacity=.85, attachment_rotation=0., scene_rect=False,
-               fade=1., native_fade=False, depth_test=False, held_pose=None):
+               fade=1., native_fade=False, depth_test=False, held_pose=None,
+               mesh=None, palette=None, object_matrix=None, clone_scale=1., raw_time=False,
+               effect_fps=0., params=(0.,1.,0.,8.),
+               preserve_depth=False, prime=False, brightness=1.):
         g = self.gl
         defs, vertex = self.definitions[pr]
-        if look == 68:
-            time += 7.0  # Sample the burn front mid-cycle, not its empty endpoint.
-        if look == 72:
-            time -= .105  # Capture an arc near its attack as well as its decay.
-        if look == 76:
+        if look == 76 and not raw_time:
             time += 6.0  # Mid-build plane/lattice, rather than the built endpoint.
         g.use(pr)
         loc = lambda name: g.loc(pr, name.encode())
@@ -188,17 +188,15 @@ class Runner:
         g.ui(loc('mask_vec3_position'), 0)
         for i in range(4): g.ui(loc('mask_textures[%d]' % i), 0)
         for i in range(8): floats('mask_cutoff[%d]' % i, .5 if mask else -1.)
-        floats('ghostTime', time)
-        floats('ghostParams', 0., 1., 0., 8.)
+        floats('ghostTime', np.floor(time*effect_fps)/effect_fps if effect_fps else time)
+        floats('ghostParams', *params)
         floats('ghostAux', .5 if mask else 0., 1., 0., phase)
-        floats('ghostFx', 0., 0., 0., 1.)
+        floats('ghostFx', 0., 0., 0., brightness)
         floats('ghostAlpha', 0. if opaque else 1., 1.)
         floats('ghostDistortParams', .4 if distort else 0., .5, .5, 0.)
         floats('ghostScreenSize', self.width, self.height)
         floats('ghostScreenOrigin', 0., 0.)
         floats('ghostVelocity', *velocity)
-        floats('ghostDisplace', displace)
-        floats('ghostWorldUp', -np.sin(rotation), np.cos(rotation), 0.)
         g.ui(loc('ghostSceneValid'), int(scene))
         g.ui(loc('ghostSceneMap'), 1)
         floats('ghostDissolveProgress', .28 if look == 10 else 0.)
@@ -222,6 +220,8 @@ class Runner:
         co, si = np.cos(rotation), np.sin(rotation)
         roll = np.array([[co,-si,0,0],[si,co,0,shift_y],[0,0,1,0],[0,0,0,1]], np.float32)
         view = roll @ view
+        view = view @ np.diag([clone_scale,clone_scale,clone_scale,1.]).astype(np.float32)
+        if object_matrix is not None: view = view @ object_matrix
         # Rotate the attachment's local axes independently of the camera/up.
         ac, asi = np.cos(attachment_rotation), np.sin(attachment_rotation)
         attach = np.array([[ac,0,asi,0],[0,1,0,0],[-asi,0,ac,0],[0,0,0,1]],np.float32)
@@ -239,9 +239,11 @@ class Runner:
             a = np.repeat(view[:3, None, :], 15, axis=1).copy()
             g.u4fv(loc('matrixPalette[0]'), 45, a.ctypes.data_as(C.POINTER(g.F)))
         elif 'HAS_SKIN' in defs:
-            a = pose[:3].copy()
+            a = (pose if palette is None else pose @ palette)[:3].copy()
             self.mat34(loc('matrixPalette[0]'), 1, 0, a.ctypes.data_as(C.POINTER(g.F)))
         g.bind_buf(0x8892, self.vbo)
+        draw_verts = self.verts if mesh is None else mesh
+        g.buffer_data(0x8892, draw_verts.nbytes, draw_verts.ctypes.data, 0x88E4)
         used = []
         for name, count, offset in (('position',3,0),('normal',3,12),('texcoord0',2,24)):
             ix = g.attr_loc(pr,name.encode())
@@ -263,11 +265,12 @@ class Runner:
         g.active(0x84C0); g.bind_tex(0x0DE1,self.diffuse); g.ui(loc('diffuseMap'),0)
         g.bind_fbo(0x8D40,self.fbo); g.viewport(0,0,self.width,self.height)
         depth_mask = g.fn('glDepthMask',None,g.U)
-        if sweeps or depth_test:
+        if depth_test:
             g.enable(0x0B71)
             g.fn('glDepthFunc',None,g.U)(0x0203)  # production LEQUAL
             depth_mask(1)
-            self.clear(0x1801,0,(g.F*1)(0. if occlude else 1.))
+            if not preserve_depth: self.clear(0x1801,0,(g.F*1)(0. if occlude else 1.))
+            if preserve_depth and not prime: depth_mask(0)
         else: g.disable(0x0B71)
         if not keep: self.clear(0x1800,0,(g.F*4)(0,0,0,0))
         if not keep and (composite or scene):
@@ -300,29 +303,11 @@ class Runner:
         if composite:
             g.enable(0x0BE2)
             g.fn('glBlendFuncSeparate',None,g.U,g.U,g.U,g.U)(0x0302,0x0303,0,1)
-        g.draw(0x0004,0,len(self.verts))
-        if sweeps and look in (68,72):
-            depth_mask(0)
-            g.enable(0x0BE2)
-            g.fn('glBlendFuncSeparate',None,g.U,g.U,g.U,g.U)(0x0302,1,0,1)
-            floats('ghostDisplace', 1. if look == 68 else 2.)
-            if timing:
-                query = g.U()
-                g.fn('glGenQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
-                g.fn('glBeginQuery',None,g.U,g.U)(0x88BF,query)
-            g.draw(0x0004,0,len(self.verts))
-            if timing:
-                g.fn('glEndQuery',None,g.U)(0x88BF)
-                elapsed = C.c_uint64()
-                g.fn('glGetQueryObjectui64v',None,g.U,g.U,C.POINTER(C.c_uint64))(query,0x8866,C.byref(elapsed))
-                self.last_sweep_ms = elapsed.value / 1e6
-                g.fn('glDeleteQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
-            floats('ghostDisplace', 0.)
-            self.displaced_sweeps += 1
+        color_mask = g.fn('glColorMask',None,g.U,g.U,g.U,g.U)
+        color_mask(*((0,0,0,0) if prime else (1,1,1,1)))
+        g.draw(0x0004,0,len(draw_verts))
+        color_mask(1,1,1,1)
         g.disable(0x0BE2)
-        if sweeps:
-            depth_mask(1)
-            g.disable(0x0B71)
         g.active(0x84C1); g.bind_tex(0x0DE1,0); g.active(0x84C0)
         result = np.empty((self.height,self.width,4),np.float32)
         g.read(0,0,self.width,self.height,0x1908,0x1406,result.ctypes.data)
@@ -346,7 +331,7 @@ def fractional_camera_check(runner, pr, look):
     # A 4x4 stratified pixel-area reference uses the production shader with the
     # SAME footprint/LOD. Jitter integrates its residual sample-phase variation;
     # no image interpolation hides partial dots/glyphs/facets. Fixed time keeps
-    # intentional Arc/Datamosh epoch changes out of the spatial measurement.
+    # intentional Datamosh epoch changes out of the spatial measurement.
     dx = 2 / (runner.projection_x * runner.width)
     dy = 2 / (.85 * runner.height)
     results = []
@@ -482,11 +467,7 @@ def phase2_checks(runner, pr, out):
     save_raw(glass,'phase2_glass_refraction.png')
     save_raw(straight,'phase2_glass_zero_bend_control.png')
     Image.fromarray((runner.background[::-1,:,:3]*255+.5).astype(np.uint8)).save(out/'phase2_glass_background.png')
-    # Geometry control has no texture-alpha holes. Outside it, no fragment of
-    # the undisplaced clone can contribute: selected second sweeps must do so.
-    geometry = runner.render(runner.probe,1)[...,3] > 0
-    outside = ~geometry
-    results = dict(glass_bend_max_delta=bend_error, outside={})
+    results = dict(glass_bend_max_delta=bend_error)
     # Two-clone regressions, front Glass at full opacity so stale scene pixels
     # cannot be disguised by alpha blending the rear clone through unchanged.
     front = dict(scene=True,composite=True,mask=False,opacity=1.,scale=.85,scene_rect=True)
@@ -512,47 +493,6 @@ def phase2_checks(runner, pr, out):
         two_clone[name] = dict(rear_visible_inside_front_pixels=pixels,
                               stale_control_max_delta=float(np.max(restored[silhouette])))
     results['two_clone'] = two_clone
-    # Attachment local +Z can point down; the added rise still follows camera
-    # world-up. Use the same rotated mesh at age zero and mid-life and compare
-    # production vertex transforms via a constant geometry probe.
-    class RiseProbe:
-        def read(self,path):
-            text=G.SourceTree('WORKTREE').read(path)
-            if path == F:
-                text='out vec4 frag_color; void main(){frag_color=vec4(1);}'
-            if path == V:
-                text=text.replace('ghost_position += normal * (0.08 + age * 0.42) * seed;',
-                                  'ghost_position += normal * 0.0;')
-            return text
-    rise_pr = runner.program(RiseProbe())
-    rise_centers=[]
-    for t in (0.,.6):
-        # For Ash, render adds 7 seconds; choose fixed phase to align age.
-        a=runner.render(rise_pr,68,time=t-7,phase=0,displace=1,mask=False,
-                        attachment_rotation=np.pi,scale=.5)
-        ys,xs=np.nonzero(a[...,3]>.5)
-        rise_centers.append([float(np.mean(xs)),float(np.mean(ys))])
-    assert rise_centers[1][1] > rise_centers[0][1]+10, ('attachment rise followed local down',rise_centers)
-    assert abs(rise_centers[1][0]-rise_centers[0][0])<1
-    results['upside_down_attachment_rise_centers'] = rise_centers
-
-    for look,name,times in ((68,'ash',(0.,.45,.9,1.35,1.8)),
-                            (72,'arc',(1.95,2.,2.05,2.10))):
-        counts = []
-        for index,time in enumerate(times):
-            particles = runner.render(pr,look,time=time,displace=1. if look==68 else 2.)
-            energy = np.max(premultiplied(particles)[...,:3],axis=2)
-            count = int(np.count_nonzero(outside & (energy > .004)))
-            counts.append(count)
-            assert count > 10, (look,time,'no particles beyond silhouette',count)
-            composite = runner.render(pr,look,time=time,composite=True,sweeps=True)
-            visible_outside = np.max(np.abs(composite[...,:3]-runner.background[...,:3]),axis=2)
-            assert np.count_nonzero(outside & (visible_outside > .004)) > 10
-            save_raw(composite,'phase2_%s_%02d.png'%(name,index))
-            save_raw(particles,'phase2_%s_particles_%02d.png'%(name,index))
-        results['outside'][name] = counts
-        occluded = runner.render(pr,look,composite=True,sweeps=True,occlude=True)
-        assert np.max(np.abs(occluded-runner.background)) == 0., 'second sweep ignored depth'
     # A linear UV ramp gives a directional oracle independent of the shader's
     # offset code: +screen X trails towards lower red; +screen Y towards higher
     # green (the fixture's V coordinate runs downward). Nearest sampling and
@@ -573,16 +513,150 @@ def phase2_checks(runner, pr, out):
         results['velocity_right_minus_up_rgb'] = delta.tolist()
     finally:
         runner.diffuse = original
-    # Feature-off scheduling: no scene request for Datamosh alone; no displaced
-    # sweep for any other look. The production C++ guard is checked separately.
-    copies,sweeps = runner.scene_copies,runner.displaced_sweeps
+    copies = runner.scene_copies
     for look in range(78):
-        if look in (64,68,72): continue
-        runner.render(pr,look,sweeps=True)
-    assert (runner.scene_copies,runner.displaced_sweeps) == (copies,sweeps)
-    results['off_path_copy_and_sweep_delta'] = [0,0]
-    print('PASS phase 2: patterned refraction, outside embers/arcs, motion direction, inert off-path',flush=True)
+        if look == 64: continue
+        runner.render(pr,look)
+    assert runner.scene_copies == copies
+    results['off_path_copy_delta'] = 0
+    print('PASS phase 2: patterned refraction, motion direction, inert off-path',flush=True)
     return results
+
+
+def avatar_animation_checks(runner, tree, base, out):
+    """Real metre-scale body, alpha-cutout hair cards and a rigid attachment.
+
+    These execute production GLSL with a held skin palette/attachment matrix.
+    Synthetic geometry/materials are independent of the viewer's collector;
+    overlay styles deliberately retain their existing MASK-only hair policy.
+    """
+    def ellipsoid(center, radii):
+        def point(i,j):
+            a,b=np.pi*i/24,np.pi+np.pi*j/48
+            n=np.array((np.sin(a)*np.cos(b),np.sin(a)*np.sin(b),np.cos(a)))
+            normal=n/np.array(radii);normal/=np.linalg.norm(normal)
+            return [*(n*np.array(radii)+center),*normal,j/48,i/24]
+        return [point(a,b) for i in range(24) for j in range(48)
+                for a,b in ((i,j),(i+1,j),(i,j+1),(i,j+1),(i+1,j),(i+1,j+1))]
+    body=[]
+    for center,radii in (((0,0,.18),(.24,.14,.39)),((0,0,.78),(.14,.13,.20)),
+                         ((-.13,0,-.56),(.09,.10,.44)),((.13,0,-.56),(.09,.10,.44)),
+                         ((-.33,0,.18),(.08,.09,.41)),((.33,0,.18),(.08,.09,.41))):
+        body.extend(ellipsoid(center,radii))
+    body=np.array(body,np.float32) # 1.98m tall, feet at -1m
+    # Two long overlapping cutout hair cards at different depths; fully clear
+    # texels plus fractional alpha in a separate material fixture below.
+    def card(x0,x1,y,z0,z1):
+        points=[(x0,y,z0,0,1),(x1,y,z0,1,1),(x0,y,z1,0,0),(x1,y,z1,1,0)]
+        return [[*points[i][:3],0,-1,0,*points[i][3:]] for i in (0,1,2,2,1,3)]
+    hair=np.array(card(-.20,.10,-.16,.33,1.02)+card(-.04,.22,-.18,.26,1.01),np.float32)
+    rigid=np.array(ellipsoid((0,0,0),(.5,.5,.5)),np.float32)
+    palette=np.eye(4,dtype=np.float32);palette[:3,3]=(.015,.01,0)
+    attachment=np.array([[.28,0,0,.34],[0,.18,0,-.12],[0,0,.38,.10],[0,0,0,1]],np.float32)
+    animated=(2,10,13,15,16,17,20,21,22,23,24,26,27,65,69,70,73,74,75,76,77)
+    static=(0,1,4,5,6,7,8,9,11,12,14,18,19,25,64,66,67,71)
+    programs={label:(runner.program(src,('HAS_SKIN',)),runner.program(src))
+              for label,src in (('before',base),('after',tree))}
+    original=runner.diffuse
+    y,x=np.mgrid[:128,:128]/127.
+    alpha=np.where((np.sin(x*36)>-.25)&~((x>.43)&(x<.57)),.7,0.)
+    hair_tex=runner.texture(np.stack((.22+.2*x,.1+.1*y,.055+.05*x,alpha),-1).astype(np.float32),128,128,0x8814)
+    common=dict(raw_time=True,scale=1.05,held_pose=(.015,-.01,.08),depth_test=True)
+    def frame(label,look,time,fps,fade=1.):
+        skin,rigid_pr=programs[label]
+        params=(1.,.8,1.,6.) if look==2 else (0.,1.,0.,8.)
+        opts=dict(common,time=time,effect_fps=fps,params=params,opacity=.85*fade)
+        parts=((skin,body,None,False),(skin,hair,None,True),(rigid_pr,rigid,attachment,False))
+        try:
+            # Prime all solid/masked geometry, then shade at LEQUAL without
+            # depth writes. This catches time-dependent coverage/depth errors.
+            for index,(pr,mesh,matrix,mask) in enumerate(parts):
+                runner.diffuse=hair_tex if mask else original
+                runner.render(pr,1,mesh=mesh,palette=palette,object_matrix=matrix,
+                              mask=mask,opaque=not mask,prime=True,keep=index>0,
+                              preserve_depth=index>0,**opts)
+            for pr,mesh,matrix,mask in parts:
+                runner.diffuse=hair_tex if mask else original
+                image=runner.render(pr,look,mesh=mesh,palette=palette,object_matrix=matrix,
+                                    mask=mask,opaque=not mask,keep=True,preserve_depth=True,composite=True,**opts)
+            return image
+        finally:
+            runner.diffuse=original
+    def save(a,name):
+        Image.fromarray((np.clip(a[::-1,:,:3],0,1)*255+.5).astype(np.uint8)).save(out/name)
+    metrics=[]
+    for look in animated+static:
+        for fps in (0.,8.):
+            # Scan Build deliberately dwells at the fully built endpoint.
+            # Sample its moving front, not that static part of the cycle.
+            start=7. if look==76 else 2.
+            times=tuple(start+t for t in (.01,.04,.26,.61))
+            after=[frame('after',look,t,fps) for t in times]
+            delta=np.max(np.abs(after[0][...,:3]-after[-1][...,:3]),axis=2)
+            changed=int(np.count_nonzero(delta>1/255))
+            if look in animated:
+                assert changed>15, ('avatar animation frozen',look,fps,changed,float(delta.max()))
+                # Same geometry and a deliberately held time must be exact.
+                assert np.array_equal(after[0],frame('after',look,times[0],fps)), ('held-time negative control',look)
+                faded0=frame('after',look,times[0],fps,.45)
+                faded1=frame('after',look,times[-1],fps,.45)
+                assert np.max(np.abs(faded0-faded1))>1/255, ('faded animation frozen',look,fps)
+                if fps:
+                    assert np.array_equal(after[0],after[1]), ('fps not held within step',look)
+                elif look==69:
+                    smooth_delta=np.max(np.abs(after[0][...,:3]-after[1][...,:3]),axis=2)
+                    assert np.count_nonzero(smooth_delta>1/255)>15, 'Magma smooth flow did not advance between 30ms frames'
+                before=[frame('before',look,t,fps) for t in times]
+                for label,images in (('before',before),('after',after)):
+                    for index,img in enumerate(images):
+                        save(img,'avatar_%s_%02d_fps%02d_%02d.png'%(label,look,fps,index))
+            else:
+                assert np.array_equal(after[0],after[-1]), ('static negative control moves',look,fps)
+            metrics.append(dict(look=look,fps=fps,animated=look in animated,
+                                changed_pixels=changed,max_delta=float(delta.max())))
+            print('PASS avatar time/fps/held/fade:',look,fps,changed,flush=True)
+    # Magma must move actual crack positions, not only modulate fixed cracks.
+    class FlowOnly:
+        def read(self,path):
+            source=tree.read(path)
+            if path==F:
+                pulse='float pulse = 0.65 + 0.35 * sin(t * 2.4 + P.z * 3.0 + ghostAux.w);'
+                assert source.count(pulse)==1
+                source=source.replace(pulse, 'float pulse = 0.8;')
+            return source
+    class NoFlow(FlowOnly):
+        def read(self,path):
+            source=super().read(path)
+            if path==F:
+                source=source.replace('float t = ghostTime;', 'float t = 0.0;')
+            return source
+    for label,src in (('flow_only',FlowOnly()),('no_flow',NoFlow())):
+        programs[label]=(runner.program(src,('HAS_SKIN',)),runner.program(src))
+    flow_delta=float(np.max(np.abs(frame('flow_only',69,2.01,0)-frame('flow_only',69,2.61,0))))
+    assert flow_delta>.05, ('Magma cracks do not flow with heat pulse held constant',flow_delta)
+    assert np.array_equal(frame('no_flow',69,2.01,0),frame('no_flow',69,2.61,0)), 'no-flow negative control moves'
+    class FrozenClock:
+        def read(self,path):
+            source=tree.read(path)
+            if path==F:
+                assert source.count('uniform float ghostTime;')==1
+                source=source.replace('uniform float ghostTime;', 'const float ghostTime = 2.01;')
+            return source
+    programs['frozen_clock']=(runner.program(FrozenClock(),('HAS_SKIN',)),runner.program(FrozenClock()))
+    for look in animated:
+        a,b=frame('frozen_clock',look,2.01,0),frame('frozen_clock',look,2.61,0)
+        assert np.array_equal(a,b), ('frozen-clock negative control moves',look)
+    # Prove alpha hair fixture contains visible strands and holes in isolation.
+    try:
+        runner.diffuse=hair_tex
+        h=runner.render(programs['after'][0],1,mesh=hair,palette=palette,mask=False,**common)
+        assert np.any((h[...,3]>.1)&(h[...,3]<.8)) and np.any(h[...,3]==0), 'hair alpha control insensitive'
+        save(h,'avatar_alpha_hair_control.png')
+    finally:
+        runner.diffuse=original
+    return dict(height_metres=1.98,body_vertices=len(body),hair_vertices=len(hair),
+                rigid_vertices=len(rigid),cases=metrics,magma_flow_only_max_delta=flow_delta,
+                note='Held skin palette + rigid matrix; cutoff alpha hair, existing overlay SOLID policy. No viewer collector/in-world claim.')
 
 
 def four_k_check(out):
@@ -618,14 +692,9 @@ def four_k_check(out):
                                    copied_bytes=w*h*4*count))
     g.fn('glDeleteQueries',None,g.I,C.POINTER(g.U))(1,C.byref(query))
     g.active(0x84C0)
-    sweeps = {}
-    for look in (68,72):
-        r.render(pr,look,sweeps=True)  # warm-up
-        r.render(pr,look,sweeps=True,timing=True)
-        sweeps[str(look)] = r.last_sweep_ms
     assert g.fn('glGetError',g.U)() == 0
     result = dict(size=[3840,2160], renderer=g.renderer, copy_gpu_ms=copy_ms,
-                  per_glass_rect_gpu=rect_costs, displaced_sweep_gpu_ms=sweeps, vertices=len(r.verts),
+                  per_glass_rect_gpu=rect_costs, vertices=len(r.verts),
                   note='Synthetic single front hemisphere; excludes viewer scene, CPU submission, resize and readback')
     print('PASS 4K copy/render; GPU timings:',json.dumps(result),flush=True)
     return result
@@ -635,10 +704,10 @@ def main():
     from clone_looks_runtime_check import check as runtime_check
     runtime_check()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--base', default='c5dd757d341')
+    ap.add_argument('--base', default='4afbf00ba09')
     ap.add_argument('--width', type=int, default=768)
     ap.add_argument('--height', type=int, default=768)
-    ap.add_argument('--out', type=Path, default=ROOT/'.tmp/looks2_20261102/renders')
+    ap.add_argument('--out', type=Path, default=ROOT/'.tmp/ashfix_20261102/renders')
     args = ap.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)
     runner = Runner(args.width,args.height)
@@ -756,8 +825,19 @@ def main():
     stats['fade_coverage'] = fade_stats
     print('PASS: opaque/masked fade 0/.5/1; stable coverage; native lit endpoint parity 0.0', flush=True)
     pr = runner.program(tree)
+    for defs in ((), ('HAS_SKIN',)):
+        current, previous = runner.program(tree,defs), runner.program(base,defs)
+        for look in list(range(28)) + list(NAMES):
+            if look == 69: continue
+            for time in (2., 2.61):
+                for fade in (1., .45):
+                    a = runner.render(previous,look,time=time,fade=fade)
+                    b = runner.render(current,look,time=time,fade=fade)
+                    assert np.array_equal(a,b), ('base parity',defs,look,time,fade,float(np.max(np.abs(a-b))))
+    stats['requested_base_unchanged_max_error'] = 0.0
+    print('PASS requested-base parity: every surviving look except Magma, static + rigged, two times/fades: 0.0',flush=True)
     phase1 = runner.program(G.SourceTree('24b2723dcd9'))
-    unchanged = [look for look in range(78) if look not in (64,68,72,75)]
+    unchanged = [look for look in range(78) if look not in (64,68,69,72,75)]
     parity = max(float(np.max(np.abs(runner.render(pr,look)-runner.render(phase1,look))))
                  for look in unchanged)
     assert parity == 0., ('phase 1 unchanged looks',parity)
@@ -768,12 +848,12 @@ def main():
                       for look in unchanged)
     assert skin_parity == 0., ('phase 1 unchanged rigged looks',skin_parity)
     stats['phase1_unchanged_rigged_max_error'] = skin_parity
-    print('PASS phase-1 parity: all 74 unaffected Studio ids, static + rigged max error',parity,skin_parity,flush=True)
+    print('PASS phase-1 parity: all 73 unaffected Studio ids, static + rigged max error',parity,skin_parity,flush=True)
     runner.probe = runner.program(tree, probe=True)
     def save(a,name):
         rgb = a[...,:3]*np.clip(a[...,3:4],0,1)+.12*(1-np.clip(a[...,3:4],0,1))
         Image.fromarray((np.clip(rgb[::-1],0,1)*255+.5).astype(np.uint8)).save(args.out/name)
-    for look,name in enumerate(NAMES,64):
+    for look,name in NAMES.items():
         a = runner.render(pr,look)
         b = runner.render(pr,look,time=2+1/60)
         shift = 2/(runner.projection_x*args.width) # exactly one screen pixel
@@ -789,10 +869,10 @@ def main():
         moved = np.roll(c,-1,axis=1)
         interior = (a[...,3]>.8)&(moved[...,3]>.8)
         camera = float(np.quantile(np.abs(a[interior]-moved[interior]),.99)) if interior.any() else 0.
-        if look in (65,66,67,69,72,73,74,76):
+        if look in (65,66,67,69,73,74,76):
             assert interior.any(), (look,'no camera comparison samples')
             assert camera < .03, (look,'body field camera swim',camera)
-        fractional = fractional_camera_check(runner, pr, look) if look in (65,66,67,69,72,73,74,76) else []
+        fractional = fractional_camera_check(runner, pr, look) if look in (65,66,67,69,73,74,76) else []
         # Exercise all independent distortion modes with each look.
         for distort in range(1,9):
             d = runner.render(pr,look,distort=distort)
@@ -817,6 +897,7 @@ def main():
     b=np.roll(runner.render(probe,66,shift=2/(runner.projection_x*args.width)),-1,axis=1)
     valid=(a[...,3]>0)&(b[...,3]>0)
     assert np.max(np.abs(a[valid]-b[valid]))<1e-4, 'rest varying swims'
+    stats['avatar_animation'] = avatar_animation_checks(runner, tree, base, args.out)
     stats['datamosh_materials'] = datamosh_material_checks(runner, pr)
     stats['phase2'] = phase2_checks(runner, pr, args.out)
     # Pin fixed-lattice policy; a camera footprint may fade, never scale cells.
@@ -827,7 +908,7 @@ def main():
     # Regenerate contact sheets from this run, never from stale thumbnails.
     sheet = Image.new('RGB', (1600, 4*292), '#1f1f1f')
     draw = ImageDraw.Draw(sheet)
-    for index, (look, name) in enumerate(zip(range(64,78), NAMES)):
+    for index, (look, name) in enumerate(NAMES.items()):
         stem = '%02d_%s' % (look,name.lower().replace(' ','_'))
         with Image.open(args.out/(stem+'.png')) as im:
             im.thumbnail((384,256), Image.Resampling.LANCZOS)

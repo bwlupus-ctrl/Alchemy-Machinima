@@ -23,6 +23,30 @@ MAP = Path(r"C:\Users\xianw\cxs\director_content_map.json")
 OUT = Path(r"C:\Users\xianw\cxs\director_mockup\director_mockup_data.json")
 GROUP_ORDER = ["cast_group", "performance_group", "camera_group", "lens_group",
                "light_group", "look_group", "world_group", "capture_group"]
+
+
+def apply_overlay_look_policy(groups):
+    """Use Studio's canonical numeric choices, including reserved-id gaps."""
+    import re
+    import xml.etree.ElementTree as ET
+    xui = Path(__file__).resolve().parents[2] / 'indra/newview/skins/default/xui/en/panel_ghost_studio.xml'
+    source = ET.parse(xui)
+    names = {'style_combo'} | {'crowd_mix_look_'+str(i) for i in range(1,7)}
+    for group in groups:
+        for page in group['pages']:
+            if page['name'] != 'ghosts_tab':
+                continue
+            for card in page['cards']:
+                for row in card.get('rows', []):
+                    if row.get('w') not in names:
+                        continue
+                    control = source.find(".//*[@name='"+row['w']+"']")
+                    items = control.findall('combo_box.item')
+                    row['it'] = [item.get('label') for item in items]
+                    row['iv'] = [int(item.get('value')) for item in items]
+                    row['h'] = control.get('tool_tip')
+                    if 'kw' in row:
+                        row['kw'] = re.sub(r'\s+', ' ', re.sub(r'\bash drift\b|\barc\b', '', row['kw'], flags=re.I)).strip()
 ICONS = {"cast_group": "cast", "performance_group": "perf", "camera_group": "camera",
          "lens_group": "lens", "light_group": "light", "look_group": "look",
          "world_group": "world", "capture_group": "capture"}
@@ -1003,6 +1027,7 @@ def main():
                     r.pop("_items", None)
                     if isinstance(r.get("it"), list):
                         r["it"] = [_lab(x) for x in r["it"]]
+    apply_overlay_look_policy(groups)
     data = {"groups": groups, "chrome": chrome}
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
