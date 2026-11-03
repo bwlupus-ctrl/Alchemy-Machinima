@@ -238,7 +238,7 @@ public:
         const glm::mat4& modelview, U32 attachment);
     void renderFinalizeScene(bool hdr, const FinalizeGuides& guides);
     void renderFinalizeLegacy(bool hdr, LLRenderTarget*& src, LLRenderTarget*& dst, bool& diopter,
-        bool& fisheye, const FinalizeGuides& guides);
+        bool& fisheye, const FinalizeGuides& guides, bool& rlv_sphere_ran);
     void renderFinalizePresent(LLRenderTarget* src, bool diopter, bool fisheye);
     enum class SensorStage { Legacy, Exposure, Optics, Camera, Godrays };
     LLGLSLShader* colorCorrectProgram(SensorStage stage, U32 permutation);
@@ -850,6 +850,18 @@ public:
     bool ensureKeyCoverage();
     bool ensureKeyPrograms();
     void buildActorKeyMatte();
+    bool preflightActorKey(bool sphere, bool diopter, bool fisheye);
+    void compositeActorKey();
+    void selfTestActorKey(bool invert);
+    LLRenderTarget mActorKeyScene;
+    bool mActorKeyReady = false;
+    S32 mActorKeyViewport[4] = {};
+    S32 mActorKeyDrawFBO = 0;
+    U32 mActorKeySceneFrame = ~0u;
+    // Diagnostic storage is allocated only in K0, before any destructive write.
+    std::vector<F32> mActorKeyTestMatte, mActorKeyTestScene, mActorKeyTestOutput;
+    U32 mActorKeyTestFrames = 0;
+    U64 mActorKeyTestSerial = 0;
     void renderActorKeyPrismOccluders();
     LLRenderTarget mActorKeyCoverage, mActorKeyMatte, mActorKeyBlurA, mActorKeyBlurB;
     U32 mActorKeyDepthSrc = 0;

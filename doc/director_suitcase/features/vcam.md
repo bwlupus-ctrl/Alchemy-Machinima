@@ -52,6 +52,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alvcampagemodel.h`
 - `indra/newview/alworldshadowmath.h`
 - `indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorKeyOccluderF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorKeyOccluderV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/prismLensF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/prismLensV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/prismMediaCopyF.glsl`
@@ -96,9 +98,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,53", "indra/newview/CMakeLists.txt@333,115", "indra/newview/CMakeLists.txt@893,11", "indra/newview/CMakeLists.txt@1134,56", "indra/newview/CMakeLists.txt@1286,162", "indra/newview/CMakeLists.txt@1883,13", "indra/newview/CMakeLists.txt@2842,31", "indra/newview/CMakeLists.txt@2879,20", "indra/newview/CMakeLists.txt@2947,185"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6556,15959", "indra/newview/app_settings/settings.xml@29305,2466"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@273,8", "indra/newview/llappviewer.cpp@1940,24", "indra/newview/llappviewer.cpp@4827,12", "indra/newview/llappviewer.cpp@4956,12", "indra/newview/llappviewer.cpp@5794,119", "indra/newview/llappviewer.cpp@5915,44", "indra/newview/llappviewer.cpp@6429,15", "indra/newview/llappviewer.cpp@6467,45"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,53", "indra/newview/CMakeLists.txt@333,116", "indra/newview/CMakeLists.txt@894,11", "indra/newview/CMakeLists.txt@1135,56", "indra/newview/CMakeLists.txt@1287,165", "indra/newview/CMakeLists.txt@1887,13", "indra/newview/CMakeLists.txt@2846,32", "indra/newview/CMakeLists.txt@2884,20", "indra/newview/CMakeLists.txt@2952,185"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6556,14744", "indra/newview/app_settings/settings.xml@21302,1113", "indra/newview/app_settings/settings.xml@29305,2466"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,34", "indra/newview/llappviewer.cpp@274,8", "indra/newview/llappviewer.cpp@1942,24", "indra/newview/llappviewer.cpp@4829,12", "indra/newview/llappviewer.cpp@4958,12", "indra/newview/llappviewer.cpp@5797,119", "indra/newview/llappviewer.cpp@5918,44", "indra/newview/llappviewer.cpp@6432,15", "indra/newview/llappviewer.cpp@6470,45"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@62,9", "indra/newview/alviewermenu.cpp@604,830"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
@@ -107,8 +109,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@65,11", "indra/newview/llviewerdisplay.cpp@885,16", "indra/newview/llviewerdisplay.cpp@966,10", "indra/newview/llviewerdisplay.cpp@1171,16", "indra/newview/llviewerdisplay.cpp@1883,31", "indra/newview/llviewerdisplay.cpp@2077,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@10937,40"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,41", "indra/newview/pipeline.cpp@121,11", "indra/newview/pipeline.cpp@295,32", "indra/newview/pipeline.cpp@568,71", "indra/newview/pipeline.cpp@919,32", "indra/newview/pipeline.cpp@1693,29165", "indra/newview/pipeline.cpp@30898,30", "indra/newview/pipeline.cpp@30949,16", "indra/newview/pipeline.cpp@30989,430", "indra/newview/pipeline.cpp@31433,38", "indra/newview/pipeline.cpp@31582,37", "indra/newview/pipeline.cpp@31620,17", "indra/newview/pipeline.cpp@31822,695", "indra/newview/pipeline.cpp@32529,15", "indra/newview/pipeline.cpp@32590,15", "indra/newview/pipeline.cpp@32652,222", "indra/newview/pipeline.cpp@32960,301", "indra/newview/pipeline.cpp@33330,1054", "indra/newview/pipeline.cpp@34880,47", "indra/newview/pipeline.cpp@35294,78", "indra/newview/pipeline.cpp@36049,363", "indra/newview/pipeline.cpp@36413,1056", "indra/newview/pipeline.cpp@38338,153"]}
-- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@171,39", "indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@708,90", "indra/newview/pipeline.h@801,68", "indra/newview/pipeline.h@878,67", "indra/newview/pipeline.h@949,42", "indra/newview/pipeline.h@1353,31", "indra/newview/pipeline.h@1491,409", "indra/newview/pipeline.h@2299,58", "indra/newview/pipeline.h@2582,32"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,43", "indra/newview/pipeline.cpp@123,11", "indra/newview/pipeline.cpp@297,32", "indra/newview/pipeline.cpp@570,71", "indra/newview/pipeline.cpp@921,32", "indra/newview/pipeline.cpp@1697,29405", "indra/newview/pipeline.cpp@31142,30", "indra/newview/pipeline.cpp@31193,16", "indra/newview/pipeline.cpp@31233,430", "indra/newview/pipeline.cpp@31677,38", "indra/newview/pipeline.cpp@31826,37", "indra/newview/pipeline.cpp@31864,17", "indra/newview/pipeline.cpp@32066,698", "indra/newview/pipeline.cpp@32776,15", "indra/newview/pipeline.cpp@32837,15", "indra/newview/pipeline.cpp@32899,222", "indra/newview/pipeline.cpp@33207,301", "indra/newview/pipeline.cpp@33577,1054", "indra/newview/pipeline.cpp@35127,47", "indra/newview/pipeline.cpp@35541,78", "indra/newview/pipeline.cpp@36296,363", "indra/newview/pipeline.cpp@36660,1056", "indra/newview/pipeline.cpp@38585,153"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@172,39", "indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@709,90", "indra/newview/pipeline.h@802,82", "indra/newview/pipeline.h@893,67", "indra/newview/pipeline.h@964,42", "indra/newview/pipeline.h@1368,31", "indra/newview/pipeline.h@1506,409", "indra/newview/pipeline.h@2314,58", "indra/newview/pipeline.h@2597,32"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@22,249"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
 - {"path": "indra/llplugin/llpluginclassmedia.cpp", "hunks": ["indra/llplugin/llpluginclassmedia.cpp@345,38", "indra/llplugin/llpluginclassmedia.cpp@832,65", "indra/llplugin/llpluginclassmedia.cpp@1196,76"]}
@@ -176,6 +178,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## shaders
 
 - `indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorKeyOccluderF.glsl`
+- `indra/newview/app_settings/shaders/class1/alchemy/actorKeyOccluderV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/prismLensF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/prismLensV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/prismMediaCopyF.glsl`

@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alpovblink.h"
+#include "alactorchromakey.h"
 
 #include "llviewerdisplay.h"
 
@@ -1873,7 +1874,8 @@ void render_ui(F32 zoom_factor, int subfield)
             LLVfxManager::instance().runEffect(EVisualEffect::RlvOverlay);
         }
 // [/RLVa:KB]
-        render_hud_attachments();
+        if (!ALActorChromaKey::sActive || !ALActorChromaKey::hideHUD())
+            render_hud_attachments();
 
         LLGLState::checkStates();
 
@@ -1897,12 +1899,15 @@ void render_ui(F32 zoom_factor, int subfield)
         // filming). Drawing before the gate also keeps ghosts UNDER beacons /
         // selections / 2D chrome when the UI is on. Zero cost when the studio
         // has no enabled instances.
+        const U64 key_serial = ALActorChromaKey::sActive ? ALActorChromaKey::finalizeSerial() : 0;
         LLActorMover::instance().renderStudioGhosts();
+        if (ALActorChromaKey::sActive) ALActorChromaKey::finishStudioFrame(key_serial);
 
-        // LAST SCENE-IMAGE WRITE. Future chroma-key composite goes immediately
-        // before this call (after gatherFrame and ghosts). HUD attachments are
+        // LAST SCENE-IMAGE WRITE. K2 runs in the final present, before Studio.
+        // The single blink call stays after the key and clones. HUD attachments are
         // below the lids; selection guides and all 2D UI remain above them.
         ALPOVBlink::renderLastSceneImage(
+            (!ALActorChromaKey::sActive || !ALActorChromaKey::alphaMatte()) &&
             gPipeline.mRT == &gPipeline.mMainRT && !gSnapshot && !gCubeSnapshot &&
             !LLPipeline::sPrismLensRender && !LLPipeline::sPrismPreviewRender &&
             !LLPipeline::sReflectionRender && !LLPipeline::sImpostorRender && !LLPipeline::sRenderingHUDs,

@@ -7,19 +7,31 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
       "HOOK": 498,
-      "OWNED": 890,
-      "TOOLING": 369
+      "OWNED": 899,
+      "TOOLING": 373
     },
     "dirty_product_inputs": [
-      "indra/newview/CMakeLists.txt",
-      "indra/newview/app_settings/settings.xml",
+      "indra/llwindow/llwindow.cpp",
+      "indra/llwindow/llwindow.h",
+      "indra/llwindow/llwindowsdl.cpp",
+      "indra/llwindow/llwindowwin32.cpp",
+      "indra/newview/alactorchromakey.cpp",
+      "indra/newview/alactorchromakey.h",
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
-      "indra/newview/llappviewer.cpp",
-      "indra/newview/llvoavatar.cpp",
+      "indra/newview/llfloatersnapshot.cpp",
+      "indra/newview/llsnapshotlivepreview.cpp",
+      "indra/newview/llviewerdisplay.cpp",
+      "indra/newview/llviewerwindow.cpp",
       "indra/newview/pipeline.cpp",
       "indra/newview/pipeline.h",
-      "scripts/code_tools/director_actor_bar_check.py"
+      "indra/newview/skins/default/xui/en/floater_snapshot.xml",
+      "indra/newview/skins/default/xui/en/notifications.xml",
+      "scripts/code_tools/actor_key_gl_check.py",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/sensor_post_dispatch_check.py",
+      "scripts/code_tools/sensor_post_gl_check.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": false,
@@ -200,12 +212,12 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "05b44e27e078c5a3471903604618ab3a90019ab4",
+    "head_source_tree": "11391b6b9104720f2efc397dea4827a437a5627b",
     "hook_files": 498,
-    "hunks": 3021,
-    "input_sha256": "fc5708beb0edb5d375c25d970d69c9b26710719a4fd0b8bda2c64e5b25d45e0b",
+    "hunks": 3020,
+    "input_sha256": "cc155db604eef7f667855a77a707178aa430b5d9f3ebc03492e20ef1c2992ab8",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2023
+    "settings": 2048
   },
   "paths": [
     {
@@ -12259,6 +12271,70 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "director-shell",
+        "looks",
+        "rig"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alactorchromakey.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alactorchromakey.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alactorkeyset.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alactorkeyset.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [
         "roto-tron"
       ],
@@ -13165,6 +13241,19 @@
       "git_status": "A",
       "layer": 3,
       "path": "indra/newview/alcontactstab.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alcoverpolicy.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -19956,6 +20045,62 @@
       "git_status": "A",
       "layer": 5,
       "path": "indra/newview/app_settings/shaders/class1/alchemy/actorFxFallbackF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/app_settings/shaders/class1/alchemy/actorKeyBlurF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/app_settings/shaders/class1/alchemy/actorKeyMatteF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 9,
+      "path": "indra/newview/app_settings/shaders/class1/alchemy/actorKeyOccluderF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 9,
+      "path": "indra/newview/app_settings/shaders/class1/alchemy/actorKeyOccluderV.glsl",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -30750,10 +30895,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
-        "clones",
-        "gaze",
-        "roto-tron"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -37380,6 +37522,19 @@
       "candidate_features_from_subjects": [],
       "class": "TOOLING",
       "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/tests/alactorkeyset_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
       "feature_evidence": [
         "path/prefix"
       ],
@@ -38915,6 +39070,45 @@
       "layer": 6,
       "path": "reshade-addon/tools/patch_dof_v4.py",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_wp01_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
       "candidate_features_from_subjects": [],

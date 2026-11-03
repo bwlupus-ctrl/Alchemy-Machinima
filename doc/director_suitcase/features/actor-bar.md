@@ -6,6 +6,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## owned
 
+- `indra/newview/alactorchromakey.cpp`
 - `indra/newview/alavataranimspeed.cpp`
 - `indra/newview/alavatarkey.cpp`
 - `indra/newview/alavatarkey.h`
@@ -73,8 +74,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,53", "indra/newview/CMakeLists.txt@333,115", "indra/newview/CMakeLists.txt@1134,56", "indra/newview/CMakeLists.txt@1286,162", "indra/newview/CMakeLists.txt@2842,31", "indra/newview/CMakeLists.txt@2947,185"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@2611,53", "indra/newview/llappviewer.cpp@5657,48", "indra/newview/llappviewer.cpp@6467,45"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,53", "indra/newview/CMakeLists.txt@333,116", "indra/newview/CMakeLists.txt@1135,56", "indra/newview/CMakeLists.txt@1287,165", "indra/newview/CMakeLists.txt@2846,32", "indra/newview/CMakeLists.txt@2952,185"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,34", "indra/newview/llappviewer.cpp@2613,53", "indra/newview/llappviewer.cpp@5659,49", "indra/newview/llappviewer.cpp@6470,45"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@201,9", "indra/newview/llstartup.cpp@2648,19"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@411,26"]}
@@ -83,10 +84,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@37,18", "indra/newview/llviewerinput.cpp@506,115"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,24", "indra/newview/llviewerjoystick.cpp@4160,242"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@4663,27", "indra/newview/llvoavatar.cpp@12825,163"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@4664,28", "indra/newview/llvoavatar.cpp@12827,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@5690,87"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@103,8", "indra/newview/pipeline.cpp@1693,29165", "indra/newview/pipeline.cpp@30989,430"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@105,8", "indra/newview/pipeline.cpp@1697,29405", "indra/newview/pipeline.cpp@31233,430"]}
 
 ## settings
 
@@ -113,6 +114,7 @@ None identified by local evidence; not a claim that none is needed.
 
 ## cmake entries
 
+- {"file": "indra/newview/CMakeLists.txt", "line": 338, "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1", "source": "indra/newview/alactorchromakey.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 393, "text": "alavataranimspeed.cpp", "source": "indra/newview/alavataranimspeed.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 365, "text": "alavatarkey.cpp # [ClientHeight]", "source": "indra/newview/alavatarkey.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1311, "text": "alavatarkey.h # [ClientHeight]", "source": "indra/newview/alavatarkey.h"}

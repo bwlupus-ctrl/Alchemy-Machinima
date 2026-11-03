@@ -17,6 +17,10 @@
 #include "llviewercontrol.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"
+#include "llviewerwindow.h"
+#include "llwindow.h"
+#include "llnotificationsutil.h"
+#include "llviewerdisplay.h"
 
 #include <algorithm>
 
@@ -197,4 +201,174 @@ bool CoverPolicy::sharedCover(const LLUUID& id, const LLUUID& owner,
 {
     // D54: WP1b alone will replay shared beauty commands. No generic key contribution.
     return !key && silhouetteCover(id, owner, fallback, cover);
+}
+
+
+namespace
+{
+U64 sFinalizeSerial = 0;
+U32 sKeyFrame = ~0u;
+S32 sKeyWidth = 0, sKeyHeight = 0;
+bool sComplete = false, sStudioFailed = false;
+std::string sKeyReason = "no keyed finalize";
+bool sExplicitRequest = true, sPendingExplicit = false;
+struct SnapshotRefusalLatch
+{
+    bool latched = false, connected = false;
+    U64 revision = 0;
+    S32 width = 0, height = 0, windowWidth = 0, windowHeight = 0;
+    S32 settledWidth = 0, settledHeight = 0;
+    std::string suspension, placeholder;
+} sRefusal;
+}
+
+bool ALActorChromaKey::keyGuardAllows()
+{
+    // WP3 owns the ReShade handshake. No guard bookkeeping on snapshot renders.
+    return true;
+}
+
+U32 ALActorChromaKey::mode()
+{
+    static LLCachedControl<U32> value(gSavedSettings, "ActorKeyMode", 0);
+    return llmin(value(), 2u);
+}
+LLColor3 ALActorChromaKey::colour()
+{
+    static LLCachedControl<LLColor3> value(gSavedSettings, "ActorKeyColor", LLColor3(0.f, 177.f/255.f, 64.f/255.f));
+    LLColor3 code = value();
+    for (S32 i = 0; i < 3; ++i) code.mV[i] = ll_round(llclamp(code.mV[i], 0.f, 1.f) * 255.f) / 255.f;
+    return code;
+}
+bool ALActorChromaKey::keyedThisFrame()
+{
+    return sActive && sKeyFrame == gFrameCount;
+}
+bool ALActorChromaKey::alphaMatte() { return keyedThisFrame() && mode() == 2; }
+namespace
+{
+bool keyHideHUDSetting()
+{
+    static LLCachedControl<bool> hide(gSavedSettings, "ActorKeyHideHUD", true);
+    return hide();
+}
+}
+bool ALActorChromaKey::hideHUD() { return keyedThisFrame() && keyHideHUDSetting(); }
+bool ALActorChromaKey::matteInvert()
+{
+    static LLCachedControl<bool> invert(gSavedSettings, "ActorKeyMatteInvert", false);
+    return invert();
+}
+void ALActorChromaKey::preflightControls()
+{
+    // Prime the lazy control subscriptions before any destructive write.
+    (void)mode(); (void)colour(); (void)sceneGlass(); (void)matteInvert(); (void)keyHideHUDSetting();
+}
+bool ALActorChromaKey::sceneGlass()
+{
+    static LLCachedControl<U32> source(gSavedSettings, "ActorKeyGlassSource", 0);
+    return source() == 0;
+}
+ALActorChromaKey::StudioPolicy ALActorChromaKey::requestedStudioPolicy(const LLUUID& id)
+{
+    const bool included = instanceKeyed(id);
+    switch (mode())
+    {
+    case 1: return included ? StudioPolicy::Fill : StudioPolicy::Look;
+    case 2: return included ? StudioPolicy::Fill : StudioPolicy::Skip;
+    default: return included ? StudioPolicy::Look : StudioPolicy::Skip;
+    }
+}
+ALActorChromaKey::StudioPolicy ALActorChromaKey::studioPolicy(const LLUUID& id)
+{
+    return keyedThisFrame() ? requestedStudioPolicy(id) : StudioPolicy::Look;
+}
+U64 ALActorChromaKey::finalizeSerial() { return sFinalizeSerial; }
+void ALActorChromaKey::beginFinalize()
+{
+    ++sFinalizeSerial;
+    sKeyFrame = ~0u;
+    sComplete = sStudioFailed = false;
+    sKeyReason = "incomplete finalize";
+}
+void ALActorChromaKey::refuse(const char* why)
+{
+    sKeyFrame = ~0u;
+    sComplete = false;
+    sKeyReason = why;
+}
+const std::string& ALActorChromaKey::reason() { return sKeyReason; }
+void ALActorChromaKey::provision(S32 width, S32 height)
+{
+    sKeyFrame = gFrameCount;
+    sKeyWidth = width; sKeyHeight = height;
+    sComplete = false;
+    sKeyReason.clear();
+}
+void ALActorChromaKey::studioFailure(const char* why)
+{
+    sStudioFailed = true;
+    sComplete = false;
+    sKeyReason = why;
+    LL_WARNS_ONCE("ActorKey") << "ACTORKEY STUDIO-FAILURE " << why << LL_ENDL;
+}
+void ALActorChromaKey::finishStudioFrame(U64 serial)
+{
+    // R41: the caller invokes this even when Studio took an early return.
+    if (serial == sFinalizeSerial && keyedThisFrame() && !sStudioFailed) sComplete = true;
+}
+bool ALActorChromaKey::snapshotComplete(U64 before, S32 width, S32 height)
+{
+    return sFinalizeSerial > before && keyedThisFrame() && sComplete &&
+        sKeyWidth == width && sKeyHeight == height;
+}
+ALActorChromaKey::SnapshotScope::SnapshotScope() : mActive(sActive), mPrevious(false)
+{
+    if (mActive) mPrevious = LLWindow::sPresentBlocked.exchange(true);
+}
+ALActorChromaKey::SnapshotScope::~SnapshotScope()
+{
+    if (mActive) LLWindow::sPresentBlocked.store(mPrevious);
+}
+ALActorChromaKey::SnapshotRequestScope::SnapshotRequestScope(bool explicit_request)
+    : mPrevious(sExplicitRequest) { sExplicitRequest = explicit_request; }
+ALActorChromaKey::SnapshotRequestScope::~SnapshotRequestScope() { sExplicitRequest = mPrevious; }
+bool ALActorChromaKey::snapshotRequestExplicit() { return sExplicitRequest; }
+void ALActorChromaKey::explicitSnapshotRequest() { sPendingExplicit = true; }
+bool ALActorChromaKey::snapshotRequestAllowed(S32 width, S32 height)
+{
+    if (!sActive) { sRefusal.latched = false; return true; }
+    const auto& window = gViewerWindow->getWindowRectRaw();
+    const bool connected = !gDisconnected;
+    const bool explicit_request = sExplicitRequest || sPendingExplicit;
+    sPendingExplicit = false;
+    const bool cleared = explicit_request || sRefusal.revision != revision() ||
+        sRefusal.width != width || sRefusal.height != height ||
+        (!gWindowResized && (sRefusal.settledWidth != window.getWidth() || sRefusal.settledHeight != window.getHeight())) ||
+        (!sRefusal.connected && connected) || (!sRefusal.suspension.empty() && reason().empty());
+    sRefusal.revision = revision(); sRefusal.width = width; sRefusal.height = height;
+    sRefusal.windowWidth = window.getWidth(); sRefusal.windowHeight = window.getHeight();
+    if (!gWindowResized) { sRefusal.settledWidth = window.getWidth(); sRefusal.settledHeight = window.getHeight(); }
+    sRefusal.connected = connected; sRefusal.suspension = reason();
+    if (cleared) sRefusal.latched = false;
+    if (sRefusal.latched)
+        sRefusal.placeholder = "Keyed snapshot unavailable: " + reason() + " - press Refresh";
+    return !sRefusal.latched;
+}
+void ALActorChromaKey::snapshotRefused(S32 width, S32 height)
+{
+    // snapshotRequestAllowed has already captured the request inputs.
+    (void)width; (void)height;
+    if (sRefusal.latched) return;
+    sRefusal.latched = true;
+    sRefusal.suspension = reason();
+    sRefusal.placeholder = "Keyed snapshot unavailable: " + reason() + " - press Refresh";
+    LL_WARNS("ActorKey") << "ACTORKEY SNAPSHOT-REFUSED " << reason() << LL_ENDL;
+    LLSD args; args["REASON"] = reason();
+    LLNotificationsUtil::add("ActorKeySnapshotRefused", args);
+}
+const std::string& ALActorChromaKey::snapshotPlaceholder()
+{
+    static const std::string empty;
+    return sActive && sRefusal.latched ? sRefusal.placeholder : empty;
 }

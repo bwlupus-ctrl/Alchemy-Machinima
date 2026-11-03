@@ -496,6 +496,8 @@ def optics_alignment(r,check):
 
 def source_contracts(check):
     pipe=(ROOT/'indra/newview/pipeline.cpp').read_text(encoding='utf-8')
+    from director_actor_bar_check import actor_key_baseline
+    pipe=actor_key_baseline(pipe, 'pipeline.cpp')
     start=pipe.index('// Stage A: expose exactly once')
     end=pipe.index('        renderFinalizeLegacy(',start)
     chain=pipe[start:end]

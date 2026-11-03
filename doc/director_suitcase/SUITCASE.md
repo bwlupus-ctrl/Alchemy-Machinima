@@ -34,7 +34,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2563 classified paths.
+`inventory.csv` / `inventory.json` contain 2576 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -64,24 +64,24 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 84 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 308 | 55 | 200 |
-| [actor-bar](features/actor-bar.md) | 3 | 64 | 14 | 0 |
+| [director-shell](features/director-shell.md) | 2 | 309 | 55 | 200 |
+| [actor-bar](features/actor-bar.md) | 3 | 65 | 14 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 103 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 77 | 31 | 492 |
 | [composition](features/composition.md) | 3 | 40 | 23 | 12 |
 | [gaze](features/gaze.md) | 3 | 56 | 23 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 27 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 174 | 80 | 81 |
+| [clones](features/clones.md) | 4 | 178 | 80 | 82 |
 | [crowd](features/crowd.md) | 4 | 49 | 10 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 67 | 58 | 17 |
-| [rig](features/rig.md) | 7 | 168 | 56 | 250 |
+| [rig](features/rig.md) | 7 | 169 | 56 | 250 |
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 62 | 24 | 104 |
 | [tracking](features/tracking.md) | 7 | 9 | 17 | 0 |
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
 | [weather](features/weather.md) | 8 | 58 | 40 | 104 |
-| [vcam](features/vcam.md) | 9 | 87 | 43 | 30 |
-| [looks](features/looks.md) | 10 | 136 | 128 | 99 |
+| [vcam](features/vcam.md) | 9 | 89 | 43 | 30 |
+| [looks](features/looks.md) | 10 | 137 | 128 | 99 |
 | [sensor](features/sensor.md) | 10 | 101 | 56 | 60 |
 
 These layers are a review order. A shared file/hunk can serve several layers and
@@ -236,7 +236,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 498 shared files / 3021 canonical
+The generated hook map covers 498 shared files / 3020 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and

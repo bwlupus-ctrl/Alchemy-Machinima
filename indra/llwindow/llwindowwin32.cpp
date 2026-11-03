@@ -4220,6 +4220,11 @@ bool LLWindowWin32::resetDisplayResolution()
 
 void LLWindowWin32::swapBuffers()
 {
+    if (sPresentBlocked.load(std::memory_order_relaxed))
+    {
+        sBlockedPresents.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_WIN32;
         SwapBuffers(mhDC);

@@ -46,6 +46,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloatersnapshot.h"
+#include "alactorchromakey.h"
 
 #include "llfloaterbigpreview.h" // [BDMerge C6]
 #include "llfloaterreg.h"
@@ -217,6 +218,20 @@ void LLFloaterSnapshotBase::ImplBase::updateLayout(LLFloaterSnapshotBase* floate
         {
             floaterp->reshape(floater_width, floaterp->getRect().getHeight());
         }
+    }
+
+    // This capture-contract note is event-driven; draw() never resolves widgets.
+    if (auto* note = floaterp->findChild<LLTextBox>("actor_key_snapshot_note"))
+    {
+        note->setVisible(ALActorChromaKey::sActive);
+        if (ALActorChromaKey::sActive)
+        {
+            const auto& refusal = ALActorChromaKey::snapshotPlaceholder();
+            note->setText(refusal.empty()
+                ? "Keyed snapshot: exact colour only for unfiltered COLOR saves in PNG/BMP/lossless AVIF at rendered size."
+                : refusal);
+        }
+        floaterp->reshape(floaterp->getRect().getWidth(), ALActorChromaKey::sActive ? 571 : 475);
     }
 
     bool use_freeze_frame = floaterp->mFreezeFrameCheck && floaterp->mFreezeFrameCheck->getValue().asBoolean();
@@ -495,6 +510,7 @@ void LLFloaterSnapshotBase::ImplBase::checkAutoSnapshot(LLSnapshotLivePreview* p
 // static
 void LLFloaterSnapshotBase::ImplBase::onClickNewSnapshot(void* data)
 {
+    ALActorChromaKey::SnapshotRequestScope explicit_key_request(true);
     LLFloaterSnapshotBase* floater = (LLFloaterSnapshotBase *)data;
     LLSnapshotLivePreview* previewp = floater->getPreviewView();
     if (previewp)
@@ -1158,6 +1174,7 @@ bool LLFloaterSnapshot::postBuild()
 // virtual
 void LLFloaterSnapshotBase::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLSnapshotLivePreview* previewp = getPreviewView();
 
     if (previewp && (previewp->isSnapshotActive() || previewp->getThumbnailLock()))
@@ -1207,6 +1224,7 @@ void LLFloaterSnapshotBase::draw()
 //virtual
 void LLFloaterSnapshot::onOpen(const LLSD& key)
 {
+    ALActorChromaKey::SnapshotRequestScope explicit_key_request(true);
     LLSnapshotLivePreview* preview = getPreviewView();
     if(preview)
     {
@@ -1386,6 +1404,7 @@ S32 LLFloaterSnapshotBase::notify(const LLSD& info)
         impl->updateControls(this);
         // We've just done refresh.
         impl->setNeedRefresh(false);
+        impl->updateLayout(this);
 
         // The refresh button is initially hidden. We show it after the first update,
         // i.e. when preview appears.

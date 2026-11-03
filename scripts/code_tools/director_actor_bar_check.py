@@ -12,6 +12,17 @@ from relight_area_policy_check import method as source_method
 def actor_key_baseline(source, name):
     """Reverse only the content-pinned WP01 delta before the old guard chain."""
     import hashlib, json
+    wp2_raw = (Path(__file__).parent / "actor_key_wp2_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(wp2_raw).hexdigest() == "c8b94aabe721bd86e80863693d2b7ce30ae14b86ed98d376bfde03b29c109280", "WP2 allowance pin"
+    wp2 = json.loads(wp2_raw)
+    wp2_path = "indra/newview/" + name
+    if wp2_path in wp2["files"]:
+        wp2_base = subprocess.check_output(["git", "show", wp2["base"] + ":" + wp2_path]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in wp2["files"][wp2_path]:
+            assert wp2_base.count(hunk["before"]) == 1, ("WP2 baseline hunk", name)
+            assert source.count(hunk["after"]) == 1, ("WP2 exact hunk", name)
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == wp2_base, ("WP2 reversal must reproduce its exact base", name)
     raw = (Path(__file__).parent / "actor_key_wp01_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == "130f8a609515880460dd6ad86d6fd633a971b4dc36eb1c06155cbe0162fee58f", "WP01 allowance pin"
     allowance = json.loads(raw)

@@ -508,4 +508,15 @@
     width="115">
     Take a 360 snapshot
    </text>
+  <!-- Hidden at the legacy extent; bottom anchoring moves this into the added
+       footer when the event-driven key layout extends the floater by 96 px. -->
+  <!-- Static latent rectangles overlap only while this note is hidden. The
+       bottom-anchored note moves below both controls before becoming drawn. -->
+  <!-- xui-check: allow-overlap panel_container actor_key_snapshot_note -->
+  <!-- xui-check: allow-overlap thumbnail_placeholder actor_key_snapshot_note -->
+  <text name="actor_key_snapshot_note" layout="topleft" top="375" left="10"
+        right="-10" height="96" follows="left|right|bottom" font="SansSerifSmall"
+        word_wrap="true" visible="false">
+    Keyed snapshot: exact colour only for unfiltered COLOR saves in PNG/BMP/lossless AVIF at rendered size.
+  </text>
 </floater>

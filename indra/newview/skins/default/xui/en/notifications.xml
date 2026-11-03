@@ -13931,4 +13931,7 @@ The pinned colour chart is outside this region or more than 512 m away. Placemen
   <notification icon="notifytip.tga" name="FSInventoryCustomTabsLoadIncomplete" type="notifytip">
     Custom inventory tabs could not be loaded completely. Changes cannot be saved until valid tab settings are restored. Adding tabs is disabled.
   </notification>
+  <notification name="ActorKeySnapshotRefused" type="notifytip">
+    Snapshot not taken: the keyed frame could not be completed ([REASON]). Try again.
+  </notification>
 </notifications>

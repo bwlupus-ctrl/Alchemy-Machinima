@@ -28,6 +28,7 @@
 #ifndef LL_LLACTORMOVER_H
 #define LL_LLACTORMOVER_H
 
+#include "v3color.h"
 #include "lluuid.h"
 #include "llhandle.h"
 #include "llsd.h"
@@ -813,6 +814,10 @@ public:
     void renderStudioGhosts();
     // Capture-end hook: call after the final overlay texture binding scope.
     static void releaseStudioSnapshotScratch();
+    // K0 owns begin -> reserve; K2 captures Scene Glass before replacing pixels.
+    static bool preflightStudioKey(const S32 (&viewport)[4]);
+    static bool captureStudioKeyScene(const S32 (&viewport)[4]);
+    static void releaseStudioKeyPrograms();
 
     // [ActorStyle/SharedActivation] Frame-local live-replay stream. Actor FX
     // reuses the exact harvested avatar/attachment geometry and is merged with
@@ -1133,6 +1138,8 @@ public:
         // the native/background colour, while only full-opacity Cover may use
         // opaque RGB replacement. Ghost Studio leaves this false.
         bool       mCoverMode = false;
+        bool       mKeyFill = false;
+        LLColor3   mKeyFillColour;
         // Layer normally composites over the retained native actor. Dissolve is
         // coverage-changing, so its live-world replay must instead own the
         // authored surface while the Layer alpha remains treatment strength.

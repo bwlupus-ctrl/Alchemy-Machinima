@@ -54,6 +54,7 @@
 #include "llnotificationsutil.h"
 #include "llslurl.h"
 #include "llsnapshotlivepreview.h"
+#include "alactorchromakey.h"
 #include "lltoolfocus.h"
 #include "llviewercontrol.h"
 #include "llviewermenufile.h"   // upload_new_resource()
@@ -161,6 +162,8 @@ F32 LLSnapshotLivePreview::getImageAspect()
 
 void LLSnapshotLivePreview::updateSnapshot(bool new_snapshot, bool new_thumbnail, F32 delay)
 {
+    if (new_snapshot && ALActorChromaKey::sActive && ALActorChromaKey::snapshotRequestExplicit())
+        ALActorChromaKey::explicitSnapshotRequest();
     LL_DEBUGS("Snapshot") << "updateSnapshot: mSnapshotUpToDate = " << getSnapshotUpToDate() << LL_ENDL;
 
     // Update snapshot if requested.
@@ -674,6 +677,7 @@ LLViewerTexture* LLSnapshotLivePreview::getBigThumbnailImage()
 //static
 bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
 {
+    ALActorChromaKey::SnapshotRequestScope automatic_key_request(false);
     LLSnapshotLivePreview* previewp = (LLSnapshotLivePreview*)snapshot_preview;
     if (previewp->getWidth() == 0 || previewp->getHeight() == 0)
     {
@@ -780,6 +784,15 @@ bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
             // We need to update the thumbnail though
             previewp->setThumbnailImageSize();
             previewp->generateThumbnailImage(true) ;
+        }
+        if (ALActorChromaKey::sActive && !ALActorChromaKey::snapshotPlaceholder().empty())
+        {
+            previewp->mThumbnailImage = nullptr;
+            previewp->mBigThumbnailImage = nullptr;
+            previewp->mThumbnailUpToDate = true;
+            previewp->mBigThumbnailUpToDate = true;
+            previewp->mFormattedImage = nullptr;
+            previewp->mPreviewImageEncoded = nullptr;
         }
         previewp->getWindow()->decBusyCount();
         previewp->setVisible(use_freeze_frame && previewp->mAllowFullScreenPreview); // only show fullscreen preview when in freeze frame mode

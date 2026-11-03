@@ -60,7 +60,10 @@ using GLboolean=bool;using GLfloat=float;
 template<class T>T llmax(T a,T b){return std::max(a,b);}
 template<class T>T llclamp(T x,T a,T b){return std::clamp(x,a,b);}
 struct Vec{float mV[4]={0,0,0,0};};using LLVector3=Vec;
-namespace glm {struct mat4{};}
+namespace glm {struct mat4{bool operator==(const mat4&)const{return true;}}; const float* value_ptr(const mat4&){static float m[16]={};return m;}}
+// Actor-key OFF fixture: any accidental entry into key work is a test failure.
+struct ALActorChromaKey {inline static bool sActive=false;
+ static void beginFinalize(){std::abort();}static bool alphaMatte(){std::abort();}};
 glm::mat4 get_current_projection(){return {};}
 glm::mat4 get_current_modelview(){return {};}
 using LLStaticHashedString=std::string;
@@ -168,6 +171,11 @@ struct LLPipeline {
  struct FinalizeGuides { LLPipeline& pipeline; const glm::mat4& projection; const glm::mat4& modelview; void operator()(LLRenderTarget* target,U32 attachment=0)const{pipeline.renderActorPathGuides(target,projection,modelview,attachment);} };
  struct Pack{LLRenderTarget screen{10,64,48,true},deferredScreen{11,64,48,true},deferredLight{12,64,48,true},postPingMap{14,64,48,true},postPongMap{15,64,48,true};}mMainRT,other;
  Pack* mRT=&mMainRT;
+ bool mActorKeyReady=false;U32 mActorKeyMatteFrame=~0u;
+ glm::mat4 mActorKeyProjection,mActorKeyModelview;
+ bool actorKeyMatteValid(){std::abort();}
+ bool preflightActorKey(bool,bool,bool){std::abort();}
+ void compositeActorKey(){std::abort();}
  LLRenderTarget mSensorPing[2]={{0},{1}},mSensorRoto{4},mDiopterMap{7,64,48,true},mVelocityMap{8,64,48,true};
  LLRenderTarget mFXAAMap{20,64,48,true},mSMAABlendBuffer{21,64,48,true};
  U32 mSMAASampleMap=100,mSMAAAreaMap=101,mSMAASearchMap=102;
@@ -182,7 +190,7 @@ struct LLPipeline {
  void assertInitialized(){}void enableLightsFullbright(){}
  void renderActorPathGuides(LLRenderTarget*,const glm::mat4&,const glm::mat4&,U32){events.push_back(80);}
  void renderFinalizeScene(bool,const FinalizeGuides&);
- void renderFinalizeLegacy(bool,LLRenderTarget*&,LLRenderTarget*&,bool&,bool&,const FinalizeGuides&);
+ void renderFinalizeLegacy(bool,LLRenderTarget*&,LLRenderTarget*&,bool&,bool&,const FinalizeGuides&,bool&);
  void renderFinalizePresent(LLRenderTarget*,bool,bool);
  void colorCorrect(LLRenderTarget* src,LLRenderTarget* dst,bool tone,bool grade,SensorStage stage=SensorStage::Legacy){
   if(stage==SensorStage::Legacy){++legacy_calls;events.push_back(22);return;}

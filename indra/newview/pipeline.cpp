@@ -26382,6 +26382,9 @@ void LLPipeline::renderFinalize()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderFinalize");
+    if (ALActorChromaKey::sActive) ALActorChromaKey::beginFinalize();
+    mActorKeyReady = false;
+    bool rlv_sphere_ran = false;
 
     struct SensorScope
     {
@@ -26492,6 +26495,7 @@ void LLPipeline::renderFinalize()
         std::swap(sourceBuffer, targetBuffer);
         if (RlvActions::hasBehaviour(RLV_BHVR_SETSPHERE))
         {
+            rlv_sphere_ran = true;
             LLShaderEffectParams params(sourceBuffer, targetBuffer, false);
             LLVfxManager::instance().runEffect(EVisualEffect::RlvSphere, &params);
             std::swap(sourceBuffer, targetBuffer);
@@ -26590,12 +26594,14 @@ void LLPipeline::renderFinalize()
     }
     else
     {
-        renderFinalizeLegacy(hdr, sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, render_actor_path_guides);
+        renderFinalizeLegacy(hdr, sourceBuffer, targetBuffer, diopter_warped, fisheye_warped, render_actor_path_guides, rlv_sphere_ran);
     }
 
+    if (ALActorChromaKey::sActive)
+        mActorKeyReady = preflightActorKey(rlv_sphere_ran, diopter_warped, fisheye_warped);
     renderFinalizePresent(sourceBuffer, diopter_warped, fisheye_warped);
     static LLCachedControl<bool> chart_show(gSavedSettings, "AlchemyColorChartShow", false);
-    if (chart_show && !gDisconnected && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
+    if (chart_show && (!ALActorChromaKey::sActive || !ALActorChromaKey::alphaMatte()) && !gDisconnected && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
         !sPrismPreviewRender && !sImpostorRender && !sRenderingHUDs && colorCorrectWillApplyExposure(hdr))
     {
         ALColorChart::instance().presentUnlit(sourceBuffer, mSensorPhysicalOrder, actor_path_projection, actor_path_modelview);
@@ -26874,7 +26880,7 @@ void LLPipeline::renderFinalizeScene(bool hdr, const FinalizeGuides& guides)
 }
 
 void LLPipeline::renderFinalizeLegacy(bool hdr, LLRenderTarget*& sourceBuffer, LLRenderTarget*& targetBuffer,
-    bool& diopter_warped, bool& fisheye_warped, const FinalizeGuides& guides)
+    bool& diopter_warped, bool& fisheye_warped, const FinalizeGuides& guides, bool& rlv_sphere_ran)
 {
     auto render_actor_path_guides = [&](LLRenderTarget* target) { guides(target, 0); };
         // Handles tonemap, colorgrading, and gamma correction in one pass. In the HDR
@@ -26986,6 +26992,7 @@ void LLPipeline::renderFinalizeLegacy(bool hdr, LLRenderTarget*& sourceBuffer, L
     // [RLVa:KB] - @setsphere
         if (RlvActions::hasBehaviour(RLV_BHVR_SETSPHERE))
         {
+            rlv_sphere_ran = true;
             LLShaderEffectParams params(sourceBuffer, targetBuffer, false);
             LLVfxManager::instance().runEffect(EVisualEffect::RlvSphere, &params);
             std::swap(sourceBuffer, targetBuffer);
@@ -27216,6 +27223,7 @@ void LLPipeline::renderFinalizePresent(LLRenderTarget* sourceBuffer, bool diopte
         }
 
         present_program.unbind();
+        if (ALActorChromaKey::sActive && mActorKeyReady) compositeActorKey();
     }
 
     // [RelightQ] Show the current selected channel after all post/present effects.
@@ -29163,6 +29171,68 @@ namespace
 // Lazy objects: key OFF never creates, compiles, or binds a key program.
 struct ActorKeyPrograms { LLGLSLShader blur, matte, occluder; };
 std::unique_ptr<ActorKeyPrograms> sActorKeyPrograms;
+std::unique_ptr<LLGLSLShader> gActorKeyCompositeProgram;
+
+// Restore the driver and LLRender cache, even when the saved unit used another target.
+struct ActorKeyTextureScope
+{
+    U32 active, unit, texture;
+    LLTexUnit::eTextureType type;
+    bool mips;
+    GLint binding;
+    explicit ActorKeyTextureScope(U32 index) : active(gGL.getCurrentTexUnitIndex()), unit(index)
+    {
+        auto* u = gGL.getTexUnit(unit);
+        type = u->getCurrType(); texture = u->getCurrTexture(); mips = u->hasMipMaps();
+        u->activate(); glGetIntegerv(GL_TEXTURE_BINDING_2D, &binding);
+        gGL.getTexUnit(active)->activate();
+    }
+    ~ActorKeyTextureScope()
+    {
+        auto* u = gGL.getTexUnit(unit);
+        u->unbind(LLTexUnit::TT_TEXTURE);
+        if (type == LLTexUnit::TT_NONE) u->disable();
+        else { u->enable(type); if (texture) u->bindManual(type, texture, mips); else u->unbind(type); }
+        u->setHasMipMaps(mips);
+        glBindTexture(GL_TEXTURE_2D, binding);
+        gGL.getTexUnit(active)->activate();
+    }
+};
+struct ActorKeyFramebufferScope
+{
+    GLint draw, read, viewport[4];
+    ActorKeyFramebufferScope()
+    {
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read);
+        glGetIntegerv(GL_VIEWPORT, viewport);
+    }
+    ~ActorKeyFramebufferScope()
+    {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw); glBindFramebuffer(GL_READ_FRAMEBUFFER, read);
+        glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    }
+};
+// Copy from DRAW, never from a caller's unrelated READ binding. No pack operations.
+bool actor_key_copy(LLRenderTarget& target, const S32 (&viewport)[4])
+{
+    GLint draw, source_buffer, read, read_buffer, source_read_buffer;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+    glGetIntegerv(GL_DRAW_BUFFER0, &source_buffer);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read);
+    glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+    if (source_buffer == GL_NONE) return false;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, draw);
+    glGetIntegerv(GL_READ_BUFFER, &source_read_buffer);
+    glReadBuffer(source_buffer);
+    ActorKeyTextureScope texture(0);
+    gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, target.getTexture());
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, viewport[0], viewport[1], viewport[2], viewport[3]);
+    const bool ok = glGetError() == GL_NO_ERROR;
+    glReadBuffer(source_read_buffer); glBindFramebuffer(GL_READ_FRAMEBUFFER, read); glReadBuffer(read_buffer);
+    return ok;
+}
+
 }
 
 void LLPipeline::releaseActorKeyTargets()
@@ -29171,6 +29241,14 @@ void LLPipeline::releaseActorKeyTargets()
     mActorKeyMatte.release();
     mActorKeyBlurA.release();
     mActorKeyBlurB.release();
+    mActorKeyScene.release();
+    if (gActorKeyCompositeProgram) { gActorKeyCompositeProgram->unload(); gActorKeyCompositeProgram.reset(); }
+    mActorKeyReady = false;
+    mActorKeySceneFrame = ~0u;
+    std::vector<F32>().swap(mActorKeyTestMatte);
+    std::vector<F32>().swap(mActorKeyTestScene);
+    std::vector<F32>().swap(mActorKeyTestOutput);
+    LLActorMover::releaseStudioKeyPrograms();
     mActorKeyDepthSrc = 0;
     mActorKeyCoverageFrame = mActorKeyMatteFrame = ~0u;
     mActorKeyMatteRT = nullptr;
@@ -29201,6 +29279,197 @@ bool LLPipeline::ensureKeyPrograms()
     return load(sActorKeyPrograms->blur, "ActorKey Blur", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyBlurF.glsl") &&
         load(sActorKeyPrograms->matte, "ActorKey Matte", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyMatteF.glsl") &&
         load(sActorKeyPrograms->occluder, "ActorKey Prism occluder", "alchemy/actorKeyOccluderV.glsl", "alchemy/actorKeyOccluderF.glsl");
+}
+
+bool LLPipeline::preflightActorKey(bool sphere, bool diopter, bool fisheye)
+{
+    LL_PROFILE_ZONE_NAMED("ActorKey::preflight");
+    const auto refuse = [](const char* why) { ALActorChromaKey::refuse(why); return false; };
+    if (gDisconnected || mRT != &mMainRT || gCubeSnapshot || sPrismLensRender ||
+        sPrismPreviewRender || sImpostorRender || sRenderingHUDs || ALActorChromaKey::suppressed())
+        return refuse("excluded view");
+    if (sphere) return refuse("RLVa sphere");
+    if (RenderBufferVisualization >= 0 || (BDMergeVelocityBuffer && BDMergeVelocityDebug))
+        return refuse("buffer visualization");
+    static LLCachedControl<bool> diopter_enabled(gSavedSettings, "CineDiopterEnabled", false);
+    static LLCachedControl<U32> tool(gSavedSettings, "CineDiopterToolMode", 0);
+    if (diopter_enabled && gSavedSettings.getU32(tool() == 1 ? "CineDiopterKalDebugView" : "CineDiopterDebugView") != 0)
+        return refuse("diopter debug view");
+    // WP-LENS owns per-stage coverage. Never consume an unwarped/stale matte.
+    if (diopter || fisheye) return refuse("lens coverage unavailable (WP-LENS)");
+    if (!actorKeyMatteValid()) return refuse("matte unavailable");
+    static LLCachedControl<U32> fail(gSavedSettings, "ActorKeyDebugFailPreflight", 0);
+    if (fail() == 1) return refuse("injected composite program failure");
+    if (fail() == 2) return refuse("injected scene allocation failure");
+    if (fail() == 4) return refuse("injected lens coverage failure");
+    ActorKeyFramebufferScope framebuffer;
+    ActorKeyTextureScope texture0(0), texture1(1);
+    try
+    {
+        ALActorChromaKey::preflightControls();
+        if (!gActorKeyCompositeProgram) gActorKeyCompositeProgram = std::make_unique<LLGLSLShader>();
+        auto& shader = *gActorKeyCompositeProgram;
+        if (!shader.isComplete())
+        {
+            shader.mName = "Actor Key Composite";
+            shader.mFeatures = LLShaderFeatures(); shader.mShaderLevel = 1;
+            shader.mShaderFiles = {{"deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER},
+                                   {"alchemy/actorKeyCompositeF.glsl", GL_FRAGMENT_SHADER}};
+            shader.clearPermutations();
+            if (!shader.createShader()) return refuse("composite program unavailable");
+        }
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &mActorKeyDrawFBO);
+        glGetIntegerv(GL_VIEWPORT, mActorKeyViewport);
+        if (mActorKeyViewport[2] <= 0 || mActorKeyViewport[3] <= 0) return refuse("empty viewport");
+        GLint buffer, red = 0, green = 0, blue = 0, alpha = 0, component = 0;
+        glGetIntegerv(GL_DRAW_BUFFER0, &buffer);
+        if (buffer == GL_NONE) return refuse("no colour attachment");
+        const GLenum attachment = mActorKeyDrawFBO ? buffer :
+            ((buffer == GL_FRONT || buffer == GL_FRONT_LEFT) ? GL_FRONT_LEFT : GL_BACK_LEFT);
+        glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, attachment, GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, &red);
+        glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, attachment, GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, &green);
+        glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, attachment, GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, &blue);
+        glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, attachment, GL_FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, &alpha);
+        glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, attachment, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, &component);
+        if (component != GL_UNSIGNED_NORMALIZED || green != red || blue != red || (red != 8 && red != 10))
+            return refuse("unsupported presentation colour format");
+        const U32 format = red == 10 ? GL_RGB10_A2 : (alpha ? GL_RGBA8 : GL_RGB8);
+        if (!mActorKeyScene.isComplete() || mActorKeyScene.getWidth() != (U32)mActorKeyViewport[2] ||
+            mActorKeyScene.getHeight() != (U32)mActorKeyViewport[3] || mActorKeyScene.getInternalFormat() != format)
+        {
+            if (!mActorKeyScene.allocate(mActorKeyViewport[2], mActorKeyViewport[3], format, false))
+                return refuse("scene allocation failed");
+        }
+        // allocate() can change framebuffer bindings. Reserve at P, never at S.
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mActorKeyDrawFBO);
+        glViewport(mActorKeyViewport[0], mActorKeyViewport[1], mActorKeyViewport[2], mActorKeyViewport[3]);
+        if (!LLActorMover::preflightStudioKey(mActorKeyViewport)) return refuse("Studio fill/cache preflight failed");
+        static LLCachedControl<U32> self_test(gSavedSettings, "ActorKeySelfTest", 0);
+        if (self_test)
+        {
+            mActorKeyTestMatte.resize((size_t)mActorKeyMatte.getWidth() * mActorKeyMatte.getHeight() * 4);
+            mActorKeyTestScene.resize((size_t)mActorKeyViewport[2] * mActorKeyViewport[3] * 4);
+            mActorKeyTestOutput.resize(mActorKeyTestScene.size());
+        }
+        else mActorKeyTestFrames = 0;
+        if (glGetError() != GL_NO_ERROR) return refuse("preflight GL error");
+    }
+    catch (const std::bad_alloc&) { return refuse("preflight memory allocation failed"); }
+    if (!ALActorChromaKey::keyGuardAllows()) return refuse("ReShade key guard");
+    return true;
+}
+
+void LLPipeline::compositeActorKey()
+{
+    LL_PROFILE_ZONE_NAMED("ActorKey::compositeLate");
+    GLint draw, viewport[4];
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw); glGetIntegerv(GL_VIEWPORT, viewport);
+    const bool match = draw == mActorKeyDrawFBO && std::equal(viewport, viewport + 4, mActorKeyViewport);
+    llassert(match);
+    if (!match || !actorKeyMatteValid()) { ALActorChromaKey::refuse("presentation/matte stamp changed"); return; }
+    gGL.flush();
+    // Both copies finish before the first destructive write. On failure P is untouched.
+    if (!actor_key_copy(mActorKeyScene, mActorKeyViewport) || !LLActorMover::captureStudioKeyScene(mActorKeyViewport))
+    { ALActorChromaKey::refuse("pre-key scene copy failed"); return; }
+    mActorKeySceneFrame = gFrameCount;
+    static LLCachedControl<U32> self_test(gSavedSettings, "ActorKeySelfTest", 0);
+    ActorKeyTextureScope texture0(0), texture1(1);
+    LLGLDisable blend(GL_BLEND), srgb(GL_FRAMEBUFFER_SRGB), dither(GL_DITHER);
+    LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+    struct ColourMaskScope
+    {
+        GLboolean mask[4];
+        ColourMaskScope() { glGetBooleanv(GL_COLOR_WRITEMASK, mask); gGL.setColorMask(true, false); }
+        ~ColourMaskScope() { gGL.setColorMask(mask[0], mask[1], mask[2], mask[3]); }
+    } colour_mask;
+    llassert(!glIsEnabled(GL_FRAMEBUFFER_SRGB) && !glIsEnabled(GL_DITHER));
+    auto& shader = *gActorKeyCompositeProgram;
+    shader.bind();
+    mActorKeyScene.bindTexture(0, 0, LLTexUnit::TFO_POINT);
+    mActorKeyMatte.bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
+    shader.uniform1i(LLStaticHashedString("keyScene"), 0);
+    shader.uniform1i(LLStaticHashedString("keyCoverage"), 1);
+    shader.uniform2f(LLStaticHashedString("keyOrigin"), (F32)viewport[0], (F32)viewport[1]);
+    const LLColor3 colour = ALActorChromaKey::colour();
+    shader.uniform3fv(LLStaticHashedString("keyColour"), 1, colour.mV);
+    shader.uniform1i(LLStaticHashedString("keyMode"), ALActorChromaKey::mode());
+    static LLCachedControl<bool> invert(gSavedSettings, "ActorKeyMatteInvert", false);
+    static LLCachedControl<U32> edge(gSavedSettings, "ActorKeyEdgeMode", 0);
+    static LLCachedControl<bool> matte_shadow(gSavedSettings, "ActorKeyMatteShadow", false);
+    static LLCachedControl<F32> strength(gSavedSettings, "ActorKeyShadowStrength", 0.5f);
+    shader.uniform1i(LLStaticHashedString("keyInvert"), invert ? 1 : 0);
+    shader.uniform1i(LLStaticHashedString("keyHard"), edge() == 1 ? 1 : 0);
+    shader.uniform1i(LLStaticHashedString("keyMatteShadow"), matte_shadow ? 1 : 0);
+    shader.uniform1i(LLStaticHashedString("keyPerChannel"), 0); // WP-LENS supplies RGB/A coverage
+    shader.uniform1f(LLStaticHashedString("keyShadowStrength"), llclamp(strength(), 0.f, 0.85f));
+    llassert(mActorKeySceneFrame == gFrameCount);
+    mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+    shader.unbind();
+    ALActorChromaKey::provision(viewport[2], viewport[3]);
+    if (self_test) selfTestActorKey(invert); // before every overlay
+}
+
+void LLPipeline::selfTestActorKey(bool invert)
+{
+    // All storage was reserved in K0. Pack PBO and non-default read bindings must survive.
+    if (mActorKeyTestSerial + 1 != ALActorChromaKey::finalizeSerial()) mActorKeyTestFrames = 0;
+    mActorKeyTestSerial = ALActorChromaKey::finalizeSerial();
+    GLint read, buffer, pack, alignment, row, skip_rows, skip_pixels, swap_bytes;
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read); glGetIntegerv(GL_READ_BUFFER, &buffer);
+    glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pack); glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
+    glGetIntegerv(GL_PACK_ROW_LENGTH, &row); glGetIntegerv(GL_PACK_SKIP_ROWS, &skip_rows);
+    glGetIntegerv(GL_PACK_SKIP_PIXELS, &skip_pixels); glGetIntegerv(GL_PACK_SWAP_BYTES, &swap_bytes);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); glPixelStorei(GL_PACK_ALIGNMENT, 1); glPixelStorei(GL_PACK_SWAP_BYTES, GL_FALSE);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0); glPixelStorei(GL_PACK_SKIP_ROWS, 0); glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+    GLint draw_buffer, source_read;
+    glGetIntegerv(GL_DRAW_BUFFER0, &draw_buffer);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, mActorKeyDrawFBO); glGetIntegerv(GL_READ_BUFFER, &source_read);
+    glReadBuffer(draw_buffer);
+    glReadPixels(mActorKeyViewport[0], mActorKeyViewport[1], mActorKeyViewport[2], mActorKeyViewport[3],
+                 GL_RGBA, GL_FLOAT, mActorKeyTestOutput.data());
+    glReadBuffer(source_read);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, mActorKeyScene.getFBO());
+    glReadPixels(0, 0, mActorKeyViewport[2], mActorKeyViewport[3], GL_RGBA, GL_FLOAT, mActorKeyTestScene.data());
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, mActorKeyMatte.getFBO());
+    glReadPixels(0, 0, mActorKeyMatte.getWidth(), mActorKeyMatte.getHeight(), GL_RGBA, GL_FLOAT, mActorKeyTestMatte.data());
+    const bool valid = glGetError() == GL_NO_ERROR;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read); glReadBuffer(buffer);
+    glPixelStorei(GL_PACK_ALIGNMENT, alignment); glPixelStorei(GL_PACK_ROW_LENGTH, row);
+    glPixelStorei(GL_PACK_SKIP_ROWS, skip_rows); glPixelStorei(GL_PACK_SKIP_PIXELS, skip_pixels);
+    glPixelStorei(GL_PACK_SWAP_BYTES, swap_bytes); glBindBuffer(GL_PIXEL_PACK_BUFFER, pack);
+    const S32 w = mActorKeyViewport[2], h = mActorKeyViewport[3];
+    const S32 mw = mActorKeyMatte.getWidth(), mh = mActorKeyMatte.getHeight();
+    bool found[2] = {false, false}, pass = valid;
+    const LLColor3 colour = ALActorChromaKey::colour();
+    const S32 codes = mActorKeyScene.getInternalFormat() == GL_RGB10_A2 ? 1023 : 255;
+    for (S32 kind = 0; kind < 2; ++kind)
+    for (S32 y = 0; y + 16 <= h && !found[kind]; y += 16)
+    for (S32 x = 0; x + 16 <= w && !found[kind]; x += 16)
+    {
+        bool pure = true;
+        // Include bilinear neighbours, so a block adjacent to an edge cannot qualify.
+        for (S32 my = llmax(0, y*mh/h-1); my <= llmin(mh-1, (y+16)*mh/h+1); ++my)
+        for (S32 mx = llmax(0, x*mw/w-1); mx <= llmin(mw-1, (x+16)*mw/w+1); ++mx)
+        {
+            const size_t i = ((size_t)my*mw + mx)*4;
+            pure &= mActorKeyTestMatte[i] == (F32)kind && mActorKeyTestMatte[i+1] == 0.f;
+        }
+        if (!pure) continue;
+        found[kind] = true;
+        for (S32 py = y; py < y+16; ++py) for (S32 px = x; px < x+16; ++px)
+        for (S32 c = 0; c < 3; ++c)
+        {
+            const size_t i = ((size_t)py*w + px)*4+c;
+            F32 expected = ALActorChromaKey::mode() == 0 ? (kind ? mActorKeyTestScene[i] : colour.mV[c])
+                : ALActorChromaKey::mode() == 1 ? (kind ? colour.mV[c] : mActorKeyTestScene[i])
+                : (invert ? 1.f-kind : (F32)kind);
+            pass &= ll_round(expected*codes) == ll_round(mActorKeyTestOutput[i]*codes);
+        }
+    }
+    LL_INFOS("ActorKey") << "ACTORKEY SELFTEST " << (!valid || !found[0] || !found[1] ? "INCONCLUSIVE" : pass ? "PASS" : "FAIL")
+        << " frame=" << ++mActorKeyTestFrames << "/8 bits=" << (codes == 1023 ? 10 : 8)
+        << " set=" << found[0] << " actor=" << found[1] << LL_ENDL;
+    if (mActorKeyTestFrames >= 8) { mActorKeyTestFrames = 0; gSavedSettings.setU32("ActorKeySelfTest", 0); }
 }
 
 bool LLPipeline::ensureKeyCoverage()

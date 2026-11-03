@@ -72,9 +72,9 @@ class Fixture:
         assert g.fbo_status(0x8D40)==0x8CD5
         return (tex,fbo,size)
 
-    def draw(self, program, target, uniforms=(), textures=(), clear=False):
+    def draw(self, program, target, uniforms=(), textures=(), clear=False, origin=(0,0)):
         g=self.g; tex,fbo,(w,h)=target
-        g.bind_fbo(0x8D40,fbo); g.viewport(0,0,w,h); g.use(program)
+        g.bind_fbo(0x8D40,fbo); g.viewport(*origin,w,h); g.use(program)
         if clear: self.clear(0x1800,0,(g.F*4)(0,0,0,0))
         for name,value in uniforms:
             loc=g.loc(program,name.encode())
@@ -214,7 +214,106 @@ void main(){gl_Position=vec4(position,1);vary_position=position;vary_texcoord0=p
             g.disable(0x0C11)
     assert g.fn('glGetError',g.U)()==0
     print('PASS: W-K14 production virtual quad across actor, foreground/behind depth, scissor, beauty discard, modes 0/1/2; GL error=0',flush=True)
+    composite_checks(f)
     (OUT/'metrics.json').write_text(json.dumps(dict(renderer=g.renderer,remap=cases,coverage_union_byte=int(union[0,0])),indent=2))
+
+
+
+def composite_checks(f):
+    """Production late composite, real UNORM attachments. Dither starts ON per frame.
+
+    GL fixtures exercise the pixel law and explicit DRAW copy with independent
+    READ FBO/buffer, viewport origin and PBO. Viewer scheduling is a separate gate.
+    """
+    g=f.g
+    composite=f.program((SH/'alchemy/actorKeyCompositeF.glsl').read_text())
+    get=g.fn('glGetIntegerv',None,g.U,C.POINTER(g.I))
+    read_buffer=g.fn('glReadBuffer',None,g.U)
+    draw_buffer=g.fn('glDrawBuffer',None,g.U)
+    copy=g.fn('glCopyTexSubImage2D',None,g.U,g.I,g.I,g.I,g.I,g.I,g.I,g.I)
+    is_enabled=g.fn('glIsEnabled',C.c_ubyte,g.U)
+    def integer(p):
+        v=g.I();get(p,C.byref(v));return v.value
+    def read_codes(target,bits):
+        data=np.zeros((64,64,4),np.float32)
+        g.bind_fbo(0x8CA8,target[1]);read_buffer(0x8CE0)
+        g.read(7,9,64,64,0x1908,0x1406,data.ctypes.data)
+        return np.rint(data[...,:3]*((1<<bits)-1)).astype(np.int32)
+    rng=np.random.default_rng(20261102)
+    key=np.array([0,177,64],np.float32)/255
+    coverage=f.texture(np.zeros((64,64,4),np.float32),0x8814)
+    cases=0
+    f.vertices([[-1,-1,0],[3,-1,0],[-1,3,0]])
+    for fmt,bits in ((0x8058,8),(0x8059,10)):
+        codes=(1<<bits)-1
+        # Two attachments let the READ fixture retain COLOR_ATTACHMENT1.
+        target=f.target(fmt,(96,96)); other=f.target(fmt,(96,96))
+        extra=f.texture(None,fmt,(96,96));g.bind_fbo(0x8D40,other[1])
+        g.fbo_tex(0x8D40,0x8CE1,0x0DE1,extra,0);read_buffer(0x8CE1)
+        scene=f.texture(None,fmt,(64,64))
+        for frame in range(8):
+            source=rng.integers(0,codes+1,(96,96,4)).astype(np.float32)/codes
+            source[...,3]=1
+            g.active(0x84C0);g.bind_tex(0x0DE1,target[0])
+            g.teximage(0x0DE1,0,fmt,96,96,0,0x1908,0x1406,source.ctypes.data)
+            # Bind an unrelated read FBO/buffer and a pack buffer before the copy.
+            g.bind_fbo(0x8CA9,target[1]);draw_buffer(0x8CE0)
+            g.bind_fbo(0x8CA8,other[1]);read_buffer(0x8CE1)
+            pbo=g.U();g.gen_buf(1,C.byref(pbo));g.bind_buf(0x88EB,pbo)
+            g.buffer_data(0x88EB,64*64*16,None,0x88E1)
+            saved=(integer(0x8CAA),integer(0x0C02),integer(0x88ED))
+            # Same explicit source/read restoration as production actor_key_copy.
+            src_read=0x8CE0
+            g.bind_fbo(0x8CA8,target[1]);src_read=integer(0x0C02);read_buffer(0x8CE0)
+            g.bind_tex(0x0DE1,scene);copy(0x0DE1,0,0,0,7,9,64,64)
+            read_buffer(src_read);g.bind_fbo(0x8CA8,saved[0]);read_buffer(saved[1])
+            assert (integer(0x8CAA),integer(0x0C02),integer(0x88ED))==saved
+            g.bind_buf(0x88EB,0)
+            original=np.rint(source[9:73,7:71,:3]*codes).astype(np.int32)
+            for mode in range(3):
+                for m in ((0,0,0),(1,1,1),(1,0,0),(0,1,0),(0,0,1),(.25,.5,.75)):
+                    cover=np.zeros((64,64,4),np.float32);cover[...,:3]=m
+                    g.active(0x84C0);g.bind_tex(0x0DE1,coverage)
+                    g.teximage(0x0DE1,0,0x8814,64,64,0,0x1908,0x1406,cover.ctypes.data)
+                    f.enable(0x0BD0) # fixture starts with GL_DITHER enabled
+                    f.enable(0x8DB9)
+                    assert is_enabled(0x0BD0) and is_enabled(0x8DB9)
+                    g.disable(0x0BD0);g.disable(0x8DB9);g.disable(0x0BE2)
+                    assert not is_enabled(0x0BD0) and not is_enabled(0x8DB9)
+                    uniforms=[('keyScene',0),('keyCoverage',1),('keyOrigin',(7.,9.)),
+                              ('keyColour',tuple(float(v) for v in key)),('keyMode',mode),
+                              ('keyInvert',0),('keyHard',0),('keyMatteShadow',0),
+                              ('keyShadowStrength',1.),('keyPerChannel',1)]
+                    f.draw(composite,(target[0],target[1],(64,64)),uniforms,[scene,coverage],origin=(7,9))
+                    result=read_codes(target,bits)
+                    cv=np.array(m,np.float32)
+                    expected=(key*(1-cv)+source[9:73,7:71,:3]*cv if mode==0 else
+                              source[9:73,7:71,:3]*(1-cv)+key*cv if mode==1 else cv)
+                    expected=np.broadcast_to(np.rint(expected*codes).astype(np.int32),result.shape)
+                    assert np.max(np.abs(result-expected)) <= (0 if all(v in (0,1) for v in m) else 1), (bits,frame,mode,m,int(np.max(np.abs(result-expected))))
+                    if mode==0 and m==(1,1,1):assert np.array_equal(result,original),'actor round trip'
+                    if mode==0 and m==(0,0,0):assert np.all(result==np.rint(key*codes).astype(int)), 'non-flat key'
+                    if mode==0 and m==(0,0,0):
+                        byte_pixels=np.zeros((64,64,4),np.uint8)
+                        g.read(7,9,64,64,0x1908,0x1401,byte_pixels.ctypes.data)
+                        assert np.all(byte_pixels[...,:3]==(0,177,64)), '8-bit capture codes'
+
+                    f.enable(0x0BD0);f.enable(0x8DB9) # scoped state restored
+                    cases+=1
+        print(f'PASS WP2: {bits}-bit exact/flat 64x64 blocks x8 frames; three modes; actor round trip; RGB one-hot varied S; DRAW/READ/PBO/origin',flush=True)
+    # SRGB-LEAK: deliberately omit the sRGB disable on an SRGB8_ALPHA8 target.
+    srgb=f.target(0x8C43,(96,96));zero=np.zeros((64,64,4),np.float32)
+    g.active(0x84C0);g.bind_tex(0x0DE1,coverage);g.teximage(0x0DE1,0,0x8814,64,64,0,0x1908,0x1406,zero.ctypes.data)
+    uniforms=[('keyScene',0),('keyCoverage',1),('keyOrigin',(7.,9.)),('keyColour',tuple(float(v) for v in key)),('keyMode',0),('keyPerChannel',1)]
+    g.disable(0x0BD0);f.enable(0x8DB9)
+    f.draw(composite,(srgb[0],srgb[1],(64,64)),uniforms,[scene,coverage],origin=(7,9))
+    leaked=read_codes(srgb,8)
+    assert not np.all(leaked==np.rint(key*255).astype(int)),'SRGB-LEAK negative control escaped'
+    g.disable(0x8DB9)
+    f.draw(composite,(srgb[0],srgb[1],(64,64)),uniforms,[scene,coverage],origin=(7,9))
+    assert np.all(read_codes(srgb,8)==np.rint(key*255).astype(int))
+    print(f'PASS WP2: SRGB-LEAK instrument detects double encoding; scoped disable fixes it; {cases} numeric cases',flush=True)
+    assert g.fn('glGetError',g.U)()==0
 
 
 if __name__=='__main__':
