@@ -200,18 +200,18 @@ All 3080 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llspinctrl.h@65,9`
 - `indra/llui/llspinctrl.h@111,7`
 - `indra/llui/llspinctrl.h@128,8`
-- `indra/newview/CMakeLists.txt@2,8`
-- `indra/newview/CMakeLists.txt@120,28`
-- `indra/newview/CMakeLists.txt@275,24`
-- `indra/newview/CMakeLists.txt@527,7`
-- `indra/newview/CMakeLists.txt@821,8`
-- `indra/newview/CMakeLists.txt@1233,20`
-- `indra/newview/CMakeLists.txt@1534,7`
-- `indra/newview/CMakeLists.txt@1821,8`
-- `indra/newview/CMakeLists.txt@2347,7`
-- `indra/newview/CMakeLists.txt@2627,38`
-- `indra/newview/CMakeLists.txt@2722,7`
-- `indra/newview/CMakeLists.txt@2762,7`
+- `indra/newview/CMakeLists.txt@2,7`
+- `indra/newview/CMakeLists.txt@119,28`
+- `indra/newview/CMakeLists.txt@274,24`
+- `indra/newview/CMakeLists.txt@526,7`
+- `indra/newview/CMakeLists.txt@820,8`
+- `indra/newview/CMakeLists.txt@1232,20`
+- `indra/newview/CMakeLists.txt@1533,7`
+- `indra/newview/CMakeLists.txt@1820,8`
+- `indra/newview/CMakeLists.txt@2346,7`
+- `indra/newview/CMakeLists.txt@2626,38`
+- `indra/newview/CMakeLists.txt@2721,7`
+- `indra/newview/CMakeLists.txt@2761,7`
 - `indra/newview/app_settings/settings.xml@22494,10`
 - `indra/newview/app_settings/settings.xml@23370,21`
 - `indra/newview/app_settings/settings.xml@23843,10`
@@ -575,42 +575,42 @@ All 3080 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.cpp@1304,16`
 - `indra/newview/pipeline.cpp@1484,48`
 - `indra/newview/pipeline.cpp@1542,13`
-- `indra/newview/pipeline.cpp@31703,11`
-- `indra/newview/pipeline.cpp@31741,13`
-- `indra/newview/pipeline.cpp@31766,32`
-- `indra/newview/pipeline.cpp@32262,6`
-- `indra/newview/pipeline.cpp@33322,7`
-- `indra/newview/pipeline.cpp@33350,13`
-- `indra/newview/pipeline.cpp@33384,15`
-- `indra/newview/pipeline.cpp@33708,7`
-- `indra/newview/pipeline.cpp@33716,11`
-- `indra/newview/pipeline.cpp@35221,69`
-- `indra/newview/pipeline.cpp@35301,9`
-- `indra/newview/pipeline.cpp@35332,7`
-- `indra/newview/pipeline.cpp@35340,19`
-- `indra/newview/pipeline.cpp@35360,11`
-- `indra/newview/pipeline.cpp@35376,7`
-- `indra/newview/pipeline.cpp@35388,15`
-- `indra/newview/pipeline.cpp@35411,7`
-- `indra/newview/pipeline.cpp@35422,15`
-- `indra/newview/pipeline.cpp@35449,7`
-- `indra/newview/pipeline.cpp@35465,7`
-- `indra/newview/pipeline.cpp@36126,43`
-- `indra/newview/pipeline.cpp@36257,7`
-- `indra/newview/pipeline.cpp@36268,8`
-- `indra/newview/pipeline.cpp@36284,41`
-- `indra/newview/pipeline.cpp@36410,54`
-- `indra/newview/pipeline.cpp@36580,9`
-- `indra/newview/pipeline.cpp@36645,265`
-- `indra/newview/pipeline.cpp@36930,9`
-- `indra/newview/pipeline.cpp@36957,34`
-- `indra/newview/pipeline.cpp@37003,11`
-- `indra/newview/pipeline.cpp@37076,7`
-- `indra/newview/pipeline.cpp@37114,18`
-- `indra/newview/pipeline.cpp@37159,8`
-- `indra/newview/pipeline.cpp@37190,8`
-- `indra/newview/pipeline.cpp@37210,18`
-- `indra/newview/pipeline.cpp@39449,15`
+- `indra/newview/pipeline.cpp@31702,11`
+- `indra/newview/pipeline.cpp@31740,13`
+- `indra/newview/pipeline.cpp@31765,32`
+- `indra/newview/pipeline.cpp@32261,6`
+- `indra/newview/pipeline.cpp@33321,7`
+- `indra/newview/pipeline.cpp@33349,13`
+- `indra/newview/pipeline.cpp@33383,15`
+- `indra/newview/pipeline.cpp@33707,7`
+- `indra/newview/pipeline.cpp@33715,11`
+- `indra/newview/pipeline.cpp@35220,69`
+- `indra/newview/pipeline.cpp@35300,9`
+- `indra/newview/pipeline.cpp@35331,7`
+- `indra/newview/pipeline.cpp@35339,19`
+- `indra/newview/pipeline.cpp@35359,11`
+- `indra/newview/pipeline.cpp@35375,7`
+- `indra/newview/pipeline.cpp@35387,15`
+- `indra/newview/pipeline.cpp@35410,7`
+- `indra/newview/pipeline.cpp@35421,15`
+- `indra/newview/pipeline.cpp@35448,7`
+- `indra/newview/pipeline.cpp@35464,7`
+- `indra/newview/pipeline.cpp@36125,43`
+- `indra/newview/pipeline.cpp@36256,7`
+- `indra/newview/pipeline.cpp@36267,8`
+- `indra/newview/pipeline.cpp@36283,41`
+- `indra/newview/pipeline.cpp@36409,54`
+- `indra/newview/pipeline.cpp@36579,9`
+- `indra/newview/pipeline.cpp@36644,265`
+- `indra/newview/pipeline.cpp@36929,9`
+- `indra/newview/pipeline.cpp@36956,34`
+- `indra/newview/pipeline.cpp@37002,11`
+- `indra/newview/pipeline.cpp@37075,7`
+- `indra/newview/pipeline.cpp@37113,18`
+- `indra/newview/pipeline.cpp@37158,8`
+- `indra/newview/pipeline.cpp@37189,8`
+- `indra/newview/pipeline.cpp@37209,18`
+- `indra/newview/pipeline.cpp@39448,15`
 - `indra/newview/pipeline.h@1071,7`
 - `indra/newview/pipeline.h@1087,7`
 - `indra/newview/pipeline.h@2334,18`
@@ -1756,42 +1756,42 @@ All 3080 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llspinctrl.cpp@580,3`: unknown/non-function (bool LLSpinCtrl::handleKeyHere(KEY key, MASK mask))
 - `indra/llui/llspinctrl.h@111,7`: unknown/non-function (public:)
 - `indra/llui/llspinctrl.h@128,8`: unknown/non-function (private:)
-- `indra/newview/CMakeLists.txt@2,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/CMakeLists.txt@120,28`: unknown/non-function (execute_process()
-- `indra/newview/CMakeLists.txt@172,13`: unknown/non-function (endif ())
-- `indra/newview/CMakeLists.txt@188,53`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@243,11`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@275,24`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@335,117`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@527,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@556,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@654,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@665,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@821,8`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@897,11`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@911,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1104,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1123,13`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1138,56`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1196,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1233,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1290,167`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1534,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1563,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1665,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1676,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1821,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1892,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1908,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2107,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2347,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2627,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2722,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2762,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2851,32`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2889,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2957,185`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3203,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/CMakeLists.txt@119,28`: unknown/non-function (execute_process()
+- `indra/newview/CMakeLists.txt@171,13`: unknown/non-function (endif ())
+- `indra/newview/CMakeLists.txt@187,53`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@242,11`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@274,24`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@334,117`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@526,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@555,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@653,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@664,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@820,8`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@896,11`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@910,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1103,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1122,13`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1137,56`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1195,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1232,20`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1289,167`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1533,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1562,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1664,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1675,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1820,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1891,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1907,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2106,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2346,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2626,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2721,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2761,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2850,32`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2888,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2956,185`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3202,40`: unknown/non-function (if (BUILD_TESTING))
 - `indra/newview/app_settings/settings.xml@2,3458`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3461,1044`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@4506,839`: unknown/non-function (declaration, XML, build list or global scope)

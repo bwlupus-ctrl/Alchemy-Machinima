@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2626 classified paths.
+`inventory.csv` / `inventory.json` contain 2615 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -68,20 +68,20 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [common-ui](features/common-ui.md) | 1 | 85 | 23 | 5 |
 | [director-shell](features/director-shell.md) | 2 | 312 | 55 | 200 |
 | [actor-bar](features/actor-bar.md) | 3 | 65 | 14 | 0 |
-| [actor-path](features/actor-path.md) | 3 | 105 | 34 | 34 |
+| [actor-path](features/actor-path.md) | 3 | 104 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 77 | 31 | 492 |
 | [composition](features/composition.md) | 3 | 41 | 23 | 12 |
 | [gaze](features/gaze.md) | 3 | 56 | 23 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 27 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 177 | 80 | 82 |
-| [crowd](features/crowd.md) | 4 | 49 | 10 | 19 |
+| [clones](features/clones.md) | 4 | 178 | 80 | 82 |
+| [crowd](features/crowd.md) | 4 | 48 | 10 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 227 |
-| [capture-sidecar](features/capture-sidecar.md) | 6 | 75 | 58 | 17 |
+| [capture-sidecar](features/capture-sidecar.md) | 6 | 68 | 58 | 17 |
 | [rig](features/rig.md) | 7 | 170 | 56 | 250 |
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 62 | 24 | 104 |
 | [tracking](features/tracking.md) | 7 | 9 | 17 | 0 |
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
-| [weather](features/weather.md) | 8 | 61 | 40 | 104 |
+| [weather](features/weather.md) | 8 | 58 | 40 | 104 |
 | [vcam](features/vcam.md) | 9 | 91 | 43 | 30 |
 | [looks](features/looks.md) | 10 | 137 | 128 | 99 |
 | [sensor](features/sensor.md) | 10 | 101 | 56 | 60 |

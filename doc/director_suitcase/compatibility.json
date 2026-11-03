@@ -282,15 +282,6 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alactorchromakey.cpp",
-    "dependency": "indra/newview/llreshadebridge.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alactorchromakey.cpp",
     "dependency": "indra/newview/alactorkeyui.h",
     "excluded": false,
     "origin": "fork-added",
@@ -3694,15 +3685,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelactorkey.cpp",
     "dependency": "indra/newview/alkitrow.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alpanelactorkey.cpp",
-    "dependency": "indra/newview/llreshadebridge.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -10128,24 +10110,6 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llreshadebridge.cpp",
-    "dependency": "indra/newview/alactorchromakey.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llreshadebridge.cpp",
-    "dependency": "reshade-addon/src/sl_module_watch.hpp",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llreshadebridge.cpp",
     "dependency": "indra/newview/alcameradispatch.h",
     "excluded": false,
     "origin": "fork-added",
@@ -10156,15 +10120,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/llreshadebridge.cpp",
     "dependency": "indra/newview/aldirectorswitcher.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llreshadebridge.h",
-    "dependency": "reshade-addon/src/sl_key_guard.hpp",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -12566,60 +12521,6 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_key_bracket.hpp",
-    "dependency": "reshade-addon/src/sl_key_guard.hpp",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_key_guard.hpp",
-    "dependency": "indra/newview/llreshadebridgeabi.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_key_guard_events.inl",
-    "dependency": "reshade-addon/src/sl_key_bracket.hpp",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_key_guard_events.inl",
-    "dependency": "reshade-addon/src/sl_key_whitelist.hpp",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_key_whitelist.hpp",
-    "dependency": "reshade-addon/src/sl_module_watch.hpp",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_module_watch.hpp",
-    "dependency": "reshade-addon/src/sl_key_guard.hpp",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
     "consumer": "reshade-addon/src/sl_reshade_bridge.cpp",
     "dependency": "reshade-addon/external/reshade/reshade.hpp",
     "excluded": false,
@@ -12640,15 +12541,6 @@
     "class": "OWNED",
     "consumer": "reshade-addon/src/sl_reshade_bridge.cpp",
     "dependency": "indra/newview/llreshadebridgeabi.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/src/sl_reshade_bridge.cpp",
-    "dependency": "reshade-addon/src/sl_key_guard_events.inl",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -518,12 +518,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -616,8 +616,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31818,372"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31817,372"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -717,7 +717,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -738,7 +737,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -772,8 +770,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -8924,7 +8921,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -10370,12 +10366,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 913,
-        "source": "indra/newview/llreshadebridge.cpp",
-        "text": "llreshadebridge.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 1911,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
@@ -10531,14 +10521,14 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@172,13",
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1123,13",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@171,13",
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1122,13",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -10668,8 +10658,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@161,12",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@32805,154"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@32804,154"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -10911,7 +10901,6 @@
       "indra/newview/llpathcamera.cpp",
       "indra/newview/llpathcamera.h",
       "indra/newview/llprismlens.cpp",
-      "indra/newview/llreshadebridge.cpp",
       "indra/newview/llreshadebridgeabi.h",
       "indra/newview/skins/default/xui/en/floater_actor_mover.xml",
       "indra/newview/skins/default/xui/en/floater_animation_explorer.xml",
@@ -11206,7 +11195,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -11227,7 +11215,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -11261,8 +11248,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -12570,7 +12556,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -12605,7 +12590,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -17755,57 +17739,6 @@
         ],
         "unresolved_includes": []
       },
-      "indra/newview/llreshadebridge.cpp": {
-        "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
-          "indra/newview/alcameradispatch.h",
-          "indra/newview/aldirectorswitcher.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llappviewer.h",
-          "indra/newview/llreshadebridge.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerdisplay.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
-        ],
-        "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
-          "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::LLReShadeBridge",
-          "LLReShadeBridge::detectCameraCut",
-          "LLReShadeBridge::gatherFrame",
-          "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
-          "LLReShadeBridge::noteCameraCut",
-          "LLReShadeBridge::noteMotionCoverage",
-          "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
-          "LLReShadeBridge::noteResetEvent",
-          "LLReShadeBridge::noteSurfaceCoverageResolved",
-          "LLReShadeBridge::noteSurfaceCoverageSeeded",
-          "LLReShadeBridge::noteTeleport",
-          "LLReShadeBridge::noteVisibleDiffuseResolved",
-          "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
-          "LLTimer::getTotalSeconds",
-          "LLViewerCamera::getInstance",
-          "LLViewerShaderMgr::gbufferAvatarTagActive"
-        ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
-      },
       "indra/newview/llreshadebridgeabi.h": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -20575,7 +20508,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -22448,16 +22380,16 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@243,11",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1196,13",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2889,20",
-          "indra/newview/CMakeLists.txt@2957,185",
-          "indra/newview/CMakeLists.txt@3203,40"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@242,11",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1195,13",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2888,20",
+          "indra/newview/CMakeLists.txt@2956,185",
+          "indra/newview/CMakeLists.txt@3202,40"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -22626,7 +22558,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,29928"
+          "indra/newview/pipeline.cpp@1701,29927"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -28858,8 +28790,6 @@
       },
       "indra/newview/llreshadebridge.cpp": {
         "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
           "indra/newview/alcameradispatch.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
@@ -28870,42 +28800,28 @@
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
+          "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
           "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
           "LLReShadeBridge::LLReShadeBridge",
           "LLReShadeBridge::detectCameraCut",
           "LLReShadeBridge::gatherFrame",
           "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
           "LLReShadeBridge::noteCameraCut",
           "LLReShadeBridge::noteMotionCoverage",
           "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
           "LLReShadeBridge::noteResetEvent",
           "LLReShadeBridge::noteSurfaceCoverageResolved",
           "LLReShadeBridge::noteSurfaceCoverageSeeded",
           "LLReShadeBridge::noteTeleport",
           "LLReShadeBridge::noteVisibleDiffuseResolved",
           "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
           "LLTimer::getTotalSeconds",
           "LLViewerCamera::getInstance",
           "LLViewerShaderMgr::gbufferAvatarTagActive"
         ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
+        "unresolved_includes": []
       },
       "indra/newview/llscenemonitor.cpp": {
         "includes": [
@@ -32214,7 +32130,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -33431,12 +33346,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 1295,
-        "source": "indra/newview/alactorchromakey.h",
-        "text": "alactorchromakey.h"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 340,
         "source": "indra/newview/alactormaskdiagnostics.cpp",
         "text": "alactormaskdiagnostics.cpp # [ActorMask] WP7"
@@ -33488,12 +33397,6 @@
         "line": 343,
         "source": "indra/newview/alghostmaterialresolver.cpp",
         "text": "alghostmaterialresolver.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 426,
-        "source": "indra/newview/alpanelactorkey.cpp",
-        "text": "alpanelactorkey.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -33761,12 +33664,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 643,
-        "source": "indra/newview/llfloatersnapshot.cpp",
-        "text": "llfloatersnapshot.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 667,
         "source": "indra/newview/llghostavatar.cpp",
         "text": "llghostavatar.cpp"
@@ -33842,12 +33739,6 @@
         "line": 1930,
         "source": "indra/newview/llselectmgr.h",
         "text": "llselectmgr.h"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 943,
-        "source": "indra/newview/llsnapshotlivepreview.cpp",
-        "text": "llsnapshotlivepreview.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -34026,7 +33917,6 @@
     ],
     "generated_runtime": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "reshade-addon/LAUNCHPAD_INTEGRATION.md",
       "reshade-addon/README.md"
@@ -34034,10 +33924,10 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@911,7",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@1908,8"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@910,7",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@1907,8"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -34151,10 +34041,10 @@
           "indra/newview/pipeline.cpp@1371,61",
           "indra/newview/pipeline.cpp@1436,15",
           "indra/newview/pipeline.cpp@1564,106",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31818,372",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@32960,331"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31817,372",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@32959,331"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -34454,7 +34344,6 @@
     "layer": 6,
     "owned": [
       "indra/newview/alactorchromakey.cpp",
-      "indra/newview/alactorchromakey.h",
       "indra/newview/alactormaskdiagnostics.cpp",
       "indra/newview/alcinecamobjectlock.h",
       "indra/newview/alcolorchart.cpp",
@@ -34463,7 +34352,6 @@
       "indra/newview/alfloatertemporalcapture.h",
       "indra/newview/alghostmanipproxy.cpp",
       "indra/newview/alghostmaterialresolver.cpp",
-      "indra/newview/alpanelactorkey.cpp",
       "indra/newview/alpaneltemporalcapture.cpp",
       "indra/newview/alpaneltemporalcapture.h",
       "indra/newview/alpovblink.cpp",
@@ -34520,11 +34408,6 @@
       "reshade-addon/shaders/SL_BridgeDebug.fx",
       "reshade-addon/shaders/SL_GBufferProvider.fx",
       "reshade-addon/src/sl_depth_pin.hpp",
-      "reshade-addon/src/sl_key_bracket.hpp",
-      "reshade-addon/src/sl_key_guard.hpp",
-      "reshade-addon/src/sl_key_guard_events.inl",
-      "reshade-addon/src/sl_key_whitelist.hpp",
-      "reshade-addon/src/sl_module_watch.hpp",
       "reshade-addon/src/sl_reshade_bridge.cpp",
       "reshade-addon/tools/graft_launchpad_v4.py",
       "reshade-addon/tools/patch_dof_v4.py"
@@ -35909,7 +35792,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -35930,7 +35812,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -35964,18 +35845,8 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
-        "unresolved_includes": []
-      },
-      "indra/newview/alactorchromakey.h": {
-        "includes": [
-          "indra/llcommon/lluuid.h",
-          "indra/llmath/v3color.h",
-          "indra/newview/alactorkeyset.h"
-        ],
-        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/alactormaskdiagnostics.cpp": {
@@ -36282,61 +36153,6 @@
           "ALGhostMaterialResolver::verifyBindings",
           "LLLocalGLTFMaterialMgr::getInstance",
           "LLLocalGLTFMaterialMgr::instanceExists"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/alpanelactorkey.cpp": {
-        "includes": [
-          "indra/llcharacter/llcharacter.h",
-          "indra/llrender/llfontgl.h",
-          "indra/llrender/llglslshader.h",
-          "indra/llui/llbutton.h",
-          "indra/llui/llnotificationsutil.h",
-          "indra/llui/lltextbox.h",
-          "indra/newview/alactorchromakey.h",
-          "indra/newview/alactorkeyui.h",
-          "indra/newview/alghoststudio.h",
-          "indra/newview/alkitpage.h",
-          "indra/newview/alkitrow.h",
-          "indra/newview/alpanelactorkey.h",
-          "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h",
-          "indra/newview/llviewerwindow.h",
-          "indra/newview/llvisualeffect.h",
-          "indra/newview/llvoavatar.h",
-          "indra/newview/pipeline.h"
-        ],
-        "qualified_call_candidates": [
-          "ALActorChromaKey::alphaMatte",
-          "ALActorChromaKey::colour",
-          "ALActorChromaKey::instanceKeyed",
-          "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyedThisFrame",
-          "ALActorChromaKey::mode",
-          "ALActorChromaKey::reason",
-          "ALActorChromaKey::revision",
-          "ALActorKeyUI::drawBadge",
-          "ALActorKeyUI::initialize",
-          "ALActorKeyUI::recordSelfTest",
-          "ALActorKeyUI::shadowStatus",
-          "ALActorKeyUI::shadowTestUnavailable",
-          "ALGhostStudio::instance",
-          "ALPanelActorKey::draw",
-          "ALPanelActorKey::onVisibilityChange",
-          "ALPanelActorKey::postBuild",
-          "ALPanelActorKey::refreshReadouts",
-          "ALPanelActorKey::updateConditions",
-          "LLActorMover::actorMaskAvatarEligible",
-          "LLFontGL::getFontSansSerifSmall",
-          "LLNotificationsUtil::add",
-          "LLPanel::draw",
-          "LLPanel::onVisibilityChange",
-          "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
-          "LLVfxManager::instance"
         ],
         "unresolved_includes": []
       },
@@ -39686,81 +39502,6 @@
         ],
         "unresolved_includes": []
       },
-      "indra/newview/llfloatersnapshot.cpp": {
-        "includes": [
-          "indra/llcommon/llsdserialize.h",
-          "indra/llui/llcheckboxctrl.h",
-          "indra/llui/llcombobox.h",
-          "indra/llui/llfloaterreg.h",
-          "indra/llui/llresmgr.h",
-          "indra/llui/llspinctrl.h",
-          "indra/newview/alactorchromakey.h",
-          "indra/newview/llfloaterbigpreview.h",
-          "indra/newview/llfloatersnapshot.h",
-          "indra/newview/llimagefiltersmanager.h",
-          "indra/newview/llpostcard.h",
-          "indra/newview/llsidetraypanelcontainer.h",
-          "indra/newview/llsnapshotlivepreview.h",
-          "indra/newview/lltoolfocus.h",
-          "indra/newview/lltoolmgr.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llwebprofile.h"
-        ],
-        "qualified_call_candidates": [
-          "ALActorChromaKey::snapshotPlaceholder",
-          "LLFloater::draw",
-          "LLFloaterReg::getInstance",
-          "LLFloaterReg::hideInstance",
-          "LLFloaterReg::showInstance",
-          "LLFloaterSnapshot::LLFloaterSnapshot",
-          "LLFloaterSnapshot::attachPreview",
-          "LLFloaterSnapshot::findInstance",
-          "LLFloaterSnapshot::getInstance",
-          "LLFloaterSnapshot::isPreviewVisible",
-          "LLFloaterSnapshot::isWaitingState",
-          "LLFloaterSnapshot::notify",
-          "LLFloaterSnapshot::on360Snapshot",
-          "LLFloaterSnapshot::onClickBigPreview",
-          "LLFloaterSnapshot::onClose",
-          "LLFloaterSnapshot::onExtendFloater",
-          "LLFloaterSnapshot::onOpen",
-          "LLFloaterSnapshot::postBuild",
-          "LLFloaterSnapshot::saveLocal",
-          "LLFloaterSnapshot::saveTexture",
-          "LLFloaterSnapshot::setAgentEmail",
-          "LLFloaterSnapshot::update",
-          "LLFloaterSnapshotBase::LLFloaterSnapshotBase",
-          "LLFloaterSnapshotBase::draw",
-          "LLFloaterSnapshotBase::getImageData",
-          "LLFloaterSnapshotBase::getPosTakenGlobal",
-          "LLFloaterSnapshotBase::getPreviewView",
-          "LLFloaterSnapshotBase::inventorySaveFailed",
-          "LLFloaterSnapshotBase::notify",
-          "LLFloaterSnapshotBase::onClose",
-          "LLFloaterSnapshotBase::postPanelSwitch",
-          "LLFloaterSnapshotBase::postSave",
-          "LLFloaterView::handleHover",
-          "LLFloaterView::handleKey",
-          "LLFloaterView::handleMouseDown",
-          "LLFloaterView::handleMouseUp",
-          "LLImageFiltersManager::getInstance",
-          "LLPostCard::setPostResultCallback",
-          "LLResMgr::getInstance",
-          "LLSDSerialize::fromNotation",
-          "LLSnapshotFloaterView::LLSnapshotFloaterView",
-          "LLSnapshotFloaterView::handleHover",
-          "LLSnapshotFloaterView::handleKey",
-          "LLSnapshotFloaterView::handleMouseDown",
-          "LLSnapshotFloaterView::handleMouseUp",
-          "LLSnapshotLivePreview::onIdle",
-          "LLToolMgr::getInstance",
-          "LLUI::translate",
-          "LLUIColorTable::instance",
-          "LLWebProfile::setImageUploadResultCallback"
-        ],
-        "unresolved_includes": []
-      },
       "indra/newview/llghostavatar.cpp": {
         "includes": [
           "indra/llcharacter/llanimationstates.h",
@@ -40565,8 +40306,6 @@
       },
       "indra/newview/llreshadebridge.cpp": {
         "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
           "indra/newview/alcameradispatch.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
@@ -40577,49 +40316,34 @@
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
+          "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
           "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
           "LLReShadeBridge::LLReShadeBridge",
           "LLReShadeBridge::detectCameraCut",
           "LLReShadeBridge::gatherFrame",
           "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
           "LLReShadeBridge::noteCameraCut",
           "LLReShadeBridge::noteMotionCoverage",
           "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
           "LLReShadeBridge::noteResetEvent",
           "LLReShadeBridge::noteSurfaceCoverageResolved",
           "LLReShadeBridge::noteSurfaceCoverageSeeded",
           "LLReShadeBridge::noteTeleport",
           "LLReShadeBridge::noteVisibleDiffuseResolved",
           "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
           "LLTimer::getTotalSeconds",
           "LLViewerCamera::getInstance",
           "LLViewerShaderMgr::gbufferAvatarTagActive"
         ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
+        "unresolved_includes": []
       },
       "indra/newview/llreshadebridge.h": {
         "includes": [
           "indra/llmath/v3dmath.h",
           "indra/llmath/v3math.h",
-          "indra/newview/llreshadebridgeabi.h",
-          "reshade-addon/src/sl_key_guard.hpp"
+          "indra/newview/llreshadebridgeabi.h"
         ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -40709,92 +40433,6 @@
           "LLObjectSelection::getSelectedTEValue",
           "LLObjectSelection::isMultipleTEValue",
           "LLSelectMgr::getInstance"
-        ],
-        "unresolved_includes": []
-      },
-      "indra/newview/llsnapshotlivepreview.cpp": {
-        "includes": [
-          "indra/llfilesystem/llfilesystem.h",
-          "indra/llimage/llimageavif.h",
-          "indra/llimage/llimagebmp.h",
-          "indra/llimage/llimagefilter.h",
-          "indra/llimage/llimagej2c.h",
-          "indra/llimage/llimagejpeg.h",
-          "indra/llimage/llimagepng.h",
-          "indra/llimage/llimagewebp.h",
-          "indra/llui/llcombobox.h",
-          "indra/llui/llfloaterreg.h",
-          "indra/llui/lllocalcliprect.h",
-          "indra/llui/llnotificationsutil.h",
-          "indra/llui/llresmgr.h",
-          "indra/llwindow/llwindow.h",
-          "indra/newview/alactorchromakey.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llagentbenefits.h",
-          "indra/newview/llagentcamera.h",
-          "indra/newview/llagentui.h",
-          "indra/newview/llfloaterperms.h",
-          "indra/newview/llimagefiltersmanager.h",
-          "indra/newview/lllandmarkactions.h",
-          "indra/newview/llslurl.h",
-          "indra/newview/llsnapshotlivepreview.h",
-          "indra/newview/lltoolfocus.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewermenufile.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewerstats.h",
-          "indra/newview/llviewertexturelist.h",
-          "indra/newview/llworld.h"
-        ],
-        "qualified_call_candidates": [
-          "ALActorChromaKey::explicitSnapshotRequest",
-          "ALActorChromaKey::finalizeSerial",
-          "ALActorChromaKey::revision",
-          "ALActorChromaKey::snapshotPlaceholder",
-          "ALActorChromaKey::snapshotRequestExplicit",
-          "LLAgentBenefitsMgr::current",
-          "LLAgentUI::buildFullname",
-          "LLAgentUI::buildLocationString",
-          "LLCriticalDamp::getInterpolant",
-          "LLFloaterPerms::getEveryonePerms",
-          "LLFloaterPerms::getGroupPerms",
-          "LLImageFiltersManager::getInstance",
-          "LLImageRaw::biasedDimToPowerOfTwo",
-          "LLNotificationsUtil::add",
-          "LLSnapshotLivePreview::LLSnapshotLivePreview",
-          "LLSnapshotLivePreview::createUploadFile",
-          "LLSnapshotLivePreview::draw",
-          "LLSnapshotLivePreview::drawPreviewRect",
-          "LLSnapshotLivePreview::estimateDataSize",
-          "LLSnapshotLivePreview::generateThumbnailImage",
-          "LLSnapshotLivePreview::getBigThumbnailImage",
-          "LLSnapshotLivePreview::getCurrentImage",
-          "LLSnapshotLivePreview::getEncodedImage",
-          "LLSnapshotLivePreview::getEncodedImageHeight",
-          "LLSnapshotLivePreview::getEncodedImageWidth",
-          "LLSnapshotLivePreview::getFormattedImage",
-          "LLSnapshotLivePreview::getImageAspect",
-          "LLSnapshotLivePreview::getSize",
-          "LLSnapshotLivePreview::getSnapshotUpToDate",
-          "LLSnapshotLivePreview::keyCaptureCurrent",
-          "LLSnapshotLivePreview::onIdle",
-          "LLSnapshotLivePreview::prepareFreezeFrame",
-          "LLSnapshotLivePreview::reshape",
-          "LLSnapshotLivePreview::saveLocal",
-          "LLSnapshotLivePreview::saveTexture",
-          "LLSnapshotLivePreview::setMaxImageSize",
-          "LLSnapshotLivePreview::setSize",
-          "LLSnapshotLivePreview::setSnapshotFormat",
-          "LLSnapshotLivePreview::setSnapshotQuality",
-          "LLSnapshotLivePreview::setThumbnailImageSize",
-          "LLSnapshotLivePreview::updateSnapshot",
-          "LLSnapshotModel::ESnapshotFormat",
-          "LLToolCamera::getInstance",
-          "LLView::isAvailable",
-          "LLView::reshape",
-          "LLViewerCamera::getInstance",
-          "LLViewerTextureList::createUploadFile",
-          "LLViewerTextureManager::getLocalTexture"
         ],
         "unresolved_includes": []
       },
@@ -43280,7 +42918,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -44234,11 +43871,6 @@
         ],
         "unresolved_includes": []
       },
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -44334,53 +43966,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
-      "reshade-addon/src/sl_key_bracket.hpp": {
-        "includes": [
-          "reshade-addon/src/sl_key_guard.hpp"
-        ],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "reshade-addon/src/sl_key_guard.hpp": {
-        "includes": [
-          "indra/newview/llreshadebridgeabi.h"
-        ],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "reshade-addon/src/sl_key_guard_events.inl": {
-        "includes": [
-          "reshade-addon/src/sl_key_bracket.hpp",
-          "reshade-addon/src/sl_key_whitelist.hpp"
-        ],
-        "qualified_call_candidates": [],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
-      },
-      "reshade-addon/src/sl_key_whitelist.hpp": {
-        "includes": [
-          "reshade-addon/src/sl_module_watch.hpp"
-        ],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "reshade-addon/src/sl_module_watch.hpp": {
-        "includes": [
-          "reshade-addon/src/sl_key_guard.hpp"
-        ],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
       "reshade-addon/src/sl_reshade_bridge.cpp": {
         "includes": [
           "indra/newview/llreshadebridgeabi.h",
           "reshade-addon/external/reshade/reshade.hpp",
-          "reshade-addon/src/sl_depth_pin.hpp",
-          "reshade-addon/src/sl_key_guard_events.inl"
+          "reshade-addon/src/sl_depth_pin.hpp"
         ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -44404,7 +43994,6 @@
       "indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml",
       "indra/newview/skins/default/xui/en/floater_temporal_capture.xml",
       "indra/newview/skins/default/xui/en/menu_viewer.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml"
     ]
@@ -44575,6 +44164,12 @@
         "line": 339,
         "source": "indra/newview/alactorchromakey.cpp",
         "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1295,
+        "source": "indra/newview/alactorchromakey.h",
+        "text": "alactorchromakey.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -46008,12 +45603,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@665,7",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@1676,7",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@664,7",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@1675,7",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -46241,13 +45836,13 @@
           "indra/newview/pipeline.cpp@125,11",
           "indra/newview/pipeline.cpp@141,14",
           "indra/newview/pipeline.cpp@161,12",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@32593,180",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@33426,222",
-          "indra/newview/pipeline.cpp@34230,979",
-          "indra/newview/pipeline.cpp@35485,344",
-          "indra/newview/pipeline.cpp@39523,153"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@32592,180",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@33425,222",
+          "indra/newview/pipeline.cpp@34229,979",
+          "indra/newview/pipeline.cpp@35484,344",
+          "indra/newview/pipeline.cpp@39522,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -46713,6 +46308,7 @@
       "indra/llcharacter/alavataranimationtime.h",
       "indra/llcharacter/alavatarconstraint.h",
       "indra/newview/alactorchromakey.cpp",
+      "indra/newview/alactorchromakey.h",
       "indra/newview/alactorkeyset.cpp",
       "indra/newview/alactorkeyset.h",
       "indra/newview/alactormaskdiagnostics.cpp",
@@ -48745,7 +48341,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -48766,7 +48361,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -48800,9 +48394,17 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorchromakey.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v3color.h",
+          "indra/newview/alactorkeyset.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/alactorkeyset.cpp": {
@@ -51482,7 +51084,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -51517,7 +51118,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -64371,7 +63971,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -66387,11 +65986,11 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -74214,9 +73813,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -74323,7 +73922,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@89,17",
-          "indra/newview/pipeline.cpp@1701,29928"
+          "indra/newview/pipeline.cpp@1701,29927"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -75284,7 +74883,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -75319,7 +74917,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -80756,7 +80353,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -82033,12 +81629,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 913,
-        "source": "indra/newview/llreshadebridge.cpp",
-        "text": "llreshadebridge.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 1911,
         "source": "indra/newview/llreshadebridgeabi.h",
         "text": "llreshadebridgeabi.h"
@@ -82090,9 +81680,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -82208,7 +81798,6 @@
       "indra/newview/llfloaterdirector.cpp",
       "indra/newview/llghostavatar.cpp",
       "indra/newview/llghostavatar.h",
-      "indra/newview/llreshadebridge.cpp",
       "indra/newview/llreshadebridgeabi.h",
       "indra/newview/skins/default/xui/en/panel_dance_ball.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
@@ -84968,57 +84557,6 @@
           "LLVOAvatar::slamPosition"
         ],
         "unresolved_includes": []
-      },
-      "indra/newview/llreshadebridge.cpp": {
-        "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
-          "indra/newview/alcameradispatch.h",
-          "indra/newview/aldirectorswitcher.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llappviewer.h",
-          "indra/newview/llreshadebridge.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerdisplay.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
-        ],
-        "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
-          "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::LLReShadeBridge",
-          "LLReShadeBridge::detectCameraCut",
-          "LLReShadeBridge::gatherFrame",
-          "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
-          "LLReShadeBridge::noteCameraCut",
-          "LLReShadeBridge::noteMotionCoverage",
-          "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
-          "LLReShadeBridge::noteResetEvent",
-          "LLReShadeBridge::noteSurfaceCoverageResolved",
-          "LLReShadeBridge::noteSurfaceCoverageSeeded",
-          "LLReShadeBridge::noteTeleport",
-          "LLReShadeBridge::noteVisibleDiffuseResolved",
-          "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
-          "LLTimer::getTotalSeconds",
-          "LLViewerCamera::getInstance",
-          "LLViewerShaderMgr::gbufferAvatarTagActive"
-        ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
       },
       "indra/newview/llreshadebridgeabi.h": {
         "includes": [],
@@ -87979,12 +87517,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -88260,8 +87798,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31818,372"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31817,372"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -89174,7 +88712,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -89195,7 +88732,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -89229,8 +88765,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -92228,7 +91763,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -92263,7 +91797,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -99406,8 +98939,6 @@
       },
       "indra/newview/llreshadebridge.cpp": {
         "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
           "indra/newview/alcameradispatch.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
@@ -99418,49 +98949,34 @@
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
+          "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
           "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
           "LLReShadeBridge::LLReShadeBridge",
           "LLReShadeBridge::detectCameraCut",
           "LLReShadeBridge::gatherFrame",
           "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
           "LLReShadeBridge::noteCameraCut",
           "LLReShadeBridge::noteMotionCoverage",
           "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
           "LLReShadeBridge::noteResetEvent",
           "LLReShadeBridge::noteSurfaceCoverageResolved",
           "LLReShadeBridge::noteSurfaceCoverageSeeded",
           "LLReShadeBridge::noteTeleport",
           "LLReShadeBridge::noteVisibleDiffuseResolved",
           "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
           "LLTimer::getTotalSeconds",
           "LLViewerCamera::getInstance",
           "LLViewerShaderMgr::gbufferAvatarTagActive"
         ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
+        "unresolved_includes": []
       },
       "indra/newview/llreshadebridge.h": {
         "includes": [
           "indra/llmath/v3dmath.h",
           "indra/llmath/v3math.h",
-          "indra/newview/llreshadebridgeabi.h",
-          "reshade-addon/src/sl_key_guard.hpp"
+          "indra/newview/llreshadebridgeabi.h"
         ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -103485,7 +103001,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -105661,12 +105176,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@172,13",
-          "indra/newview/CMakeLists.txt@556,7",
-          "indra/newview/CMakeLists.txt@654,7",
-          "indra/newview/CMakeLists.txt@1123,13",
-          "indra/newview/CMakeLists.txt@1563,7",
-          "indra/newview/CMakeLists.txt@1665,7"
+          "indra/newview/CMakeLists.txt@171,13",
+          "indra/newview/CMakeLists.txt@555,7",
+          "indra/newview/CMakeLists.txt@653,7",
+          "indra/newview/CMakeLists.txt@1122,13",
+          "indra/newview/CMakeLists.txt@1562,7",
+          "indra/newview/CMakeLists.txt@1664,7"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -105724,7 +105239,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1701,29928"
+          "indra/newview/pipeline.cpp@1701,29927"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -108823,7 +108338,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -110118,9 +109632,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -117559,11 +117073,11 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1104,7",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2107,7",
-          "indra/newview/CMakeLists.txt@2851,32"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1103,7",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2106,7",
+          "indra/newview/CMakeLists.txt@2850,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -117760,13 +117274,13 @@
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@184,7",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@32269,53",
-          "indra/newview/pipeline.cpp@32593,180",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@35485,344",
-          "indra/newview/pipeline.cpp@37594,1060",
-          "indra/newview/pipeline.cpp@39523,153"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@32268,53",
+          "indra/newview/pipeline.cpp@32592,180",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@35484,344",
+          "indra/newview/pipeline.cpp@37593,1060",
+          "indra/newview/pipeline.cpp@39522,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -119315,7 +118829,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -119336,7 +118849,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -119370,8 +118882,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -120705,7 +120216,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -120740,7 +120250,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -130384,7 +129893,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -132599,12 +132107,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -132764,24 +132272,24 @@
           "indra/newview/pipeline.cpp@1230,11",
           "indra/newview/pipeline.cpp@1348,21",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31818,372",
-          "indra/newview/pipeline.cpp@32204,38",
-          "indra/newview/pipeline.cpp@32269,53",
-          "indra/newview/pipeline.cpp@32353,37",
-          "indra/newview/pipeline.cpp@32391,17",
-          "indra/newview/pipeline.cpp@32409,20",
-          "indra/newview/pipeline.cpp@32454,18",
-          "indra/newview/pipeline.cpp@32489,27",
-          "indra/newview/pipeline.cpp@32518,30",
-          "indra/newview/pipeline.cpp@32570,18",
-          "indra/newview/pipeline.cpp@32593,180",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@33734,53",
-          "indra/newview/pipeline.cpp@33793,242",
-          "indra/newview/pipeline.cpp@34037,11",
-          "indra/newview/pipeline.cpp@37231,362",
-          "indra/newview/pipeline.cpp@37594,1060"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31817,372",
+          "indra/newview/pipeline.cpp@32203,38",
+          "indra/newview/pipeline.cpp@32268,53",
+          "indra/newview/pipeline.cpp@32352,37",
+          "indra/newview/pipeline.cpp@32390,17",
+          "indra/newview/pipeline.cpp@32408,20",
+          "indra/newview/pipeline.cpp@32453,18",
+          "indra/newview/pipeline.cpp@32488,27",
+          "indra/newview/pipeline.cpp@32517,30",
+          "indra/newview/pipeline.cpp@32569,18",
+          "indra/newview/pipeline.cpp@32592,180",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@33733,53",
+          "indra/newview/pipeline.cpp@33792,242",
+          "indra/newview/pipeline.cpp@34036,11",
+          "indra/newview/pipeline.cpp@37230,362",
+          "indra/newview/pipeline.cpp@37593,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -134877,7 +134385,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -134898,7 +134405,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -134932,8 +134438,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -136323,7 +135828,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -136358,7 +135862,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -146272,7 +145775,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -148538,8 +148040,8 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1290,167"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1289,167"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -148646,19 +148148,19 @@
           "indra/newview/pipeline.cpp@1065,7",
           "indra/newview/pipeline.cpp@1348,21",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31818,372",
-          "indra/newview/pipeline.cpp@32204,38",
-          "indra/newview/pipeline.cpp@32269,53",
-          "indra/newview/pipeline.cpp@32353,37",
-          "indra/newview/pipeline.cpp@32409,20",
-          "indra/newview/pipeline.cpp@32593,180",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@33734,53",
-          "indra/newview/pipeline.cpp@33793,242",
-          "indra/newview/pipeline.cpp@37231,362",
-          "indra/newview/pipeline.cpp@37594,1060",
-          "indra/newview/pipeline.cpp@39523,153"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31817,372",
+          "indra/newview/pipeline.cpp@32203,38",
+          "indra/newview/pipeline.cpp@32268,53",
+          "indra/newview/pipeline.cpp@32352,37",
+          "indra/newview/pipeline.cpp@32408,20",
+          "indra/newview/pipeline.cpp@32592,180",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@33733,53",
+          "indra/newview/pipeline.cpp@33792,242",
+          "indra/newview/pipeline.cpp@37230,362",
+          "indra/newview/pipeline.cpp@37593,1060",
+          "indra/newview/pipeline.cpp@39522,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -150720,7 +150222,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -150741,7 +150242,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -150775,8 +150275,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -152540,7 +152039,6 @@
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
@@ -152575,7 +152073,6 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
-          "LLReShadeBridge::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -157555,8 +157052,6 @@
       },
       "indra/newview/llreshadebridge.cpp": {
         "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
           "indra/newview/alcameradispatch.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
@@ -157567,42 +157062,28 @@
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
+          "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
           "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
           "LLReShadeBridge::LLReShadeBridge",
           "LLReShadeBridge::detectCameraCut",
           "LLReShadeBridge::gatherFrame",
           "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
           "LLReShadeBridge::noteCameraCut",
           "LLReShadeBridge::noteMotionCoverage",
           "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
           "LLReShadeBridge::noteResetEvent",
           "LLReShadeBridge::noteSurfaceCoverageResolved",
           "LLReShadeBridge::noteSurfaceCoverageSeeded",
           "LLReShadeBridge::noteTeleport",
           "LLReShadeBridge::noteVisibleDiffuseResolved",
           "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
           "LLTimer::getTotalSeconds",
           "LLViewerCamera::getInstance",
           "LLViewerShaderMgr::gbufferAvatarTagActive"
         ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
+        "unresolved_includes": []
       },
       "indra/newview/llreshadebridgeabi.h": {
         "includes": [],
@@ -159752,7 +159233,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -161727,11 +161207,11 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -161859,16 +161339,16 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@222,16",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31818,372",
-          "indra/newview/pipeline.cpp@32324,13",
-          "indra/newview/pipeline.cpp@32353,37",
-          "indra/newview/pipeline.cpp@32409,20",
-          "indra/newview/pipeline.cpp@32454,18",
-          "indra/newview/pipeline.cpp@32570,18",
-          "indra/newview/pipeline.cpp@32593,180",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@37594,1060"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31817,372",
+          "indra/newview/pipeline.cpp@32323,13",
+          "indra/newview/pipeline.cpp@32352,37",
+          "indra/newview/pipeline.cpp@32408,20",
+          "indra/newview/pipeline.cpp@32453,18",
+          "indra/newview/pipeline.cpp@32569,18",
+          "indra/newview/pipeline.cpp@32592,180",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@37593,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -170335,7 +169815,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -171853,12 +171332,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -171917,9 +171396,9 @@
           "indra/newview/pipeline.cpp@332,106",
           "indra/newview/pipeline.cpp@719,16",
           "indra/newview/pipeline.cpp@958,88",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@32960,331",
-          "indra/newview/pipeline.cpp@33793,242"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@32959,331",
+          "indra/newview/pipeline.cpp@33792,242"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -176693,7 +176172,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -178084,11 +177562,11 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@243,11",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1196,13",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@242,11",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1195,13",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -184546,9 +184024,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -189969,15 +189447,15 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@188,53",
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@897,11",
-          "indra/newview/CMakeLists.txt@1138,56",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@1892,13",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2889,20",
-          "indra/newview/CMakeLists.txt@2957,185"
+          "indra/newview/CMakeLists.txt@187,53",
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@896,11",
+          "indra/newview/CMakeLists.txt@1137,56",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@1891,13",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2888,20",
+          "indra/newview/CMakeLists.txt@2956,185"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -190069,30 +189547,30 @@
           "indra/newview/pipeline.cpp@299,32",
           "indra/newview/pipeline.cpp@574,71",
           "indra/newview/pipeline.cpp@925,32",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@31669,30",
-          "indra/newview/pipeline.cpp@31720,16",
-          "indra/newview/pipeline.cpp@31804,7",
-          "indra/newview/pipeline.cpp@31818,372",
-          "indra/newview/pipeline.cpp@32204,38",
-          "indra/newview/pipeline.cpp@32353,37",
-          "indra/newview/pipeline.cpp@32391,17",
-          "indra/newview/pipeline.cpp@32593,180",
-          "indra/newview/pipeline.cpp@32805,154",
-          "indra/newview/pipeline.cpp@32960,331",
-          "indra/newview/pipeline.cpp@33303,15",
-          "indra/newview/pipeline.cpp@33364,15",
-          "indra/newview/pipeline.cpp@33426,222",
-          "indra/newview/pipeline.cpp@33734,53",
-          "indra/newview/pipeline.cpp@33793,242",
-          "indra/newview/pipeline.cpp@34104,15",
-          "indra/newview/pipeline.cpp@34128,7",
-          "indra/newview/pipeline.cpp@34139,59",
-          "indra/newview/pipeline.cpp@36022,47",
-          "indra/newview/pipeline.cpp@36468,78",
-          "indra/newview/pipeline.cpp@37231,362",
-          "indra/newview/pipeline.cpp@37594,1060",
-          "indra/newview/pipeline.cpp@39523,153"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@31668,30",
+          "indra/newview/pipeline.cpp@31719,16",
+          "indra/newview/pipeline.cpp@31803,7",
+          "indra/newview/pipeline.cpp@31817,372",
+          "indra/newview/pipeline.cpp@32203,38",
+          "indra/newview/pipeline.cpp@32352,37",
+          "indra/newview/pipeline.cpp@32390,17",
+          "indra/newview/pipeline.cpp@32592,180",
+          "indra/newview/pipeline.cpp@32804,154",
+          "indra/newview/pipeline.cpp@32959,331",
+          "indra/newview/pipeline.cpp@33302,15",
+          "indra/newview/pipeline.cpp@33363,15",
+          "indra/newview/pipeline.cpp@33425,222",
+          "indra/newview/pipeline.cpp@33733,53",
+          "indra/newview/pipeline.cpp@33792,242",
+          "indra/newview/pipeline.cpp@34103,15",
+          "indra/newview/pipeline.cpp@34127,7",
+          "indra/newview/pipeline.cpp@34138,59",
+          "indra/newview/pipeline.cpp@36021,47",
+          "indra/newview/pipeline.cpp@36467,78",
+          "indra/newview/pipeline.cpp@37230,362",
+          "indra/newview/pipeline.cpp@37593,1060",
+          "indra/newview/pipeline.cpp@39522,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -192357,7 +191835,6 @@
           "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
-          "indra/newview/llreshadebridge.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -192378,7 +191855,6 @@
           "ALActorChromaKey::initialize",
           "ALActorChromaKey::instanceKeyed",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::keyedThisFrame",
           "ALActorChromaKey::matteInvert",
           "ALActorChromaKey::mode",
@@ -192412,8 +191888,7 @@
           "ALGhostStudio::resolveSourceAvatar",
           "LLActorMover::instance",
           "LLDirectorCast::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::instance"
+          "LLNotificationsUtil::add"
         ],
         "unresolved_includes": []
       },
@@ -199300,8 +198775,6 @@
       },
       "indra/newview/llreshadebridge.cpp": {
         "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
           "indra/newview/alcameradispatch.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
@@ -199312,42 +198785,28 @@
           "indra/newview/llviewerdisplay.h",
           "indra/newview/llviewerprecompiledheaders.h",
           "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
+          "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
           "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
           "LLReShadeBridge::LLReShadeBridge",
           "LLReShadeBridge::detectCameraCut",
           "LLReShadeBridge::gatherFrame",
           "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
           "LLReShadeBridge::noteCameraCut",
           "LLReShadeBridge::noteMotionCoverage",
           "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
           "LLReShadeBridge::noteResetEvent",
           "LLReShadeBridge::noteSurfaceCoverageResolved",
           "LLReShadeBridge::noteSurfaceCoverageSeeded",
           "LLReShadeBridge::noteTeleport",
           "LLReShadeBridge::noteVisibleDiffuseResolved",
           "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
           "LLTimer::getTotalSeconds",
           "LLViewerCamera::getInstance",
           "LLViewerShaderMgr::gbufferAvatarTagActive"
         ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
+        "unresolved_includes": []
       },
       "indra/newview/llscenemonitor.cpp": {
         "includes": [
@@ -201728,7 +201187,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -203538,18 +202996,6 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
-        "line": 913,
-        "source": "indra/newview/llreshadebridge.cpp",
-        "text": "llreshadebridge.cpp"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
-        "line": 1911,
-        "source": "indra/newview/llreshadebridgeabi.h",
-        "text": "llreshadebridgeabi.h"
-      },
-      {
-        "file": "indra/newview/CMakeLists.txt",
         "line": 915,
         "source": "indra/newview/llscenemonitor.cpp",
         "text": "llscenemonitor.cpp"
@@ -203726,10 +203172,10 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@335,117",
-          "indra/newview/CMakeLists.txt@1290,167",
-          "indra/newview/CMakeLists.txt@2851,32",
-          "indra/newview/CMakeLists.txt@2889,20"
+          "indra/newview/CMakeLists.txt@334,117",
+          "indra/newview/CMakeLists.txt@1289,167",
+          "indra/newview/CMakeLists.txt@2850,32",
+          "indra/newview/CMakeLists.txt@2888,20"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -203800,8 +203246,8 @@
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@222,16",
           "indra/newview/pipeline.cpp@1211,16",
-          "indra/newview/pipeline.cpp@1701,29928",
-          "indra/newview/pipeline.cpp@34230,979"
+          "indra/newview/pipeline.cpp@1701,29927",
+          "indra/newview/pipeline.cpp@34229,979"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -204083,15 +203529,12 @@
       "indra/newview/llfloaterdirector.cpp",
       "indra/newview/llfloaterdirector.h",
       "indra/newview/llprismlens.cpp",
-      "indra/newview/llreshadebridge.cpp",
-      "indra/newview/llreshadebridgeabi.h",
       "indra/newview/skins/default/xui/en/floater_director.xml",
       "indra/newview/skins/default/xui/en/floater_prism_manager.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
       "indra/newview/skins/default/xui/en/panel_weather_settings.xml",
       "indra/newview/slweather.cpp",
-      "indra/newview/slweather.h",
-      "reshade-addon/src/sl_key_bracket.hpp"
+      "indra/newview/slweather.h"
     ],
     "settings": [
       "AlchemyWeatherAdvancedShelterEnabled",
@@ -210767,62 +210210,6 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
-      "indra/newview/llreshadebridge.cpp": {
-        "includes": [
-          "indra/llui/llnotificationsutil.h",
-          "indra/newview/alactorchromakey.h",
-          "indra/newview/alcameradispatch.h",
-          "indra/newview/aldirectorswitcher.h",
-          "indra/newview/llagent.h",
-          "indra/newview/llappviewer.h",
-          "indra/newview/llreshadebridge.h",
-          "indra/newview/llviewercamera.h",
-          "indra/newview/llviewercontrol.h",
-          "indra/newview/llviewerdisplay.h",
-          "indra/newview/llviewerprecompiledheaders.h",
-          "indra/newview/llviewershadermgr.h",
-          "indra/newview/pipeline.h",
-          "reshade-addon/src/sl_module_watch.hpp"
-        ],
-        "qualified_call_candidates": [
-          "ALActorChromaKey::keyedThisFrame",
-          "ALDirectorSwitcher::instance",
-          "LLNotificationsUtil::add",
-          "LLReShadeBridge::LLReShadeBridge",
-          "LLReShadeBridge::detectCameraCut",
-          "LLReShadeBridge::gatherFrame",
-          "LLReShadeBridge::instance",
-          "LLReShadeBridge::keyGuardAllows",
-          "LLReShadeBridge::noteCameraCut",
-          "LLReShadeBridge::noteMotionCoverage",
-          "LLReShadeBridge::noteProjectionChange",
-          "LLReShadeBridge::noteReader",
-          "LLReShadeBridge::noteResetEvent",
-          "LLReShadeBridge::noteSurfaceCoverageResolved",
-          "LLReShadeBridge::noteSurfaceCoverageSeeded",
-          "LLReShadeBridge::noteTeleport",
-          "LLReShadeBridge::noteVisibleDiffuseResolved",
-          "LLReShadeBridge::noteVisibleDiffuseSeeded",
-          "LLReShadeBridge::reportKeyGuard",
-          "LLReShadeBridge::reportReader",
-          "LLReShadeBridge::retryKeyGuard",
-          "LLReShadeBridge::updateKeyStatus",
-          "LLTimer::getTotalSeconds",
-          "LLViewerCamera::getInstance",
-          "LLViewerShaderMgr::gbufferAvatarTagActive"
-        ],
-        "unresolved_includes": [
-          {
-            "candidates": [],
-            "include": "sl_bridge_build_info.h"
-          }
-        ]
-      },
-      "indra/newview/llreshadebridgeabi.h": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
       "indra/newview/llscenemonitor.cpp": {
         "includes": [
           "indra/llcommon/llpointer.h",
@@ -212537,7 +211924,6 @@
           "ALActorChromaKey::colour",
           "ALActorChromaKey::finalizeSerial",
           "ALActorChromaKey::keepsLive",
-          "ALActorChromaKey::keyGuardAllows",
           "ALActorChromaKey::mode",
           "ALActorChromaKey::ownerKeyed",
           "ALActorChromaKey::preflightControls",
@@ -213553,13 +212939,6 @@
       },
       "indra/newview/viewer_manifest.py": {
         "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "reshade-addon/src/sl_key_bracket.hpp": {
-        "includes": [
-          "reshade-addon/src/sl_key_guard.hpp"
-        ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
       }
