@@ -986,9 +986,9 @@ notice can be suppressed with Don't show me this again.
    implied by Strength. Projector/spot shadows are not retained. Fast may darken where an
    actor shadow overlaps a set shadow; use Exact. Very dark shadows need a looser keyer
    (for example OBS Similarity) or a separate matte / Set only pass.
-7. Check **Status**, **ReShade**, **Guarantee** and **Capture warnings** before recording.
-   Green means keying, amber means arming, suspended or warnings, and red means refused
-   with a reason. Unevaluated guard state is amber/unknown, never verified exactness.
+7. Check **Status** and **Capture warnings** before recording.
+   Green means keying; amber means arming, suspended or capture overlays enabled.
+   Status reports non-ReShade preflight failures, including RLVa sphere and diopter debug views.
    The badge **KEY ON · <mode>** appears only while the UI is visible.
 8. Hide UI with **Ctrl+Alt+F1** and record the viewer window in OBS. The badge disappears.
    **Hide HUD attachments** defaults on. Warnings identify guides configured to survive UI
@@ -998,14 +998,10 @@ notice can be suppressed with Don't show me this again.
    suppresses the colour chart and blink. Ghost Edit rings are suppressed with UI hidden
    while keying, but actor path guides are keyed with the set.
 
-**ReShade integration:** the page reads the bridge's key guard status, refusal reason,
-overlay causes and exactness guarantee. Retry is visible on guard refusal and re-arms
-the actual guard after you correct the reported cause. It never simulates a guard
-acknowledgement. With a verified absence of ReShade, the guarantee is “Key colour
-is exact.” With ReShade loaded, the guarantee is: “Key colour is exact except where ReShade's
-own UI draws, and an add-on effect switched on mid-key may tint ONE frame before keying stops.”
-ReShade's UI, OSD, tutorial and reload splash may contaminate captured pixels. The ReShade
-readout names active overlay causes reported by the bridge.
+**ReShade integration (D56, 2026-11-03):** chroma key always runs with ReShade
+and effects enabled. ReShade effects may change the key colour and edges; this is
+accepted for recording. ReShade does not suspend or refuse keying or snapshots.
+The bridge and add-on use the deployed pre-guard ABI 1.2.
 
 **Diagnostics:** Debug view selects Off, Coverage, Matte, Actor shadow or Lens coverage and
 resets off at login. **Self-test** requests WP2's eight-frame key/actor pixel comparison before

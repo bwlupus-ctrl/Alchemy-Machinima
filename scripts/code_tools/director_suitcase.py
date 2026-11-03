@@ -3,6 +3,7 @@
 
 Never contacts a remote. The committed delta is always BASE..HEAD. Source-tree
 fingerprints also detect dirty inputs; hook coordinates always describe HEAD.
+ReShade shader content (.fx/.fxh) is opaque: inventory paths only, never read it.
 """
 from __future__ import annotations
 
@@ -142,7 +143,7 @@ def changed_paths(root):
 
 def blobs(root, revision, paths):
     """Batch reads avoid thousands of subprocesses. Deleted/missing paths are None."""
-    names = sorted(paths)
+    names = sorted(p for p in paths if Path(p).suffix.lower() not in (".fx", ".fxh"))
     result = git(root, "cat-file", "--batch", data="".join(f"{revision}:{p}\n" for p in names).encode())
     pos, answer = 0, {}
     for path in names:
@@ -415,7 +416,8 @@ def collect(root):
     head = blobs(root, "HEAD", [p for p in paths if not p.startswith(OUT) and p != TOOL])
     base = blobs(root, BASE, [p for p in paths if not p.startswith(OUT) and p != TOOL])
     hist = histories(root)
-    diff = decode(git(root, "diff", *diff_args(), BASE, "HEAD", "--", "indra", "reshade-addon"))
+    diff = decode(git(root, "diff", *diff_args(), BASE, "HEAD", "--", "indra", "reshade-addon",
+                      ":(exclude,icase)*.fx", ":(exclude,icase)*.fxh"))
     patches = split_diff(diff)
     inventory, texts = [], {}
     for path, status in sorted(paths.items()):
@@ -520,12 +522,16 @@ def collect(root):
         }
     # Fingerprint all tracked source/tool/kit evidence plus this untracked generator.
     inputs = sorted(set(p for p in tracked if p.startswith(("indra/", "scripts/", "reshade-addon/", "doc/director_kit/")) and not p.startswith(OUT)) | {TOOL, *EVIDENCE, "CLAUDE.md", "LICENSE", "doc/MERGE_PLAYBOOK.md", "doc/MERGE_FORK_DIRECTOR_CONSOLE_PLAN.md"})
-    fingerprints = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() if (root / p).is_file() else "missing" for p in inputs}
+    opaque = [p for p in inputs if Path(p).suffix.lower() in (".fx", ".fxh")]
+    fingerprints = {p: hashlib.sha256((root / p).read_bytes()).hexdigest() if (root / p).is_file() else "missing"
+                    for p in inputs if p not in opaque}
     dirty = decode(git(root, "diff", "--no-ext-diff", "--no-textconv", "--name-only", "HEAD", "--", "indra", "scripts", "reshade-addon")).splitlines()
     dirty = [p for p in dirty if p != TOOL]
     meta = {"base": BASE, "head_source_tree": decode(git(root, "rev-parse", "HEAD:indra")).strip(),
             "coordinate_source": "committed HEAD (not dirty worktree)", "dirty_product_inputs": dirty,
             "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
+            "opaque_shader_paths": opaque,
+            "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
             "input_sha256": hashlib.sha256(json_bytes(fingerprints)).hexdigest(),
             "counts": dict(sorted(collections.Counter(r["class"] for r in inventory).items())),
             "hook_files": len(hooks), "hunks": sum(len(h["hunks"]) for h in hooks),
@@ -565,6 +571,8 @@ remote state, stash or external source was consulted. Coordinates describe
 committed HEAD. `inputs.json` identifies its `indra` tree and fingerprints the
 working source; dirty source is disclosed separately and needs a commit before
 it can enter this committed-history hook map.
+ReShade `.fx`/`.fxh` files have path inventory only: their contents, textual hunks
+and content fingerprints are excluded (see `opaque_shader_paths` in `inputs.json`).
 
 ## Regenerate and check
 

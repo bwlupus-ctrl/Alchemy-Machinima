@@ -12557,24 +12557,6 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
-    "consumer": "reshade-addon/shaders/SL_BridgeDebug.fx",
-    "dependency": "reshade-addon/shaders/SL_Bridge.fxh",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "reshade-addon/shaders/SL_GBufferProvider.fx",
-    "dependency": "reshade-addon/shaders/SL_Bridge.fxh",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
     "consumer": "reshade-addon/src/sl_depth_pin.hpp",
     "dependency": "reshade-addon/external/reshade/reshade.hpp",
     "excluded": false,

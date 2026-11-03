@@ -11,6 +11,8 @@ remote state, stash or external source was consulted. Coordinates describe
 committed HEAD. `inputs.json` identifies its `indra` tree and fingerprints the
 working source; dirty source is disclosed separately and needs a commit before
 it can enter this committed-history hook map.
+ReShade `.fx`/`.fxh` files have path inventory only: their contents, textual hunks
+and content fingerprints are excluded (see `opaque_shader_paths` in `inputs.json`).
 
 ## Regenerate and check
 
@@ -66,14 +68,14 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [common-ui](features/common-ui.md) | 1 | 85 | 23 | 5 |
 | [director-shell](features/director-shell.md) | 2 | 312 | 55 | 200 |
 | [actor-bar](features/actor-bar.md) | 3 | 65 | 14 | 0 |
-| [actor-path](features/actor-path.md) | 3 | 106 | 34 | 34 |
+| [actor-path](features/actor-path.md) | 3 | 105 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 77 | 31 | 492 |
 | [composition](features/composition.md) | 3 | 41 | 23 | 12 |
 | [gaze](features/gaze.md) | 3 | 56 | 23 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 27 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 178 | 80 | 82 |
-| [crowd](features/crowd.md) | 4 | 50 | 10 | 19 |
-| [roto-tron](features/roto-tron.md) | 5 | 122 | 55 | 227 |
+| [clones](features/clones.md) | 4 | 177 | 80 | 82 |
+| [crowd](features/crowd.md) | 4 | 49 | 10 | 19 |
+| [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 75 | 58 | 17 |
 | [rig](features/rig.md) | 7 | 170 | 56 | 250 |
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 62 | 24 | 104 |
@@ -81,7 +83,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
 | [weather](features/weather.md) | 8 | 61 | 40 | 104 |
 | [vcam](features/vcam.md) | 9 | 91 | 43 | 30 |
-| [looks](features/looks.md) | 10 | 139 | 128 | 99 |
+| [looks](features/looks.md) | 10 | 137 | 128 | 99 |
 | [sensor](features/sensor.md) | 10 | 101 | 56 | 60 |
 
 These layers are a review order. A shared file/hunk can serve several layers and
@@ -209,8 +211,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2279 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2279, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2279, "unresolved_rows": 74}`.
+Existing evidence: 2276 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2276, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2276, "unresolved_rows": 74}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous

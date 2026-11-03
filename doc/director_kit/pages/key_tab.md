@@ -1,12 +1,12 @@
 # Key — Director Kit page contract
 
 Page key: `key_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (23/33 setting-bound rows; 21 C++-referenced rows).
+Computed class: **code-driven** (23/30 setting-bound rows; 18 C++-referenced rows).
 
 ## Real owners
 
-- `key_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:3` (33 matching rows).
-- Referencing classes: `ALPanelActorKey` (24), `LLReShadeBridge` (1).
+- `key_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:3` (30 matching rows).
+- Referencing classes: `ALPanelActorKey` (20).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -22,44 +22,40 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 |---|---|---|---|
 | `ak_chroma` / `ak_enable` (Key actors) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:13` | kit `toggle` ↔ `ActorKeyEnabled` `Boolean` | none |
 | `ak_chroma` / `ak_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:16` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_chroma` / `ak_reshade` (ReShade) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:19` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_chroma` / `ak_guarantee` (Guarantee) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:22` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_chroma` / `ak_retry` (Retry) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:25` | `ALPanelActorKey` command/model binding → wired in `ALPanelActorKey::postBuild()`; behavior `LLReShadeBridge::retryKeyGuard()` (`indra/newview/alpanelactorkey.cpp:158`) | none |
-| `ak_chroma` / `ak_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:28` | kit `combo` ↔ `ActorKeyMode` `U32` | none |
-| `ak_chroma` / `ak_preset` (Key colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:37` | kit `combo` ↔ `ActorKeyColorPreset` `U32` | none |
-| `ak_chroma` / `ak_color` (Custom colour) | `color_swatch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:52` | kit `color` ↔ `ActorKeyColor` `Color3` | none |
-| `ak_chroma` / `ak_codes` (Codes) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:55` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_chroma` / `ak_invert` (Invert matte) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:58` | kit `toggle` ↔ `ActorKeyMatteInvert` `Boolean` | none |
-| `ak_subjects` / `ak_who` (Who) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:63` | kit `combo` ↔ `ActorKeySubjects` `U32` | none |
-| `ak_subjects` / `ak_clones` (Include clones) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:73` | kit `toggle` ↔ `ActorKeyIncludeClones` `Boolean` | none |
-| `ak_subjects` / `ak_glass` (Glass refracts) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:76` | kit `combo` ↔ `ActorKeyGlassSource` `U32` | none |
-| `ak_subjects` / `ak_animesh` (Include animesh) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:84` | kit `toggle` ↔ `ActorKeyIncludeAnimesh` `Boolean` | none |
-| `ak_subjects` / `ak_count` (Keyed) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:87` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_edges` / `ak_feather` (Feather) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:92` | kit `slider` ↔ `ActorKeyFeather` `F32` | none |
-| `ak_edges` / `ak_choke` (Choke) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:97` | kit `slider` ↔ `ActorKeyChoke` `F32` | none |
-| `ak_edges` / `ak_edge` (Edge fill) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:102` | kit `combo` ↔ `ActorKeyEdgeMode` `U32` | none |
-| `ak_edges` / `ak_alpha` (Hair and alpha coverage) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:110` | kit `toggle` ↔ `ActorKeyAlphaCoverage` `Boolean` | none |
-| `ak_shadows` / `ak_shadow` (Keep actor shadows) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:115` | kit `toggle` ↔ `ActorKeyShadow` `Boolean` | none |
-| `ak_shadows` / `ak_iso` (Isolation) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:118` | kit `combo` ↔ `ActorKeyShadowIsolation` `U32` | none |
-| `ak_shadows` / `ak_sstr` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:127` | kit `slider` ↔ `ActorKeyShadowStrength` `F32` | none |
-| `ak_shadows` / `ak_scasc` (Cascades) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:132` | kit `combo` ↔ `ActorKeyShadowCascades` `U32` | none |
-| `ak_shadows` / `ak_ssoft` (Softness) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:142` | kit `slider` ↔ `ActorKeyShadowSoftness` `F32` | none |
-| `ak_shadows` / `ak_sstatus` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:147` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_shadows` / `ak_mshadow` (Grey shadow in matte) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:150` | kit `toggle` ↔ `ActorKeyMatteShadow` `Boolean` | none |
-| `ak_output` / `ak_hud` (Hide HUD attachments) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:155` | kit `toggle` ↔ `ActorKeyHideHUD` `Boolean` | none |
-| `ak_output` / `ak_warn` (Capture warnings) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:158` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_output` / `ak_limits` (Known limits) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:161` | kit readout ← approved static copy; no runtime writer | none |
-| `ak_diagnostics` / `ak_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:166` | kit `combo` ↔ `ActorKeyDebugView` `U32` | none |
-| `ak_diagnostics` / `ak_selftest` (Self-test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:177` | kit `button` ↔ `ActorKeySelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:164`) | none |
-| `ak_diagnostics` / `ak_shadowtest` (Exact shadow test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:180` | kit `button` ↔ `ActorKeyShadowSelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:166`) | none |
-| `ak_diagnostics` / `ak_result` (Last result) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:183` | kit readout ← approved static copy; no runtime writer | none |
+| `ak_chroma` / `ak_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:19` | kit `combo` ↔ `ActorKeyMode` `U32` | none |
+| `ak_chroma` / `ak_preset` (Key colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:28` | kit `combo` ↔ `ActorKeyColorPreset` `U32` | none |
+| `ak_chroma` / `ak_color` (Custom colour) | `color_swatch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:43` | kit `color` ↔ `ActorKeyColor` `Color3` | none |
+| `ak_chroma` / `ak_codes` (Codes) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:46` | kit readout ← approved static copy; no runtime writer | none |
+| `ak_chroma` / `ak_invert` (Invert matte) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:49` | kit `toggle` ↔ `ActorKeyMatteInvert` `Boolean` | none |
+| `ak_subjects` / `ak_who` (Who) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:54` | kit `combo` ↔ `ActorKeySubjects` `U32` | none |
+| `ak_subjects` / `ak_clones` (Include clones) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:64` | kit `toggle` ↔ `ActorKeyIncludeClones` `Boolean` | none |
+| `ak_subjects` / `ak_glass` (Glass refracts) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:67` | kit `combo` ↔ `ActorKeyGlassSource` `U32` | none |
+| `ak_subjects` / `ak_animesh` (Include animesh) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:75` | kit `toggle` ↔ `ActorKeyIncludeAnimesh` `Boolean` | none |
+| `ak_subjects` / `ak_count` (Keyed) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:78` | kit readout ← approved static copy; no runtime writer | none |
+| `ak_edges` / `ak_feather` (Feather) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:83` | kit `slider` ↔ `ActorKeyFeather` `F32` | none |
+| `ak_edges` / `ak_choke` (Choke) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:88` | kit `slider` ↔ `ActorKeyChoke` `F32` | none |
+| `ak_edges` / `ak_edge` (Edge fill) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:93` | kit `combo` ↔ `ActorKeyEdgeMode` `U32` | none |
+| `ak_edges` / `ak_alpha` (Hair and alpha coverage) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:101` | kit `toggle` ↔ `ActorKeyAlphaCoverage` `Boolean` | none |
+| `ak_shadows` / `ak_shadow` (Keep actor shadows) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:106` | kit `toggle` ↔ `ActorKeyShadow` `Boolean` | none |
+| `ak_shadows` / `ak_iso` (Isolation) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:109` | kit `combo` ↔ `ActorKeyShadowIsolation` `U32` | none |
+| `ak_shadows` / `ak_sstr` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:118` | kit `slider` ↔ `ActorKeyShadowStrength` `F32` | none |
+| `ak_shadows` / `ak_scasc` (Cascades) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:123` | kit `combo` ↔ `ActorKeyShadowCascades` `U32` | none |
+| `ak_shadows` / `ak_ssoft` (Softness) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:133` | kit `slider` ↔ `ActorKeyShadowSoftness` `F32` | none |
+| `ak_shadows` / `ak_sstatus` (Status) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:138` | kit readout ← approved static copy; no runtime writer | none |
+| `ak_shadows` / `ak_mshadow` (Grey shadow in matte) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:141` | kit `toggle` ↔ `ActorKeyMatteShadow` `Boolean` | none |
+| `ak_output` / `ak_hud` (Hide HUD attachments) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:146` | kit `toggle` ↔ `ActorKeyHideHUD` `Boolean` | none |
+| `ak_output` / `ak_warn` (Capture warnings) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:149` | kit readout ← approved static copy; no runtime writer | none |
+| `ak_output` / `ak_limits` (Known limits) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:152` | kit readout ← approved static copy; no runtime writer | none |
+| `ak_diagnostics` / `ak_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:157` | kit `combo` ↔ `ActorKeyDebugView` `U32` | none |
+| `ak_diagnostics` / `ak_selftest` (Self-test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:168` | kit `button` ↔ `ActorKeySelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:137`) | none |
+| `ak_diagnostics` / `ak_shadowtest` (Exact shadow test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:171` | kit `button` ↔ `ActorKeyShadowSelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:139`) | none |
+| `ak_diagnostics` / `ak_result` (Last result) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:174` | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelActorKey::setU32()` — `indra/newview/alpanelactorkey.cpp:164, 166` | Move model-facing work into `ALPanelActorKey` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLReShadeBridge::retryKeyGuard()` — `indra/newview/alpanelactorkey.cpp:158` | Move model-facing work into `ALPanelActorKey` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorKey::setU32()` — `indra/newview/alpanelactorkey.cpp:137, 139` | Move model-facing work into `ALPanelActorKey` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

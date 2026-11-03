@@ -58,7 +58,6 @@
 
 #include <Windows.h>
 
-#include <atomic>
 #include <cstring>
 #include <cstdio>
 #include <vector>
@@ -248,7 +247,7 @@ struct BridgeState
     // Crash containment: if any of our GL work faults (multi-context churn,
     // stale handles, driver quirk), we log it and go permanently inert for the
     // session instead of taking ReShade's hook down (the "soft-crash").
-    std::atomic<bool>    dead{false};
+    volatile bool        dead = false;
     const char          *stage = "idle";     // breadcrumb for the fault log
 
     GBufferSlot slots[8] = {
@@ -446,8 +445,6 @@ static bool read_viewer_frame(SLReShadeFrame &out)
     }
     return false;
 }
-
-#include "sl_key_guard_events.inl"
 
 // -----------------------------------------------------------------------------
 // Neutral resource: a 4x4 all-zero immutable texture created once per device.
@@ -826,7 +823,6 @@ static void push_uniforms(effect_runtime *runtime, const SLReShadeFrame *f,
         const UniformSourceDef &def = kUniformSources[u.source];
         if (def.is_uint)
         {
-            SLKey::outsideBracket();
             const uint32_t v = u.source == kSrcDepthPin ? depth_pin::status(runtime) : uniform_source_uint(st, u.source);
             runtime->set_uniform_value_uint(u.var, &v, 1);
         }
@@ -848,10 +844,7 @@ static void on_init_effect_runtime(effect_runtime *runtime)
 {
     // [DepthPin] Version/CNG checks must run outside the loader lock, once per load.
     static std::once_flag binary_check;
-    SLKey::outsideBracket();
     std::call_once(binary_check, depth_pin::check_binary);
-    SLKey::outsideBracket();
-    key_init(runtime);
     depth_pin::init(runtime); // [DepthPin] after GD init, including every re-init
     g.runtime = runtime;
     g.uniforms_dirty = true;
@@ -868,8 +861,6 @@ static void on_init_effect_runtime(effect_runtime *runtime)
 
 static void on_destroy_effect_runtime(effect_runtime *runtime)
 {
-    SLKey::outsideBracket();
-    key_destroy(runtime);
     depth_pin::destroy(runtime); // [DepthPin] drop local state only
     if (runtime != g.runtime)
     {
@@ -896,8 +887,6 @@ static void on_destroy_effect_runtime(effect_runtime *runtime)
 
 static void on_reloaded_effects(effect_runtime *runtime)
 {
-    SLKey::outsideBracket();
-    key_reload(runtime);
     depth_pin::reload(runtime); // [DepthPin] PinDepth escape hatch / explicit retry
     if (g.dead)
     {
@@ -1113,7 +1102,6 @@ static void push_depth_pin_status(effect_runtime *runtime)
             if (rt->get_annotation_string_from_uniform_variable(var, "source", source) &&
                 std::strcmp(source, kUniformSources[kSrcDepthPin].name) == 0)
             {
-                SLKey::outsideBracket();
                 const uint32_t value = depth_pin::status(rt);
                 rt->set_uniform_value_uint(var, &value, 1);
             }
@@ -1127,7 +1115,6 @@ static void push_depth_pin_status(effect_runtime *runtime)
 static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
                              resource_view /*rtv*/, resource_view /*rtv_srgb*/)
 {
-    SLKey::outsideBracket();
     depth_pin::verify(runtime); // [DepthPin] GD selection already ran; release failed pins now.
     if (g.dead)
     {
@@ -1142,7 +1129,6 @@ static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
     __except ((code = GetExceptionCode()), EXCEPTION_EXECUTE_HANDLER)
     {
         g.dead = true;
-        g_key_brackets.recover();
         logf(reshade::log::level::error,
              "[SLBridge] FATAL: exception 0x%08lX at stage '%s' -- bridge "
              "self-disabled for this session (ReShade keeps running)",
@@ -1159,27 +1145,19 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID)
     switch (fdwReason)
     {
     case DLL_PROCESS_ATTACH:
-        g_key_module = hModule;
         if (!reshade::register_addon(hModule))
         {
             return FALSE;   // ReShade not present or incompatible -- refuse load
         }
-        reshade::register_event<reshade::addon_event::present>(&depth_present);
-        reshade::register_event<reshade::addon_event::reshade_finish_effects>(&depth_finish);
+        reshade::register_event<reshade::addon_event::present>(&depth_pin::present);
+        reshade::register_event<reshade::addon_event::reshade_finish_effects>(&depth_pin::finish);
         reshade::register_event<reshade::addon_event::init_effect_runtime>(&on_init_effect_runtime);
         reshade::register_event<reshade::addon_event::destroy_effect_runtime>(&on_destroy_effect_runtime);
         reshade::register_event<reshade::addon_event::reshade_reloaded_effects>(&on_reloaded_effects);
         reshade::register_event<reshade::addon_event::reshade_begin_effects>(&on_begin_effects);
-        reshade::register_event<reshade::addon_event::present>(&key_present);
-        reshade::register_event<reshade::addon_event::reshade_present>(&key_after_present);
-        reshade::register_event<reshade::addon_event::reshade_render_technique>(&key_technique);
-        reshade::register_event<reshade::addon_event::reshade_begin_effects>(&key_begin);
-        reshade::register_event<reshade::addon_event::reshade_finish_effects>(&key_finish);
-        reshade::register_event<reshade::addon_event::reshade_open_overlay>(&key_overlay);
         break;
 
     case DLL_PROCESS_DETACH:
-        g_key_modules.stop();
         reshade::unregister_addon(hModule);
         break;
     }

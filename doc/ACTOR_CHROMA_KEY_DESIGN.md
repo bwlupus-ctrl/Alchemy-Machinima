@@ -1,5 +1,25 @@
 # Actor Chroma Key / Matte — design (v20)
 
+
+## D56 — ReShade guard removed (user decision, 2026-11-03)
+
+**Current policy; supersedes D26/D30 and every guard, bypass, refusal, warning,
+Retry, source-hash handshake and exactness requirement below where it depends on
+ReShade (including D27–D29 and WP3/WP4 add-on guard work).** ReShade always runs
+with effects ON for recording. The chroma key always runs regardless of ReShade;
+effects may touch the key colour and edges, which the user accepts. There is no
+ReShade preflight, snapshot refusal, refusal latch, notification, warning row or
+amber/red ReShade status. The bridge and add-on revert to their deployed pre-WP3
+state (ABI 1.2). Non-ReShade K0 failures, snapshot completion and refusal handling
+remain intact.
+
+Director Capture > Key retains Status for keying, arming and suspension (RLVa
+sphere, diopter debug and other preflight failures). ReShade, Guarantee and Retry
+rows are removed through the kit data and generated XUI. The older guard sections
+and acceptance scenarios below are historical design, not current requirements.
+For the current recording workflow, see MACHINIMA_USER_GUIDE.md §10.2.
+
+
 Status: DESIGN ONLY (2026-11-02). **v20** = v19 with D54's suppression record extended to the classic/system avatar paths after Codex design review r6 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r6.md`: 0 P0, 1 P1 — R43). **v19** = v18 with D53 replaced after Codex design review r5 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r5.md`: 0 P0, 1 P1 — R42; R37-R41 confirmed fixed). **v18** = v17 revised after Codex design review r4 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r4.md`: 0 P0, 4 P1, 1 P2) and with the user's final answers to Q4 and Q5. **v17** = v16 revised after Codex design review r3 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r3.md`: 0 P0, 5 P1, 2 P2; dispositions §A19). **v16** = v15 revised after Codex design review r2
 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r2.md`: 0 P0, 8 P1, 4 P2 open), by **simplification**: the
 clone layer, its depth copy, per-sweep layer output, the deferred-draw queue and the late-failure rollback
@@ -3182,11 +3202,11 @@ recommendation; silence = the recommendation stands:
 | D23 | Today's AlphaCap/rain filter does not reach most rigged shadow loops (lldrawpool.cpp:1154-1200, 1225-1252, 2473-2579; `pushMaskBatchesIndexed` is the exception) | leave as is (this package) / fix in a separate change | **Leave; separate change** — fixing it here would alter filters 1-3 behaviour the beauty-parity test freezes |
 | D24 | ~~ReShade fork DLL as part of the deliverable~~ | — | **Superseded by D26 (v6)**: not in v1; the v5 recommendation rested on a fork tree (6.7.3.3) that is not the deployed binary (6.8.0.2155) |
 | D25 | Hide the ReShade overlay during keyed presents (`SL_BYPASS_OVERLAY`) | yes / no | **Deferred to v1.1** (needs the fork DLL). Then **yes**, suppressing only the draw-data submission and releasing input capture (§4.2a). In v1 an open overlay is an amber warning |
-| D26 | ReShade release provenance / key-bypass mechanism (Codex R4 P1-5, §4.2b) | (a) port the bypass onto exact upstream v6.8.0, SL version identity, two-entry depth-pin table, three-way GD `Prefix` check (~1.5-2 d, medium risk) / (b) migrate the fork to 6.8.x wholesale (~2-3 d, medium-high) / (c) no DLL change in v1: soft bracket + runtime key guard that refuses to key while any technique renders with Effects off (~0.5 d, low) | **DECIDED (user, 2026-10-05): (c) for v1** — soft bracket + runtime key guard (refuse with red status), overlay not hidden (amber note), no ReShade DLL or depth-pin change. (a) is the v1.1 follow-up, outside this package; (b) rejected |
+| D26 (superseded by D56) | ReShade release provenance / key-bypass mechanism (Codex R4 P1-5, §4.2b) | (a) port the bypass onto exact upstream v6.8.0, SL version identity, two-entry depth-pin table, three-way GD `Prefix` check (~1.5-2 d, medium risk) / (b) migrate the fork to 6.8.x wholesale (~2-3 d, medium-high) / (c) no DLL change in v1: soft bracket + runtime key guard that refuses to key while any technique renders with Effects off (~0.5 d, low) | **DECIDED (user, 2026-10-05): (c) for v1** — soft bracket + runtime key guard (refuse with red status), overlay not hidden (amber note), no ReShade DLL or depth-pin change. (a) is the v1.1 follow-up, outside this package; (b) rejected |
 | D27 | Key-guard policy when contaminated | refuse to key (red) / key anyway with a red warning | **Refuse** (exactness is the feature's promise, review-severity gate); Retry button + automatic re-arm on reload. v7: refusal is **conservative** — any `.addonfx` pass or begin/finish-effects event during a keyed present refuses, whatever it writes (no RTV/dependency tracing); status text says "effect activity: <p> pass(es), <c> begin/finish call(s)" (v8), not "tint" |
 | D28 | Unobservable add-on GPU work (Codex R5 P0-1) | strict whitelist, refuse otherwise / weaken the guarantee in the UI / allow-list configurable by the user | **Strict whitelist** (host 6.8.0.2155 built-ins + our bridge only; folder listing + module export scan; `DisabledAddons` not honoured). Invisible, global contamination must refuse, not warn. Residual: a convention-free self-registering DLL injected outside the add-on folder. A reviewed allow-list (e.g. `obs_capture`) is a later, separate change |
 | D29 | ReShade's own GUI (overlay, OSD, splash, preview) over the key in v1 (Codex R5 P0-1/P1-6) | refuse while any may draw / warn honestly | **Warn, unconditionally, with named causes**; guarantee worded as the single v8 statement (§4.2). Justification: visible, local, user-controlled, the same class as the viewer UI (which is also never keyed); preview state is unobservable, so a refusal rule could not be complete anyway. Hiding = v1.1 (D25) |
-| D30 | Soft-path one-frame limit (Codex R6 P0: a CLEAN report for N-1 cannot prove N) | build the fork bypass now / accept and disclose | **USER DECIDED 2026-10-05: accept and disclose.** The single guarantee statement (§1, §4.2) is used verbatim in the UI, docs and tests; no other text claims unconditional exactness while ReShade is loaded. Removed by the v1.1 fork bypass |
+| D30 (superseded by D56) | Soft-path one-frame limit (Codex R6 P0: a CLEAN report for N-1 cannot prove N) | build the fork bypass now / accept and disclose | **USER DECIDED 2026-10-05: accept and disclose.** The single guarantee statement (§1, §4.2) is used verbatim in the UI, docs and tests; no other text claims unconditional exactness while ReShade is loaded. Removed by the v1.1 fork bypass |
 
 ---
 

@@ -13,8 +13,8 @@ pipeline = (NV / 'pipeline.cpp').read_text(encoding='utf-8')
 panel = (NV / 'alpanelactorkey.cpp').read_text(encoding='utf-8')
 callback = method(NV / 'alpanelactorkey.cpp', '    getChild<LLButton>("ak_shadowtest")->setCommitCallback(') + ');'
 refresh = method(NV/'alpanelactorkey.cpp', 'void ALPanelActorKey::refreshReadouts()')
-result_readout = refresh[refresh.index('    static LLCachedControl<U32> test('):refresh.index('    if (mRetry)')]
-status_readout = '    setTextIfChanged(mReadouts[5], ALActorKeyUI::shadowStatus());'
+result_readout = refresh[refresh.index('    static LLCachedControl<U32> test('):refresh.rindex('}')]
+status_readout = '    setTextIfChanged(mReadouts[3], ALActorKeyUI::shadowStatus());'
 assert status_readout in refresh
 combo = ET.parse(NV/'skins/default/xui/en/panel_dpage_capture_key.xml').find('.//combo_box[@name="ak_debug"]')
 views = {item.attrib['label']:int(item.attrib['value']) for item in combo.findall('combo_box.item')}
@@ -94,8 +94,8 @@ namespace ALActorKeyUI {std::string shadowStatus();void shadowTestUnavailable();
 std::string sLastResult;
 struct LLUICtrl{};struct LLSD{};
 struct LLButton{std::function<void(LLUICtrl*,const LLSD&)>commit;void setCommitCallback(std::function<void(LLUICtrl*,const LLSD&)> f){commit=f;}}button;
-struct Readout{std::string text;};Readout readouts[9];void setTextIfChanged(Readout*w,const std::string&s){w->text=s;}
-struct ALPanelActorKey{Readout*mReadouts[9];ALPanelActorKey(){for(int i=0;i<9;++i)mReadouts[i]=&readouts[i];}
+struct Readout{std::string text;};Readout readouts[7];void setTextIfChanged(Readout*w,const std::string&s){w->text=s;}
+struct ALPanelActorKey{Readout*mReadouts[7];ALPanelActorKey(){for(int i=0;i<7;++i)mReadouts[i]=&readouts[i];}
  void refreshReadouts(){
 ''' + status_readout + result_readout + r'''
  }
@@ -131,12 +131,12 @@ int main(){
   if(scenario==6)allocationOK=false;
   if(scenario==7)ALActorChromaKey::sActive=false;
   auto saved=packState;int read=boundRead;button.commit(nullptr,{});assert(gSavedSettings.getU32("ActorKeyShadowSelfTest")==1);
-  ui.refreshReadouts();assert(readouts[7].text.find("Exact shadow test pending")!=std::string::npos);
+  ui.refreshReadouts();assert(readouts[5].text.find("Exact shadow test pending")!=std::string::npos);
   if(ALActorChromaKey::sActive)p.buildActorKeyShadowTerm(16,16);
   ALActorKeyUI::shadowTestUnavailable();
   assert(!gSavedSettings.getU32("ActorKeyShadowSelfTest"));
   assert(sLastResult.find(scenario==0?"PASS":scenario==1?"FAIL":"INCONCLUSIVE")!=std::string::npos);
-  ui.refreshReadouts();assert(readouts[7].text==sLastResult);assert(readouts[5].text==ALActorKeyUI::shadowStatus());
+  ui.refreshReadouts();assert(readouts[5].text==sLastResult);assert(readouts[3].text==ALActorKeyUI::shadowStatus());
   assert(packState==saved&&boundRead==read);
   if(scenario==3)assert(ALActorKeyUI::shadowStatus().find("fallback")!=std::string::npos);
   if(scenario==4)assert(ALActorKeyUI::shadowStatus().find("skipped generation")!=std::string::npos);
@@ -167,8 +167,8 @@ source = source.replace('UI_DEBUG_VALUES', 'std::vector<unsigned>{' + ','.join(s
 out = check_directory('actor_key_diagnostics')
 run = compile_run(out, source, 'diagnostics')
 assert run.returncode == 0, run.stdout + run.stderr
-assert 'setTextIfChanged(mReadouts[7], sLastResult' in panel
-assert 'setTextIfChanged(mReadouts[5], ALActorKeyUI::shadowStatus())' in panel
+assert 'setTextIfChanged(mReadouts[5], sLastResult' in panel
+assert 'setTextIfChanged(mReadouts[3], ALActorKeyUI::shadowStatus())' in panel
 assert 'ALActorKeyUI::shadowTestUnavailable();' in method(NV/'pipeline.cpp', 'void LLPipeline::renderFinalizePresent(')
 assert 'ActorKeyDebugView' not in method(NV/'pipeline.cpp', 'void LLPipeline::buildActorKeyMatte()')
 print(run.stdout, end='')

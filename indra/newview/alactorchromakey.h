@@ -29,7 +29,6 @@ public:
     static bool hideHUD();
     static bool sceneGlass();
     static bool keyedThisFrame();
-    static bool keyGuardAllows(); // WP3 supplies the live ReShade guard; snapshots bypass it.
     static U64 finalizeSerial();
     static void beginFinalize();
     static void refuse(const char* reason);

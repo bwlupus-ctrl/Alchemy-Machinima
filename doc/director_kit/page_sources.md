@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 39 | 2279 | 36 | 74 | 0 | 21 |
+| 39 | 2276 | 36 | 74 | 0 | 21 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -1684,7 +1684,7 @@ Computed logic class: **code-driven**; 76/86 rows setting-bound, 7 rows referenc
 | `area_soft_shadows` / World lights | `area_shadow_world_lights` | `number` | `S32` `indra/newview/app_settings/settings.xml:22114` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:271` | — |
 | `area_soft_shadows` / World shadows | `area_shadow_world_status` | `readout` | — | — | — | — | — |
 | `area_soft_shadows` / World picks | `area_shadow_world_picks` | `readout` | — | — | — | — | — |
-| `area_soft_shadows` / List picks | `area_shadow_world_list_picks` | `button` | — | — | `LLPipeline::worldShadowPickChatLines indra/newview/pipeline.cpp:30463` | — | — |
+| `area_soft_shadows` / List picks | `area_shadow_world_list_picks` | `button` | — | — | `LLPipeline::worldShadowPickChatLines indra/newview/pipeline.cpp:30462` | — | — |
 | `area_soft_shadows` / Clear picks | `area_shadow_world_clear_picks` | `button` | — | — | `LLPipeline::clearWorldShadowPicks indra/newview/pipeline.cpp:25039` | — | — |
 | `area_soft_shadows` / Clear away picks | `area_shadow_world_clear_away_picks` | `button` | — | — | `LLPipeline::clearAwayWorldShadowPicks indra/newview/pipeline.cpp:25051` | — | — |
 | `area_soft_shadows` / Also in VCam feeds | `area_shadow_vcam` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:22086` (Global) | — | — | `light_rim_tab_logic` `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:289` | — |
@@ -2680,47 +2680,44 @@ Computed logic class: **code-driven**; 2/4 rows setting-bound, 0 rows referenced
 
 ### Key (`key_tab`)
 
-Real owner roots: `key_tab_logic` in `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:3` (33 matched rows).
+Real owner roots: `key_tab_logic` in `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:3` (30 matched rows).
 
-C++ owner classes: `ALPanelActorKey` (24 references), `LLReShadeBridge` (1 references).
+C++ owner classes: `ALPanelActorKey` (20 references).
 
-Computed logic class: **code-driven**; 23/33 rows setting-bound, 21 rows referenced in C++.
+Computed logic class: **code-driven**; 23/30 rows setting-bound, 18 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
 | `ak_chroma` / Key actors | `ak_enable` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32169` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:13` `key_tab_logic`/kit_switch | — | — | — |
 | `ak_chroma` / Status | `ak_status` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:16` `key_tab_logic`/text | — | — | — |
-| `ak_chroma` / ReShade | `ak_reshade` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:19` `key_tab_logic`/text | — | — | — |
-| `ak_chroma` / Guarantee | `ak_guarantee` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:22` `key_tab_logic`/text | — | — | — |
-| `ak_chroma` / Retry | `ak_retry` | `button` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:25` `key_tab_logic`/button | `LLReShadeBridge::retryKeyGuard indra/newview/alpanelactorkey.cpp:158` | — | — |
-| `ak_chroma` / Mode | `ak_mode` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32197` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:28` `key_tab_logic`/combo_box | — | — | — |
-| `ak_chroma` / Key colour | `ak_preset` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32204` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:37` `key_tab_logic`/combo_box | — | — | — |
-| `ak_chroma` / Custom colour | `ak_color` | `color` | `Color3` `indra/newview/app_settings/settings.xml:32211` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:52` `key_tab_logic`/color_swatch | — | — | — |
-| `ak_chroma` / Codes | `ak_codes` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:55` `key_tab_logic`/text | — | — | — |
-| `ak_chroma` / Invert matte | `ak_invert` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32218` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:58` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_subjects` / Who | `ak_who` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32176` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:63` `key_tab_logic`/combo_box | — | — | — |
-| `ak_subjects` / Include clones | `ak_clones` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32183` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:73` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_subjects` / Glass refracts | `ak_glass` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32323` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:76` `key_tab_logic`/combo_box | — | — | — |
-| `ak_subjects` / Include animesh | `ak_animesh` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32190` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:84` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_subjects` / Keyed | `ak_count` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:87` `key_tab_logic`/text | — | — | — |
-| `ak_edges` / Feather | `ak_feather` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32225` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:92` `key_tab_logic`/slider | — | — | — |
-| `ak_edges` / Choke | `ak_choke` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32232` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:97` `key_tab_logic`/slider | — | — | — |
-| `ak_edges` / Edge fill | `ak_edge` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32239` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:102` `key_tab_logic`/combo_box | — | — | — |
-| `ak_edges` / Hair and alpha coverage | `ak_alpha` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32246` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:110` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_shadows` / Keep actor shadows | `ak_shadow` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32260` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:115` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_shadows` / Isolation | `ak_iso` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32267` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:118` `key_tab_logic`/combo_box | — | — | — |
-| `ak_shadows` / Strength | `ak_sstr` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32274` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:127` `key_tab_logic`/slider | — | — | — |
-| `ak_shadows` / Cascades | `ak_scasc` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32281` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:132` `key_tab_logic`/combo_box | — | — | — |
-| `ak_shadows` / Softness | `ak_ssoft` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32288` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:142` `key_tab_logic`/slider | — | — | — |
-| `ak_shadows` / Status | `ak_sstatus` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:147` `key_tab_logic`/text | — | — | — |
-| `ak_shadows` / Grey shadow in matte | `ak_mshadow` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32295` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:150` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_output` / Hide HUD attachments | `ak_hud` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32253` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:155` `key_tab_logic`/kit_switch | — | — | — |
-| `ak_output` / Capture warnings | `ak_warn` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:158` `key_tab_logic`/text | — | — | — |
-| `ak_output` / Known limits | `ak_limits` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:161` `key_tab_logic`/text | — | — | — |
-| `ak_diagnostics` / Debug view | `ak_debug` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32330` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:166` `key_tab_logic`/combo_box | — | — | — |
-| `ak_diagnostics` / Self-test | `ak_selftest` | `button` | `U32` `indra/newview/app_settings/settings.xml:32309` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:177` `key_tab_logic`/button | `ALPanelActorKey::setU32 indra/newview/alpanelactorkey.cpp:164` | — | — |
-| `ak_diagnostics` / Exact shadow test | `ak_shadowtest` | `button` | `U32` `indra/newview/app_settings/settings.xml:32302` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:180` `key_tab_logic`/button | `ALPanelActorKey::setU32 indra/newview/alpanelactorkey.cpp:166` | — | — |
-| `ak_diagnostics` / Last result | `ak_result` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:183` `key_tab_logic`/text | — | — | — |
+| `ak_chroma` / Mode | `ak_mode` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32197` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:19` `key_tab_logic`/combo_box | — | — | — |
+| `ak_chroma` / Key colour | `ak_preset` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32204` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:28` `key_tab_logic`/combo_box | — | — | — |
+| `ak_chroma` / Custom colour | `ak_color` | `color` | `Color3` `indra/newview/app_settings/settings.xml:32211` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:43` `key_tab_logic`/color_swatch | — | — | — |
+| `ak_chroma` / Codes | `ak_codes` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:46` `key_tab_logic`/text | — | — | — |
+| `ak_chroma` / Invert matte | `ak_invert` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32218` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:49` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_subjects` / Who | `ak_who` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32176` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:54` `key_tab_logic`/combo_box | — | — | — |
+| `ak_subjects` / Include clones | `ak_clones` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32183` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:64` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_subjects` / Glass refracts | `ak_glass` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32323` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:67` `key_tab_logic`/combo_box | — | — | — |
+| `ak_subjects` / Include animesh | `ak_animesh` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32190` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:75` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_subjects` / Keyed | `ak_count` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:78` `key_tab_logic`/text | — | — | — |
+| `ak_edges` / Feather | `ak_feather` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32225` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:83` `key_tab_logic`/slider | — | — | — |
+| `ak_edges` / Choke | `ak_choke` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32232` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:88` `key_tab_logic`/slider | — | — | — |
+| `ak_edges` / Edge fill | `ak_edge` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32239` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:93` `key_tab_logic`/combo_box | — | — | — |
+| `ak_edges` / Hair and alpha coverage | `ak_alpha` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32246` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:101` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_shadows` / Keep actor shadows | `ak_shadow` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32260` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:106` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_shadows` / Isolation | `ak_iso` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32267` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:109` `key_tab_logic`/combo_box | — | — | — |
+| `ak_shadows` / Strength | `ak_sstr` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32274` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:118` `key_tab_logic`/slider | — | — | — |
+| `ak_shadows` / Cascades | `ak_scasc` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32281` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:123` `key_tab_logic`/combo_box | — | — | — |
+| `ak_shadows` / Softness | `ak_ssoft` | `slider` | `F32` `indra/newview/app_settings/settings.xml:32288` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:133` `key_tab_logic`/slider | — | — | — |
+| `ak_shadows` / Status | `ak_sstatus` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:138` `key_tab_logic`/text | — | — | — |
+| `ak_shadows` / Grey shadow in matte | `ak_mshadow` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32295` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:141` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_output` / Hide HUD attachments | `ak_hud` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:32253` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:146` `key_tab_logic`/kit_switch | — | — | — |
+| `ak_output` / Capture warnings | `ak_warn` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:149` `key_tab_logic`/text | — | — | — |
+| `ak_output` / Known limits | `ak_limits` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:152` `key_tab_logic`/text | — | — | — |
+| `ak_diagnostics` / Debug view | `ak_debug` | `combo` | `U32` `indra/newview/app_settings/settings.xml:32330` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:157` `key_tab_logic`/combo_box | — | — | — |
+| `ak_diagnostics` / Self-test | `ak_selftest` | `button` | `U32` `indra/newview/app_settings/settings.xml:32309` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:168` `key_tab_logic`/button | `ALPanelActorKey::setU32 indra/newview/alpanelactorkey.cpp:137` | — | — |
+| `ak_diagnostics` / Exact shadow test | `ak_shadowtest` | `button` | `U32` `indra/newview/app_settings/settings.xml:32302` (Global) | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:171` `key_tab_logic`/button | `ALPanelActorKey::setU32 indra/newview/alpanelactorkey.cpp:139` | — | — |
+| `ak_diagnostics` / Last result | `ak_result` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:174` `key_tab_logic`/text | — | — | — |
 
 ### Settings (`director_settings_tab`)
 

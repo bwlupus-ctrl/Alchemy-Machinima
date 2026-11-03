@@ -16,7 +16,7 @@ NV = ROOT / 'indra/newview'
 OUT = ROOT / '.tmp/ckey_20261102/wp2/snapshot'
 
 
-def native():
+def native(refuse_reshade=False):
     OUT.mkdir(parents=True, exist_ok=True)
     source = r'''
 #include <algorithm>
@@ -82,6 +82,9 @@ struct LLWindow{inline static std::atomic<bool>sPresentBlocked=false;inline stat
 int presents=0;void SwapBuffers(int){++presents;}
 struct LLWindowWin32:LLWindow{int mhDC=0;void swapBuffers();}window;
 U32 gFrameCount=42;
+bool reshadePresent=true,effectsEnabled=true;
+struct LLReShadeBridge{static LLReShadeBridge& instance(){static LLReShadeBridge b;return b;}
+ bool keyGuardAllows(U32=0){return !reshadePresent;} };
 namespace {
 U64 sFinalizeSerial=0;U32 sKeyFrame=~0u;S32 sKeyWidth=0,sKeyHeight=0;
 bool sComplete=false,sStudioFailed=false;std::string sKeyReason="no keyed finalize";
@@ -130,9 +133,15 @@ template<class T>struct LLPointer:std::shared_ptr<T>{LLPointer(T*p):std::shared_
                 'ALActorChromaKey::SnapshotScope::~SnapshotScope()'):
         source += '\n' + method(NV / 'alactorchromakey.cpp', sig)
     source += '\n' + method(ROOT / 'indra/llwindow/llwindowwin32.cpp', 'void LLWindowWin32::swapBuffers()')
-    source += '\n' + method(NV / 'llviewerwindow.cpp', 'bool LLViewerWindow::rawSnapshot(')
+    raw = method(NV / 'llviewerwindow.cpp', 'bool LLViewerWindow::rawSnapshot(')
+    if refuse_reshade:
+        assert raw.count('bool key_refused = false;') == 1
+        raw = raw.replace('bool key_refused = false;', 'bool key_refused = reshadePresent;')
+    source += '\n' + raw
     source += r'''
 LLImageRaw image;
+extern "C" __declspec(dllexport) void reshade(int present){reshadePresent=present;}
+
 extern "C" __declspec(dllexport) int snapshot(Callback cb,int fail,int tiled){
  callback=cb;injected=fail;displayCalls=0;scratchReleases=0;
  LLPipeline::ui=LLPipeline::sShowHUDAttachments=true;viewer.mWorldViewRectRaw={};
@@ -142,14 +151,14 @@ extern "C" __declspec(dllexport) int snapshot(Callback cb,int fail,int tiled){
  assert(LLPipeline::ui&&LLPipeline::sShowHUDAttachments);
  assert(gPipeline.main.deferredScreen.w==1920&&gPipeline.main.deferredScreen.h==1080);
  assert(viewer.mWorldViewRectRaw.w==1920&&viewer.mWorldViewRectRaw.h==1080);
- assert(scratchReleases==1&&!gSnapshotNoPost);
+ assert(scratchReleases==1&&!gSnapshotNoPost&&effectsEnabled);
  return ok;
 }
 extern "C" __declspec(dllexport) void* pixels(){return image.data.data();}
 extern "C" __declspec(dllexport) int calls(){return displayCalls;}
 '''
     # A DLL only for this fixture; no viewer target is built or linked.
-    binary = compile_run(OUT, source, 'snapshot_contract', flags=('/LD',), run=False)
+    binary = compile_run(OUT, source, 'snapshot_reshade_refusal' if refuse_reshade else 'snapshot_contract', flags=('/LD',), run=False)
     dll = C.CDLL(str(binary))
     return dll
 
@@ -199,7 +208,13 @@ def main():
     cb = cb_type(callback)
     dll.snapshot.argtypes = [cb_type, C.c_int, C.c_int]
     dll.pixels.restype = C.c_void_p
-    assert dll.snapshot(cb, 0, 0) == 1
+    def successful_snapshot(library):
+        assert library.snapshot(cb, 0, 0) == 1
+    for present in (0, 1):
+        dll.reshade(present)
+        operations.clear()
+        successful_snapshot(dll)
+    print('PASS D56 production rawSnapshot succeeds with ReShade absent/present and effects ON', flush=True)
     assert not errors, errors
     assert dll.calls() == 1
     assert (0, w, h, 0, 0) in operations
@@ -220,6 +235,14 @@ def main():
     assert not errors, errors
     assert g.fn('glGetError', g.U)() == 0
     print('PASS production rawSnapshot scratch/tiled refusals: K0 injections 1..5, post-K2 Glass failure, early display return; no readback or present; cleanup executes', flush=True)
+    bad = native(refuse_reshade=True)
+    bad.snapshot.argtypes = [cb_type, C.c_int, C.c_int]
+    try:
+        successful_snapshot(bad)
+    except AssertionError:
+        print('PASS negative control: reintroduced ReShade rawSnapshot refusal rejected', flush=True)
+    else:
+        raise AssertionError('ReShade snapshot refusal escaped success contract')
     print('LIMIT: scene/display and window seams are instrumented; this is not a running-viewer in-world acceptance test', flush=True)
 
 

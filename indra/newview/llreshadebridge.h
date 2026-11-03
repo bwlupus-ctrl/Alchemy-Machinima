@@ -19,8 +19,6 @@
 #define LL_LLRESHADEBRIDGE_H
 
 #include <atomic>
-#include <string>
-#include "../../reshade-addon/src/sl_key_guard.hpp"
 
 #include "llreshadebridgeabi.h"
 #include "v3dmath.h" // [ReShadeReset] global persisted main-view camera position
@@ -39,22 +37,6 @@ public:
     // ABI struct. Cheap: reads existing GL handles and camera state, no GPU
     // work. Safe to call every frame.
     void gatherFrame();
-    // K0 calls only after all other preflight terms succeed. Snapshots bypass it.
-    bool keyGuardAllows(U64 frame);
-    void retryKeyGuard();
-    void noteReader(U32 abi, U64 frame);
-    void reportReader(const SLReShadeReaderInfo* info);
-    void reportKeyGuard(const SLReShadeKeyGuard* report);
-    struct KeyStatus {
-        SLKey::State state = SLKey::State::Off;
-        SLKey::Reason reason = SLKey::Reason::Off;
-        bool reshadeLoaded = false, red = false, amber = false;
-        U64 revision = 0;
-        std::string text, guarantee, overlay;
-        U32 readerAbi = 0, readerCaps = 0, passes = 0, calls = 0, gui = 0, foreign = 0;
-    };
-    const KeyStatus& keyStatus() const { return mKeyStatus; }
-
 
     // Renderer-side facts accumulated while producing this frame. These stay
     // explicit: neither coverage nor a reset may be inferred from texture data.
@@ -100,17 +82,6 @@ private:
     // [ReShadeReset] Sample only from gatherFrame(), never an auxiliary pass.
     void detectCameraCut(const LLViewerCamera& camera);
 
-    SLKey::Guard mKeyGuard;
-    KeyStatus mKeyStatus;
-    std::atomic<U32> mReaderAbi{0};
-    std::atomic<U64> mReaderSeenFrame{0};
-    std::atomic<SLReShadeReaderInfo> mReaderInfo{SLReShadeReaderInfo{}};
-    std::atomic<SLReShadeKeyGuard> mGuardReport{SLReShadeKeyGuard{}};
-    U64 mGuardEvalFrame = ~U64(0);
-    bool mGuardAllowed = false;
-    bool mNotifyOldReader = true;
-    U32 mModuleScans = 0;
-    void updateKeyStatus(bool loaded, const SLReShadeReaderInfo&, const SLReShadeKeyGuard&);
     SLReShadeFrame mFrame;
     // One slot per texture tracked for generation/resize detection in
     // gatherFrame(); a static_assert there keeps the two in step.

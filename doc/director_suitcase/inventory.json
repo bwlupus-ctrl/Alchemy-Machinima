@@ -10,7 +10,79 @@
       "OWNED": 911,
       "TOOLING": 402
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/alactorchromakey.cpp",
+      "indra/newview/alactorchromakey.h",
+      "indra/newview/alpanelactorkey.cpp",
+      "indra/newview/alpanelactorkey.h",
+      "indra/newview/llreshadebridge.cpp",
+      "indra/newview/llreshadebridge.h",
+      "indra/newview/llreshadebridgeabi.h",
+      "indra/newview/pipeline.cpp",
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "reshade-addon/CMakeLists.txt",
+      "reshade-addon/README.md",
+      "reshade-addon/src/sl_key_bracket.hpp",
+      "reshade-addon/src/sl_key_guard.hpp",
+      "reshade-addon/src/sl_key_guard_events.inl",
+      "reshade-addon/src/sl_key_whitelist.hpp",
+      "reshade-addon/src/sl_module_watch.hpp",
+      "reshade-addon/src/sl_reshade_bridge.cpp",
+      "scripts/code_tools/actor_key_diagnostics_check.py",
+      "scripts/code_tools/actor_key_snapshot_check.py",
+      "scripts/code_tools/actor_key_ui_check.py",
+      "scripts/code_tools/actor_key_wp2_check.py",
+      "scripts/code_tools/actor_key_wp3_68_check.py",
+      "scripts/code_tools/actor_key_wp3_check.py",
+      "scripts/code_tools/actor_key_wp3_whitelist_check.py",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/deploy_addon.ps1"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,14 +95,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "8bbdb31bef465a18ad5d4267669332a73086a1ee377840090249dba75b5b3643",
+        "csv_sha256": "deea133860ac6e276d78ff277814df23166da48724d7103470200d48ff63af92",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4753,
+        "entries": 4749,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -72,9 +144,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2556,
+        "generated_kit_rows": 2553,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2151,
+        "interactive_rows": 2150,
         "pages": 39,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -127,7 +199,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 846
+        "xui_files": 845
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -183,19 +255,25 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2279,
+        "independent_json_rows": 2276,
         "multi_page_settings": 21,
         "owner_roots": 36,
         "pages": 39,
-        "rows": 2279,
+        "rows": 2276,
         "unresolved_rows": 74
       },
-      "wiring_rows": 2279
+      "wiring_rows": 2276
     },
     "head_source_tree": "aa39e4e4517ab2a426f0d61bb16a8cda684b6c15",
     "hook_files": 503,
     "hunks": 3080,
-    "input_sha256": "016c9832123c6bd5d3a6eb31b624275d425924c4ce637eded13f319eafc56fc1",
+    "input_sha256": "08b5f627c53cc6fcd2794f3c9877ff63445af275401109d3b650cdbab9b98c87",
+    "opaque_shader_paths": [
+      "reshade-addon/shaders/SL_Bridge.fxh",
+      "reshade-addon/shaders/SL_BridgeDebug.fx",
+      "reshade-addon/shaders/SL_GBufferProvider.fx"
+    ],
+    "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2048
   },
@@ -39207,16 +39285,13 @@
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
-        "path/prefix",
-        "owned source / hook delta identifiers and comments"
+        "path/prefix"
       ],
       "features": [
-        "capture-sidecar",
-        "looks",
-        "roto-tron"
+        "capture-sidecar"
       ],
       "git_status": "A",
-      "layer": 5,
+      "layer": 6,
       "path": "reshade-addon/shaders/SL_Bridge.fxh",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -39227,12 +39302,10 @@
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
-        "path/prefix",
-        "owned source / hook delta identifiers and comments"
+        "path/prefix"
       ],
       "features": [
-        "capture-sidecar",
-        "looks"
+        "capture-sidecar"
       ],
       "git_status": "A",
       "layer": 6,
@@ -39247,18 +39320,13 @@
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
-        "path/prefix",
-        "owned source / hook delta identifiers and comments"
+        "path/prefix"
       ],
       "features": [
-        "actor-path",
-        "capture-sidecar",
-        "clones",
-        "crowd",
-        "roto-tron"
+        "capture-sidecar"
       ],
       "git_status": "A",
-      "layer": 3,
+      "layer": 6,
       "path": "reshade-addon/shaders/SL_GBufferProvider.fx",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },

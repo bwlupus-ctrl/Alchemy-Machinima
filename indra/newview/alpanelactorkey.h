@@ -1,4 +1,4 @@
-/** Director Capture > Key presentation; no renderer or guard policy lives here. */
+/** Director Capture > Key presentation; no renderer policy lives here. */
 #pragma once
 #include "llpanel.h"
 #include "aluirefresh.h"
@@ -20,13 +20,12 @@ private:
     void updateConditions();
     void refreshReadouts();
     LLTextBox* mShadowCodes = nullptr;
-    ALKitRow* mRetry = nullptr;
     std::array<bool, 9> mConditionVisible{};
     ALKitPage* mPage = nullptr;
     LLUICtrl* mColour = nullptr;
     LLUICtrl* mShadow = nullptr;
     std::array<ALKitRow*, 9> mConditional{};
-    std::array<LLTextBox*, 9> mReadouts{};
+    std::array<LLTextBox*, 7> mReadouts{};
     std::vector<boost::signals2::scoped_connection> mConnections;
     ALLiveReadoutClock mClock{2.f};
     ALRevisionGate mRevision;

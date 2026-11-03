@@ -29586,7 +29586,6 @@ bool LLPipeline::preflightActorKey(bool sphere, bool diopter, bool fisheye)
         if (glGetError() != GL_NO_ERROR) return refuse("preflight GL error");
     }
     catch (const std::bad_alloc&) { return refuse("preflight memory allocation failed"); }
-    if (!ALActorChromaKey::keyGuardAllows()) return refuse("ReShade key guard");
     return true;
 }
 

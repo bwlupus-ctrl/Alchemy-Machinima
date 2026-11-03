@@ -25,6 +25,9 @@ def contracts():
 using U64=unsigned long long;using U32=unsigned;using S32=int;using F32=float;
 struct LLUUID {int id;};
 U32 gFrameCount=42;bool gDisconnected=false,gWindowResized=false;
+bool reshadePresent=true, effectsEnabled=true;
+struct LLReShadeBridge { static LLReShadeBridge& instance(){static LLReShadeBridge b;return b;}
+ bool keyGuardAllows(U32=0){return !reshadePresent;} };
 struct Window{int w=1920,h=1080;int getWidth()const{return w;}int getHeight()const{return h;}};
 struct ViewerWindow{Window window;const Window& getWindowRectRaw(){return window;}} viewer;
 auto* gViewerWindow=&viewer;
@@ -92,6 +95,13 @@ for(int category=0;category<5;++category){auto before=K::finalizeSerial();K::beg
  K::finishStudioFrame(K::finalizeSerial());assert(K::snapshotComplete(before,64,64));}
 {K::SnapshotScope a;window.swapBuffers();assert(presents==0&&LLWindow::sBlockedPresents==1);assert(LLWindow::sPresentBlocked);{K::SnapshotScope b;assert(LLWindow::sPresentBlocked);}assert(LLWindow::sPresentBlocked);}assert(!LLWindow::sPresentBlocked);
 K::sActive=false;{K::SnapshotScope a;window.swapBuffers();assert(presents==1);assert(!LLWindow::sPresentBlocked);}K::sActive=true;
+// ReShade with effects ON cannot latch a snapshot refusal or send a notification.
+for(bool present:{false,true}){reshadePresent=present;K::beginFinalize();
+ K::SnapshotRequestScope automatic(false);assert(K::snapshotRequestAllowed(3840,2160));
+ auto before=K::finalizeSerial();K::beginFinalize();K::provision(3840,2160);
+ K::finishStudioFrame(K::finalizeSerial());assert(K::snapshotComplete(before,3840,2160));
+ assert(K::snapshotPlaceholder().empty()&&notifications==0&&effectsEnabled);}
+reshadePresent=true;
 K::refuse("sphere");
 {K::SnapshotRequestScope automatic(false);
  assert(K::snapshotRequestAllowed(3840,2160));K::snapshotRefused(3840,2160);assert(notifications==1);
@@ -113,6 +123,12 @@ std::cout<<"PASS WP2: production Studio policy table; provisional/complete seria
 }
 """
     result=compile_run(OUT,fixture,'contract');print(result.stdout,end='');result.check_returncode()
+    # A restored ReShade snapshot refusal must fail the same production contracts.
+    marker = 'bool ALActorChromaKey::snapshotRequestAllowed(S32 width, S32 height)\n{'
+    assert fixture.count(marker) == 1
+    bad = fixture.replace(marker, marker + '\n    if (reshadePresent) return false;')
+    result=compile_run(OUT,bad,'reshade_snapshot_refusal');assert result.returncode
+    print('PASS negative control: reintroduced ReShade snapshot refusal rejected')
     # Negative controls mutate complete production functions, requiring behavioral rejection.
     for name,before,after in [('premature_completion','sComplete = false;\n    sKeyReason.clear();','sComplete = true;\n    sKeyReason.clear();'),
                              ('bad_resize_latch','sRefusal.settledWidth != window.getWidth()','sRefusal.windowWidth != window.getWidth()'),
@@ -183,7 +199,10 @@ template<class T>struct LLCachedControl{
  T operator()()const{return T(settings[name]);}operator T()const{return operator()();}
 };
 std::string refused;
-struct ALActorChromaKey{static void preflightControls(){}static bool keyGuardAllows(){return true;}static void refuse(const char* r){refused=r;}static bool suppressed(){return settings["suppress"]!=0;}static U32 mode(){return settings["mode"];}};
+bool reshadePresent=false,effectsEnabled=true,gSnapshot=false;
+struct LLReShadeBridge { static LLReShadeBridge& instance(){static LLReShadeBridge b;return b;}
+ bool keyGuardAllows(U32=0){return !reshadePresent;} };
+struct ALActorChromaKey{static void preflightControls(){}static bool keyGuardAllows(){return !reshadePresent;}static void refuse(const char* r){refused=r;}static bool suppressed(){return settings["suppress"]!=0;}static U32 mode(){return settings["mode"];}};
 struct LLShaderFeatures{};
 bool programOK=true,studioOK=true,allocationOK=true;
 struct LLGLSLShader{
@@ -229,11 +248,13 @@ struct LLPipeline{
     fixture+=r"""
 int main(){
  for(bool snapshot:{false,true})for(unsigned mode=0;mode<3;++mode)for(unsigned fail=1;fail<=5;++fail){
-  settings["mode"]=mode;settings["ActorKeyDebugFailPreflight"]=fail;studioOK=fail!=3&&fail!=5;
+  gSnapshot=snapshot;settings["mode"]=mode;settings["ActorKeyDebugFailPreflight"]=fail;studioOK=fail!=3&&fail!=5;
   LLPipeline p;int original=draw;assert(!p.preflightActorKey(false,false,false));assert(draw==original&&read==2&&viewport[0]==11&&viewport[2]==64);assert(copies==0);(void)snapshot;
  }
  settings.clear();studioOK=true;
- for(int bits:{8,10}){red=bits;LLPipeline p;assert(p.preflightActorKey(false,false,false));
+ for(bool present:{false,true})for(bool snapshot:{false,true})for(unsigned mode=0;mode<3;++mode)for(int bits:{8,10}){
+  reshadePresent=present;gSnapshot=snapshot;settings["mode"]=mode;red=bits;
+  LLPipeline p;assert(p.preflightActorKey(false,false,false));assert(effectsEnabled);
   assert(p.mActorKeyScene.getInternalFormat()==(bits==8?GL_RGBA8:GL_RGB10_A2));
   assert(draw==7&&read==2&&viewport[0]==11&&viewport[2]==64);assert(actor_key_copy(p.mActorKeyScene,p.mActorKeyViewport));
   assert(copySource==7&&copyReadBuffer==103&&read==2&&buffers[2]==102&&buffers[7]==101&&pack==77);
@@ -255,6 +276,12 @@ int main(){
 }
 """
     result=compile_run(OUT,fixture,'preflight_copy');print(result.stdout,end='');result.check_returncode()
+    # Reintroduce K0 against an effects-ON, refusing bridge seam.
+    marker='    catch (const std::bad_alloc&) { return refuse("preflight memory allocation failed"); }'
+    assert fixture.count(marker)==1
+    bad=fixture.replace(marker,marker+'\n    if (!ALActorChromaKey::keyGuardAllows()) return refuse("ReShade key guard");')
+    result=compile_run(OUT,bad,'reshade_preflight_refusal');assert result.returncode
+    print('PASS D56: complete production K0 succeeds with ReShade absent/present, effects ON, live/snapshot, all modes and 8/10-bit; restored ReShade gate fails')
     bad=fixture.replace('glBindFramebuffer(GL_READ_FRAMEBUFFER, draw);','glBindFramebuffer(GL_READ_FRAMEBUFFER, read);')
     assert bad!=fixture
     result=compile_run(OUT,bad,'bad_copy_source');assert result.returncode

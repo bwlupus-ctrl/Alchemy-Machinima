@@ -13,7 +13,6 @@
 #include "llglslshader.h"
 #include "llviewershadermgr.h"
 #include "llnotificationsutil.h"
-#include "llreshadebridge.h"
 #include "lltextbox.h"
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
@@ -37,23 +36,6 @@ std::string codes(const LLColor3& colour, F32 scale = 1.f)
     return llformat("%d,%d,%d", ll_round(llclamp(colour.mV[0] * scale, 0.f, 1.f) * 255.f),
         ll_round(llclamp(colour.mV[1] * scale, 0.f, 1.f) * 255.f),
         ll_round(llclamp(colour.mV[2] * scale, 0.f, 1.f) * 255.f));
-}
-
-// Viewer/UI thread snapshot; the bridge owns all guard decisions.
-struct GuardState
-{
-    bool refused = false;
-    bool pending = true;
-    std::string status;
-    std::string guarantee;
-};
-GuardState readGuard()
-{
-    const auto& status = LLReShadeBridge::instance().keyStatus();
-    std::string text = status.text.empty() ? "ReShade: awaiting key preflight" : status.text;
-    if (!status.overlay.empty()) text += "; " + status.overlay;
-    return {status.red, status.amber || status.state == SLKey::State::Off, text,
-        status.guarantee.empty() ? "Key exactness awaits guard preflight." : status.guarantee};
 }
 
 std::string captureWarnings()
@@ -150,17 +132,8 @@ bool ALPanelActorKey::postBuild()
     mShadowCodes = getChild<LLTextBox>("ak_shadow_codes");
     const char* conditional[] = {"ak_invert", "ak_glass", "ak_shadow", "ak_iso", "ak_sstr", "ak_scasc", "ak_ssoft", "ak_sstatus", "ak_mshadow"};
     for (size_t i = 0; i < mConditional.size(); ++i) mConditional[i] = mPage->findRow(conditional[i]);
-    const char* readouts[] = {"ak_status", "ak_reshade", "ak_guarantee", "ak_codes", "ak_count", "ak_sstatus", "ak_warn", "ak_result", "ak_limits"};
+    const char* readouts[] = {"ak_status", "ak_codes", "ak_count", "ak_sstatus", "ak_warn", "ak_result", "ak_limits"};
     for (size_t i = 0; i < mReadouts.size(); ++i) mReadouts[i] = getChild<LLTextBox>(readouts[i]);
-    mRetry = mPage->findRow("ak_retry");
-    auto* retry = getChild<LLButton>("ak_retry");
-    retry->setToolTip(std::string("Retry the ReShade key guard after correcting the reported cause."));
-    retry->setCommitCallback([this](LLUICtrl*, const LLSD&)
-    {
-        LLReShadeBridge::instance().retryKeyGuard();
-        mRevision.reset();
-        refreshReadouts();
-    });
     getChild<LLButton>("ak_selftest")->setCommitCallback([](LLUICtrl*, const LLSD&)
         { gSavedSettings.setU32("ActorKeySelfTest", 1); });
     getChild<LLButton>("ak_shadowtest")->setCommitCallback([](LLUICtrl*, const LLSD&)
@@ -170,7 +143,6 @@ bool ALPanelActorKey::postBuild()
             [this](LLControlVariable*, const LLSD&, const LLSD&) { updateConditions(); }));
     mPage->setRowRevealGuard([this](ALKitRow* row)
     {
-        if (row == mRetry) return readGuard().refused;
         for (size_t i = 0; i < mConditional.size(); ++i)
             if (row == mConditional[i]) return mConditionVisible[i];
         return true;
@@ -198,22 +170,18 @@ void ALPanelActorKey::updateConditions()
 
 void ALPanelActorKey::refreshReadouts()
 {
-    const GuardState guard = readGuard();
     std::string status = "Off (off at every login)";
     if (ALActorChromaKey::sActive)
-        status = guard.refused ? "Refused: ReShade key guard" : ALActorChromaKey::keyedThisFrame()
+        status = ALActorChromaKey::keyedThisFrame()
             ? std::string("Keying: ") + modeName(ALActorChromaKey::mode())
             : ALActorChromaKey::reason().empty() ? "Arming" : "Suspended: " + ALActorChromaKey::reason();
     const std::string warnings = captureWarnings();
-    const LLColor4 tint = guard.refused ? LLColor4(1.f,.25f,.2f,1.f)
-        : !ALActorChromaKey::sActive ? LLColor4::white
-        : guard.pending || !ALActorChromaKey::keyedThisFrame() || warnings != "No capture overlays enabled."
+    const LLColor4 tint = !ALActorChromaKey::sActive ? LLColor4::white
+        : !ALActorChromaKey::keyedThisFrame() || warnings != "No capture overlays enabled."
             ? LLColor4(1.f,.7f,.15f,1.f) : LLColor4(.2f,1.f,.35f,1.f);
     setTextIfChanged(mReadouts[0], status);
     mReadouts[0]->setColor(tint);
-    setTextIfChanged(mReadouts[1], guard.status);
-    setTextIfChanged(mReadouts[2], guard.guarantee);
-    setTextIfChanged(mReadouts[3], codes(ALActorChromaKey::colour()));
+    setTextIfChanged(mReadouts[1], codes(ALActorChromaKey::colour()));
     U32 keyed = 0, clones = 0, impostors = 0;
     for (LLCharacter* character : LLCharacter::sInstances)
         if (auto* av = dynamic_cast<LLVOAvatar*>(character); av && ALActorChromaKey::keepsLive(av))
@@ -223,17 +191,16 @@ void ALPanelActorKey::refreshReadouts()
         }
     for (const auto& instance : ALGhostStudio::instance().getInstances())
         if (instance.mEntityId.isNull() && ALActorChromaKey::instanceKeyed(instance.mId)) { ++keyed; ++clones; }
-    setTextIfChanged(mReadouts[4], llformat("%u keyed · %u clones · %u not keyed (impostor / ineligible)", keyed, clones, impostors));
+    setTextIfChanged(mReadouts[2], llformat("%u keyed · %u clones · %u not keyed (impostor / ineligible)", keyed, clones, impostors));
     static LLCachedControl<F32> strength(gSavedSettings, "ActorKeyShadowStrength", .5f);
     setTextIfChanged(mShadowCodes, "code " + codes(ALActorChromaKey::colour(), 1.f - strength()));
-    setTextIfChanged(mReadouts[5], ALActorKeyUI::shadowStatus());
-    setTextIfChanged(mReadouts[6], warnings);
+    setTextIfChanged(mReadouts[3], ALActorKeyUI::shadowStatus());
+    setTextIfChanged(mReadouts[4], warnings);
     static LLCachedControl<U32> test(gSavedSettings, "ActorKeySelfTest", 0);
     static LLCachedControl<U32> shadow_test(gSavedSettings, "ActorKeyShadowSelfTest", 0);
-    setTextIfChanged(mReadouts[7], sLastResult + (test
+    setTextIfChanged(mReadouts[5], sLastResult + (test
         ? " Key test pending; waiting for keyed frames."
         : shadow_test ? " Exact shadow test pending; waiting for renderer." : ""));
-    if (mRetry) mRetry->setControlVisible(guard.refused);
 }
 
 void ALPanelActorKey::onVisibilityChange(bool visible)
@@ -247,7 +214,7 @@ void ALPanelActorKey::draw()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // Revision covers settings / membership; the timed fallback also catches
     // WP2's transient finalize reason and overlays which have no revision yet.
-    if (isWidgetOnScreen(this) && mClock.due() && mRevision.changed({ALActorChromaKey::revision(), LLReShadeBridge::instance().keyStatus().revision})) refreshReadouts();
+    if (isWidgetOnScreen(this) && mClock.due() && mRevision.changed({ALActorChromaKey::revision()})) refreshReadouts();
     LLPanel::draw();
 }
 

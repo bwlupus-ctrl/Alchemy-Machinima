@@ -13,7 +13,6 @@
 extern bool gCubeSnapshot;
 #include <array>
 #include <memory>
-#include "llreshadebridge.h"
 #include "alactorkeyui.h" // WP5 global settings presentation listeners
 
 #include "alcinelightrigmanager.h"
@@ -33,8 +32,6 @@ extern bool gCubeSnapshot;
 #include "llviewerdisplay.h"
 
 #include <algorithm>
-
-extern bool gSnapshot; // snapshot presents are blocked; preserve the live guard heartbeat
 
 bool ALActorChromaKey::sActive = false;
 ALActorKeySet<LLUUID> ALActorChromaKey::sKeyed;
@@ -75,7 +72,6 @@ void ALActorChromaKey::initialize()
         {
             ALActorChromaKey::sActive = value.asBoolean();
             ++sRevision;
-            LLReShadeBridge::instance().retryKeyGuard();
             if (!sActive)
             {
                 sKeyed = {};
@@ -245,13 +241,6 @@ struct SnapshotRefusalLatch
     S32 settledWidth = 0, settledHeight = 0;
     std::string suspension, placeholder;
 } sRefusal;
-}
-
-bool ALActorChromaKey::keyGuardAllows()
-{
-    // Snapshot presents are blocked by WP2: do not consume the live heartbeat.
-    if (gSnapshot) return true;
-    return LLReShadeBridge::instance().keyGuardAllows(gFrameCount);
 }
 
 U32 ALActorChromaKey::mode()
