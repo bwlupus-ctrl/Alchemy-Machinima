@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "9e17f118933c3d0a44aaa968a0bc18e93f790f8f688a99862167cad7ff30652f",
+  "csv_sha256": "ad2c2e15b8f8703629a715046f3901dad364149e62e50612f8395aa915ff4b7f",
   "interactive_rows": 2127,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -48,7 +48,7 @@
   "entries": 4695,
   "pages": 38,
   "settings_declared": 3868,
-  "xui_files": 845,
+  "xui_files": 844,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -7615,10 +7615,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -7629,10 +7625,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -12323,10 +12315,6 @@
      "value": 67
     },
     {
-     "label": "Ash Drift",
-     "value": 68
-    },
-    {
      "label": "Magma",
      "value": 69
     },
@@ -12337,10 +12325,6 @@
     {
      "label": "Sumi-e",
      "value": 71
-    },
-    {
-     "label": "Arc",
-     "value": 72
     },
     {
      "label": "Lidar",
@@ -12552,10 +12536,6 @@
      "value": 67
     },
     {
-     "label": "Ash Drift",
-     "value": 68
-    },
-    {
      "label": "Magma",
      "value": 69
     },
@@ -12566,10 +12546,6 @@
     {
      "label": "Sumi-e",
      "value": 71
-    },
-    {
-     "label": "Arc",
-     "value": 72
     },
     {
      "label": "Lidar",
@@ -12781,10 +12757,6 @@
      "value": 67
     },
     {
-     "label": "Ash Drift",
-     "value": 68
-    },
-    {
      "label": "Magma",
      "value": 69
     },
@@ -12795,10 +12767,6 @@
     {
      "label": "Sumi-e",
      "value": 71
-    },
-    {
-     "label": "Arc",
-     "value": 72
     },
     {
      "label": "Lidar",
@@ -13010,10 +12978,6 @@
      "value": 67
     },
     {
-     "label": "Ash Drift",
-     "value": 68
-    },
-    {
      "label": "Magma",
      "value": 69
     },
@@ -13024,10 +12988,6 @@
     {
      "label": "Sumi-e",
      "value": 71
-    },
-    {
-     "label": "Arc",
-     "value": 72
     },
     {
      "label": "Lidar",
@@ -13239,10 +13199,6 @@
      "value": 67
     },
     {
-     "label": "Ash Drift",
-     "value": 68
-    },
-    {
      "label": "Magma",
      "value": 69
     },
@@ -13253,10 +13209,6 @@
     {
      "label": "Sumi-e",
      "value": 71
-    },
-    {
-     "label": "Arc",
-     "value": 72
     },
     {
      "label": "Lidar",
@@ -13468,10 +13420,6 @@
      "value": 67
     },
     {
-     "label": "Ash Drift",
-     "value": 68
-    },
-    {
      "label": "Magma",
      "value": 69
     },
@@ -13482,10 +13430,6 @@
     {
      "label": "Sumi-e",
      "value": 71
-    },
-    {
-     "label": "Arc",
-     "value": 72
     },
     {
      "label": "Lidar",
@@ -166688,10 +166632,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -166702,10 +166642,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -172115,10 +172051,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -172129,10 +172061,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -172347,10 +172275,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -172361,10 +172285,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -172579,10 +172499,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -172593,10 +172509,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -172811,10 +172723,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -172825,10 +172733,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -173043,10 +172947,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -173057,10 +172957,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -173275,10 +173171,6 @@
      "value": "67"
     },
     {
-     "label": "Ash Drift",
-     "value": "68"
-    },
-    {
      "label": "Magma",
      "value": "69"
     },
@@ -173289,10 +173181,6 @@
     {
      "label": "Sumi-e",
      "value": "71"
-    },
-    {
-     "label": "Arc",
-     "value": "72"
     },
     {
      "label": "Lidar",
@@ -269046,8 +268934,6 @@
    "spin_axis_z",
    "spin_speed_spin",
    "spin_up_seconds",
-   "st_arc",
-   "st_ash",
    "st_blueprint",
    "st_chrome",
    "st_clone",

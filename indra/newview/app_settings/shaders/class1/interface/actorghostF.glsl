@@ -137,7 +137,6 @@ uniform int ghostSceneValid;
 uniform vec2 ghostScreenSize; // actual viewport, including 4K / snapshot tiles
 uniform vec2 ghostScreenOrigin;
 uniform vec2 ghostVelocity; // screen pixels per frame, bottom-up; zero = fallback
-uniform float ghostDisplace;
 #endif
 #ifdef GHOST_WORLD_PASS
 // Full untiled render-target size. Shared Actor FX device motifs use this with
@@ -1387,14 +1386,17 @@ void main()
     else if (ghostLook == 69) // Studio: Magma
     {
         vec3 P = vary_object_position + vec3(ghostAux.w * 0.31, -ghostAux.w * 0.17, 0.0);
-        vec2 q1 = P.xz * 3.6 + P.y * 1.1, q2 = P.yz * 8.0 - P.x * 0.7;
+        // Rest-space lava flow is independent of pose cadence and shimmer.
+        float t = ghostTime;
+        vec2 q1 = P.xz * 3.6 + P.y * 1.1 + vec2(0.12 * sin(t * 0.7), -t * 0.28);
+        vec2 q2 = P.yz * 8.0 - P.x * 0.7 + vec2(-t * 0.16, t * 0.42);
         float c1 = pow(ghost_ridge(q1), 22.0), c2 = 0.0;
         if (max(fwP.x, max(fwP.y, fwP.z)) < 0.006)
             c2 = pow(ghost_ridge(q2), 30.0) * 0.6
                 * (1.0 - smoothstep(0.003, 0.006, max(fwP.x, max(fwP.y, fwP.z))));
         float fw = max(fwP.x, max(fwP.y, fwP.z));
         float crack = (c1 + c2) * smoothstep(0.2, 1.0, 0.012 / max(fw, 1e-5));   // fade hairlines at distance
-        float pulse = 0.55 + 0.45 * ghost_fbm(q1 * 0.35 + vec2(ghostTime * 0.12, -ghostTime * 0.07));
+        float pulse = 0.65 + 0.35 * sin(t * 2.4 + P.z * 3.0 + ghostAux.w);
         float heat  = clamp(crack * pulse * 1.0 + edge * crack * 0.8, 0.0, 1.0);
         vec3 lava   = mix(vec3(0.55, 0.03, 0.0), vec3(1.0, 0.55, 0.05), smoothstep(0.2, 0.8, heat));
         lava        = mix(lava, vec3(1.0, 0.95, 0.6), smoothstep(0.85, 1.0, heat));
@@ -1453,53 +1455,6 @@ void main()
         rgb = mix(rgb, color.rgb, 0.12) + glint * 0.9 + dripLine * 0.5 + edge * 0.3;
         rgb *= 0.85; // Fixed default liquid-metal exposure.
         alpha = color.a * tex.a;
-    }
-    else if (ghostLook == 68) // Studio: Ash Drift
-    {
-        vec3  P = vary_object_position;
-        float h = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
-        float prog = ghostDissolveProgress > 0.0 ? ghostDissolveProgress
-                   : 0.5 + 0.5 * sin(ghostTime * 0.25 + ghostAux.w);   // free-run ping-pong
-        float dir  = 1.0 >= 0.5 ? (1.0 - h) : h;          // burn from top (default) or from feet
-        float field = ghost_fbm(P.xy * 4.0 + P.z * 1.3 + vec2(ghostAux.w)) ;
-        float dfront = (dir + (field - 0.5) * 0.55) - prog * 1.35 + 0.17;   // >0 intact, <0 gone
-        float charr  = 1.0 - smoothstep(0.0, 0.18, dfront);                 // darkens ahead of front
-        float glowE  = 1.0 - smoothstep(0.0, 0.035, abs(dfront));           // incandescent line
-        vec3 emberCol = mix(vec3(1.0, 0.42, 0.06), color.rgb, 0.3);
-        if (dfront >= 0.0)
-        {
-            rgb   = tex.rgb * color.rgb * (1.0 - charr * 0.85) + vec3(0.08,0.06,0.05) * charr
-                  + emberCol * glowE * 2.4;
-            alpha = color.a * tex.a;
-        }
-        else
-        {
-            // burnt region: geometry still exists, so draw drifting embers inside the silhouette
-            vec2 e  = vec2(fragCoord.x / 14.0, fragCoord.y / 14.0 - ghostTime * 4.0);
-            vec2 ec = floor(e); vec2 ef = fract(e) - 0.5;
-            float keep = step(0.86 - 0.3 * glowE, ghost_hash(ec + fract(ghostAux.w)));  // sparse, denser near front
-            float r = length(ef + (vec2(ghost_hash(ec+1.3), ghost_hash(ec+7.7)) - 0.5) * 0.5);
-            float ember = keep * (1.0 - smoothstep(0.08, 0.22, r));
-            ember *= 1.0 - smoothstep(0.0, 0.35, -dfront);                 // fade with distance behind front
-            rgb   = emberCol * ember * 2.0;
-            alpha = color.a * tex.a * ember;
-        }
-    }
-    else if (ghostLook == 72) // Studio: Arc
-    {
-        vec3 P = vary_object_position;
-        float t   = ghostTime * 6.0 + ghostAux.w;
-        float beat = floor(t);
-        vec2  q   = P.xz * 3.2 + P.y * 1.4 + vec2(ghost_hash(vec2(beat, 1.0)), ghost_hash(vec2(beat, 2.0))) * 0.6; // re-seed per flash
-        float bolt = pow(ghost_ridge(q), 26.0);
-        float fw   = max(fwP.x, max(fwP.y, fwP.z));
-        bolt *= smoothstep(0.2, 1.0, 0.010 / max(fw, 1e-5));
-        float seg  = step(0.62, ghost_hash(floor(q * 1.5) + beat));         // only some segments light per beat
-        float env  = pow(1.0 - fract(t), 2.5);                              // decay within the beat
-        float arc  = bolt * seg * env * 2.0;
-        vec3  ac   = mix(vec3(0.6, 0.8, 1.0), color.rgb, 0.3);
-        rgb   = color.rgb * 0.12 * (1.0 + lum) + ac * (arc * 3.0 + edge * (0.3 + 0.9 * arc));
-        alpha = color.a * tex.a * clamp(0.35 + arc * 2.0 + edge * 0.4, 0.0, 1.0);
     }
     else if (ghostLook == 74) // Studio: Code Rain
     {
@@ -1717,37 +1672,6 @@ void main()
             suit, rgain * 0.30 * worldRimCore
                   + sgain * (seams.x * 0.90 + seams.y * 0.60));
         alpha = color.a * tex.a;
-    }
-#endif
-#ifndef GHOST_WORLD_PASS
-    if (ghostDisplace > 0.0 && (ghostLook == 68 || ghostLook == 72))
-    {
-        float age = fract(ghostTime * (ghostLook == 68 ? 0.65 : 6.0)
-                          + ghostAux.w * 0.15915494);
-        float fade = smoothstep(0.0, 0.12, age) * (1.0 - age);
-        vec3 P = vary_object_position;
-        if (ghostLook == 68)
-        {
-            vec2 cells = P.xz * vec2(34.0, 25.0) + P.y * 7.0;
-            vec2 cell = floor(cells);
-            float seed = ghost_hash(cell + floor(ghostTime * 0.65) + ghostAux.w);
-            float dotSize = length(fract(cells) - vec2(0.5));
-            float ember = step(0.82, seed) * (1.0 - smoothstep(0.08, 0.24, dotSize));
-            rgb = mix(vec3(1.0, 0.32, 0.025), color.rgb, 0.22) * 3.0;
-            alpha = color.a * tex.a * ember * fade;
-        }
-        else
-        {
-            float beat = floor(ghostTime * 6.0 + ghostAux.w * 0.15915494);
-            vec2 q = P.xz * 4.5 + P.y * 1.7;
-            float path = q.x + sin(q.y * 5.0 + beat) * 0.18
-                         + sin(q.y * 13.0 - beat) * 0.06;
-            float line = abs(fract(path + beat * 0.37) - 0.5);
-            float filament = 1.0 - smoothstep(0.012, 0.045, line);
-            float segment = step(0.48, ghost_hash(vec2(floor(q.y * 2.0), beat)));
-            rgb = mix(vec3(0.55, 0.80, 1.0), color.rgb, 0.20) * 4.0;
-            alpha = color.a * tex.a * filament * segment * fade * (1.0 - age);
-        }
     }
 #endif
     if (ghostLook >= 5)

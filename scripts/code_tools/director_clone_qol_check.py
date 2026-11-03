@@ -113,6 +113,10 @@ int main(){ALGhostStudio studio;
 
 def check_round1(directory, nv):
     fixture = Path('scripts/code_tools/fixtures/clone_qol_fixture.cpp.in').read_text(encoding='utf-8')
+    policy = '\n'.join(method(nv / 'alghoststudio.h', sig) for sig in (
+        'static S32 remapRetiredOverlayStyle(', 'static bool isOverlayStyle(',
+        'static S32 resolveOverlayStyle('))
+    fixture = fixture.replace('@OVERLAY_STYLE_POLICY@', policy)
     production = []
     for file, signatures in {
         'alghoststudio.cpp': ('static F32 clone_capture_radius(', 'bool ALGhostStudio::isDeleting(', 'bool ALGhostStudio::refreshPoseCadence(', 'void ALGhostStudio::getWantedSources(', 'LLUUID ALGhostStudio::actorOwner(',

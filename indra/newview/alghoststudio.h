@@ -380,9 +380,20 @@ public:
     typedef std::map<std::pair<LLUUID, U64>, std::vector<F32> > palette_map_t;
 
     // Overlay ids are sparse. 28..63 belong to live Actor FX, never Studio.
+    // Retired ids remain reserved for old settings/presets/session records.
+    static S32 remapRetiredOverlayStyle(S32 style)
+    {
+        return style == 68 || style == 72 ? 1 : style; // Clone
+    }
     static bool isOverlayStyle(S32 style)
     {
-        return (style >= 0 && style <= 27) || (style >= 64 && style <= 77);
+        return (style >= 0 && style <= 27)
+            || (style >= 64 && style <= 77 && style != 68 && style != 72);
+    }
+    static S32 resolveOverlayStyle(S32 style)
+    {
+        style = remapRetiredOverlayStyle(style);
+        return isOverlayStyle(style) ? style : 0;
     }
 
     struct Instance

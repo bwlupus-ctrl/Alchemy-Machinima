@@ -12045,11 +12045,11 @@ enum EGhostStyle : S32
     GHOST_STYLE_MERCURY = 65,
     GHOST_STYLE_MARBLE = 66,
     GHOST_STYLE_CRYSTAL = 67,
-    GHOST_STYLE_ASH = 68,
+    // 68 reserved (retired overlay look); never reuse.
     GHOST_STYLE_MAGMA = 69,
     GHOST_STYLE_VOID = 70,
     GHOST_STYLE_SUMIE = 71,
-    GHOST_STYLE_ARC = 72,
+    // 72 reserved (retired overlay look); never reuse.
     GHOST_STYLE_LIDAR = 73,
     GHOST_STYLE_CODERAIN = 74,
     GHOST_STYLE_DATAMOSH = 75,
@@ -12078,10 +12078,8 @@ static LLStaticHashedString sGhostGlowOnly("ghostGlowOnly");
 static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
 static LLStaticHashedString sGhostScreenSize("ghostScreenSize");
 static LLStaticHashedString sGhostScreenOrigin("ghostScreenOrigin");
-static LLStaticHashedString sGhostWorldUp("ghostWorldUp");
 static LLStaticHashedString sGhostSceneValid("ghostSceneValid");
 static LLStaticHashedString sGhostVelocity("ghostVelocity");
-static LLStaticHashedString sGhostDisplace("ghostDisplace");
 
 // Studio-only transient inputs. Keep these out of shared/live Actor FX params.
 struct StudioLookFrame
@@ -12089,25 +12087,17 @@ struct StudioLookFrame
     LLImageGL* mScene = nullptr;
     GLint mViewport[4] = {0, 0, 1, 1};
     LLVector2 mVelocity;
-    LLVector3 mWorldUp; // region +Z in eye space, independent of attachment transform
     U64 mInvocation = 0;
 };
 
 bool studio_phase2_look(S32 look)
 {
-    return look == GHOST_STYLE_GLASS || look == GHOST_STYLE_ASH
-        || look == GHOST_STYLE_ARC || look == GHOST_STYLE_DATAMOSH;
+    return look == GHOST_STYLE_GLASS || look == GHOST_STYLE_DATAMOSH;
 }
 
 bool studio_scene_needed(S32 look, F32 alpha, bool visible)
 {
     return look == GHOST_STYLE_GLASS && alpha > 0.f && visible;
-}
-
-F32 studio_displaced_sweep(S32 look, bool studio, F32 alpha, bool world, bool have_fx)
-{
-    if (!studio || world || !have_fx || !(alpha > 0.f)) return 0.f;
-    return look == GHOST_STYLE_ASH ? 1.f : look == GHOST_STYLE_ARC ? 2.f : 0.f;
 }
 
 // Every overlay invocation has a fresh generation, including same-frame tiles,
@@ -12240,13 +12230,6 @@ std::optional<StudioLookFrame> studio_prepare_item(S32 look, F32 alpha, bool act
     return std::nullopt;
 }
 
-template<class Apply>
-void studio_reset_loaded(LLGLSLShader* base, LLGLSLShader* rigged, Apply apply)
-{
-    if (base && base->mProgramObject) apply(base);
-    if (rigged && rigged->mProgramObject) apply(rigged);
-}
-
 // This is the actual per-item orchestration, executed by the spy harness too.
 // A fresh copy precedes EACH Glass draw, after all farther clones were drawn.
 template<class Copy, class Draw>
@@ -12257,17 +12240,10 @@ void studio_draw_item(S32 look, F32 alpha, bool visible, StudioLookFrame* frame,
     draw(frame);
 }
 
-template<class Draw>
-void studio_draw_displaced(S32 look, bool studio, F32 alpha, bool world, bool have_fx, Draw draw)
-{
-    const F32 displacement = studio_displaced_sweep(look, studio, alpha, world, have_fx);
-    if (displacement > 0.f) draw(displacement);
-}
-
 // Uniform state is per linked program. Inactive legacy/path draws do no phase-2
 // setters; the first draw after an active state resets it once. A newly linked
 // program starts with GL's zero uniforms and has no dirty state to inherit.
-void studio_apply_phase2(LLGLSLShader* sh, const StudioLookFrame* frame, F32 displacement)
+void studio_apply_phase2(LLGLSLShader* sh, const StudioLookFrame* frame)
 {
     if (!sh || !sh->mProgramObject) return;
     struct State { U32 program = 0; bool active = false; };
@@ -12275,7 +12251,6 @@ void studio_apply_phase2(LLGLSLShader* sh, const StudioLookFrame* frame, F32 dis
     State& state = states[sh == &gActorGhostProgram ? 0 : 1];
     if (state.program != sh->mProgramObject) state = {sh->mProgramObject, false};
     if (!frame && !state.active) return;
-    sh->uniform1f(sGhostDisplace, displacement);
     sh->uniform2f(sGhostVelocity, frame ? frame->mVelocity.mV[VX] : 0.f,
                   frame ? frame->mVelocity.mV[VY] : 0.f);
     sh->uniform1i(sGhostSceneValid, frame && frame->mScene ? 1 : 0);
@@ -12283,7 +12258,6 @@ void studio_apply_phase2(LLGLSLShader* sh, const StudioLookFrame* frame, F32 dis
                   frame ? frame->mViewport[3] : 1.f);
     sh->uniform2f(sGhostScreenOrigin, frame ? frame->mViewport[0] : 0.f,
                   frame ? frame->mViewport[1] : 0.f);
-    sh->uniform3fv(sGhostWorldUp, 1, frame ? frame->mWorldUp.mV : LLVector3::zero.mV);
     state.active = frame != nullptr;
 }
 
@@ -12986,6 +12960,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         return 0;
     }
 
+    if (!gp.mWorldLinear) style = ALGhostStudio::resolveOverlayStyle(style);
+
     // IDs above the shared prefix are a live-world contract. Preserve the
     // historical default Ghost behavior for every non-world caller even if
     // malformed/future instance data somehow supplies a live-only value.
@@ -13098,7 +13074,6 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)
         : actor_ghost_studio_frame_time(gp.mEffectFps);
     bool glow_only = false;
-    F32 studio_displace = 0.f;
 
     // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
     // Supply its bottom-up whole-image pixel origin so scanlines, noise and
@@ -13166,7 +13141,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);
             if (!gp.mWorldLinear)
             {
-                studio_apply_phase2(sh, studio_frame, studio_displace);
+                studio_apply_phase2(sh, studio_frame);
             }
             if (gp.mWorldLinear)
             {
@@ -14424,29 +14399,6 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     }
     }
 
-    studio_draw_displaced(style, studio_frame != nullptr, alpha, gp.mWorldLinear, have_fx,
-        [&](F32 displaced_sweep)
-    {
-        LL_PROFILE_GPU_ZONE("Clone displaced sweep");
-        ScopedStudioTexture texture(0);
-        LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
-        LLRender::eBlendFactor cs, cd, as, ad;
-        gGL.getBlendFunc(cs, cd, as, ad);
-        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
-        LLGLEnable blend(GL_BLEND);
-        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
-                      LLRender::BF_ZERO, LLRender::BF_ONE);
-        studio_displace = displaced_sweep;
-        draw_batches(SWEEP_SOLID, true, false, true);
-        draw_static(SWEEP_SOLID, true, false, true);
-        studio_displace = 0.f;
-        // Uniforms are per program: clear BOTH variants before leaving.
-        studio_reset_loaded(static_shader, shader, apply_program);
-        gGL.blendFunc(cs, cd, as, ad);
-        if (saved_shader) saved_shader->bind();
-        else LLGLSLShader::unbind();
-    });
-
     // Shared live Actor FX beauty clears/attenuates HDR alpha deliberately, so
     // the treatment bloom must be replayed as a separate alpha-only draw. Reuse
     // the exact actorghost program and geometry subset from this queue item:
@@ -14917,7 +14869,7 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
                     path_gp.mDistort = (S32)ghost_distort;
                     path_gp.mDistortAmount = (F32)ghost_distort_amount;
                     drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,
-                                             GHOST_ALPHA, llclamp((S32)ghost_style, 0, 27),
+                                             GHOST_ALPHA, llclamp(ALGhostStudio::remapRetiredOverlayStyle((S32)ghost_style), 0, 27),
                                              path_gp,
                                              ghostStaticFacesFor(g.mAv->getID()));
                 }
@@ -15799,6 +15751,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
 
     for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
+        inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||
             !studio.isVisible(inst) || !(inst.mFadeAlpha > 0.f) ||
             inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)
@@ -16108,6 +16061,7 @@ void LLActorMover::renderStudioGhosts()
     bool phase2 = false;
     for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
+        inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)
             || !(inst.mFadeAlpha > 0.f))
         {
@@ -16179,8 +16133,6 @@ void LLActorMover::renderStudioGhosts()
         glGetIntegerv(GL_VIEWPORT, look_frame->mViewport);
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &view->mFbo);
         look_frame->mInvocation = invocation;
-        const glm::vec3 up(gGL.getModelviewMatrix()[2]);
-        look_frame->mWorldUp.set(up.x, up.y, up.z);
         view->mInvocation = invocation;
         view->mFrame = frame;
         view->mOrdinal = ordinal;
@@ -16379,7 +16331,7 @@ void LLActorMover::renderStudioGhosts()
             {
                 drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                     llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,
-                    ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,
+                    ALGhostStudio::resolveOverlayStyle(inst.mStyle), gp,
                     item.mStatic, nullptr, inputs);
             });
     }

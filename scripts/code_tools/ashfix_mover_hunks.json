@@ -1,0 +1,72 @@
+{
+  "base": "4afbf00ba09",
+  "description": "Remove reserved Studio look ids 68/72 and their displaced emission sweep; canonical Clone fallback only. Clock and remaining looks unchanged.",
+  "files": {
+    "llactormover.cpp": [
+      {
+        "before": "    GHOST_STYLE_MERCURY = 65,\n    GHOST_STYLE_MARBLE = 66,\n    GHOST_STYLE_CRYSTAL = 67,\n    GHOST_STYLE_ASH = 68,\n    GHOST_STYLE_MAGMA = 69,\n    GHOST_STYLE_VOID = 70,\n    GHOST_STYLE_SUMIE = 71,\n    GHOST_STYLE_ARC = 72,\n    GHOST_STYLE_LIDAR = 73,\n    GHOST_STYLE_CODERAIN = 74,\n    GHOST_STYLE_DATAMOSH = 75,\n",
+        "after": "    GHOST_STYLE_MERCURY = 65,\n    GHOST_STYLE_MARBLE = 66,\n    GHOST_STYLE_CRYSTAL = 67,\n    // 68 reserved (retired overlay look); never reuse.\n    GHOST_STYLE_MAGMA = 69,\n    GHOST_STYLE_VOID = 70,\n    GHOST_STYLE_SUMIE = 71,\n    // 72 reserved (retired overlay look); never reuse.\n    GHOST_STYLE_LIDAR = 73,\n    GHOST_STYLE_CODERAIN = 74,\n    GHOST_STYLE_DATAMOSH = 75,\n"
+      },
+      {
+        "before": "static LLStaticHashedString sGhostFragOffset(\"ghostFragOffset\");\nstatic LLStaticHashedString sGhostScreenSize(\"ghostScreenSize\");\nstatic LLStaticHashedString sGhostScreenOrigin(\"ghostScreenOrigin\");\nstatic LLStaticHashedString sGhostWorldUp(\"ghostWorldUp\");\nstatic LLStaticHashedString sGhostSceneValid(\"ghostSceneValid\");\nstatic LLStaticHashedString sGhostVelocity(\"ghostVelocity\");\nstatic LLStaticHashedString sGhostDisplace(\"ghostDisplace\");\n\n// Studio-only transient inputs. Keep these out of shared/live Actor FX params.\nstruct StudioLookFrame\n",
+        "after": "static LLStaticHashedString sGhostFragOffset(\"ghostFragOffset\");\nstatic LLStaticHashedString sGhostScreenSize(\"ghostScreenSize\");\nstatic LLStaticHashedString sGhostScreenOrigin(\"ghostScreenOrigin\");\nstatic LLStaticHashedString sGhostSceneValid(\"ghostSceneValid\");\nstatic LLStaticHashedString sGhostVelocity(\"ghostVelocity\");\n\n// Studio-only transient inputs. Keep these out of shared/live Actor FX params.\nstruct StudioLookFrame\n"
+      },
+      {
+        "before": "    LLImageGL* mScene = nullptr;\n    GLint mViewport[4] = {0, 0, 1, 1};\n    LLVector2 mVelocity;\n    LLVector3 mWorldUp; // region +Z in eye space, independent of attachment transform\n    U64 mInvocation = 0;\n};\n\nbool studio_phase2_look(S32 look)\n{\n    return look == GHOST_STYLE_GLASS || look == GHOST_STYLE_ASH\n        || look == GHOST_STYLE_ARC || look == GHOST_STYLE_DATAMOSH;\n}\n\nbool studio_scene_needed(S32 look, F32 alpha, bool visible)\n{\n    return look == GHOST_STYLE_GLASS && alpha > 0.f && visible;\n}\n\nF32 studio_displaced_sweep(S32 look, bool studio, F32 alpha, bool world, bool have_fx)\n{\n    if (!studio || world || !have_fx || !(alpha > 0.f)) return 0.f;\n    return look == GHOST_STYLE_ASH ? 1.f : look == GHOST_STYLE_ARC ? 2.f : 0.f;\n}\n\n// Every overlay invocation has a fresh generation, including same-frame tiles,\n",
+        "after": "    LLImageGL* mScene = nullptr;\n    GLint mViewport[4] = {0, 0, 1, 1};\n    LLVector2 mVelocity;\n    U64 mInvocation = 0;\n};\n\nbool studio_phase2_look(S32 look)\n{\n    return look == GHOST_STYLE_GLASS || look == GHOST_STYLE_DATAMOSH;\n}\n\nbool studio_scene_needed(S32 look, F32 alpha, bool visible)\n{\n    return look == GHOST_STYLE_GLASS && alpha > 0.f && visible;\n}\n\n// Every overlay invocation has a fresh generation, including same-frame tiles,\n"
+      },
+      {
+        "before": "    return std::nullopt;\n}\n\ntemplate<class Apply>\nvoid studio_reset_loaded(LLGLSLShader* base, LLGLSLShader* rigged, Apply apply)\n{\n    if (base && base->mProgramObject) apply(base);\n    if (rigged && rigged->mProgramObject) apply(rigged);\n}\n\n// This is the actual per-item orchestration, executed by the spy harness too.\n// A fresh copy precedes EACH Glass draw, after all farther clones were drawn.\ntemplate<class Copy, class Draw>\n",
+        "after": "    return std::nullopt;\n}\n\n// This is the actual per-item orchestration, executed by the spy harness too.\n// A fresh copy precedes EACH Glass draw, after all farther clones were drawn.\ntemplate<class Copy, class Draw>\n"
+      },
+      {
+        "before": "    draw(frame);\n}\n\ntemplate<class Draw>\nvoid studio_draw_displaced(S32 look, bool studio, F32 alpha, bool world, bool have_fx, Draw draw)\n{\n    const F32 displacement = studio_displaced_sweep(look, studio, alpha, world, have_fx);\n    if (displacement > 0.f) draw(displacement);\n}\n\n// Uniform state is per linked program. Inactive legacy/path draws do no phase-2\n// setters; the first draw after an active state resets it once. A newly linked\n// program starts with GL's zero uniforms and has no dirty state to inherit.\nvoid studio_apply_phase2(LLGLSLShader* sh, const StudioLookFrame* frame, F32 displacement)\n{\n    if (!sh || !sh->mProgramObject) return;\n    struct State { U32 program = 0; bool active = false; };\n",
+        "after": "    draw(frame);\n}\n\n// Uniform state is per linked program. Inactive legacy/path draws do no phase-2\n// setters; the first draw after an active state resets it once. A newly linked\n// program starts with GL's zero uniforms and has no dirty state to inherit.\nvoid studio_apply_phase2(LLGLSLShader* sh, const StudioLookFrame* frame)\n{\n    if (!sh || !sh->mProgramObject) return;\n    struct State { U32 program = 0; bool active = false; };\n"
+      },
+      {
+        "before": "    State& state = states[sh == &gActorGhostProgram ? 0 : 1];\n    if (state.program != sh->mProgramObject) state = {sh->mProgramObject, false};\n    if (!frame && !state.active) return;\n    sh->uniform1f(sGhostDisplace, displacement);\n    sh->uniform2f(sGhostVelocity, frame ? frame->mVelocity.mV[VX] : 0.f,\n                  frame ? frame->mVelocity.mV[VY] : 0.f);\n    sh->uniform1i(sGhostSceneValid, frame && frame->mScene ? 1 : 0);\n",
+        "after": "    State& state = states[sh == &gActorGhostProgram ? 0 : 1];\n    if (state.program != sh->mProgramObject) state = {sh->mProgramObject, false};\n    if (!frame && !state.active) return;\n    sh->uniform2f(sGhostVelocity, frame ? frame->mVelocity.mV[VX] : 0.f,\n                  frame ? frame->mVelocity.mV[VY] : 0.f);\n    sh->uniform1i(sGhostSceneValid, frame && frame->mScene ? 1 : 0);\n"
+      },
+      {
+        "before": "                  frame ? frame->mViewport[3] : 1.f);\n    sh->uniform2f(sGhostScreenOrigin, frame ? frame->mViewport[0] : 0.f,\n                  frame ? frame->mViewport[1] : 0.f);\n    sh->uniform3fv(sGhostWorldUp, 1, frame ? frame->mWorldUp.mV : LLVector3::zero.mV);\n    state.active = frame != nullptr;\n}\n\n",
+        "after": "                  frame ? frame->mViewport[3] : 1.f);\n    sh->uniform2f(sGhostScreenOrigin, frame ? frame->mViewport[0] : 0.f,\n                  frame ? frame->mViewport[1] : 0.f);\n    state.active = frame != nullptr;\n}\n\n"
+      },
+      {
+        "before": "        return 0;\n    }\n\n    // IDs above the shared prefix are a live-world contract. Preserve the\n    // historical default Ghost behavior for every non-world caller even if\n    // malformed/future instance data somehow supplies a live-only value.\n",
+        "after": "        return 0;\n    }\n\n    if (!gp.mWorldLinear) style = ALGhostStudio::resolveOverlayStyle(style);\n\n    // IDs above the shared prefix are a live-world contract. Preserve the\n    // historical default Ghost behavior for every non-world caller even if\n    // malformed/future instance data somehow supplies a live-only value.\n"
+      },
+      {
+        "before": "        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)\n        : actor_ghost_studio_frame_time(gp.mEffectFps);\n    bool glow_only = false;\n    F32 studio_displace = 0.f;\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n",
+        "after": "        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)\n        : actor_ghost_studio_frame_time(gp.mEffectFps);\n    bool glow_only = false;\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n"
+      },
+      {
+        "before": "            sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);\n            if (!gp.mWorldLinear)\n            {\n                studio_apply_phase2(sh, studio_frame, studio_displace);\n            }\n            if (gp.mWorldLinear)\n            {\n",
+        "after": "            sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);\n            if (!gp.mWorldLinear)\n            {\n                studio_apply_phase2(sh, studio_frame);\n            }\n            if (gp.mWorldLinear)\n            {\n"
+      },
+      {
+        "before": "    }\n    }\n\n    studio_draw_displaced(style, studio_frame != nullptr, alpha, gp.mWorldLinear, have_fx,\n        [&](F32 displaced_sweep)\n    {\n        LL_PROFILE_GPU_ZONE(\"Clone displaced sweep\");\n        ScopedStudioTexture texture(0);\n        LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;\n        LLRender::eBlendFactor cs, cd, as, ad;\n        gGL.getBlendFunc(cs, cd, as, ad);\n        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);\n        LLGLEnable blend(GL_BLEND);\n        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,\n                      LLRender::BF_ZERO, LLRender::BF_ONE);\n        studio_displace = displaced_sweep;\n        draw_batches(SWEEP_SOLID, true, false, true);\n        draw_static(SWEEP_SOLID, true, false, true);\n        studio_displace = 0.f;\n        // Uniforms are per program: clear BOTH variants before leaving.\n        studio_reset_loaded(static_shader, shader, apply_program);\n        gGL.blendFunc(cs, cd, as, ad);\n        if (saved_shader) saved_shader->bind();\n        else LLGLSLShader::unbind();\n    });\n\n    // Shared live Actor FX beauty clears/attenuates HDR alpha deliberately, so\n    // the treatment bloom must be replayed as a separate alpha-only draw. Reuse\n    // the exact actorghost program and geometry subset from this queue item:\n",
+        "after": "    }\n    }\n\n    // Shared live Actor FX beauty clears/attenuates HDR alpha deliberately, so\n    // the treatment bloom must be replayed as a separate alpha-only draw. Reuse\n    // the exact actorghost program and geometry subset from this queue item:\n"
+      },
+      {
+        "before": "                    path_gp.mDistort = (S32)ghost_distort;\n                    path_gp.mDistortAmount = (F32)ghost_distort_amount;\n                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,\n                                             GHOST_ALPHA, llclamp((S32)ghost_style, 0, 27),\n                                             path_gp,\n                                             ghostStaticFacesFor(g.mAv->getID()));\n                }\n",
+        "after": "                    path_gp.mDistort = (S32)ghost_distort;\n                    path_gp.mDistortAmount = (F32)ghost_distort_amount;\n                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,\n                                             GHOST_ALPHA, llclamp(ALGhostStudio::remapRetiredOverlayStyle((S32)ghost_style), 0, 27),\n                                             path_gp,\n                                             ghostStaticFacesFor(g.mAv->getID()));\n                }\n"
+      },
+      {
+        "before": "\n    for (ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||\n            !studio.isVisible(inst) || !(inst.mFadeAlpha > 0.f) ||\n            inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)\n",
+        "after": "\n    for (ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);\n        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||\n            !studio.isVisible(inst) || !(inst.mFadeAlpha > 0.f) ||\n            inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)\n"
+      },
+      {
+        "before": "    bool phase2 = false;\n    for (ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)\n            || !(inst.mFadeAlpha > 0.f))\n        {\n",
+        "after": "    bool phase2 = false;\n    for (ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);\n        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)\n            || !(inst.mFadeAlpha > 0.f))\n        {\n"
+      },
+      {
+        "before": "        glGetIntegerv(GL_VIEWPORT, look_frame->mViewport);\n        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &view->mFbo);\n        look_frame->mInvocation = invocation;\n        const glm::vec3 up(gGL.getModelviewMatrix()[2]);\n        look_frame->mWorldUp.set(up.x, up.y, up.z);\n        view->mInvocation = invocation;\n        view->mFrame = frame;\n        view->mOrdinal = ordinal;\n",
+        "after": "        glGetIntegerv(GL_VIEWPORT, look_frame->mViewport);\n        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &view->mFbo);\n        look_frame->mInvocation = invocation;\n        view->mInvocation = invocation;\n        view->mFrame = frame;\n        view->mOrdinal = ordinal;\n"
+      },
+      {
+        "before": "            {\n                drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,\n                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,\n                    ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,\n                    item.mStatic, nullptr, inputs);\n            });\n    }\n",
+        "after": "            {\n                drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,\n                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,\n                    ALGhostStudio::resolveOverlayStyle(inst.mStyle), gp,\n                    item.mStatic, nullptr, inputs);\n            });\n    }\n"
+      }
+    ]
+  }
+}

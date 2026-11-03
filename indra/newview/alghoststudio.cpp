@@ -266,10 +266,28 @@ ALGhostStudio::ALGhostStudio()
             mVariationConnections.emplace_back(control->getSignal()->connect(
                 [this, name](LLControlVariable*, const LLSD&, const LLSD&)
                 {
+                    if (std::string(name).find("GhostStudioMixLook") == 0)
+                    {
+                        const S32 old = gSavedSettings.getS32(name);
+                        const S32 look = remapRetiredOverlayStyle(old);
+                        if (old != look)
+                        {
+                            gSavedSettings.setS32(name, look);
+                            return; // the canonical value emits the normal update
+                        }
+                    }
                     LLUUID id = mSelected;
                     if (const auto* group = groupForMember(id)) id = mGroups.representative(group->mId);
                     if (const auto* inst = getInstance(id)) applyCrowdVariation(id, inst->mCrowdSeed, std::string(name).find("GhostStudioStart") == 0 || std::string(name) == "GhostStudioRippleFrom", std::string(name).find("GhostStudioStart") != 0 && std::string(name) != "GhostStudioRippleFrom");
                 }));
+
+    for (S32 i = 1; i <= 6; ++i)
+    {
+        const std::string name = "GhostStudioMixLook" + std::to_string(i);
+        const S32 old = gSavedSettings.getS32(name);
+        const S32 look = remapRetiredOverlayStyle(old);
+        if (old != look) gSavedSettings.setS32(name, look);
+    }
 
     // Runtime UUID consumers enroll here. Replacement and removal always walk
     // this registry, so adding a new consumer cannot require editing every
@@ -1334,8 +1352,7 @@ bool ALGhostStudio::refreshPoseCadence(const LLUUID& id, F64 now)
     Instance* inst = getInstance(id);
     if (!inst || inst->mPose != POSE_LIVE || inst->mPoseRateHz <= 0.f)
         return false;
-    const bool need_bounds = inst->mStyle == 64 || inst->mStyle == 68
-        || inst->mStyle == 72 || inst->mStyle == 75;
+    const bool need_bounds = inst->mStyle == 64 || inst->mStyle == 75;
     // Changing from a historical look to phase 2 refreshes an uncaptured bound
     // once, rather than culling against a smaller current live pose.
     if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh
@@ -6098,7 +6115,7 @@ void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed, bool 
     std::vector<S32> looks;
     for (S32 i=1; i<=6; ++i)
     {
-        const S32 look = gSavedSettings.getS32("GhostStudioMixLook"+std::to_string(i));
+        const S32 look = remapRetiredOverlayStyle(gSavedSettings.getS32("GhostStudioMixLook"+std::to_string(i)));
         if (isOverlayStyle(look) && std::find(looks.begin(), looks.end(), look) == looks.end()) looks.push_back(look);
     }
     F64 low = std::numeric_limits<F64>::max(), high = -low;
@@ -6122,13 +6139,13 @@ void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed, bool 
             {
                 if (mix && !looks.empty())
                 {
-                    if (!inst.mCrowdMixed) inst.mCrowdSingleStyle = inst.mStyle;
+                    if (!inst.mCrowdMixed) inst.mCrowdSingleStyle = resolveOverlayStyle(inst.mStyle);
                     inst.mCrowdMixed = true;
                     inst.mStyle = looks[ALCloneQol::lookIndex(seed, stable, inst.mCrowdRow, by_row, (U32)looks.size())];
                 }
                 else if (inst.mCrowdMixed)
                 {
-                    inst.mStyle = inst.mCrowdSingleStyle;
+                    inst.mStyle = resolveOverlayStyle(inst.mCrowdSingleStyle);
                     inst.mCrowdMixed = false;
                 }
             }
