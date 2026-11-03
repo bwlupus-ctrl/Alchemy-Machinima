@@ -160,6 +160,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 900, "text": "alvcammediafileio.cpp", "source": "indra/newview/alvcammediafileio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2309, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2310, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1241, "text": "fsposeranimator.h", "source": "indra/newview/fsposeranimator.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 340, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1385, "text": "lldirectorcast.h", "source": "indra/newview/lldirectorcast.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 410, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}

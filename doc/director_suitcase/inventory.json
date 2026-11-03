@@ -6,34 +6,13 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 725,
-      "HOOK": 503,
+      "HOOK": 510,
       "OWNED": 906,
       "TOOLING": 400
     },
-    "dirty_product_inputs": [
-      "indra/llcharacter/llcharacter.h",
-      "indra/llcharacter/llkeyframemotion.cpp",
-      "indra/newview/aldirectoranimswitcher.cpp",
-      "indra/newview/aldirectoranimswitcher.h",
-      "indra/newview/app_settings/settings.xml",
-      "indra/newview/fsfloaterposer.cpp",
-      "indra/newview/fsfloaterposer.h",
-      "indra/newview/fsmaniprotatejoint.cpp",
-      "indra/newview/fsmaniprotatejoint.h",
-      "indra/newview/fsmaniptranslatejoint.cpp",
-      "indra/newview/fsmaniptranslatejoint.h",
-      "indra/newview/fsposeranimator.cpp",
-      "indra/newview/fsposeranimator.h",
-      "indra/newview/fsposestate.cpp",
-      "indra/newview/llghostavatar.h",
-      "indra/newview/llvoavatarself.cpp",
-      "indra/newview/llvoavatarself.h",
-      "indra/newview/skins/default/xui/en/floater_fs_poser.xml",
-      "indra/newview/stage_runtime_assets.cmake",
-      "indra/newview/viewer_manifest.py"
-    ],
+    "dirty_product_inputs": [],
     "evidence": {
-      "functional_csv_hash_matches": false,
+      "functional_csv_hash_matches": true,
       "functional_meta": {
         "actions": [
           "RUN",
@@ -213,10 +192,10 @@
       },
       "wiring_rows": 2276
     },
-    "head_source_tree": "e5aaa1f579d7e7b64ca06a979b57b59425d0d438",
-    "hook_files": 503,
-    "hunks": 3079,
-    "input_sha256": "bd00932b00b9195e802ab9450e76230a6c0078ea7500479fdd0a84ebb49f3289",
+    "head_source_tree": "b8526b497b0df3e5f355c7313100b9c6c4d17610",
+    "hook_files": 510,
+    "hunks": 3190,
+    "input_sha256": "9f8f3d504e475ca34aa8f43e9b57db73abbb0037a493655b0c0240cbdb075c66",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -10283,6 +10262,21 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/llcharacter/llcharacter.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
@@ -20033,8 +20027,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "crowd",
         "gaze"
       ],
       "class": "HOOK",
@@ -26118,10 +26110,12 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-path"
+        "actor-path",
+        "clones",
+        "director-shell"
       ],
       "git_status": "M",
-      "layer": 3,
+      "layer": 2,
       "path": "indra/newview/fsfloaterposer.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -26136,6 +26130,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "clones",
         "director-shell"
       ],
       "git_status": "M",
@@ -26257,12 +26252,75 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
+        "actor-bar",
+        "actor-path",
         "camera",
-        "director-shell"
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "rig",
+        "roto-tron",
+        "sensor",
+        "shafts-volumetrics",
+        "stepped-animation",
+        "vcam",
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/fsmaniprotatejoint.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/fsmaniprotatejoint.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-bar",
+        "actor-path",
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "roto-tron",
+        "stepped-animation"
       ],
       "git_status": "M",
       "layer": 2,
       "path": "indra/newview/fsmaniptranslatejoint.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/fsmaniptranslatejoint.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -26299,13 +26357,13 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "camera"
+        "clones"
       ],
       "git_status": "M",
-      "layer": 3,
+      "layer": 4,
       "path": "indra/newview/fsposeranimator.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -26314,22 +26372,29 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-bar",
         "actor-path",
-        "capture-sidecar",
-        "clones",
-        "composition",
-        "director-shell",
-        "looks",
-        "roto-tron",
-        "stepped-animation"
+        "crowd",
+        "director-shell"
       ],
       "git_status": "M",
       "layer": 2,
       "path": "indra/newview/fsposeranimator.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/fsposestate.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -30982,6 +31047,63 @@
       "git_status": "M",
       "layer": 2,
       "path": "indra/newview/llvoavatar.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "camera",
+        "clones"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-bar",
+        "actor-path",
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "rig",
+        "roto-tron",
+        "sensor",
+        "shafts-volumetrics",
+        "stepped-animation",
+        "vcam",
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llvoavatarself.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-bar",
+        "actor-path",
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "rig",
+        "roto-tron",
+        "stepped-animation"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llvoavatarself.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {

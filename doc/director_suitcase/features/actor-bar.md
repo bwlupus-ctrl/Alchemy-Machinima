@@ -168,7 +168,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1201, "text": "alsteppedanimruntime.h", "source": "indra/newview/alsteppedanimruntime.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 374, "text": "alvcambonepov.cpp", "source": "indra/newview/alvcambonepov.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 278, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1241, "text": "fsposeranimator.h", "source": "indra/newview/fsposeranimator.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 284, "text": "fsmaniptranslatejoint.cpp", "source": "indra/newview/fsmaniptranslatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 340, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1298, "text": "llactormover.h", "source": "indra/newview/llactormover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 301, "text": "llaisapi.cpp", "source": "indra/newview/llaisapi.cpp"}
@@ -196,6 +197,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1063, "text": "llviewertexture.cpp", "source": "indra/newview/llviewertexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1073, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2077, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1074, "text": "llvoavatarself.cpp", "source": "indra/newview/llvoavatarself.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2078, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1087, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1107, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
 

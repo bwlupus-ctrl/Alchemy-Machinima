@@ -217,6 +217,8 @@ None identified by local evidence; not a claim that none is needed.
 ## cmake entries
 
 - {"file": "indra/llcharacter/CMakeLists.txt", "line": 33, "text": "alavataranimationtime.h", "source": "indra/llcharacter/alavataranimationtime.h"}
+- {"file": "indra/llcharacter/CMakeLists.txt", "line": 39, "text": "llcharacter.h", "source": "indra/llcharacter/llcharacter.h"}
+- {"file": "indra/llcharacter/CMakeLists.txt", "line": 83, "text": "# whose llcharacter.h -> llvisualparam.h chain needs llxmltree.h.", "source": "indra/llcharacter/llcharacter.h"}
 - {"file": "indra/llcharacter/CMakeLists.txt", "line": 13, "text": "llheadrotmotion.cpp", "source": "indra/llcharacter/llheadrotmotion.cpp"}
 - {"file": "indra/llcharacter/CMakeLists.txt", "line": 43, "text": "llheadrotmotion.h", "source": "indra/llcharacter/llheadrotmotion.h"}
 - {"file": "indra/llcharacter/CMakeLists.txt", "line": 48, "text": "llkeyframemotion.h", "source": "indra/llcharacter/llkeyframemotion.h"}

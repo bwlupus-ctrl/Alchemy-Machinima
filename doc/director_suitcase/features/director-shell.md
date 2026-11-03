@@ -336,7 +336,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/key_bindings.xml", "hunks": ["indra/newview/app_settings/key_bindings.xml@1,14", "indra/newview/app_settings/key_bindings.xml@48,14", "indra/newview/app_settings/key_bindings.xml@138,14", "indra/newview/app_settings/key_bindings.xml@235,14"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
 - {"path": "indra/newview/app_settings/toolbars.xml", "hunks": ["indra/newview/app_settings/toolbars.xml@9,7"]}
-- {"path": "indra/newview/fsfloaterposer.h", "hunks": ["indra/newview/fsfloaterposer.h@246,21"]}
+- {"path": "indra/newview/fsfloaterposer.cpp", "hunks": ["indra/newview/fsfloaterposer.cpp@2843,17"]}
+- {"path": "indra/newview/fsfloaterposer.h", "hunks": ["indra/newview/fsfloaterposer.h@247,23"]}
+- {"path": "indra/newview/fsposeranimator.h", "hunks": ["indra/newview/fsposeranimator.h@125,8"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,12", "indra/newview/llcontrolavatar.cpp@412,32"]}
 - {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@71,82", "indra/newview/lldrawpool.cpp@499,1398"]}
 - {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,110"]}
@@ -361,7 +363,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@1557,409", "indra/newview/pipeline.h@1992,270"]}
 - {"path": "indra/newview/skins/default/colors.xml", "hunks": ["indra/newview/skins/default/colors.xml@2,153"]}
 - {"path": "indra/newview/skins/default/textures/textures.xml", "hunks": ["indra/newview/skins/default/textures/textures.xml@1049,93"]}
-- {"path": "indra/newview/skins/default/xui/en/floater_fs_poser.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_fs_poser.xml@1145,119", "indra/newview/skins/default/xui/en/floater_fs_poser.xml@1998,61"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_fs_poser.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_fs_poser.xml@1151,119", "indra/newview/skins/default/xui/en/floater_fs_poser.xml@2004,66"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@182,41"]}
 - {"path": "indra/newview/skins/default/xui/en/fonts.xml", "hunks": ["indra/newview/skins/default/xui/en/fonts.xml@322,14", "indra/newview/skins/default/xui/en/fonts.xml@663,26"]}
@@ -375,7 +377,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/panel_preferences_advanced.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_advanced.xml@234,39"]}
 - {"path": "indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml@383,19"]}
 - {"path": "indra/newview/skins/default/xui/en/strings.xml", "hunks": ["indra/newview/skins/default/xui/en/strings.xml@4324,9"]}
-- {"path": "indra/newview/viewer_manifest.py", "hunks": ["indra/newview/viewer_manifest.py@108,12"]}
+- {"path": "indra/newview/viewer_manifest.py", "hunks": ["indra/newview/viewer_manifest.py@108,12", "indra/newview/viewer_manifest.py@180,11"]}
 
 ## settings
 
@@ -908,7 +910,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 2310, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2316, "text": "app_settings/toolbars.xml", "source": "indra/newview/app_settings/toolbars.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1127, "text": "bdmergeenvlibrary.h", "source": "indra/newview/bdmergeenvlibrary.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 279, "text": "fsfloaterposer.cpp", "source": "indra/newview/fsfloaterposer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1233, "text": "fsfloaterposer.h", "source": "indra/newview/fsfloaterposer.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 284, "text": "fsmaniptranslatejoint.cpp", "source": "indra/newview/fsmaniptranslatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1241, "text": "fsposeranimator.h", "source": "indra/newview/fsposeranimator.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 340, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
@@ -982,6 +986,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1068, "text": "llviewerwindow.cpp", "source": "indra/newview/llviewerwindow.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1073, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2077, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1074, "text": "llvoavatarself.cpp", "source": "indra/newview/llvoavatarself.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2078, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1083, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1087, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2090, "text": "llvovolume.h", "source": "indra/newview/llvovolume.h"}

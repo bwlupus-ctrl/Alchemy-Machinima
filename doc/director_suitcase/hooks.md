@@ -620,16 +620,75 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 9–15 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 2: `indra/newview/fsfloaterposer.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 25–55 (n=31) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 58–65 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 82–100 (n=19) | switchboardSlotOccupancy | actor-path | creative-candidate | unknown; conditional evidence present | Edits ALDirectorAnimSwitcher |
+| 103–116 (n=14) | FSFloaterPoser::FSFloaterPoser | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 150–172 (n=23) | FSFloaterPoser::isEditingAvatar, FSFloaterPoser::~FSFloaterPoser | unknown | unknown-review | unknown; conditional evidence present | Edits gIdleCallbacks, LLVOAvatar |
+| 182–197 (n=16) | FSFloaterPoser::postBuild, setCommitCallback | unknown | unknown-review | unknown; no local conditional evidence | Edits LLCheckBoxCtrl, LLUICtrl, LLSD |
+| 217–228 (n=12) | FSFloaterPoser::postBuild, setCommitCallback | unknown | unknown-review | unknown; no local conditional evidence | Edits LLComboBox, LLButton, LLTextBox, LLUICtrl, LLSD |
+| 234–251 (n=18) | FSFloaterPoser::postBuild, setCommitCallback | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge] Local animation playback tab |
+| 326–341 (n=16) | FSFloaterPoser::onOpen, FSFloaterPoser::postBuild | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: XML describes the complete expanded layout for static fit validation. Start with the optional pose browser collapsed, as before. |
+| 343–351 (n=9) | FSFloaterPoser::onOpen | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 361–440 (n=80) | FSFloaterPoser::acquireClonePoseDrive, FSFloaterPoser::draw, FSFloaterPoser::onTargetIdle, FSFloaterPoser::releaseClonePoseDrive, FSFloaterPoser::setVisible, FSFloaterPoser::updateTargetIdleRegistration | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Visible UI discovery retains its 1 Hz cadence. Hidden floaters do no work unless they own a retained pose or a local animation preview. A live controller with no directed clip lets the private poser overlay evaluate normally, without Frozen pauses or Mirror/Reflect stamps. A Swit |
+| 526–534 (n=9) | FSFloaterPoser::setVisualManipulators | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 544–558 (n=15) | FSFloaterPoser::onClose | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Keep-pose also retains previews. The reusable hidden floater continues validating both activity sets until they are stopped or expire. The floater may be reopened. Cancel pending reloads without destroying the timer that the next open will reuse. |
+| 623–629 (n=7) | FSFloaterPoser::onPoseFileSelect | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 678–684 (n=7) | FSFloaterPoser::onClickPoseSave | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 987–992 (n=6) | FSFloaterPoser::updatePosedBones | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1213–1221 (n=9) | FSFloaterPoser::onPoseMenuAction | unknown | unknown-review | unknown; conditional evidence present | Edits LLSD |
+| 1229–1235 (n=7) | FSFloaterPoser::timedReload | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1326–1332 (n=7) | FSFloaterPoser::onClickLoadHandPose | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1421–1427 (n=7) | FSFloaterPoser::loadPoseFromXml | unknown | unknown-review | unknown; conditional evidence present | Edits gDirUtilp, LL_PATH_USER_SETTINGS, LLSD, LLVector3, LLQuaternion, LLSDSerialize, LLSDParser, LL_WARNS, LL_ENDL |
+| 1435–1491 (n=57) | FSFloaterPoser::startPosingSelf, FSFloaterPoser::stopLocallyPlayedAnimations, FSFloaterPoser::stopPosingAllAvatars | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Do not stop a shared instance if the simulator began signaling it after our local preview started. |
+| 1494–1524 (n=31) | FSFloaterPoser::couldAnimateAvatar, FSFloaterPoser::onPoseStartStop | clones | creative-candidate | unknown; conditional evidence present | Edits LLUUID, gAgent, LLVOAvatar, LLControlAvatar, LLVOVolume, LLViewerObject |
+| 1658–1675 (n=18) | FSFloaterPoser::onToggleLoadSavePanel | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: change the width of the Poser panel for the (dis)appearance of the load/save panel Canonical widths keep repeated commits and restored old floater sizes from accumulating a browser-width delta. |
+| 1995–2001 (n=7) | FSFloaterPoser::updateManipWithFirstSelectedJoint | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2518–2837 (n=320) | FSFloaterPoser::onAnimPlay, FSFloaterPoser::onAnimSendToSwitchboard, FSFloaterPoser::onAnimStop, FSFloaterPoser::onAnimStopAll, FSFloaterPoser::onAvatarSelect, FSFloaterPoser::onPoseSendToSwitchboard, FSFloaterPoser::refreshAnimationList, FSFloaterPoser::refreshSwitchboardSlotCombo | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Gather assets only from eligible local targets. Control avatars fold their object animation signals into mSignaledAnimations; a global object-map scan would also include muted, distant and other-region targets. animation asset id -> number of nearby characters signaling it Reconc |
+| 2843–2859 (n=17) | FSFloaterPoser::onAvatarSelect | actor-path, clones, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: Observing an active overlay does not transfer Director/other ownership. |
+| 2868–2889 (n=22) | FSFloaterPoser::getNearbyAvatarsAndAnimeshes | clones | creative-candidate | unknown; conditional evidence present | Edits LLMuteList, ALGhostStudio, LLCharacter, gAgentAvatarp, LLVector3 |
+| 2920–2998 (n=79) | FSFloaterPoser::onAvatarsRefresh, FSFloaterPoser::revalidateActiveTargets | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Keep cleanup independent of visible rows: an active target may disappear from the list because it moved away, was muted, or the option was disabled. A later Switchboard punch takes over the shared overlay. Relinquish our bookkeeping without stopping it or restoring its clone driv |
+| 3001–3007 (n=7) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3022–3048 (n=27) | FSFloaterPoser::onAvatarsRefresh | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Synthetic UUIDs have no name-service identity. |
+| 3061–3066 (n=6) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLAvatarName |
+| 3078–3104 (n=27) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Model state can change externally. Update enablement only; never rebind manipulators, write the save-name editor or reload joint UI. |
+| 3123–3129 (n=7) | FSFloaterPoser::getControlAvatarName | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 3132–3139 (n=8) | FSFloaterPoser::getControlAvatarName | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Non-owned animesh also needs a stable label when local posing is enabled. |
+| 3146–3169 (n=24) | FSFloaterPoser::refreshTextHighlightingOnAvatarScrollList | unknown | unknown-review | unknown; conditional evidence present | Edits LLFontGL |
+
 ## Slice 2: `indra/newview/fsfloaterposer.h`
 
 HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 33–52 (n=20) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Describes how to load a pose file. </summary> |
-| 67–74 (n=8) | unknown/non-function (class FSFloaterPoser : public LLFloater, public LLEditMenuHandler) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVOAvatar |
-| 246–266 (n=21) | unknown/non-function (public:) | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] Local animation playback tab: play/stop a nearby-seen animation LOCALLY on the selected target (avatar or animesh). Client-side only; nothing is sent to the sim. Motions started via LLCharacter::startMotion survive the server animation-state reconciliation (they are not |
-| 528–545 (n=18) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge] target avatar/animesh id -> set of animation ids WE started locally, so Stop / Stop All can reliably stop exactly what this floater played. |
+| 29–53 (n=25) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Describes how to load a pose file. </summary> |
+| 68–75 (n=8) | unknown/non-function (class FSFloaterPoser : public LLFloater, public LLEditMenuHandler) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVOAvatar |
+| 86–97 (n=12) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Edits LLVOAvatar, LLUUID |
+| 180–185 (n=6) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Gets whether the supplied character is within chat range of gAgentAvatar. </summary> <param name="character">The character to query whether nearby.</param> <returns>True if the supplied character is within chat range, otherwise false.</returns> |
+| 237–243 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID |
+| 247–269 (n=23) | unknown/non-function (public:) | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] Local animation playback tab: play/stop a nearby-seen animation LOCALLY on the selected target (avatar or animesh). Client-side only; nothing is sent to the sim. Motions started via LLCharacter::startMotion survive the server animation-state reconciliation (they are not |
+| 303–312 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Determines if we have permission to animate the supplied avatar. </summary> <param name="avatar">The avatar to animate.</param> <returns>True if we have permission to animate, otherwise false.</returns> <summary> Determines if we have permission to animate the supplied avatar. </ |
+| 515–538 (n=24) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] target avatar/animesh id -> set of animation ids WE started locally, so Stop / Stop All can reliably stop exactly what this floater played. Track active posing independently of visible avatar rows. |
+
+## Slice 2: `indra/newview/fsposeranimator.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 32–56 (n=25) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Describes how to load a pose file. </summary> |
+| 125–132 (n=8) | FSPoserAnimator | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Director resolves its own cast and historically has no nearby-distance cap. |
+| 450–462 (n=13) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Tests whether the avatar is eligible for local poser operations. </summary> <param name="avatar">The avatar to test.</param> <returns>True if the avatar is a valid local poser target, otherwise false.</returns> |
+| 730–744 (n=15) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Loads a saved pose file onto an avatar that is already being posed. </summary> <param name="avatar">The avatar to load the pose onto.</param> <param name="poseFileBaseName">The pose filename without the .xml extension.</param> <param name="loadMethod">The subset of pose |
+| 831–837 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 872–877 (n=6) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Determines if the avatar can be used. </summary> <param name="avatar">The avatar to test if it is safe to animate.</param> <returns>True if the avatar is safe to manipulate, otherwise false.</returns> |
 
 ## Slice 2: `indra/newview/llcontrolavatar.cpp`
 
@@ -1437,9 +1496,66 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 1145–1263 (n=119) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1974–1980 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1998–2058 (n=61) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1–6 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 8–14 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 461–488 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The layout is a vertical stack of 3 rows, and each row a horizontal stack of panels --> Author both pose-pane states at full width; postBuild applies the default collapsed width. --> The two visible rows fit the 330px floater; the legacy empty advanced row stays hidden. --> |
+| 493–502 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: All direct pages, including the nested hand tabs, are mutually exclusive LLTabContainer pages. --> xui-check: exclusive positionRotation_panel body_joints_panel face_joints_panel hands_tabs misc_joints_panel collision_volumes_panel avatarSelection_panel settings_panel animation_p |
+| 513–534 (n=22) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 568–574 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 613–619 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 658–664 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 678–692 (n=15) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 701–721 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 732–752 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 763–797 (n=35) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 808–828 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 847–855 (n=9) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 871–891 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 902–922 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 932–938 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 941–956 (n=16) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1008–1030 (n=23) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits BDMergePoserAnyAvatar |
+| 1037–1049 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1051–1057 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1151–1269 (n=119) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1292–1304 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1306–1315 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1317–1328 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1336–1342 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1353–1359 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1368–1374 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1380–1386 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1397–1403 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1412–1418 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1424–1430 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1441–1447 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1456–1462 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1465–1477 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1479–1485 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1496–1502 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1511–1517 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1523–1529 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1540–1546 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1555–1561 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1567–1573 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1584–1590 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1599–1605 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1611–1617 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1628–1634 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1643–1649 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1655–1661 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1672–1678 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1687–1693 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1699–1705 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1716–1722 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1731–1737 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1739–1745 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1747–1753 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1874–1879 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1973–1986 (n=14) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2004–2069 (n=66) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2073–2098 (n=26) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2263–2276 (n=14) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml`
 
@@ -1612,6 +1728,7 @@ HEAD coordinates; guards/features are candidate evidence
 | 76–87 (n=12) | unknown/non-function (class ViewerManifest(LLManifest):) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 91–96 (n=6) | unknown/non-function (class ViewerManifest(LLManifest):) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 108–119 (n=12) | unknown/non-function (class ViewerManifest(LLManifest):) | director-shell, shafts-volumetrics | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 180–190 (n=11) | unknown/non-function (class ViewerManifest(LLManifest):) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/llcharacter/CMakeLists.txt`
 
@@ -1664,7 +1781,7 @@ HEAD coordinates; guards/features are candidate evidence
 | 491–521 (n=31) | LLKeyframeMotion::getEmoteID, LLKeyframeMotion::getEmoteName, LLKeyframeMotion::getJointMotionNames | unknown | unknown-review | unknown; conditional evidence present | Edits LLKeyframeMotion, LLUUID |
 | 543–549 (n=7) | LLKeyframeMotion::onInitialize | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 681–687 (n=7) | LLKeyframeMotion::setupPose | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 721–729 (n=9) | LLKeyframeMotion::onActivate | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 721–731 (n=11) | LLKeyframeMotion::onActivate | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 736–768 (n=33) | LLKeyframeMotion::onActivate | actor-path, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [PosePolish M4] Loop-seam repair: a fresh activation must never carry over a mid-window blend (or a previous-time reference for wrap detection) from a prior play of this same motion instance. Also force the (cached, once-per- asset) seam analysis and this instance's captured-pose |
 | 772–791 (n=20) | LLKeyframeMotion::onUpdate | actor-path, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [PosePolish M4] Loop-seam repair: capture this clip's in-cycle time from *before* the stock computation below overwrites it, so a wrap edge can be detected afterward. No-op unless sLoopSeamRepairEnabled is true (see detectSeamWrap()). |
 | 820–855 (n=36) | LLKeyframeMotion::onUpdate | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: Carry the authored seam gap plus any previous in-flight correction. Measuring the residual at the previous time preserves this frame's motion. Use the actual wrap overshoot on the first window frame. |
@@ -1860,27 +1977,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 485–514 (n=30) | main | actor-path, crowd, looks, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [RigRimQ] forward-alpha local pixel: no normal map on this path, so the vertex normal IS the shading normal; only the Toksvig length carries information.  rim_fw hoisted to main scope; mode 0 keeps neutral. [RigRim] trailing rig_rim_lights[i] argument (+ [RigRimQ] rim_px) |
 | 520–545 (n=26) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 551–573 (n=23) | main | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: R = 0 is written but masked off by the pool; G claims forward coverage proportional to how much of this pixel this layer actually covers. |
-
-## Slice 3: `indra/newview/fsfloaterposer.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 25–38 (n=14) | unknown/non-function (declaration, XML, build list or global scope) | actor-path | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 45–51 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 54–61 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 78–96 (n=19) | switchboardSlotOccupancy | actor-path | creative-candidate | unknown; conditional evidence present | Edits ALDirectorAnimSwitcher |
-| 99–112 (n=14) | FSFloaterPoser::FSFloaterPoser | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 146–165 (n=20) | FSFloaterPoser::isEditingAvatar, FSFloaterPoser::~FSFloaterPoser | unknown | unknown-review | unknown; conditional evidence present | Edits LLVOAvatar |
-| 202–213 (n=12) | FSFloaterPoser::postBuild, setCommitCallback | unknown | unknown-review | unknown; no local conditional evidence | Edits LLComboBox, LLButton, LLTextBox, LLUICtrl, LLSD |
-| 219–236 (n=18) | FSFloaterPoser::postBuild, setCommitCallback | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge] Local animation playback tab |
-| 324–330 (n=7) | FSFloaterPoser::onOpen | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1121–1129 (n=9) | FSFloaterPoser::onPoseMenuAction | unknown | unknown-review | unknown; conditional evidence present | Edits LLSD |
-| 1329–1335 (n=7) | FSFloaterPoser::loadPoseFromXml | unknown | unknown-review | unknown; conditional evidence present | Edits gDirUtilp, LL_PATH_USER_SETTINGS, LLSD, LLVector3, LLQuaternion, LLSDSerialize, LLSDParser, LL_WARNS, LL_ENDL |
-| 1432–1445 (n=14) | FSFloaterPoser::havePermissionToAnimateOtherAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge] Posing is applied as a LOCAL motion on our own copy of the target's skeleton (FSPosingMotion via LLCharacter::startMotion) and is never transmitted to the sim, so posing a nearby avatar only affects how they render in THIS viewer. When enabled, allow posing any same-reg |
-| 1592–1601 (n=10) | FSFloaterPoser::onToggleLoadSavePanel | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2447–2699 (n=253) | FSFloaterPoser::onAnimPlay, FSFloaterPoser::onAnimSendToSwitchboard, FSFloaterPoser::onAnimStop, FSFloaterPoser::onAnimStopAll, FSFloaterPoser::onPoseSendToSwitchboard, FSFloaterPoser::refreshAnimationList, FSFloaterPoser::refreshSwitchboardSlotCombo | actor-path | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge] Local animation playback: gather every animation asset UUID currently signaled on nearby avatars (per-avatar mSignaledAnimations) and animesh (the separate LLObjectSignaledAnimationMap), and list them for local playback. animation asset id -> number of nearby characters |
 
 ## Slice 3: `indra/newview/llagent.cpp`
 
@@ -2538,6 +2634,18 @@ HEAD coordinates; guards/features are candidate evidence
 | 158–265 (n=108) | defined, main | looks, roto-tron, sensor, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Neutral occlusion prevents the old material's cavities/noise from modulating a flat/sensor/owned-material Cover treatment. Evaluate derivatives for the entire quad, then exclude emitting pixels. [TronA0] rigged mesh: avatar geometry -> tagged flag |
 | 271–281 (n=11) | unknown/non-function (uniform sampler2D diffuseMap;  //always in sRGB space) | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 312–314 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/fsposeranimator.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 31–53 (n=23) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1311–1476 (n=166) | FSPoserAnimator::loadPoseFileOntoAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [FileSafety] The base name is joined onto user_settings/poses unescaped; refuse traversal. Optional Black Dragon import: BD saves bone rotations as Euler [roll, yaw, pitch] (VX, VZ, VY) while Firestorm expects [roll, pitch, yaw] (VX, VY, VZ). When enabled, swap Y/Z on each rotati |
+| 1647–1665 (n=19) | FSPoserAnimator::tryPosingAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Add only our private overlay motion. Virtual avatar animation hooks can invoke AO/network requests and must not be used for local posing. |
+| 1692–1725 (n=34) | FSPoserAnimator::isPosingAvatar, FSPoserAnimator::stopPosingAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Cleanup must still work after eligibility changes; getPosingMotion() intentionally denies new edits for muted, distant or disallowed targets. Status and release must remain usable after the target leaves scope. New edits still pass through the eligibility-gated getPosingMotion(). |
+| 1755–1798 (n=44) | FSPoserAnimator::isAvatarSafeToUse | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Self survives the temporary agent/avatar region disagreement on crossing. Synthetic local actors likewise do not depend on simulator region scope. Local presentation only: this grants no simulator animation permission. |
 
 ## Slice 4: `indra/newview/llagentlistener.cpp`
 
@@ -4569,6 +4677,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 1121–1127 (n=7) | LLAudioEngine::hasDecodedFile | unknown | unknown-review | unknown; no local conditional evidence | Edits gDirUtilp, LL_PATH_CACHE |
 | 2117–2123 (n=7) | LLAudioData::load | unknown | unknown-review | unknown; no local conditional evidence | Edits gDirUtilp, LL_PATH_CACHE |
 
+## Slice 99: `indra/llcharacter/llcharacter.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 159–166 (n=8) | isLocalOnlyMotion | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Local previews may not trigger associated motions through avatar hooks. |
+
 ## Slice 99: `indra/llcharacter/lljoint.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -5526,31 +5642,56 @@ HEAD coordinates; guards/features are candidate evidence
 | 312–317 (n=6) | unknown/non-function (RenderTreeLODFactor			1	0.5) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderFSAAType |
 | 352–357 (n=6) | unknown/non-function (RenderVolumeLODFactor		1	2.0) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderFSAAType |
 
+## Slice 99: `indra/newview/fsmaniprotatejoint.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 177–186 (n=10) | FSManipRotateJoint::isMouseOverJoint | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3 |
+| 384–401 (n=18) | FSManipRotateJoint::setAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Read the old joint while its avatar is retained. Releasing the old avatar can destroy the skeleton before the replacement is assigned. |
+
+## Slice 99: `indra/newview/fsmaniprotatejoint.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 30–36 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 84–90 (n=7) | unknown/non-function (class FSManipRotateJoint : public LLManipRotate) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 129–135 (n=7) | unknown/non-function (protected:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVOAvatar, LLPointer |
+
 ## Slice 99: `indra/newview/fsmaniptranslatejoint.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 231–238 (n=8) | FSManipTranslateJoint::restoreGL | unknown | unknown-review | unknown; no local conditional evidence | Edits LLImageGL |
+| 37–43 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 91–107 (n=17) | FSManipTranslateJoint::setAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep the selected joint on the new skeleton, and drop all old joint pointers before releasing the avatar that owns them. |
+| 240–247 (n=8) | FSManipTranslateJoint::restoreGL | unknown | unknown-review | unknown; no local conditional evidence | Edits LLImageGL |
+| 250–255 (n=6) | FSManipTranslateJoint::handleSelect | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSelectMgr |
+| 713–720 (n=8) | FSManipTranslateJoint::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Might have missed last update due to UPDATE_DELAY timing. This tool edits avatar joints, not world objects. Do not flush or record LLSelectMgr object transforms on mouse-up. |
 
-## Slice 99: `indra/newview/fsposeranimator.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 32–50 (n=19) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1308–1473 (n=166) | FSPoserAnimator::loadPoseFileOntoAvatar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [FileSafety] The base name is joined onto user_settings/poses unescaped; refuse traversal. Optional Black Dragon import: BD saves bone rotations as Euler [roll, yaw, pitch] (VX, VZ, VY) while Firestorm expects [roll, pitch, yaw] (VX, VY, VZ). When enabled, swap Y/Z on each rotati |
-
-## Slice 99: `indra/newview/fsposeranimator.h`
+## Slice 99: `indra/newview/fsmaniptranslatejoint.h`
 
 HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 32–56 (n=25) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Describes how to load a pose file. </summary> |
-| 722–736 (n=15) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <summary> Loads a saved pose file onto an avatar that is already being posed. </summary> <param name="avatar">The avatar to load the pose onto.</param> <param name="poseFileBaseName">The pose filename without the .xml extension.</param> <param name="loadMethod">The subset of pose |
+| 38–44 (n=7) | unknown/non-function (class FSManipTranslateJoint : public LLManipTranslate) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 92–98 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVOAvatar, LLPointer |
+
+## Slice 99: `indra/newview/fsposestate.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 1–7 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 194–200 (n=7) | FSPoseState::applyMotionStatesToPosingMotion | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 206–225 (n=20) | FSPoseState::applyMotionStatesToPosingMotion | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A simulator-signaled motion shares its instance with local users. Never stop that instance while probing for loaded keyframe data. Initialization requests the keyframe data asynchronously while leaving the motion stopped. No preview/AO/STOP lifetime needed. |
+| 320–329 (n=10) | FSPoseState::motionIdIsFromPrimAgentOwnsAgentIsSittingOn | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Posing somebody else's local skeleton must not issue simulator inventory requests, even when their seat happens to belong to us. |
 
 ## Slice 99: `indra/newview/llagentwearables.cpp`
 
@@ -6259,6 +6400,25 @@ HEAD coordinates; guards/features are candidate evidence
 | 193–213 (n=21) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge HideUI] True when in-world INDICATOR overlays (selection outlines + manipulators, selection/edit particle beams, beacon lines, face highlights) should draw. False when the interface is hidden by EITHER mechanism: the HideUIControls / mouselook path (mUIVisible) or the Ad |
 | 516–522 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 601–610 (n=10) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Active Frame format rectangle inside a width x height view (any units, same origin); false when the format is Off / Native. Defined in llviewerwindow.cpp. |
+
+## Slice 99: `indra/newview/llvoavatarself.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 73–79 (n=7) | unknown/non-function (extern bool gTeleportDisplay;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID, LLVOAvatarSelf |
+| 841–876 (n=36) | LLVOAvatarSelf::isLocalOnlyMotion, LLVOAvatarSelf::registerLocalOnlyMotion, LLVOAvatarSelf::requestStopMotion, LLVOAvatarSelf::unregisterLocalOnlyMotion | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep protection until the owner releases the preview. Native/LOD paths can notify more than once while an instance is fading out. A simulator-signaled instance retains its normal animation lifecycle. |
+
+## Slice 99: `indra/newview/llvoavatarself.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 31–37 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 91–99 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID |
+| 109–118 (n=10) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Poser previews must not send an automatic STOP when they expire locally. Simulator-signaled motions still use the normal stop-notification path. |
 
 ## Slice 99: `indra/newview/llvopartgroup.cpp`
 

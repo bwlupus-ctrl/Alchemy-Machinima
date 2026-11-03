@@ -640,6 +640,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 278, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2309, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2310, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 337, "text": "llactormaskeligibility.cpp # [ActorMask]", "source": "indra/newview/llactormaskeligibility.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 302, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 318, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
@@ -706,6 +707,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 2910, "text": "#llviewertexturelist.cpp", "source": "indra/newview/llviewertexturelist.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2069, "text": "llviewertexturelist.h", "source": "indra/newview/llviewertexturelist.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1073, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1074, "text": "llvoavatarself.cpp", "source": "indra/newview/llvoavatarself.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2078, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1076, "text": "llvograss.cpp", "source": "indra/newview/llvograss.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1083, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1086, "text": "llvotree.cpp", "source": "indra/newview/llvotree.cpp"}

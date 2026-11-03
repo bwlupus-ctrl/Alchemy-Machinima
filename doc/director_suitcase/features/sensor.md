@@ -402,6 +402,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1334, "text": "alweathershelter.h", "source": "indra/newview/alweathershelter.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2309, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2310, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 318, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 482, "text": "lldrawpool.cpp", "source": "indra/newview/lldrawpool.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 483, "text": "lldrawpoolalpha.cpp", "source": "indra/newview/lldrawpoolalpha.cpp"}
@@ -443,6 +444,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1049, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1058, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2062, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1074, "text": "llvoavatarself.cpp", "source": "indra/newview/llvoavatarself.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1083, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1087, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1107, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}

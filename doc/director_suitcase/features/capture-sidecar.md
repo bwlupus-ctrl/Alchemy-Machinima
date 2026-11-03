@@ -244,7 +244,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1130, "text": "animationexplorer.h", "source": "indra/newview/animationexplorer.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2309, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2310, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1241, "text": "fsposeranimator.h", "source": "indra/newview/fsposeranimator.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 284, "text": "fsmaniptranslatejoint.cpp", "source": "indra/newview/fsmaniptranslatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 340, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1298, "text": "llactormover.h", "source": "indra/newview/llactormover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 302, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
@@ -313,6 +314,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1064, "text": "llviewertextureanim.cpp", "source": "indra/newview/llviewertextureanim.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1073, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2077, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1074, "text": "llvoavatarself.cpp", "source": "indra/newview/llvoavatarself.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2078, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1083, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1087, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2090, "text": "llvovolume.h", "source": "indra/newview/llvovolume.h"}

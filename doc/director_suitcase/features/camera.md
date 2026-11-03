@@ -723,8 +723,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 178, "text": "aoengine.cpp", "source": "indra/newview/aoengine.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2309, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2310, "text": "app_settings/settings_alchemy.xml", "source": "indra/newview/app_settings/settings_alchemy.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 283, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 284, "text": "fsmaniptranslatejoint.cpp", "source": "indra/newview/fsmaniptranslatejoint.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 287, "text": "fsposeranimator.cpp", "source": "indra/newview/fsposeranimator.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 340, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1298, "text": "llactormover.h", "source": "indra/newview/llactormover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 305, "text": "llagentcamera.cpp", "source": "indra/newview/llagentcamera.cpp"}
@@ -785,6 +785,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 2069, "text": "llviewertexturelist.h", "source": "indra/newview/llviewertexturelist.h"}
 - {"file": "indra/llwindow/CMakeLists.txt", "line": 107, "text": "# llviewerwindow.cpp's (guarded) include still resolves.", "source": "indra/newview/llviewerwindow.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1068, "text": "llviewerwindow.cpp", "source": "indra/newview/llviewerwindow.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1074, "text": "llvoavatarself.cpp", "source": "indra/newview/llvoavatarself.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2078, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1083, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2090, "text": "llvovolume.h", "source": "indra/newview/llvovolume.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2100, "text": "llworld.h", "source": "indra/newview/llworld.h"}

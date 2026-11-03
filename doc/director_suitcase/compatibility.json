@@ -7011,6 +7011,15 @@
     "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/fsfloaterposer.cpp",
+    "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "HOOK",
     "consumer": "indra/newview/fsfloaterposer.cpp",
@@ -7029,6 +7038,15 @@
     "reason": "present at base"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/fsfloaterposer.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "HOOK",
     "consumer": "indra/newview/fsfloaterposer.h",
@@ -7039,12 +7057,12 @@
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/fsfloaterposer.h",
     "dependency": "indra/newview/fsmaniprotatejoint.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "carry/adapt fork source",
@@ -7066,18 +7084,45 @@
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
+    "consumer": "indra/newview/fsmaniprotatejoint.cpp",
+    "dependency": "indra/newview/fsmaniprotatejoint.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "HOOK",
+    "consumer": "indra/newview/fsmaniprotatejoint.cpp",
+    "dependency": "indra/newview/fsfloaterposer.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "HOOK",
     "consumer": "indra/newview/fsmaniptranslatejoint.cpp",
     "dependency": "indra/newview/fsmaniptranslatejoint.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "HOOK",
     "consumer": "indra/newview/fsmaniptranslatejoint.cpp",
     "dependency": "indra/newview/fsfloaterposer.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "HOOK",
+    "consumer": "indra/newview/fsmaniptranslatejoint.h",
+    "dependency": "indra/newview/fsmaniprotatejoint.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
@@ -7120,9 +7165,18 @@
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/fsposeranimator.h",
     "dependency": "indra/newview/fsmaniprotatejoint.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "base-owned",
+    "consumer": "indra/newview/fsposestate.cpp",
+    "dependency": "indra/newview/fsposestate.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at base"
@@ -10423,21 +10477,21 @@
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/lltoolcomp.h",
     "dependency": "indra/newview/fsmaniprotatejoint.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/lltoolcomp.h",
     "dependency": "indra/newview/fsmaniptranslatejoint.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",

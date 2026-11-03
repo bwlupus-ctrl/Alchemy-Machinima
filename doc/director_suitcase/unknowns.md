@@ -2,9 +2,9 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3079 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3190 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
-## Unknown product-path features (153)
+## Unknown product-path features (156)
 
 - `indra/llappearance/llavatarappearance.h` (HOOK)
 - `indra/llaudio/llaudiodecodemgr.cpp` (HOOK)
@@ -82,6 +82,9 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class3/deferred/waterHazeF.glsl` (HOOK)
 - `indra/newview/app_settings/shaders/class3/environment/underWaterF.glsl` (HOOK)
 - `indra/newview/fsfloaterposestand.cpp` (OWNED)
+- `indra/newview/fsmaniprotatejoint.h` (HOOK)
+- `indra/newview/fsmaniptranslatejoint.h` (HOOK)
+- `indra/newview/fsposestate.cpp` (HOOK)
 - `indra/newview/llaisapi.h` (HOOK)
 - `indra/newview/llfilepicker.h` (HOOK)
 - `indra/newview/llfloaterbigpreview.cpp` (OWNED)
@@ -160,7 +163,7 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 
-## Unknown hunk features (1553)
+## Unknown hunk features (1652)
 
 - `indra/llui/llfloater.cpp@2180,30`
 - `indra/llui/llfloater.cpp@2311,18`
@@ -334,9 +337,41 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/lluicolortable.cpp@343,13`
 - `indra/newview/alchatcommand.cpp@47,7`
 - `indra/newview/app_settings/settings_alchemy.xml@3561,91`
-- `indra/newview/fsfloaterposer.h@33,20`
-- `indra/newview/fsfloaterposer.h@67,8`
-- `indra/newview/fsfloaterposer.h@528,18`
+- `indra/newview/fsfloaterposer.cpp@58,8`
+- `indra/newview/fsfloaterposer.cpp@103,14`
+- `indra/newview/fsfloaterposer.cpp@150,23`
+- `indra/newview/fsfloaterposer.cpp@182,16`
+- `indra/newview/fsfloaterposer.cpp@217,12`
+- `indra/newview/fsfloaterposer.cpp@234,18`
+- `indra/newview/fsfloaterposer.cpp@326,16`
+- `indra/newview/fsfloaterposer.cpp@343,9`
+- `indra/newview/fsfloaterposer.cpp@526,9`
+- `indra/newview/fsfloaterposer.cpp@544,15`
+- `indra/newview/fsfloaterposer.cpp@623,7`
+- `indra/newview/fsfloaterposer.cpp@678,7`
+- `indra/newview/fsfloaterposer.cpp@987,6`
+- `indra/newview/fsfloaterposer.cpp@1213,9`
+- `indra/newview/fsfloaterposer.cpp@1229,7`
+- `indra/newview/fsfloaterposer.cpp@1326,7`
+- `indra/newview/fsfloaterposer.cpp@1421,7`
+- `indra/newview/fsfloaterposer.cpp@1658,18`
+- `indra/newview/fsfloaterposer.cpp@1995,7`
+- `indra/newview/fsfloaterposer.cpp@3001,7`
+- `indra/newview/fsfloaterposer.cpp@3061,6`
+- `indra/newview/fsfloaterposer.cpp@3078,27`
+- `indra/newview/fsfloaterposer.cpp@3123,7`
+- `indra/newview/fsfloaterposer.cpp@3132,8`
+- `indra/newview/fsfloaterposer.cpp@3146,24`
+- `indra/newview/fsfloaterposer.h@29,25`
+- `indra/newview/fsfloaterposer.h@68,8`
+- `indra/newview/fsfloaterposer.h@180,6`
+- `indra/newview/fsfloaterposer.h@237,7`
+- `indra/newview/fsfloaterposer.h@303,10`
+- `indra/newview/fsposeranimator.h@32,25`
+- `indra/newview/fsposeranimator.h@450,13`
+- `indra/newview/fsposeranimator.h@730,15`
+- `indra/newview/fsposeranimator.h@831,7`
+- `indra/newview/fsposeranimator.h@872,6`
 - `indra/newview/llcontrolavatar.cpp@385,20`
 - `indra/newview/llcontrolavatar.cpp@627,18`
 - `indra/newview/llcontrolavatar.cpp@754,7`
@@ -617,7 +652,64 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.h@2569,14`
 - `indra/newview/pipeline.h@2885,24`
 - `indra/newview/skins/default/textures/textures.xml@909,26`
-- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1974,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1,6`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@8,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@461,28`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@493,10`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@513,22`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@568,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@613,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@658,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@678,15`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@701,21`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@732,21`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@763,35`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@808,21`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@847,9`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@871,21`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@902,21`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@932,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@941,16`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1008,23`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1037,13`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1051,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1292,13`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1306,10`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1317,12`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1336,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1353,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1368,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1380,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1397,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1412,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1424,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1441,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1456,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1465,13`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1479,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1496,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1511,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1523,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1540,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1555,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1567,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1584,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1599,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1611,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1628,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1643,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1655,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1672,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1687,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1699,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1716,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1731,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1739,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1747,7`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1874,6`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1973,14`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@2073,26`
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@2263,14`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1,13`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@154,27`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@444,7`
@@ -651,7 +743,7 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llcharacter/llkeyframemotion.cpp@491,31`
 - `indra/llcharacter/llkeyframemotion.cpp@543,7`
 - `indra/llcharacter/llkeyframemotion.cpp@681,7`
-- `indra/llcharacter/llkeyframemotion.cpp@721,9`
+- `indra/llcharacter/llkeyframemotion.cpp@721,11`
 - `indra/llcharacter/llkeyframemotion.cpp@1416,10`
 - `indra/llcharacter/llkeyframemotion.cpp@2071,7`
 - `indra/llcharacter/llkeyframemotion.cpp@2950,7`
@@ -693,17 +785,6 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1133,57`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@1,4`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@255,7`
-- `indra/newview/fsfloaterposer.cpp@45,7`
-- `indra/newview/fsfloaterposer.cpp@54,8`
-- `indra/newview/fsfloaterposer.cpp@99,14`
-- `indra/newview/fsfloaterposer.cpp@146,20`
-- `indra/newview/fsfloaterposer.cpp@202,12`
-- `indra/newview/fsfloaterposer.cpp@219,18`
-- `indra/newview/fsfloaterposer.cpp@324,7`
-- `indra/newview/fsfloaterposer.cpp@1121,9`
-- `indra/newview/fsfloaterposer.cpp@1329,7`
-- `indra/newview/fsfloaterposer.cpp@1432,14`
-- `indra/newview/fsfloaterposer.cpp@1592,10`
 - `indra/newview/llagent.cpp@815,24`
 - `indra/newview/llagentcamera.cpp@3526,3`
 - `indra/newview/llagentcamera.h@287,7`
@@ -820,6 +901,10 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@1,4`
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@271,11`
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@312,3`
+- `indra/newview/fsposeranimator.cpp@31,23`
+- `indra/newview/fsposeranimator.cpp@1311,166`
+- `indra/newview/fsposeranimator.cpp@1647,19`
+- `indra/newview/fsposeranimator.cpp@1692,34`
 - `indra/newview/llagentlistener.cpp@254,12`
 - `indra/newview/llagentlistener.cpp@323,7`
 - `indra/newview/llagentlistener.cpp@817,7`
@@ -1107,6 +1192,7 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llaudio/llaudioengine.cpp@123,13`
 - `indra/llaudio/llaudioengine.cpp@1121,7`
 - `indra/llaudio/llaudioengine.cpp@2117,7`
+- `indra/llcharacter/llcharacter.h@159,8`
 - `indra/llcharacter/lljoint.cpp@1026,3`
 - `indra/llcharacter/lljoint.h@303,3`
 - `indra/llcharacter/lljointstate.h@112,16`
@@ -1420,11 +1506,22 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/featuretable_mac.txt@272,6`
 - `indra/newview/featuretable_mac.txt@312,6`
 - `indra/newview/featuretable_mac.txt@352,6`
-- `indra/newview/fsmaniptranslatejoint.cpp@231,8`
-- `indra/newview/fsposeranimator.cpp@32,19`
-- `indra/newview/fsposeranimator.cpp@1308,166`
-- `indra/newview/fsposeranimator.h@32,25`
-- `indra/newview/fsposeranimator.h@722,15`
+- `indra/newview/fsmaniprotatejoint.cpp@177,10`
+- `indra/newview/fsmaniprotatejoint.cpp@384,18`
+- `indra/newview/fsmaniprotatejoint.h@30,7`
+- `indra/newview/fsmaniprotatejoint.h@84,7`
+- `indra/newview/fsmaniprotatejoint.h@129,7`
+- `indra/newview/fsmaniptranslatejoint.cpp@37,7`
+- `indra/newview/fsmaniptranslatejoint.cpp@91,17`
+- `indra/newview/fsmaniptranslatejoint.cpp@240,8`
+- `indra/newview/fsmaniptranslatejoint.cpp@250,6`
+- `indra/newview/fsmaniptranslatejoint.cpp@713,8`
+- `indra/newview/fsmaniptranslatejoint.h@38,7`
+- `indra/newview/fsmaniptranslatejoint.h@92,7`
+- `indra/newview/fsposestate.cpp@1,7`
+- `indra/newview/fsposestate.cpp@194,7`
+- `indra/newview/fsposestate.cpp@206,20`
+- `indra/newview/fsposestate.cpp@320,10`
 - `indra/newview/llagentwearables.cpp@1478,8`
 - `indra/newview/llaisapi.cpp@1061,18`
 - `indra/newview/llaisapi.cpp@1095,10`
@@ -1643,6 +1740,11 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerwindow.h@193,21`
 - `indra/newview/llviewerwindow.h@516,7`
 - `indra/newview/llviewerwindow.h@601,10`
+- `indra/newview/llvoavatarself.cpp@73,7`
+- `indra/newview/llvoavatarself.cpp@841,36`
+- `indra/newview/llvoavatarself.h@31,7`
+- `indra/newview/llvoavatarself.h@91,9`
+- `indra/newview/llvoavatarself.h@109,10`
 - `indra/newview/llvopartgroup.cpp@25,7`
 - `indra/newview/llvopartgroup.cpp@334,9`
 - `indra/newview/llvopartgroup.cpp@412,9`
@@ -1716,7 +1818,7 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 
-## Unknown/non-function contexts (1096)
+## Unknown/non-function contexts (1171)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -1936,10 +2038,21 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/settings_alchemy.xml@3561,91`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@3653,1119`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/toolbars.xml@9,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/fsfloaterposer.h@33,20`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/fsfloaterposer.h@67,8`: unknown/non-function (class FSFloaterPoser : public LLFloater, public LLEditMenuHandler)
-- `indra/newview/fsfloaterposer.h@246,21`: unknown/non-function (public:)
-- `indra/newview/fsfloaterposer.h@528,18`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.cpp@25,31`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.cpp@58,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.h@29,25`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsfloaterposer.h@68,8`: unknown/non-function (class FSFloaterPoser : public LLFloater, public LLEditMenuHandler)
+- `indra/newview/fsfloaterposer.h@86,12`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.h@180,6`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.h@237,7`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.h@247,23`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.h@303,10`: unknown/non-function (public:)
+- `indra/newview/fsfloaterposer.h@515,24`: unknown/non-function (public:)
+- `indra/newview/fsposeranimator.h@32,25`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsposeranimator.h@450,13`: unknown/non-function (public:)
+- `indra/newview/fsposeranimator.h@730,15`: unknown/non-function (public:)
+- `indra/newview/fsposeranimator.h@831,7`: unknown/non-function (public:)
+- `indra/newview/fsposeranimator.h@872,6`: unknown/non-function (public:)
 - `indra/newview/llcontrolavatar.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@25,26`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@63,7`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2055,9 +2168,66 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/textures/textures.xml@184,10`: unknown/non-function (with the same filename but different name)
 - `indra/newview/skins/default/textures/textures.xml@909,26`: unknown/non-function (with the same filename but different name)
 - `indra/newview/skins/default/textures/textures.xml@1049,93`: unknown/non-function (with the same filename but different name)
-- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1145,119`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1974,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1998,61`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@8,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@461,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@493,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@513,22`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@568,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@613,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@658,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@678,15`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@701,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@732,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@763,35`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@808,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@847,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@871,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@902,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@932,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@941,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1008,23`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1037,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1051,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1151,119`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1292,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1306,10`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1317,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1336,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1353,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1368,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1380,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1397,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1412,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1424,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1441,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1456,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1465,13`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1479,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1496,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1511,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1523,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1540,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1555,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1567,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1584,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1599,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1611,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1628,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1643,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1655,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1672,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1687,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1699,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1716,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1731,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1739,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1747,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1874,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1973,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@2004,66`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@2073,26`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_fs_poser.xml@2263,14`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1,27`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@34,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@156,17`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2132,6 +2302,7 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/viewer_manifest.py@76,12`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@91,6`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@108,12`: unknown/non-function (class ViewerManifest(LLManifest):)
+- `indra/newview/viewer_manifest.py@180,11`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/llcharacter/CMakeLists.txt@30,9`: unknown/non-function (target_sources(llcharacter)
 - `indra/llcharacter/CMakeLists.txt@79,7`: unknown/non-function (if (BUILD_TESTING))
 - `indra/llcharacter/llheadrotmotion.cpp@24,12`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2165,9 +2336,6 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@24,42`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@84,49`: unknown/non-function (uniform vec4 light_position[8];)
-- `indra/newview/fsfloaterposer.cpp@25,14`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/fsfloaterposer.cpp@45,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/fsfloaterposer.cpp@54,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llagent.cpp@26,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llagent.cpp@70,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llagentcamera.cpp@24,18`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2278,6 +2446,7 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@271,11`: unknown/non-function (uniform sampler2D diffuseMap;  //always in sRGB space)
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@312,3`: unknown/non-function (void main())
+- `indra/newview/fsposeranimator.cpp@31,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llavataractions.cpp@39,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawable.cpp@48,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawable.cpp@1938,3`: unknown/non-function (void LLHUDBridge::shiftPos(const LLVector4a& vec))
@@ -2667,9 +2836,13 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/featuretable_mac.txt@272,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
 - `indra/newview/featuretable_mac.txt@312,6`: unknown/non-function (RenderTreeLODFactor			1	0.5)
 - `indra/newview/featuretable_mac.txt@352,6`: unknown/non-function (RenderVolumeLODFactor		1	2.0)
-- `indra/newview/fsposeranimator.cpp@32,19`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/fsposeranimator.h@32,25`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/fsposeranimator.h@722,15`: unknown/non-function (public:)
+- `indra/newview/fsmaniprotatejoint.h@30,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsmaniprotatejoint.h@84,7`: unknown/non-function (class FSManipRotateJoint : public LLManipRotate)
+- `indra/newview/fsmaniprotatejoint.h@129,7`: unknown/non-function (protected:)
+- `indra/newview/fsmaniptranslatejoint.cpp@37,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/fsmaniptranslatejoint.h@38,7`: unknown/non-function (class FSManipTranslateJoint : public LLManipTranslate)
+- `indra/newview/fsmaniptranslatejoint.h@92,7`: unknown/non-function (private:)
+- `indra/newview/fsposestate.cpp@1,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llaisapi.cpp@1825,3`: unknown/non-function (void AISUpdate::doUpdate())
 - `indra/newview/llaisapi.h@109,7`: unknown/non-function (private:)
 - `indra/newview/llaisapi.h@162,7`: unknown/non-function (private:)
@@ -2748,6 +2921,10 @@ All 3079 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerwindow.h@193,21`: unknown/non-function (public:)
 - `indra/newview/llviewerwindow.h@516,7`: unknown/non-function (private:)
 - `indra/newview/llviewerwindow.h@601,10`: unknown/non-function (private:)
+- `indra/newview/llvoavatarself.cpp@73,7`: unknown/non-function (extern bool gTeleportDisplay;)
+- `indra/newview/llvoavatarself.h@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llvoavatarself.h@91,9`: unknown/non-function (public:)
+- `indra/newview/llvoavatarself.h@109,10`: unknown/non-function (private:)
 - `indra/newview/llvopartgroup.cpp@25,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvovolume.h@55,9`: unknown/non-function (enum LLVolumeInterfaceType)
 - `indra/newview/llvovolume.h@147,7`: unknown/non-function (public:)
