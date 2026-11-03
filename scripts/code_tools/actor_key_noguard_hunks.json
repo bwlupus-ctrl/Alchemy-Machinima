@@ -1,0 +1,22 @@
+{
+  "base": "6ba3e9716ff",
+  "purpose": "D56: remove only the K0 ReShade refusal; all other preflight failures retained",
+  "integration_base": "ab2329ba39f",
+  "integration_predecessors": [
+    "actor_key_wp01_hunks.json",
+    "actor_key_wp2_hunks.json",
+    "actor_key_lens_hunks.json",
+    "actor_key_wp1b_hunks.json",
+    "actor_key_shadow_hunks.json",
+    "actor_key_wp5_ui_hunks.json",
+    "actor_key_fix_all_hunks.json"
+  ],
+  "files": {
+    "indra/newview/pipeline.cpp": [
+      {
+        "before": "    catch (const std::bad_alloc&) { return refuse(\"preflight memory allocation failed\"); }\n    if (!ALActorChromaKey::keyGuardAllows()) return refuse(\"ReShade key guard\");\n    return true;\n",
+        "after": "    catch (const std::bad_alloc&) { return refuse(\"preflight memory allocation failed\"); }\n    return true;\n"
+      }
+    ]
+  }
+}
