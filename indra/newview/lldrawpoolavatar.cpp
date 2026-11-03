@@ -527,6 +527,8 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
         return;
     }
     LLVOAvatar *avatarp = (LLVOAvatar *)facep->getDrawable()->getVObj().get();
+    if (LLPipeline::skipKeyShadowAvatar(avatarp)) return;
+
 
     if (avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull()
         || is_hidden_entity_clone(avatarp))

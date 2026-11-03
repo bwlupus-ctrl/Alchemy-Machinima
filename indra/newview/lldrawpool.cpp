@@ -500,6 +500,7 @@ void LLFacePool::LLOverrideFaceColor::setColor(F32 r, F32 g, F32 b, F32 a)
 //=============================
 static bool skip_shadow_draw(const LLDrawInfo* params)
 {
+    if (LLPipeline::skipKeyShadowCaster(params)) return true;
     if (params && LLGhostAvatar::isRenderHidden(params->mAvatar, params->mActorFxOwner, params->mActorFxFallbackOwner)) return true;
     // [AlphaShadowCap] Fold both policies into the existing per-draw rain filter.
     const U8 f = LLPipeline::sShadowDrawFilter;
@@ -1290,6 +1291,7 @@ void LLRenderPass::pushRiggedBatches(U32 type, bool texture, bool batch_textures
         {
             LLDrawInfo* pparams = *i;
             LLCullResult::increment_iterator(i, end);
+        if (LLPipeline::skipKeyShadowCaster(pparams)) continue;
 
             if (uploadMatrixPalette(pparams->mAvatar, pparams->mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
             {
@@ -1315,6 +1317,7 @@ void LLRenderPass::pushUntexturedRiggedBatches(U32 type)
     {
         LLDrawInfo* pparams = *i;
         LLCullResult::increment_iterator(i, end);
+        if (LLPipeline::skipKeyShadowCaster(pparams)) continue;
 
         if (uploadMatrixPalette(pparams->mAvatar, pparams->mSkinInfo, lastAvatar, lastMeshId, skipLastSkin))
         {
@@ -1359,6 +1362,7 @@ void LLRenderPass::pushRiggedMaskBatches(U32 type, bool texture, bool batch_text
         LLDrawInfo* pparams = *i;
 
         LLCullResult::increment_iterator(i, end);
+        if (LLPipeline::skipKeyShadowCaster(pparams)) continue;
 
         llassert(pparams);
 
@@ -2679,6 +2683,7 @@ void LLRenderPass::pushRiggedGLTFBatches(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
+        if (LLPipeline::skipKeyShadowCaster(&params)) continue;
         pushRiggedGLTFBatch(params, lastAvatar, lastMeshId, skipLastSkin, lastMat, lastTex);
     }
 }
@@ -2697,6 +2702,7 @@ void LLRenderPass::pushUntexturedRiggedGLTFBatches(U32 type)
         LL_PROFILE_ZONE_NAMED_CATEGORY_DRAWPOOL("pushRiggedGLTFBatch");
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
+        if (LLPipeline::skipKeyShadowCaster(&params)) continue;
 
         pushUntexturedRiggedGLTFBatch(params, lastAvatar, lastMeshId, skipLastSkin);
     }
@@ -2737,6 +2743,7 @@ void LLRenderPass::pushRiggedGLTFBatchesScalar(U32 type)
     {
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
+        if (LLPipeline::skipKeyShadowCaster(&params)) continue;
 
         if (params.mGLTFMaterialList.size() > 1)
         { // multi-material batch -- handled by the indexed sweep
@@ -2762,6 +2769,7 @@ void LLRenderPass::pushRiggedGLTFBatchesIndexed(U32 type, eGLTFIndexedMaps maps)
     {
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
+        if (LLPipeline::skipKeyShadowCaster(&params)) continue;
 
         if (params.mGLTFMaterialList.size() < 2)
         { // single-material batch -- handled by the scalar sweep

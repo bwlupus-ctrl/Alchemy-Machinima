@@ -461,6 +461,8 @@ extern bool gAvatarSilhouetteRimParityCompiled;
 bool    gAvatarBacklight = false;
 
 bool    gDebugPipeline = false;
+U8 LLPipeline::sShadowCasterFilter = LLPipeline::CASTER_ALL;
+
 LLPipeline gPipeline;
 const LLMatrix4* gGLLastMatrix = NULL;
 
@@ -2654,6 +2656,22 @@ void LLPipeline::prepareGatePrismProjectorFeeds()
 // must be even to avoid a stripe in the horizontal shadow blur
 inline U32 BlurHappySize(U32 x, F32 scale) { return U32( x * scale + 16.0f) & ~0xF; }
 
+namespace
+{
+bool allocateSunCascadeTarget(LLRenderTarget& target, U32 width, U32 height)
+{
+    return target.allocate(width, height, 0, true);
+}
+void applySunShadowSamplerState(LLRenderTarget& target, LLTexUnit::eTextureFilterOptions filter)
+{
+    gGL.getTexUnit(0)->bind(&target, true);
+    gGL.getTexUnit(0)->setTextureFilteringOption(filter);
+    gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+}
+}
+
 bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
@@ -2692,7 +2710,7 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
                     cascade_width = cascade_height = llclamp(custom, 256u, 8192u);
                 }
             }
-            if (!mRT->shadow[i].allocate(cascade_width, cascade_height, 0, true))
+            if (!allocateSunCascadeTarget(mRT->shadow[i], cascade_width, cascade_height))
             {
                 return false;
             }
@@ -2759,12 +2777,7 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
             LLRenderTarget* shadow_target = getSunShadowTarget(i);
             if (shadow_target)
             {
-                gGL.getTexUnit(0)->bind(getSunShadowTarget(i), true);
-                gGL.getTexUnit(0)->setTextureFilteringOption(sun_filter);
-                gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
-
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+                applySunShadowSamplerState(*shadow_target, sun_filter);
             }
         }
     }
@@ -3170,6 +3183,7 @@ void LLPipeline::releaseLUTBuffers()
 
 void LLPipeline::releaseShadowBuffers()
 {
+    releaseActorShadowTargets();
     releaseWorldShadowTargets();
     // Sun shadows are allocated through mRT->shadow[], and mRT is swapped
     // between packs during cube snapshots, so any of the capture packs may
@@ -3266,6 +3280,7 @@ void LLPipeline::releaseSunShadowTarget(U32 index)
 
 void LLPipeline::releaseSunShadowTargets()
 {
+    releaseActorShadowTargets();
     for (U32 i = 0; i < 4; i++)
     {
         releaseSunShadowTarget(i);
@@ -9180,7 +9195,9 @@ void LLPipeline::renderGeomShadow(LLCamera& camera, bool include_tree_pool)
             sAlphaCapCounts.treeSkipped = true;
         }
         if (hasRenderType(poolp->getType()) && poolp->getNumShadowPasses() > 0 &&
-            (include_tree_pool || poolp->getType() != LLDrawPool::POOL_TREE))
+            (include_tree_pool || poolp->getType() != LLDrawPool::POOL_TREE) &&
+            (sShadowCasterFilter != CASTER_KEY_ONLY || cur_type == LLDrawPool::POOL_AVATAR ||
+             cur_type == LLDrawPool::POOL_CONTROL_AV))
         {
             poolp->prerender() ;
 
@@ -13450,6 +13467,8 @@ void LLPipeline::renderAlphaObjects(bool rigged)
             // the objects we're interested in in this pass.
             continue;
         }
+
+        if (skipKeyShadowCaster(pparams)) continue;
 
         if (rigged)
         {
@@ -27413,6 +27432,15 @@ void LLPipeline::applyShadowUnitsFiltering()
             applied_any = true;
         }
     }
+    if (ALActorChromaKey::sActive)
+    {
+        for (U32 i = 0; i < 4; ++i)
+        {
+            if (mActorShadow[i].isComplete()) applySunShadowSamplerState(mActorShadow[i], sun_filter);
+            if (mSetShadow[i].isComplete()) applySunShadowSamplerState(mSetShadow[i], sun_filter);
+        }
+        if (mActorShadowLit.isComplete()) applySunShadowSamplerState(mActorShadowLit, sun_filter);
+    }
     if (applied_any)
     {
         gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
@@ -27721,6 +27749,85 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
     }
 }
 
+void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const* maps, SunShadowStage stage)
+{
+    // Stages preserve the exact interleaving of the beauty binder's uploads.
+    // The key sampler uses All, hence the same complete sun state and ShadowMeta.
+    if (stage == SunShadowStage::All || stage == SunShadowStage::Matrices)
+    {
+    // [BDMerge NSpot] 4 sun + MAX_SPOT_SHADOWS projector matrices
+    F32 mat[16*MAX_SHADOW_MATS];
+    for (U32 j = 0; j < MAX_SHADOW_MATS; j++)
+    {
+        for (U32 i = 0; i < 16; i++)
+        {
+            mat[j*16+i] = glm::value_ptr(mSunShadowMatrix[j])[i];
+        }
+    }
+
+    shader.uniformMatrix4fv(LLShaderMgr::DEFERRED_SHADOW_MATRIX, MAX_SHADOW_MATS, false, mat);
+
+    stop_glerror();
+
+    }
+    if (stage == SunShadowStage::All || stage == SunShadowStage::Meta)
+    {
+    /*if (gCubeSnapshot)
+    { // we only really care about the first two values, but the shader needs increasing separation between clip planes
+        shader.uniform4f(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1.f, 64.f, 128.f, 256.f);
+    }
+    else*/
+    {
+        shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, mSunClipPlanes.mV);
+    }
+    // [ShadowDist P1] after the stock matrix/clip uploads above so the
+    // meta-derived values win when the controls are engaged (design v4 s1.2).
+    uploadShadowUniforms(shader);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SUN_WASH, RenderDeferredSunWash);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_NOISE, RenderShadowNoise);
+    shader.uniform1f(LLShaderMgr::DEFERRED_BLUR_SIZE, RenderShadowBlurSize);
+
+    }
+    if (stage == SunShadowStage::All || stage == SunShadowStage::Tuning)
+    {
+    shader.uniform1f (LLShaderMgr::DEFERRED_SHADOW_OFFSET, RenderShadowOffset); //*shadow_offset_error);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_BIAS, RenderShadowBias);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);
+    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);
+
+    // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadow uniforms.
+    // Consumed by shadowUtil.glsl (pcfSpotShadow / pcfShadow). Gate off (default)
+    // => the classic hard 5-tap kernels run and the look is unchanged.
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_ENABLE, BDMergeSoftProjectorShadows ? 1 : 0);
+    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_SCALE, BDMergeSoftShadowSoftness);
+    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_MAX, llmax(BDMergeSoftShadowMaxPenumbra, 1.f));
+    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_FILL, llclamp(BDMergeSoftShadowFill, 0.f, 1.f));
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_SUN, BDMergeSoftShadowSun ? 1 : 0);
+    // [Vogel A/B] kernel selector: 0 = fixed 12-tap Poisson (baseline), 1 = Vogel
+    // disk with a per-pixel spatial rotation. Tap count clamped to the shader max.
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_VOGEL, BDMergeSoftShadowVogel ? 1 : 0);
+    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));
+    }
+    if (stage == SunShadowStage::All || stage == SunShadowStage::Directions)
+    {
+    shader.uniform3fv(LLShaderMgr::DEFERRED_SUN_DIR, 1, mTransformedSunDir.mV);
+    shader.uniform3fv(LLShaderMgr::DEFERRED_MOON_DIR, 1, mTransformedMoonDir.mV);
+    LLRenderTarget* sun_shadow = getSunShadowTarget(0);
+    shader.uniform2f(LLShaderMgr::DEFERRED_SHADOW_RES,
+                     (GLfloat)sun_shadow->getWidth(),
+                     (GLfloat)sun_shadow->getHeight());
+
+    }
+    if (maps)
+    {
+        for (U32 i = 0; i < 4; ++i)
+        {
+            const S32 unit = shader.enableTexture(LLShaderMgr::DEFERRED_SHADOW0 + i);
+            if (unit >= 0) gGL.getTexUnit(unit)->bind(maps[i], true);
+        }
+    }
+}
+
 void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target, LLRenderTarget* depth_target)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
@@ -27837,19 +27944,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
 
     stop_glerror();
 
-    // [BDMerge NSpot] 4 sun + MAX_SPOT_SHADOWS projector matrices
-    F32 mat[16*MAX_SHADOW_MATS];
-    for (U32 j = 0; j < MAX_SHADOW_MATS; j++)
-    {
-        for (U32 i = 0; i < 16; i++)
-        {
-            mat[j*16+i] = glm::value_ptr(mSunShadowMatrix[j])[i];
-        }
-    }
-
-    shader.uniformMatrix4fv(LLShaderMgr::DEFERRED_SHADOW_MATRIX, MAX_SHADOW_MATS, false, mat);
-
-    stop_glerror();
+    bindSunShadowState(shader, nullptr, SunShadowStage::Matrices);
 
     if (!LLPipeline::sReflectionProbesEnabled)
     {
@@ -27875,20 +27970,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
 
     bindReflectionProbes(shader);
 
-    /*if (gCubeSnapshot)
-    { // we only really care about the first two values, but the shader needs increasing separation between clip planes
-        shader.uniform4f(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1.f, 64.f, 128.f, 256.f);
-    }
-    else*/
-    {
-        shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, mSunClipPlanes.mV);
-    }
-    // [ShadowDist P1] after the stock matrix/clip uploads above so the
-    // meta-derived values win when the controls are engaged (design v4 s1.2).
-    uploadShadowUniforms(shader);
-    shader.uniform1f(LLShaderMgr::DEFERRED_SUN_WASH, RenderDeferredSunWash);
-    shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_NOISE, RenderShadowNoise);
-    shader.uniform1f(LLShaderMgr::DEFERRED_BLUR_SIZE, RenderShadowBlurSize);
+    bindSunShadowState(shader, nullptr, SunShadowStage::Meta);
 
     // [BDMerge A1.2] scale SSAO radius/max-radius so a high-res snapshot keeps the same
     // ambient-occlusion footprint (in effective screen-space terms) it had at window
@@ -27929,23 +28011,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
         mPrismLensDirtyScreenShaders.erase(&shader);
     }
     shader.uniform1f(LLShaderMgr::DEFERRED_NEAR_CLIP, LLViewerCamera::getInstance()->getNear()*2.f);
-    shader.uniform1f (LLShaderMgr::DEFERRED_SHADOW_OFFSET, RenderShadowOffset); //*shadow_offset_error);
-    shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_BIAS, shadow_bias);
-    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);
-    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);
-
-    // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadow uniforms.
-    // Consumed by shadowUtil.glsl (pcfSpotShadow / pcfShadow). Gate off (default)
-    // => the classic hard 5-tap kernels run and the look is unchanged.
-    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_ENABLE, BDMergeSoftProjectorShadows ? 1 : 0);
-    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_SCALE, BDMergeSoftShadowSoftness);
-    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_MAX, llmax(BDMergeSoftShadowMaxPenumbra, 1.f));
-    shader.uniform1f(LLShaderMgr::SOFT_SHADOW_FILL, llclamp(BDMergeSoftShadowFill, 0.f, 1.f));
-    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_SUN, BDMergeSoftShadowSun ? 1 : 0);
-    // [Vogel A/B] kernel selector: 0 = fixed 12-tap Poisson (baseline), 1 = Vogel
-    // disk with a per-pixel spatial rotation. Tap count clamped to the shader max.
-    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_VOGEL, BDMergeSoftShadowVogel ? 1 : 0);
-    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));
+    bindSunShadowState(shader, nullptr, SunShadowStage::Tuning);
     F32 spot_shadow_softness[MAX_SPOT_SHADOWS] = {};
     F32 spot_shadow_detail[MAX_SPOT_SHADOWS] = {};
     for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
@@ -27963,12 +28029,8 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform1fv(LLShaderMgr::SPOT_SHADOW_SOFTNESS,
                       MAX_SPOT_SHADOWS, spot_shadow_softness);
 
-    shader.uniform3fv(LLShaderMgr::DEFERRED_SUN_DIR, 1, mTransformedSunDir.mV);
-    shader.uniform3fv(LLShaderMgr::DEFERRED_MOON_DIR, 1, mTransformedMoonDir.mV);
-    LLRenderTarget* sun_shadow = getSunShadowTarget(0);
-    shader.uniform2f(LLShaderMgr::DEFERRED_SHADOW_RES,
-                     (GLfloat)sun_shadow->getWidth(),
-                     (GLfloat)sun_shadow->getHeight());
+    bindSunShadowState(shader, nullptr, SunShadowStage::Directions);
+
     // [Prism spot shadows Stage 2] getSpotShadowTarget redirects to the
     // dedicated aux maps while sPrismLensRender is set (harmless if the sizes
     // match, correct if they ever diverge); the main path is unchanged.
@@ -29178,7 +29240,7 @@ bool LLPipeline::renderCover(U32 phase, const CoverPolicy& policy)
 namespace
 {
 // Lazy objects: key OFF never creates, compiles, or binds a key program.
-struct ActorKeyPrograms { LLGLSLShader blur, matte, occluder; };
+struct ActorKeyPrograms { LLGLSLShader blur, matte, occluder, shadow, shadowDensity; };
 std::unique_ptr<ActorKeyPrograms> sActorKeyPrograms;
 std::unique_ptr<LLGLSLShader> gActorKeyCompositeProgram;
 struct ActorKeyLensProgram
@@ -29252,6 +29314,7 @@ bool actor_key_copy(LLRenderTarget& target, const S32 (&viewport)[4])
 
 void LLPipeline::releaseActorKeyTargets()
 {
+    releaseActorShadowTargets();
     mKeyDiopterCov.release();
     for (auto& target : mKeyLensStage) target.release();
     for (auto& entry : sActorKeyLensPrograms) entry.second->shader.unload();
@@ -29278,6 +29341,8 @@ void LLPipeline::releaseActorKeyTargets()
     {
         sActorKeyPrograms->blur.unload();
         sActorKeyPrograms->matte.unload();
+        sActorKeyPrograms->shadow.unload();
+        sActorKeyPrograms->shadowDensity.unload();
         sActorKeyPrograms->occluder.unload();
         sActorKeyPrograms.reset();
     }
@@ -29412,16 +29477,27 @@ bool LLPipeline::ensureKeyPrograms()
         if (shader.isComplete()) return true;
         shader.mName = name;
         shader.mFeatures = LLShaderFeatures();
-        shader.mShaderLevel = 1;
+        const bool shadow = std::string(fragment) == "alchemy/actorKeyShadowF.glsl";
+        shader.mFeatures.hasShadows = shadow;
+        shader.mFeatures.isDeferred = shadow;
+        shader.mShaderLevel = shadow ? 2 : 1;
         shader.mShaderFiles.clear();
         shader.mShaderFiles.push_back(std::make_pair(vertex, GL_VERTEX_SHADER));
         shader.mShaderFiles.push_back(std::make_pair(fragment, GL_FRAGMENT_SHADER));
         shader.clearPermutations();
+        if (shadow)
+        {
+            shader.addPermutation("SUN_SHADOW", "1");
+        }
         return shader.createShader();
     };
+    static LLCachedControl<bool> keep_shadows(gSavedSettings, "ActorKeyShadow", true);
+    static LLCachedControl<F32> softness(gSavedSettings, "ActorKeyShadowSoftness", 0.5f);
     return load(sActorKeyPrograms->blur, "ActorKey Blur", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyBlurF.glsl") &&
         load(sActorKeyPrograms->matte, "ActorKey Matte", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyMatteF.glsl") &&
-        load(sActorKeyPrograms->occluder, "ActorKey Prism occluder", "alchemy/actorKeyOccluderV.glsl", "alchemy/actorKeyOccluderF.glsl");
+        load(sActorKeyPrograms->occluder, "ActorKey Prism occluder", "alchemy/actorKeyOccluderV.glsl", "alchemy/actorKeyOccluderF.glsl") &&
+        (!keep_shadows() || RenderShadowDetail <= 0 || load(sActorKeyPrograms->shadow, "ActorKey Shadow", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyShadowF.glsl")) &&
+        (!keep_shadows() || RenderShadowDetail <= 0 || softness() <= 0.5f || load(sActorKeyPrograms->shadowDensity, "ActorKey Shadow density", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyShadowDensityF.glsl"));
 }
 
 bool LLPipeline::preflightActorKey(bool sphere, bool diopter, bool fisheye)
@@ -29777,12 +29853,26 @@ void LLPipeline::buildActorKeyMatte()
         pass(half ? mActorKeyBlurA : mActorKeyCoverage, mActorKeyBlurB, 1.f/bw, 0.f, false);
         pass(mActorKeyBlurB, mActorKeyBlurA, 0.f, 1.f/bh, false);
     }
+    const bool shadow_term = buildActorKeyShadowTerm(w, h);
     mActorKeyMatte.bindTarget();
     auto& matte = sActorKeyPrograms->matte;
     matte.bind();
     mActorKeyCoverage.bindTexture(0, 0, LLTexUnit::TFO_POINT);
     // Always bind a complete texture; raw mode must not sample stale blur storage.
     (raw ? mActorKeyCoverage : mActorKeyBlurA).bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
+    matte.uniform1i(LLStaticHashedString("keyShadowEnabled"), shadow_term ? 1 : 0);
+    matte.uniform1i(LLStaticHashedString("keyShadowExact"), mActorShadowIsolation == 1 && !mActorShadowFallback ? 1 : 0);
+    if (shadow_term)
+    {
+        static LLCachedControl<F32> softness(gSavedSettings, "ActorKeyShadowSoftness", 0.5f);
+        const bool filtered = softness() > 0.5f;
+        (filtered ? mActorKeyShadowBlurA : mActorKeyShadowVisibility).bindTexture(0, 2, LLTexUnit::TFO_BILINEAR);
+        matte.uniform1i(LLStaticHashedString("keyShadowFiltered"), filtered ? 1 : 0);
+        mActorKeySetVisibility.bindTexture(0, 3, LLTexUnit::TFO_BILINEAR);
+        matte.uniform1i(LLStaticHashedString("keyActorVisibility"), 2);
+        matte.uniform1i(LLStaticHashedString("keySetVisibility"), 3);
+        matte.uniform1f(LLStaticHashedString("keyShadowSoftness"), llclamp(softness(), 0.f, 1.f));
+    }
     matte.uniform1i(LLStaticHashedString("keyCoverage"), 0);
     matte.uniform1i(LLStaticHashedString("keyBlur"), 1);
     matte.uniform1i(LLStaticHashedString("keyRaw"), raw ? 1 : 0);
@@ -35019,17 +35109,14 @@ void LLPipeline::bindWeatherMaterial(LLGLSLShader* shader)
     shader->uniform1i(LLShaderMgr::WEATHER_MATERIAL_EXCLUDED, 0);
 }
 
-void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
-                              LLCamera& shadow_cam, LLCullResult& result,
-                              bool depth_clamp, bool do_cull,
-                              bool include_rigged,
-                              bool include_alpha_blend,
-                              bool cull_faces,
-                              bool include_alpha_cutout)
+class LLPipeline::LLShadowCascadeScope
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE; //LL_RECORD_BLOCK_TIME(FTM_SHADOW_RENDER);
-    LL_PROFILE_GPU_ZONE("renderShadow");
-
+public:
+    LLShadowCascadeScope(LLPipeline& pipeline, LLCamera& camera, LLCullResult& result,
+                        bool do_cull, bool include_alpha_cutout, bool depth_clamp, bool cull_faces)
+        : mCull(GL_CULL_FACE, cull_faces ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE),
+          mClamp(depth_clamp ? GL_DEPTH_CLAMP : 0), mDepth(GL_TRUE, GL_TRUE, GL_LESS)
+    {
     // [AlphaShadowCap] Rain may legitimately enter with filter 1, never filter 2/3.
     const bool cap_debug = alphaCapDebug();
     if (cap_debug)
@@ -35041,14 +35128,62 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
         sAlphaCapCounts = AlphaCapCounts{};
     }
     sAlphaCapCounts.active = cap_debug && !include_alpha_cutout;
-    const U8 cap_filter = sAlphaCapCounts.active ? U8{3} : U8{2};
 
     LLPipeline::sShadowRender = true;
 
     // disable occlusion culling during shadow render
-    U32 saved_occlusion = sUseOcclusion;
+    mSavedOcclusion = sUseOcclusion;
     sUseOcclusion = 0;
 
+        pipeline.prepareShadowCascade(camera, result, do_cull);
+    }
+    ~LLShadowCascadeScope()
+    {
+        sUseOcclusion = mSavedOcclusion;
+        sShadowRender = false;
+        sAlphaCapCounts.active = false;
+        llassert(sShadowCasterFilter == CASTER_ALL);
+    }
+    LLShadowCascadeScope(const LLShadowCascadeScope&) = delete;
+    LLShadowCascadeScope& operator=(const LLShadowCascadeScope&) = delete;
+private:
+    LLGLState mCull;
+    LLGLEnable mClamp;
+    LLGLDepthTest mDepth;
+    U32 mSavedOcclusion;
+};
+
+void LLPipeline::prepareShadowCascade(LLCamera& shadow_cam, LLCullResult& result, bool do_cull)
+{
+    // In RenderShadowCullMode 1, do_cull is false: generateSunShadow did the single union
+    // octree cull and pre-filtered `result` to this cascade's frustum (bucketShadowCull),
+    // so skip the per-cascade octree walk and only sort/build this cascade's render map.
+    if (do_cull)
+    {
+        updateCull(shadow_cam, result);
+    }
+
+    stateSort(shadow_cam, result);
+
+}
+
+void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
+                              LLCamera& shadow_cam, LLCullResult& result,
+                              bool depth_clamp, bool do_cull, bool include_rigged,
+                              bool include_alpha_blend, bool cull_faces, bool include_alpha_cutout)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
+    LL_PROFILE_GPU_ZONE("renderShadow");
+    LLShadowCascadeScope cascade(*this, shadow_cam, result, do_cull, include_alpha_cutout, depth_clamp, cull_faces);
+    drawShadowCascade(view, proj, shadow_cam, result, include_rigged, include_alpha_blend, include_alpha_cutout, true);
+}
+
+void LLPipeline::drawShadowCascade(const glm::mat4& view, const glm::mat4& proj,
+                                  LLCamera& shadow_cam, LLCullResult& result, bool include_rigged,
+                                  bool include_alpha_blend, bool include_alpha_cutout, bool accounting)
+{
+    llassert(sCull == &result);
+    const U8 cap_filter = sAlphaCapCounts.active ? U8{3} : U8{2};
     // List of render pass types that use the prim volume as the shadow,
     // ignoring textures.
     static const U32 types[] = {
@@ -35066,25 +35201,6 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
         LLRenderPass::PASS_NORMSPEC,
         LLRenderPass::PASS_NORMSPEC_EMISSIVE
     };
-
-    LLGLState cull(
-        GL_CULL_FACE,
-        cull_faces ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
-
-    //enable depth clamping if available
-    LLGLEnable clamp_depth(depth_clamp ? GL_DEPTH_CLAMP : 0);
-
-    LLGLDepthTest depth_test(GL_TRUE, GL_TRUE, GL_LESS);
-
-    // In RenderShadowCullMode 1, do_cull is false: generateSunShadow did the single union
-    // octree cull and pre-filtered `result` to this cascade's frustum (bucketShadowCull),
-    // so skip the per-cascade octree walk and only sort/build this cascade's render map.
-    if (do_cull)
-    {
-        updateCull(shadow_cam, result);
-    }
-
-    stateSort(shadow_cam, result);
 
     // [AlphaShadowCap] Independent expected count from the sorted maps, not from
     // filter invocations. Scalar legacy sweeps omit multi-slot draws; only the
@@ -35129,12 +35245,26 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
     }
 
     //generate shadow map
-    gGL.matrixMode(LLRender::MM_PROJECTION);
-    gGL.pushMatrix();
-    gGL.loadMatrix(glm::value_ptr(proj));
-    gGL.matrixMode(LLRender::MM_MODELVIEW);
-    gGL.pushMatrix();
-    gGL.loadMatrix(glm::value_ptr(view));
+    struct MatrixScope
+    {
+        MatrixScope(const glm::mat4& view, const glm::mat4& proj)
+        {
+            gGL.matrixMode(LLRender::MM_PROJECTION);
+            gGL.pushMatrix();
+            gGL.loadMatrix(glm::value_ptr(proj));
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            gGL.pushMatrix();
+            gGL.loadMatrix(glm::value_ptr(view));
+        }
+        ~MatrixScope()
+        {
+            gGL.matrixMode(LLRender::MM_PROJECTION);
+            gGL.popMatrix();
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            gGL.popMatrix();
+            gGLLastMatrix = NULL;
+        }
+    } matrices(view, proj);
 
     stop_glerror();
     gGLLastMatrix = NULL;
@@ -35183,7 +35313,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
         gGL.getTexUnit(0)->enable(LLTexUnit::TT_TEXTURE);
     }
 
-    if (LLPipeline::sUseOcclusion > 1)
+    if (accounting && LLPipeline::sUseOcclusion > 1)
     { // do occlusion culling against non-masked only to take advantage of hierarchical Z
         doOcclusion(shadow_cam);
     }
@@ -35240,7 +35370,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                 if (i == 0)
                 {
                     // [AlphaShadowCap] Grass cannot be a worn attachment.
-                    if (include_alpha_cutout)
+                    if (include_alpha_cutout && sShadowCasterFilter != CASTER_KEY_ONLY)
                     {
                         renderObjects(LLRenderPass::PASS_GRASS, true);
                     }
@@ -35336,16 +35466,231 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
     gGL.setColorMask(true, true);
 
-    gGL.matrixMode(LLRender::MM_PROJECTION);
-    gGL.popMatrix();
-    gGL.matrixMode(LLRender::MM_MODELVIEW);
-    gGL.popMatrix();
-    gGLLastMatrix = NULL;
+    llassert(sCull == &result);
+}
 
-    // reset occlusion culling flag
-    sUseOcclusion = saved_occlusion;
-    LLPipeline::sShadowRender = false;
-    sAlphaCapCounts.active = false; // [AlphaShadowCap] never count outside this call
+bool LLPipeline::skipKeyShadowCaster(const LLDrawInfo* draw)
+{
+    if (sShadowCasterFilter == CASTER_ALL || !draw) return false;
+    const bool keyed = ALActorChromaKey::ownerKeyed(draw->mActorFxOwner, draw->mActorFxFallbackOwner);
+    return sShadowCasterFilter == CASTER_KEY_ONLY ? !keyed : keyed;
+}
+
+bool LLPipeline::skipKeyShadowAvatar(const LLVOAvatar* avatar)
+{
+    if (sShadowCasterFilter == CASTER_ALL) return false;
+    const bool keyed = ALActorChromaKey::keepsLive(avatar);
+    return sShadowCasterFilter == CASTER_KEY_ONLY ? !keyed : keyed;
+}
+
+void LLPipeline::releaseActorShadowTargets()
+{
+    for (U32 i = 0; i < 4; ++i)
+    {
+        mActorShadow[i].release(); mSetShadow[i].release();
+        mActorShadowSlice[i] = {};
+    }
+    mActorShadowLit.release();
+    mActorKeyShadowVisibility.release(); mActorKeySetVisibility.release();
+    mActorKeyShadowBlurA.release(); mActorKeyShadowBlurB.release();
+    mActorShadowFrame = ~0u;
+    mActorShadowReady = false;
+}
+
+bool LLPipeline::ensureActorShadowTargets(bool exact)
+{
+    // Main pack only. Clone the ACTUAL beauty dimensions, including per-cascade
+    // overrides and non-square screen-derived sizing, rather than re-reading settings.
+    const auto ensure = [&](LLRenderTarget& target, U32 w, U32 h)
+    {
+        if (!target.isComplete() || target.getWidth() != w || target.getHeight() != h)
+        {
+            target.release();
+            if (!w || !h || !allocateSunCascadeTarget(target, w, h)) return false;
+        }
+        applySunShadowSamplerState(target, shadowUnitsFilterWanted() ?
+            LLTexUnit::TFO_BILINEAR : LLTexUnit::TFO_ANISOTROPIC);
+        return target.isComplete();
+    };
+    bool ready = ensure(mActorShadowLit, 1, 1);
+    if (ready)
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_TRUE);
+        mActorShadowLit.bindTarget(); mActorShadowLit.clear(); mActorShadowLit.flush();
+    }
+    for (U32 i = 0; ready && i < 4; ++i)
+    {
+        if (i < mActorShadowCascades)
+        {
+            const auto& beauty = mMainRT.shadow[i];
+            ready = beauty.isComplete() && ensure(mActorShadow[i], beauty.getWidth(), beauty.getHeight());
+            if (ready && exact) ready = ensure(mSetShadow[i], beauty.getWidth(), beauty.getHeight());
+            if (!exact) mSetShadow[i].release();
+        }
+        else { mActorShadow[i].release(); mSetShadow[i].release(); }
+    }
+    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    if (!ready)
+    {
+        releaseActorShadowTargets();
+        mActorShadowFallback = true;
+        LL_WARNS_ONCE("ActorKey") << "ACTORKEY SHADOW-FAIL alloc; All sun shadows fallback" << LL_ENDL;
+    }
+    return ready;
+}
+
+void LLPipeline::diagnoseKeyShadowOwners(LLCullResult& result, U32 slice)
+{
+    if ((gFrameCount & 63U) != 0) return;
+    U32 missing = 0;
+    for (U32 type = 0; type < LLRenderPass::NUM_RENDER_TYPES; ++type)
+    {
+        auto* end = result.endRenderMap(type);
+        for (auto* it = result.beginRenderMap(type); it != end; )
+        {
+            const LLDrawInfo* draw = *it;
+            LLCullResult::increment_iterator(it, end);
+            // Count all ownerless attachments conservatively: a rigid attachment
+            // has no avatar pointer with which to prove it belongs to a recipient.
+            if (draw->mActorFxOwner.isNull() && draw->mActorFxFallbackOwner.isNull() &&
+                (draw->mAttachedToAvatar || ALActorChromaKey::keepsLive(draw->mAvatar))) ++missing;
+        }
+    }
+    LL_INFOS("ActorKey") << "ACTORKEY SHADOW slice=" << slice << " caster_no_owner=" << missing
+        << (missing ? " FAIL" : " PASS") << LL_ENDL;
+}
+
+void LLPipeline::renderKeyShadowCascade(U32 slice, bool column, const glm::mat4& view, const glm::mat4& proj,
+                                       LLCamera& camera, LLCullResult& result, bool do_cull, bool alpha_cutout)
+{
+    // OFF follows the same wrapper and has no auxiliary allocation/cull/sort/draw.
+    if (!ALActorChromaKey::sActive || !mActorShadowReady || mRT != &mMainRT || gCubeSnapshot ||
+        mActorShadowIsolation == 2 || mActorShadowFallback || slice >= mActorShadowCascades)
+    {
+        renderShadow(view, proj, camera, result, true, do_cull, true, true, true, alpha_cutout);
+        return;
+    }
+    if (!gDeferredShadowProgram.isComplete() || !gDeferredShadowAlphaMaskProgram.isComplete() ||
+        !gDeferredShadowGLTFAlphaMaskProgram.isComplete())
+    {
+        mActorShadowFallback = true;
+        LL_WARNS_ONCE("ActorKey") << "ACTORKEY SHADOW-FAIL program; All sun shadows fallback" << LL_ENDL;
+        renderShadow(view, proj, camera, result, true, do_cull, true, true, true, alpha_cutout);
+        return;
+    }
+    LL_PROFILE_ZONE_NAMED("ActorKey::shadowCascade");
+    LLShadowCascadeScope cascade(*this, camera, result, do_cull, alpha_cutout, true, true);
+    diagnoseKeyShadowOwners(result, slice);
+    // The caller's beauty target may be the current sibling in a direct depth
+    // sequence. Aux targets nest and restore THAT target, never enter its sequence.
+#ifndef NDEBUG
+    std::array<U32, LLRenderPass::NUM_RENDER_TYPES> map_sizes;
+    for (U32 type = 0; type < map_sizes.size(); ++type) map_sizes[type] = result.getRenderMapSize(type);
+    std::vector<std::pair<LLFacePool*, size_t>> face_sizes;
+    for (auto* pool : mPools)
+        if (pool->isFacePool()) face_sizes.emplace_back(static_cast<LLFacePool*>(pool), static_cast<LLFacePool*>(pool)->mDrawFace.size());
+    const auto immutable = [&]()
+    {
+        llassert(sCull == &result);
+        for (U32 type = 0; type < map_sizes.size(); ++type) llassert(map_sizes[type] == result.getRenderMapSize(type));
+        for (const auto& entry : face_sizes) llassert(entry.first->mDrawFace.size() == entry.second);
+    };
+#endif
+    drawShadowCascade(view, proj, camera, result, true, true, alpha_cutout, true);
+#ifndef NDEBUG
+    immutable();
+#endif
+    const auto beauty_counts = sAlphaCapCounts;
+    sAlphaCapCounts.active = false;
+    const auto replay = [&](LLRenderTarget& target, U8 filter)
+    {
+        struct CasterScope
+        {
+            explicit CasterScope(U8 value) { llassert(sShadowCasterFilter == CASTER_ALL); sShadowCasterFilter = value; }
+            ~CasterScope() { sShadowCasterFilter = CASTER_ALL; }
+        } casters(filter);
+        target.bindTarget(); target.getViewport(gGLViewport);
+        struct TargetScope { LLRenderTarget& target; ~TargetScope() { target.flush(); } } bound{target};
+        target.clear();
+        drawShadowCascade(view, proj, camera, result, true, true, alpha_cutout, false);
+#ifndef NDEBUG
+        immutable();
+#endif
+    };
+    replay(mActorShadow[slice], CASTER_KEY_ONLY);
+    if (mActorShadowIsolation == 1) replay(mSetShadow[slice], CASTER_SET_ONLY);
+    sAlphaCapCounts = beauty_counts;
+    mActorShadowSlice[slice] = {gFrameCount, mActorShadowGeneration, column, true};
+}
+
+bool LLPipeline::buildActorKeyShadowTerm(U32 width, U32 height)
+{
+    if (!mActorShadowReady || mActorShadowFrame != gFrameCount || RenderShadowDetail <= 0 ||
+        mActorShadowRevision != ALActorChromaKey::revision() || !mMainSunShadowToken) return false;
+    LL_PROFILE_ZONE_NAMED("ActorKey::shadowTerm");
+    const auto ensure = [&](LLRenderTarget& target)
+    {
+        if (target.isComplete() && target.getWidth() == width && target.getHeight() == height) return true;
+        target.release();
+        return target.allocate(width, height, GL_R8, false);
+    };
+    if (!ensure(mActorKeyShadowVisibility) || !ensure(mActorKeySetVisibility)) return false;
+    const bool all = mActorShadowIsolation == 2 || mActorShadowFallback;
+    auto& shader = sActorKeyPrograms->shadow;
+    const auto pass = [&](LLRenderTarget& target, bool set)
+    {
+        LLRenderTarget* maps[4];
+        for (U32 i = 0; i < 4; ++i)
+        {
+            const auto& stamp = mActorShadowSlice[i];
+            const bool valid = i < mActorShadowCascades && stamp.valid && stamp.frame == gFrameCount &&
+                stamp.generation == mActorShadowGeneration && stamp.column == (i == 0 && mMainRT.shadowMeta.subject);
+            maps[i] = all ? &mMainRT.shadow[i] : valid ? (set ? &mSetShadow[i] : &mActorShadow[i]) : &mActorShadowLit;
+        }
+        target.bindTarget();
+        bindDeferredShader(shader);
+        bindSunShadowState(shader, maps);
+        shader.uniform1i(LLShaderMgr::SUN_UP_FACTOR, LLEnvironment::instance().getIsSunUp() ? 1 : 0);
+        mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+        unbindDeferredShader(shader);
+        target.flush();
+    };
+    pass(mActorKeyShadowVisibility, false);
+    if (mActorShadowIsolation == 1 && !all) pass(mActorKeySetVisibility, true);
+    static LLCachedControl<F32> softness(gSavedSettings, "ActorKeyShadowSoftness", 0.5f);
+    if (softness() > 0.5f)
+    {
+        const U32 w = (width + 1) / 2, h = (height + 1) / 2;
+        const auto ensure_blur = [&](LLRenderTarget& target)
+        {
+            if (target.isComplete() && target.getWidth() == w && target.getHeight() == h) return true;
+            target.release(); return target.allocate(w, h, GL_R8, false);
+        };
+        if (!ensure_blur(mActorKeyShadowBlurA) || !ensure_blur(mActorKeyShadowBlurB)) return false;
+        auto& density = sActorKeyPrograms->shadowDensity;
+        mActorKeyShadowBlurA.bindTarget(); density.bind();
+        mActorKeyShadowVisibility.bindTexture(0, 0, LLTexUnit::TFO_BILINEAR);
+        mActorKeySetVisibility.bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
+        density.uniform1i(LLStaticHashedString("keyActorVisibility"), 0);
+        density.uniform1i(LLStaticHashedString("keySetVisibility"), 1);
+        density.uniform1i(LLStaticHashedString("keyShadowExact"), mActorShadowIsolation == 1 && !all ? 1 : 0);
+        mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+        mActorKeyShadowBlurA.flush();
+        const auto blur_pass = [&](LLRenderTarget& source, LLRenderTarget& target, F32 dx, F32 dy)
+        {
+            auto& blur = sActorKeyPrograms->blur;
+            target.bindTarget(); blur.bind(); source.bindTexture(0, 0, LLTexUnit::TFO_BILINEAR);
+            blur.uniform1i(LLStaticHashedString("keySource"), 0);
+            blur.uniform2f(LLStaticHashedString("keyDirection"), dx, dy);
+            blur.uniform1f(LLStaticHashedString("keyRadius"), (llclamp(softness(), 0.5f, 1.f) - 0.5f) * 8.f);
+            blur.uniform1i(LLStaticHashedString("keyDownsample"), 0);
+            mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+            target.flush();
+        };
+        blur_pass(mActorKeyShadowBlurA, mActorKeyShadowBlurB, 1.f/w, 0.f);
+        blur_pass(mActorKeyShadowBlurB, mActorKeyShadowBlurA, 0.f, 1.f/h);
+    }
+    return true;
 }
 
 bool LLPipeline::getVisiblePointCloud(LLCamera& camera, LLVector3& min, LLVector3& max, std::vector<LLVector3>& fp, LLVector3 light_dir)
@@ -35652,6 +35997,38 @@ static void bucketShadowCull(LLCullResult& src, LLCamera& cam, LLCullResult& dst
 void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 {
     AlphaCapSunLeakCheck alpha_cap_leak_check; // [AlphaShadowCap] all exits
+    struct CasterFilterLeakCheck
+    {
+        LLPipeline& pipeline;
+        ~CasterFilterLeakCheck()
+        {
+            if (sShadowCasterFilter != CASTER_ALL)
+            {
+                sShadowCasterFilter = CASTER_ALL;
+                pipeline.mActorShadowFallback = true;
+                pipeline.mActorShadowFrame = ~0u;
+                LL_WARNS("ActorKey") << "ACTORKEY SHADOW-FAIL caster-filter leak; All sun shadows fallback" << LL_ENDL;
+            }
+        }
+    } caster_filter_leak_check{*this};
+    if (ALActorChromaKey::sActive && mRT == &mMainRT && !gCubeSnapshot && !clip_only)
+    {
+        mActorShadowFrame = ~0u;
+        ++mActorShadowGeneration;
+        for (auto& slice : mActorShadowSlice) slice.valid = false;
+        mActorShadowReady = false;
+        static LLCachedControl<bool> keep(gSavedSettings, "ActorKeyShadow", true);
+        static LLCachedControl<S32> isolation(gSavedSettings, "ActorKeyShadowIsolation", 0);
+        static LLCachedControl<U32> cascades(gSavedSettings, "ActorKeyShadowCascades", 2);
+        mActorShadowIsolation = llclamp(isolation(), 0, 2);
+        mActorShadowCascades = llclamp(cascades(), 1u, 4u);
+        mActorShadowRevision = ALActorChromaKey::revision();
+        if ((mActorShadowIsolation == 2 || mActorShadowFallback) && mActorShadowLit.isComplete()) releaseActorShadowTargets();
+        if (keep() && RenderShadowDetail > 0 && !ALActorChromaKey::suppressed())
+            mActorShadowReady = mActorShadowIsolation == 2 || mActorShadowFallback ||
+                ensureActorShadowTargets(mActorShadowIsolation == 1) || mActorShadowFallback;
+        else releaseActorShadowTargets();
+    }
     // [ProbeCost] A failed/early-returning main generation cannot publish stale maps.
     if (mRT == &mMainRT && !gCubeSnapshot) mMainSunShadowToken = false;
     if (!sRenderDeferred || RenderShadowDetail <= 0)
@@ -36377,7 +36754,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                 clear_shadow_target(mRT->shadow[0]);
                 {
                     static LLCullResult column_result;
-                    renderShadow(view0, proj0, column_cam, column_result, true, true);
+                    renderKeyShadowCascade(0, true, view0, proj0, column_cam, column_result, true, true);
                 }
                 flush_shadow_target(mRT->shadow[0]);
                 { // [LowSunShadow] early kick also when the column owns cascade 0
@@ -36454,6 +36831,14 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                     clear_shadow_target(mRT->shadow[j]);
                 }
                 flush_shadow_target(mRT->shadow[j]);
+                if (ALActorChromaKey::sActive && mActorShadowReady && static_cast<U32>(j) < mActorShadowCascades &&
+                    mActorShadowIsolation != 2 && !mActorShadowFallback && mRT == &mMainRT && !gCubeSnapshot)
+                {
+                    LLGLDepthTest depth(GL_TRUE, GL_TRUE);
+                    mActorShadow[j].bindTarget(); mActorShadow[j].clear(); mActorShadow[j].flush();
+                    if (mActorShadowIsolation == 1)
+                    { mSetShadow[j].bindTarget(); mSetShadow[j].clear(); mSetShadow[j].flush(); }
+                }
 
                 // [ShadowDist P1] ShadowMeta site 4: a cleared map samples as lit
                 // whatever its matrix says, so sunVP[j] is left as is (exactly
@@ -36803,8 +37188,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                     const S32 max_j = subject_active ? llmin(k, 2) : k - 1;
                     alpha_casters = (j <= max_j);
                 }
-                renderShadow(view[j], proj[j], shadow_cam, result[j], true, !have_union_cull,
-                             true, true, true, alpha_casters);
+                renderKeyShadowCascade(j, false, view[j], proj[j], shadow_cam, result[j], !have_union_cull, alpha_casters);
                 if (!alpha_casters && alphaCapDebug() && (gFrameCount & 63U) == 0)
                 {
                     const char* verdict = sAlphaCapCounts.expected == 0 ? "INCONCLUSIVE" :
@@ -37156,7 +37540,11 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
         gAgentAvatarp->updateAttachmentVisibility(gAgentCamera.getCameraMode());
     }
     // [ProbeCost] Only completed main generations publish; early returns stay invalid.
-    if (mRT == &mMainRT && !gCubeSnapshot) mMainSunShadowToken = true;
+    if (mRT == &mMainRT && !gCubeSnapshot)
+    {
+        mMainSunShadowToken = true;
+        if (ALActorChromaKey::sActive && mActorShadowReady) mActorShadowFrame = gFrameCount;
+    }
 }
 
 // [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the

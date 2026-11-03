@@ -12,6 +12,17 @@ from relight_area_policy_check import method as source_method
 def actor_key_baseline(source, name):
     """Reverse only the content-pinned WP01 delta before the old guard chain."""
     import hashlib, json
+    shadow_raw = (Path(__file__).parent / "actor_key_shadow_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(shadow_raw).hexdigest() == "9edb19760a01baa64d797b15b208d11c6cf1af95412a735636659066550afe70", "WP4 allowance pin"
+    shadow = json.loads(shadow_raw)
+    shadow_path = "indra/newview/" + name
+    if shadow_path in shadow["files"]:
+        shadow_base = subprocess.check_output(["git", "show", shadow["base"] + ":" + shadow_path]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in shadow["files"][shadow_path]:
+            assert shadow_base.count(hunk["before"]) == 1, ("WP4 baseline hunk", name)
+            assert source.count(hunk["after"]) == 1, ("WP4 exact hunk", name)
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == shadow_base, ("WP4 reversal must reproduce its exact base", name)
     lens_raw = (Path(__file__).parent / "actor_key_lens_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(lens_raw).hexdigest() == "7bffb56abb89456172cfce66928590f96a2e3731b95cf5c29f6ccd1c38c05182", "WP-LENS allowance pin"
     lens = json.loads(lens_raw)

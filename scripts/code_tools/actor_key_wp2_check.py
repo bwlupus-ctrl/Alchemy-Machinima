@@ -192,7 +192,7 @@ struct LLGLSLShader{
  bool isComplete(){return complete;}void clearPermutations(){}bool createShader(){return complete=programOK;}void unload(){complete=false;}
 };
 std::unique_ptr<LLGLSLShader>gActorKeyCompositeProgram;
-struct ActorKeyPrograms{LLGLSLShader blur,matte,occluder;};std::unique_ptr<ActorKeyPrograms>sActorKeyPrograms;
+struct ActorKeyPrograms{LLGLSLShader blur,matte,occluder,shadow,shadowDensity;};std::unique_ptr<ActorKeyPrograms>sActorKeyPrograms;
 struct ActorKeyLensProgram{LLGLSLShader shader;};
 std::map<LLGLSLShader*,std::unique_ptr<ActorKeyLensProgram>>sActorKeyLensPrograms;
 unsigned gFrameCount=42;
@@ -221,6 +221,7 @@ struct LLPipeline{
  bool matte=true;bool actorKeyMatteValid(){return matte;}
  bool preflightActorKey(bool,bool,bool);
  void releaseActorKeyTargets();
+ void releaseActorShadowTargets(){} // WP4 target lifecycle is exercised by actor_key_shadow_check.py.
 };
 """+scope+method(NV/'pipeline.cpp','bool LLPipeline::lensCoverageValid() const')+method(NV/'pipeline.cpp','bool actor_key_copy(')+'\n'+method(NV/'pipeline.cpp','bool LLPipeline::preflightActorKey(')+'\n'+method(NV/'pipeline.cpp','void LLPipeline::releaseActorKeyTargets()')
     fixture+=r"""

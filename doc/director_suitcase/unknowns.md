@@ -567,48 +567,48 @@ All 3058 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.cpp@1300,16`
 - `indra/newview/pipeline.cpp@1480,48`
 - `indra/newview/pipeline.cpp@1538,13`
-- `indra/newview/pipeline.cpp@31445,11`
-- `indra/newview/pipeline.cpp@31483,13`
-- `indra/newview/pipeline.cpp@32004,6`
-- `indra/newview/pipeline.cpp@33064,7`
-- `indra/newview/pipeline.cpp@33092,13`
-- `indra/newview/pipeline.cpp@33126,15`
-- `indra/newview/pipeline.cpp@33450,7`
-- `indra/newview/pipeline.cpp@33458,11`
-- `indra/newview/pipeline.cpp@34918,9`
-- `indra/newview/pipeline.cpp@34937,48`
-- `indra/newview/pipeline.cpp@35003,9`
-- `indra/newview/pipeline.cpp@35042,19`
-- `indra/newview/pipeline.cpp@35062,11`
-- `indra/newview/pipeline.cpp@35078,7`
-- `indra/newview/pipeline.cpp@35090,15`
-- `indra/newview/pipeline.cpp@35113,7`
-- `indra/newview/pipeline.cpp@35124,15`
-- `indra/newview/pipeline.cpp@35151,7`
-- `indra/newview/pipeline.cpp@35167,7`
-- `indra/newview/pipeline.cpp@35196,7`
-- `indra/newview/pipeline.cpp@35500,11`
-- `indra/newview/pipeline.cpp@35599,7`
-- `indra/newview/pipeline.cpp@35610,8`
-- `indra/newview/pipeline.cpp@35626,41`
-- `indra/newview/pipeline.cpp@35752,54`
-- `indra/newview/pipeline.cpp@35922,9`
-- `indra/newview/pipeline.cpp@35987,265`
-- `indra/newview/pipeline.cpp@36272,9`
-- `indra/newview/pipeline.cpp@36299,26`
-- `indra/newview/pipeline.cpp@36337,11`
-- `indra/newview/pipeline.cpp@36410,7`
-- `indra/newview/pipeline.cpp@36448,18`
-- `indra/newview/pipeline.cpp@36493,8`
-- `indra/newview/pipeline.cpp@36524,8`
-- `indra/newview/pipeline.cpp@36544,18`
-- `indra/newview/pipeline.cpp@38780,15`
-- `indra/newview/pipeline.h@1032,7`
-- `indra/newview/pipeline.h@1048,7`
-- `indra/newview/pipeline.h@2295,18`
-- `indra/newview/pipeline.h@2315,8`
-- `indra/newview/pipeline.h@2530,14`
-- `indra/newview/pipeline.h@2846,24`
+- `indra/newview/pipeline.cpp@31594,11`
+- `indra/newview/pipeline.cpp@31632,13`
+- `indra/newview/pipeline.cpp@32153,6`
+- `indra/newview/pipeline.cpp@33213,7`
+- `indra/newview/pipeline.cpp@33241,13`
+- `indra/newview/pipeline.cpp@33275,15`
+- `indra/newview/pipeline.cpp@33599,7`
+- `indra/newview/pipeline.cpp@33607,11`
+- `indra/newview/pipeline.cpp@35067,9`
+- `indra/newview/pipeline.cpp@35086,48`
+- `indra/newview/pipeline.cpp@35152,9`
+- `indra/newview/pipeline.cpp@35191,19`
+- `indra/newview/pipeline.cpp@35211,11`
+- `indra/newview/pipeline.cpp@35227,7`
+- `indra/newview/pipeline.cpp@35239,15`
+- `indra/newview/pipeline.cpp@35262,7`
+- `indra/newview/pipeline.cpp@35273,15`
+- `indra/newview/pipeline.cpp@35300,7`
+- `indra/newview/pipeline.cpp@35316,7`
+- `indra/newview/pipeline.cpp@35345,7`
+- `indra/newview/pipeline.cpp@35649,11`
+- `indra/newview/pipeline.cpp@35748,7`
+- `indra/newview/pipeline.cpp@35759,8`
+- `indra/newview/pipeline.cpp@35775,41`
+- `indra/newview/pipeline.cpp@35901,54`
+- `indra/newview/pipeline.cpp@36071,9`
+- `indra/newview/pipeline.cpp@36136,265`
+- `indra/newview/pipeline.cpp@36421,9`
+- `indra/newview/pipeline.cpp@36448,26`
+- `indra/newview/pipeline.cpp@36486,11`
+- `indra/newview/pipeline.cpp@36559,7`
+- `indra/newview/pipeline.cpp@36597,18`
+- `indra/newview/pipeline.cpp@36642,8`
+- `indra/newview/pipeline.cpp@36673,8`
+- `indra/newview/pipeline.cpp@36693,18`
+- `indra/newview/pipeline.cpp@38929,15`
+- `indra/newview/pipeline.h@1038,7`
+- `indra/newview/pipeline.h@1054,7`
+- `indra/newview/pipeline.h@2301,18`
+- `indra/newview/pipeline.h@2321,8`
+- `indra/newview/pipeline.h@2536,14`
+- `indra/newview/pipeline.h@2852,24`
 - `indra/newview/skins/default/textures/textures.xml@909,26`
 - `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1974,7`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1,13`
@@ -2021,20 +2021,20 @@ All 3058 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.h@147,12`: unknown/non-function (public:)
 - `indra/newview/pipeline.h@172,39`: unknown/non-function (public:)
 - `indra/newview/pipeline.h@709,90`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@905,67`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1032,7`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1048,7`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1135,67`: unknown/non-function (private:)
-- `indra/newview/pipeline.h@1380,31`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1433,20`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2243,34`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2295,18`: unknown/non-function (protected:)
-- `indra/newview/pipeline.h@2326,58`: unknown/non-function (protected:)
-- `indra/newview/pipeline.h@2484,14`: unknown/non-function (protected:)
-- `indra/newview/pipeline.h@2530,14`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2609,32`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2642,194`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2846,24`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@911,67`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1038,7`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1054,7`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1141,67`: unknown/non-function (private:)
+- `indra/newview/pipeline.h@1386,31`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1439,20`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2249,34`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2301,18`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2332,58`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2490,14`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2536,14`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2615,32`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2648,194`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2852,24`: unknown/non-function (public:)
 - `indra/newview/skins/default/colors.xml@2,153`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/textures/textures.xml@134,31`: unknown/non-function (with the same filename but different name)
 - `indra/newview/skins/default/textures/textures.xml@184,10`: unknown/non-function (with the same filename but different name)
