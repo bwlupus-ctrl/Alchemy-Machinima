@@ -8,7 +8,7 @@
       "GENERATED": 723,
       "HOOK": 498,
       "OWNED": 890,
-      "TOOLING": 369
+      "TOOLING": 371
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -23,7 +23,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "9e17f118933c3d0a44aaa968a0bc18e93f790f8f688a99862167cad7ff30652f",
+        "csv_sha256": "da8d40cd9af5d923d8f2ec16e90d0b9d2f0b531577eaf09a0295831718c3694e",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
@@ -190,10 +190,10 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "50317145f4c031f7c814fd9c8310399d757d74ba",
+    "head_source_tree": "57cac88621056aec8f30295a871c8430efd2367d",
     "hook_files": 498,
     "hunks": 3021,
-    "input_sha256": "d3fa677c2bb933fe3f96f2b1ba13f813a8fe3f90a7dcfd290ba9d17321d44f79",
+    "input_sha256": "132bfb4d519e266caeeb2428cde87f972dc67d2b38fec6d5b5dce18842148eda",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2023
   },
@@ -23377,8 +23377,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "looks"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -38934,6 +38933,19 @@
       "candidate_features_from_subjects": [],
       "class": "TOOLING",
       "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/ashfix_mover_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
       "feature_evidence": [
         "path/prefix"
       ],
@@ -40372,6 +40384,21 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/hot_clone_interplay_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

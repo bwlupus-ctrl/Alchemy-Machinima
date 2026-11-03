@@ -1373,7 +1373,7 @@ indra/newview/app_settings/shaders/class1/environment/waterF.glsl,M,HOOK,"[""cap
 indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl,M,HOOK,"[""environment"", ""shafts-volumetrics""]",7,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]",[],False
 indra/newview/app_settings/shaders/class1/environment/waterV.glsl,M,HOOK,"[""unknown""]",99,"present at local base; adapt individual hunks, never copy wholesale",[],[],False
 indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl,A,OWNED,"[""actor-path"", ""clones"", ""crowd"", ""looks"", ""roto-tron"", ""sensor"", ""vcam"", ""weather""]",3,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""clones""]",False
-indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl,A,OWNED,"[""actor-path"", ""clones"", ""looks""]",3,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""clones"", ""looks""]",False
+indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl,A,OWNED,"[""actor-path"", ""clones"", ""looks""]",3,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""clones""]",False
 indra/newview/app_settings/shaders/class1/interface/debugV.glsl,M,HOOK,"[""unknown""]",99,"present at local base; adapt individual hunks, never copy wholesale",[],[],False
 indra/newview/app_settings/shaders/class1/interface/highlightNormV.glsl,M,HOOK,"[""unknown""]",99,"present at local base; adapt individual hunks, never copy wholesale",[],[],False
 indra/newview/app_settings/shaders/class1/interface/highlightSpecV.glsl,M,HOOK,"[""unknown""]",99,"present at local base; adapt individual hunks, never copy wholesale",[],[],False
@@ -2247,6 +2247,7 @@ reshade-addon/tools/graft_launchpad_v4.py,A,OWNED,"[""capture-sidecar"", ""clone
 reshade-addon/tools/patch_dof_v4.py,A,OWNED,"[""capture-sidecar""]",6,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]",[],False
 scripts/code_tools/alpha_blend_parity_gl_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/alpha_fix_contract_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
+scripts/code_tools/ashfix_mover_hunks.json,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/avatar_anim_speed_fixture.cpp,A,TOOLING,"[""stepped-animation""]",3,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/avatar_anim_speed_fixture.py,A,TOOLING,"[""stepped-animation""]",3,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/avatar_shadow_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
@@ -2343,6 +2344,7 @@ scripts/code_tools/env_only_check.py,A,TOOLING,"[""sensor""]",10,generator/check
 scripts/code_tools/env_only_gl_check.py,A,TOOLING,"[""sensor""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/env_only_signal_test.py,A,TOOLING,"[""sensor""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/fixtures/clone_qol_fixture.cpp.in,A,TOOLING,"[""clones""]",4,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
+scripts/code_tools/hot_clone_interplay_hunks.json,A,TOOLING,"[""clones""]",4,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/hot_gaze_mover_hunks.json,A,TOOLING,"[""gaze""]",3,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/kit_lint.py,A,TOOLING,"[""director-shell""]",2,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/local_light_size_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
