@@ -8,65 +8,9 @@
       "GENERATED": 723,
       "HOOK": 498,
       "OWNED": 890,
-      "TOOLING": 371
+      "TOOLING": 372
     },
-    "dirty_product_inputs": [
-      "indra/newview/alghoststudio.h",
-      "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
-      "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
-      "scripts/code_tools/clone_looks_gl_check.py",
-      "scripts/code_tools/clone_looks_runtime_check.py",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/matrix_mover_hunks.json"
-    ],
+    "dirty_product_inputs": [],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -182,7 +126,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 844
+        "xui_files": 845
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -246,10 +190,10 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "57cac88621056aec8f30295a871c8430efd2367d",
+    "head_source_tree": "a9b3b1d971f7c7596e177056d20acfb6f0aab018",
     "hook_files": 498,
     "hunks": 3021,
-    "input_sha256": "5e6b346c3cf4e3012a7a8fec400e663e4fa5a7af4ac390a1056207962fb20a7e",
+    "input_sha256": "9df8e3210265eaf19f6ac554fd355f1e52aa921b20cf9dd2883f7c593ec91c2a",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2023
   },
@@ -15277,7 +15221,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
         "gaze"
       ],
       "class": "OWNED",
@@ -36639,9 +36582,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "common-ui",
-        "director-shell",
-        "sensor"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -40524,6 +40465,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/local_light_size_math_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/matrix_mover_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
