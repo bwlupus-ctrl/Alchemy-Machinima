@@ -10,8 +10,19 @@ from relight_area_policy_check import method as source_method
 
 
 def actor_key_baseline(source, name):
-    """Reverse only the content-pinned WP01 delta before the old guard chain."""
+    """Reverse exact pinned layers: WP4, WP1b, LENS, WP2, WP01; then old guards."""
     import hashlib, json
+    shadow_raw = (Path(__file__).parent / "actor_key_shadow_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(shadow_raw).hexdigest() == "cd65f6be9d56efc755e19969f54d3293576bf90653fa5927fb05d7cfcb507aa6", "WP4 allowance pin"
+    shadow = json.loads(shadow_raw)
+    shadow_path = "indra/newview/" + name
+    if shadow_path in shadow["files"]:
+        shadow_base = subprocess.check_output(["git", "show", shadow["base"] + ":" + shadow_path]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in shadow["files"][shadow_path]:
+            assert shadow_base.count(hunk["before"]) == 1, ("WP4 baseline hunk", name)
+            assert source.count(hunk["after"]) == 1, ("WP4 exact hunk", name)
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == shadow_base, ("WP4 reversal must reproduce its exact base", name)
     wp1b_raw = (Path(__file__).parent / "actor_key_wp1b_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(wp1b_raw).hexdigest() == "6cf233513c47a246e12ee9639c5fbdec4b71d488304a7b38d551d8afb1936cdc", "WP1b allowance pin"
     wp1b = json.loads(wp1b_raw)

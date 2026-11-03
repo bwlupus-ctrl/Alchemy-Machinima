@@ -31,7 +31,9 @@ def native_source():
     for name in sorted(set(re.findall(r'\bsGhost\w+',system+geometry))):
         match=re.search(r'\b'+name+r'\s*\(\s*"([^"]+)"\s*\)',mover);assert match,name
         prefix+='static LLStaticHashedString '+name+'("'+match[1]+'");\n'
-    baseline=OUT/'baseline_mover.cpp';baseline.write_bytes(subprocess.check_output(['git','show','HEAD:indra/newview/llactormover.cpp']))
+    # Keep the pre-WP1b parity oracle immutable when this branch is committed/merged.
+    baseline_ref=json.loads(Path(__file__).with_name('actor_key_wp1b_hunks.json').read_text(encoding='utf-8'))['base']
+    baseline=OUT/'baseline_mover.cpp';baseline.write_bytes(subprocess.check_output(['git','show',baseline_ref+':indra/newview/llactormover.cpp']))
     prefix+=method(baseline,'U32 LLActorMover::renderSystemSilCover(').replace('LLActorMover::renderSystemSilCover(', 'LLActorMover::renderSystemSilCoverBaseline(')+'\n'
     prefix+=geometry+'\n'
     prefix+=system+'\n'+method(NV/'llactormover.cpp','U32 LLActorMover::renderSystemSilCover(')+'\n'

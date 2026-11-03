@@ -948,6 +948,39 @@ public:
 
     void renderHighlight(const LLViewerObject* obj, F32 fade);
 
+    // WP4: one cull/sort, immutable draw-only replays under a single state lifetime.
+    class LLShadowCascadeScope;
+    void prepareShadowCascade(LLCamera& camera, LLCullResult& result, bool do_cull);
+    void drawShadowCascade(const glm::mat4& view, const glm::mat4& proj,
+                          LLCamera& camera, LLCullResult& result, bool include_rigged,
+                          bool include_alpha_blend, bool include_alpha_cutout, bool accounting);
+    void renderKeyShadowCascade(U32 slice, bool column, const glm::mat4& view, const glm::mat4& proj,
+                                LLCamera& camera, LLCullResult& result, bool do_cull, bool alpha_cutout);
+    void releaseActorShadowTargets();
+    void diagnoseKeyShadowOwners(LLCullResult& result, U32 slice);
+    bool ensureActorShadowTargets(bool exact);
+    bool buildActorKeyShadowTerm(U32 width, U32 height);
+    enum class SunShadowStage { All, Matrices, Meta, Tuning, Directions };
+    void bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const* maps = nullptr,
+                            SunShadowStage stage = SunShadowStage::All);
+    enum { CASTER_ALL, CASTER_KEY_ONLY, CASTER_SET_ONLY };
+    static U8 sShadowCasterFilter;
+    static bool skipKeyShadowCaster(const LLDrawInfo* draw);
+    static bool skipKeyShadowAvatar(const LLVOAvatar* avatar);
+    LLRenderTarget mActorShadow[4], mSetShadow[4], mActorShadowLit;
+    LLRenderTarget mActorKeyShadowVisibility, mActorKeySetVisibility, mActorKeyShadowBlurA, mActorKeyShadowBlurB;
+    struct ActorShadowSlice
+    {
+        U32 frame = ~0u;
+        U64 generation = 0;
+        bool column = false, valid = false;
+    };
+    ActorShadowSlice mActorShadowSlice[4];
+    U64 mActorShadowGeneration = 0, mActorShadowRevision = 0;
+    U32 mActorShadowFrame = ~0u;
+    bool mActorShadowReady = false, mActorShadowFallback = false;
+    S32 mActorShadowIsolation = 0;
+    U32 mActorShadowCascades = 0;
     void renderShadow(const glm::mat4& view, const glm::mat4& proj,
                       LLCamera& camera, LLCullResult& result,
                       bool depth_clamp, bool do_cull = true,

@@ -559,15 +559,15 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@70,82",
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@71,82",
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@25,13",
-          "indra/newview/lldrawpoolavatar.cpp@82,97"
+          "indra/newview/lldrawpoolavatar.cpp@25,14",
+          "indra/newview/lldrawpoolavatar.cpp@83,102"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -615,9 +615,9 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@105,8",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31651,430"
+          "indra/newview/pipeline.cpp@106,8",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31668,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -702,13 +702,18 @@
       "indra/newview/alactorchromakey.cpp": {
         "includes": [
           "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alcoverpolicy.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/llviewercontrol.h",
@@ -749,11 +754,20 @@
           "ALActorChromaKey::snapshotRequestExplicit",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
           "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
           "ALAvatarLightResponse::instance",
           "ALCineLightRigManager::instance",
           "ALGhostStudio::instance",
           "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
           "LLDirectorCast::instance",
           "LLNotificationsUtil::add"
         ],
@@ -4237,6 +4251,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -4298,6 +4313,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -5786,6 +5803,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -5822,6 +5840,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -5944,6 +5964,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -5973,6 +5994,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -8767,6 +8791,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -8892,6 +8917,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -9675,6 +9703,12 @@
         "line": 20,
         "source": "indra/llcharacter/llmotioncontroller.cpp",
         "text": "llmotioncontroller.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 338,
+        "source": "indra/newview/alactorchromakey.cpp",
+        "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -10516,15 +10550,15 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@70,82",
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@71,82",
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@25,13",
-          "indra/newview/lldrawpoolavatar.cpp@82,97"
+          "indra/newview/lldrawpoolavatar.cpp@25,14",
+          "indra/newview/lldrawpoolavatar.cpp@83,102"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -10593,9 +10627,9 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@159,12",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@32484,698"
+          "indra/newview/pipeline.cpp@160,12",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@32501,698"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -10749,6 +10783,7 @@
     ],
     "layer": 3,
     "owned": [
+      "indra/newview/alactorchromakey.cpp",
       "indra/newview/alavatarstaging.cpp",
       "indra/newview/alavatarstaging.h",
       "indra/newview/alavatarstagingmodel.cpp",
@@ -11111,6 +11146,80 @@
       "indra/newview/CMakeLists.txt": {
         "includes": [],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorchromakey.cpp": {
+        "includes": [
+          "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llwindow/llwindow.h",
+          "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
+          "indra/newview/alavatarlightresponse.h",
+          "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/alcoverpolicy.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerdisplay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALActorChromaKey::alphaMatte",
+          "ALActorChromaKey::beginFinalize",
+          "ALActorChromaKey::colour",
+          "ALActorChromaKey::explicitSnapshotRequest",
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::finishStudioFrame",
+          "ALActorChromaKey::gatherKeyRecipients",
+          "ALActorChromaKey::hideHUD",
+          "ALActorChromaKey::initialize",
+          "ALActorChromaKey::instanceKeyed",
+          "ALActorChromaKey::keepsLive",
+          "ALActorChromaKey::keyGuardAllows",
+          "ALActorChromaKey::keyedThisFrame",
+          "ALActorChromaKey::matteInvert",
+          "ALActorChromaKey::mode",
+          "ALActorChromaKey::ownerKeyed",
+          "ALActorChromaKey::preflightControls",
+          "ALActorChromaKey::provision",
+          "ALActorChromaKey::reason",
+          "ALActorChromaKey::refuse",
+          "ALActorChromaKey::requestedStudioPolicy",
+          "ALActorChromaKey::sceneGlass",
+          "ALActorChromaKey::snapshotComplete",
+          "ALActorChromaKey::snapshotPlaceholder",
+          "ALActorChromaKey::snapshotRefused",
+          "ALActorChromaKey::snapshotRequestAllowed",
+          "ALActorChromaKey::snapshotRequestExplicit",
+          "ALActorChromaKey::studioFailure",
+          "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
+          "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
+          "ALAvatarLightResponse::instance",
+          "ALCineLightRigManager::instance",
+          "ALGhostStudio::instance",
+          "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLNotificationsUtil::add"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/alavatarstaging.cpp": {
@@ -14003,6 +14112,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -14064,6 +14174,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -15560,6 +15672,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -15596,6 +15709,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -15793,6 +15908,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -15822,6 +15938,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -20175,6 +20294,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -20300,6 +20420,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -22346,8 +22469,8 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@105,8",
-          "indra/newview/pipeline.cpp@1697,29823"
+          "indra/newview/pipeline.cpp@106,8",
+          "indra/newview/pipeline.cpp@1698,29839"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -24985,6 +25108,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -25046,6 +25170,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -31790,6 +31916,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -31915,6 +32042,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -33741,9 +33871,9 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@70,82",
-          "indra/newview/lldrawpool.cpp@332,32",
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@71,82",
+          "indra/newview/lldrawpool.cpp@333,32",
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -33755,7 +33885,7 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@884,158"
+          "indra/newview/lldrawpoolavatar.cpp@890,158"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -33815,15 +33945,15 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@123,11",
-          "indra/newview/pipeline.cpp@330,106",
-          "indra/newview/pipeline.cpp@954,88",
-          "indra/newview/pipeline.cpp@1367,61",
-          "indra/newview/pipeline.cpp@1432,15",
-          "indra/newview/pipeline.cpp@1560,106",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31651,430",
-          "indra/newview/pipeline.cpp@32484,698"
+          "indra/newview/pipeline.cpp@124,11",
+          "indra/newview/pipeline.cpp@331,106",
+          "indra/newview/pipeline.cpp@955,88",
+          "indra/newview/pipeline.cpp@1368,61",
+          "indra/newview/pipeline.cpp@1433,15",
+          "indra/newview/pipeline.cpp@1561,106",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31668,430",
+          "indra/newview/pipeline.cpp@32501,698"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -35557,13 +35687,18 @@
       "indra/newview/alactorchromakey.cpp": {
         "includes": [
           "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alcoverpolicy.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/llviewercontrol.h",
@@ -35604,11 +35739,20 @@
           "ALActorChromaKey::snapshotRequestExplicit",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
           "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
           "ALAvatarLightResponse::instance",
           "ALCineLightRigManager::instance",
           "ALGhostStudio::instance",
           "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
           "LLDirectorCast::instance",
           "LLNotificationsUtil::add"
         ],
@@ -36305,6 +36449,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -36366,6 +36511,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -38124,6 +38271,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -38160,6 +38308,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -38378,6 +38528,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -38407,6 +38558,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -42713,6 +42867,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -42838,6 +42993,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -45594,21 +45752,21 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@25,25",
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@25,26",
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@25,13",
-          "indra/newview/lldrawpoolavatar.cpp@82,97",
-          "indra/newview/lldrawpoolavatar.cpp@528,8",
-          "indra/newview/lldrawpoolavatar.cpp@538,122",
-          "indra/newview/lldrawpoolavatar.cpp@884,158",
-          "indra/newview/lldrawpoolavatar.cpp@1103,8",
-          "indra/newview/lldrawpoolavatar.cpp@1140,29",
-          "indra/newview/lldrawpoolavatar.cpp@1221,84"
+          "indra/newview/lldrawpoolavatar.cpp@25,14",
+          "indra/newview/lldrawpoolavatar.cpp@83,102",
+          "indra/newview/lldrawpoolavatar.cpp@534,8",
+          "indra/newview/lldrawpoolavatar.cpp@544,122",
+          "indra/newview/lldrawpoolavatar.cpp@890,158",
+          "indra/newview/lldrawpoolavatar.cpp@1109,13",
+          "indra/newview/lldrawpoolavatar.cpp@1150,29",
+          "indra/newview/lldrawpoolavatar.cpp@1231,89"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -45738,15 +45896,15 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@123,11",
-          "indra/newview/pipeline.cpp@139,14",
-          "indra/newview/pipeline.cpp@159,12",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@33317,222",
-          "indra/newview/pipeline.cpp@33995,1054",
-          "indra/newview/pipeline.cpp@39003,153"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@124,11",
+          "indra/newview/pipeline.cpp@140,14",
+          "indra/newview/pipeline.cpp@160,12",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@33334,222",
+          "indra/newview/pipeline.cpp@34012,1054",
+          "indra/newview/pipeline.cpp@39020,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -48229,13 +48387,18 @@
       "indra/newview/alactorchromakey.cpp": {
         "includes": [
           "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alcoverpolicy.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/llviewercontrol.h",
@@ -48276,11 +48439,20 @@
           "ALActorChromaKey::snapshotRequestExplicit",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
           "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
           "ALAvatarLightResponse::instance",
           "ALCineLightRigManager::instance",
           "ALGhostStudio::instance",
           "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
           "LLDirectorCast::instance",
           "LLNotificationsUtil::add"
         ],
@@ -53049,6 +53221,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -53110,6 +53283,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -55497,6 +55672,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -55533,6 +55709,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -55730,6 +55908,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -55759,6 +55938,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -63656,6 +63838,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -63781,6 +63964,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -69968,6 +70154,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -70029,6 +70216,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -73692,8 +73881,8 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@87,17",
-          "indra/newview/pipeline.cpp@1697,29823"
+          "indra/newview/pipeline.cpp@88,17",
+          "indra/newview/pipeline.cpp@1698,29839"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -75245,6 +75434,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -75306,6 +75496,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -79940,6 +80132,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -80065,6 +80258,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -83127,6 +83323,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -83188,6 +83385,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -87337,8 +87536,8 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@70,82",
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@71,82",
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -87350,8 +87549,8 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@25,13",
-          "indra/newview/lldrawpoolavatar.cpp@82,97"
+          "indra/newview/lldrawpoolavatar.cpp@25,14",
+          "indra/newview/lldrawpoolavatar.cpp@83,102"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -87481,9 +87680,9 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@105,8",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31651,430"
+          "indra/newview/pipeline.cpp@106,8",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31668,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -87651,6 +87850,7 @@
       "indra/llui/alcompassdial.cpp",
       "indra/llui/alcompassdial.h",
       "indra/newview/alactorchromakey.cpp",
+      "indra/newview/alactorkeycapture.h",
       "indra/newview/alareashadowmath.h",
       "indra/newview/alavataranimspeed.cpp",
       "indra/newview/alavatarlightresponse.h",
@@ -88377,13 +88577,18 @@
       "indra/newview/alactorchromakey.cpp": {
         "includes": [
           "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alcoverpolicy.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/llviewercontrol.h",
@@ -88424,14 +88629,30 @@
           "ALActorChromaKey::snapshotRequestExplicit",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
           "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
           "ALAvatarLightResponse::instance",
           "ALCineLightRigManager::instance",
           "ALGhostStudio::instance",
           "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
           "LLDirectorCast::instance",
           "LLNotificationsUtil::add"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorkeycapture.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/alareashadowmath.h": {
@@ -94292,6 +94513,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -94353,6 +94575,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -95873,6 +96097,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -95909,6 +96134,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -96043,6 +96270,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -96072,6 +96300,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -102457,6 +102688,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -102582,6 +102814,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -104791,7 +105026,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1697,29823"
+          "indra/newview/pipeline.cpp@1698,29839"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -107768,6 +108003,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -107893,6 +108129,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -111419,6 +111658,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -111480,6 +111720,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -116682,18 +116924,18 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@25,25",
-          "indra/newview/lldrawpool.cpp@498,1376",
-          "indra/newview/lldrawpool.cpp@1875,136",
-          "indra/newview/lldrawpool.cpp@2013,92",
-          "indra/newview/lldrawpool.cpp@2107,10",
-          "indra/newview/lldrawpool.cpp@2147,7",
-          "indra/newview/lldrawpool.cpp@2163,13",
-          "indra/newview/lldrawpool.cpp@2424,29",
-          "indra/newview/lldrawpool.cpp@2569,13",
-          "indra/newview/lldrawpool.cpp@2583,11",
-          "indra/newview/lldrawpool.cpp@2598,27",
-          "indra/newview/lldrawpool.cpp@2628,24"
+          "indra/newview/lldrawpool.cpp@25,26",
+          "indra/newview/lldrawpool.cpp@499,1394",
+          "indra/newview/lldrawpool.cpp@1894,136",
+          "indra/newview/lldrawpool.cpp@2032,92",
+          "indra/newview/lldrawpool.cpp@2126,10",
+          "indra/newview/lldrawpool.cpp@2166,7",
+          "indra/newview/lldrawpool.cpp@2182,13",
+          "indra/newview/lldrawpool.cpp@2443,29",
+          "indra/newview/lldrawpool.cpp@2588,13",
+          "indra/newview/lldrawpool.cpp@2602,11",
+          "indra/newview/lldrawpool.cpp@2617,27",
+          "indra/newview/lldrawpool.cpp@2647,24"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -116705,14 +116947,15 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@82,97",
-          "indra/newview/lldrawpoolavatar.cpp@538,122",
-          "indra/newview/lldrawpoolavatar.cpp@884,158",
-          "indra/newview/lldrawpoolavatar.cpp@1140,29",
-          "indra/newview/lldrawpoolavatar.cpp@1174,22",
-          "indra/newview/lldrawpoolavatar.cpp@1200,7",
-          "indra/newview/lldrawpoolavatar.cpp@1221,84",
-          "indra/newview/lldrawpoolavatar.cpp@1328,27"
+          "indra/newview/lldrawpoolavatar.cpp@83,102",
+          "indra/newview/lldrawpoolavatar.cpp@544,122",
+          "indra/newview/lldrawpoolavatar.cpp@890,158",
+          "indra/newview/lldrawpoolavatar.cpp@1109,13",
+          "indra/newview/lldrawpoolavatar.cpp@1150,29",
+          "indra/newview/lldrawpoolavatar.cpp@1184,22",
+          "indra/newview/lldrawpoolavatar.cpp@1210,7",
+          "indra/newview/lldrawpoolavatar.cpp@1231,89",
+          "indra/newview/lldrawpoolavatar.cpp@1343,27"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -116788,14 +117031,14 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@182,7",
-          "indra/newview/pipeline.cpp@1367,61",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@32160,53",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@37078,1056",
-          "indra/newview/pipeline.cpp@39003,153"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@183,7",
+          "indra/newview/pipeline.cpp@1368,61",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@32177,53",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@37095,1056",
+          "indra/newview/pipeline.cpp@39020,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -117645,6 +117888,7 @@
     "layer": 10,
     "owned": [
       "indra/newview/alactorchromakey.cpp",
+      "indra/newview/alactorkeycapture.h",
       "indra/newview/alavatarkey.cpp",
       "indra/newview/alavatarkey.h",
       "indra/newview/alavatarlightresponse.cpp",
@@ -118331,13 +118575,18 @@
       "indra/newview/alactorchromakey.cpp": {
         "includes": [
           "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alcoverpolicy.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/llviewercontrol.h",
@@ -118378,14 +118627,30 @@
           "ALActorChromaKey::snapshotRequestExplicit",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
           "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
           "ALAvatarLightResponse::instance",
           "ALCineLightRigManager::instance",
           "ALGhostStudio::instance",
           "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
           "LLDirectorCast::instance",
           "LLNotificationsUtil::add"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorkeycapture.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/alavatarkey.cpp": {
@@ -121903,6 +122168,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -121964,6 +122230,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -123420,6 +123688,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -123456,6 +123725,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -123674,6 +123945,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -123703,6 +123975,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -129194,6 +129469,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -129319,6 +129595,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -131585,10 +131864,10 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@46,17",
-          "indra/newview/lldrawpoolavatar.cpp@427,12",
-          "indra/newview/lldrawpoolavatar.cpp@538,122",
-          "indra/newview/lldrawpoolavatar.cpp@1221,84"
+          "indra/newview/lldrawpoolavatar.cpp@47,17",
+          "indra/newview/lldrawpoolavatar.cpp@433,12",
+          "indra/newview/lldrawpoolavatar.cpp@544,122",
+          "indra/newview/lldrawpoolavatar.cpp@1231,89"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -131678,30 +131957,30 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@87,17",
-          "indra/newview/pipeline.cpp@330,106",
-          "indra/newview/pipeline.cpp@570,71",
-          "indra/newview/pipeline.cpp@1207,16",
-          "indra/newview/pipeline.cpp@1226,11",
-          "indra/newview/pipeline.cpp@1344,21",
-          "indra/newview/pipeline.cpp@1367,61",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31651,430",
-          "indra/newview/pipeline.cpp@32095,38",
-          "indra/newview/pipeline.cpp@32160,53",
-          "indra/newview/pipeline.cpp@32244,37",
-          "indra/newview/pipeline.cpp@32282,17",
-          "indra/newview/pipeline.cpp@32300,20",
-          "indra/newview/pipeline.cpp@32345,18",
-          "indra/newview/pipeline.cpp@32380,27",
-          "indra/newview/pipeline.cpp@32409,30",
-          "indra/newview/pipeline.cpp@32461,18",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@33625,301",
-          "indra/newview/pipeline.cpp@33928,11",
-          "indra/newview/pipeline.cpp@36714,363",
-          "indra/newview/pipeline.cpp@37078,1056"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@88,17",
+          "indra/newview/pipeline.cpp@331,106",
+          "indra/newview/pipeline.cpp@571,71",
+          "indra/newview/pipeline.cpp@1208,16",
+          "indra/newview/pipeline.cpp@1227,11",
+          "indra/newview/pipeline.cpp@1345,21",
+          "indra/newview/pipeline.cpp@1368,61",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31668,430",
+          "indra/newview/pipeline.cpp@32112,38",
+          "indra/newview/pipeline.cpp@32177,53",
+          "indra/newview/pipeline.cpp@32261,37",
+          "indra/newview/pipeline.cpp@32299,17",
+          "indra/newview/pipeline.cpp@32317,20",
+          "indra/newview/pipeline.cpp@32362,18",
+          "indra/newview/pipeline.cpp@32397,27",
+          "indra/newview/pipeline.cpp@32426,30",
+          "indra/newview/pipeline.cpp@32478,18",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@33642,301",
+          "indra/newview/pipeline.cpp@33945,11",
+          "indra/newview/pipeline.cpp@36731,363",
+          "indra/newview/pipeline.cpp@37095,1056"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -133781,13 +134060,18 @@
       "indra/newview/alactorchromakey.cpp": {
         "includes": [
           "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alcoverpolicy.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/llviewercontrol.h",
@@ -133828,11 +134112,20 @@
           "ALActorChromaKey::snapshotRequestExplicit",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
           "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
           "ALAvatarLightResponse::instance",
           "ALCineLightRigManager::instance",
           "ALGhostStudio::instance",
           "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
           "LLDirectorCast::instance",
           "LLNotificationsUtil::add"
         ],
@@ -137942,6 +138235,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -137971,6 +138265,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -144986,6 +145283,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -145111,6 +145409,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -146576,6 +146877,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 338,
+        "source": "indra/newview/alactorchromakey.cpp",
+        "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 339,
         "source": "indra/newview/alactormaskdiagnostics.cpp",
         "text": "alactormaskdiagnostics.cpp # [ActorMask] WP7"
@@ -147388,16 +147695,16 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@25,25",
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@25,26",
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@46,17",
-          "indra/newview/lldrawpoolavatar.cpp@538,122",
-          "indra/newview/lldrawpoolavatar.cpp@1221,84"
+          "indra/newview/lldrawpoolavatar.cpp@47,17",
+          "indra/newview/lldrawpoolavatar.cpp@544,122",
+          "indra/newview/lldrawpoolavatar.cpp@1231,89"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -147442,23 +147749,23 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@105,8",
-          "indra/newview/pipeline.cpp@139,14",
-          "indra/newview/pipeline.cpp@1061,7",
-          "indra/newview/pipeline.cpp@1344,21",
-          "indra/newview/pipeline.cpp@1367,61",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31651,430",
-          "indra/newview/pipeline.cpp@32095,38",
-          "indra/newview/pipeline.cpp@32160,53",
-          "indra/newview/pipeline.cpp@32244,37",
-          "indra/newview/pipeline.cpp@32300,20",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@33625,301",
-          "indra/newview/pipeline.cpp@36714,363",
-          "indra/newview/pipeline.cpp@37078,1056",
-          "indra/newview/pipeline.cpp@39003,153"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@106,8",
+          "indra/newview/pipeline.cpp@140,14",
+          "indra/newview/pipeline.cpp@1062,7",
+          "indra/newview/pipeline.cpp@1345,21",
+          "indra/newview/pipeline.cpp@1368,61",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31668,430",
+          "indra/newview/pipeline.cpp@32112,38",
+          "indra/newview/pipeline.cpp@32177,53",
+          "indra/newview/pipeline.cpp@32261,37",
+          "indra/newview/pipeline.cpp@32317,20",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@33642,301",
+          "indra/newview/pipeline.cpp@36731,363",
+          "indra/newview/pipeline.cpp@37095,1056",
+          "indra/newview/pipeline.cpp@39020,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -147761,6 +148068,7 @@
     ],
     "layer": 5,
     "owned": [
+      "indra/newview/alactorchromakey.cpp",
       "indra/newview/alactormaskdiagnostics.cpp",
       "indra/newview/alactormaskdiagnostics.h",
       "indra/newview/alavatarlightresponsemodel.cpp",
@@ -149502,6 +149810,80 @@
       "indra/newview/CMakeLists.txt": {
         "includes": [],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorchromakey.cpp": {
+        "includes": [
+          "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llwindow/llwindow.h",
+          "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
+          "indra/newview/alavatarlightresponse.h",
+          "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/alcoverpolicy.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerdisplay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALActorChromaKey::alphaMatte",
+          "ALActorChromaKey::beginFinalize",
+          "ALActorChromaKey::colour",
+          "ALActorChromaKey::explicitSnapshotRequest",
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::finishStudioFrame",
+          "ALActorChromaKey::gatherKeyRecipients",
+          "ALActorChromaKey::hideHUD",
+          "ALActorChromaKey::initialize",
+          "ALActorChromaKey::instanceKeyed",
+          "ALActorChromaKey::keepsLive",
+          "ALActorChromaKey::keyGuardAllows",
+          "ALActorChromaKey::keyedThisFrame",
+          "ALActorChromaKey::matteInvert",
+          "ALActorChromaKey::mode",
+          "ALActorChromaKey::ownerKeyed",
+          "ALActorChromaKey::preflightControls",
+          "ALActorChromaKey::provision",
+          "ALActorChromaKey::reason",
+          "ALActorChromaKey::refuse",
+          "ALActorChromaKey::requestedStudioPolicy",
+          "ALActorChromaKey::sceneGlass",
+          "ALActorChromaKey::snapshotComplete",
+          "ALActorChromaKey::snapshotPlaceholder",
+          "ALActorChromaKey::snapshotRefused",
+          "ALActorChromaKey::snapshotRequestAllowed",
+          "ALActorChromaKey::snapshotRequestExplicit",
+          "ALActorChromaKey::studioFailure",
+          "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
+          "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
+          "ALAvatarLightResponse::instance",
+          "ALCineLightRigManager::instance",
+          "ALGhostStudio::instance",
+          "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLNotificationsUtil::add"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/alactormaskdiagnostics.cpp": {
@@ -152776,6 +153158,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -152837,6 +153220,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -154092,6 +154477,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -154128,6 +154514,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -154325,6 +154713,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -154354,6 +154743,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -158264,6 +158656,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -158389,6 +158782,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -160442,14 +160838,14 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpoolavatar.cpp@25,13",
-          "indra/newview/lldrawpoolavatar.cpp@1221,84"
+          "indra/newview/lldrawpoolavatar.cpp@25,14",
+          "indra/newview/lldrawpoolavatar.cpp@1231,89"
         ],
         "path": "indra/newview/lldrawpoolavatar.cpp"
       },
@@ -160489,17 +160885,17 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@220,16",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31651,430",
-          "indra/newview/pipeline.cpp@32215,13",
-          "indra/newview/pipeline.cpp@32244,37",
-          "indra/newview/pipeline.cpp@32300,20",
-          "indra/newview/pipeline.cpp@32345,18",
-          "indra/newview/pipeline.cpp@32461,18",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@37078,1056"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@221,16",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31668,430",
+          "indra/newview/pipeline.cpp@32232,13",
+          "indra/newview/pipeline.cpp@32261,37",
+          "indra/newview/pipeline.cpp@32317,20",
+          "indra/newview/pipeline.cpp@32362,18",
+          "indra/newview/pipeline.cpp@32478,18",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@37095,1056"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -164226,6 +164622,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -164262,6 +164659,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -164459,6 +164858,7 @@
           "indra/llmath/m3math.h",
           "indra/llrender/llrender.h",
           "indra/llrender/llrendersphere.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/alenvintensity.h",
@@ -164488,6 +164888,9 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALCineLightRigManager::anyActorOnly",
           "ALCineLightRigManager::instance",
           "ALDerenderList::keepsAvatarLive",
@@ -168832,6 +169235,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -168957,6 +169361,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -170510,14 +170917,14 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@123,11",
-          "indra/newview/pipeline.cpp@330,106",
-          "indra/newview/pipeline.cpp@715,16",
-          "indra/newview/pipeline.cpp@954,88",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@33625,301"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@124,11",
+          "indra/newview/pipeline.cpp@331,106",
+          "indra/newview/pipeline.cpp@716,16",
+          "indra/newview/pipeline.cpp@955,88",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@33642,301"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -175165,6 +175572,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -175290,6 +175698,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -178473,6 +178884,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -178534,6 +178946,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -187785,6 +188199,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 338,
+        "source": "indra/newview/alactorchromakey.cpp",
+        "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1348,
         "source": "indra/newview/alareashadowmath.h",
         "text": "alareashadowmath.h"
@@ -188582,7 +189002,7 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -188621,29 +189041,29 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@123,11",
-          "indra/newview/pipeline.cpp@297,32",
-          "indra/newview/pipeline.cpp@570,71",
-          "indra/newview/pipeline.cpp@921,32",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@31560,30",
-          "indra/newview/pipeline.cpp@31611,16",
-          "indra/newview/pipeline.cpp@31651,430",
-          "indra/newview/pipeline.cpp@32095,38",
-          "indra/newview/pipeline.cpp@32244,37",
-          "indra/newview/pipeline.cpp@32282,17",
-          "indra/newview/pipeline.cpp@32484,698",
-          "indra/newview/pipeline.cpp@33194,15",
-          "indra/newview/pipeline.cpp@33255,15",
-          "indra/newview/pipeline.cpp@33317,222",
-          "indra/newview/pipeline.cpp@33625,301",
-          "indra/newview/pipeline.cpp@33995,1054",
-          "indra/newview/pipeline.cpp@35545,47",
-          "indra/newview/pipeline.cpp@35959,78",
-          "indra/newview/pipeline.cpp@36714,363",
-          "indra/newview/pipeline.cpp@37078,1056",
-          "indra/newview/pipeline.cpp@39003,153"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@124,11",
+          "indra/newview/pipeline.cpp@298,32",
+          "indra/newview/pipeline.cpp@571,71",
+          "indra/newview/pipeline.cpp@922,32",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@31577,30",
+          "indra/newview/pipeline.cpp@31628,16",
+          "indra/newview/pipeline.cpp@31668,430",
+          "indra/newview/pipeline.cpp@32112,38",
+          "indra/newview/pipeline.cpp@32261,37",
+          "indra/newview/pipeline.cpp@32299,17",
+          "indra/newview/pipeline.cpp@32501,698",
+          "indra/newview/pipeline.cpp@33211,15",
+          "indra/newview/pipeline.cpp@33272,15",
+          "indra/newview/pipeline.cpp@33334,222",
+          "indra/newview/pipeline.cpp@33642,301",
+          "indra/newview/pipeline.cpp@34012,1054",
+          "indra/newview/pipeline.cpp@35562,47",
+          "indra/newview/pipeline.cpp@35976,78",
+          "indra/newview/pipeline.cpp@36731,363",
+          "indra/newview/pipeline.cpp@37095,1056",
+          "indra/newview/pipeline.cpp@39020,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -188942,6 +189362,8 @@
       "indra/llplugin/llpluginfileadmission.h",
       "indra/llplugin/llpluginfileclose.h",
       "indra/llplugin/llpluginloopseam.h",
+      "indra/newview/alactorchromakey.cpp",
+      "indra/newview/alactorkeycapture.h",
       "indra/newview/alareashadowmath.h",
       "indra/newview/alavatarsubjectpicker.cpp",
       "indra/newview/alcinecamobjectlock.h",
@@ -190885,6 +191307,87 @@
       },
       "indra/newview/CMakeLists.txt": {
         "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorchromakey.cpp": {
+        "includes": [
+          "indra/llcharacter/llcharacter.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llvertexbuffer.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llwindow/llwindow.h",
+          "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
+          "indra/newview/alavatarlightresponse.h",
+          "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/alcoverpolicy.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/llactormaskeligibility.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerdisplay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALActorChromaKey::alphaMatte",
+          "ALActorChromaKey::beginFinalize",
+          "ALActorChromaKey::colour",
+          "ALActorChromaKey::explicitSnapshotRequest",
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::finishStudioFrame",
+          "ALActorChromaKey::gatherKeyRecipients",
+          "ALActorChromaKey::hideHUD",
+          "ALActorChromaKey::initialize",
+          "ALActorChromaKey::instanceKeyed",
+          "ALActorChromaKey::keepsLive",
+          "ALActorChromaKey::keyGuardAllows",
+          "ALActorChromaKey::keyedThisFrame",
+          "ALActorChromaKey::matteInvert",
+          "ALActorChromaKey::mode",
+          "ALActorChromaKey::ownerKeyed",
+          "ALActorChromaKey::preflightControls",
+          "ALActorChromaKey::provision",
+          "ALActorChromaKey::reason",
+          "ALActorChromaKey::refuse",
+          "ALActorChromaKey::requestedStudioPolicy",
+          "ALActorChromaKey::sceneGlass",
+          "ALActorChromaKey::snapshotComplete",
+          "ALActorChromaKey::snapshotPlaceholder",
+          "ALActorChromaKey::snapshotRefused",
+          "ALActorChromaKey::snapshotRequestAllowed",
+          "ALActorChromaKey::snapshotRequestExplicit",
+          "ALActorChromaKey::studioFailure",
+          "ALActorChromaKey::studioPolicy",
+          "ALActorChromaKey::suppressed",
+          "ALActorChromaKey::tick",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::beginBeauty",
+          "ALActorKeyCapture::capture",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::native",
+          "ALActorKeyCapture::release",
+          "ALActorKeyCapture::replay",
+          "ALAvatarLightResponse::instance",
+          "ALCineLightRigManager::instance",
+          "ALGhostStudio::instance",
+          "ALGhostStudio::resolveSourceAvatar",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLNotificationsUtil::add"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alactorkeycapture.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h"
+        ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
@@ -192972,6 +193475,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -193033,6 +193537,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -194292,6 +194798,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -194328,6 +194835,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -200040,6 +200549,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -200165,6 +200675,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",
@@ -202162,7 +202675,7 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@498,1376"
+          "indra/newview/lldrawpool.cpp@499,1394"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -202192,11 +202705,11 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@28,43",
-          "indra/newview/pipeline.cpp@220,16",
-          "indra/newview/pipeline.cpp@1207,16",
-          "indra/newview/pipeline.cpp@1697,29823",
-          "indra/newview/pipeline.cpp@33995,1054"
+          "indra/newview/pipeline.cpp@28,44",
+          "indra/newview/pipeline.cpp@221,16",
+          "indra/newview/pipeline.cpp@1208,16",
+          "indra/newview/pipeline.cpp@1698,29839",
+          "indra/newview/pipeline.cpp@34012,1054"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -205848,6 +206361,7 @@
           "indra/llrender/llvertexbuffer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alavatarstaging.h",
           "indra/newview/alcameradispatch.h",
@@ -205909,6 +206423,8 @@
           "ALActorChromaKey::sceneGlass",
           "ALActorChromaKey::studioFailure",
           "ALActorChromaKey::studioPolicy",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALAvatarAnimationTime::animationSeconds",
           "ALAvatarAnimationTime::boundedRecoveryArc",
           "ALAvatarAnimationTime::followerSource",
@@ -207330,6 +207846,7 @@
           "indra/llrender/llglcommonfunc.h",
           "indra/llrender/llglslshader.h",
           "indra/llrender/llrender.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alavatarlightresponse.h",
           "indra/newview/alderenderlist.h",
           "indra/newview/altron.h",
@@ -207366,6 +207883,8 @@
           "indra/newview/pipeline.h"
         ],
         "qualified_call_candidates": [
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
           "ALAvatarLightResponse::instance",
           "ALDerenderList::isHiddenSource",
           "ALDerenderList::keepsAvatarLive",
@@ -210737,6 +211256,7 @@
           "indra/newview/SMAAAreaTex.h",
           "indra/newview/SMAASearchTex.h",
           "indra/newview/alactorchromakey.h",
+          "indra/newview/alactorkeycapture.h",
           "indra/newview/alactormaskdiagnostics.h",
           "indra/newview/alareashadowmath.h",
           "indra/newview/alavatarlightresponse.h",
@@ -210862,6 +211382,9 @@
           "ALActorChromaKey::provision",
           "ALActorChromaKey::refuse",
           "ALActorChromaKey::suppressed",
+          "ALActorKeyCapture::beautyContext",
+          "ALActorKeyCapture::instance",
+          "ALActorKeyCapture::systemActorId",
           "ALActorMaskDiagnostics::instance",
           "ALAreaShadow::FeedSet",
           "ALAreaShadow::admissionVisible",

@@ -7,19 +7,21 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
       "HOOK": 503,
-      "OWNED": 900,
-      "TOOLING": 383
+      "OWNED": 901,
+      "TOOLING": 386
     },
     "dirty_product_inputs": [
-      "indra/newview/alactorchromakey.cpp",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
-      "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
+      "indra/newview/app_settings/shaders/class1/alchemy/actorKeyMatteF.glsl",
+      "indra/newview/app_settings/shaders/class1/alchemy/actorKeyShadowDensityF.glsl",
+      "indra/newview/app_settings/shaders/class1/alchemy/actorKeyShadowF.glsl",
       "indra/newview/lldrawpool.cpp",
       "indra/newview/lldrawpoolavatar.cpp",
       "indra/newview/pipeline.cpp",
-      "scripts/code_tools/actor_key_draw_fixture.h",
+      "indra/newview/pipeline.h",
+      "scripts/code_tools/actor_key_shadow_check.py",
+      "scripts/code_tools/actor_key_shadow_gl_check.py",
+      "scripts/code_tools/actor_key_shadow_hunks.json",
+      "scripts/code_tools/actor_key_wp1b_check.py",
       "scripts/code_tools/actor_key_wp2_check.py",
       "scripts/code_tools/director_actor_bar_check.py"
     ],
@@ -202,10 +204,10 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "99d97ba2e9d4f7c8f3887ffe140c8a5fd007d5a3",
+    "head_source_tree": "55742e37ee8825a4e3c441d887572a35628fd2b0",
     "hook_files": 503,
     "hunks": 3058,
-    "input_sha256": "bca8a912c52adc5e9be12a8930e670eae90a4228d8eb7ab080fc1f30425b5883",
+    "input_sha256": "93b32640f0fdc862f4f0d358976cccc2faa9866f3535c4a59513bf017ef3ffca",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2048
   },
@@ -12313,11 +12315,14 @@
       ],
       "features": [
         "actor-bar",
+        "actor-path",
         "capture-sidecar",
         "clones",
         "director-shell",
         "looks",
-        "rig"
+        "rig",
+        "roto-tron",
+        "vcam"
       ],
       "git_status": "A",
       "layer": 2,
@@ -12337,6 +12342,23 @@
       "git_status": "A",
       "layer": 6,
       "path": "indra/newview/alactorchromakey.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell",
+        "looks",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alactorkeycapture.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -26899,8 +26921,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "roto-tron",
-        "weather"
+        "roto-tron"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31001,9 +31022,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -39316,6 +39335,45 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/actor_key_wp01_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_wp1b_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_wp1b_fixture.h",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_wp1b_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

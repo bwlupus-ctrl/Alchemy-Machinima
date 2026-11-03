@@ -337,32 +337,32 @@ All 3058 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llcontrolavatar.cpp@385,20`
 - `indra/newview/llcontrolavatar.cpp@627,18`
 - `indra/newview/llcontrolavatar.cpp@754,7`
-- `indra/newview/lldrawpool.cpp@62,7`
-- `indra/newview/lldrawpool.cpp@2186,12`
-- `indra/newview/lldrawpool.cpp@2215,7`
-- `indra/newview/lldrawpool.cpp@2252,7`
-- `indra/newview/lldrawpool.cpp@2281,22`
-- `indra/newview/lldrawpool.cpp@2304,16`
-- `indra/newview/lldrawpool.cpp@2339,10`
+- `indra/newview/lldrawpool.cpp@63,7`
+- `indra/newview/lldrawpool.cpp@2205,12`
+- `indra/newview/lldrawpool.cpp@2234,7`
+- `indra/newview/lldrawpool.cpp@2271,7`
+- `indra/newview/lldrawpool.cpp@2300,22`
+- `indra/newview/lldrawpool.cpp@2323,16`
 - `indra/newview/lldrawpool.cpp@2358,10`
-- `indra/newview/lldrawpool.cpp@2385,11`
-- `indra/newview/lldrawpool.cpp@2411,11`
-- `indra/newview/lldrawpool.cpp@2478,20`
-- `indra/newview/lldrawpool.cpp@2537,11`
-- `indra/newview/lldrawpool.cpp@2780,3`
+- `indra/newview/lldrawpool.cpp@2377,10`
+- `indra/newview/lldrawpool.cpp@2404,11`
+- `indra/newview/lldrawpool.cpp@2430,11`
+- `indra/newview/lldrawpool.cpp@2497,20`
+- `indra/newview/lldrawpool.cpp@2556,11`
+- `indra/newview/lldrawpool.cpp@2799,3`
 - `indra/newview/lldrawpool.h@42,31`
 - `indra/newview/lldrawpool.h@504,7`
 - `indra/newview/lldrawpool.h@516,9`
-- `indra/newview/lldrawpoolavatar.cpp@72,8`
-- `indra/newview/lldrawpoolavatar.cpp@247,24`
-- `indra/newview/lldrawpoolavatar.cpp@274,20`
-- `indra/newview/lldrawpoolavatar.cpp@416,7`
-- `indra/newview/lldrawpoolavatar.cpp@444,7`
-- `indra/newview/lldrawpoolavatar.cpp@459,15`
-- `indra/newview/lldrawpoolavatar.cpp@481,7`
-- `indra/newview/lldrawpoolavatar.cpp@498,7`
-- `indra/newview/lldrawpoolavatar.cpp@506,16`
-- `indra/newview/lldrawpoolavatar.cpp@1379,3`
+- `indra/newview/lldrawpoolavatar.cpp@73,8`
+- `indra/newview/lldrawpoolavatar.cpp@253,24`
+- `indra/newview/lldrawpoolavatar.cpp@280,20`
+- `indra/newview/lldrawpoolavatar.cpp@422,7`
+- `indra/newview/lldrawpoolavatar.cpp@450,7`
+- `indra/newview/lldrawpoolavatar.cpp@465,15`
+- `indra/newview/lldrawpoolavatar.cpp@487,7`
+- `indra/newview/lldrawpoolavatar.cpp@504,7`
+- `indra/newview/lldrawpoolavatar.cpp@512,16`
+- `indra/newview/lldrawpoolavatar.cpp@1394,3`
 - `indra/newview/llfloaterpreference.cpp@1155,7`
 - `indra/newview/llfloaterpreference.cpp@3310,7`
 - `indra/newview/llreflectionmapmanager.cpp@143,49`
@@ -557,52 +557,52 @@ All 3058 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llvovolume.cpp@7957,8`
 - `indra/newview/llvovolume.cpp@8055,7`
 - `indra/newview/pipeline.cpp@7,7`
-- `indra/newview/pipeline.cpp@456,7`
-- `indra/newview/pipeline.cpp@465,10`
-- `indra/newview/pipeline.cpp@479,60`
-- `indra/newview/pipeline.cpp@558,9`
-- `indra/newview/pipeline.cpp@664,23`
-- `indra/newview/pipeline.cpp@740,15`
-- `indra/newview/pipeline.cpp@822,7`
-- `indra/newview/pipeline.cpp@1300,16`
-- `indra/newview/pipeline.cpp@1480,48`
-- `indra/newview/pipeline.cpp@1538,13`
-- `indra/newview/pipeline.cpp@31594,11`
-- `indra/newview/pipeline.cpp@31632,13`
-- `indra/newview/pipeline.cpp@32153,6`
-- `indra/newview/pipeline.cpp@33213,7`
-- `indra/newview/pipeline.cpp@33241,13`
-- `indra/newview/pipeline.cpp@33275,15`
-- `indra/newview/pipeline.cpp@33599,7`
-- `indra/newview/pipeline.cpp@33607,11`
-- `indra/newview/pipeline.cpp@35067,9`
-- `indra/newview/pipeline.cpp@35086,48`
-- `indra/newview/pipeline.cpp@35152,9`
-- `indra/newview/pipeline.cpp@35191,19`
-- `indra/newview/pipeline.cpp@35211,11`
-- `indra/newview/pipeline.cpp@35227,7`
-- `indra/newview/pipeline.cpp@35239,15`
-- `indra/newview/pipeline.cpp@35262,7`
-- `indra/newview/pipeline.cpp@35273,15`
-- `indra/newview/pipeline.cpp@35300,7`
-- `indra/newview/pipeline.cpp@35316,7`
-- `indra/newview/pipeline.cpp@35345,7`
-- `indra/newview/pipeline.cpp@35649,11`
-- `indra/newview/pipeline.cpp@35748,7`
-- `indra/newview/pipeline.cpp@35759,8`
-- `indra/newview/pipeline.cpp@35775,41`
-- `indra/newview/pipeline.cpp@35901,54`
-- `indra/newview/pipeline.cpp@36071,9`
-- `indra/newview/pipeline.cpp@36136,265`
-- `indra/newview/pipeline.cpp@36421,9`
-- `indra/newview/pipeline.cpp@36448,26`
-- `indra/newview/pipeline.cpp@36486,11`
-- `indra/newview/pipeline.cpp@36559,7`
-- `indra/newview/pipeline.cpp@36597,18`
-- `indra/newview/pipeline.cpp@36642,8`
-- `indra/newview/pipeline.cpp@36673,8`
-- `indra/newview/pipeline.cpp@36693,18`
-- `indra/newview/pipeline.cpp@38929,15`
+- `indra/newview/pipeline.cpp@457,7`
+- `indra/newview/pipeline.cpp@466,10`
+- `indra/newview/pipeline.cpp@480,60`
+- `indra/newview/pipeline.cpp@559,9`
+- `indra/newview/pipeline.cpp@665,23`
+- `indra/newview/pipeline.cpp@741,15`
+- `indra/newview/pipeline.cpp@823,7`
+- `indra/newview/pipeline.cpp@1301,16`
+- `indra/newview/pipeline.cpp@1481,48`
+- `indra/newview/pipeline.cpp@1539,13`
+- `indra/newview/pipeline.cpp@31611,11`
+- `indra/newview/pipeline.cpp@31649,13`
+- `indra/newview/pipeline.cpp@32170,6`
+- `indra/newview/pipeline.cpp@33230,7`
+- `indra/newview/pipeline.cpp@33258,13`
+- `indra/newview/pipeline.cpp@33292,15`
+- `indra/newview/pipeline.cpp@33616,7`
+- `indra/newview/pipeline.cpp@33624,11`
+- `indra/newview/pipeline.cpp@35084,9`
+- `indra/newview/pipeline.cpp@35103,48`
+- `indra/newview/pipeline.cpp@35169,9`
+- `indra/newview/pipeline.cpp@35208,19`
+- `indra/newview/pipeline.cpp@35228,11`
+- `indra/newview/pipeline.cpp@35244,7`
+- `indra/newview/pipeline.cpp@35256,15`
+- `indra/newview/pipeline.cpp@35279,7`
+- `indra/newview/pipeline.cpp@35290,15`
+- `indra/newview/pipeline.cpp@35317,7`
+- `indra/newview/pipeline.cpp@35333,7`
+- `indra/newview/pipeline.cpp@35362,7`
+- `indra/newview/pipeline.cpp@35666,11`
+- `indra/newview/pipeline.cpp@35765,7`
+- `indra/newview/pipeline.cpp@35776,8`
+- `indra/newview/pipeline.cpp@35792,41`
+- `indra/newview/pipeline.cpp@35918,54`
+- `indra/newview/pipeline.cpp@36088,9`
+- `indra/newview/pipeline.cpp@36153,265`
+- `indra/newview/pipeline.cpp@36438,9`
+- `indra/newview/pipeline.cpp@36465,26`
+- `indra/newview/pipeline.cpp@36503,11`
+- `indra/newview/pipeline.cpp@36576,7`
+- `indra/newview/pipeline.cpp@36614,18`
+- `indra/newview/pipeline.cpp@36659,8`
+- `indra/newview/pipeline.cpp@36690,8`
+- `indra/newview/pipeline.cpp@36710,18`
+- `indra/newview/pipeline.cpp@38946,15`
 - `indra/newview/pipeline.h@1038,7`
 - `indra/newview/pipeline.h@1054,7`
 - `indra/newview/pipeline.h@2301,18`
@@ -1925,18 +1925,18 @@ All 3058 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/fsfloaterposer.h@246,21`: unknown/non-function (public:)
 - `indra/newview/fsfloaterposer.h@528,18`: unknown/non-function (public:)
 - `indra/newview/llcontrolavatar.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@25,25`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@2780,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
+- `indra/newview/lldrawpool.cpp@25,26`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@63,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@2799,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
 - `indra/newview/lldrawpool.h@42,31`: unknown/non-function (class LLGLSLShader;)
 - `indra/newview/lldrawpool.h@136,15`: unknown/non-function (public:)
 - `indra/newview/lldrawpool.h@388,110`: unknown/non-function (public:)
 - `indra/newview/lldrawpool.h@504,7`: unknown/non-function (public:)
 - `indra/newview/lldrawpool.h@516,9`: unknown/non-function (public:)
-- `indra/newview/lldrawpoolavatar.cpp@25,13`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpoolavatar.cpp@46,17`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpoolavatar.cpp@72,8`: unknown/non-function (LLGLSLShader* LLDrawPoolAvatar::sVertexProgram = NULL;)
-- `indra/newview/lldrawpoolavatar.cpp@1379,3`: unknown/non-function (LLColor3 LLDrawPoolAvatar::getDebugColor() const)
+- `indra/newview/lldrawpoolavatar.cpp@25,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolavatar.cpp@47,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpoolavatar.cpp@73,8`: unknown/non-function (LLGLSLShader* LLDrawPoolAvatar::sVertexProgram = NULL;)
+- `indra/newview/lldrawpoolavatar.cpp@1394,3`: unknown/non-function (LLColor3 LLDrawPoolAvatar::getDebugColor() const)
 - `indra/newview/llfloaterpreference.cpp@31,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llpopupview.cpp@26,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llreflectionmapmanager.cpp@30,24`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2003,19 +2003,19 @@ All 3058 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llvovolume.cpp@69,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvovolume.cpp@83,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/pipeline.cpp@7,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@28,43`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@87,17`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@105,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@123,11`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@139,14`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@159,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@182,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@220,16`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/pipeline.cpp@297,32`: unknown/non-function (bool LLPipeline::RenderDeferredAtmospheric;)
-- `indra/newview/pipeline.cpp@330,106`: unknown/non-function (F32 LLPipeline::CameraMaxCoF;)
-- `indra/newview/pipeline.cpp@456,7`: unknown/non-function (extern bool gDisplaySwapBuffers;)
-- `indra/newview/pipeline.cpp@465,10`: unknown/non-function (LLPipeline gPipeline;)
-- `indra/newview/pipeline.cpp@558,9`: unknown/non-function (bool    LLPipeline::sRenderSoundBeacons = false;)
+- `indra/newview/pipeline.cpp@28,44`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@88,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@106,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@124,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@140,14`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@160,12`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@183,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@221,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/pipeline.cpp@298,32`: unknown/non-function (bool LLPipeline::RenderDeferredAtmospheric;)
+- `indra/newview/pipeline.cpp@331,106`: unknown/non-function (F32 LLPipeline::CameraMaxCoF;)
+- `indra/newview/pipeline.cpp@457,7`: unknown/non-function (extern bool gDisplaySwapBuffers;)
+- `indra/newview/pipeline.cpp@466,10`: unknown/non-function (LLPipeline gPipeline;)
+- `indra/newview/pipeline.cpp@559,9`: unknown/non-function (bool    LLPipeline::sRenderSoundBeacons = false;)
 - `indra/newview/pipeline.h@39,29`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/pipeline.h@85,47`: unknown/non-function (bool LLRayAABB(const LLVector3 &center, const LLVector3 &size, const LLVector3&)
 - `indra/newview/pipeline.h@147,12`: unknown/non-function (public:)
