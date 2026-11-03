@@ -81,7 +81,8 @@
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
 #include "alobjectpathmover.h"
 #include "alprojectortracker.h" // post-animation projector drives
-#include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
+#include "alghoststudio.h"
+#include "llghostavatar.h"      // per-instance Keep facing transforms (idle tick)
 #include "alavatarstaging.h"    // staged avatar/ghost transforms (idle tick/logout)
 #include "aldanceball.h"        // client-only multi-avatar dance playback
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
@@ -5979,7 +5980,7 @@ void LLAppViewer::idle()
 
     // HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check.
     LLActorMover::instance().applyHotGazes();
-    if (LLActorMover::instance().hasHotGazes())
+    if (LLActorMover::instance().hasHotGazes() || LLGhostAvatar::hasOffsetHotGazes())
     {
         ALGhostStudio::instance().updatePostObjectList(true);
         LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions(true);

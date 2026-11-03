@@ -19833,17 +19833,28 @@ bool LLActorMover::hotGazeCopiesJoint(const std::string& name)
         name == "mFaceEyeAltLeft" || name == "mFaceEyeAltRight";
 }
 
-void LLActorMover::captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone)
+void LLActorMover::captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone, bool delayed)
 {
-    if (mHotGazes.empty() || !clone) return;
+    if ((!delayed && mHotGazes.empty() && mHotGazeCopies.empty()) || !clone) return;
     restoreHotGazePose(clone); // its own hot layer will be reasserted after the copy
-    if (!hasHotGazePose(source)) return;
+    if (!delayed && !hasHotGazePose(source)) return;
     auto& pose = mHotGazeCopies[clone->getID()];
     ensureDirectorOwner(clone, pose);
     captureDirectorLookAtPose(clone, pose, false);
     // This inherited layer never runs gazePaint, which normally stamps these.
     pose.mGaze.mHeldSkeletonSerial = clone->getSkeletonSerialNum();
     pose.mGaze.mHeldAppearanceSerial = clone->getAppearanceSerialNum();
+}
+
+void LLActorMover::restoreHotGazeCopy(LLVOAvatar* clone)
+{
+    if (!clone) return;
+    const auto it = mHotGazeCopies.find(clone->getID());
+    if (it == mHotGazeCopies.end()) return;
+    restoreDirectorLookAtPose(clone, it->second);
+    // Keep the base available for frame-end unwind after delayed presentation.
+    captureDirectorLookAtPose(clone, it->second, false);
+    clone->invalidateSkinPalettesAfterOverlay();
 }
 
 void LLActorMover::restoreHotGazes()

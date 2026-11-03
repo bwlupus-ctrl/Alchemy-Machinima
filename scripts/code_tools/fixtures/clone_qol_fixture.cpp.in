@@ -30,7 +30,7 @@ struct LLVector3 {float value=0;float mV[3]{};LLVector3()=default;LLVector3(floa
  float magVecSquared()const{return mV[0]*mV[0]+mV[1]*mV[1]+mV[2]*mV[2];}float length()const{return std::sqrt(magVecSquared());}static const LLVector3 zero;};const LLVector3 LLVector3::zero{};
 using LLQuaternion=LLVector3;struct LLMatrix4{float value=0;};
 LLVector3 lerp(LLVector3 a,LLVector3 b,float t){return {a.value+(b.value-a.value)*t};}LLQuaternion slerp(float t,LLQuaternion a,LLQuaternion b){return lerp(a,b,t);}
-struct Joint{LLQuaternion r;LLVector3 p;void setRotation(LLQuaternion q){r=q;}void setPosition(LLVector3 v){p=v;}LLQuaternion getRotation(){return r;}LLVector3 getPosition(){return p;}LLVector3 getWorldPosition(){return p;}void updateWorldMatrixChildren(){}};using LLJoint=Joint;
+struct Joint{std::string getName(){return "mHead";}LLQuaternion r;LLVector3 p;void setRotation(LLQuaternion q){r=q;}void setPosition(LLVector3 v){p=v;}LLQuaternion getRotation(){return r;}LLVector3 getPosition(){return p;}LLVector3 getWorldPosition(){return p;}void updateWorldMatrixChildren(){}};using LLJoint=Joint;
 struct LLVisualParam{float w=0;float getWeight(){return w;}bool isAnimating(){return false;}};
 struct LLTimer{static double now;static double getTotalSeconds(){return now;}};double LLTimer::now=10.;
 struct Region{LLUUID getRegionID(){return {50};}}region;
@@ -50,6 +50,8 @@ using LLControlAvatar=LLVOAvatar;struct LLDrawable{enum{FORCE_INVISIBLE=1};};
 struct LLMotion{float duration=.6f;bool loop=false;virtual ~LLMotion(){}float getDuration(){return duration;}bool getLoop(){return loop;}};
 struct LLKeyframeMotion:LLMotion{float getLoopIn(){return .2f;}float getLoopOut(){return 1.f;}};
 struct LLGhostAvatar:LLVOAvatar{
+ LLVOAvatar* reflectSource(){return nullptr;}void invalidateSkinPalettesAfterOverlay(){}void markStepAnimPoseChanged(){}void invalidateSkinPalettesForOverlay(){}void syncStepAnimAttachmentMatrices(){}
+ static std::set<const LLGhostAvatar*>sOffsetHotGazes;std::map<double,std::map<size_t,LLQuaternion>>mOffsetHotRotations;double mOffsetLastHotTime=0;int mOffsetHotSkeletonSerial=-1;int getSkeletonSerialNum(){return 1;}
  bool mRenderOnlyHidden=false;bool mOverlayHelper=false,mPhaseArmed=true;bool visible=true,hidden=false;int mode=0;float scale=1,offset=0;LLUUID animation;int phaseRestarts=0;
  LLMotion clip;bool mStartPhasePending=false;float mAppliedStartPhase=0;LLMotion* findMotion(LLUUID){return &clip;}LLMotion* createMotion(LLUUID){return &clip;}float phaseOffset(const LLUUID&);
  bool isGhostAvatar()const override{return true;}bool isEntityCloneVisible()const{return visible&&!mRenderOnlyHidden;}void setEntityCloneVisible(bool v){visible=v;}void setRenderOnlyHidden(bool);static U32 sRenderHiddenReasons;static bool hasRenderHiddenPolicy(){return sRenderHiddenReasons!=0;}static bool isRenderHidden(const LLViewerObject*,const LLUUID&,const LLUUID&);
@@ -58,7 +60,7 @@ struct LLGhostAvatar:LLVOAvatar{
  void setEntityDriveMode(int m,LLUUID){prepareOffsetDrive(m);mode=m;mEntityDriveMode=m;}void restartEntityAnimation(){++phaseRestarts;}
  static bool isGhostId(LLUUID id){auto* o=gObjectList.findObject(id);return o&&!o->isDead()&&o->asAvatar()&&o->asAvatar()->isGhostAvatar();}
  static bool isRenderHidden(const LLViewerObject*);
- void setStartOffset(float);void applyOffsetHistory(double);void restoreOffsetPose();void prepareOffsetDrive(int);
+ void setStartOffset(float);void applyOffsetHistory(double,bool=false);void restoreOffsetPose();void prepareOffsetDrive(int);
  struct Pose{std::vector<LLQuaternion> rotations;std::vector<LLVector3> positions;};
  struct OffsetFrame:Pose{double time=0;std::map<int,float> face;std::map<LLUUID,Pose> attachments;};
  OffsetFrame mOffsetRestore;std::deque<OffsetFrame>mOffsetHistory;bool mOffsetNeedsRestore=false;float mStartOffset=0;int mEntityDriveMode=0;double mOffsetNextCapture=0,mOffsetFrozenAt=0;
@@ -66,6 +68,7 @@ struct LLGhostAvatar:LLVOAvatar{
  struct ClonedLinkset{LLUUID mRoot;};std::vector<ClonedLinkset>mClonedLinksets;
  void buildTrueMirrorParamSets(){}void moveStampedAttachments(){}
 };
+std::set<const LLGhostAvatar*> LLGhostAvatar::sOffsetHotGazes;
 void set_entity_clone_visible(LLGhostAvatar*,bool,bool);
 struct ALActorChoiceSource{LLUUID mId;std::string mLabel;};struct ALActorChoice{LLUUID mId;std::string mLabel,mSubjectLetters;U8 mSubjectMask=0;};
 std::vector<ALActorChoice> alBuildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ALActorChoiceSource>&);
@@ -84,6 +87,7 @@ template<class T>struct Ref{T* p;T* get(){return p;}T* operator->(){return p;}op
 struct LLDrawInfo{Ref<LLVOAvatar>mAvatar;Ref<LLMeshSkinInfo>mSkinInfo;U64 getSkinHash(){return mSkinInfo->mHash;}};
 struct LLFace{LLMatrix4 matrix;const LLMatrix4& getRenderMatrix(){return matrix;}};
 struct LLActorMover{
+ bool hasHotGazePose(LLVOAvatar*){return false;}static bool hotGazeCopiesJoint(std::string){return false;}void restoreHotGazeCopy(LLVOAvatar*){}void restoreHotGazePose(LLVOAvatar*){}
  struct GhostProxy{const std::map<std::pair<LLUUID,U64>,std::vector<float>>* mHeldPalettes=nullptr;const LLVector3* mHeldBounds=nullptr;LLVector3 mPivotFootAgent,mFootAgent,mWorldBoundsCenter,mWorldBoundsHalfExtent;LLQuaternion mRotation;float mScale=1;};
  struct Counters{int mIncompleteBounds=0;}mGhostDeferredCounters;void computeProxyBounds(GhostProxy&,LLVOAvatar*);
  struct GhostStaticFace{LLFace* mFace;LLUUID mObjectId;};const std::vector<GhostStaticFace>* ghostStaticFacesFor(LLUUID){return nullptr;}

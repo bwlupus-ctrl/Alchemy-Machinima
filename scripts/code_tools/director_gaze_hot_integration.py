@@ -11,6 +11,8 @@ def integration(nv):
 #include "alsteppedanim.h"
 #include <functional>
 #include <limits>
+#include <deque>
+using LLControlAvatar=LLVOAvatar;
 #undef LL_PROFILE_ZONE_NAMED
 #define LL_PROFILE_ZONE_NAMED(...)
 #undef LL_PROFILE_ZONE_SCOPED_CATEGORY_UI
@@ -20,7 +22,7 @@ def integration(nv):
 void assert_main_thread(){}
 struct LLGhostAvatar;
 struct ALGhostStudio {
- enum{BACKING_OVERLAY=0,BACKING_ENTITY_CLONE=1,DRIVE_TRUE_MIRROR=3,DRIVE_REFLECT=4,DRIVE_FROZEN=2,POSE_FROZEN=1};
+ enum{BACKING_OVERLAY=0,BACKING_ENTITY_CLONE=1,DRIVE_TRUE_MIRROR=3,DRIVE_REFLECT=4,DRIVE_FROZEN=2,DRIVE_DIRECTED=1,POSE_FROZEN=1};
  struct Instance {
  LLUUID mId,mEntityId,mOverlayAvatar;int mKind=1,mDriveMode=3,mDirectedMirrorFreezeDrive=0,mReflectPlaneMode=0,mMotion=0,mPose=0;
  float mStartOffset=0;bool mDeleting=false,mVisible=true;
@@ -46,6 +48,7 @@ struct ALGhostStudio {
 using avatar_joint_list_t=std::vector<LLJoint*>;
 struct LLGhostAvatar:LLVOAvatar {
  LLGhostAvatar(){ghost=true;}
+ ~LLGhostAvatar(){sOffsetHotGazes.erase(this);}
  LLJoint* mRoot=getRootJoint();LLUUID mAnimationSourceId;int mEntityDriveMode=3;
  U32 mTrueMirrorLastStampFrame=0xFFFFFFFF,mReflectLastFrame=0xFFFFFFFF;
  bool mTrueMirrorSourceValid=false,mReflectPreviousWritten=false,mTrueMirrorParamSetsBuilt=true,mEntityPhysicsEnabled=false,mGhostFloorPosition=false;
@@ -58,14 +61,16 @@ struct LLGhostAvatar:LLVOAvatar {
  LLVOAvatar* reflectSource(){auto* o=gObjectList.findObject(mAnimationSourceId);return o?o->asAvatar():nullptr;}
  void captureReflectPositions(){}void buildReflectPartners(LLVOAvatar*);
  void buildTrueMirrorParamSets(){}void stampTrueMirrorFace(LLVOAvatar*){}
- void moveStampedAttachments(){syncStepAnimAttachmentMatrices();}
+ void moveStampedAttachments(){} // Production does not sync animated attachments here.
 
  bool directedMirrorCacheMatches();void clearDirectedMirrorJoints();void buildDirectedMirrorJoints();
  void restoreDirectedMirrorPose(bool=true);void applyDirectedMirrorStamp(S32,S32,bool=false);
 
  void setGhostFloorPosition(LLVector3,LLVector3){}void setGhostFootPosition(LLVector3){}
  void reassertTiltRotation(){}void refreshVisualBounds(){}
- void applyOffsetHistory(double){}
+ void applyOffsetHistory(double,bool=false);void restoreOffsetPose();
+ bool hasOffsetHotGaze()const{return sOffsetHotGazes.count(this)!=0;}static bool hasOffsetHotGazes(){return !sOffsetHotGazes.empty();}
+ struct ClonedLinkset{LLUUID mRoot;};std::vector<ClonedLinkset>mClonedLinksets;
  void stampTrueMirrorSkeleton(LLVOAvatar*,bool,bool=false);void applyTrueMirrorStamp(bool=false);void applyReflectStamp(const LLVector3&,bool=false);
 };
 '''
@@ -73,7 +78,13 @@ struct LLGhostAvatar:LLVOAvatar {
     header = (nv/'llghostavatar.h').read_text(encoding='utf-8')
     fields = header[header.index('    bool mDirectedMirror ='):header.index('    bool mDirectedMirrorNeedsReskin =')]
     fields += '    bool mDirectedMirrorNeedsReskin = false;\n'
+    fields += header[header.index('    struct OffsetFrame'):header.index('    void setEntityLook(')]
     source = source.replace(' bool directedMirrorCacheMatches();', fields + ' bool directedMirrorCacheMatches();')
+    source += 'std::set<const LLGhostAvatar*> LLGhostAvatar::sOffsetHotGazes;\n'
+    source += 'struct HotHistoryClock { static double getTotalSeconds(){ return LLPresentationTime::currentFrame().presentation_time; } };\n'
+    source += '#define LLTimer HotHistoryClock\n'
+    for sig in ('void LLGhostAvatar::applyOffsetHistory(', 'void LLGhostAvatar::restoreOffsetPose(', 'void LLGhostAvatar::prepareOffsetDrive('):
+        source += method(nv/'llghostavatar.cpp', sig) + '\n'
     for sig in ('bool LLGhostAvatar::directedMirrorCacheMatches(', 'void LLGhostAvatar::clearDirectedMirrorJoints(',
                 'void LLGhostAvatar::buildDirectedMirrorJoints(', 'void LLGhostAvatar::restoreDirectedMirrorPose(',
                 'void LLGhostAvatar::applyDirectedMirrorStamp(', 'void LLGhostAvatar::buildReflectPartners(', 'void LLGhostAvatar::stampTrueMirrorSkeleton(', 'void LLGhostAvatar::applyTrueMirrorStamp(',
@@ -191,10 +202,10 @@ def assertions():
  // Source-only hot must reach True Mirror, Reflect and mixed chains, while
  // real Stepped capture/held/write/restore never retains any hot rotations.
  auto& studio=ALGhostStudio::instance();auto& step=ALSteppedAnimRuntime::instance();auto& particles=LLViewerPartSim::instance();
- for(bool stepped:{false,true})for(bool reflected:{false,true}){
+ for(bool stepped:{false,true})for(bool reflected:{false,true})for(bool solo:{false,true})for(int finalKind:{0,1,2}){
    mover.clearHotGazes();step.mEntries.clear();step.mPlanned.clear();studio.mInstances.clear();studio.clones.clear();
    LLGhostAvatar clone,chain;clone.mAnimationSourceId=actor.id;chain.mAnimationSourceId=clone.id;
-   clone.mEntityDriveMode=reflected?4:3;chain.mEntityDriveMode=3;
+   clone.mEntityDriveMode=reflected?4:3;chain.mEntityDriveMode=finalKind==1?4:3;
    for(auto* body:{static_cast<LLVOAvatar*>(&actor),static_cast<LLVOAvatar*>(&clone),static_cast<LLVOAvatar*>(&chain)}){
      cast.bodies[body->id]=body;gObjectList.objects[body->id]=body;
      for(auto& j:body->joints)j.second.rotation={};
@@ -202,6 +213,8 @@ def assertions():
    }
    studio.clones[clone.id]=&clone;studio.clones[chain.id]=&chain;
    ALGhostStudio::Instance first,last;first.mId=LLUUID::generateNewID();first.mEntityId=clone.id;first.mDriveMode=clone.mEntityDriveMode;last.mId=LLUUID::generateNewID();last.mEntityId=chain.id;
+   first.mVisible=!solo;
+   if(finalKind==2){last.mKind=0;last.mOverlayAvatar=chain.id;last.mEntityId.setNull();}
    studio.mInstances={last,first}; // verifies the real dependency sort
    step.sActive=stepped;step.mActiveActors=stepped?3:0;
    if(stepped)for(auto id:step.mPlanned){auto& e=step.mEntries[id];
@@ -218,6 +231,7 @@ def assertions():
    for(int frame=0;frame<4;++frame){
      now=70+frame/60.;LLFrameTimer::updateFrameCount();actor.frameStartRestore();clone.frameStartRestore();chain.frameStartRestore();
      actor.getJoint("mWristLeft")->rotation.setEulerAngles(0,0,.1f*frame);
+     if(solo&&frame==2)studio.mInstances[1].mVisible=true; // unsolo without re-driving
      copyOrdinaryStudio();
      std::map<LLUUID,LLQuaternion> baseHead;
      for(auto* body:{static_cast<LLVOAvatar*>(&actor),static_cast<LLVOAvatar*>(&clone),static_cast<LLVOAvatar*>(&chain)})baseHead[body->id]=body->getJoint("mHead")->getRotation();
@@ -230,13 +244,16 @@ def assertions():
      require(sourceHead!=LLQuaternion(),"source hot absent at Studio copy");
      ALReflect::LocalPose expected;ALReflect::reflectLocalPose({sourceHead,LLVector3::zero},expected);
      require(angular(LLVector3::x_axis*clone.getJoint("mHead")->getRotation(),LLVector3::x_axis*(reflected?expected.rotation:sourceHead))<.03f,"source-only hot missing on clone");
-     require(clone.getJoint("mHead")->getRotation()==chain.getJoint("mHead")->getRotation(),"source-only hot missing on clone chain");
+     const auto expectedChain=finalKind==1?ALReflect::rotation(clone.getJoint("mHead")->getRotation()):clone.getJoint("mHead")->getRotation();
+     require(angular(LLVector3::x_axis*chain.getJoint("mHead")->getRotation(),LLVector3::x_axis*expectedChain)<.03f,"source-only hot missing through solo-hidden intermediate");
+     require(studio.mInstances[1].mVisible==(!solo||frame>=2),"hot propagation changed render-only solo visibility");
      for(const char* eye:{"mEyeLeft","mEyeRight"}){
        const std::string sourceName=reflected?ALReflect::partner(eye):std::string(eye);
        const auto sourceEye=actor.getJoint(sourceName)->getRotation();
        ALReflect::LocalPose reflectedEye;ALReflect::reflectLocalPose({sourceEye,LLVector3::zero},reflectedEye);
        require(angular(LLVector3::x_axis*clone.getJoint(eye)->getRotation(),LLVector3::x_axis*(reflected?reflectedEye.rotation:sourceEye))<.03f,"source hot eye missing on clone");
-       require(clone.getJoint(eye)->getRotation()==chain.getJoint(eye)->getRotation(),"source hot eye missing on clone chain");
+       const auto chainEye=finalKind==1?ALReflect::rotation(clone.getJoint(ALReflect::partner(eye))->getRotation()):clone.getJoint(eye)->getRotation();
+       require(angular(LLVector3::x_axis*chain.getJoint(eye)->getRotation(),LLVector3::x_axis*chainEye)<.03f,"source hot eye missing on clone chain");
      }
      for(auto* p:{&follower,&chainFollower}){
        auto& s=*p->mPartSourcep.p;
@@ -267,7 +284,7 @@ def assertions():
    particles.mViewerPartSources.clear();particles.mViewerPartGroups.clear();
  }
 
- // Integration: the late copy respects QoL visibility, delay, held helper
+ // Integration: render-only visibility preserves inheritance; delay, held helper
  // poses and deletion, while live private helpers inherit and unwind normally.
  for(int policy=0;policy<6;++policy){
    mover.clearHotGazes();step.sActive=false;studio.mInstances.clear();
@@ -275,16 +292,16 @@ def assertions():
    cast.bodies[clone.id]=&clone;gObjectList.objects[clone.id]=&clone;
    ALGhostStudio::Instance inst;inst.mId=LLUUID::generateNewID();inst.mEntityId=clone.id;
    if(policy==0)inst.mVisible=false;
-   if(policy==1)inst.mStartOffset=.5f;
+   if(policy==1){inst.mStartOffset=.5f;clone.mStartOffset=.5f;}
    if(policy==2){inst.mKind=0;inst.mOverlayAvatar=clone.id;inst.mPose=1;}
    if(policy==3)inst.mDeleting=true;
    if(policy==4){inst.mKind=0;inst.mOverlayAvatar=clone.id;}
    studio.mInstances={inst};
    now=80;mover.fireHotGaze(actor.id,0,target,0,4,1,true,true,1,1,.2f);
    const auto base=clone.getJoint("mHead")->getRotation();
-   presentFrame();
-   require((mover.mHotGazeCopies.count(clone.id)!=0)==(policy>=4),"QoL late-copy eligibility lost");
-   if(policy<4)require(clone.getJoint("mHead")->getRotation()==base,"late copy overwrote hidden/delayed/held/retiring pose");
+   copyOrdinaryStudio();presentFrame();
+   require((mover.mHotGazeCopies.count(clone.id)!=0)==(policy==0||policy==1||policy>=4),"QoL late-copy eligibility lost");
+   if(policy>=1&&policy<4)require(clone.getJoint("mHead")->getRotation()==base,"late copy overwrote delayed/held/retiring pose");
    else require(clone.getJoint("mHead")->getRotation()==actor.getJoint("mHead")->getRotation(),"private helper hot pose absent");
    LLVOAvatar attached;studio.owners[attached.id]=actor.id;
    require(mover.hasHotGazePose(&attached),"hot affected filter lost wearer ownership");
@@ -293,6 +310,74 @@ def assertions():
    finishFrame();require(clone.getJoint("mHead")->getRotation()==base,"helper restore lost delayed base");
    mover.clearHotGazes();studio.mInstances.clear();
    cast.bodies.erase(clone.id);gObjectList.objects.erase(clone.id);
+ }
+
+
+ // P2 offset: run real 30 Hz history over 60 Hz frames, including a short
+ // source reaction that expires before the clone first presents it.
+ for(float offset:{0.f,.5f})for(bool reflected:{false,true})for(bool stepped:{false,true})for(bool fresh:{false,true}){
+   mover.clearHotGazes();step.sActive=stepped;step.mEntries.clear();step.mPlanned.clear();studio.mInstances.clear();studio.clones.clear();
+   LLGhostAvatar delayed,tail;delayed.mAnimationSourceId=actor.id;tail.mAnimationSourceId=delayed.id;
+   delayed.mEntityDriveMode=reflected?4:3;delayed.mStartOffset=offset;
+   ALGhostStudio::Instance first,last;first.mId=LLUUID::generateNewID();first.mEntityId=delayed.id;first.mStartOffset=offset;first.mDriveMode=delayed.mEntityDriveMode;
+   last.mId=LLUUID::generateNewID();last.mEntityId=tail.id;studio.mInstances={last,first};
+   studio.clones[delayed.id]=&delayed;studio.clones[tail.id]=&tail;
+   for(auto* body:{static_cast<LLVOAvatar*>(&actor),static_cast<LLVOAvatar*>(&delayed),static_cast<LLVOAvatar*>(&tail)}){
+     cast.bodies[body->id]=body;gObjectList.objects[body->id]=body;for(auto& j:body->joints)j.second.rotation={};
+     if(stepped){step.mPlanned.push_back(body->id);auto& e=step.mEntries[body->id];e.mAssignment.stepped=true;e.mAssignment.heldClasses=ALSteppedAnim::JC_GAZE|ALSteppedAnim::groupBit(ALSteppedAnim::PART_HEAD);e.mDecision.capture=true;e.mDecision.captureGroups=ALSteppedAnim::kGroupBits;}
+   }
+   step.mActiveActors=stepped?3:0;
+   const int start=fresh?0:48;bool sawDelayed=false,sawTailAfterSource=false,froze=false;double paused=0;LLQuaternion expectedReaction;
+   for(int frame=0;frame<start+100;++frame){
+     now=110+frame/60.+paused;LLFrameTimer::updateFrameCount();
+     actor.frameStartRestore();delayed.frameStartRestore();tail.frameStartRestore();delayed.restoreOffsetPose();
+     if(frame==start)mover.fireHotGaze(actor.id,0,target,0,4,.1f,true,true,1,1,.2f);
+     if(frame==start+12)mover.releaseHotGazeSlot(0);
+     actor.getJoint("mWristLeft")->rotation.setEulerAngles(0,0,.003f*frame);
+     copyOrdinaryStudio();const auto base=delayed.getJoint("mHead")->getRotation();const auto wrist=delayed.getJoint("mWristLeft")->getRotation();
+     const int poseBefore=delayed.poseChanges,skinBefore=delayed.skinChanges,syncBefore=delayed.attachmentSyncs;
+     const bool captured=offset>0&&delayed.mOffsetHistory.back().time==now;
+     const auto priorInput=offset>0?delayed.mOffsetHotRotations.find(delayed.mOffsetHistory.back().time):delayed.mOffsetHotRotations.end();
+     const auto priorHot=priorInput!=delayed.mOffsetHotRotations.end()?priorInput->second:std::map<size_t,LLQuaternion>();
+     presentFrame();const auto shown=delayed.getJoint("mHead")->getRotation();
+     const auto afterInput=offset>0?delayed.mOffsetHotRotations.find(delayed.mOffsetHistory.back().time):delayed.mOffsetHotRotations.end();
+     const auto afterHot=afterInput!=delayed.mOffsetHotRotations.end()?afterInput->second:std::map<size_t,LLQuaternion>();
+     if(offset>0&&!captured)require(afterHot==priorHot,"late hot rewrote an older 30 Hz sample");
+     require(delayed.mOffsetHotRotations.size()<=delayed.mOffsetHistory.size(),"hot side history exceeded ordinary history bound");
+     const double elapsed=(frame-start)/60.;
+     if(frame==start+6)expectedReaction=reflected?ALReflect::rotation(actor.getJoint("mHead")->getRotation()):actor.getJoint("mHead")->getRotation();
+     if(offset>0&&frame==start+36)require(angular(LLVector3::x_axis*shown,LLVector3::x_axis*expectedReaction)<.05f,"delayed hot lost source/Reflect pose");
+     if(offset==0){
+       const auto expected=reflected?ALReflect::rotation(actor.getJoint("mHead")->getRotation()):actor.getJoint("mHead")->getRotation();
+       require(angular(LLVector3::x_axis*shown,LLVector3::x_axis*expected)<.03f,"offset zero changed hot inheritance");
+       require(delayed.mOffsetHistory.empty()&&delayed.mOffsetHotRotations.empty()&&!delayed.hasOffsetHotGaze(),"zero offset allocated hot history");
+     }else{
+       if(elapsed<offset-1.e-6)require(angular(LLVector3::x_axis*shown,LLVector3::x_axis*base)<.03f,"inherited hot appeared before offset");
+       if(elapsed>offset+.06&&elapsed<offset+.17){require(angular(LLVector3::x_axis*shown,LLVector3::x_axis*base)>1,"delayed inherited reaction never appeared");sawDelayed=true;}
+       if(elapsed>offset+.5)require(angular(LLVector3::x_axis*shown,LLVector3::x_axis*base)<.03f,"delayed reaction failed to return");
+       require(angular(LLVector3::x_axis*delayed.mOffsetRestore.rotations[3],LLVector3::x_axis)<.03f,"hot contaminated animation input restore");
+       for(const auto& input:delayed.mOffsetHistory)require(angular(LLVector3::x_axis*input.rotations[3],LLVector3::x_axis)<.03f,"hot contaminated ordinary history");
+       if(sawDelayed&&!mover.hasHotGazes())sawTailAfterSource=true;
+     }
+     if(shown!=base)require(delayed.poseChanges>poseBefore&&delayed.skinChanges>skinBefore&&delayed.attachmentSyncs>syncBefore&&delayed.attachmentHead==shown,"final delayed hot pose was not published to skin/attachment consumers");
+     require(shown==tail.getJoint("mHead")->getRotation(),"delayed source tail missing on immediate descendant");
+     require(delayed.getJoint("mWristLeft")->getRotation()==wrist,"delayed hot changed non-gaze held pose");
+     // Freeze while the delayed reaction is visible. It holds the ordinary
+     // delayed image; transient hot cannot become the frozen input snapshot.
+     if(offset>0&&!froze&&elapsed>offset+.1){
+       require(shown!=base,"Freeze fixture missed delayed hot");
+       delayed.prepareOffsetDrive(2);delayed.mEntityDriveMode=2;
+       require(delayed.getJoint("mHead")->getRotation()==base,"Freeze latched transient delayed hot");
+       const auto count=delayed.mOffsetHistory.size();finishFrame();
+       now+=.2;LLFrameTimer::updateFrameCount();copyOrdinaryStudio();presentFrame();
+       require(delayed.getJoint("mHead")->getRotation()==base&&delayed.mOffsetHistory.size()==count,"frozen delayed history or pose changed");finishFrame();
+       delayed.prepareOffsetDrive(reflected?4:3);delayed.mEntityDriveMode=reflected?4:3;paused+=.2;froze=true;
+     }else finishFrame();
+     require(delayed.getJoint("mHead")->getRotation()==base,"delayed hot unwind lost presented base");
+   }
+   if(offset>0)require(sawDelayed&&sawTailAfterSource&&froze&&!delayed.hasOffsetHotGaze(),"delayed lifecycle did not complete");
+   mover.clearHotGazes();step.sHasOverlay=false;step.mEntries.clear();step.mPlanned.clear();studio.mInstances.clear();studio.clones.clear();
+   for(auto* body:{&delayed,&tail}){cast.bodies.erase(body->id);gObjectList.objects.erase(body->id);}
  }
 
  // R3-1: real pose-flip publication and restoration, source-only and chain.
@@ -350,5 +435,5 @@ def assertions():
  presentFrame();
  require(gObjectList.queries==resolves,"empty hot frame scanned Studio clones");
  particles.mViewerPartSources.clear();studio.mInstances.clear();
- std::cout<<"PASS: complete production gazePaint, ownership, frame ordering, Studio True Mirror/Reflect chains, Stepped capture/restore, recovered acquire, single-emission particle followers (Stepped ON/OFF), real enabled pose-flip source/chain acquire/return boundaries\n";
+ std::cout<<"PASS: complete production gazePaint, ownership, frame ordering, Studio True Mirror/Reflect chains, Stepped capture/restore, recovered acquire, single-emission particle followers (Stepped ON/OFF), real enabled pose-flip source/chain acquire/return boundaries; solo-hidden sources + unsolo + Reflect/private descendants; real offset history timing/return/Freeze/expired-source tails/zero offset @60Hz/30Hz\n";
 '''
