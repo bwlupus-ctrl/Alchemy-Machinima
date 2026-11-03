@@ -14731,6 +14731,7 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
         LLVector3   mFace;      // horizontal travel direction (stick fallback)
         F32         mHeight;    // figure height for the stick fallback, m
         LLColor4    mTint;      // actor hue
+        S32         mNode;      // stable seed survives distance sorting
     };
     std::vector<GhostItem> ghosts;
 
@@ -14838,7 +14839,7 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
                                    static_cast<F32>(event_tangent.mdV[VY]),
                                    static_cast<F32>(event_tangent.mdV[VZ]));
                     const F32 gh = path.mNodes[i].mRootAbove * 1.9f;
-                    ghosts.push_back({ av, base, face, gh, col_mid });
+                    ghosts.push_back({ av, base, face, gh, col_mid, i });
                 }
 
                 // authored camera on this node: a frustum gizmo at the camera
@@ -14997,6 +14998,9 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
                 if (bit != mGhostBatches.end() && !bit->second.empty())
                 {
                     LLActorMover::GhostDrawParams path_gp;
+                    path_gp.mPhase = std::fmod((F32)(g.mNode + 1) * 2.39996323f
+                        + (F32)(g.mAv->getID().mData[0] | (g.mAv->getID().mData[1] << 8))
+                            * (F_TWO_PI / 65536.f), F_TWO_PI);
                     path_gp.mEffectFps = (F32)gSavedSettings.getS32("PathGhostEffectFps");
                     path_gp.mDistort = (S32)ghost_distort;
                     path_gp.mDistortAmount = (F32)ghost_distort_amount;

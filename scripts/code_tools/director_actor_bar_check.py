@@ -16,7 +16,7 @@ ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f52124006
 def actor_key_baseline(source, name):
     """Peel only exact key deltas; full-file equality rejects unrelated edits."""
     source = reverse_feature_allowance(source, name, "looks16_mover_hunks.json",
-        "50437676a3a436eeabbfe2bc54e0beba05d3e3b83ea789bcfe727fa69e151271", "cinematic looks 85-100")
+        "6a5a743be0cb78ff444140532b082538a94b71d38d5d6f5e846b99ef4747b029", "cinematic looks 85-100")
     import hashlib, json
     path = "indra/newview/" + name
     layers = []
