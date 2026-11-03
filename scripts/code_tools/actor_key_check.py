@@ -232,9 +232,12 @@ glScissor(3,7,23,41); {
 '''
     result = compile_run(OUT, restore, 'scissor_restore')
     print(result.stdout, end=''); result.check_returncode()
-    diagnostic = pipeline[pipeline.index('    // WP1 diagnostic only'):pipeline.index('\nvoid LLPipeline::renderActorMask()')]
+    # Debug resources are now displayed only by K2, after the post chain.
+    # K1 must never overwrite beauty or its screen sidecars for diagnostics.
+    assert 'ActorKeyDebugView' not in method(NV / 'pipeline.cpp', 'void LLPipeline::buildActorKeyMatte()')
+    diagnostic = method(NV / 'pipeline.cpp', 'void LLPipeline::compositeActorKey()')
     assert '.screen.bindTarget()' not in diagnostic and '.screen.flush()' not in diagnostic
-    assert 'glDrawBuffer(GL_COLOR_ATTACHMENT0)' in diagnostic
+    assert 'keyDebugView' in diagnostic and 'lensCoverageValid()' in diagnostic
     for gate in ('if (ALActorChromaKey::sActive && source == ActorMaskViewSource::MAIN)',
                  'if (ALActorChromaKey::sActive && actorKeyMatteValid())',
                  'if (ALActorChromaKey::sActive && mRT == &mMainRT) releaseActorKeyTargets();',
@@ -245,7 +248,7 @@ glScissor(3,7,23,41); {
     key_entry = method(NV / 'pipeline.cpp', 'void LLPipeline::buildActorKeyCoverageAndMatte()')
     assert key_entry.index('if (!ALActorChromaKey::sActive) return;') < key_entry.index('ScopedActorMaskState')
     assert key_entry.index('renderActorKeyPrismOccluders();') < key_entry.index('mActorKeyCoverageFrame = gFrameCount;') < key_entry.index('buildActorKeyMatte();')
-    print('PASS: key-off call guards; replay has no silhouette gate; last-writer/stamp order; diagnostic avoids target self-bind and screen sidecars')
+    print('PASS: key-off call guards; replay has no silhouette gate; last-writer/stamp order; debug only at stamped K2, without screen target self-bind or sidecar writes')
 
     # Execute the production radius calculation at different target heights.
     matte = method(NV / 'pipeline.cpp', 'void LLPipeline::buildActorKeyMatte()')

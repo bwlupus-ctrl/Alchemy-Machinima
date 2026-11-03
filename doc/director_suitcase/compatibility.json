@@ -291,6 +291,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alactorchromakey.cpp",
+    "dependency": "indra/newview/alactorkeyui.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alactorchromakey.cpp",
     "dependency": "indra/newview/alcinelightrigmanager.h",
     "excluded": false,
     "origin": "fork-added",
@@ -3622,6 +3631,87 @@
     "class": "OWNED",
     "consumer": "indra/newview/alobjectpathmover.cpp",
     "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alpanelactorkey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alactorkeyui.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alkitpage.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alkitrow.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/llreshadebridge.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.h",
+    "dependency": "indra/newview/aluirefresh.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -10503,6 +10593,15 @@
     "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerdisplay.cpp",
+    "dependency": "indra/newview/alactorkeyui.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "base-owned",
     "consumer": "indra/newview/llviewerdisplay.cpp",
@@ -12064,6 +12163,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/pipeline.cpp",
     "dependency": "indra/newview/alactorchromakey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/pipeline.cpp",
+    "dependency": "indra/newview/alactorkeyui.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

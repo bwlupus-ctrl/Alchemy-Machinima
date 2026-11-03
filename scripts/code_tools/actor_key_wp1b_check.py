@@ -13,6 +13,16 @@ ROOT=Path(__file__).resolve().parents[2];NV=ROOT/'indra/newview';OUT=ROOT/'.tmp/
 
 def native_source():
     prefix=Path(__file__).with_name('actor_key_wp1b_fixture.h').read_text(encoding='utf-8')
+    # Execute the complete production target teardown as well as the recorder's
+    # release. Unrelated lens/Studio/shadow resources stay empty in this fixture.
+    prefix=prefix.replace(' bool failEnsure=false;', '''
+ LLRenderTarget mKeyDiopterCov,mKeyLensStage[4],mActorKeyMatte,mActorKeyBlurA,mActorKeyBlurB,mActorKeyScene;
+ LLRenderTarget*mKeyLensCurrent=nullptr;U32 mKeyLensFrame=~0u,mKeyLensRan=0,mKeyLensComplete=0;
+ bool mActorKeyReady=false;U32 mActorKeySceneFrame=~0u,mActorKeyDepthSrc=0;Pack*mActorKeyMatteRT=nullptr;
+ std::vector<F32>mActorKeyTestMatte,mActorKeyTestScene,mActorKeyTestOutput;
+ void releaseActorShadowTargets(){}void releaseActorKeyTargets();
+ bool failEnsure=false;''')
+    prefix=prefix.replace(' static LLColor4 actorPathColor(', ' static void releaseStudioKeyPrograms(){}\n static LLColor4 actorPathColor(')
     prefix=prefix.replace('// GP_INSERT',method(NV/'llactormover.h','struct GhostDrawParams')+';')
     prefix=prefix.replace('#include "alactorkeycapture.h"','#define private public\n#include "alactorkeycapture.h"\n#undef private')
     prefix=prefix.replace('struct FakeDrawable{};','struct FakeDrawable:LLRefCount{};').replace('mDrawable=reinterpret_cast<FakeDrawable*>(1);','mDrawable=new FakeDrawable;').replace('inline static void*sWhiteImagep','inline static LLTexture*sWhiteImagep')
@@ -21,6 +31,13 @@ def native_source():
     source=(NV/'alactorchromakey.cpp').read_text(encoding='utf-8')
     capture=source[source.index('namespace\n{',source.index('// [ActorKey][WP1b]')):source.index('bool ALActorKeyCapture::beautyContext()')]
     prefix+=capture+'\nbool ALActorKeyCapture::beautyContext(){return ALActorChromaKey::sActive&&!ALActorChromaKey::blocked;}\n'
+    prefix+='''
+struct ActorKeyPrograms{LLGLSLShader blur,matte,occluder,shadow,shadowDensity;};
+std::unique_ptr<ActorKeyPrograms>sActorKeyPrograms;
+struct ActorKeyLensProgram{LLGLSLShader shader;};
+std::map<int,std::unique_ptr<ActorKeyLensProgram>>sActorKeyLensPrograms;
+std::unique_ptr<LLGLSLShader>gActorKeyCompositeProgram;
+'''+method(NV/'pipeline.cpp','void LLPipeline::releaseActorKeyTargets()')+'\n'
     prefix+=method(NV/'llactormover.cpp','enum EGhostStyle')+';\n'
     for name in ('bool shared_actor_fx_zero_cover(\n','bool shared_actor_fx_style_suppresses(','bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID&','bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo&','bool LLRenderPass::shouldSuppressSharedActorFxPBR('):prefix+=method(NV/'lldrawpool.cpp',name)+'\n'
     prefix+=method(NV/'lldrawpoolavatar.cpp','static LLUUID get_actor_fx_id(')+'\n'+method(NV/'lldrawpoolavatar.cpp','LLUUID ALActorKeyCapture::systemActorId(')+'\n'
@@ -46,6 +63,7 @@ def native_source():
     prefix+=method(NV/'lldrawpool.cpp','void LLRenderPass::pushGLTFBatchIndexed(')+'\n'+method(NV/'llactormover.cpp','bool LLActorMover::renderSharedActorPBRCommands(')+'\n'
     prefix+=method(NV/'pipeline.cpp','LLRender::eBlendFactor silCoverBlendFactor(')+'\n'+method(NV/'pipeline.cpp','class ScopedSilCoverState')+';\n'
     prefix+=method(NV/'pipeline.cpp','bool LLPipeline::renderCover(')+'\n'+method(NV/'pipeline.cpp','void LLPipeline::buildActorKeyCoverageAndMatte()')+'\n'
+    prefix=prefix.replace('std::string getShaderDirPrefix()override{return "";}', 'std::string getShaderDirPrefix()override{return ".tmp/ckey_20261102/wp1b/lifecycle/class";}')
     prefix+=r'''
 static LLPointer<LLVOAvatar> sourceAvatar;
 static LLDrawInfo sceneInfo[2];static LLDrawInfo*activeInfo=&sceneInfo[0];
@@ -144,10 +162,50 @@ __declspec(dllexport) int coverage(int part,int mesh,int includeAlpha){
 __declspec(dllexport) void silhouette(int phase,int baseline){LLGLDepthTest depth(GL_FALSE,GL_FALSE);LLGLDisable blend(GL_BLEND);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT);if(baseline)LLActorMover::instance().renderSystemSilCoverBaseline(sourceAvatar,LLVector2(.3,.7),phase);else LLActorMover::instance().renderSystemSilCover(sourceAvatar,LLVector2(.3,.7),phase,false);}
 __declspec(dllexport) int count(int part,int mesh){auto& cap=ALActorKeyCapture::instance();if(mesh){auto t=cap.mDrawTrace[mesh==2?&sceneInfo[part]:&fixtureInfo];return t.native+t.shared;}auto t=cap.mSystemTrace[{sourceAvatar->id,static_cast<SystemComponentKey::Part>(part)}];return t.native+t.shared;}
 __declspec(dllexport) int contributor(int part,int mesh){auto& cap=ALActorKeyCapture::instance();if(mesh)return cap.mDrawTrace[mesh==2?&sceneInfo[part]:&fixtureInfo].shared;return cap.mSystemTrace[{sourceAvatar->id,static_cast<SystemComponentKey::Part>(part)}].shared;}
+__declspec(dllexport) int lifecycle(){
+ // Borrowed shader programs used by image fixtures are not present yet.
+ const auto baseline=LLGLSLShader::sInstances.size();
+ std::set<GLuint> handles; // Drivers may reuse a deleted program's name.
+ const auto live=[&](){unsigned n=0;for(GLuint p:handles)n+=glIsProgram(p)!=0;return n;};
+ const auto arm=[&](){
+  ALActorChromaKey::sActive=true;ALActorKeyCapture::instance().beginBeauty();
+  for(auto* beauty:{&meshBeauty,&nativeShader}){
+  beauty->mShaderFiles={{"lifeV.glsl",GL_VERTEX_SHADER},{"lifeF.glsl",GL_FRAGMENT_SHADER}};
+  beauty->mShaderLevel=1;beauty->mFeatures.attachNothing=true;
+  beauty->mShaderHash=LLUUID::generateNewID();
+  KeyCommand c;c.beauty=beauty;c.hash=beauty->mShaderHash;c.owner=ALActorChromaKey::selected;
+  c.info=&fixtureInfo;c.bearing=true;c.draw=[](LLGLSLShader&){};
+  for(auto& m:c.matrices)m=glm::mat4(1.f);
+  ALActorKeyCapture::instance().mBeautySuppressed.insert(&fixtureInfo);sKeyCommands.push_back(c);
+  }
+  if(!ALActorKeyCapture::instance().replay(true))return false;
+  for(auto& entry:sKeyPrograms)handles.insert(entry.second->shader.mProgramObject);
+  return LLGLSLShader::sInstances.size()==baseline+2&&live()==2;
+ };
+ // ON -> OFF and resize both use this production recorder release.
+ for(int path=0;path<3;++path){
+  if(!arm())return 10+path;
+  if(path==2){
+   const auto registry=LLGLSLShader::sInstances;
+   for(auto* shader:registry)shader->unload(); // real shader-manager reload traversal
+   if(LLGLSLShader::sInstances.size()!=baseline||live()!=0)return 20;
+   if(!ALActorKeyCapture::instance().replay(true))return 21;
+   for(auto& entry:sKeyPrograms)handles.insert(entry.second->shader.mProgramObject);
+   if(live()!=2)return 22;
+  }
+  if(path==0)ALActorChromaKey::sActive=false; // resize/reload keep the key on
+  gPipeline.releaseActorKeyTargets(); // actual OFF/resize caller, no teardown stub
+  if(LLGLSLShader::sInstances.size()!=baseline||live()!=0)return 30+path;
+ }
+ meshBeauty.mShaderFiles.clear();nativeShader.mShaderFiles.clear();ALActorChromaKey::sActive=true;return 1;
+}
 __declspec(dllexport) void cleanup(){gPipeline.mActorKeyCoverage.release();sourceAvatar=nullptr;fixtureBuffer=nullptr;for(auto& x:sKeyPrograms)x.second->shader.mProgramObject=0;sKeyPrograms.clear();for(auto* p:{&nativeShader,&gAvatarActorGhostProgram,&gAvatarEyeballActorGhostProgram,&meshBeauty})p->mProgramObject=0;for(auto& p:gSilCoverProgram)p.mProgramObject=0;}
 }
 '''
     mutation=os.environ.get('ACTOR_KEY_WP1B_MUTATION','')
+    if mutation=='unload-leak':
+        assert '~KeyProgram() { shader.unload(); }' in prefix
+        prefix=prefix.replace('~KeyProgram() { shader.unload(); }','~KeyProgram() {}')
     if mutation=='native-leak':
         needle='if (mBeautySuppressed.count(info)) return false;';assert prefix.count(needle)==1;prefix=prefix.replace(needle,'if (false) return false;',1)
     if mutation=='system-leak':
@@ -156,6 +214,9 @@ __declspec(dllexport) void cleanup(){gPipeline.mActorKeyCoverage.release();sourc
 
 def build_native():
     OUT.mkdir(parents=True,exist_ok=True)
+    life=OUT/'lifecycle/class1';life.mkdir(parents=True,exist_ok=True)
+    (life/'lifeV.glsl').write_text('in vec3 position; void main(){gl_Position=vec4(position,1.0);}')
+    (life/'lifeF.glsl').write_text('out vec4 frag_color; void main(){frag_color=vec4(1.0);}')
     flags,libs=viewer_native_flags();flags=[f for f in flags if 'TRACY_ENABLE' not in f]+['/LD','/I"'+str(NV)+'"']
     build=Path(subprocess.check_output(['git','rev-parse','--git-common-dir'],cwd=ROOT,text=True).strip()).resolve().parent/'build-Windows-vs2026-os'
     libs=[f'"{p}"' for p in build.glob('*/Release/*.lib') if p.parent.parent.name==p.stem]+[f'"{p}"' for p in build.glob('vcpkg_installed/*/lib/*.lib') if p.open('rb').read(8)==b'!<arch>\n']
@@ -174,6 +235,9 @@ def main():
     runner=Runner(64,64);g=runner.gl;print('GL:',g.renderer,flush=True)
     directories=[os.add_dll_directory(str(p)) for p in [build/'sharedlibs/Release',build/'newview/Release',*build.glob('vcpkg_installed/*/bin')] if p.exists()]
     dll=C.CDLL(str(binary));assert dll.init()==1
+    lifecycle = dll.lifecycle()
+    assert lifecycle==1, ('real styled shader registry / live GL program baseline after OFF, resize release and shader reload', lifecycle)
+    print('PASS real LLGLSLShader creation through production replay, registry and live GL program baseline after OFF/resize/reload',flush=True)
     dll.programs.argtypes=[C.c_uint]*8;dll.begin.argtypes=[C.c_int,C.c_int,C.c_float,C.c_int,C.c_int,C.c_int,C.c_int,C.c_uint]
     dll.beauty.argtypes=[C.c_int];dll.coverage.argtypes=[C.c_int,C.c_int,C.c_int];dll.count.argtypes=[C.c_int,C.c_int];dll.contributor.argtypes=[C.c_int,C.c_int]
     tree=G.SourceTree('WORKTREE');world=('GHOST_WORLD_PASS','GHOST_SHARED_DISSOLVE');sysdefs=world+('GHOST_SYSTEM_AVATAR',)
@@ -392,7 +456,7 @@ def main():
 
     if not os.environ.get('ACTOR_KEY_WP1B_MUTATION'):
         import sys
-        for mutation in ('native-leak','system-leak','pbr-colour'):
+        for mutation in ('unload-leak','native-leak','system-leak','pbr-colour'):
             log=OUT/('negative_'+mutation+'.log')
             with log.open('w',encoding='utf-8') as stream:
                 run=subprocess.run([sys.executable,str(Path(__file__).resolve())],env={**os.environ,'ACTOR_KEY_WP1B_MUTATION':mutation},stdout=stream,stderr=subprocess.STDOUT,timeout=180)

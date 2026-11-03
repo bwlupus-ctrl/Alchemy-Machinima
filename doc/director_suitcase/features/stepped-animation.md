@@ -36,7 +36,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@243,11", "indra/newview/CMakeLists.txt@335,116", "indra/newview/CMakeLists.txt@1195,13", "indra/newview/CMakeLists.txt@1289,165", "indra/newview/CMakeLists.txt@2954,185"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@243,11", "indra/newview/CMakeLists.txt@335,117", "indra/newview/CMakeLists.txt@1196,13", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2957,185"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,14744"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,34", "indra/newview/llappviewer.cpp@914,15", "indra/newview/llappviewer.cpp@1716,12", "indra/newview/llappviewer.cpp@5337,24", "indra/newview/llappviewer.cpp@5971,30"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}

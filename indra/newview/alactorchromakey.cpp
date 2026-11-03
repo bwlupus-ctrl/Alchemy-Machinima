@@ -427,7 +427,12 @@ struct KeyCommand
     bool cull = false;
     std::function<void(LLGLSLShader&)> draw;
 };
-struct KeyProgram { LLGLSLShader shader; LLUUID hash; };
+struct KeyProgram
+{
+    LLGLSLShader shader;
+    LLUUID hash;
+    ~KeyProgram() { shader.unload(); }
+};
 std::vector<KeyCommand> sKeyCommands;
 std::map<LLGLSLShader*, std::unique_ptr<KeyProgram>> sKeyPrograms;
 U32 sKeyCaptureFrame = ~0u;

@@ -10,6 +10,7 @@ uniform int keyInvert;
 uniform int keyHard;
 uniform int keyMatteShadow;
 uniform int keyPerChannel;
+uniform int keyDebugView;
 uniform float keyShadowStrength;
 void main()
 {
@@ -17,6 +18,13 @@ void main()
     vec4 coverage = texture(keyCoverage, vary_fragcoord);
     vec3 m = keyPerChannel != 0 ? coverage.rgb : vec3(coverage.r);
     float g = keyPerChannel != 0 ? coverage.a : coverage.g;
+    if (keyDebugView != 0)
+    {
+        // Raw Coverage and Matte are R; actor shadow density is packed G.
+        // Lens coverage preserves chromatic edge separation in RGB.
+        frag_color = vec4(keyDebugView == 3 ? vec3(g) : m, 1.0);
+        return;
+    }
     if (keyHard != 0) m = step(vec3(0.5), m);
     vec3 colour;
     if (keyMode == 0) colour = mix(keyColour * (1.0 - keyShadowStrength * g), scene, m);

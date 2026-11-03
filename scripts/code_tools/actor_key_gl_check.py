@@ -7,6 +7,7 @@ import ctypes as C
 import json
 from pathlib import Path
 import subprocess
+import xml.etree.ElementTree as ET
 import numpy as np
 import relight_3d_gl as G
 
@@ -344,6 +345,22 @@ def composite_checks(f):
     f.draw(composite,(srgb[0],srgb[1],(64,64)),uniforms,[scene,coverage],origin=(7,9))
     assert np.all(read_codes(srgb,8)==np.rint(key*255).astype(int))
     print(f'PASS WP2: SRGB-LEAK instrument detects double encoding; scoped disable fixes it; {cases} numeric cases',flush=True)
+    # Exercise the shipped UI values against the actual K2 fragment shader.
+    combo=ET.parse(ROOT/'indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml').find('.//combo_box[@name="ak_debug"]')
+    views={item.attrib['label']:int(item.attrib['value']) for item in combo.findall('combo_box.item')}
+    assert views=={'Off':0,'Coverage':1,'Matte':2,'Actor shadow':3,'Lens coverage':4}
+    debug_target=f.target(0x8058)
+    samples=np.empty((64,64,4),np.float32);samples[:]=np.array([64,128,192,224])/255.
+    resources={'Coverage':f.texture(samples,0x8229),'Matte':f.texture(samples,0x822B),
+               'Actor shadow':f.texture(samples,0x822B),'Lens coverage':f.texture(samples,0x8058)}
+    for label,tex in resources.items():
+        for packed in ((0,1) if label=='Lens coverage' else (0,)):
+            f.draw(composite,debug_target,[('keyScene',0),('keyCoverage',1),('keyOrigin',(0.,0.)),
+                ('keyDebugView',views[label]),('keyPerChannel',packed),('keyMode',1),
+                ('keyInvert',1),('keyHard',1),('keyMatteShadow',1)],[scene,tex])
+            expected=(128,)*3 if label=='Actor shadow' else (64,128,192) if packed else (64,)*3
+            assert np.all(f.read(debug_target)[...,:3]==expected),(label,packed)
+    print('PASS K2 debug shader: real UI values 1/2/3/4; R8 coverage, RG8 matte/shadow G, RGB lens coverage, scalar no-lens fallback; bypass mode/invert/hard/grade',flush=True)
     assert g.fn('glGetError',g.U)()==0
 
 

@@ -10,8 +10,19 @@ from relight_area_policy_check import method as source_method
 
 
 def actor_key_baseline(source, name):
-    """Reverse exact pinned layers: WP5, WP4, WP1b, LENS, WP2, WP01; then old guards."""
+    """Reverse exact pinned fixes, WP5, WP4, WP1b, LENS, WP2, WP01; then old guards."""
     import hashlib, json
+    fix_raw = (Path(__file__).parent / "actor_key_fix_all_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(fix_raw).hexdigest() == "87167514d478718c8ddaaf9a265aed204cdd3ad813a67a86062d0d9c2e8a0a36", "F2/F3 fix allowance pin"
+    fix = json.loads(fix_raw)
+    fix_path = "indra/newview/" + name
+    if fix_path in fix["files"]:
+        fix_base = subprocess.check_output(["git", "show", fix["base"] + ":" + fix_path]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in fix["files"][fix_path]:
+            assert fix_base.count(hunk["before"]) == 1, ("F2/F3 baseline hunk", name)
+            assert source.count(hunk["after"]) == 1, ("F2/F3 exact fix hunk", name)
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == fix_base, ("F2/F3 reversal must reproduce its exact base", name)
     # WP5 adds only a presentation sink at the existing self-test log. Reverse
     # its exact pinned hunks before the older renderer-preservation assertions.
     ui_raw = (Path(__file__).parent / "actor_key_wp5_ui_hunks.json").read_bytes().replace(b"\r\n", b"\n")

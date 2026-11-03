@@ -96,6 +96,15 @@ void ALActorKeyUI::recordSelfTest(const std::string& result)
     sLastResult = result;
 }
 
+void ALActorKeyUI::shadowTestUnavailable()
+{
+    if (!gSavedSettings.getU32("ActorKeyShadowSelfTest")) return;
+    gSavedSettings.setU32("ActorKeyShadowSelfTest", 0);
+    const std::string result = "ACTORKEY SHADOW-EXACT INCONCLUSIVE: Exact isolation/current shadow frame required; " + shadowStatus();
+    LL_INFOS("ActorKey") << result << LL_ENDL;
+    recordSelfTest(result);
+}
+
 void ALActorKeyUI::initialize()
 {
     static bool initialized = false;
@@ -215,23 +224,15 @@ void ALPanelActorKey::refreshReadouts()
     for (const auto& instance : ALGhostStudio::instance().getInstances())
         if (instance.mEntityId.isNull() && ALActorChromaKey::instanceKeyed(instance.mId)) { ++keyed; ++clones; }
     setTextIfChanged(mReadouts[4], llformat("%u keyed · %u clones · %u not keyed (impostor / ineligible)", keyed, clones, impostors));
-    static LLCachedControl<S32> shadow_detail(gSavedSettings, "RenderShadowDetail", 0);
-    static LLCachedControl<bool> shadow(gSavedSettings, "ActorKeyShadow", true);
-    static LLCachedControl<U32> isolation(gSavedSettings, "ActorKeyShadowIsolation", 0);
-    static LLCachedControl<U32> cascades(gSavedSettings, "ActorKeyShadowCascades", 2);
     static LLCachedControl<F32> strength(gSavedSettings, "ActorKeyShadowStrength", .5f);
     setTextIfChanged(mShadowCodes, "code " + codes(ALActorChromaKey::colour(), 1.f - strength()));
-    setTextIfChanged(mReadouts[5], shadow_detail == 0 ? "Disabled: sun/moon shadows are off."
-        : !shadow ? "Actor shadows off." : std::string("Requested: ") +
-            (isolation == 1 ? "Exact" : isolation == 2 ? "All sun shadows" : "Fast") +
-            llformat(", %u cascades; darkest code ", cascades()) + codes(ALActorChromaKey::colour(), 1.f - strength()) +
-            ". Live shadow verification pending WP4 integration.");
+    setTextIfChanged(mReadouts[5], ALActorKeyUI::shadowStatus());
     setTextIfChanged(mReadouts[6], warnings);
     static LLCachedControl<U32> test(gSavedSettings, "ActorKeySelfTest", 0);
     static LLCachedControl<U32> shadow_test(gSavedSettings, "ActorKeyShadowSelfTest", 0);
     setTextIfChanged(mReadouts[7], sLastResult + (test
         ? " Key test pending; waiting for keyed frames."
-        : shadow_test ? " Exact shadow test requested; WP4 result integration pending." : ""));
+        : shadow_test ? " Exact shadow test pending; waiting for renderer." : ""));
     if (mRetry) mRetry->setControlVisible(guard.refused);
 }
 

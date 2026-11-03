@@ -27258,6 +27258,8 @@ void LLPipeline::renderFinalizePresent(LLRenderTarget* sourceBuffer, bool diopte
         if (ALActorChromaKey::sActive && mActorKeyReady) compositeActorKey();
     }
 
+    ALActorKeyUI::shadowTestUnavailable();
+
     // [RelightQ] Show the current selected channel after all post/present effects.
     // Direct grayscale values remain available for tuning. Inactive/excluded views never read stale visibility targets.
     static LLCachedControl<S32> area_debug(gSavedSettings, "RenderAreaShadowDebugView", 0);
@@ -29248,6 +29250,7 @@ namespace
 // Lazy objects: key OFF never creates, compiles, or binds a key program.
 struct ActorKeyPrograms { LLGLSLShader blur, matte, occluder, shadow, shadowDensity; };
 std::unique_ptr<ActorKeyPrograms> sActorKeyPrograms;
+U32 sActorKeyShadowTermFrame = ~0u;
 std::unique_ptr<LLGLSLShader> gActorKeyCompositeProgram;
 struct ActorKeyLensProgram
 {
@@ -29614,7 +29617,13 @@ void LLPipeline::compositeActorKey()
     auto& shader = *gActorKeyCompositeProgram;
     shader.bind();
     mActorKeyScene.bindTexture(0, 0, LLTexUnit::TFO_POINT);
-    (mKeyLensCurrent ? *mKeyLensCurrent : mActorKeyMatte).bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
+    static LLCachedControl<U32> debug(gSavedSettings, "ActorKeyDebugView", 0);
+    const U32 view = llmin(debug(), 4u);
+    // K2 replaces the composite. Coverage/matte/shadow are scalar resources;
+    // lens coverage carries independently warped RGB coverage and A shadow.
+    LLRenderTarget& coverage = view == 1 ? mActorKeyCoverage : view == 2 || view == 3
+        ? mActorKeyMatte : mKeyLensCurrent ? *mKeyLensCurrent : mActorKeyMatte;
+    coverage.bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
     shader.uniform1i(LLStaticHashedString("keyScene"), 0);
     shader.uniform1i(LLStaticHashedString("keyCoverage"), 1);
     shader.uniform2f(LLStaticHashedString("keyOrigin"), (F32)viewport[0], (F32)viewport[1]);
@@ -29628,13 +29637,14 @@ void LLPipeline::compositeActorKey()
     shader.uniform1i(LLStaticHashedString("keyInvert"), invert ? 1 : 0);
     shader.uniform1i(LLStaticHashedString("keyHard"), edge() == 1 ? 1 : 0);
     shader.uniform1i(LLStaticHashedString("keyMatteShadow"), matte_shadow ? 1 : 0);
-    shader.uniform1i(LLStaticHashedString("keyPerChannel"), mKeyLensCurrent ? 1 : 0);
+    shader.uniform1i(LLStaticHashedString("keyPerChannel"), (view == 0 || view == 4) && mKeyLensCurrent ? 1 : 0);
+    shader.uniform1i(LLStaticHashedString("keyDebugView"), view);
     shader.uniform1f(LLStaticHashedString("keyShadowStrength"), llclamp(strength(), 0.f, 0.85f));
     llassert(mActorKeySceneFrame == gFrameCount);
     mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
     shader.unbind();
     ALActorChromaKey::provision(viewport[2], viewport[3]);
-    if (self_test) selfTestActorKey(invert); // before every overlay
+    if (self_test && !view) selfTestActorKey(invert); // before every overlay
 }
 
 void LLPipeline::selfTestActorKey(bool invert)
@@ -29905,18 +29915,6 @@ void LLPipeline::buildActorKeyMatte()
     mActorKeyMatteFrame = gFrameCount;
     mActorKeyMatteRT = &mMainRT;
     mActorKeyMatteWidth = w; mActorKeyMatteHeight = h;
-    // WP1 diagnostic only, before the post chain. WP2 owns final output views.
-    static LLCachedControl<U32> debug(gSavedSettings, "ActorKeyDebugView", 0);
-    if (debug() == 1 || debug() == 2)
-    {
-        llassert(LLRenderTarget::getCurrentBoundTarget() == &mMainRT.screen);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0); // diagnostic must not write screen sidecars
-        matte.bind();
-        (debug() == 1 ? mActorKeyCoverage : mActorKeyMatte).bindTexture(0, 0, LLTexUnit::TFO_POINT);
-        matte.uniform1i(LLStaticHashedString("keyRaw"), 1);
-        matte.uniform1i(LLStaticHashedString("keyDebug"), 1);
-        triangle();
-    }
 }
 
 void LLPipeline::renderActorMask()
@@ -35644,8 +35642,96 @@ void LLPipeline::renderKeyShadowCascade(U32 slice, bool column, const glm::mat4&
     mActorShadowSlice[slice] = {gFrameCount, mActorShadowGeneration, column, true};
 }
 
+// Opt-in readback of production beauty/actor/set visibility, with caller pack state preserved.
+static std::string actor_key_compare_shadows(LLRenderTarget& beauty, LLRenderTarget& actor, LLRenderTarget& set)
+{
+    GLint read, buffer, pack, alignment, row, skip_rows, skip_pixels, swap_bytes;
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read); glGetIntegerv(GL_READ_BUFFER, &buffer);
+    glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pack); glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
+    glGetIntegerv(GL_PACK_ROW_LENGTH, &row); glGetIntegerv(GL_PACK_SKIP_ROWS, &skip_rows);
+    glGetIntegerv(GL_PACK_SKIP_PIXELS, &skip_pixels); glGetIntegerv(GL_PACK_SWAP_BYTES, &swap_bytes);
+    struct RestorePack
+    {
+        GLint read, buffer, pack, alignment, row, skip_rows, skip_pixels, swap_bytes;
+        ~RestorePack()
+        {
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, read); glReadBuffer(buffer);
+            glPixelStorei(GL_PACK_ALIGNMENT, alignment); glPixelStorei(GL_PACK_ROW_LENGTH, row);
+            glPixelStorei(GL_PACK_SKIP_ROWS, skip_rows); glPixelStorei(GL_PACK_SKIP_PIXELS, skip_pixels);
+            glPixelStorei(GL_PACK_SWAP_BYTES, swap_bytes); glBindBuffer(GL_PIXEL_PACK_BUFFER, pack);
+        }
+    } restore{read, buffer, pack, alignment, row, skip_rows, skip_pixels, swap_bytes};
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0); glPixelStorei(GL_PACK_SKIP_ROWS, 0); glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_PACK_SWAP_BYTES, GL_FALSE);
+    const U32 w = beauty.getWidth(), h = beauty.getHeight();
+    std::vector<F32> visibility[3];
+    try
+    {
+        LLRenderTarget* targets[] = {&beauty, &actor, &set};
+        for (U32 i = 0; i < 3; ++i)
+        {
+            visibility[i].resize((size_t)w * h);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, targets[i]->getFBO());
+            glReadBuffer(GL_COLOR_ATTACHMENT0);
+            glReadPixels(0, 0, w, h, GL_RED, GL_FLOAT, visibility[i].data());
+        }
+    }
+    catch (const std::bad_alloc&) { return "ACTORKEY SHADOW-EXACT INCONCLUSIVE: readback allocation failed"; }
+    if (glGetError() != GL_NO_ERROR) return "ACTORKEY SHADOW-EXACT INCONCLUSIVE: readback GL error";
+    U32 total = 0, miss = 0, extra = 0;
+    const auto expected = [&](U32 x, U32 y)
+    {
+        const size_t i = (size_t)y * w + x;
+        return visibility[2][i] > visibility[0][i];
+    };
+    for (U32 y = 1; y + 1 < h; ++y)
+    for (U32 x = 1; x + 1 < w; ++x)
+    {
+        const bool mask = expected(x, y);
+        bool interior = true;
+        // Exclude a one-texel full-resolution mask boundary from the comparison.
+        for (U32 dy = y - 1; dy <= y + 1; ++dy)
+        for (U32 dx = x - 1; dx <= x + 1; ++dx) interior &= expected(dx, dy) == mask;
+        if (!interior) continue;
+        const size_t i = (size_t)y * w + x;
+        const bool exact = (1.f - visibility[1][i]) * visibility[2][i] > 0.f;
+        if (mask) { ++total; if (!exact) ++miss; }
+        else if (exact) ++extra;
+    }
+    return llformat("ACTORKEY SHADOW-EXACT miss=%u extra=%u total=%u %s", miss, extra, total,
+        !total ? "INCONCLUSIVE" : miss ? "FAIL" : "PASS");
+}
+
+std::string ALActorKeyUI::shadowStatus()
+{
+    if (!ALActorChromaKey::sActive) return "Actor key off.";
+    if (gPipeline.RenderShadowDetail <= 0) return "Disabled: sun/moon shadows are off.";
+    if (!gSavedSettings.getBOOL("ActorKeyShadow")) return "Actor shadows off.";
+    const bool fallback = gPipeline.mActorShadowFallback;
+    const std::string mode = fallback ? "All sun shadows (fallback after shadow failure)" :
+        gPipeline.mActorShadowIsolation == 1 ? "Exact" :
+        gPipeline.mActorShadowIsolation == 2 ? "All sun shadows" : "Fast";
+    if (!gPipeline.mActorShadowReady || gPipeline.mActorShadowFrame != gFrameCount ||
+        sActorKeyShadowTermFrame != gFrameCount || !gPipeline.mMainSunShadowToken ||
+        gPipeline.mActorShadowRevision != ALActorChromaKey::revision())
+        return mode + ": skipped generation; no current shadow term.";
+    U32 slices = 0;
+    for (U32 i = 0; i < gPipeline.mActorShadowCascades; ++i)
+    {
+        const auto& stamp = gPipeline.mActorShadowSlice[i];
+        if (stamp.valid && stamp.frame == gFrameCount && stamp.generation == gPipeline.mActorShadowGeneration &&
+            stamp.column == (i == 0 && gPipeline.mMainRT.shadowMeta.subject)) ++slices;
+    }
+    return mode + llformat(": generation %llu, %u/%u current slices%s",
+        (unsigned long long)gPipeline.mActorShadowGeneration, slices, gPipeline.mActorShadowCascades,
+        !fallback && gPipeline.mActorShadowIsolation != 2 && slices != gPipeline.mActorShadowCascades
+            ? "; skipped slices use lit substitution" : "");
+}
+
 bool LLPipeline::buildActorKeyShadowTerm(U32 width, U32 height)
 {
+    sActorKeyShadowTermFrame = ~0u;
     if (!mActorShadowReady || mActorShadowFrame != gFrameCount || RenderShadowDetail <= 0 ||
         mActorShadowRevision != ALActorChromaKey::revision() || !mMainSunShadowToken) return false;
     LL_PROFILE_ZONE_NAMED("ActorKey::shadowTerm");
@@ -35658,7 +35744,7 @@ bool LLPipeline::buildActorKeyShadowTerm(U32 width, U32 height)
     if (!ensure(mActorKeyShadowVisibility) || !ensure(mActorKeySetVisibility)) return false;
     const bool all = mActorShadowIsolation == 2 || mActorShadowFallback;
     auto& shader = sActorKeyPrograms->shadow;
-    const auto pass = [&](LLRenderTarget& target, bool set)
+    const auto pass = [&](LLRenderTarget& target, bool set, bool beauty = false)
     {
         LLRenderTarget* maps[4];
         for (U32 i = 0; i < 4; ++i)
@@ -35666,7 +35752,10 @@ bool LLPipeline::buildActorKeyShadowTerm(U32 width, U32 height)
             const auto& stamp = mActorShadowSlice[i];
             const bool valid = i < mActorShadowCascades && stamp.valid && stamp.frame == gFrameCount &&
                 stamp.generation == mActorShadowGeneration && stamp.column == (i == 0 && mMainRT.shadowMeta.subject);
-            maps[i] = all ? &mMainRT.shadow[i] : valid ? (set ? &mSetShadow[i] : &mActorShadow[i]) : &mActorShadowLit;
+            // Compare the same selected cascade domain; unused slices are lit
+            // in both the beauty reference and the isolated visibility.
+            maps[i] = all || (beauty && i < mActorShadowCascades) ? &mMainRT.shadow[i] :
+                valid ? (set ? &mSetShadow[i] : &mActorShadow[i]) : &mActorShadowLit;
         }
         target.bindTarget();
         bindDeferredShader(shader);
@@ -35678,6 +35767,27 @@ bool LLPipeline::buildActorKeyShadowTerm(U32 width, U32 height)
     };
     pass(mActorKeyShadowVisibility, false);
     if (mActorShadowIsolation == 1 && !all) pass(mActorKeySetVisibility, true);
+    if (gSavedSettings.getU32("ActorKeyShadowSelfTest") && mActorShadowIsolation == 1 && !all)
+    {
+        gSavedSettings.setU32("ActorKeyShadowSelfTest", 0);
+        bool complete = true;
+        for (U32 i = 0; i < mActorShadowCascades; ++i)
+        {
+            const auto& stamp = mActorShadowSlice[i];
+            complete &= stamp.valid && stamp.frame == gFrameCount && stamp.generation == mActorShadowGeneration &&
+                stamp.column == (i == 0 && mMainRT.shadowMeta.subject);
+        }
+        LLRenderTarget beauty;
+        std::string result = "ACTORKEY SHADOW-EXACT INCONCLUSIVE: skipped slices or comparison allocation failed";
+        if (complete && beauty.allocate(width, height, GL_R8, false))
+        {
+            pass(beauty, false, true);
+            result = actor_key_compare_shadows(beauty, mActorKeyShadowVisibility, mActorKeySetVisibility);
+        }
+        beauty.release();
+        LL_INFOS("ActorKey") << result << LL_ENDL;
+        ALActorKeyUI::recordSelfTest(result);
+    }
     static LLCachedControl<F32> softness(gSavedSettings, "ActorKeyShadowSoftness", 0.5f);
     if (softness() > 0.5f)
     {
@@ -35711,6 +35821,7 @@ bool LLPipeline::buildActorKeyShadowTerm(U32 width, U32 height)
         blur_pass(mActorKeyShadowBlurA, mActorKeyShadowBlurB, 1.f/w, 0.f);
         blur_pass(mActorKeyShadowBlurB, mActorKeyShadowBlurA, 0.f, 1.f/h);
     }
+    sActorKeyShadowTermFrame = gFrameCount;
     return true;
 }
 
