@@ -14,6 +14,40 @@ def check():
     path = Path('indra/newview/llactormover.cpp')
     overlay = method(path, 'void LLActorMover::renderStudioGhosts(')
     draw = method(path, 'S32 drawGeometryGhost(')
+    # Matrix ids must be reachable from every real selector and persistence,
+    # and must take the existing TEXTURED solid range dispatch.
+    import re
+    import xml.etree.ElementTree as ET
+    source = path.read_text(encoding='utf-8')
+    names = ('DECODE', 'GLYPH_SKIN', 'CONSTRUCT_WIRE', 'DEJA_VU', 'OPERATOR', 'DIAL_OUT', 'SOURCE')
+    for value, name in enumerate(names, 78):
+        assert re.search(r'GHOST_STYLE_' + name + r'\s*=\s*' + str(value) + r'\b', source)
+    assert 'GHOST_STYLE_STUDIO_END = 85' in source
+    assert 'style >= GHOST_STYLE_STUDIO_BASE && style < GHOST_STYLE_STUDIO_END' in draw
+    assert '? static_cast<S32>(GHOST_STYLE_THERMAL) : style' in draw
+    assert 'sh->uniform1i(sGhostLook, style)' in draw
+    assert 'if (matrix_screen) glGetIntegerv(GL_VIEWPORT, matrix_viewport)' in draw
+    assert 'sh->uniform2f(sGhostScreenSize, static_cast<F32>(matrix_viewport[2])' in draw
+    assert 'sh->uniform1f(sGhostDisplace, 0.f)' in draw
+    heading = method(path, 'void LLActorMover::renderHeadingPreview(')
+    assert 'ALGhostStudio::isOverlayStyle((S32)ghost_style)' in heading
+    assert 'ALGhostStudio::isOverlayStyle' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8') or 'isOverlayStyle(' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8')
+    assert '(style >= 64 && style <= 84)' in Path('indra/newview/alghoststudio.h').read_text(encoding='utf-8')
+    xui = Path('indra/newview/skins/default/xui/en')
+    selectors = 0
+    for file in ('panel_ghost_studio.xml', 'panel_dpage_cast_ghosts.xml', 'panel_path_editor.xml', 'panel_dpage_cast_path.xml'):
+        for combo in ET.parse(xui/file).iter('combo_box'):
+            if combo.get('name') in ('style_combo','ghost_style_combo') or combo.get('name','').startswith('crowd_mix_look_'):
+                values = [n.get('value') for n in combo.findall('combo_box.item')]
+                assert all(values.count(str(i)) == 1 for i in range(78,85)), (file,combo.get('name'),values)
+                selectors += 1
+    assert selectors == 16, selectors
+    for look in range(78,85):
+        assert f'case {look}: return ' in Path('indra/newview/alpanelghoststudio.cpp').read_text(encoding='utf-8')
+    # Existing CPU clock and per-instance UUID seed reach the shared upload.
+    assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
+    assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
+    assert 'inst.mId.mData[0] | (inst.mId.mData[1] << 8)' in overlay
     assert '++invocation;' in overlay
     assert 'studio_prepare_item(inst.mStyle, inst.mAlpha, phase2,' in overlay
     assert 'studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),' in overlay
@@ -504,6 +538,43 @@ int main(){
          'else if (false)')):
         assert fixture.count(before)==1
         results.append(execute(name,fixture.replace(before,after),False))
+    clock = r'''
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <iostream>
+using F32=float;using F64=double;using U32=uint32_t;
+constexpr U32 U32_MAX=UINT32_MAX;
+template<class T>T llmax(T a,T b){return std::max(a,b);}
+template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}
+U32 gFrameCount=0;bool gSnapshot=false;double now=100.;
+struct LLFrameTimer{static double getElapsedSeconds(){return now;}};
+'''+method(path, 'F32 actor_ghost_studio_frame_time(')+r'''
+int main(){
+ assert(actor_ghost_studio_frame_time(0)==0);
+ ++gFrameCount;now=100.501;
+ assert(std::abs(actor_ghost_studio_frame_time(0)-.501)<1e-6);
+ assert(actor_ghost_studio_frame_time(12)==.5f);
+ assert(actor_ghost_studio_frame_time(30)==.5f);
+ now=100.54; // Other clones in SAME render frame share the captured clock.
+ assert(std::abs(actor_ghost_studio_frame_time(0)-.501)<1e-6);
+ assert(actor_ghost_studio_frame_time(12)==.5f);
+ ++gFrameCount;
+ assert(std::abs(actor_ghost_studio_frame_time(0)-.54)<1e-6);
+ assert(actor_ghost_studio_frame_time(12)==.5f);
+ assert(std::abs(actor_ghost_studio_frame_time(30)-16.f/30)<1e-6);
+ ++gFrameCount;now=100.59;
+ assert(std::abs(actor_ghost_studio_frame_time(12)-7.f/12)<1e-6);
+ gSnapshot=true;++gFrameCount;now=101.;float frozen=actor_ghost_studio_frame_time(12);
+ ++gFrameCount;now=105.;assert(actor_ghost_studio_frame_time(12)==frozen);
+ gSnapshot=false;++gFrameCount;assert(actor_ghost_studio_frame_time(0)==5.f);
+ std::cout<<"PASS production Studio Effect fps 0/12/30; per-clone rates, same-frame hold, frame advance, snapshot freeze\n";
+}
+'''
+    results.append(execute('matrix_clock',clock,True))
+    assert clock.count('floor(real_time * fps) / fps')==1
+    results.append(execute('matrix_clock_no_step',clock.replace('floor(real_time * fps) / fps','real_time'),False))
     (directory/'results.json').write_text(json.dumps(results,indent=2))
 
 

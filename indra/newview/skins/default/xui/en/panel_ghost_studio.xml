@@ -180,6 +180,13 @@
             <combo_box.item label="Datamosh" name="st_datamosh" value="75" />
             <combo_box.item label="Scan Build" name="st_scanbuild" value="76" />
             <combo_box.item label="Contour" name="st_contour" value="77" />
+            <combo_box.item label="Decode" name="st_decode" value="78" />
+            <combo_box.item label="Glyph Skin" name="st_glyph_skin" value="79" />
+            <combo_box.item label="Construct Wire" name="st_construct_wire" value="80" />
+            <combo_box.item label="Deja Vu" name="st_deja_vu" value="81" />
+            <combo_box.item label="Operator" name="st_operator" value="82" />
+            <combo_box.item label="Dial Out" name="st_dial_out" value="83" />
+            <combo_box.item label="Source" name="st_source" value="84" />
           </combo_box>
           <combo_box follows="left|top" height="22" layout="topleft" left="270" name="distort_combo" top="27"
            tool_tip="Independent distortion layer. Stacks with any selected look." width="190">
@@ -582,6 +589,13 @@
             <combo_box.item label="Datamosh" value="75" />
             <combo_box.item label="Scan Build" value="76" />
             <combo_box.item label="Contour" value="77" />
+            <combo_box.item label="Decode" value="78" />
+            <combo_box.item label="Glyph Skin" value="79" />
+            <combo_box.item label="Construct Wire" value="80" />
+            <combo_box.item label="Deja Vu" value="81" />
+            <combo_box.item label="Operator" value="82" />
+            <combo_box.item label="Dial Out" value="83" />
+            <combo_box.item label="Source" value="84" />
           </combo_box>
           <text name="crowd_mix_look_2_label" left="8" top="631" width="124" height="18" layout="topleft" follows="left|top">Look 2</text>
           <combo_box name="crowd_mix_look_2" left="138" top="628" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook2">
@@ -628,6 +642,13 @@
             <combo_box.item label="Datamosh" value="75" />
             <combo_box.item label="Scan Build" value="76" />
             <combo_box.item label="Contour" value="77" />
+            <combo_box.item label="Decode" value="78" />
+            <combo_box.item label="Glyph Skin" value="79" />
+            <combo_box.item label="Construct Wire" value="80" />
+            <combo_box.item label="Deja Vu" value="81" />
+            <combo_box.item label="Operator" value="82" />
+            <combo_box.item label="Dial Out" value="83" />
+            <combo_box.item label="Source" value="84" />
           </combo_box>
           <text name="crowd_mix_look_3_label" left="8" top="659" width="124" height="18" layout="topleft" follows="left|top">Look 3</text>
           <combo_box name="crowd_mix_look_3" left="138" top="656" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook3">
@@ -674,6 +695,13 @@
             <combo_box.item label="Datamosh" value="75" />
             <combo_box.item label="Scan Build" value="76" />
             <combo_box.item label="Contour" value="77" />
+            <combo_box.item label="Decode" value="78" />
+            <combo_box.item label="Glyph Skin" value="79" />
+            <combo_box.item label="Construct Wire" value="80" />
+            <combo_box.item label="Deja Vu" value="81" />
+            <combo_box.item label="Operator" value="82" />
+            <combo_box.item label="Dial Out" value="83" />
+            <combo_box.item label="Source" value="84" />
           </combo_box>
           <text name="crowd_mix_look_4_label" left="8" top="687" width="124" height="18" layout="topleft" follows="left|top">Look 4</text>
           <combo_box name="crowd_mix_look_4" left="138" top="684" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook4">
@@ -720,6 +748,13 @@
             <combo_box.item label="Datamosh" value="75" />
             <combo_box.item label="Scan Build" value="76" />
             <combo_box.item label="Contour" value="77" />
+            <combo_box.item label="Decode" value="78" />
+            <combo_box.item label="Glyph Skin" value="79" />
+            <combo_box.item label="Construct Wire" value="80" />
+            <combo_box.item label="Deja Vu" value="81" />
+            <combo_box.item label="Operator" value="82" />
+            <combo_box.item label="Dial Out" value="83" />
+            <combo_box.item label="Source" value="84" />
           </combo_box>
           <text name="crowd_mix_look_5_label" left="8" top="715" width="124" height="18" layout="topleft" follows="left|top">Look 5</text>
           <combo_box name="crowd_mix_look_5" left="138" top="712" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook5">
@@ -766,6 +801,13 @@
             <combo_box.item label="Datamosh" value="75" />
             <combo_box.item label="Scan Build" value="76" />
             <combo_box.item label="Contour" value="77" />
+            <combo_box.item label="Decode" value="78" />
+            <combo_box.item label="Glyph Skin" value="79" />
+            <combo_box.item label="Construct Wire" value="80" />
+            <combo_box.item label="Deja Vu" value="81" />
+            <combo_box.item label="Operator" value="82" />
+            <combo_box.item label="Dial Out" value="83" />
+            <combo_box.item label="Source" value="84" />
           </combo_box>
           <text name="crowd_mix_look_6_label" left="8" top="743" width="124" height="18" layout="topleft" follows="left|top">Look 6</text>
           <combo_box name="crowd_mix_look_6" left="138" top="740" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook6">
@@ -812,6 +854,13 @@
             <combo_box.item label="Datamosh" value="75" />
             <combo_box.item label="Scan Build" value="76" />
             <combo_box.item label="Contour" value="77" />
+            <combo_box.item label="Decode" value="78" />
+            <combo_box.item label="Glyph Skin" value="79" />
+            <combo_box.item label="Construct Wire" value="80" />
+            <combo_box.item label="Deja Vu" value="81" />
+            <combo_box.item label="Operator" value="82" />
+            <combo_box.item label="Dial Out" value="83" />
+            <combo_box.item label="Source" value="84" />
           </combo_box>
 </panel>
 

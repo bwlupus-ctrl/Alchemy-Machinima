@@ -160,6 +160,13 @@ const char* style_name(S32 style)
     case 75: return "Datamosh";
     case 76: return "Scan Build";
     case 77: return "Contour";
+    case 78: return "Decode";
+    case 79: return "Glyph Skin";
+    case 80: return "Construct Wire";
+    case 81: return "Deja Vu";
+    case 82: return "Operator";
+    case 83: return "Dial Out";
+    case 84: return "Source";
     default: return "Ghost";
     }
 }

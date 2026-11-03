@@ -117,6 +117,13 @@
           <combo_box.item label="Halftone" name="gs_halftone" value="25" />
           <combo_box.item label="Sonar" name="gs_sonar" value="26" />
           <combo_box.item label="Holo Echo" name="gs_holo_echo" value="27" />
+                  <combo_box.item label="Decode" name="gs_decode" value="78" />
+          <combo_box.item label="Glyph Skin" name="gs_glyph_skin" value="79" />
+          <combo_box.item label="Construct Wire" name="gs_construct_wire" value="80" />
+          <combo_box.item label="Deja Vu" name="gs_deja_vu" value="81" />
+          <combo_box.item label="Operator" name="gs_operator" value="82" />
+          <combo_box.item label="Dial Out" name="gs_dial_out" value="83" />
+          <combo_box.item label="Source" name="gs_source" value="84" />
         </combo_box>
         <button follows="left|top" height="18" layout="topleft" left="462" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_style" top="117"

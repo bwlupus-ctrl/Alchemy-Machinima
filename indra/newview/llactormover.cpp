@@ -12055,7 +12055,14 @@ enum EGhostStyle : S32
     GHOST_STYLE_DATAMOSH = 75,
     GHOST_STYLE_SCANBUILD = 76,
     GHOST_STYLE_CONTOUR = 77,
-    GHOST_STYLE_STUDIO_END = 78, // exclusive; only implemented ids are valid
+    GHOST_STYLE_DECODE = 78,
+    GHOST_STYLE_GLYPH_SKIN = 79,
+    GHOST_STYLE_CONSTRUCT_WIRE = 80,
+    GHOST_STYLE_DEJA_VU = 81,
+    GHOST_STYLE_OPERATOR = 82,
+    GHOST_STYLE_DIAL_OUT = 83,
+    GHOST_STYLE_SOURCE = 84,
+    GHOST_STYLE_STUDIO_END = 85, // exclusive; only implemented ids are valid
 };
 static_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,
               "Live Actor FX ids collide with the Studio overlay range");
@@ -13099,6 +13106,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         : actor_ghost_studio_frame_time(gp.mEffectFps);
     bool glow_only = false;
     F32 studio_displace = 0.f;
+    // Matrix monitor looks also work in path previews, which have no Studio
+    // transient frame. Read the viewport once, then upload to both programs.
+    const bool matrix_screen = !gp.mWorldLinear
+        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR);
+    GLint matrix_viewport[4] = {0, 0, 1, 1};
+    if (matrix_screen) glGetIntegerv(GL_VIEWPORT, matrix_viewport);
 
     // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
     // Supply its bottom-up whole-image pixel origin so scanlines, noise and
@@ -13167,6 +13180,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             if (!gp.mWorldLinear)
             {
                 studio_apply_phase2(sh, studio_frame, studio_displace);
+                if (matrix_screen)
+                {
+                    sh->uniform1f(sGhostDisplace, 0.f);
+                    sh->uniform2f(sGhostScreenSize, static_cast<F32>(matrix_viewport[2]),
+                                  static_cast<F32>(matrix_viewport[3]));
+                    sh->uniform2f(sGhostScreenOrigin, static_cast<F32>(matrix_viewport[0]),
+                                  static_cast<F32>(matrix_viewport[1]));
+                }
             }
             if (gp.mWorldLinear)
             {
@@ -14917,7 +14938,8 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
                     path_gp.mDistort = (S32)ghost_distort;
                     path_gp.mDistortAmount = (F32)ghost_distort_amount;
                     drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,
-                                             GHOST_ALPHA, llclamp((S32)ghost_style, 0, 27),
+                                             GHOST_ALPHA, ALGhostStudio::isOverlayStyle((S32)ghost_style)
+                                                 ? (S32)ghost_style : GHOST_STYLE_GHOST,
                                              path_gp,
                                              ghostStaticFacesFor(g.mAv->getID()));
                 }

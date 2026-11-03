@@ -14,6 +14,17 @@ def hot_gaze_baseline(source, name):
     # before applying the existing phase-2/rekey/actor-bar baseline guards.
     import hashlib
     import json
+    if name == "llactormover.cpp":
+        # Reverse only the exact Matrix enum/viewport/path-registration delta.
+        raw = (Path(__file__).parent / "matrix_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+        assert hashlib.sha256(raw).hexdigest() == "996a68eca7d0e00dbf338161df20dabe20f808d1dd308c72de61cc52816d0410", "Matrix allowance pin"
+        matrix = json.loads(raw)
+        baseline = subprocess.check_output(["git", "show", matrix["base"] + ":indra/newview/" + name]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in matrix["hunks"]:
+            assert baseline.count(hunk["before"]) == 1, "Matrix baseline hunk"
+            assert source.count(hunk["after"]) == 1, "Matrix exact feature hunk"
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == baseline, "Matrix reversal must reproduce its exact baseline"
     data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(data).hexdigest() == "9bab828ec9c93d9efd79b588c60b9c73cb44211a4f00dc7bedd98cf081a333d7"
     allowed = json.loads(data)
