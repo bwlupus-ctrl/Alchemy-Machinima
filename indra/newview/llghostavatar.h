@@ -189,7 +189,7 @@ public:
     // hot_gaze permits the late rotation-only copy, captured for frame-end restore.
     void applyTrueMirrorStamp(bool hot_gaze = false);
     void setDirectedMirror(bool enabled);
-    void applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive);
+    void applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive, bool hot_gaze = false);
     // True while this clone is in DRIVE_TRUE_MIRROR. Used by LLActorMover to
     // skip its root override and gaze layer (the stamp owns the pose).
     bool isTrueMirrorDriven() const;

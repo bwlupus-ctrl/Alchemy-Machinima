@@ -11082,6 +11082,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llviewerpartsim.cpp",
+    "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerpartsim.cpp",
     "dependency": "indra/newview/llpresentationtime.h",
     "excluded": false,
     "origin": "fork-added",

@@ -526,7 +526,7 @@
           "indra/newview/llappviewer.cpp@72,33",
           "indra/newview/llappviewer.cpp@2611,53",
           "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -4295,6 +4295,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -4352,9 +4353,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -10205,6 +10208,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1052,
+        "source": "indra/newview/llviewerpartsim.cpp",
+        "text": "llviewerpartsim.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1055,
         "source": "indra/newview/llviewershadermgr.cpp",
         "text": "llviewershadermgr.cpp"
@@ -10317,8 +10326,8 @@
           "indra/newview/llappviewer.cpp@2611,53",
           "indra/newview/llappviewer.cpp@5657,48",
           "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@5968,23",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@5968,30",
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -10544,6 +10553,13 @@
           "indra/newview/llviewermessage.cpp@4465,14"
         ],
         "path": "indra/newview/llviewermessage.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/llviewerpartsim.cpp@25,9",
+          "indra/newview/llviewerpartsim.cpp@1114,60"
+        ],
+        "path": "indra/newview/llviewerpartsim.cpp"
       },
       {
         "hunks": [
@@ -13948,6 +13964,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -14005,9 +14022,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -16463,6 +16482,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -18678,6 +18698,79 @@
           "LLViewerOctreePartition::LLViewerOctreePartition",
           "LLViewerOctreePartition::cleanup",
           "LLViewerOctreePartition::isOcclusionEnabled"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llviewerpartsim.cpp": {
+        "includes": [
+          "indra/newview/alsteppedanimruntime.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llmutelist.h",
+          "indra/newview/llpresentationtime.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerpartsim.h",
+          "indra/newview/llviewerpartsource.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llvopartgroup.h",
+          "indra/newview/llvovolume.h",
+          "indra/newview/llworld.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALSteppedAnim::claimParticleFrame",
+          "ALSteppedAnim::particleAgeExpired",
+          "ALSteppedAnim::particleGroupDt",
+          "ALSteppedAnim::particleSourceEligible",
+          "ALSteppedAnim::particleStepDt",
+          "ALSteppedAnim::particleSubsteps",
+          "ALSteppedAnimRuntime::instance",
+          "LLActorMover::instance",
+          "LLDrawable::getCurrentFrame",
+          "LLHUDObject::renderAll",
+          "LLPresentationTime::drives",
+          "LLPresentationTime::presentationDelta",
+          "LLViewerCamera::getInstance",
+          "LLViewerPart::LLViewerPart",
+          "LLViewerPart::init",
+          "LLViewerPartGroup::LLViewerPartGroup",
+          "LLViewerPartGroup::addPart",
+          "LLViewerPartGroup::cleanup",
+          "LLViewerPartGroup::hasSteppedParticles",
+          "LLViewerPartGroup::posInGroup",
+          "LLViewerPartGroup::removeParticleSource",
+          "LLViewerPartGroup::removeParticlesByID",
+          "LLViewerPartGroup::shift",
+          "LLViewerPartGroup::updateParticles",
+          "LLViewerPartSim::LLViewerPartSim",
+          "LLViewerPartSim::addPart",
+          "LLViewerPartSim::addPartSource",
+          "LLViewerPartSim::checkParticleCount",
+          "LLViewerPartSim::cleanupRegion",
+          "LLViewerPartSim::clearParticlesByID",
+          "LLViewerPartSim::clearParticlesByOwnerID",
+          "LLViewerPartSim::clearStepAnimDeferredSources",
+          "LLViewerPartSim::clearStepAnimParticleDebt",
+          "LLViewerPartSim::createViewerPartGroup",
+          "LLViewerPartSim::decPartCount",
+          "LLViewerPartSim::destroyClass",
+          "LLViewerPartSim::enable",
+          "LLViewerPartSim::getInstance",
+          "LLViewerPartSim::incPartCount",
+          "LLViewerPartSim::put",
+          "LLViewerPartSim::refreshStepAnimAttachmentSourcePositions",
+          "LLViewerPartSim::removeLastCreatedSource",
+          "LLViewerPartSim::shift",
+          "LLViewerPartSim::shouldAddPart",
+          "LLViewerPartSim::updatePartBurstRate",
+          "LLViewerPartSim::updateSimulation",
+          "LLViewerPartSource::particleStepDecision",
+          "LLWorld::getInstance"
         ],
         "unresolved_includes": []
       },
@@ -24859,6 +24952,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -24916,9 +25010,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -33653,7 +33749,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerpartsim.cpp@840,35"
+          "indra/newview/llviewerpartsim.cpp@841,35"
         ],
         "path": "indra/newview/llviewerpartsim.cpp"
       },
@@ -36130,6 +36226,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -36187,9 +36284,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -38974,6 +39073,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -41103,6 +41203,7 @@
       "indra/newview/llviewerpartsim.cpp": {
         "includes": [
           "indra/newview/alsteppedanimruntime.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llmutelist.h",
           "indra/newview/llpresentationtime.h",
@@ -41128,6 +41229,7 @@
           "ALSteppedAnim::particleStepDt",
           "ALSteppedAnim::particleSubsteps",
           "ALSteppedAnimRuntime::instance",
+          "LLActorMover::instance",
           "LLDrawable::getCurrentFrame",
           "LLHUDObject::renderAll",
           "LLPresentationTime::drives",
@@ -45096,8 +45198,9 @@
           "indra/newview/llappviewer.cpp@5335,24",
           "indra/newview/llappviewer.cpp@5657,48",
           "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6422,15",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@5968,30",
+          "indra/newview/llappviewer.cpp@6429,15",
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -45442,8 +45545,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerpartsim.cpp@25,8",
-          "indra/newview/llviewerpartsim.cpp@840,35"
+          "indra/newview/llviewerpartsim.cpp@25,9",
+          "indra/newview/llviewerpartsim.cpp@841,35"
         ],
         "path": "indra/newview/llviewerpartsim.cpp"
       },
@@ -52601,6 +52704,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -52658,9 +52762,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -56752,6 +56858,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -61148,6 +61255,7 @@
       "indra/newview/llviewerpartsim.cpp": {
         "includes": [
           "indra/newview/alsteppedanimruntime.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llmutelist.h",
           "indra/newview/llpresentationtime.h",
@@ -61173,6 +61281,7 @@
           "ALSteppedAnim::particleStepDt",
           "ALSteppedAnim::particleSubsteps",
           "ALSteppedAnimRuntime::instance",
+          "LLActorMover::instance",
           "LLDrawable::getCurrentFrame",
           "LLHUDObject::renderAll",
           "LLPresentationTime::drives",
@@ -65075,7 +65184,7 @@
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,33",
           "indra/newview/llappviewer.cpp@4645,10",
-          "indra/newview/llappviewer.cpp@6014,8"
+          "indra/newview/llappviewer.cpp@6021,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -69398,6 +69507,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -69455,9 +69565,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -72787,7 +72899,7 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -74556,6 +74668,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -74613,9 +74726,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -76282,6 +76397,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -82441,6 +82557,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -82498,9 +82615,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -83228,6 +83347,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -86346,8 +86466,8 @@
           "indra/newview/llappviewer.cpp@4604,10",
           "indra/newview/llappviewer.cpp@4715,11",
           "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6422,15",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@6429,15",
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -93462,6 +93582,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -93519,9 +93640,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -108112,9 +108235,21 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 681,
+        "source": "indra/newview/llhudeffecttrail.cpp",
+        "text": "llhudeffecttrail.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 414,
         "source": "indra/newview/llpresentationtime.cpp",
         "text": "llpresentationtime.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 911,
+        "source": "indra/newview/llscenemonitor.cpp",
+        "text": "llscenemonitor.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -108148,9 +108283,33 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1052,
+        "source": "indra/newview/llviewerpartsim.cpp",
+        "text": "llviewerpartsim.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 2048,
+        "source": "indra/newview/llviewerpartsim.h",
+        "text": "llviewerpartsim.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1070,
         "source": "indra/newview/llvoavatar.cpp",
         "text": "llvoavatar.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1080,
+        "source": "indra/newview/llvopartgroup.cpp",
+        "text": "llvopartgroup.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 2090,
+        "source": "indra/newview/llworld.h",
+        "text": "llworld.h"
       }
     ],
     "generated_runtime": [
@@ -108185,7 +108344,7 @@
           "indra/newview/llappviewer.cpp@1714,12",
           "indra/newview/llappviewer.cpp@5369,37",
           "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@5968,23"
+          "indra/newview/llappviewer.cpp@5968,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -108330,6 +108489,18 @@
           "indra/newview/llviewerjoystick.h@170,83"
         ],
         "path": "indra/newview/llviewerjoystick.h"
+      },
+      {
+        "hunks": [
+          "indra/newview/llviewerpartsim.cpp@1114,60"
+        ],
+        "path": "indra/newview/llviewerpartsim.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/llviewerpartsim.h@157,11"
+        ],
+        "path": "indra/newview/llviewerpartsim.h"
       }
     ],
     "kit_wiring_pages": [
@@ -110524,6 +110695,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -110581,9 +110753,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -112686,6 +112860,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -112816,6 +112991,40 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llhudeffecttrail.cpp": {
+        "includes": [
+          "indra/llmessage/message.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llbox.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llhudeffecttrail.h",
+          "indra/newview/llhudrender.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerpartsim.h",
+          "indra/newview/llviewerpartsource.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/llworld.h"
+        ],
+        "qualified_call_candidates": [
+          "LLHUDEffect::markDead",
+          "LLHUDEffect::packData",
+          "LLHUDEffect::unpackData",
+          "LLHUDEffectSpiral::LLHUDEffectSpiral",
+          "LLHUDEffectSpiral::markDead",
+          "LLHUDEffectSpiral::packData",
+          "LLHUDEffectSpiral::render",
+          "LLHUDEffectSpiral::renderForTimer",
+          "LLHUDEffectSpiral::setTargetObject",
+          "LLHUDEffectSpiral::triggerLocal",
+          "LLHUDEffectSpiral::unpackData",
+          "LLViewerPartSim::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llpresentationtime.cpp": {
         "includes": [
           "indra/llcharacter/llmotioncontroller.h",
@@ -112840,6 +113049,61 @@
           "LLPresentationTime::restoreStockClocks",
           "LLPresentationTime::tick",
           "LLPresentationTime::toggleWorldWindDown"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llscenemonitor.cpp": {
+        "includes": [
+          "indra/llcommon/llpointer.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llui/llui.h",
+          "indra/llwindow/llwindow.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/llscenemonitor.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerdisplay.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerpartsim.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLFontGL::getFontMonospace",
+          "LLOcclusionCullingGroup::getNewOcclusionQueryObjectName",
+          "LLOcclusionCullingGroup::releaseOcclusionQueryObjectName",
+          "LLSceneMonitor::LLSceneMonitor",
+          "LLSceneMonitor::calcDiffAggregate",
+          "LLSceneMonitor::capture",
+          "LLSceneMonitor::compare",
+          "LLSceneMonitor::dumpToFile",
+          "LLSceneMonitor::fetchQueryResult",
+          "LLSceneMonitor::freezeAvatar",
+          "LLSceneMonitor::freezeScene",
+          "LLSceneMonitor::generateDitheringTexture",
+          "LLSceneMonitor::getCaptureTarget",
+          "LLSceneMonitor::getInstance",
+          "LLSceneMonitor::needsUpdate",
+          "LLSceneMonitor::reset",
+          "LLSceneMonitor::setDebugViewerVisible",
+          "LLSceneMonitor::unfreezeScene",
+          "LLSceneMonitorView::LLSceneMonitorView",
+          "LLSceneMonitorView::draw",
+          "LLSceneMonitorView::onClickCloseBtn",
+          "LLSceneMonitorView::onClose",
+          "LLSceneMonitorView::onTeleportFinished",
+          "LLSceneMonitorView::onVisibilityChange",
+          "LLView::draw",
+          "LLViewerCamera::getAngularVelocityStat",
+          "LLViewerCamera::getVelocityStat",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerPartSim::getInstance",
+          "LLViewerTextureManager::getLocalTexture"
         ],
         "unresolved_includes": []
       },
@@ -113652,6 +113916,90 @@
           }
         ]
       },
+      "indra/newview/llviewerpartsim.cpp": {
+        "includes": [
+          "indra/newview/alsteppedanimruntime.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llmutelist.h",
+          "indra/newview/llpresentationtime.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerpartsim.h",
+          "indra/newview/llviewerpartsource.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llvopartgroup.h",
+          "indra/newview/llvovolume.h",
+          "indra/newview/llworld.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALSteppedAnim::claimParticleFrame",
+          "ALSteppedAnim::particleAgeExpired",
+          "ALSteppedAnim::particleGroupDt",
+          "ALSteppedAnim::particleSourceEligible",
+          "ALSteppedAnim::particleStepDt",
+          "ALSteppedAnim::particleSubsteps",
+          "ALSteppedAnimRuntime::instance",
+          "LLActorMover::instance",
+          "LLDrawable::getCurrentFrame",
+          "LLHUDObject::renderAll",
+          "LLPresentationTime::drives",
+          "LLPresentationTime::presentationDelta",
+          "LLViewerCamera::getInstance",
+          "LLViewerPart::LLViewerPart",
+          "LLViewerPart::init",
+          "LLViewerPartGroup::LLViewerPartGroup",
+          "LLViewerPartGroup::addPart",
+          "LLViewerPartGroup::cleanup",
+          "LLViewerPartGroup::hasSteppedParticles",
+          "LLViewerPartGroup::posInGroup",
+          "LLViewerPartGroup::removeParticleSource",
+          "LLViewerPartGroup::removeParticlesByID",
+          "LLViewerPartGroup::shift",
+          "LLViewerPartGroup::updateParticles",
+          "LLViewerPartSim::LLViewerPartSim",
+          "LLViewerPartSim::addPart",
+          "LLViewerPartSim::addPartSource",
+          "LLViewerPartSim::checkParticleCount",
+          "LLViewerPartSim::cleanupRegion",
+          "LLViewerPartSim::clearParticlesByID",
+          "LLViewerPartSim::clearParticlesByOwnerID",
+          "LLViewerPartSim::clearStepAnimDeferredSources",
+          "LLViewerPartSim::clearStepAnimParticleDebt",
+          "LLViewerPartSim::createViewerPartGroup",
+          "LLViewerPartSim::decPartCount",
+          "LLViewerPartSim::destroyClass",
+          "LLViewerPartSim::enable",
+          "LLViewerPartSim::getInstance",
+          "LLViewerPartSim::incPartCount",
+          "LLViewerPartSim::put",
+          "LLViewerPartSim::refreshStepAnimAttachmentSourcePositions",
+          "LLViewerPartSim::removeLastCreatedSource",
+          "LLViewerPartSim::shift",
+          "LLViewerPartSim::shouldAddPart",
+          "LLViewerPartSim::updatePartBurstRate",
+          "LLViewerPartSim::updateSimulation",
+          "LLViewerPartSource::particleStepDecision",
+          "LLWorld::getInstance"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llviewerpartsim.h": {
+        "includes": [
+          "indra/llcommon/llframetimer.h",
+          "indra/llcommon/llpointer.h",
+          "indra/llmessage/llpartdata.h",
+          "indra/newview/alsteppedanim.h",
+          "indra/newview/llviewerpartsource.h"
+        ],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/llvoavatar.cpp": {
         "includes": [
           "indra/llappearance/lldriverparam.h",
@@ -114212,6 +114560,78 @@
           "LLWorld::getInstance",
           "LLWorld::instance"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llvopartgroup.cpp": {
+        "includes": [
+          "indra/llcommon/llfasttimer.h",
+          "indra/llmath/v2math.h",
+          "indra/llmessage/message.h",
+          "indra/newview/alderenderlist.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/lldrawpoolalpha.h",
+          "indra/newview/llface.h",
+          "indra/newview/llsky.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewerpartsim.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llvopartgroup.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDerenderList::isHiddenObject",
+          "LLFace::CompareDistanceGreater",
+          "LLHUDParticlePartition::LLHUDParticlePartition",
+          "LLParticlePartition::LLParticlePartition",
+          "LLParticlePartition::addGeometryCount",
+          "LLParticlePartition::calcPixelArea",
+          "LLParticlePartition::getGeometry",
+          "LLParticlePartition::rebuildGeom",
+          "LLVOHUDPartGroup::createDrawable",
+          "LLVOHUDPartGroup::getCameraPosition",
+          "LLVOHUDPartGroup::getPartitionType",
+          "LLVOPartGroup::LLVOPartGroup",
+          "LLVOPartGroup::createDrawable",
+          "LLVOPartGroup::destroyGL",
+          "LLVOPartGroup::getBinRadius",
+          "LLVOPartGroup::getBlendFunc",
+          "LLVOPartGroup::getCameraPosition",
+          "LLVOPartGroup::getGeometry",
+          "LLVOPartGroup::getPartOwner",
+          "LLVOPartGroup::getPartSize",
+          "LLVOPartGroup::getPartSource",
+          "LLVOPartGroup::getPartitionType",
+          "LLVOPartGroup::idleUpdate",
+          "LLVOPartGroup::initClass",
+          "LLVOPartGroup::isActive",
+          "LLVOPartGroup::lineSegmentIntersect",
+          "LLVOPartGroup::restoreGL",
+          "LLVOPartGroup::setPixelAreaAndAngle",
+          "LLVOPartGroup::updateGeometry",
+          "LLVOPartGroup::updateSpatialExtents",
+          "LLVOPartGroup::updateTextures",
+          "LLViewerCamera::getInstance",
+          "LLViewerPartSim::checkParticleCount",
+          "LLViewerPartSim::getMaxPartCount"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llworld.h": {
+        "includes": [
+          "indra/llcommon/llframetimer.h",
+          "indra/llcommon/llsingleton.h",
+          "indra/llcommon/llstring.h",
+          "indra/llmath/llmath.h",
+          "indra/llmath/v3math.h",
+          "indra/newview/llpatchvertexarray.h",
+          "indra/newview/llviewerpartsim.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llvowater.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/skins/default/xui/en/control_table_contents_machinima.xml": {
@@ -115283,7 +115703,7 @@
           "indra/newview/llappviewer.cpp@2611,53",
           "indra/newview/llappviewer.cpp@5657,48",
           "indra/newview/llappviewer.cpp@5915,44",
-          "indra/newview/llappviewer.cpp@6422,15"
+          "indra/newview/llappviewer.cpp@6429,15"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -120657,6 +121077,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -120714,9 +121135,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -123531,6 +123954,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -130213,7 +130637,7 @@
           "indra/newview/llappviewer.cpp@2289,8",
           "indra/newview/llappviewer.cpp@2611,53",
           "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -137687,6 +138111,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -151569,6 +151994,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -151626,9 +152052,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -153731,6 +154159,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -159096,7 +159525,7 @@
           "indra/newview/llappviewer.cpp@2183,17",
           "indra/newview/llappviewer.cpp@3607,7",
           "indra/newview/llappviewer.cpp@3617,7",
-          "indra/newview/llappviewer.cpp@6442,8"
+          "indra/newview/llappviewer.cpp@6449,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -169196,7 +169625,7 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@72,33",
           "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -175485,7 +175914,7 @@
           "indra/newview/llappviewer.cpp@913,14",
           "indra/newview/llappviewer.cpp@1714,12",
           "indra/newview/llappviewer.cpp@5335,24",
-          "indra/newview/llappviewer.cpp@5968,23"
+          "indra/newview/llappviewer.cpp@5968,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -175612,17 +176041,17 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerpartsim.cpp@25,8",
-          "indra/newview/llviewerpartsim.cpp@277,54",
-          "indra/newview/llviewerpartsim.cpp@375,173",
-          "indra/newview/llviewerpartsim.cpp@571,11",
-          "indra/newview/llviewerpartsim.cpp@671,7",
-          "indra/newview/llviewerpartsim.cpp@699,7",
-          "indra/newview/llviewerpartsim.cpp@840,35",
-          "indra/newview/llviewerpartsim.cpp@897,71",
-          "indra/newview/llviewerpartsim.cpp@995,37",
-          "indra/newview/llviewerpartsim.cpp@1075,18",
-          "indra/newview/llviewerpartsim.cpp@1113,53"
+          "indra/newview/llviewerpartsim.cpp@25,9",
+          "indra/newview/llviewerpartsim.cpp@278,54",
+          "indra/newview/llviewerpartsim.cpp@376,173",
+          "indra/newview/llviewerpartsim.cpp@572,11",
+          "indra/newview/llviewerpartsim.cpp@672,7",
+          "indra/newview/llviewerpartsim.cpp@700,7",
+          "indra/newview/llviewerpartsim.cpp@841,35",
+          "indra/newview/llviewerpartsim.cpp@898,71",
+          "indra/newview/llviewerpartsim.cpp@996,37",
+          "indra/newview/llviewerpartsim.cpp@1076,18",
+          "indra/newview/llviewerpartsim.cpp@1114,60"
         ],
         "path": "indra/newview/llviewerpartsim.cpp"
       },
@@ -177405,6 +177834,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -177462,9 +177892,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -179601,6 +180033,7 @@
           "ALReflect::reflectLocalPose",
           "ALReflect::rootRotation",
           "ALReflect::vector",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::instance",
           "LLAvatarAppearanceDictionary::isBakedImageId",
           "LLCharacter::findMotion",
@@ -180534,6 +180967,7 @@
       "indra/newview/llviewerpartsim.cpp": {
         "includes": [
           "indra/newview/alsteppedanimruntime.h",
+          "indra/newview/llactormover.h",
           "indra/newview/llagent.h",
           "indra/newview/llmutelist.h",
           "indra/newview/llpresentationtime.h",
@@ -180559,6 +180993,7 @@
           "ALSteppedAnim::particleStepDt",
           "ALSteppedAnim::particleSubsteps",
           "ALSteppedAnimRuntime::instance",
+          "LLActorMover::instance",
           "LLDrawable::getCurrentFrame",
           "LLHUDObject::renderAll",
           "LLPresentationTime::drives",
@@ -181848,8 +182283,8 @@
           "indra/newview/llappviewer.cpp@72,33",
           "indra/newview/llappviewer.cpp@1940,24",
           "indra/newview/llappviewer.cpp@5613,9",
-          "indra/newview/llappviewer.cpp@5968,23",
-          "indra/newview/llappviewer.cpp@6097,7"
+          "indra/newview/llappviewer.cpp@5968,30",
+          "indra/newview/llappviewer.cpp@6104,7"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -187288,8 +187723,8 @@
           "indra/newview/llappviewer.cpp@4956,12",
           "indra/newview/llappviewer.cpp@5794,119",
           "indra/newview/llappviewer.cpp@5915,44",
-          "indra/newview/llappviewer.cpp@6422,15",
-          "indra/newview/llappviewer.cpp@6460,45"
+          "indra/newview/llappviewer.cpp@6429,15",
+          "indra/newview/llappviewer.cpp@6467,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -191845,6 +192280,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -191902,9 +192338,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",
@@ -203203,6 +203641,7 @@
           "LLActorMover::canUndoPath",
           "LLActorMover::cancelSuspended",
           "LLActorMover::captureDirectorLookAtPose",
+          "LLActorMover::captureHotGazeCopy",
           "LLActorMover::captureState",
           "LLActorMover::centerPathPrimitiveOnActor",
           "LLActorMover::claimEdit",
@@ -203260,9 +203699,11 @@
           "LLActorMover::ghostImpostorStale",
           "LLActorMover::ghostStaticFacesFor",
           "LLActorMover::hasActivePathCamera",
+          "LLActorMover::hasHotGazePose",
           "LLActorMover::hasSharedActorStyleProxies",
           "LLActorMover::hasValidGhostDeferredQueueThisFrame",
           "LLActorMover::hasWalkablePath",
+          "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::insertWaypoint",

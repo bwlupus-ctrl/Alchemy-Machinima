@@ -2364,7 +2364,13 @@ void ALGhostStudio::updatePostObjectList(bool hot_gaze)
             if (!ghost || !LLActorMover::instance().hasHotGazePose(ghost->reflectSource())) continue;
             const S32 mode = ghost->getEntityDriveMode();
             if (mode == DRIVE_REFLECT) ghost->applyReflectStamp(inst->mReflectPlaneNormal, true);
-            else if (mode == DRIVE_TRUE_MIRROR) ghost->applyTrueMirrorStamp(true);
+            else if (mode == DRIVE_TRUE_MIRROR)
+            {
+                ghost->applyTrueMirrorStamp(true);
+                if (ALGhostAnimMirrorMath::eligible(inst->mDriveMode,
+                        inst->mDirectedMirrorFreezeDrive, inst->mDirectedMirror, mode))
+                    ghost->applyDirectedMirrorStamp(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);
+            }
             else continue;
             // A directly targeted clone owns its own final layer, then passes
             // that presented pose to any downstream clone in the same chain.

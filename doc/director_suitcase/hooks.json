@@ -10689,6 +10689,7 @@
           "base_count": 8,
           "base_start": 25,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -10720,6 +10721,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -10734,10 +10739,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -10748,6 +10749,7 @@
           "base_count": 9,
           "base_start": 61,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -10786,6 +10788,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -10800,10 +10806,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "mixed/perf-review",
@@ -10814,6 +10816,7 @@
           "base_count": 6,
           "base_start": 119,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -10839,6 +10842,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -10853,10 +10860,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -10867,6 +10870,7 @@
           "base_count": 6,
           "base_start": 237,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -10892,6 +10896,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -10906,10 +10914,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -10920,6 +10924,7 @@
           "base_count": 6,
           "base_start": 341,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -10951,6 +10956,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -10965,10 +10974,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -10979,6 +10984,7 @@
           "base_count": 6,
           "base_start": 466,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11004,6 +11010,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11018,10 +11028,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11032,6 +11038,7 @@
           "base_count": 8,
           "base_start": 565,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11059,6 +11066,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11073,10 +11084,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11090,6 +11097,7 @@
           "base_count": 7,
           "base_start": 668,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11113,6 +11121,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11127,10 +11139,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11144,6 +11152,7 @@
           "base_count": 6,
           "base_start": 723,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11167,6 +11176,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11181,10 +11194,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11195,6 +11204,7 @@
           "base_count": 6,
           "base_start": 764,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11220,6 +11230,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11234,10 +11248,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11248,6 +11258,7 @@
           "base_count": 6,
           "base_start": 803,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11276,6 +11287,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11290,10 +11305,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -11306,6 +11317,7 @@
           "base_count": 6,
           "base_start": 1299,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11331,6 +11343,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11345,10 +11361,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11359,6 +11371,7 @@
           "base_count": 11,
           "base_start": 1346,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11391,6 +11404,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11405,10 +11422,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11424,6 +11437,7 @@
           "base_count": 6,
           "base_start": 1449,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11449,6 +11463,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11463,10 +11481,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -11477,6 +11491,7 @@
           "base_count": 6,
           "base_start": 1503,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11500,6 +11515,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11514,10 +11533,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11528,6 +11543,7 @@
           "base_count": 7,
           "base_start": 1517,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11554,6 +11570,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11568,10 +11588,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11584,6 +11600,7 @@
           "base_count": 6,
           "base_start": 1530,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11613,6 +11630,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11627,10 +11648,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -11641,6 +11658,7 @@
           "base_count": 6,
           "base_start": 1565,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11664,6 +11682,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11678,10 +11700,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11692,6 +11710,7 @@
           "base_count": 7,
           "base_start": 1577,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11719,6 +11738,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11733,10 +11756,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11747,6 +11766,7 @@
           "base_count": 6,
           "base_start": 1639,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11772,6 +11792,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11786,10 +11810,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11800,6 +11820,7 @@
           "base_count": 6,
           "base_start": 1719,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11833,6 +11854,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11847,10 +11872,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11863,6 +11884,7 @@
           "base_count": 7,
           "base_start": 1869,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11886,6 +11908,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11900,10 +11926,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -11916,6 +11938,7 @@
           "base_count": 7,
           "base_start": 1942,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -11945,6 +11968,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -11959,10 +11986,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -11976,6 +11999,7 @@
           "base_count": 6,
           "base_start": 2038,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12001,6 +12025,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12015,10 +12043,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12029,6 +12053,7 @@
           "base_count": 6,
           "base_start": 2180,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12055,6 +12080,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12069,10 +12098,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -12086,6 +12111,7 @@
           "base_count": 7,
           "base_start": 2224,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12111,6 +12137,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12125,10 +12155,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -12142,6 +12168,7 @@
           "base_count": 6,
           "base_start": 2321,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12178,6 +12205,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12192,10 +12223,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "mixed/perf-review",
@@ -12236,6 +12263,7 @@
           "base_count": 6,
           "base_start": 2420,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12259,6 +12287,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12273,10 +12305,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -12287,6 +12315,7 @@
           "base_count": 6,
           "base_start": 2525,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12312,6 +12341,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12326,10 +12359,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12340,6 +12369,7 @@
           "base_count": 6,
           "base_start": 3268,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12365,6 +12395,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12379,10 +12413,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12393,6 +12423,7 @@
           "base_count": 6,
           "base_start": 3277,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12418,6 +12449,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12432,10 +12467,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12446,6 +12477,7 @@
           "base_count": 11,
           "base_start": 4234,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12477,6 +12509,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12491,10 +12527,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12505,6 +12537,7 @@
           "base_count": 6,
           "base_start": 4257,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12530,6 +12563,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12544,10 +12581,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12558,6 +12591,7 @@
           "base_count": 6,
           "base_start": 4294,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12583,6 +12617,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12597,10 +12635,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12611,6 +12645,7 @@
           "base_count": 9,
           "base_start": 4360,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12636,6 +12671,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12650,10 +12689,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12664,6 +12699,7 @@
           "base_count": 6,
           "base_start": 4470,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12694,6 +12730,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12708,10 +12748,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12726,6 +12762,7 @@
           "base_count": 6,
           "base_start": 4593,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12751,6 +12788,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12765,10 +12806,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12779,6 +12816,7 @@
           "base_count": 6,
           "base_start": 4694,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12802,6 +12840,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12816,10 +12858,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -12832,6 +12870,7 @@
           "base_count": 6,
           "base_start": 4963,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12862,6 +12901,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12876,10 +12919,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12890,6 +12929,7 @@
           "base_count": 6,
           "base_start": 4979,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12922,6 +12962,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12936,10 +12980,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -12956,6 +12996,7 @@
           "base_count": 6,
           "base_start": 5045,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -12981,6 +13022,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -12995,10 +13040,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -13009,6 +13050,7 @@
           "base_count": 6,
           "base_start": 5183,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13036,6 +13078,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -13050,10 +13096,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13064,6 +13106,7 @@
           "base_count": 10,
           "base_start": 5224,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13093,6 +13136,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -13107,10 +13154,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13121,6 +13164,7 @@
           "base_count": 18,
           "base_start": 5323,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13155,10 +13199,14 @@
           "head_end": 5912,
           "head_start": 5794,
           "id": "indra/newview/llappviewer.cpp@5794,119",
-          "patch": "         gPipeline.updateMove();\n     }\n \n-    LLWorld::getInstance()->updateParticles();\n+    // [BDMerge B3] Freeze World: hold the particle simulation while the world\n+    // is frozen so existing particles hang in place instead of aging out\n+    // (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the\n+    // merge spec for this item requires the full scene — including particles —\n+    // to stop). Camera updates below run regardless, so agent camera, flycam\n+    // and LLCinematicCamera all stay live while frozen.\n+    {\n+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, \"BDMergeFreezeWorld\", false);\n+        static LLCachedControl<bool> use_freeze_world(gSavedSettings, \"UseFreezeWorld\", false);\n+        if (!(bdmerge_freeze_world && use_freeze_world))\n+        {\n+            LLWorld::getInstance()->updateParticles();\n+        }\n+    }\n+\n+    // [ActorMover] TP-away suspend/resume: run the per-actor walk state machine\n+    // once per frame, BEFORE the character update (applyOverride) and the camera\n+    // dispatch below, so a teleport/derez suspends the walk (and releases the\n+    // path camera) the same frame instead of leaving a stale override pose.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle actor mover suspend\");\n+        LLActorMover::instance().updateSuspendState();\n+    }\n+\n+    // [GhostStudio] drive the in-world manipulation proxy once per frame HERE in\n+    // idle -- before render -- so any proxy creation / selection / toolset switch\n+    // happens off the render path, and the sync observes this frame's manip drag.\n+    // Near-zero cost when edit mode is off (an idempotent early-out).\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle ghost manip proxy\");\n+        ALToolGhostEdit::getInstance()->getManipProxy().tick();\n+    }\n+\n+    // NOTE: ALObjectPathMover::update() was MOVED from here to just before\n+    // gObjectList.update() above, to fix moving-mount camera jitter (the driven\n+    // pose must be consumed by the same-frame object/skeleton sequence, not\n+    // queued after it). See the comment at that call site.\n+\n+    // Weather library freezes once here, before all main/Prism/VCam draws.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle weather library\");\n+        ALPanelWeatherSettings::updateLibraryWeather();\n+    }\n+\n+    // [Director Switcher] Resolve program for this frozen presentation frame\n+    // before camera-owner arbitration. Inert while disarmed. Higher-priority\n+    // pilot/recorder/path cameras still win below.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle director switcher\");\n+        ALDirectorSwitcher::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    // [Anim Switchboard] Resolve the directed-animation program for this same\n+    // frozen presentation frame. Inert while disarmed.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle anim switcher\");\n+        ALDirectorAnimSwitcher::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle local fog\");\n+        ALLocalFogManager::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle cine light rig\");\n+        ALCineLightRigManager::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle vcam bone pov\");\n+        ALVCamBonePov::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n \n+    ++gCameraDispatchSerial;\n+    gCameraDispatchFlycamWrote = false;\n     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())\n     {\n+        gCameraDispatchOwner = ECameraOwner::PILOT;\n         gAgentPilot.moveCamera();\n     }\n+    else if (LLFlycamRecorder::instance().isPlaybackActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::RECORDER;\n+        // recorded camera path playback / scrubbing (phoenix port)\n+        LLFlycamRecorder::instance().updateCamera();\n+    }\n+    else if (LLPathCamera::instance().isActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::PATH;\n+        // per-node path camera: the cameras authored on Subject A's path drive\n+        // the render camera as the actor walks (a walk + camera = one take).\n+        // Below recorder playback, above the auto cinematic patterns. Releases\n+        // to the agent camera the same frame the walk ends / actor derezzes.\n+        LLPathCamera::instance().updateCamera();\n+    }\n+    else if (LLCinematicCamera::instance().isActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::CINE;\n+        // automated cinematic camera (bone lock / orbit / hover / sweep / crane)\n+        LLCinematicCamera::instance().updateCamera();\n+    }\n     else if (LLViewerJoystick::getInstance()->getOverrideCamera())\n     {\n+        gCameraDispatchOwner = ECameraOwner::FLYCAM;\n         LLViewerJoystick::getInstance()->moveFlycam();\n     }\n     else\n     {\n+        gCameraDispatchOwner = ECameraOwner::AGENT;\n         if (LLToolMgr::getInstance()->inBuildMode())\n         {\n             LLViewerJoystick::getInstance()->moveObjects();\n",
+          "patch": "         gPipeline.updateMove();\n     }\n \n-    LLWorld::getInstance()->updateParticles();\n+    // [BDMerge B3] Freeze World: hold the particle simulation while the world\n+    // is frozen so existing particles hang in place instead of aging out\n+    // (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the\n+    // merge spec for this item requires the full scene — including particles —\n+    // to stop). Camera updates below run regardless, so agent camera, flycam\n+    // and LLCinematicCamera all stay live while frozen.\n+    {\n+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, \"BDMergeFreezeWorld\", false);\n+        static LLCachedControl<bool> use_freeze_world(gSavedSettings, \"UseFreezeWorld\", false);\n+        if (!(bdmerge_freeze_world && use_freeze_world))\n+        {\n+            LLWorld::getInstance()->updateParticles();\n+        }\n+    }\n+\n+    // [ActorMover] TP-away suspend/resume: run the per-actor walk state machine\n+    // once per frame, BEFORE the character update (applyOverride) and the camera\n+    // dispatch below, so a teleport/derez suspends the walk (and releases the\n+    // path camera) the same frame instead of leaving a stale override pose.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle actor mover suspend\");\n+        LLActorMover::instance().updateSuspendState();\n+    }\n \n+    // [GhostStudio] drive the in-world manipulation proxy once per frame HERE in\n+    // idle -- before render -- so any proxy creation / selection / toolset switch\n+    // happens off the render path, and the sync observes this frame's manip drag.\n+    // Near-zero cost when edit mode is off (an idempotent early-out).\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle ghost manip proxy\");\n+        ALToolGhostEdit::getInstance()->getManipProxy().tick();\n+    }\n+\n+    // NOTE: ALObjectPathMover::update() was MOVED from here to just before\n+    // gObjectList.update() above, to fix moving-mount camera jitter (the driven\n+    // pose must be consumed by the same-frame object/skeleton sequence, not\n+    // queued after it). See the comment at that call site.\n+\n+    // Weather library freezes once here, before all main/Prism/VCam draws.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle weather library\");\n+        ALPanelWeatherSettings::updateLibraryWeather();\n+    }\n+\n+    // [Director Switcher] Resolve program for this frozen presentation frame\n+    // before camera-owner arbitration. Inert while disarmed. Higher-priority\n+    // pilot/recorder/path cameras still win below.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle director switcher\");\n+        ALDirectorSwitcher::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    // [Anim Switchboard] Resolve the directed-animation program for this same\n+    // frozen presentation frame. Inert while disarmed.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle anim switcher\");\n+        ALDirectorAnimSwitcher::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle local fog\");\n+        ALLocalFogManager::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle cine light rig\");\n+        ALCineLightRigManager::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle vcam bone pov\");\n+        ALVCamBonePov::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    ++gCameraDispatchSerial;\n+    gCameraDispatchFlycamWrote = false;\n     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())\n     {\n+        gCameraDispatchOwner = ECameraOwner::PILOT;\n         gAgentPilot.moveCamera();\n     }\n+    else if (LLFlycamRecorder::instance().isPlaybackActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::RECORDER;\n+        // recorded camera path playback / scrubbing (phoenix port)\n+        LLFlycamRecorder::instance().updateCamera();\n+    }\n+    else if (LLPathCamera::instance().isActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::PATH;\n+        // per-node path camera: the cameras authored on Subject A's path drive\n+        // the render camera as the actor walks (a walk + camera = one take).\n+        // Below recorder playback, above the auto cinematic patterns. Releases\n+        // to the agent camera the same frame the walk ends / actor derezzes.\n+        LLPathCamera::instance().updateCamera();\n+    }\n+    else if (LLCinematicCamera::instance().isActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::CINE;\n+        // automated cinematic camera (bone lock / orbit / hover / sweep / crane)\n+        LLCinematicCamera::instance().updateCamera();\n+    }\n     else if (LLViewerJoystick::getInstance()->getOverrideCamera())\n     {\n+        gCameraDispatchOwner = ECameraOwner::FLYCAM;\n         LLViewerJoystick::getInstance()->moveFlycam();\n     }\n     else\n     {\n+        gCameraDispatchOwner = ECameraOwner::AGENT;\n         if (LLToolMgr::getInstance()->inBuildMode())\n         {\n             LLViewerJoystick::getInstance()->moveObjects();\n",
           "purpose": "Comment evidence: [BDMerge B3] Freeze World: hold the particle simulation while the world is frozen so existing particles hang in place instead of aging out (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the merge spec for this item requires the full scene — including particles ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13174,10 +13222,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13191,6 +13235,7 @@
           "base_count": 20,
           "base_start": 5343,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13221,6 +13266,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
+            {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
             },
@@ -13235,10 +13284,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13251,6 +13296,7 @@
           "base_count": 6,
           "base_start": 5372,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13259,6 +13305,7 @@
           ],
           "features": [
             "actor-path",
+            "clones",
             "gaze",
             "stepped-animation",
             "tracking"
@@ -13270,17 +13317,22 @@
           "git_context": "void LLAppViewer::idle()",
           "guard_evidence": [
             "if (ALSteppedAnimRuntime::sActive)",
-            "if (ALSteppedAnimRuntime::sHasOverlay)"
+            "if (ALSteppedAnimRuntime::sHasOverlay)",
+            "if (LLActorMover::instance().hasHotGazes())"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 23,
-          "head_end": 5990,
+          "head_count": 30,
+          "head_end": 5997,
           "head_start": 5968,
-          "id": "indra/newview/llappviewer.cpp@5968,23",
-          "patch": "         }\n     }\n \n+    if (ALSteppedAnimRuntime::sActive)\n+    {\n+        ALSteppedAnimRuntime::instance().applyHeld();\n+        if (ALSteppedAnimRuntime::sHasOverlay)\n+        {\n+            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();\n+        }\n+    }\n+\n+    LLActorMover::instance().applyHotGazes();\n+\n+    // applyHeld above is the stepped base skeleton writer (including\n+    // boil/smear and held root yaw). Sample/capture and place projectors here,\n+    // then finish their drawable/bounds/child mesh work before display() can\n+    // enter its earliest hero, mirror or cube-probe render pass.\n+    ALProjectorTracker::instance().update(dt_raw);\n+\n     // Handle shutdown process, for example,\n     // wait for floaters to close, send quit message,\n     // forcibly quit if it has taken too long\n",
-          "purpose": "Comment evidence: applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work before display() can enter its earliest hero, mirror or cube-probe render pass.",
+          "id": "indra/newview/llappviewer.cpp@5968,30",
+          "patch": "         }\n     }\n \n+    if (ALSteppedAnimRuntime::sActive)\n+    {\n+        ALSteppedAnimRuntime::instance().applyHeld();\n+        if (ALSteppedAnimRuntime::sHasOverlay)\n+        {\n+            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();\n+        }\n+    }\n+\n+    // HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check.\n+    LLActorMover::instance().applyHotGazes();\n+    if (LLActorMover::instance().hasHotGazes())\n+    {\n+        ALGhostStudio::instance().updatePostObjectList(true);\n+        LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions(true);\n+    }\n+    // HOT_GAZE_PRESENT_END\n+\n+    // applyHeld above is the stepped base skeleton writer (including\n+    // boil/smear and held root yaw). Sample/capture and place projectors here,\n+    // then finish their drawable/bounds/child mesh work before display() can\n+    // enter its earliest hero, mirror or cube-probe render pass.\n+    ALProjectorTracker::instance().update(dt_raw);\n+\n     // Handle shutdown process, for example,\n     // wait for floaters to close, send quit message,\n     // forcibly quit if it has taken too long\n",
+          "purpose": "Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13296,10 +13348,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13310,6 +13358,7 @@
           "base_count": 6,
           "base_start": 5401,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13327,13 +13376,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 6021,
-          "head_start": 6014,
-          "id": "indra/newview/llappviewer.cpp@6014,8",
+          "head_end": 6028,
+          "head_start": 6021,
+          "id": "indra/newview/llappviewer.cpp@6021,8",
           "patch": "     {\n         if (!mClosingFloaters)\n         {\n+            // [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles\n+            LLSliderWheel::cancelAllForQuit();\n             // application is quitting\n             gFloaterView->closeAllChildren(true);\n             mClosingFloaters = true;\n",
           "purpose": "Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13349,10 +13402,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13363,6 +13412,7 @@
           "base_count": 6,
           "base_start": 5482,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13380,13 +13430,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 6103,
-          "head_start": 6097,
-          "id": "indra/newview/llappviewer.cpp@6097,7",
+          "head_end": 6110,
+          "head_start": 6104,
+          "id": "indra/newview/llappviewer.cpp@6104,7",
           "patch": " \n void LLAppViewer::sendLogoutRequest()\n {\n+    ALProjectorTracker::instance().clear();\n     if(!mLogoutRequestSent && gMessageSystem)\n     {\n         //Set internal status variables and marker files before actually starting the logout process\n",
           "purpose": "Edits ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13402,10 +13456,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13416,6 +13466,7 @@
           "base_count": 6,
           "base_start": 5806,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13439,13 +13490,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 15,
-          "head_end": 6436,
-          "head_start": 6422,
-          "id": "indra/newview/llappviewer.cpp@6422,15",
+          "head_end": 6443,
+          "head_start": 6429,
+          "id": "indra/newview/llappviewer.cpp@6429,15",
           "patch": " \n void LLAppViewer::disconnectViewer()\n {\n+    if (LLPresentationTime::instanceExists())\n+    {\n+        LLPresentationTime::instance().cancelWorldWindDown();\n+    }\n+    ALColorChart::shutdownSession();\n+    // Write/clean the Director recovery BEFORE Prism/rig/world teardown below\n+    // (a forced disconnect would otherwise save a stripped scene). Latched.\n+    if (!isError())\n+        LLFloaterDirector::prepareRecoveryForShutdown();\n     if (gDisconnected)\n     {\n         return;\n",
           "purpose": "Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13461,10 +13516,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13475,6 +13526,7 @@
           "base_count": 6,
           "base_start": 5817,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13492,13 +13544,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 6449,
-          "head_start": 6442,
-          "id": "indra/newview/llappviewer.cpp@6442,8",
+          "head_end": 6456,
+          "head_start": 6449,
+          "id": "indra/newview/llappviewer.cpp@6449,8",
           "patch": " \n     LL_INFOS() << \"Disconnecting viewer!\" << LL_ENDL;\n \n+    ALExposureSettingsHistory::clear();\n+\n     // Dump our frame statistics\n \n     // Remember if we were flying\n",
           "purpose": "Edits ALExposureSettingsHistory",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13514,10 +13570,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -13528,6 +13580,7 @@
           "base_count": 6,
           "base_start": 5833,
           "candidate_features_from_subjects": [
+            "clones",
             "gaze",
             "vcam"
           ],
@@ -13556,13 +13609,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 45,
-          "head_end": 6504,
-          "head_start": 6460,
-          "id": "indra/newview/llappviewer.cpp@6460,45",
+          "head_end": 6511,
+          "head_start": 6467,
+          "id": "indra/newview/llappviewer.cpp@6467,45",
           "patch": "         LLSelectMgr::getInstance()->deselectAll();\n     }\n \n+    // Local light emitters must leave mLights before the region/object list is\n+    // torn down. This is idempotent on logout, relog, and final shutdown.\n+    ALCineLightRigManager::instance().shutdown();\n+\n+    // [DirFix] The path editor's shared edit session (edit owner/actor/node,\n+    // the transient path-edit tool, a held path-camera preview) is per-session\n+    // UI state pointing at avatars about to be torn down; end it here, before\n+    // the views and objects go. Idempotent on logout, relog and final quit.\n+    LLActorMover::instance().resetEditSession();\n+\n+    // [ClientHeight] Session-only local avatar height offsets are keyed by avatar/clone/linkset\n+    // ids; they must not leak into a different account or relog session.\n+    if (ALClientHeight::instanceExists())\n+    {\n+        ALClientHeight::getInstance()->clearSession();\n+    }\n+\n+    if (ALAvatarStaging::instanceExists())\n+    {\n+        ALAvatarStaging::getInstance()->clear();\n+    }\n+\n+    // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set\n+    // must not survive a session; clear it on logout/relog (this runs before\n+    // reconnecting to a new session and again on quit).\n+    LLPipeline::clearVolumetricShafts();\n+\n+    // Prism capture/display definitions are viewer-local session state. Never\n+    // carry object UUID bindings into a different account or relog session;\n+    // saved Director scene files remain available for an explicit reload.\n+    LLPrismLens::clearDesignations();\n+\n+    // Session derenders (objects and avatars) belong to this session only; a\n+    // relog in the same process must not carry them over. Permanent entries stay.\n+    if (ALDerenderList::instanceExists())\n+    {\n+        ALDerenderList::getInstance()->purgeSessionEntries();\n+    }\n+\n     // save inventory if appropriate\n     if (gInventory.isInventoryUsable()\n         && gAgent.getID().notNull()) // Shouldn't be null at this stage\n",
           "purpose": "Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "4730dbf793b",
               "subject": "Gaze hot targets fix round 1: picked-spot fixation, lock without dead band, safe targets, per-mode key migration"
@@ -13578,10 +13635,6 @@
             {
               "commit": "9894c90e43b",
               "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -87088,8 +87141,10 @@
     },
     {
       "features": [
+        "actor-path",
         "capture-sidecar",
         "clones",
+        "gaze",
         "stepped-animation"
       ],
       "hunks": [
@@ -87097,12 +87152,15 @@
           "base_count": 6,
           "base_start": 25,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
           ],
           "features": [
+            "actor-path",
             "clones",
             "stepped-animation"
           ],
@@ -87113,14 +87171,18 @@
           "git_context": "",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 8,
-          "head_end": 32,
+          "head_count": 9,
+          "head_end": 33,
           "head_start": 25,
-          "id": "indra/newview/llviewerpartsim.cpp@25,8",
-          "patch": "  */\n \n #include \"llviewerprecompiledheaders.h\"\n+#include \"alsteppedanimruntime.h\"\n+#include \"llpresentationtime.h\"    // [Temporal Capture]\n \n #include \"llviewerpartsim.h\"\n \n",
+          "id": "indra/newview/llviewerpartsim.cpp@25,9",
+          "patch": "  */\n \n #include \"llviewerprecompiledheaders.h\"\n+#include \"alsteppedanimruntime.h\"\n+#include \"llactormover.h\"\n+#include \"llpresentationtime.h\"    // [Temporal Capture]\n \n #include \"llviewerpartsim.h\"\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87136,10 +87198,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87150,7 +87208,9 @@
           "base_count": 12,
           "base_start": 43,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -87164,13 +87224,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 16,
-          "head_end": 60,
-          "head_start": 45,
-          "id": "indra/newview/llviewerpartsim.cpp@45,16",
+          "head_end": 61,
+          "head_start": 46,
+          "id": "indra/newview/llviewerpartsim.cpp@46,16",
           "patch": " #include \"llvoavatarself.h\"\n #include \"llvovolume.h\"\n \n+#include <algorithm>\n+\n const F32 PART_SIM_BOX_SIDE = 16.f;\n \n //static\n S32 LLViewerPartSim::sMaxParticleCount = 0;\n S32 LLViewerPartSim::sParticleCount = 0;\n S32 LLViewerPartSim::sParticleCount2 = 0;\n+U64 LLViewerPartSim::sStepParticleEpoch = 1;\n+U64 LLViewerPartSim::sStepParticleFrame = 0;\n // This controls how greedy individual particle burst sources are allowed to be, and adapts according to how near the particle-count limit we are.\n F32 LLViewerPartSim::sParticleAdaptiveRate = 0.0625f;\n F32 LLViewerPartSim::sParticleBurstRate = 0.5f;\n",
           "purpose": "Edits LLViewerPartSim",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87186,10 +87250,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "unknown-review",
@@ -87200,7 +87260,9 @@
           "base_count": 6,
           "base_start": 72,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -87218,13 +87280,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 30,
-          "head_end": 107,
-          "head_start": 78,
-          "id": "indra/newview/llviewerpartsim.cpp@78,30",
+          "head_end": 108,
+          "head_start": 79,
+          "id": "indra/newview/llviewerpartsim.cpp@79,30",
           "patch": "     return llclamp(desired_size, scale.magVec()*0.5f, PART_SIM_BOX_SIDE*2);\n }\n \n+// Bounce rule against the source's height plane; shared by the per-substep test\n+// and the ballistic tail so a long hold can never leave a particle below the plane.\n+static void bounce_off_source_plane(LLViewerPart* part)\n+{\n+    F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];\n+    if (dz < 0)\n+    {\n+        part->mPosAgent.mV[VZ] += -2.f*dz;\n+        part->mVelocity.mV[VZ] *= -0.75f;\n+    }\n+}\n+\n+// Long-tail variant: a mirror would reflect the whole fall back above the source. Land the\n+// particle on the plane instead, with the same velocity reflection as bounce_off_source_plane.\n+static void land_on_source_plane(LLViewerPart* part)\n+{\n+    F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];\n+    if (dz < 0)\n+    {\n+        part->mPosAgent.mV[VZ] -= dz;\n+        part->mVelocity.mV[VZ] *= -0.75f;\n+    }\n+}\n+\n LLViewerPart::LLViewerPart() :\n     mPartID(0),\n     mLastUpdateTime(0.f),\n",
           "purpose": "Comment evidence: Bounce rule against the source's height plane; shared by the per-substep test and the ballistic tail so a long hold can never leave a particle below the plane. Long-tail variant: a mirror would reflect the whole fall back above the source. Land the particle on the plane instead, ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87240,10 +87306,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "unknown-review",
@@ -87254,7 +87316,9 @@
           "base_count": 6,
           "base_start": 247,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87280,13 +87344,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 54,
-          "head_end": 330,
-          "head_start": 277,
-          "id": "indra/newview/llviewerpartsim.cpp@277,54",
+          "head_end": 331,
+          "head_start": 278,
+          "id": "indra/newview/llviewerpartsim.cpp@278,54",
           "patch": " }\n \n \n+const ALSteppedAnim::FrameDecision* LLViewerPartSource::particleStepDecision(U64 frame, U64& actor_epoch)\n+{\n+    if (mStepDecisionFrame != frame)\n+    {\n+        mStepDecisionFrame = frame;\n+        mHasStepDecision = false;\n+        mStepActorEpoch = 0;\n+        LLViewerObject* object = mSourceObjectp.get();\n+        if (object && !object->isDead() && ALSteppedAnim::particleSourceEligible(\n+                object->isAvatar(), object->isAttachment(), object->isHUDAttachment()))\n+        {\n+            LLVOAvatar* avatar = object->isAvatar() ? object->asAvatar() : object->getAvatar();\n+            const ALSteppedAnim::FrameDecision* decision =\n+                ALSteppedAnimRuntime::instance().decisionFor(avatar, &mStepActorEpoch);\n+            if (decision)\n+            {\n+                mStepDecision = *decision;\n+                mHasStepDecision = true;\n+            }\n+        }\n+    }\n+    actor_epoch = mStepActorEpoch;\n+    return mHasStepDecision ? &mStepDecision : nullptr;\n+}\n+\n+bool LLViewerPartGroup::hasSteppedParticles()\n+{\n+    if (mHud) return false;\n+    for (const ParticleSourceCount& entry : mParticleSources)\n+    {\n+        U64 actor_epoch = 0;\n+        const ALSteppedAnim::FrameDecision* decision =\n+            entry.source->particleStepDecision(LLViewerPartSim::sStepParticleFrame, actor_epoch);\n+        if (decision && decision->hold) return true;\n+    }\n+    return false;\n+}\n+\n+void LLViewerPartGroup::removeParticleSource(LLViewerPartSource* source)\n+{\n+    for (auto it = mParticleSources.begin(); it != mParticleSources.end(); ++it)\n+        if (it->source == source)\n+        {\n+            if (--it->count == 0) mParticleSources.erase(it);\n+            return;\n+        }\n+}\n+\n bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size)\n {\n     if (part->mFlags & LLPartData::LL_PART_HUD && !mHud)\n",
           "purpose": "Edits ALSteppedAnim, LLViewerPartSource, LLViewerObject, LLVOAvatar, ALSteppedAnimRuntime, LLViewerPartGroup, LLViewerPartSim",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87302,10 +87370,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87316,7 +87380,9 @@
           "base_count": 6,
           "base_start": 266,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -87334,13 +87400,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 357,
-          "head_start": 344,
-          "id": "indra/newview/llviewerpartsim.cpp@344,14",
+          "head_end": 358,
+          "head_start": 345,
+          "id": "indra/newview/llviewerpartsim.cpp@345,14",
           "patch": " \n     gPipeline.markRebuild(mVOPartGroupp->mDrawable, LLDrawable::REBUILD_ALL);\n \n+    LLViewerPartSource* source = part->mPartSourcep.get();\n+    if (source)\n+    {\n+        auto it = std::find_if(mParticleSources.begin(), mParticleSources.end(),\n+            [source](const ParticleSourceCount& entry) { return entry.source == source; });\n+        if (it == mParticleSources.end()) mParticleSources.push_back({source, 1});\n+        else ++it->count;\n+    }\n     mParticles.push_back(part);\n     part->mSkipOffset=mSkippedTime;\n     LLViewerPartSim::incPartCount(1);\n",
           "purpose": "Edits LLViewerPartSource",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87356,10 +87426,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "unknown-review",
@@ -87370,7 +87436,9 @@
           "base_count": 7,
           "base_start": 273,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -87384,13 +87452,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 365,
-          "head_start": 359,
-          "id": "indra/newview/llviewerpartsim.cpp@359,7",
+          "head_end": 366,
+          "head_start": 360,
+          "id": "indra/newview/llviewerpartsim.cpp@360,7",
           "patch": " }\n \n \n-void LLViewerPartGroup::updateParticles(const F32 lastdt)\n+void LLViewerPartGroup::updateParticles(const F32 lastdt, F32 step_dt, bool step_only)\n {\n     F32 dt;\n \n",
           "purpose": "Edits LLViewerPartGroup",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87406,10 +87478,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "unknown-review",
@@ -87420,7 +87488,9 @@
           "base_count": 85,
           "base_start": 289,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87463,13 +87533,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 173,
-          "head_end": 547,
-          "head_start": 375,
-          "id": "indra/newview/llviewerpartsim.cpp@375,173",
+          "head_end": 548,
+          "head_start": 376,
+          "id": "indra/newview/llviewerpartsim.cpp@376,173",
           "patch": "         LLVector3 a(0.f, 0.f, 0.f);\n         LLViewerPart* part = mParticles[i] ;\n \n+        bool step_capture = false;\n         dt = lastdt + mSkippedTime - part->mSkipOffset;\n-        part->mSkipOffset = 0.f;\n+        if (ALSteppedAnimRuntime::sStepParticles)\n+        {\n+            U64 actor_epoch = 0;\n+            const ALSteppedAnim::FrameDecision* decision = !mHud && part->mPartSourcep.notNull()\n+                ? part->mPartSourcep->particleStepDecision(LLViewerPartSim::sStepParticleFrame, actor_epoch)\n+                : nullptr;\n+            const bool stepped = decision && decision->hold;\n+            if (step_only && !stepped)\n+            {\n+                ++i;\n+                continue;\n+            }\n+            if (stepped)\n+            {\n+                // Offscreen groups normally update only every eighth frame.\n+                // Consume real elapsed time every frame for stepped particles;\n+                // mSkipOffset prevents those extra passes being counted again.\n+                // A capture may transfer this particle to a later group in this\n+                // pass. Claim the frame before changing age, position or debt.\n+                if (!ALSteppedAnim::claimParticleFrame(part->mStepDebt, LLViewerPartSim::sStepParticleFrame))\n+                {\n+                    part->mSkipOffset = step_only ? mSkippedTime + step_dt : 0.f;\n+                    ++i;\n+                    continue;\n+                }\n+                dt = ALSteppedAnim::particleGroupDt(step_dt, mSkippedTime, part->mSkipOffset, step_only);\n+                step_capture = decision->capture;\n+            }\n+            else\n+            {\n+                part->mSkipOffset = 0.f;\n+            }\n+            dt = ALSteppedAnim::particleStepDt(dt, part->mStepDebt,\n+                LLViewerPartSim::sStepParticleEpoch, decision, actor_epoch);\n+            if (decision && decision->hold && !decision->capture)\n+            {\n+                ++i;\n+                continue;\n+            }\n+        }\n+        else\n+        {\n+            part->mSkipOffset = 0.f;\n+        }\n \n         // Update current time\n         const F32 cur_time = part->mLastUpdateTime + dt;\n         const F32 frac = cur_time / part->mMaxAge;\n \n-        // \"Drift\" the object based on the source object\n-        if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)\n+        ALSteppedAnim::ParticleSubsteps integration;\n+        integration.dt = dt;\n+        if (step_capture && (part->mFlags & (LLPartData::LL_PART_WIND_MASK |\n+                LLPartData::LL_PART_TARGET_POS_MASK | LLPartData::LL_PART_BOUNCE_MASK)))\n+            integration = ALSteppedAnim::particleSubsteps(dt,\n+                (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK) != 0);\n+        if (integration.ballisticDt > 0.f)\n         {\n-            part->mPosAgent = part->mPartSourcep->mPosAgent;\n-            part->mPosAgent += part->mPosOffset;\n+            // Long impact holds can exceed the bounded force-integration budget.\n+            // Preserve the full ballistic interval and lifetime even at that cap.\n+            const F32 tail = integration.ballisticDt;\n+            const LLVector3 displacement = tail * part->mVelocity + .5f * tail * tail * part->mAccel;\n+            const bool follow_src = (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) != 0;\n+            const bool bounce = (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK) != 0;\n+            if (follow_src && bounce)\n+            {\n+                // Carry the source's current translation into the tail before the bounce test.\n+                // Otherwise a source that moved during the hold reads as a fall through the plane.\n+                part->mPosOffset += displacement;\n+                part->mPosAgent = part->mPartSourcep->mPosAgent;\n+                part->mPosAgent += part->mPosOffset;\n+            }\n+            else\n+            {\n+                part->mPosAgent += displacement;\n+                if (follow_src) part->mPosOffset += displacement;\n+            }\n+            part->mVelocity += tail * part->mAccel;\n+            part->mLastUpdateTime += tail;\n+            // The tail ignores the bounce plane, so land on it afterwards (no mirrored multi-metre rebound).\n+            if (bounce)\n+            {\n+                land_on_source_plane(part);\n+                if (follow_src)\n+                {\n+                    part->mPosOffset = part->mPosAgent;\n+                    part->mPosOffset -= part->mPartSourcep->mPosAgent;\n+                }\n+            }\n         }\n-\n-        // Do a custom callback if we have one...\n-        if (part->mVPCallback)\n+        for (U32 substep = 0; substep < integration.count; ++substep)\n         {\n-            (*part->mVPCallback)(*part, dt);\n-        }\n+            dt = integration.dt;\n+            // \"Drift\" the object based on the source object\n+            if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)\n+            {\n+                part->mPosAgent = part->mPartSourcep->mPosAgent;\n+                part->mPosAgent += part->mPosOffset;\n+            }\n \n-        if (part->mFlags & LLPartData::LL_PART_WIND_MASK)\n-        {\n-            part->mVelocity *= 1.f - 0.1f*dt;\n-            part->mVelocity += 0.1f*dt*regionp->mWind.getVelocity(regionp->getPosRegionFromAgent(part->mPosAgent));\n-        }\n+            // Do a custom callback if we have one...\n+            if (part->mVPCallback)\n+            {\n+                (*part->mVPCallback)(*part, dt);\n+            }\n \n-        // Now do interpolation towards a target\n-        if (part->mFlags & LLPartData::LL_PART_TARGET_POS_MASK)\n-        {\n-            F32 remaining = part->mMaxAge - part->mLastUpdateTime;\n-            F32 step = dt / remaining;\n+            if (part->mFlags & LLPartData::LL_PART_WIND_MASK)\n+            {\n+                part->mVelocity *= 1.f - 0.1f*dt;\n+                part->mVelocity += 0.1f*dt*regionp->mWind.getVelocity(regionp->getPosRegionFromAgent(part->mPosAgent));\n+            }\n \n-            step = llclamp(step, 0.f, 0.1f);\n-            step *= 5.f;\n-            // we want a velocity that will result in reaching the target in the\n-            // Interpolate towards the target.\n-            LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPosAgent;\n+            // Now do interpolation towards a target\n+            if (part->mFlags & LLPartData::LL_PART_TARGET_POS_MASK)\n+            {\n+                F32 remaining = step_capture\n+                    ? llmax(part->mMaxAge - part->mLastUpdateTime, dt)\n+                    : part->mMaxAge - part->mLastUpdateTime;\n+                F32 step = dt / remaining;\n \n-            delta_pos /= remaining;\n+                step = llclamp(step, 0.f, 0.1f);\n+                step *= 5.f;\n+                // we want a velocity that will result in reaching the target in the\n+                // Interpolate towards the target.\n+                LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPosAgent;\n \n-            part->mVelocity *= (1.f - step);\n-            part->mVelocity += step*delta_pos;\n-        }\n+                delta_pos /= remaining;\n \n+                part->mVelocity *= (1.f - step);\n+                part->mVelocity += step*delta_pos;\n+            }\n \n-        if (part->mFlags & LLPartData::LL_PART_TARGET_LINEAR_MASK)\n-        {\n-            LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPartSourcep->mPosAgent;\n-            part->mPosAgent = part->mPartSourcep->mPosAgent;\n-            part->mPosAgent += frac*delta_pos;\n-            part->mVelocity = delta_pos;\n-        }\n-        else\n-        {\n-            // Do velocity interpolation\n-            part->mPosAgent += dt*part->mVelocity;\n-            part->mPosAgent += 0.5f*dt*dt*part->mAccel;\n-            part->mVelocity += part->mAccel*dt;\n-        }\n \n-        // Do a bounce test\n-        if (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK)\n-        {\n-            // Need to do point vs. plane check...\n-            // For now, just check relative to object height...\n-            F32 dz = part->mPosAgent.mV[VZ] - part->mPartSourcep->mPosAgent.mV[VZ];\n-            if (dz < 0)\n+            if (part->mFlags & LLPartData::LL_PART_TARGET_LINEAR_MASK)\n             {\n-                part->mPosAgent.mV[VZ] += -2.f*dz;\n-                part->mVelocity.mV[VZ] *= -0.75f;\n+                LLVector3 delta_pos = part->mPartSourcep->mTargetPosAgent - part->mPartSourcep->mPosAgent;\n+                part->mPosAgent = part->mPartSourcep->mPosAgent;\n+                const F32 step_frac = integration.count > 1\n+                    ? (part->mLastUpdateTime + dt) / part->mMaxAge : frac;\n+                part->mPosAgent += step_frac*delta_pos;\n+                part->mVelocity = delta_pos;\n+            }\n+            else\n+            {\n+                // Do velocity interpolation\n+                part->mPosAgent += dt*part->mVelocity;\n+                part->mPosAgent += 0.5f*dt*dt*part->mAccel;\n+                part->mVelocity += part->mAccel*dt;\n             }\n-        }\n \n+            // Do a bounce test\n+            if (part->mFlags & LLPartData::LL_PART_BOUNCE_MASK)\n+            {\n+                // Need to do point vs. plane check...\n+                // For now, just check relative to object height...\n+                bounce_off_source_plane(part);\n+            }\n \n-        // Reset the offset from the source position\n-        if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)\n-        {\n-            part->mPosOffset = part->mPosAgent;\n-            part->mPosOffset -= part->mPartSourcep->mPosAgent;\n+\n+            // Reset the offset from the source position\n+            if (part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK)\n+            {\n+                part->mPosOffset = part->mPosAgent;\n+                part->mPosOffset -= part->mPartSourcep->mPosAgent;\n+            }\n+            part->mLastUpdateTime += dt;\n         }\n \n         // Do color interpolation\n",
           "purpose": "Comment evidence: Offscreen groups normally update only every eighth frame. Consume real elapsed time every frame for stepped particles; mSkipOffset prevents those extra passes being counted again. A capture may transfer this particle to a later group in this pass. Claim the frame before changing ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87485,10 +87559,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87501,7 +87571,9 @@
           "base_count": 10,
           "base_start": 397,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87520,13 +87592,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 581,
-          "head_start": 571,
-          "id": "indra/newview/llviewerpartsim.cpp@571,11",
+          "head_end": 582,
+          "head_start": 572,
+          "id": "indra/newview/llviewerpartsim.cpp@572,11",
           "patch": " \n \n         // Kill dead particles (either flagged dead, or too old)\n-        if ((part->mLastUpdateTime > part->mMaxAge) || (LLViewerPart::LL_PART_DEAD_MASK == part->mFlags))\n+        if (ALSteppedAnim::particleAgeExpired(part->mLastUpdateTime, part->mMaxAge) || (LLViewerPart::LL_PART_DEAD_MASK == part->mFlags))\n         {\n             mParticles[i] = mParticles.back() ;\n             mParticles.pop_back() ;\n+            removeParticleSource(part->mPartSourcep.get());\n             delete part ;\n         }\n         else\n",
           "purpose": "Edits LLViewerPart, LL_PART_DEAD_MASK, ALSteppedAnim",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87542,10 +87618,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87556,7 +87628,9 @@
           "base_count": 6,
           "base_start": 409,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -87570,13 +87644,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 590,
-          "head_start": 584,
-          "id": "indra/newview/llviewerpartsim.cpp@584,7",
+          "head_end": 591,
+          "head_start": 585,
+          "id": "indra/newview/llviewerpartsim.cpp@585,7",
           "patch": "             if (!posInGroup(part->mPosAgent, desired_size))\n             {\n                 // Transfer particles between groups\n+                removeParticleSource(part->mPartSourcep.get());\n                 LLViewerPartSim::getInstance()->put(part) ;\n                 mParticles[i] = mParticles.back() ;\n                 mParticles.pop_back() ;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87592,10 +87670,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "unknown-review",
@@ -87606,7 +87680,9 @@
           "base_count": 6,
           "base_start": 495,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87624,13 +87700,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 677,
-          "head_start": 671,
-          "id": "indra/newview/llviewerpartsim.cpp@671,7",
+          "head_end": 678,
+          "head_start": 672,
+          "id": "indra/newview/llviewerpartsim.cpp@672,7",
           "patch": " //enable/disable particle system\n void LLViewerPartSim::enable(bool enabled)\n {\n+    if (!enabled) clearStepAnimDeferredSources();\n     if(!enabled && sMaxParticleCount > 0)\n     {\n         sMaxParticleCount = 0; //disable\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87646,10 +87726,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87660,7 +87736,9 @@
           "base_count": 6,
           "base_start": 522,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87676,13 +87754,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 705,
-          "head_start": 699,
-          "id": "indra/newview/llviewerpartsim.cpp@699,7",
+          "head_end": 706,
+          "head_start": 700,
+          "id": "indra/newview/llviewerpartsim.cpp@700,7",
           "patch": " \n     // Kill all of the sources\n     mViewerPartSources.clear();\n+    clearStepAnimDeferredSources();\n }\n \n //static\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87698,10 +87780,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87712,7 +87790,9 @@
           "base_count": 13,
           "base_start": 662,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87733,13 +87813,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 35,
-          "head_end": 874,
-          "head_start": 840,
-          "id": "indra/newview/llviewerpartsim.cpp@840,35",
+          "head_end": 875,
+          "head_start": 841,
+          "id": "indra/newview/llviewerpartsim.cpp@841,35",
           "patch": " \n     static LLFrameTimer update_timer;\n \n-    const F32 dt = llmin(update_timer.getElapsedTimeAndResetF32(), 0.1f);\n+    // [Temporal Capture] Particles drive: advance the ENTIRE particle time domain\n+    // (emission, source age, particle birth/age/max-age, velocity, wind, target,\n+    // bounce, color/scale/glow fades AND the skip accounting below) on the\n+    // presentation clock, so slow-mo and fast are coherent. Scale is applied ONCE\n+    // here (single-owner rule); every downstream consumer -- source update(dt),\n+    // group updateParticles(dt * visirate), mSkippedTime -- is byte-identical in\n+    // structure, now in presentation units. The private wall timer is still reset\n+    // every iteration, so 0x builds no thaw debt and leaving temporal mode never\n+    // jumps. Capped at 0.1s/iteration exactly like stock (matches the shared\n+    // clock's own per-frame cap). See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md 4.4.\n+    F32 dt = llmin(update_timer.getElapsedTimeAndResetF32(), 0.1f);\n+    if (LLPresentationTime::drives(LLTemporalFeature::PARTICLES))\n+    {\n+        // Presentation-scaled interval, capped at the uniform 0.25s subsystem hitch\n+        // cap (the sim is not built to integrate an arbitrarily large single step).\n+        // Coupling with gait is exact while the per-frame delta stays under the cap\n+        // (normal operation at any scale); it degrades only on a genuine stall, no\n+        // worse than stock. 0x -> 0 holds; the private timer above is still reset\n+        // (no thaw debt).\n+        dt = llmin((F32)LLPresentationTime::presentationDelta(), 0.25f);\n+    }\n \n     if (!(gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_PARTICLES)))\n     {\n         return;\n     }\n \n+    if (ALSteppedAnimRuntime::sStepParticles) ++sStepParticleFrame;\n+\n     // Start at a random particle system so the same\n     // particle system doesn't always get first pick at the\n     // particles.  Theoretically we'd want to do this in distance\n",
           "purpose": "Comment evidence: [Temporal Capture] Particles drive: advance the ENTIRE particle time domain (emission, source age, particle birth/age/max-age, velocity, wind, target, bounce, color/scale/glow fades AND the skip accounting below) on the presentation clock, so slow-mo and fast are coherent. Scale ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87755,10 +87839,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87769,7 +87849,9 @@
           "base_count": 10,
           "base_start": 697,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87790,13 +87872,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 71,
-          "head_end": 967,
-          "head_start": 897,
-          "id": "indra/newview/llviewerpartsim.cpp@897,71",
+          "head_end": 968,
+          "head_start": 898,
+          "id": "indra/newview/llviewerpartsim.cpp@898,71",
           "patch": "             i = count - 1;\n         }\n \n+        const U8 prior_step_hold = mViewerPartSources[i]->mSteppedHold;\n+        mViewerPartSources[i]->mSteppedHold = 0;\n         if (!mViewerPartSources[i]->isDead())\n         {\n             bool upd = true;\n+            F32 source_dt = dt;\n             LLViewerObject* vobj = mViewerPartSources[i]->mSourceObjectp;\n+            if (!ALSteppedAnimRuntime::sActive && prior_step_hold == 1)\n+            {\n+                source_dt += mViewerPartSources[i]->mStepDebt;\n+                mViewerPartSources[i]->mStepDebt = 0.f;\n+            }\n+\n+            // [BDMerge FilmClean] Viewer EFFECT particles are UI, not scene\n+            // content: the sparkle spiral around an avatar on a script touch or\n+            // an inventory offer, and the selection beam. They are spawned by\n+            // LLHUDEffectSpiral (llhudeffecttrail.cpp) which registers a real\n+            // LLViewerPartSourceSpiral with this simulator -- so they render\n+            // through the ordinary particle pool and completely BYPASS the\n+            // RENDER_DEBUG_FEATURE_UI gate that hides LLHUDObject::renderAll().\n+            // Hiding the UI to film therefore hid the effect objects but left\n+            // their particles spraying over the shot.\n+            //\n+            // Gate on source TYPE, not owner: effects raised by OTHER avatars\n+            // arrive over the network and spawn here too, so an owner-based\n+            // test would only suppress our own.\n+            //\n+            // LL_PART_SOURCE_SCRIPT is deliberately NOT included -- that is\n+            // in-world llParticleSystem content, i.e. the set dressing we are\n+            // filming.\n+            //\n+            // ⚠️ THE TYPE ENUM IS INVERTED IN STOCK CODE. Verified:\n+            //   LLViewerPartSourceSpiral ctor passes LL_PART_SOURCE_CHAT\n+            //                                       (llviewerpartsource.cpp:581)\n+            //   LLViewerPartSourceChat   ctor passes LL_PART_SOURCE_SPIRAL\n+            //                                       (llviewerpartsource.cpp:838)\n+            // Both values are listed below, so this gate is correct TODAY only\n+            // because it covers the pair. Do NOT \"tidy\" one of them away, and if\n+            // the constructors are ever corrected, re-verify this block.\n+            //\n+            // setDead() rather than merely skipping update(): LLViewerPartSourceChat\n+            // owns its own ~2s lifetime and calls setDead() from INSIDE update().\n+            // Pausing its update would freeze that timer, so every object-chat\n+            // event during a hidden-UI take would accumulate a permanently-live\n+            // source, and un-hiding the UI would fire the whole retained backlog\n+            // at once. Killing them is also simply what we want -- the loop's\n+            // isDead() check immediately below reclaims the entry.\n+            //\n+            // Particles ALREADY emitted are unaffected: mViewerPartGroups\n+            // updateParticles() still runs, so they finish their own lifetimes\n+            // and fade out instead of popping.\n+            static LLCachedControl<bool> hide_effect_particles(\n+                gSavedSettings, \"BDMergeHideEffectParticlesWithUI\", true);\n+            if (hide_effect_particles &&\n+                !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))\n+            {\n+                const U32 src_type = mViewerPartSources[i]->getType();\n+                if (src_type == LLViewerPartSource::LL_PART_SOURCE_SPIRAL ||\n+                    src_type == LLViewerPartSource::LL_PART_SOURCE_BEAM ||\n+                    src_type == LLViewerPartSource::LL_PART_SOURCE_CHAT)\n+                {\n+                    mViewerPartSources[i]->setDead();\n+                    upd = false;\n+                }\n+            }\n \n             if (vobj && vobj->isAvatar() && ((LLVOAvatar*)vobj)->isInMuteList())\n             {\n",
           "purpose": "Comment evidence: [BDMerge FilmClean] Viewer EFFECT particles are UI, not scene content: the sparkle spiral around an avatar on a script touch or an inventory offer, and the selection beam. They are spawned by LLHUDEffectSpiral (llhudeffecttrail.cpp) which registers a real LLViewerPartSourceSpiral",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87812,10 +87898,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87829,7 +87911,9 @@
           "base_count": 7,
           "base_start": 734,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87852,13 +87936,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 37,
-          "head_end": 1031,
-          "head_start": 995,
-          "id": "indra/newview/llviewerpartsim.cpp@995,37",
+          "head_end": 1032,
+          "head_start": 996,
+          "id": "indra/newview/llviewerpartsim.cpp@996,37",
           "patch": " \n             if (upd)\n             {\n-                mViewerPartSources[i]->update(dt);\n+                if (ALSteppedAnimRuntime::sActive && vobj)\n+                {\n+                    LLVOAvatar* step_avatar = vobj->getAvatar();\n+                    const ALSteppedAnim::FrameDecision* decision =\n+                        ALSteppedAnimRuntime::instance().decisionFor(step_avatar);\n+                    if (!decision && prior_step_hold == 1)\n+                    {\n+                        source_dt += mViewerPartSources[i]->mStepDebt;\n+                        mViewerPartSources[i]->mStepDebt = 0.f;\n+                    }\n+                    else if (decision && ALSteppedAnimRuntime::instance().holdsAttachmentFX(step_avatar))\n+                    {\n+                        mViewerPartSources[i]->mSteppedHold = 1;\n+                        mViewerPartSources[i]->mStepDebt += source_dt;\n+                        upd = false;\n+                    }\n+                    else if (decision)\n+                    {\n+                        source_dt += mViewerPartSources[i]->mStepDebt;\n+                        mViewerPartSources[i]->mStepDebt = 0.f;\n+                        if (vobj->isAttachment())\n+                        {\n+                            StepAnimDeferredSource deferred;\n+                            deferred.mSource = mViewerPartSources[i];\n+                            deferred.mDelta = source_dt;\n+                            mStepAnimDeferredSources.push_back(deferred);\n+                            upd = false;\n+                        }\n+                    }\n+                }\n+                if (upd) mViewerPartSources[i]->update(source_dt);\n             }\n         }\n \n",
           "purpose": "Edits ALSteppedAnimRuntime, LLVOAvatar, ALSteppedAnim",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87874,10 +87962,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87888,7 +87972,9 @@
           "base_count": 7,
           "base_start": 772,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -87902,13 +87988,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1069,
-          "head_start": 1063,
-          "id": "indra/newview/llviewerpartsim.cpp@1063,7",
+          "head_end": 1070,
+          "head_start": 1064,
+          "id": "indra/newview/llviewerpartsim.cpp@1064,7",
           "patch": "             {\n                 gPipeline.markRebuild(vobj->mDrawable, LLDrawable::REBUILD_ALL);\n             }\n-            mViewerPartGroups[i]->updateParticles(dt * visirate);\n+            mViewerPartGroups[i]->updateParticles(dt * visirate, dt);\n             mViewerPartGroups[i]->mSkippedTime=0.0f;\n             if (!mViewerPartGroups[i]->getCount())\n             {\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87924,10 +88014,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "unknown-review",
@@ -87938,7 +88024,9 @@
           "base_count": 6,
           "base_start": 784,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -87957,13 +88045,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 18,
-          "head_end": 1092,
-          "head_start": 1075,
-          "id": "indra/newview/llviewerpartsim.cpp@1075,18",
+          "head_end": 1093,
+          "head_start": 1076,
+          "id": "indra/newview/llviewerpartsim.cpp@1076,18",
           "patch": "         }\n         else\n         {\n+            if (ALSteppedAnimRuntime::sStepParticles && mViewerPartGroups[i]->hasSteppedParticles())\n+            {\n+                mViewerPartGroups[i]->updateParticles(dt, dt, true);\n+                if (!mViewerPartGroups[i]->getCount())\n+                {\n+                    delete mViewerPartGroups[i];\n+                    mViewerPartGroups.erase(mViewerPartGroups.begin() + i);\n+                    --i;\n+                    --count;\n+                    continue;\n+                }\n+            }\n             mViewerPartGroups[i]->mSkippedTime+=dt;\n         }\n \n",
           "purpose": "Edits ALSteppedAnimRuntime",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -87979,10 +88071,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -87993,12 +88081,16 @@
           "base_count": 6,
           "base_start": 810,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
           ],
           "features": [
+            "actor-path",
+            "gaze",
             "stepped-animation"
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
@@ -88009,22 +88101,27 @@
           ],
           "git_context": "void LLViewerPartSim::updateSimulation()",
           "guard_evidence": [
-            "if (ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;",
+            "if (!hot_gaze && ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;",
+            "if (!hot_gaze)",
             "if (deferred.mSource.notNull() && !deferred.mSource->isDead())",
             "if (!object || object->isDead() || !object->isAttachment()) continue;",
-            "if (!ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;",
+            "if (hot_gaze ? !LLActorMover::instance().hasHotGazePose(avatar) :",
             "if (!(part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) ||",
             "if (!object || !object->isAttachment() ||"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 53,
-          "head_end": 1165,
-          "head_start": 1113,
-          "id": "indra/newview/llviewerpartsim.cpp@1113,53",
-          "patch": "     //LL_INFOS() << \"Particles: \" << sParticleCount << \" Adaptive Rate: \" << sParticleAdaptiveRate << LL_ENDL;\n }\n \n+void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()\n+{\n+    LL_PROFILE_ZONE_NAMED(\"StepAnim::particleSources\");\n+    if (ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;\n+    for (StepAnimDeferredSource& deferred : mStepAnimDeferredSources)\n+    {\n+        if (deferred.mSource.notNull() && !deferred.mSource->isDead())\n+        {\n+            deferred.mSource->update(deferred.mDelta);\n+        }\n+    }\n+    mStepAnimDeferredSources.clear();\n+    for (LLPointer<LLViewerPartSource>& source : mViewerPartSources)\n+    {\n+        LLViewerObject* object = source->mSourceObjectp;\n+        if (!object || object->isDead() || !object->isAttachment()) continue;\n+        LLVOAvatar* avatar = object->getAvatar();\n+        if (!ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;\n+        source->mPosAgent = object->getRenderPosition();\n+    }\n+    // Particle groups ran before the held attachment matrices were applied.\n+    // Re-anchor follow-source particles now so both newly emitted particles and\n+    // existing followers are drawn from the held source in this render window.\n+    for (LLViewerPartGroup* group : mViewerPartGroups)\n+        for (LLViewerPart* part : group->mParticles)\n+        {\n+            if (!(part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) ||\n+                part->mPartSourcep.isNull()) continue;\n+            LLViewerObject* object = part->mPartSourcep->mSourceObjectp;\n+            if (!object || !object->isAttachment() ||\n+                !ALSteppedAnimRuntime::instance().decisionFor(object->getAvatar())) continue;\n+            part->mPosAgent = part->mPartSourcep->mPosAgent + part->mPosOffset;\n+        }\n+}\n+\n+void LLViewerPartSim::clearStepAnimDeferredSources()\n+{\n+    mStepAnimDeferredSources.clear();\n+    clearStepAnimParticleDebt();\n+}\n+\n+void LLViewerPartSim::clearStepAnimParticleDebt()\n+{\n+    // Lazy invalidation also covers particles retained by a dead source.\n+    ++sStepParticleEpoch;\n+}\n+\n void LLViewerPartSim::updatePartBurstRate()\n {\n     if (!(LLDrawable::getCurrentFrame() & 0xf))\n",
-          "purpose": "Comment evidence: Particle groups ran before the held attachment matrices were applied. Re-anchor follow-source particles now so both newly emitted particles and existing followers are drawn from the held source in this render window. Lazy invalidation also covers particles retained by a dead sour",
+          "head_count": 60,
+          "head_end": 1173,
+          "head_start": 1114,
+          "id": "indra/newview/llviewerpartsim.cpp@1114,60",
+          "patch": "     //LL_INFOS() << \"Particles: \" << sParticleCount << \" Adaptive Rate: \" << sParticleAdaptiveRate << LL_ENDL;\n }\n \n+void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions(bool hot_gaze)\n+{\n+    LL_PROFILE_ZONE_NAMED(\"StepAnim::particleSources\");\n+    if (!hot_gaze && ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;\n+    // Deferred emission belongs only to the existing Stepped pass. The late\n+    // hot pass refreshes positions/followers without advancing or emitting.\n+    if (!hot_gaze)\n+    {\n+        for (StepAnimDeferredSource& deferred : mStepAnimDeferredSources)\n+        {\n+            if (deferred.mSource.notNull() && !deferred.mSource->isDead())\n+            {\n+                deferred.mSource->update(deferred.mDelta);\n+            }\n+        }\n+        mStepAnimDeferredSources.clear();\n+    }\n+    for (LLPointer<LLViewerPartSource>& source : mViewerPartSources)\n+    {\n+        LLViewerObject* object = source->mSourceObjectp;\n+        if (!object || object->isDead() || !object->isAttachment()) continue;\n+        LLVOAvatar* avatar = object->getAvatar();\n+        if (hot_gaze ? !LLActorMover::instance().hasHotGazePose(avatar) :\n+            !ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;\n+        source->mPosAgent = object->getRenderPosition();\n+    }\n+    // Particle groups ran before the held attachment matrices were applied.\n+    // Re-anchor follow-source particles now so both newly emitted particles and\n+    // existing followers are drawn from the held source in this render window.\n+    for (LLViewerPartGroup* group : mViewerPartGroups)\n+        for (LLViewerPart* part : group->mParticles)\n+        {\n+            if (!(part->mFlags & LLPartData::LL_PART_FOLLOW_SRC_MASK) ||\n+                part->mPartSourcep.isNull()) continue;\n+            LLViewerObject* object = part->mPartSourcep->mSourceObjectp;\n+            if (!object || !object->isAttachment() ||\n+                (hot_gaze ? !LLActorMover::instance().hasHotGazePose(object->getAvatar()) :\n+                 !ALSteppedAnimRuntime::instance().decisionFor(object->getAvatar()))) continue;\n+            part->mPosAgent = part->mPartSourcep->mPosAgent + part->mPosOffset;\n+        }\n+}\n+\n+void LLViewerPartSim::clearStepAnimDeferredSources()\n+{\n+    mStepAnimDeferredSources.clear();\n+    clearStepAnimParticleDebt();\n+}\n+\n+void LLViewerPartSim::clearStepAnimParticleDebt()\n+{\n+    // Lazy invalidation also covers particles retained by a dead source.\n+    ++sStepParticleEpoch;\n+}\n+\n void LLViewerPartSim::updatePartBurstRate()\n {\n     if (!(LLDrawable::getCurrentFrame() & 0xf))\n",
+          "purpose": "Comment evidence: Deferred emission belongs only to the existing Stepped pass. The late hot pass refreshes positions/followers without advancing or emitting. Particle groups ran before the held attachment matrices were applied. Re-anchor follow-source particles now so both newly emitted particles ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "02c2587781f",
               "subject": "Director: Light > Actors as a kit page; Light Response safe saving; review fixes"
@@ -88040,10 +88137,6 @@
             {
               "commit": "22dd8e78475",
               "subject": "Stepped (display only): animesh, particles, velocity, cost, real verifier, face on"
-            },
-            {
-              "commit": "360c226ec5f",
-              "subject": "Director: Stepped animation page (\"on twos/threes\") + render-window pose overlay"
             }
           ],
           "scope": "creative-candidate",
@@ -88057,6 +88150,7 @@
     },
     {
       "features": [
+        "gaze",
         "stepped-animation"
       ],
       "hunks": [
@@ -88064,7 +88158,9 @@
           "base_count": 6,
           "base_start": 27,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -88087,6 +88183,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "a04435b1f55",
               "subject": "Checkpoint: stepped particles/texture anim, Gemini audit fixes, Light Response persistence toggle"
@@ -88112,7 +88212,9 @@
           "base_count": 6,
           "base_start": 60,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -88135,6 +88237,10 @@
           "purpose": "Edits ALSteppedAnim",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "a04435b1f55",
               "subject": "Checkpoint: stepped particles/texture anim, Gemini audit fixes, Light Response persistence toggle"
@@ -88160,7 +88266,9 @@
           "base_count": 7,
           "base_start": 97,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -88181,6 +88289,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "a04435b1f55",
               "subject": "Checkpoint: stepped particles/texture anim, Gemini audit fixes, Light Response persistence toggle"
@@ -88206,7 +88318,9 @@
           "base_count": 6,
           "base_start": 124,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -88227,6 +88341,10 @@
           "purpose": "Comment evidence: Raw pointers stay alive through mParticles; counts change only on birth, death or transfer. Offscreen checks walk sources, never the particle pool.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "a04435b1f55",
               "subject": "Checkpoint: stepped particles/texture anim, Gemini audit fixes, Light Response persistence toggle"
@@ -88252,12 +88370,15 @@
           "base_count": 6,
           "base_start": 147,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
           ],
           "features": [
+            "gaze",
             "stepped-animation"
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
@@ -88271,10 +88392,14 @@
           "head_end": 167,
           "head_start": 157,
           "id": "indra/newview/llviewerpartsim.h@157,11",
-          "patch": "     void shift(const LLVector3 &offset);\n \n     void updateSimulation();\n+    void refreshStepAnimAttachmentSourcePositions();\n+    void clearStepAnimDeferredSources();\n+    static void clearStepAnimParticleDebt();\n+    static U64 sStepParticleEpoch;\n+    static U64 sStepParticleFrame;\n \n     void addPartSource(LLPointer<LLViewerPartSource> sourcep);\n \n",
+          "patch": "     void shift(const LLVector3 &offset);\n \n     void updateSimulation();\n+    void refreshStepAnimAttachmentSourcePositions(bool hot_gaze = false);\n+    void clearStepAnimDeferredSources();\n+    static void clearStepAnimParticleDebt();\n+    static U64 sStepParticleEpoch;\n+    static U64 sStepParticleFrame;\n \n     void addPartSource(LLPointer<LLViewerPartSource> sourcep);\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "a04435b1f55",
               "subject": "Checkpoint: stepped particles/texture anim, Gemini audit fixes, Light Response persistence toggle"
@@ -88300,7 +88425,9 @@
           "base_count": 6,
           "base_start": 192,
           "candidate_features_from_subjects": [
-            "director-shell"
+            "clones",
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -88323,6 +88450,10 @@
           "purpose": "Edits LLPointer, LLViewerPartSource",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "c55b1f73a61",
+              "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
+            },
             {
               "commit": "a04435b1f55",
               "subject": "Checkpoint: stepped particles/texture anim, Gemini audit fixes, Light Response persistence toggle"
@@ -160927,6 +161058,7 @@
         "clones",
         "composition",
         "director-shell",
+        "gaze",
         "looks",
         "roto-tron",
         "stepped-animation"
@@ -164405,6 +164537,7 @@
         "clones",
         "composition",
         "director-shell",
+        "gaze",
         "looks",
         "rig",
         "roto-tron",
@@ -166772,6 +166905,7 @@
         "clones",
         "composition",
         "director-shell",
+        "gaze",
         "looks",
         "rig",
         "roto-tron",
@@ -167082,6 +167216,7 @@
       "features": [
         "camera",
         "director-shell",
+        "gaze",
         "rig",
         "stepped-animation"
       ],

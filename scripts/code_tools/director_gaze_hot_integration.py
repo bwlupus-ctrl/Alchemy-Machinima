@@ -50,13 +50,23 @@ struct LLGhostAvatar:LLVOAvatar {
  LLVOAvatar* reflectSource(){auto* o=gObjectList.findObject(mAnimationSourceId);return o?o->asAvatar():nullptr;}
  void captureReflectPositions(){}void buildReflectPartners(LLVOAvatar*);
  void buildTrueMirrorParamSets(){}void stampTrueMirrorFace(LLVOAvatar*){}
- void moveStampedAttachments(){syncStepAnimAttachmentMatrices();}void applyDirectedMirrorStamp(int,int){}
+ void moveStampedAttachments(){syncStepAnimAttachmentMatrices();}
+
+ bool directedMirrorCacheMatches();void clearDirectedMirrorJoints();void buildDirectedMirrorJoints();
+ void restoreDirectedMirrorPose(bool=true);void applyDirectedMirrorStamp(S32,S32,bool=false);
+
  void setGhostFloorPosition(LLVector3,LLVector3){}void setGhostFootPosition(LLVector3){}
  void reassertTiltRotation(){}void refreshVisualBounds(){}
  void stampTrueMirrorSkeleton(LLVOAvatar*,bool,bool=false);void applyTrueMirrorStamp(bool=false);void applyReflectStamp(const LLVector3&,bool=false);
 };
 '''
-    for sig in ('void LLGhostAvatar::buildReflectPartners(', 'void LLGhostAvatar::stampTrueMirrorSkeleton(', 'void LLGhostAvatar::applyTrueMirrorStamp(',
+    header = (nv/'llghostavatar.h').read_text(encoding='utf-8')
+    fields = header[header.index('    bool mDirectedMirror ='):header.index('    bool mDirectedMirrorNeedsReskin =')]
+    fields += '    bool mDirectedMirrorNeedsReskin = false;\n'
+    source = source.replace(' bool directedMirrorCacheMatches();', fields + ' bool directedMirrorCacheMatches();')
+    for sig in ('bool LLGhostAvatar::directedMirrorCacheMatches(', 'void LLGhostAvatar::clearDirectedMirrorJoints(',
+                'void LLGhostAvatar::buildDirectedMirrorJoints(', 'void LLGhostAvatar::restoreDirectedMirrorPose(',
+                'void LLGhostAvatar::applyDirectedMirrorStamp(', 'void LLGhostAvatar::buildReflectPartners(', 'void LLGhostAvatar::stampTrueMirrorSkeleton(', 'void LLGhostAvatar::applyTrueMirrorStamp(',
                 'void LLGhostAvatar::applyReflectStamp('):
         source += method(nv/'llghostavatar.cpp', sig) + '\n'
     source += method(nv/'alghoststudio.cpp','LLGhostAvatar* ALGhostStudio::resolveEntityClone(') + '\n'
@@ -246,6 +256,55 @@ def assertions():
    cast.bodies.erase(clone.id);cast.bodies.erase(chain.id);gObjectList.objects.erase(clone.id);gObjectList.objects.erase(chain.id);
    particles.mViewerPartSources.clear();particles.mViewerPartGroups.clear();
  }
+
+ // R3-1: real pose-flip publication and restoration, source-only and chain.
+ // Nonzero animated bases expose even the zero-weight acquisition copy.
+ for(bool chained:{false,true}){
+   mover.clearHotGazes();step.sActive=false;studio.mInstances.clear();studio.clones.clear();
+   LLGhostAvatar clone,chain;clone.mAnimationSourceId=actor.id;chain.mAnimationSourceId=clone.id;
+   clone.mDirectedMirror=chain.mDirectedMirror=true;
+   ALGhostStudio::Instance first,last;first.mId=LLUUID::generateNewID();first.mEntityId=clone.id;first.mDirectedMirror=true;
+   last.mId=LLUUID::generateNewID();last.mEntityId=chain.id;last.mDirectedMirror=true;
+   studio.clones[clone.id]=&clone;studio.clones[chain.id]=&chain;
+   studio.mInstances={first};if(chained)studio.mInstances.push_back(last);
+   for(auto* body:{static_cast<LLVOAvatar*>(&actor),static_cast<LLVOAvatar*>(&clone),static_cast<LLVOAvatar*>(&chain)}){
+     cast.bodies[body->id]=body;gObjectList.objects[body->id]=body;
+     for(auto& j:body->joints)j.second.rotation={};
+   }
+   now=90;mover.fireHotGaze(actor.id,0,target,.5f,4,.5f,true,true,1,1,.2f);
+   for(double elapsed:{0.,.25,.6,.8,1.05,1.3,1.31}){
+     now=90+elapsed;LLFrameTimer::updateFrameCount();
+     actor.frameStartRestore();clone.frameStartRestore();chain.frameStartRestore();
+     clone.restoreDirectedMirrorPose(false);chain.restoreDirectedMirrorPose(false);
+     actor.getJoint("mHead")->rotation.setEulerAngles(0,0,30*DEG_TO_RAD);
+     actor.getJoint("mWristLeft")->rotation.setEulerAngles(0,0,.4f);
+     actor.getJoint("mWristRight")->rotation.setEulerAngles(0,0,-.2f);
+     if(elapsed==.8)mover.releaseHotGazeSlot(0);
+     copyOrdinaryStudio();
+     const auto base=clone.getJoint("mHead")->getRotation(),chainBase=chain.getJoint("mHead")->getRotation();
+     const auto wrist=clone.getJoint("mWristLeft")->getRotation();
+     require(angular(LLVector3::x_axis*base,LLVector3::x_axis*actor.getJoint("mHead")->getRotation())>50,"flip fixture did not flip animated base");
+     presentFrame();
+     if(elapsed==0.)require(mover.mHotGazes.at(actor.id).mPaint.mGaze.mEnv==0,"acquire boundary not zero weight");
+     const auto expected=ALReflect::rotation(actor.getJoint("mHead")->getRotation());
+     require(angular(LLVector3::x_axis*clone.getJoint("mHead")->getRotation(),LLVector3::x_axis*expected)<.03f,"enabled flip lost inherited hot composition");
+     for(const char* eye:{"mEyeLeft","mEyeRight"}){
+       const auto expectedEye=ALReflect::rotation(actor.getJoint(ALReflect::partner(eye))->getRotation());
+       require(angular(LLVector3::x_axis*clone.getJoint(eye)->getRotation(),LLVector3::x_axis*expectedEye)<.03f,"enabled flip lost inherited eye composition");
+     }
+     if(chained)require(angular(LLVector3::x_axis*chain.getJoint("mHead")->getRotation(),LLVector3::x_axis*actor.getJoint("mHead")->getRotation())<.03f,"enabled flip chain lost composition");
+     require(clone.getJoint("mWristLeft")->getRotation()==wrist,"late flip changed non-gaze pose");
+     if(elapsed>=1.3){
+       require(mover.mHotGazes.empty(),"return boundary not zero weight");
+       require(clone.getJoint("mHead")->getRotation()==base,"zero-weight return changed flipped base");
+     }
+     finishFrame();
+     require(clone.getJoint("mHead")->getRotation()==base,"flip inherited unwind lost ordinary base");
+     if(chained)require(chain.getJoint("mHead")->getRotation()==chainBase,"flip chain unwind lost ordinary base");
+   }
+   mover.clearHotGazes();studio.mInstances.clear();studio.clones.clear();
+   for(auto* body:{&clone,&chain}){cast.bodies.erase(body->id);gObjectList.objects.erase(body->id);}
+ }
  step.sActive=false;mover.clearHotGazes();
  ALGhostStudio::Instance idle;idle.mId=LLUUID::generateNewID();studio.mInstances={idle};
  const int resolves=gObjectList.queries;
@@ -253,5 +312,5 @@ def assertions():
  presentFrame();
  require(gObjectList.queries==resolves,"empty hot frame scanned Studio clones");
  particles.mViewerPartSources.clear();studio.mInstances.clear();
- std::cout<<"PASS: complete production gazePaint, ownership, frame ordering, Studio True Mirror/Reflect chains, Stepped capture/restore, recovered acquire and single-emission particle followers (Stepped ON/OFF)\n";
+ std::cout<<"PASS: complete production gazePaint, ownership, frame ordering, Studio True Mirror/Reflect chains, Stepped capture/restore, recovered acquire, single-emission particle followers (Stepped ON/OFF), real enabled pose-flip source/chain acquire/return boundaries\n";
 '''

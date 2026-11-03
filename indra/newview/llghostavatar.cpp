@@ -2069,11 +2069,37 @@ void LLGhostAvatar::restoreDirectedMirrorPose(bool invalidate_skin)
     }
 }
 
-void LLGhostAvatar::applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive)
+void LLGhostAvatar::applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive, bool hot_gaze)
 {
     if (!ALGhostAnimMirrorMath::eligible(authored_drive, resume_drive, mDirectedMirror, mEntityDriveMode) ||
         isDead() || !isBuilt() || !mRoot) return;
     if (!directedMirrorCacheMatches()) buildDirectedMirrorJoints();
+    if (hot_gaze)
+    {
+        // Recompose only the inherited gaze rotations through the ordinary flip
+        // policy. Keep its pre-flip non-gaze pose and restore snapshots intact.
+        if (!mDirectedMirrorWritten || !mDirectedMirrorPartnersValid) return;
+        auto input = mDirectedMirrorInput;
+        auto output = mDirectedMirrorOutput;
+        const size_t count = input.size();
+        for (size_t i = 0; i < count; ++i)
+            if (LLActorMover::hotGazeCopiesJoint(mDirectedMirrorJoints[i]->getName()))
+                input[i].rotation = mDirectedMirrorJoints[i]->getRotation();
+        size_t bad = count;
+        if (!ALGhostAnimMirrorMath::reflectPose(input.data(), output.data(),
+                mDirectedMirrorPartners.data(), nullptr, count, bad) ||
+            !ALGhostAnimMirrorMath::preserveGaze(input.data(), output.data(),
+                mDirectedMirrorPartners.data(), mDirectedMirrorParents.data(), mDirectedMirrorAlpha.data(),
+                count, mRoot->getWorldRotation(), mDirectedMirrorWorldBefore.data(),
+                mDirectedMirrorWorldAfter.data(), mDirectedMirrorGazeSamples.data())) return;
+        for (size_t i = 0; i < count; ++i)
+            if (LLActorMover::hotGazeCopiesJoint(mDirectedMirrorJoints[i]->getName()))
+                mDirectedMirrorJoints[i]->setRotation(output[i].rotation);
+        markStepAnimPoseChanged();
+        mRoot->updateWorldMatrixChildren();
+        moveStampedAttachments();
+        return;
+    }
     if (mDirectedMirrorWritten || !mDirectedMirrorPartnersValid) return;
     const U32 frame = LLFrameTimer::getFrameCount();
     if (mDirectedMirrorFrame == frame) return;

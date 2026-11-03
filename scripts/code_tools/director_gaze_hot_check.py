@@ -56,7 +56,7 @@ struct LLViewerObject {
 struct LLVOAvatar:LLViewerObject {
  bool ghost=false;float uniformScale=1;float getUniformScale(){return uniformScale;}float getPelvisToFoot(){return 1;}
  std::vector<LLJoint*>skeleton;
- std::vector<LLJoint*>& getSkeleton(){if(skeleton.empty())for(auto& j:joints){j.second.name=j.first;if(j.first!="mRoot")skeleton.push_back(&j.second);}return skeleton;}
+ std::vector<LLJoint*>& getSkeleton(){if(skeleton.empty())for(auto name:{"mTorso","mChest","mNeck","mHead","mEyeLeft","mEyeRight","mWristLeft","mWristRight"}){auto& j=joints[name];j.name=name;skeleton.push_back(&j);}return skeleton;}
  int getSkeletonJointCount(){return int(getSkeleton().size());}LLJoint* getSkeletonJoint(int i){return getSkeleton()[i];}
  U32 getSteppedSkeletonSerial(){return 1;}U32 getJointOverrideEpoch(){return 1;}
  struct StepAnimLabelState{};void restoreStepAnimLabels(StepAnimLabelState){}void shiftStepAnimLabels(LLVector3,StepAnimLabelState&){}
@@ -99,6 +99,8 @@ struct LLActorMover {
         source += method(NV/'llactormover.h', signature) + ';\n'
     source += method(NV/'llactormover.h','    struct HotGaze\n') + ';\n'
     source += r'''
+ std::map<LLUUID,Gaze> mGazes;std::map<LLUUID,DirectorGaze> mDirectorGazes;
+ ALGhostAnimMirrorMath::GazeWeights getGazeWrittenWeights(const LLUUID&)const;
  std::map<LLUUID,HotGaze> mHotGazes;std::map<LLUUID,DirectorGaze> mHotGazeCopies;
  static LLActorMover& instance(){static LLActorMover m;return m;}
  bool hasHotGazes()const{return !mHotGazes.empty();}
@@ -124,7 +126,7 @@ struct LLActorMover {
 #define AL_HOT_GAZE_STANDALONE
 '''
     source += (NV/'tests/algazehot_test.cpp').read_text(encoding='utf-8')
-    for sig in ('void LLActorMover::invalidateGazeCache(', 'bool LLActorMover::ensureGazeOwner(',
+    for sig in ('ALGhostAnimMirrorMath::GazeWeights LLActorMover::getGazeWrittenWeights(', 'void LLActorMover::invalidateGazeCache(', 'bool LLActorMover::ensureGazeOwner(',
                 'void LLActorMover::invalidateDirectorCache(', 'bool LLActorMover::ensureDirectorOwner(',
                 'bool LLActorMover::hotGazeCopiesJoint(', 'bool LLActorMover::hasHotGazePose(', 'void LLActorMover::captureHotGazeCopy(',
                 'bool LLActorMover::rewriteGazeTarget(', 'void LLActorMover::captureDirectorLookAtPose(',
@@ -251,6 +253,7 @@ def check():
     print(result.stdout.strip())
     controls={
         'production_paint_return':(paint,paint[:paint.index('{')+1]+' return;'+paint[paint.index('{')+1:]),
+        'flip_composition_missing':('                    ghost->applyDirectedMirrorStamp(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);','                    (void)mode; // mutant: omit late flip composition'),
         'clone_copy_missing':('        ALGhostStudio::instance().updatePostObjectList(true);','        /* mutant: no source presentation copy */'),
         'clone_runtime_alias_missing':('                if (inst.mEntityId.notNull()) instances[inst.mEntityId] = &inst;','                /* mutant: stable instance keys only */'),
         'copy_nonhot_limbs':(method(NV/'llactormover.cpp','bool LLActorMover::hotGazeCopiesJoint('),'bool LLActorMover::hotGazeCopiesJoint(const std::string&) { return true; }'),

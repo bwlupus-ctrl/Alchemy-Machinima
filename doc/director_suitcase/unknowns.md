@@ -727,12 +727,12 @@ All 3017 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerobject.cpp@1348,7`
 - `indra/newview/llviewerobject.cpp@2300,7`
 - `indra/newview/llviewerobject.cpp@8168,3`
-- `indra/newview/llviewerpartsim.cpp@45,16`
-- `indra/newview/llviewerpartsim.cpp@78,30`
-- `indra/newview/llviewerpartsim.cpp@344,14`
-- `indra/newview/llviewerpartsim.cpp@359,7`
-- `indra/newview/llviewerpartsim.cpp@584,7`
-- `indra/newview/llviewerpartsim.cpp@1063,7`
+- `indra/newview/llviewerpartsim.cpp@46,16`
+- `indra/newview/llviewerpartsim.cpp@79,30`
+- `indra/newview/llviewerpartsim.cpp@345,14`
+- `indra/newview/llviewerpartsim.cpp@360,7`
+- `indra/newview/llviewerpartsim.cpp@585,7`
+- `indra/newview/llviewerpartsim.cpp@1064,7`
 - `indra/newview/llviewerpartsim.h@99,9`
 - `indra/newview/llviewerpartsim.h@128,12`
 - `indra/newview/llviewershadermgr.cpp@30,19`
@@ -2162,9 +2162,9 @@ All 3017 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerobject.cpp@103,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerobject.cpp@123,27`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerobject.cpp@8168,3`: unknown/non-function (public:)
-- `indra/newview/llviewerpartsim.cpp@25,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerpartsim.cpp@45,16`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerpartsim.cpp@359,7`: unknown/non-function (bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size))
+- `indra/newview/llviewerpartsim.cpp@25,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerpartsim.cpp@46,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerpartsim.cpp@360,7`: unknown/non-function (bool LLViewerPartGroup::addPart(LLViewerPart* part, F32 desired_size))
 - `indra/newview/llviewerpartsim.h@27,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerpartsim.h@61,7`: unknown/non-function (public:)
 - `indra/newview/llviewerpartsim.h@99,9`: unknown/non-function (public:)
