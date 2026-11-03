@@ -23,6 +23,7 @@ void main()
     else if (keyMode == 1) colour = mix(scene, keyColour, m);
     else
     {
+        m = vec3(dot(m, vec3(0.2126, 0.7152, 0.0722)));
         colour = keyInvert != 0 ? vec3(1.0) - m : m;
         if (keyMatteShadow != 0) colour = max(colour, vec3(0.5 * g));
     }

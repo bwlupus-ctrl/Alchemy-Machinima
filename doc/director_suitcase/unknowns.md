@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3043 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3058 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (150)
 
@@ -157,7 +157,7 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 
-## Unknown hunk features (1525)
+## Unknown hunk features (1540)
 
 - `indra/llui/llfloater.cpp@2180,30`
 - `indra/llui/llfloater.cpp@2311,18`
@@ -1462,25 +1462,27 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@69,12`
 - `indra/newview/llfloaterreporter.cpp@321,11`
 - `indra/newview/llfloatersnapshot.cpp@24,31`
-- `indra/newview/llfloatersnapshot.cpp@220,20`
-- `indra/newview/llfloatersnapshot.cpp@282,12`
-- `indra/newview/llfloatersnapshot.cpp@362,15`
-- `indra/newview/llfloatersnapshot.cpp@510,7`
-- `indra/newview/llfloatersnapshot.cpp@791,31`
-- `indra/newview/llfloatersnapshot.cpp@1022,10`
-- `indra/newview/llfloatersnapshot.cpp@1061,22`
-- `indra/newview/llfloatersnapshot.cpp@1091,24`
-- `indra/newview/llfloatersnapshot.cpp@1174,7`
-- `indra/newview/llfloatersnapshot.cpp@1224,7`
-- `indra/newview/llfloatersnapshot.cpp@1241,50`
-- `indra/newview/llfloatersnapshot.cpp@1296,46`
-- `indra/newview/llfloatersnapshot.cpp@1350,16`
-- `indra/newview/llfloatersnapshot.cpp@1404,7`
+- `indra/newview/llfloatersnapshot.cpp@220,33`
+- `indra/newview/llfloatersnapshot.cpp@295,12`
+- `indra/newview/llfloatersnapshot.cpp@375,15`
+- `indra/newview/llfloatersnapshot.cpp@523,7`
+- `indra/newview/llfloatersnapshot.cpp@804,31`
+- `indra/newview/llfloatersnapshot.cpp@1035,10`
+- `indra/newview/llfloatersnapshot.cpp@1074,22`
+- `indra/newview/llfloatersnapshot.cpp@1104,24`
+- `indra/newview/llfloatersnapshot.cpp@1187,7`
+- `indra/newview/llfloatersnapshot.cpp@1237,7`
+- `indra/newview/llfloatersnapshot.cpp@1254,50`
+- `indra/newview/llfloatersnapshot.cpp@1309,46`
+- `indra/newview/llfloatersnapshot.cpp@1363,16`
+- `indra/newview/llfloatersnapshot.cpp@1417,7`
+- `indra/newview/llfloatersnapshot.cpp@1588,7`
 - `indra/newview/llfloatersnapshot.h@24,11`
 - `indra/newview/llfloatersnapshot.h@40,7`
-- `indra/newview/llfloatersnapshot.h@158,7`
-- `indra/newview/llfloatersnapshot.h@166,11`
-- `indra/newview/llfloatersnapshot.h@183,10`
+- `indra/newview/llfloatersnapshot.h@145,8`
+- `indra/newview/llfloatersnapshot.h@160,7`
+- `indra/newview/llfloatersnapshot.h@168,11`
+- `indra/newview/llfloatersnapshot.h@185,10`
 - `indra/newview/llfolderviewmodelinventory.cpp@38,7`
 - `indra/newview/llhudeffectlookat.cpp@24,13`
 - `indra/newview/llhudeffectlookat.cpp@413,27`
@@ -1553,6 +1555,9 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llpanelmaininventory.h@239,8`
 - `indra/newview/llpanelsnapshotlocal.cpp@24,11`
 - `indra/newview/llpanelsnapshotlocal.cpp@90,13`
+- `indra/newview/llpanelsnapshotpostcard.cpp@167,9`
+- `indra/newview/llpanelsnapshotpostcard.cpp@180,7`
+- `indra/newview/llpanelsnapshotprofile.cpp@96,8`
 - `indra/newview/llphysicsmotion.cpp@105,7`
 - `indra/newview/llphysicsmotion.cpp@191,7`
 - `indra/newview/llphysicsmotion.cpp@231,13`
@@ -1567,9 +1572,19 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llsnapshotlivepreview.cpp@54,7`
 - `indra/newview/llsnapshotlivepreview.cpp@119,7`
 - `indra/newview/llsnapshotlivepreview.cpp@142,7`
-- `indra/newview/llsnapshotlivepreview.cpp@162,8`
-- `indra/newview/llsnapshotlivepreview.cpp@677,7`
-- `indra/newview/llsnapshotlivepreview.cpp@785,15`
+- `indra/newview/llsnapshotlivepreview.cpp@160,22`
+- `indra/newview/llsnapshotlivepreview.cpp@689,7`
+- `indra/newview/llsnapshotlivepreview.cpp@740,10`
+- `indra/newview/llsnapshotlivepreview.cpp@766,12`
+- `indra/newview/llsnapshotlivepreview.cpp@787,12`
+- `indra/newview/llsnapshotlivepreview.cpp@801,7`
+- `indra/newview/llsnapshotlivepreview.cpp@813,15`
+- `indra/newview/llsnapshotlivepreview.cpp@963,7`
+- `indra/newview/llsnapshotlivepreview.cpp@1009,7`
+- `indra/newview/llsnapshotlivepreview.cpp@1085,7`
+- `indra/newview/llsnapshotlivepreview.cpp@1155,7`
+- `indra/newview/llsnapshotlivepreview.h@76,8`
+- `indra/newview/llsnapshotlivepreview.h@168,8`
 - `indra/newview/llsurface.cpp@247,9`
 - `indra/newview/llsurface.cpp@1142,7`
 - `indra/newview/llsurface.cpp@1150,7`
@@ -1685,7 +1700,7 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 
-## Unknown/non-function contexts (1085)
+## Unknown/non-function contexts (1088)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -2660,9 +2675,10 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloatersnapshot.cpp@24,31`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatersnapshot.h@24,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatersnapshot.h@40,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llfloatersnapshot.h@158,7`: unknown/non-function (public:)
-- `indra/newview/llfloatersnapshot.h@166,11`: unknown/non-function (public:)
-- `indra/newview/llfloatersnapshot.h@183,10`: unknown/non-function (public:)
+- `indra/newview/llfloatersnapshot.h@145,8`: unknown/non-function (public:)
+- `indra/newview/llfloatersnapshot.h@160,7`: unknown/non-function (public:)
+- `indra/newview/llfloatersnapshot.h@168,11`: unknown/non-function (public:)
+- `indra/newview/llfloatersnapshot.h@185,10`: unknown/non-function (public:)
 - `indra/newview/llhudeffectlookat.cpp@24,13`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llhudeffecttrail.cpp@39,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llimview.h@141,16`: unknown/non-function (public:)
@@ -2692,6 +2708,8 @@ All 3043 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llselectmgr.h@245,10`: unknown/non-function (public:)
 - `indra/newview/llsnapshotlivepreview.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llsnapshotlivepreview.cpp@54,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llsnapshotlivepreview.h@76,8`: unknown/non-function (public:)
+- `indra/newview/llsnapshotlivepreview.h@168,8`: unknown/non-function (private:)
 - `indra/newview/llsurface.cpp@1142,7`: unknown/non-function (void LLSurface::dirtySurfacePatch(LLSurfacePatch *patchp))
 - `indra/newview/llsurface.cpp@1173,3`: unknown/non-function (F32 LLSurface::getWaterHeight() const)
 - `indra/newview/llsurface.h@118,7`: unknown/non-function (public:)

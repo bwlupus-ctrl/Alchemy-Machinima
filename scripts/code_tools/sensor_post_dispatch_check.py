@@ -165,6 +165,7 @@ struct RlvActions{static bool hasBehaviour(int){return true;}};
 struct LLShaderEffectParams{LLShaderEffectParams(LLRenderTarget*,LLRenderTarget*,bool){}};
 enum class EVisualEffect{RlvSphere};
 struct LLVfxManager{static LLVfxManager& instance(){static LLVfxManager v;return v;}void runEffect(EVisualEffect,LLShaderEffectParams*){events.push_back(45);}};
+unsigned gFrameCount=42;
 struct LLPipeline {
  enum class SensorStage{Legacy,Exposure,Optics,Camera,Godrays};
  enum{RENDER_DEBUG_FEATURE_UI};
@@ -172,6 +173,7 @@ struct LLPipeline {
  struct Pack{LLRenderTarget screen{10,64,48,true},deferredScreen{11,64,48,true},deferredLight{12,64,48,true},postPingMap{14,64,48,true},postPongMap{15,64,48,true};}mMainRT,other;
  Pack* mRT=&mMainRT;
  bool mActorKeyReady=false;U32 mActorKeyMatteFrame=~0u;
+ U32 mKeyLensFrame=~0u,mKeyLensRan=0,mKeyLensComplete=0;LLRenderTarget* mKeyLensCurrent=nullptr;
  glm::mat4 mActorKeyProjection,mActorKeyModelview;
  bool actorKeyMatteValid(){std::abort();}
  bool preflightActorKey(bool,bool,bool){std::abort();}

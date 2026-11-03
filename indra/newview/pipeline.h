@@ -846,6 +846,12 @@ public:
     bool renderCover(U32 phase, const CoverPolicy& policy);
     void buildActorKeyCoverageAndMatte();
     void releaseActorKeyTargets();
+    // A8: gather, composite, kaleidoscope, fisheye; never beauty attachments.
+    void renderActorKeyLens(U32 stage, LLGLSLShader& beauty, U32 width, U32 height);
+    bool lensCoverageValid() const;
+    LLRenderTarget mKeyDiopterCov, mKeyLensStage[3];
+    LLRenderTarget* mKeyLensCurrent = nullptr;
+    U32 mKeyLensFrame = ~0u, mKeyLensRan = 0, mKeyLensComplete = 0;
     bool actorKeyMatteValid() const; // WP2 consumes only a matching stamp.
     bool ensureKeyCoverage();
     bool ensureKeyPrograms();

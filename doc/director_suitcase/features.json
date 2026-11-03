@@ -21984,6 +21984,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1939,
+        "source": "indra/newview/llsnapshotlivepreview.h",
+        "text": "llsnapshotlivepreview.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 951,
         "source": "indra/newview/llsurface.cpp",
         "text": "llsurface.cpp"
@@ -29081,6 +29087,8 @@
         ],
         "qualified_call_candidates": [
           "ALActorChromaKey::explicitSnapshotRequest",
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::revision",
           "ALActorChromaKey::snapshotPlaceholder",
           "ALActorChromaKey::snapshotRequestExplicit",
           "LLAgentBenefitsMgr::current",
@@ -29106,6 +29114,8 @@
           "LLSnapshotLivePreview::getFormattedImage",
           "LLSnapshotLivePreview::getImageAspect",
           "LLSnapshotLivePreview::getSize",
+          "LLSnapshotLivePreview::getSnapshotUpToDate",
+          "LLSnapshotLivePreview::keyCaptureCurrent",
           "LLSnapshotLivePreview::onIdle",
           "LLSnapshotLivePreview::prepareFreezeFrame",
           "LLSnapshotLivePreview::reshape",
@@ -29125,6 +29135,15 @@
           "LLViewerTextureList::createUploadFile",
           "LLViewerTextureManager::getLocalTexture"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llsnapshotlivepreview.h": {
+        "includes": [
+          "indra/newview/llsnapshotmodel.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewerwindow.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/llsurface.cpp": {
@@ -40280,6 +40299,8 @@
         ],
         "qualified_call_candidates": [
           "ALActorChromaKey::explicitSnapshotRequest",
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::revision",
           "ALActorChromaKey::snapshotPlaceholder",
           "ALActorChromaKey::snapshotRequestExplicit",
           "LLAgentBenefitsMgr::current",
@@ -40305,6 +40326,8 @@
           "LLSnapshotLivePreview::getFormattedImage",
           "LLSnapshotLivePreview::getImageAspect",
           "LLSnapshotLivePreview::getSize",
+          "LLSnapshotLivePreview::getSnapshotUpToDate",
+          "LLSnapshotLivePreview::keyCaptureCurrent",
           "LLSnapshotLivePreview::onIdle",
           "LLSnapshotLivePreview::prepareFreezeFrame",
           "LLSnapshotLivePreview::reshape",
@@ -65620,6 +65643,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 852,
+        "source": "indra/newview/llpanelsnapshotpostcard.cpp",
+        "text": "llpanelsnapshotpostcard.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 853,
+        "source": "indra/newview/llpanelsnapshotprofile.cpp",
+        "text": "llpanelsnapshotprofile.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 947,
         "source": "indra/newview/llstartup.cpp",
         "text": "llstartup.cpp"
@@ -72544,6 +72579,74 @@
           "LLPanelSnapshotLocal::onSaveFlyoutCommit",
           "LLPanelSnapshotLocal::postBuild",
           "LLPanelSnapshotLocal::updateControls"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llpanelsnapshotpostcard.cpp": {
+        "includes": [
+          "indra/llcommon/llregex.h",
+          "indra/llui/llcombobox.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llsliderctrl.h",
+          "indra/llui/llspinctrl.h",
+          "indra/llui/lltexteditor.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentui.h",
+          "indra/newview/llfloatersnapshot.h",
+          "indra/newview/llpanelsnapshot.h",
+          "indra/newview/llpostcard.h",
+          "indra/newview/llsidetraypanelcontainer.h",
+          "indra/newview/llsnapshotlivepreview.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAgentUI::buildFullname",
+          "LLFloaterSnapshot::getInstance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLPanelSnapshot::onOpen",
+          "LLPanelSnapshot::postBuild",
+          "LLPanelSnapshotPostcard::LLPanelSnapshotPostcard",
+          "LLPanelSnapshotPostcard::getSnapshotType",
+          "LLPanelSnapshotPostcard::missingSubjMsgAlertCallback",
+          "LLPanelSnapshotPostcard::onFormatComboCommit",
+          "LLPanelSnapshotPostcard::onMsgFormFocusRecieved",
+          "LLPanelSnapshotPostcard::onOpen",
+          "LLPanelSnapshotPostcard::onQualitySliderCommit",
+          "LLPanelSnapshotPostcard::onSend",
+          "LLPanelSnapshotPostcard::postBuild",
+          "LLPanelSnapshotPostcard::sendPostcard",
+          "LLPanelSnapshotPostcard::sendPostcardFinished",
+          "LLPanelSnapshotPostcard::updateControls",
+          "LLPostCard::reportPostResult",
+          "LLViewerAssetUpload::EnqueueInventoryUpload"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llpanelsnapshotprofile.cpp": {
+        "includes": [
+          "indra/llui/llcombobox.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llpanel.h",
+          "indra/llui/llspinctrl.h",
+          "indra/newview/llfloatersnapshot.h",
+          "indra/newview/llpanelsnapshot.h",
+          "indra/newview/llsidetraypanelcontainer.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llwebprofile.h"
+        ],
+        "qualified_call_candidates": [
+          "LLPanelSnapshot::onOpen",
+          "LLPanelSnapshot::postBuild",
+          "LLPanelSnapshotProfile::LLPanelSnapshotProfile",
+          "LLPanelSnapshotProfile::onOpen",
+          "LLPanelSnapshotProfile::onSend",
+          "LLPanelSnapshotProfile::postBuild",
+          "LLPanelSnapshotProfile::updateControls",
+          "LLWebProfile::uploadImage"
         ],
         "unresolved_includes": []
       },
@@ -86823,6 +86926,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1939,
+        "source": "indra/newview/llsnapshotlivepreview.h",
+        "text": "llsnapshotlivepreview.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1941,
         "source": "indra/newview/llspatialpartition.h",
         "text": "llspatialpartition.h"
@@ -98493,6 +98602,15 @@
           "LLViewerPartSim::getInstance",
           "LLViewerTextureManager::getLocalTexture"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llsnapshotlivepreview.h": {
+        "includes": [
+          "indra/newview/llsnapshotmodel.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewerwindow.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/llspatialpartition.h": {
@@ -131133,6 +131251,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1939,
+        "source": "indra/newview/llsnapshotlivepreview.h",
+        "text": "llsnapshotlivepreview.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 942,
         "source": "indra/newview/llspatialpartition.cpp",
         "text": "llspatialpartition.cpp"
@@ -140627,6 +140751,15 @@
           "LLObjectSelection::isMultipleTEValue",
           "LLSelectMgr::getInstance"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llsnapshotlivepreview.h": {
+        "includes": [
+          "indra/newview/llsnapshotmodel.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewerwindow.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/llspatialpartition.cpp": {
@@ -159985,6 +160118,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 852,
+        "source": "indra/newview/llpanelsnapshotpostcard.cpp",
+        "text": "llpanelsnapshotpostcard.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 889,
         "source": "indra/newview/llpresetsmanager.cpp",
         "text": "llpresetsmanager.cpp"
@@ -166096,6 +166235,50 @@
           "LLPanelSnapshotLocal::onSaveFlyoutCommit",
           "LLPanelSnapshotLocal::postBuild",
           "LLPanelSnapshotLocal::updateControls"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llpanelsnapshotpostcard.cpp": {
+        "includes": [
+          "indra/llcommon/llregex.h",
+          "indra/llui/llcombobox.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llsliderctrl.h",
+          "indra/llui/llspinctrl.h",
+          "indra/llui/lltexteditor.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentui.h",
+          "indra/newview/llfloatersnapshot.h",
+          "indra/newview/llpanelsnapshot.h",
+          "indra/newview/llpostcard.h",
+          "indra/newview/llsidetraypanelcontainer.h",
+          "indra/newview/llsnapshotlivepreview.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAgentUI::buildFullname",
+          "LLFloaterSnapshot::getInstance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLPanelSnapshot::onOpen",
+          "LLPanelSnapshot::postBuild",
+          "LLPanelSnapshotPostcard::LLPanelSnapshotPostcard",
+          "LLPanelSnapshotPostcard::getSnapshotType",
+          "LLPanelSnapshotPostcard::missingSubjMsgAlertCallback",
+          "LLPanelSnapshotPostcard::onFormatComboCommit",
+          "LLPanelSnapshotPostcard::onMsgFormFocusRecieved",
+          "LLPanelSnapshotPostcard::onOpen",
+          "LLPanelSnapshotPostcard::onQualitySliderCommit",
+          "LLPanelSnapshotPostcard::onSend",
+          "LLPanelSnapshotPostcard::postBuild",
+          "LLPanelSnapshotPostcard::sendPostcard",
+          "LLPanelSnapshotPostcard::sendPostcardFinished",
+          "LLPanelSnapshotPostcard::updateControls",
+          "LLPostCard::reportPostResult",
+          "LLViewerAssetUpload::EnqueueInventoryUpload"
         ],
         "unresolved_includes": []
       },
@@ -209027,6 +209210,8 @@
         ],
         "qualified_call_candidates": [
           "ALActorChromaKey::explicitSnapshotRequest",
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::revision",
           "ALActorChromaKey::snapshotPlaceholder",
           "ALActorChromaKey::snapshotRequestExplicit",
           "LLAgentBenefitsMgr::current",
@@ -209052,6 +209237,8 @@
           "LLSnapshotLivePreview::getFormattedImage",
           "LLSnapshotLivePreview::getImageAspect",
           "LLSnapshotLivePreview::getSize",
+          "LLSnapshotLivePreview::getSnapshotUpToDate",
+          "LLSnapshotLivePreview::keyCaptureCurrent",
           "LLSnapshotLivePreview::onIdle",
           "LLSnapshotLivePreview::prepareFreezeFrame",
           "LLSnapshotLivePreview::reshape",

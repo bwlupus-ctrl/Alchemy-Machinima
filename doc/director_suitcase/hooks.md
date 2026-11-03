@@ -5716,20 +5716,21 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 24–54 (n=31) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B3] Freeze World: while BDMergeFreezeWorld is enabled the stock freeze-frame checkbox is swapped for a Freeze World checkbox (bound to the runtime-only UseFreezeWorld toggle) that freezes the whole scene while the camera stays free - without the removed laggy fullscreen  |
-| 220–239 (n=20) | LLFloaterSnapshotBase::ImplBase::updateLayout | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: This capture-contract note is event-driven; draw() never resolves widgets. |
-| 282–293 (n=12) | LLFloaterSnapshotBase::ImplBase::updateLayout | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B3] unless Freeze World is holding the scene: its own toggle owns FreezeTime for the duration of the freeze |
-| 362–376 (n=15) | LLFloaterSnapshot::Impl::updateControls | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] high-res override: save-to-disk custom resolution may exceed the stock cap when unlocked (donor: Black Dragon MAX_SNAPSHOT_IMAGE_SIZE raise, gated at runtime here). Other destinations (inventory/profile/postcard) keep the stock cap. |
-| 510–516 (n=7) | LLFloaterSnapshotBase::ImplBase::onClickNewSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Edits ALActorChromaKey |
-| 791–821 (n=31) | LLFloaterSnapshot::Impl::updateResolution | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge A1.2] Resolution-aware autoscale: while BDMergeSnapshotAutoscale is enabled, re-derive the output/window height ratio every time the requested snapshot resolution changes and stash it in BDMergeSnapshotAutoscaleMultiplier (non-persisted, mirrors donor's RenderSnapshotMul |
-| 1022–1031 (n=10) | LLFloaterSnapshotBase::~LLFloaterSnapshotBase | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B3] fully release Freeze World (thaws avatars via the UseFreezeWorld listener) so no pause handles outlive the floater |
-| 1061–1082 (n=22) | LLFloaterSnapshot::postBuild | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] detachable big preview: PREVIEW button shares the refresh button's row; when the gate is on, shrink REFRESH (stock 167px wide) and reveal it (donor: Black Dragon fab3226ac5). Gate off: button stays hidden and overlapped, stock layout untouched. |
-| 1091–1114 (n=24) | LLFloaterSnapshot::postBuild | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83): when the gate is on, show the Freeze World checkbox in place of the stock freeze-frame checkbox (BD replaced freeze-frame with Freeze World and dropped the laggy fullscreen preview; both occupy the same slot here). The c |
-| 1174–1180 (n=7) | LLFloaterSnapshotBase::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 1224–1230 (n=7) | LLFloaterSnapshot::onOpen | unknown | unknown-review | unknown; no local conditional evidence | Edits ALActorChromaKey |
-| 1241–1290 (n=50) | LLFloaterSnapshot::onClose, LLFloaterSnapshot::onOpen | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] remembered snapshot destination: restore the panel saved at last close (donor: Black Dragon RememberSnapshotMode, adapted to a persisted panel name so it also survives sessions) virtual [BDMerge C6] remember the destination panel for the next open/session and take th |
-| 1296–1341 (n=46) | LLFloaterSnapshot::attachPreview, LLFloaterSnapshot::isPreviewVisible, LLFloaterSnapshot::onClickBigPreview | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5, double-toggle crash fix f0db8914d0 folded in: never die() the shared preview on hide) Toggle the preview [/BDMerge C6] |
-| 1350–1365 (n=16) | LLFloaterSnapshotBase::onClose | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B3] closing the snapshot floater always releases Freeze World (the listener thaws the avatars); like BD, the freeze lives only while its UI is reachable so the scene can never get stuck frozen [BDMerge A1.2] reset the autoscale multiplier so a high-res selection can't ke |
-| 1404–1410 (n=7) | LLFloaterSnapshotBase::notify | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 220–252 (n=33) | LLFloaterSnapshotBase::ImplBase::updateLayout | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: This capture-contract note is event-driven; draw() never resolves widgets. |
+| 295–306 (n=12) | LLFloaterSnapshotBase::ImplBase::updateLayout | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B3] unless Freeze World is holding the scene: its own toggle owns FreezeTime for the duration of the freeze |
+| 375–389 (n=15) | LLFloaterSnapshot::Impl::updateControls | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] high-res override: save-to-disk custom resolution may exceed the stock cap when unlocked (donor: Black Dragon MAX_SNAPSHOT_IMAGE_SIZE raise, gated at runtime here). Other destinations (inventory/profile/postcard) keep the stock cap. |
+| 523–529 (n=7) | LLFloaterSnapshotBase::ImplBase::onClickNewSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Edits ALActorChromaKey |
+| 804–834 (n=31) | LLFloaterSnapshot::Impl::updateResolution | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge A1.2] Resolution-aware autoscale: while BDMergeSnapshotAutoscale is enabled, re-derive the output/window height ratio every time the requested snapshot resolution changes and stash it in BDMergeSnapshotAutoscaleMultiplier (non-persisted, mirrors donor's RenderSnapshotMul |
+| 1035–1044 (n=10) | LLFloaterSnapshotBase::~LLFloaterSnapshotBase | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B3] fully release Freeze World (thaws avatars via the UseFreezeWorld listener) so no pause handles outlive the floater |
+| 1074–1095 (n=22) | LLFloaterSnapshot::postBuild | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] detachable big preview: PREVIEW button shares the refresh button's row; when the gate is on, shrink REFRESH (stock 167px wide) and reveal it (donor: Black Dragon fab3226ac5). Gate off: button stays hidden and overlapped, stock layout untouched. |
+| 1104–1127 (n=24) | LLFloaterSnapshot::postBuild | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83): when the gate is on, show the Freeze World checkbox in place of the stock freeze-frame checkbox (BD replaced freeze-frame with Freeze World and dropped the laggy fullscreen preview; both occupy the same slot here). The c |
+| 1187–1193 (n=7) | LLFloaterSnapshotBase::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 1237–1243 (n=7) | LLFloaterSnapshot::onOpen | unknown | unknown-review | unknown; no local conditional evidence | Edits ALActorChromaKey |
+| 1254–1303 (n=50) | LLFloaterSnapshot::onClose, LLFloaterSnapshot::onOpen | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] remembered snapshot destination: restore the panel saved at last close (donor: Black Dragon RememberSnapshotMode, adapted to a persisted panel name so it also survives sessions) virtual [BDMerge C6] remember the destination panel for the next open/session and take th |
+| 1309–1354 (n=46) | LLFloaterSnapshot::attachPreview, LLFloaterSnapshot::isPreviewVisible, LLFloaterSnapshot::onClickBigPreview | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5, double-toggle crash fix f0db8914d0 folded in: never die() the shared preview on hide) Toggle the preview [/BDMerge C6] |
+| 1363–1378 (n=16) | LLFloaterSnapshotBase::onClose | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B3] closing the snapshot floater always releases Freeze World (the listener thaws the avatars); like BD, the freeze lives only while its UI is reachable so the scene can never get stuck frozen [BDMerge A1.2] reset the autoscale multiplier so a high-res selection can't ke |
+| 1417–1423 (n=7) | LLFloaterSnapshotBase::notify | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey |
+| 1588–1594 (n=7) | LLFloaterSnapshotBase::getImageData | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/llfloatersnapshot.h`
 
@@ -5739,9 +5740,10 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 24–34 (n=11) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] Snapshot conveniences: detachable big preview floater hookup and remembered snapshot destination panel, gated by BDMergeSnapshotExtras. donor: Black Dragon (NiranV Dean) fab3226ac5/f0db8914d0/16143bb98b. See doc/BD_MERGE_PATCHLOG.md. |
 | 40–46 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloaterBigPreview |
-| 158–164 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: virtual*/ void onClose(bool app_quitting); // [BDMerge C6] |
-| 166–176 (n=11) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5) |
-| 183–192 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] detachable big preview floater (donor: Black Dragon) |
+| 145–152 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 160–166 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: virtual*/ void onClose(bool app_quitting); // [BDMerge C6] |
+| 168–178 (n=11) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5) |
+| 185–194 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] detachable big preview floater (donor: Black Dragon) |
 
 ## Slice 99: `indra/newview/llfolderviewmodelinventory.cpp`
 
@@ -5976,6 +5978,23 @@ HEAD coordinates; guards/features are candidate evidence
 | 24–34 (n=11) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] high-res override: reveal the "Allow high resolutions" checkbox while BDMergeSnapshotExtras is enabled. donor: Black Dragon (NiranV Dean) SnapshotResolutionUnlock checkbox in panel_snapshot_local. See doc/BD_MERGE_PATCHLOG.md. |
 | 90–102 (n=13) | LLPanelSnapshotLocal::postBuild | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] high-res override checkbox, hidden unless the gate is on (donor: Black Dragon "Allow High Resolutions" in panel_snapshot_local) |
 
+## Slice 99: `indra/newview/llpanelsnapshotpostcard.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 167–175 (n=9) | LLPanelSnapshotPostcard::sendPostcard | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 180–186 (n=7) | LLPanelSnapshotPostcard::sendPostcard | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/llpanelsnapshotprofile.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 96–103 (n=8) | LLPanelSnapshotProfile::onSend | unknown | unknown-review | unknown; conditional evidence present | Edits LLWebProfile |
+
 ## Slice 99: `indra/newview/llphysicsmotion.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6031,9 +6050,26 @@ HEAD coordinates; guards/features are candidate evidence
 | 54–60 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 119–125 (n=7) | LLSnapshotLivePreview::LLSnapshotLivePreview | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 142–148 (n=7) | LLSnapshotLivePreview::setMaxImageSize | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 162–169 (n=8) | LLSnapshotLivePreview::updateSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey |
-| 677–683 (n=7) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; no local conditional evidence | Edits ALActorChromaKey |
-| 785–799 (n=15) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey |
+| 160–181 (n=22) | LLSnapshotLivePreview::getSnapshotUpToDate, LLSnapshotLivePreview::keyCaptureCurrent, LLSnapshotLivePreview::updateSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits LLSnapshotLivePreview, ALActorChromaKey |
+| 689–695 (n=7) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; no local conditional evidence | Edits ALActorChromaKey |
+| 740–749 (n=10) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey |
+| 766–777 (n=12) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Stamp only a successfully finalized capture under the same key revision. |
+| 787–798 (n=12) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey, LLSnapshotModel |
+| 801–807 (n=7) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 813–827 (n=15) | LLSnapshotLivePreview::onIdle | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey |
+| 963–969 (n=7) | LLSnapshotLivePreview::createUploadFile | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1009–1015 (n=7) | LLSnapshotLivePreview::getFormattedImage | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1085–1091 (n=7) | LLSnapshotLivePreview::saveTexture | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1155–1161 (n=7) | LLSnapshotLivePreview::saveLocal | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/llsnapshotlivepreview.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 76–83 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 168–175 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/llsurface.cpp`
 

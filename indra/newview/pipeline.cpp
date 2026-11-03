@@ -16278,6 +16278,7 @@ void LLPipeline::renderCineFisheye(LLRenderTarget* src, LLRenderTarget* dst)
 
     gCineFisheyeProgram.unbind();
     dst->flush();
+    renderActorKeyLens(3, gCineFisheyeProgram, dst->getWidth(), dst->getHeight());
 }
 
 // [Ultimate Diopter] ---------------------------------------------------------
@@ -17343,6 +17344,7 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
 
     gather_prog.unbind();
     mDiopterMap.flush();
+    renderActorKeyLens(0, gather_prog, dst->getWidth(), dst->getHeight());
 
     // ---- pass 2: composite ------------------------------------------------
     dst->bindTarget();
@@ -17393,6 +17395,7 @@ bool LLPipeline::renderUltimateDiopter(LLRenderTarget* src, LLRenderTarget* dst)
 
     composite_prog.unbind();
     dst->flush();
+    renderActorKeyLens(1, composite_prog, dst->getWidth(), dst->getHeight());
     return true;
 }
 
@@ -18054,6 +18057,7 @@ bool LLPipeline::renderUltimateKaleidoscope(LLRenderTarget* src, LLRenderTarget*
 
     kaleido_prog.unbind();
     mDiopterMap.flush();
+    renderActorKeyLens(2, kaleido_prog, dst->getWidth(), dst->getHeight());
 
     // ---- copy mDiopterMap attachment 0 -> dst, same simple blit
     // copyRenderTarget uses (it binds src's attachment 0 as DEFERRED_DIFFUSE)
@@ -26410,6 +26414,11 @@ void LLPipeline::renderFinalize()
     const glm::mat4 actor_path_projection = get_current_projection();
     const glm::mat4 actor_path_modelview = get_current_modelview();
     const FinalizeGuides render_actor_path_guides{*this, actor_path_projection, actor_path_modelview};
+    // Reset for each finalize, including repeated snapshots in one viewer frame.
+    mKeyLensFrame = gFrameCount;
+    mKeyLensRan = mKeyLensComplete = 0;
+    mKeyLensCurrent = nullptr;
+
     if (ALActorChromaKey::sActive && actorKeyMatteValid())
     {
         const bool match = mActorKeyProjection == actor_path_projection &&
@@ -29172,6 +29181,12 @@ namespace
 struct ActorKeyPrograms { LLGLSLShader blur, matte, occluder; };
 std::unique_ptr<ActorKeyPrograms> sActorKeyPrograms;
 std::unique_ptr<LLGLSLShader> gActorKeyCompositeProgram;
+struct ActorKeyLensProgram
+{
+    LLGLSLShader shader;
+    LLUUID beautyHash;
+};
+std::map<LLGLSLShader*, std::unique_ptr<ActorKeyLensProgram>> sActorKeyLensPrograms;
 
 // Restore the driver and LLRender cache, even when the saved unit used another target.
 struct ActorKeyTextureScope
@@ -29237,6 +29252,13 @@ bool actor_key_copy(LLRenderTarget& target, const S32 (&viewport)[4])
 
 void LLPipeline::releaseActorKeyTargets()
 {
+    mKeyDiopterCov.release();
+    for (auto& target : mKeyLensStage) target.release();
+    for (auto& entry : sActorKeyLensPrograms) entry.second->shader.unload();
+    sActorKeyLensPrograms.clear();
+    mKeyLensCurrent = nullptr;
+    mKeyLensFrame = ~0u;
+    mKeyLensRan = mKeyLensComplete = 0;
     mActorKeyCoverage.release(); // shared depth must be detached first
     mActorKeyMatte.release();
     mActorKeyBlurA.release();
@@ -29258,6 +29280,127 @@ void LLPipeline::releaseActorKeyTargets()
         sActorKeyPrograms->matte.unload();
         sActorKeyPrograms->occluder.unload();
         sActorKeyPrograms.reset();
+    }
+}
+
+bool LLPipeline::lensCoverageValid() const
+{
+    return mKeyLensFrame == gFrameCount && mKeyLensRan == mKeyLensComplete &&
+        (!mKeyLensRan || (mKeyLensCurrent && mKeyLensCurrent->isComplete()));
+}
+
+void LLPipeline::renderActorKeyLens(U32 stage, LLGLSLShader& beauty, U32 width, U32 height)
+{
+    if (!ALActorChromaKey::sActive) return; // OFF has no allocations, programs or GL changes.
+    const U32 bit = 1u << stage;
+    mKeyLensRan |= bit; // Even a failed stage must invalidate K0 for this finalize.
+    mKeyLensComplete &= ~bit;
+    if (!actorKeyMatteValid() || mKeyLensFrame != gFrameCount ||
+        (stage == 1 && !(mKeyLensComplete & 1u))) return;
+    LL_PROFILE_ZONE_NAMED("ActorKey::lensCoverage");
+    ActorKeyFramebufferScope framebuffer;
+    // Original sampler unit numbers are copied along with the actual uniform values.
+    // Allocate the three coverage samplers AFTER all beauty units, avoiding aliases.
+    const S32 auxiliary = beauty.mActiveTextureChannels;
+    GLint limit;
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &limit);
+    if (auxiliary + 3 > limit) return;
+    std::vector<std::unique_ptr<ActorKeyTextureScope>> textures;
+    for (S32 unit = 0; unit < auxiliary + 3; ++unit)
+        textures.emplace_back(std::make_unique<ActorKeyTextureScope>(unit));
+    auto& cached = sActorKeyLensPrograms[&beauty];
+    if (!cached) cached = std::make_unique<ActorKeyLensProgram>();
+    auto& shader = cached->shader;
+    if (cached->beautyHash != beauty.mShaderHash || !shader.isComplete())
+    {
+        shader.unload();
+        shader.mName = beauty.mName + " Key coverage";
+        shader.mFeatures = beauty.mFeatures;
+        shader.mShaderLevel = beauty.mShaderLevel;
+        shader.mShaderFiles = beauty.mShaderFiles;
+        shader.clearPermutations();
+        shader.mDefines = beauty.mDefines; // Includes HDR and the selected gather tap count.
+        shader.addPermutation("AL_KEY_COVERAGE_ONLY", "1");
+        if (!shader.createShader()) return;
+        cached->beautyHash = beauty.mShaderHash;
+    }
+    LLRenderTarget& output = stage == 0 ? mKeyDiopterCov : mKeyLensStage[stage - 1];
+    if (!output.isComplete() || output.getWidth() != width || output.getHeight() != height)
+    {
+        ActorKeyTextureScope allocation_texture(0); // allocate() uses beauty's unit zero.
+        output.release();
+        if (!output.allocate(width, height, GL_RGBA16F, false) ||
+            (stage == 0 && !output.addColorAttachment(GL_RGBA16F)))
+        { output.release(); return; }
+    }
+    LLGLDisable blend(GL_BLEND), srgb(GL_FRAMEBUFFER_SRGB), dither(GL_DITHER),
+        scissor(GL_SCISSOR_TEST), stencil(GL_STENCIL_TEST), cull(GL_CULL_FACE);
+    LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+    GLboolean mask[4];
+    glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+    gGL.setColorMask(true, true);
+    output.bindTarget();
+    shader.bind();
+    // Copy by name, after bind() uploads managed matrices. Sampling and decisions
+    // see exactly the beauty draw's resolved values, including frozen animation,
+    // exposure, inverse projection and sampler bindings. Never re-resolve settings.
+    GLint count;
+    glGetProgramiv(beauty.mProgramObject, GL_ACTIVE_UNIFORMS, &count);
+    bool supported = true;
+    for (GLint index = 0; index < count; ++index)
+    {
+        GLchar name[256]; GLsizei length; GLint size; GLenum type;
+        glGetActiveUniform(beauty.mProgramObject, index, sizeof(name), &length, &size, &type, name);
+        const GLint from = glGetUniformLocation(beauty.mProgramObject, name);
+        const GLint to = glGetUniformLocation(shader.mProgramObject, name);
+        if (from < 0 || to < 0) continue; // Uniform block, or colour-only operation.
+        if (size != 1) { supported = false; break; }
+        GLfloat value[16]; GLint integer;
+        switch (type)
+        {
+        case GL_INT: case GL_BOOL: case GL_SAMPLER_2D:
+            glGetUniformiv(beauty.mProgramObject, from, &integer); glUniform1i(to, integer); break;
+        case GL_FLOAT: case GL_FLOAT_VEC2: case GL_FLOAT_VEC3: case GL_FLOAT_VEC4:
+        case GL_FLOAT_MAT3: case GL_FLOAT_MAT4:
+            glGetUniformfv(beauty.mProgramObject, from, value);
+            if (type == GL_FLOAT) glUniform1fv(to, 1, value);
+            else if (type == GL_FLOAT_VEC2) glUniform2fv(to, 1, value);
+            else if (type == GL_FLOAT_VEC3) glUniform3fv(to, 1, value);
+            else if (type == GL_FLOAT_VEC4) glUniform4fv(to, 1, value);
+            else if (type == GL_FLOAT_MAT3) glUniformMatrix3fv(to, 1, GL_FALSE, value);
+            else glUniformMatrix4fv(to, 1, GL_FALSE, value);
+            break;
+        default: supported = false; break;
+        }
+    }
+    auto bind = [&](const char* name, LLRenderTarget& target, U32 attachment, S32 unit)
+    {
+        const GLint location = glGetUniformLocation(shader.mProgramObject, name);
+        if (location >= 0)
+        {
+            target.bindTexture(attachment, unit, LLTexUnit::TFO_BILINEAR);
+            glUniform1i(location, unit);
+        }
+    };
+    bind("keyCoverage", mKeyLensCurrent ? *mKeyLensCurrent : mActorKeyMatte, 0, auxiliary);
+    glUniform1i(glGetUniformLocation(shader.mProgramObject, "keyInputPacked"), mKeyLensCurrent ? 0 : 1);
+    if (stage == 1)
+    {
+        bind("keyClear", mKeyDiopterCov, 0, auxiliary + 1);
+        bind("keyDio", mKeyDiopterCov, 1, auxiliary + 2);
+    }
+    if (supported)
+    {
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+    }
+    shader.unbind();
+    output.flush();
+    gGL.setColorMask(mask[0], mask[1], mask[2], mask[3]);
+    if (supported && glGetError() == GL_NO_ERROR)
+    {
+        mKeyLensComplete |= bit;
+        if (stage != 0) mKeyLensCurrent = &output;
     }
 }
 
@@ -29296,7 +29439,8 @@ bool LLPipeline::preflightActorKey(bool sphere, bool diopter, bool fisheye)
     if (diopter_enabled && gSavedSettings.getU32(tool() == 1 ? "CineDiopterKalDebugView" : "CineDiopterDebugView") != 0)
         return refuse("diopter debug view");
     // WP-LENS owns per-stage coverage. Never consume an unwarped/stale matte.
-    if (diopter || fisheye) return refuse("lens coverage unavailable (WP-LENS)");
+    if (!lensCoverageValid() || (diopter && !(mKeyLensRan & 6u)) ||
+        (fisheye && !(mKeyLensRan & 8u))) return refuse("lens coverage unavailable");
     if (!actorKeyMatteValid()) return refuse("matte unavailable");
     static LLCachedControl<U32> fail(gSavedSettings, "ActorKeyDebugFailPreflight", 0);
     if (fail() == 1) return refuse("injected composite program failure");
@@ -29347,7 +29491,8 @@ bool LLPipeline::preflightActorKey(bool sphere, bool diopter, bool fisheye)
         static LLCachedControl<U32> self_test(gSavedSettings, "ActorKeySelfTest", 0);
         if (self_test)
         {
-            mActorKeyTestMatte.resize((size_t)mActorKeyMatte.getWidth() * mActorKeyMatte.getHeight() * 4);
+            const auto& matte = mKeyLensCurrent ? *mKeyLensCurrent : mActorKeyMatte;
+            mActorKeyTestMatte.resize((size_t)matte.getWidth() * matte.getHeight() * 4);
             mActorKeyTestScene.resize((size_t)mActorKeyViewport[2] * mActorKeyViewport[3] * 4);
             mActorKeyTestOutput.resize(mActorKeyTestScene.size());
         }
@@ -29366,7 +29511,7 @@ void LLPipeline::compositeActorKey()
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw); glGetIntegerv(GL_VIEWPORT, viewport);
     const bool match = draw == mActorKeyDrawFBO && std::equal(viewport, viewport + 4, mActorKeyViewport);
     llassert(match);
-    if (!match || !actorKeyMatteValid()) { ALActorChromaKey::refuse("presentation/matte stamp changed"); return; }
+    if (!match || !actorKeyMatteValid() || !lensCoverageValid()) { ALActorChromaKey::refuse("presentation/matte stamp changed"); return; }
     gGL.flush();
     // Both copies finish before the first destructive write. On failure P is untouched.
     if (!actor_key_copy(mActorKeyScene, mActorKeyViewport) || !LLActorMover::captureStudioKeyScene(mActorKeyViewport))
@@ -29386,7 +29531,7 @@ void LLPipeline::compositeActorKey()
     auto& shader = *gActorKeyCompositeProgram;
     shader.bind();
     mActorKeyScene.bindTexture(0, 0, LLTexUnit::TFO_POINT);
-    mActorKeyMatte.bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
+    (mKeyLensCurrent ? *mKeyLensCurrent : mActorKeyMatte).bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
     shader.uniform1i(LLStaticHashedString("keyScene"), 0);
     shader.uniform1i(LLStaticHashedString("keyCoverage"), 1);
     shader.uniform2f(LLStaticHashedString("keyOrigin"), (F32)viewport[0], (F32)viewport[1]);
@@ -29400,7 +29545,7 @@ void LLPipeline::compositeActorKey()
     shader.uniform1i(LLStaticHashedString("keyInvert"), invert ? 1 : 0);
     shader.uniform1i(LLStaticHashedString("keyHard"), edge() == 1 ? 1 : 0);
     shader.uniform1i(LLStaticHashedString("keyMatteShadow"), matte_shadow ? 1 : 0);
-    shader.uniform1i(LLStaticHashedString("keyPerChannel"), 0); // WP-LENS supplies RGB/A coverage
+    shader.uniform1i(LLStaticHashedString("keyPerChannel"), mKeyLensCurrent ? 1 : 0);
     shader.uniform1f(LLStaticHashedString("keyShadowStrength"), llclamp(strength(), 0.f, 0.85f));
     llassert(mActorKeySceneFrame == gFrameCount);
     mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -29430,15 +29575,16 @@ void LLPipeline::selfTestActorKey(bool invert)
     glReadBuffer(source_read);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, mActorKeyScene.getFBO());
     glReadPixels(0, 0, mActorKeyViewport[2], mActorKeyViewport[3], GL_RGBA, GL_FLOAT, mActorKeyTestScene.data());
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, mActorKeyMatte.getFBO());
-    glReadPixels(0, 0, mActorKeyMatte.getWidth(), mActorKeyMatte.getHeight(), GL_RGBA, GL_FLOAT, mActorKeyTestMatte.data());
+    auto& test_matte = mKeyLensCurrent ? *mKeyLensCurrent : mActorKeyMatte;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, test_matte.getFBO());
+    glReadPixels(0, 0, test_matte.getWidth(), test_matte.getHeight(), GL_RGBA, GL_FLOAT, mActorKeyTestMatte.data());
     const bool valid = glGetError() == GL_NO_ERROR;
     glBindFramebuffer(GL_READ_FRAMEBUFFER, read); glReadBuffer(buffer);
     glPixelStorei(GL_PACK_ALIGNMENT, alignment); glPixelStorei(GL_PACK_ROW_LENGTH, row);
     glPixelStorei(GL_PACK_SKIP_ROWS, skip_rows); glPixelStorei(GL_PACK_SKIP_PIXELS, skip_pixels);
     glPixelStorei(GL_PACK_SWAP_BYTES, swap_bytes); glBindBuffer(GL_PIXEL_PACK_BUFFER, pack);
     const S32 w = mActorKeyViewport[2], h = mActorKeyViewport[3];
-    const S32 mw = mActorKeyMatte.getWidth(), mh = mActorKeyMatte.getHeight();
+    const S32 mw = test_matte.getWidth(), mh = test_matte.getHeight();
     bool found[2] = {false, false}, pass = valid;
     const LLColor3 colour = ALActorChromaKey::colour();
     const S32 codes = mActorKeyScene.getInternalFormat() == GL_RGB10_A2 ? 1023 : 255;
@@ -29452,7 +29598,10 @@ void LLPipeline::selfTestActorKey(bool invert)
         for (S32 mx = llmax(0, x*mw/w-1); mx <= llmin(mw-1, (x+16)*mw/w+1); ++mx)
         {
             const size_t i = ((size_t)my*mw + mx)*4;
-            pure &= mActorKeyTestMatte[i] == (F32)kind && mActorKeyTestMatte[i+1] == 0.f;
+            pure &= mActorKeyTestMatte[i] == (F32)kind;
+            if (mKeyLensCurrent)
+                pure &= mActorKeyTestMatte[i+1] == (F32)kind && mActorKeyTestMatte[i+2] == (F32)kind && mActorKeyTestMatte[i+3] == 0.f;
+            else pure &= mActorKeyTestMatte[i+1] == 0.f;
         }
         if (!pure) continue;
         found[kind] = true;

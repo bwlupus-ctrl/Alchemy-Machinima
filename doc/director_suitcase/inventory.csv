@@ -1687,6 +1687,8 @@ indra/newview/llpanelmaininventory.cpp,M,HOOK,"[""common-ui""]",1,"present at lo
 indra/newview/llpanelmaininventory.h,M,HOOK,"[""unknown""]",99,"present at local base; adapt individual hunks, never copy wholesale",[],[],False
 indra/newview/llpanelobject.cpp,M,HOOK,"[""tracking""]",7,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""vcam""]",False
 indra/newview/llpanelsnapshotlocal.cpp,M,HOOK,"[""common-ui"", ""sensor""]",1,"present at local base; adapt individual hunks, never copy wholesale","[""one-hop include neighbors; tentative, not required closure""]",[],False
+indra/newview/llpanelsnapshotpostcard.cpp,M,HOOK,"[""common-ui"", ""sensor""]",1,"present at local base; adapt individual hunks, never copy wholesale","[""one-hop include neighbors; tentative, not required closure""]",[],False
+indra/newview/llpanelsnapshotprofile.cpp,M,HOOK,"[""common-ui""]",1,"present at local base; adapt individual hunks, never copy wholesale","[""one-hop include neighbors; tentative, not required closure""]",[],False
 indra/newview/llpanelvolume.cpp,M,HOOK,"[""tracking"", ""vcam""]",7,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""vcam""]",False
 indra/newview/llpanelvolume.h,M,HOOK,"[""vcam""]",9,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""vcam""]",False
 indra/newview/llpathcamera.cpp,A,OWNED,"[""actor-bar"", ""actor-path"", ""camera"", ""director-shell""]",2,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""camera"", ""director-shell"", ""gaze""]",False
@@ -1718,6 +1720,7 @@ indra/newview/llselectmgr.h,M,HOOK,"[""capture-sidecar"", ""clones"", ""looks"",
 indra/newview/llsettingsvo.cpp,M,HOOK,"[""clones"", ""environment"", ""looks"", ""sensor"", ""shafts-volumetrics"", ""vcam""]",4,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""vcam"", ""weather""]",False
 indra/newview/llsettingsvo.h,M,HOOK,"[""clones"", ""environment"", ""sensor""]",4,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""environment"", ""weather""]",False
 indra/newview/llsnapshotlivepreview.cpp,M,HOOK,"[""camera"", ""capture-sidecar"", ""weather""]",3,"present at local base; adapt individual hunks, never copy wholesale","[""one-hop include neighbors; tentative, not required closure""]",[],False
+indra/newview/llsnapshotlivepreview.h,M,HOOK,"[""camera"", ""director-shell"", ""rig""]",2,"present at local base; adapt individual hunks, never copy wholesale","[""one-hop include neighbors; tentative, not required closure""]",[],False
 indra/newview/llspatialpartition.cpp,M,HOOK,"[""clones"", ""rig""]",4,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""clones""]",False
 indra/newview/llspatialpartition.h,M,HOOK,"[""capture-sidecar"", ""director-shell"", ""looks"", ""sensor""]",2,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""clones"", ""looks""]",False
 indra/newview/llstartup.cpp,M,HOOK,"[""actor-bar"", ""clones"", ""common-ui"", ""director-shell"", ""gaze"", ""looks"", ""sensor""]",1,"present at local base; adapt individual hunks, never copy wholesale","[""owned source / hook delta identifiers and comments""]","[""director-shell"", ""roto-tron""]",False
@@ -2262,6 +2265,7 @@ scripts/code_tools/actor_key_check.py,A,TOOLING,"[""unknown""]",99,generator/che
 scripts/code_tools/actor_key_draw_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/actor_key_draw_fixture.h,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/actor_key_gl_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
+scripts/code_tools/actor_key_review_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/actor_key_snapshot_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/actor_key_studio_gl_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/actor_key_wp01_hunks.json,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False

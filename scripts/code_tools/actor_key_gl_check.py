@@ -319,7 +319,7 @@ def composite_checks(f):
                     result=read_codes(target,bits)
                     cv=np.array(m,np.float32)
                     expected=(key*(1-cv)+source[9:73,7:71,:3]*cv if mode==0 else
-                              source[9:73,7:71,:3]*(1-cv)+key*cv if mode==1 else cv)
+                              source[9:73,7:71,:3]*(1-cv)+key*cv if mode==1 else np.full(3,np.dot(cv,[.2126,.7152,.0722])))
                     expected=np.broadcast_to(np.rint(expected*codes).astype(np.int32),result.shape)
                     assert np.max(np.abs(result-expected)) <= (0 if all(v in (0,1) for v in m) else 1), (bits,frame,mode,m,int(np.max(np.abs(result-expected))))
                     if mode==0 and m==(1,1,1):assert np.array_equal(result,original),'actor round trip'

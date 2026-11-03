@@ -161267,6 +161267,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
             },
@@ -161302,17 +161306,24 @@
           "git_context": "void LLFloaterSnapshotBase::ImplBase::updateLayout(LLFloaterSnapshotBase* floate",
           "guard_evidence": [
             "if (auto* note = floaterp->findChild<LLTextBox>(\"actor_key_snapshot_note\"))",
-            "if (ALActorChromaKey::sActive)"
+            "if (ALActorChromaKey::sActive)",
+            "if (!mSkipReshaping && !floaterp->isMinimized())",
+            "if (ALActorChromaKey::sActive && !mKeyLayoutExpanded)",
+            "else if (!ALActorChromaKey::sActive && mKeyLayoutExpanded)"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 20,
-          "head_end": 239,
+          "head_count": 33,
+          "head_end": 252,
           "head_start": 220,
-          "id": "indra/newview/llfloatersnapshot.cpp@220,20",
-          "patch": "         }\n     }\n \n+    // This capture-contract note is event-driven; draw() never resolves widgets.\n+    if (auto* note = floaterp->findChild<LLTextBox>(\"actor_key_snapshot_note\"))\n+    {\n+        note->setVisible(ALActorChromaKey::sActive);\n+        if (ALActorChromaKey::sActive)\n+        {\n+            const auto& refusal = ALActorChromaKey::snapshotPlaceholder();\n+            note->setText(refusal.empty()\n+                ? \"Keyed snapshot: exact colour only for unfiltered COLOR saves in PNG/BMP/lossless AVIF at rendered size.\"\n+                : refusal);\n+        }\n+        floaterp->reshape(floaterp->getRect().getWidth(), ALActorChromaKey::sActive ? 571 : 475);\n+    }\n+\n     bool use_freeze_frame = floaterp->mFreezeFrameCheck && floaterp->mFreezeFrameCheck->getValue().asBoolean();\n \n     if (use_freeze_frame)\n",
+          "id": "indra/newview/llfloatersnapshot.cpp@220,33",
+          "patch": "         }\n     }\n \n+    // This capture-contract note is event-driven; draw() never resolves widgets.\n+    if (auto* note = floaterp->findChild<LLTextBox>(\"actor_key_snapshot_note\"))\n+    {\n+        note->setVisible(ALActorChromaKey::sActive);\n+        if (ALActorChromaKey::sActive)\n+        {\n+            const auto& refusal = ALActorChromaKey::snapshotPlaceholder();\n+            note->setText(refusal.empty()\n+                ? \"Keyed snapshot: exact colour only for unfiltered COLOR saves in PNG/BMP/lossless AVIF at rendered size.\"\n+                : refusal);\n+        }\n+        if (!mSkipReshaping && !floaterp->isMinimized())\n+        {\n+            if (ALActorChromaKey::sActive && !mKeyLayoutExpanded)\n+            {\n+                mKeyLayoutOriginalHeight = floaterp->getRect().getHeight();\n+                floaterp->reshape(floaterp->getRect().getWidth(), mKeyLayoutOriginalHeight + 96);\n+                mKeyLayoutExpanded = true;\n+            }\n+            else if (!ALActorChromaKey::sActive && mKeyLayoutExpanded)\n+            {\n+                floaterp->reshape(floaterp->getRect().getWidth(), mKeyLayoutOriginalHeight);\n+                mKeyLayoutExpanded = false;\n+            }\n+        }\n+    }\n+\n     bool use_freeze_frame = floaterp->mFreezeFrameCheck && floaterp->mFreezeFrameCheck->getValue().asBoolean();\n \n     if (use_freeze_frame)\n",
           "purpose": "Comment evidence: This capture-contract note is event-driven; draw() never resolves widgets.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161354,13 +161365,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 293,
-          "head_start": 282,
-          "id": "indra/newview/llfloatersnapshot.cpp@282,12",
+          "head_end": 306,
+          "head_start": 295,
+          "id": "indra/newview/llfloatersnapshot.cpp@295,12",
           "patch": "         floaterp->impl->mAvatarPauseHandles.clear();\n \n         // thaw everything else\n-        gSavedSettings.setBOOL(\"FreezeTime\", false);\n+        // [BDMerge B3] unless Freeze World is holding the scene: its own\n+        // toggle owns FreezeTime for the duration of the freeze\n+        if (!gSavedSettings.getBOOL(\"UseFreezeWorld\"))\n+        {\n+            gSavedSettings.setBOOL(\"FreezeTime\", false);\n+        }\n \n         // restore last tool (e.g. pie menu, etc)\n         if (floaterp->impl->mLastToolset)\n",
           "purpose": "Comment evidence: [BDMerge B3] unless Freeze World is holding the scene: its own toggle owns FreezeTime for the duration of the freeze",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161401,13 +161416,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 15,
-          "head_end": 376,
-          "head_start": 362,
-          "id": "indra/newview/llfloatersnapshot.cpp@362,15",
+          "head_end": 389,
+          "head_start": 375,
+          "id": "indra/newview/llfloatersnapshot.cpp@375,15",
           "patch": "         }\n         else\n         {\n-            width_ctrl->setMaxValue(MAX_SNAPSHOT_IMAGE_SIZE);\n-            height_ctrl->setMaxValue(MAX_SNAPSHOT_IMAGE_SIZE);\n+            // [BDMerge C6] high-res override: save-to-disk custom resolution\n+            // may exceed the stock cap when unlocked (donor: Black Dragon\n+            // MAX_SNAPSHOT_IMAGE_SIZE raise, gated at runtime here). Other\n+            // destinations (inventory/profile/postcard) keep the stock cap.\n+            S32 max_side = (shot_type == LLSnapshotModel::SNAPSHOT_LOCAL)\n+                               ? bdmerge_max_snapshot_image_size()\n+                               : (S32)MAX_SNAPSHOT_IMAGE_SIZE;\n+            width_ctrl->setMaxValue((F32)max_side);\n+            height_ctrl->setMaxValue((F32)max_side);\n         }\n     }\n \n",
           "purpose": "Comment evidence: [BDMerge C6] high-res override: save-to-disk custom resolution may exceed the stock cap when unlocked (donor: Black Dragon MAX_SNAPSHOT_IMAGE_SIZE raise, gated at runtime here). Other destinations (inventory/profile/postcard) keep the stock cap.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161445,13 +161464,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 516,
-          "head_start": 510,
-          "id": "indra/newview/llfloatersnapshot.cpp@510,7",
+          "head_end": 529,
+          "head_start": 523,
+          "id": "indra/newview/llfloatersnapshot.cpp@523,7",
           "patch": " // static\n void LLFloaterSnapshotBase::ImplBase::onClickNewSnapshot(void* data)\n {\n+    ALActorChromaKey::SnapshotRequestScope explicit_key_request(true);\n     LLFloaterSnapshotBase* floater = (LLFloaterSnapshotBase *)data;\n     LLSnapshotLivePreview* previewp = floater->getPreviewView();\n     if (previewp)\n",
           "purpose": "Edits ALActorChromaKey",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161494,13 +161517,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 31,
-          "head_end": 821,
-          "head_start": 791,
-          "id": "indra/newview/llfloatersnapshot.cpp@791,31",
+          "head_end": 834,
+          "head_start": 804,
+          "id": "indra/newview/llfloatersnapshot.cpp@804,31",
           "patch": " \n         previewp->getSize(width, height);\n \n+        // [BDMerge A1.2] Resolution-aware autoscale: while BDMergeSnapshotAutoscale is\n+        // enabled, re-derive the output/window height ratio every time the requested\n+        // snapshot resolution changes and stash it in BDMergeSnapshotAutoscaleMultiplier\n+        // (non-persisted, mirrors donor's RenderSnapshotMultiplier). pipeline.cpp reads it\n+        // back through an LLCachedControl-gated helper to scale SSAO radius/blur, the\n+        // shared shadow+SSAO soften blur size, and the DoF field-of-view input so a\n+        // high-res snapshot keeps the same effect *weighting* it had at window resolution\n+        // instead of the effects visually shrinking as output resolution grows. Gate off\n+        // (default) never touches the multiplier and pipeline.cpp forces it back to 1.0,\n+        // so rendering stays bit-identical to stock.\n+        // donor: Black Dragon (NiranV Dean) 8eed1a6768 (\"Added: Simple automatic\n+        // SSAO/Shadow/DoF scaling option...\"), non-persist multiplier per fa96df28ee.\n+        {\n+            static LLCachedControl<bool> bdmerge_snapshot_autoscale(gSavedSettings, \"BDMergeSnapshotAutoscale\", false);\n+            if (bdmerge_snapshot_autoscale)\n+            {\n+                S32 window_height = gViewerWindow->getWindowHeightRaw();\n+                if (window_height > 0)\n+                {\n+                    F32 multiplier = (F32)height / (F32)window_height;\n+                    gSavedSettings.setF32(\"BDMergeSnapshotAutoscaleMultiplier\", multiplier);\n+                }\n+            }\n+        }\n+\n         // We use the height spinner here because we come here via the aspect ratio\n         // checkbox as well and we want height always changing to width by default.\n         // If we use the width spinner we would change width according to height by\n",
           "purpose": "Comment evidence: [BDMerge A1.2] Resolution-aware autoscale: while BDMergeSnapshotAutoscale is enabled, re-derive the output/window height ratio every time the requested snapshot resolution changes and stash it in BDMergeSnapshotAutoscaleMultiplier (non-persisted, mirrors donor's RenderSnapshotMul",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161541,13 +161568,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 1031,
-          "head_start": 1022,
-          "id": "indra/newview/llfloatersnapshot.cpp@1022,10",
+          "head_end": 1044,
+          "head_start": 1035,
+          "id": "indra/newview/llfloatersnapshot.cpp@1035,10",
           "patch": " {\n     if (impl->mPreviewHandle.get()) impl->mPreviewHandle.get()->die();\n \n+    // [BDMerge B3] fully release Freeze World (thaws avatars via the\n+    // UseFreezeWorld listener) so no pause handles outlive the floater\n+    gSavedSettings.setBOOL(\"UseFreezeWorld\", false);\n+\n     //unfreeze everything else\n     gSavedSettings.setBOOL(\"FreezeTime\", false);\n \n",
           "purpose": "Comment evidence: [BDMerge B3] fully release Freeze World (thaws avatars via the UseFreezeWorld listener) so no pause handles outlive the floater",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161590,13 +161621,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 22,
-          "head_end": 1082,
-          "head_start": 1061,
-          "id": "indra/newview/llfloatersnapshot.cpp@1061,22",
+          "head_end": 1095,
+          "head_start": 1074,
+          "id": "indra/newview/llfloatersnapshot.cpp@1074,22",
           "patch": "     mSucceessLblPanel = getChild<LLUICtrl>(\"succeeded_panel\");\n     mFailureLblPanel = getChild<LLUICtrl>(\"failed_panel\");\n \n+    // [BDMerge C6] detachable big preview: PREVIEW button shares the refresh\n+    // button's row; when the gate is on, shrink REFRESH (stock 167px wide)\n+    // and reveal it (donor: Black Dragon fab3226ac5). Gate off: button stays\n+    // hidden and overlapped, stock layout untouched.\n+    {\n+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, \"BDMergeSnapshotExtras\", false);\n+        LLButton* big_preview_btn = getChild<LLButton>(\"big_preview_btn\");\n+        big_preview_btn->setCommitCallback(boost::bind(&LLFloaterSnapshot::onClickBigPreview, this));\n+        big_preview_btn->setVisible(bdmerge_snapshot_extras);\n+        if (bdmerge_snapshot_extras)\n+        {\n+            mRefreshBtn->reshape(86, mRefreshBtn->getRect().getHeight());\n+            mBigPreviewFloater = dynamic_cast<LLFloaterBigPreview*>(LLFloaterReg::getInstance(\"big_preview\"));\n+        }\n+    }\n+\n     childSetCommitCallback(\"ui_check\", ImplBase::onClickDisplaySetting, this);\n     childSetCommitCallback(\"balance_check\", ImplBase::onClickDisplaySetting, this);\n     childSetCommitCallback(\"hud_check\", ImplBase::onClickDisplaySetting, this);\n",
           "purpose": "Comment evidence: [BDMerge C6] detachable big preview: PREVIEW button shares the refresh button's row; when the gate is on, shrink REFRESH (stock 167px wide) and reveal it (donor: Black Dragon fab3226ac5). Gate off: button stays hidden and overlapped, stock layout untouched.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161641,13 +161676,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 24,
-          "head_end": 1114,
-          "head_start": 1091,
-          "id": "indra/newview/llfloatersnapshot.cpp@1091,24",
+          "head_end": 1127,
+          "head_start": 1104,
+          "id": "indra/newview/llfloatersnapshot.cpp@1104,24",
           "patch": "     mFreezeFrameCheck->setValue(gSavedSettings.getBOOL(\"UseFreezeFrame\"));\n     mFreezeFrameCheck->setCommitCallback(&ImplBase::onCommitFreezeFrame, this);\n \n+    // [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83): when the\n+    // gate is on, show the Freeze World checkbox in place of the stock\n+    // freeze-frame checkbox (BD replaced freeze-frame with Freeze World and\n+    // dropped the laggy fullscreen preview; both occupy the same slot here).\n+    // The checkbox is bound to UseFreezeWorld via control_name in XML.\n+    {\n+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, \"BDMergeFreezeWorld\", false);\n+        const bool freeze_world_enabled = bdmerge_freeze_world;\n+        getChildView(\"freeze_world_check\")->setVisible(freeze_world_enabled);\n+        mFreezeFrameCheck->setVisible(!freeze_world_enabled);\n+        if (freeze_world_enabled)\n+        {\n+            // never let the hidden stock freeze-frame checkbox re-engage its\n+            // fullscreen preview while Freeze World owns the slot\n+            mFreezeFrameCheck->setValue(false);\n+        }\n+    }\n+\n     getChild<LLUICtrl>(\"auto_snapshot_check\")->setValue(gSavedSettings.getBOOL(\"AutoSnapshot\"));\n     childSetCommitCallback(\"auto_snapshot_check\", ImplBase::onClickAutoSnap, this);\n \n",
           "purpose": "Comment evidence: [BDMerge B3] Freeze World (donor: Black Dragon b4cfc2cb83): when the gate is on, show the Freeze World checkbox in place of the stock freeze-frame checkbox (BD replaced freeze-frame with Freeze World and dropped the laggy fullscreen preview; both occupy the same slot here). The c",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161688,13 +161727,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1180,
-          "head_start": 1174,
-          "id": "indra/newview/llfloatersnapshot.cpp@1174,7",
+          "head_end": 1193,
+          "head_start": 1187,
+          "id": "indra/newview/llfloatersnapshot.cpp@1187,7",
           "patch": " // virtual\n void LLFloaterSnapshotBase::draw()\n {\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     LLSnapshotLivePreview* previewp = getPreviewView();\n \n     if (previewp && (previewp->isSnapshotActive() || previewp->getThumbnailLock()))\n",
           "purpose": "Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161732,13 +161775,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1230,
-          "head_start": 1224,
-          "id": "indra/newview/llfloatersnapshot.cpp@1224,7",
+          "head_end": 1243,
+          "head_start": 1237,
+          "id": "indra/newview/llfloatersnapshot.cpp@1237,7",
           "patch": " //virtual\n void LLFloaterSnapshot::onOpen(const LLSD& key)\n {\n+    ALActorChromaKey::SnapshotRequestScope explicit_key_request(true);\n     LLSnapshotLivePreview* preview = getPreviewView();\n     if(preview)\n     {\n",
           "purpose": "Edits ALActorChromaKey",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161787,13 +161834,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 50,
-          "head_end": 1290,
-          "head_start": 1241,
-          "id": "indra/newview/llfloatersnapshot.cpp@1241,50",
+          "head_end": 1303,
+          "head_start": 1254,
+          "id": "indra/newview/llfloatersnapshot.cpp@1254,50",
           "patch": "     impl->setAdvanced(gSavedSettings.getBOOL(\"AdvanceSnapshot\"));\n     impl->updateLayout(this);\n \n+    // [BDMerge C6] remembered snapshot destination: restore the panel saved\n+    // at last close (donor: Black Dragon RememberSnapshotMode, adapted to a\n+    // persisted panel name so it also survives sessions)\n+    {\n+        static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, \"BDMergeSnapshotExtras\", false);\n+        static LLCachedControl<bool> bdmerge_remember_mode(gSavedSettings, \"BDMergeSnapshotRememberMode\", true);\n+        if (bdmerge_snapshot_extras && bdmerge_remember_mode)\n+        {\n+            const std::string last_panel = gSavedSettings.getString(\"BDMergeSnapshotLastPanel\");\n+            LLSideTrayPanelContainer* panel_container = getChild<LLSideTrayPanelContainer>(\"panel_container\");\n+            if (!last_panel.empty()\n+                && panel_container->getPanelByName(last_panel)\n+                && panel_container->getCurrentPanel()->getName() != last_panel)\n+            {\n+                panel_container->openPanel(last_panel);\n+            }\n+        }\n+    }\n+\n     // Initialize default tab.\n     getChild<LLSideTrayPanelContainer>(\"panel_container\")->getCurrentPanel()->onOpen(LLSD());\n }\n \n+// virtual\n+void LLFloaterSnapshot::onClose(bool app_quitting)\n+{\n+    // [BDMerge C6] remember the destination panel for the next open/session\n+    // and take the detached big preview down with us (donor: Black Dragon)\n+    static LLCachedControl<bool> bdmerge_snapshot_extras(gSavedSettings, \"BDMergeSnapshotExtras\", false);\n+    if (bdmerge_snapshot_extras)\n+    {\n+        LLSideTrayPanelContainer* panel_container = getChild<LLSideTrayPanelContainer>(\"panel_container\");\n+        if (panel_container && panel_container->getCurrentPanel())\n+        {\n+            gSavedSettings.setString(\"BDMergeSnapshotLastPanel\", panel_container->getCurrentPanel()->getName());\n+        }\n+        if (mBigPreviewFloater)\n+        {\n+            mBigPreviewFloater->closeOnFloaterOwnerClosing(this);\n+        }\n+    }\n+    LLFloaterSnapshotBase::onClose(app_quitting);\n+}\n+\n void LLFloaterSnapshot::onExtendFloater()\n {\n     impl->setAdvanced(gSavedSettings.getBOOL(\"AdvanceSnapshot\"));\n",
           "purpose": "Comment evidence: [BDMerge C6] remembered snapshot destination: restore the panel saved at last close (donor: Black Dragon RememberSnapshotMode, adapted to a persisted panel name so it also survives sessions) virtual [BDMerge C6] remember the destination panel for the next open/session and take th",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161843,13 +161894,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 46,
-          "head_end": 1341,
-          "head_start": 1296,
-          "id": "indra/newview/llfloatersnapshot.cpp@1296,46",
+          "head_end": 1354,
+          "head_start": 1309,
+          "id": "indra/newview/llfloatersnapshot.cpp@1309,46",
           "patch": "     closeFloater();\n }\n \n+// [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5,\n+// double-toggle crash fix f0db8914d0 folded in: never die() the shared\n+// preview on hide)\n+void LLFloaterSnapshot::onClickBigPreview()\n+{\n+    // Toggle the preview\n+    if (isPreviewVisible())\n+    {\n+        LLFloaterReg::hideInstance(\"big_preview\");\n+    }\n+    else\n+    {\n+        if (!mBigPreviewFloater)\n+        {\n+            mBigPreviewFloater = dynamic_cast<LLFloaterBigPreview*>(LLFloaterReg::getInstance(\"big_preview\"));\n+        }\n+        attachPreview();\n+        LLFloaterReg::showInstance(\"big_preview\");\n+    }\n+}\n+\n+bool LLFloaterSnapshot::isPreviewVisible()\n+{\n+    return (mBigPreviewFloater && mBigPreviewFloater->getVisible());\n+}\n+\n+void LLFloaterSnapshot::attachPreview()\n+{\n+    if (mBigPreviewFloater)\n+    {\n+        LLSnapshotLivePreview* previewp = getPreviewView();\n+        if (previewp)\n+        {\n+            mBigPreviewFloater->setPreview(previewp);\n+            mBigPreviewFloater->setFloaterOwner(this);\n+        }\n+    }\n+}\n+// [/BDMerge C6]\n+\n //virtual\n void LLFloaterSnapshotBase::onClose(bool app_quitting)\n {\n",
           "purpose": "Comment evidence: [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5, double-toggle crash fix f0db8914d0 folded in: never die() the shared preview on hide) Toggle the preview [/BDMerge C6]",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161889,13 +161944,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 16,
-          "head_end": 1365,
-          "head_start": 1350,
-          "id": "indra/newview/llfloatersnapshot.cpp@1350,16",
+          "head_end": 1378,
+          "head_start": 1363,
+          "id": "indra/newview/llfloatersnapshot.cpp@1363,16",
           "patch": "         previewp->setEnabled(false);\n     }\n \n+    // [BDMerge B3] closing the snapshot floater always releases Freeze World\n+    // (the listener thaws the avatars); like BD, the freeze lives only while\n+    // its UI is reachable so the scene can never get stuck frozen\n+    gSavedSettings.setBOOL(\"UseFreezeWorld\", false);\n+\n+    // [BDMerge A1.2] reset the autoscale multiplier so a high-res selection\n+    // can't keep scaling SSAO/shadow/DoF for in-world rendering after the\n+    // floater closes (donor follow-up fix 0b37fb26fd, same intent)\n+    gSavedSettings.setF32(\"BDMergeSnapshotAutoscaleMultiplier\", 1.f);\n+\n     gSavedSettings.setBOOL(\"FreezeTime\", false);\n     impl->mAvatarPauseHandles.clear();\n \n",
           "purpose": "Comment evidence: [BDMerge B3] closing the snapshot floater always releases Freeze World (the listener thaws the avatars); like BD, the freeze lives only while its UI is reachable so the scene can never get stuck frozen [BDMerge A1.2] reset the autoscale multiplier so a high-res selection can't ke",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161933,16 +161992,72 @@
             "LLFloaterSnapshotBase::notify"
           ],
           "git_context": "S32 LLFloaterSnapshotBase::notify(const LLSD& info)",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
+          "guard_evidence": [
+            "if (ALActorChromaKey::sActive || impl->mKeyLayoutExpanded) impl->updateLayout(this);"
+          ],
+          "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 1410,
-          "head_start": 1404,
-          "id": "indra/newview/llfloatersnapshot.cpp@1404,7",
-          "patch": "         impl->updateControls(this);\n         // We've just done refresh.\n         impl->setNeedRefresh(false);\n+        impl->updateLayout(this);\n \n         // The refresh button is initially hidden. We show it after the first update,\n         // i.e. when preview appears.\n",
+          "head_end": 1423,
+          "head_start": 1417,
+          "id": "indra/newview/llfloatersnapshot.cpp@1417,7",
+          "patch": "         impl->updateControls(this);\n         // We've just done refresh.\n         impl->setNeedRefresh(false);\n+        if (ALActorChromaKey::sActive || impl->mKeyLayoutExpanded) impl->updateLayout(this);\n \n         // The refresh button is initially hidden. We show it after the first update,\n         // i.e. when preview appears.\n",
+          "purpose": "Edits ALActorChromaKey",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "da3d2eb8e5b",
+              "subject": "[BDMerge A1.2] Resolution-aware autoscale for SSAO/shadow-blur/DoF"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            },
+            {
+              "commit": "7002f575a32",
+              "subject": "[BDMerge B3] Freeze World: full-scene freeze with free camera"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 1371,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterSnapshotBase::getImageData"
+          ],
+          "git_context": "LLPointer<LLImageFormatted> LLFloaterSnapshotBase::getImageData()",
+          "guard_evidence": [
+            "if (!previewp->keyCaptureCurrent()) return nullptr;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 1594,
+          "head_start": 1588,
+          "id": "indra/newview/llfloatersnapshot.cpp@1588,7",
+          "patch": "         return NULL;\n     }\n \n+    if (!previewp->keyCaptureCurrent()) return nullptr;\n     LLPointer<LLImageFormatted> img = previewp->getFormattedImage();\n     if (!img.get())\n     {\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -161998,6 +162113,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
               "commit": "92335aa294a",
               "subject": "[BDMerge C6] Snapshot floater conveniences"
             }
@@ -162030,6 +162149,46 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 139,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 152,
+          "head_start": 145,
+          "id": "indra/newview/llfloatersnapshot.h@145,8",
+          "patch": "     bool mNeedRefresh;\n     bool mAdvanced;\n     bool mSkipReshaping;\n+    bool mKeyLayoutExpanded = false;\n+    S32 mKeyLayoutOriginalHeight = 0;\n     EStatus mStatus;\n };\n \n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
               "commit": "92335aa294a",
               "subject": "[BDMerge C6] Snapshot floater conveniences"
             }
@@ -162054,13 +162213,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 164,
-          "head_start": 158,
-          "id": "indra/newview/llfloatersnapshot.h@158,7",
+          "head_end": 166,
+          "head_start": 160,
+          "id": "indra/newview/llfloatersnapshot.h@160,7",
           "patch": " \n     /*virtual*/ bool postBuild();\n     /*virtual*/ void onOpen(const LLSD& key);\n+    /*virtual*/ void onClose(bool app_quitting); // [BDMerge C6]\n     /*virtual*/ S32 notify(const LLSD& info);\n \n     static void update();\n",
           "purpose": "Comment evidence: virtual*/ void onClose(bool app_quitting); // [BDMerge C6]",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "92335aa294a",
               "subject": "[BDMerge C6] Snapshot floater conveniences"
@@ -162086,13 +162249,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 176,
-          "head_start": 166,
-          "id": "indra/newview/llfloatersnapshot.h@166,11",
+          "head_end": 178,
+          "head_start": 168,
+          "id": "indra/newview/llfloatersnapshot.h@168,11",
           "patch": "     void onExtendFloater();\n     void on360Snapshot();\n \n+    // [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5)\n+    void onClickBigPreview();\n+    bool isPreviewVisible();\n+    void attachPreview();\n+\n     static LLFloaterSnapshot* getInstance();\n     static LLFloaterSnapshot* findInstance();\n     /*virtual*/ void saveTexture();\n",
           "purpose": "Comment evidence: [BDMerge C6] detachable big preview (donor: Black Dragon fab3226ac5)",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "92335aa294a",
               "subject": "[BDMerge C6] Snapshot floater conveniences"
@@ -162118,13 +162285,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 192,
-          "head_start": 183,
-          "id": "indra/newview/llfloatersnapshot.h@183,10",
+          "head_end": 194,
+          "head_start": 185,
+          "id": "indra/newview/llfloatersnapshot.h@185,10",
           "patch": " \n     class Impl;\n     friend class Impl;\n+\n+private:\n+    // [BDMerge C6] detachable big preview floater (donor: Black Dragon)\n+    LLFloaterBigPreview* mBigPreviewFloater = nullptr;\n };\n \n ///----------------------------------------------------------------------------\n",
           "purpose": "Comment evidence: [BDMerge C6] detachable big preview floater (donor: Black Dragon)",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "92335aa294a",
               "subject": "[BDMerge C6] Snapshot floater conveniences"
@@ -165081,6 +165252,127 @@
     },
     {
       "features": [
+        "common-ui",
+        "sensor"
+      ],
+      "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 167,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLPanelSnapshotPostcard::sendPostcard"
+          ],
+          "git_context": "void LLPanelSnapshotPostcard::sendPostcard()",
+          "guard_evidence": [
+            "if (!image) return;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 9,
+          "head_end": 175,
+          "head_start": 167,
+          "id": "indra/newview/llpanelsnapshotpostcard.cpp@167,9",
+          "patch": " {\n     if (!gAgent.getRegion()) return;\n \n+    auto image = mSnapshotFloater->getImageData();\n+    if (!image) return;\n+\n     // upload the image\n     std::string url = gAgent.getRegion()->getCapability(\"SendPostcard\");\n     if (!url.empty())\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 177,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLPanelSnapshotPostcard::sendPostcard"
+          ],
+          "git_context": "void LLPanelSnapshotPostcard::sendPostcard()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 186,
+          "head_start": 180,
+          "id": "indra/newview/llpanelsnapshotpostcard.cpp@180,7",
+          "patch": "             getChild<LLUICtrl>(\"subject_form\")->getValue().asString(),\n             getChild<LLUICtrl>(\"msg_form\")->getValue().asString(),\n             mSnapshotFloater->getPosTakenGlobal(),\n-            mSnapshotFloater->getImageData(),\n+            image,\n             [](LLUUID, LLUUID, LLUUID, LLSD response) {\n                 LLPanelSnapshotPostcard::sendPostcardFinished(response);\n             }));\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/llpanelsnapshotpostcard.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
+        "common-ui"
+      ],
+      "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 96,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLPanelSnapshotProfile::onSend"
+          ],
+          "git_context": "void LLPanelSnapshotProfile::onSend()",
+          "guard_evidence": [
+            "if (!image) return;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 8,
+          "head_end": 103,
+          "head_start": 96,
+          "id": "indra/newview/llpanelsnapshotprofile.cpp@96,8",
+          "patch": "     std::string caption = getChild<LLUICtrl>(\"caption\")->getValue().asString();\n     bool add_location = getChild<LLUICtrl>(\"add_location_cb\")->getValue().asBoolean();\n \n-    LLWebProfile::uploadImage(mSnapshotFloater->getImageData(), caption, add_location);\n+    auto image = mSnapshotFloater->getImageData();\n+    if (!image) return;\n+    LLWebProfile::uploadImage(image, caption, add_location);\n     mSnapshotFloater->postSave();\n }\n",
+          "purpose": "Edits LLWebProfile",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/llpanelsnapshotprofile.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
         "unknown"
       ],
       "hunks": [
@@ -165522,6 +165814,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
             },
@@ -165557,6 +165853,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -165594,6 +165894,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
             },
@@ -165630,6 +165934,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
             },
@@ -165643,8 +165951,8 @@
           "slice": 99
         },
         {
-          "base_count": 6,
-          "base_start": 156,
+          "base_count": 8,
+          "base_start": 154,
           "candidate_features_from_subjects": [],
           "feature_evidence": [],
           "features": [
@@ -165652,6 +165960,8 @@
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
+            "LLSnapshotLivePreview::getSnapshotUpToDate",
+            "LLSnapshotLivePreview::keyCaptureCurrent",
             "LLSnapshotLivePreview::updateSnapshot"
           ],
           "git_context": "F32 LLSnapshotLivePreview::getImageAspect()",
@@ -165659,14 +165969,18 @@
             "if (new_snapshot && ALActorChromaKey::sActive && ALActorChromaKey::snapshotRequestExplicit())"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 8,
-          "head_end": 169,
-          "head_start": 162,
-          "id": "indra/newview/llsnapshotlivepreview.cpp@162,8",
-          "patch": " \n void LLSnapshotLivePreview::updateSnapshot(bool new_snapshot, bool new_thumbnail, F32 delay)\n {\n+    if (new_snapshot && ALActorChromaKey::sActive && ALActorChromaKey::snapshotRequestExplicit())\n+        ALActorChromaKey::explicitSnapshotRequest();\n     LL_DEBUGS(\"Snapshot\") << \"updateSnapshot: mSnapshotUpToDate = \" << getSnapshotUpToDate() << LL_ENDL;\n \n     // Update snapshot if requested.\n",
-          "purpose": "Edits ALActorChromaKey",
+          "head_count": 22,
+          "head_end": 181,
+          "head_start": 160,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@160,22",
+          "patch": "     return (mKeepAspectRatio ? ((F32)getRect().getWidth()) / ((F32)getRect().getHeight()) : ((F32)getWidth()) / ((F32)getHeight()));\n }\n \n+bool LLSnapshotLivePreview::keyCaptureCurrent() const\n+{\n+    return !ALActorChromaKey::sActive ||\n+        (mKeyCaptureRevision != 0 && mKeyCaptureRevision == ALActorChromaKey::revision() &&\n+         ALActorChromaKey::snapshotPlaceholder().empty());\n+}\n+\n+bool LLSnapshotLivePreview::getSnapshotUpToDate() const\n+{\n+    return mSnapshotUpToDate && keyCaptureCurrent();\n+}\n+\n void LLSnapshotLivePreview::updateSnapshot(bool new_snapshot, bool new_thumbnail, F32 delay)\n {\n+    if (new_snapshot && ALActorChromaKey::sActive && ALActorChromaKey::snapshotRequestExplicit())\n+        ALActorChromaKey::explicitSnapshotRequest();\n     LL_DEBUGS(\"Snapshot\") << \"updateSnapshot: mSnapshotUpToDate = \" << getSnapshotUpToDate() << LL_ENDL;\n \n     // Update snapshot if requested.\n",
+          "purpose": "Edits LLSnapshotLivePreview, ALActorChromaKey",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -165696,13 +166010,184 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 683,
-          "head_start": 677,
-          "id": "indra/newview/llsnapshotlivepreview.cpp@677,7",
+          "head_end": 695,
+          "head_start": 689,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@689,7",
           "patch": " //static\n bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )\n {\n+    ALActorChromaKey::SnapshotRequestScope automatic_key_request(false);\n     LLSnapshotLivePreview* previewp = (LLSnapshotLivePreview*)snapshot_preview;\n     if (previewp->getWidth() == 0 || previewp->getHeight() == 0)\n     {\n",
           "purpose": "Edits ALActorChromaKey",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 719,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::onIdle"
+          ],
+          "git_context": "bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )",
+          "guard_evidence": [
+            "if (ALActorChromaKey::sActive && previewp->mSnapshotUpToDate &&"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 10,
+          "head_end": 749,
+          "head_start": 740,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@740,10",
+          "patch": "         previewp->mForceUpdateSnapshot = false;\n     }\n \n+    if (ALActorChromaKey::sActive && previewp->mSnapshotUpToDate &&\n+        previewp->mKeyAttemptRevision == ALActorChromaKey::revision() &&\n+        !ALActorChromaKey::snapshotPlaceholder().empty()) return false;\n+\n     if (previewp->getSnapshotUpToDate() && previewp->getThumbnailUpToDate())\n     {\n         return false;\n",
+          "purpose": "Edits ALActorChromaKey",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 741,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::onIdle"
+          ],
+          "git_context": "bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 12,
+          "head_end": 777,
+          "head_start": 766,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@766,12",
+          "patch": "         previewp->getWindow()->incBusyCount();\n         previewp->setImageScaled(false);\n \n+        // Stamp only a successfully finalized capture under the same key revision.\n+        const bool key_active = ALActorChromaKey::sActive;\n+        const U64 key_revision = ALActorChromaKey::revision();\n+        const U64 key_serial = ALActorChromaKey::finalizeSerial();\n+        previewp->mKeyAttemptRevision = key_active ? key_revision : 0;\n+        previewp->mKeyCaptureRevision = 0;\n         // grab the raw image\n         if (gViewerWindow->rawSnapshot(\n                 previewp->mPreviewImage,\n",
+          "purpose": "Comment evidence: Stamp only a successfully finalized capture under the same key revision.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 756,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::onIdle"
+          ],
+          "git_context": "bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )",
+          "guard_evidence": [
+            "if (key_active && ALActorChromaKey::sActive &&"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 12,
+          "head_end": 798,
+          "head_start": 787,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@787,12",
+          "patch": "                 previewp->mSnapshotBufferType,\n                 previewp->getMaxImageSize()))\n         {\n+            if (key_active && ALActorChromaKey::sActive &&\n+                key_revision == ALActorChromaKey::revision() &&\n+                previewp->mSnapshotBufferType == LLSnapshotModel::SNAPSHOT_TYPE_COLOR &&\n+                ALActorChromaKey::finalizeSerial() > key_serial &&\n+                ALActorChromaKey::snapshotPlaceholder().empty())\n+                previewp->mKeyCaptureRevision = key_revision;\n             // Invalidate/delete any existing encoded image\n             previewp->mPreviewImageEncoded = NULL;\n             // Invalidate/delete any existing formatted image\n",
+          "purpose": "Edits ALActorChromaKey, LLSnapshotModel",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 764,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::onIdle"
+          ],
+          "git_context": "bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )",
+          "guard_evidence": [
+            "if (use_freeze_frame && previewp->mAllowFullScreenPreview)",
+            "if (use_freeze_frame && previewp->mAllowFullScreenPreview && previewp->keyCaptureCurrent())"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 807,
+          "head_start": 801,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@801,7",
+          "patch": "             previewp->estimateDataSize();\n \n             // Full size preview is set: get the decoded image result and save it for animation\n-            if (use_freeze_frame && previewp->mAllowFullScreenPreview)\n+            if (use_freeze_frame && previewp->mAllowFullScreenPreview && previewp->keyCaptureCurrent())\n             {\n                 previewp->prepareFreezeFrame();\n             }\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -165734,13 +166219,185 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 15,
-          "head_end": 799,
-          "head_start": 785,
-          "id": "indra/newview/llsnapshotlivepreview.cpp@785,15",
+          "head_end": 827,
+          "head_start": 813,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@813,15",
           "patch": "             previewp->setThumbnailImageSize();\n             previewp->generateThumbnailImage(true) ;\n         }\n+        if (ALActorChromaKey::sActive && !ALActorChromaKey::snapshotPlaceholder().empty())\n+        {\n+            previewp->mThumbnailImage = nullptr;\n+            previewp->mBigThumbnailImage = nullptr;\n+            previewp->mThumbnailUpToDate = true;\n+            previewp->mBigThumbnailUpToDate = true;\n+            previewp->mFormattedImage = nullptr;\n+            previewp->mPreviewImageEncoded = nullptr;\n+        }\n         previewp->getWindow()->decBusyCount();\n         previewp->setVisible(use_freeze_frame && previewp->mAllowFullScreenPreview); // only show fullscreen preview when in freeze frame mode\n         previewp->mSnapshotActive = false;\n",
           "purpose": "Edits ALActorChromaKey",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 917,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::createUploadFile"
+          ],
+          "git_context": "LLPointer<LLImageRaw> LLSnapshotLivePreview::getEncodedImage()",
+          "guard_evidence": [
+            "if (!keyCaptureCurrent()) return false;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 969,
+          "head_start": 963,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@963,7",
+          "patch": " \n bool LLSnapshotLivePreview::createUploadFile(const std::string &out_filename, const S32 max_image_dimentions, const S32 min_image_dimentions)\n {\n+    if (!keyCaptureCurrent()) return false;\n     return LLViewerTextureList::createUploadFile(mPreviewImage, out_filename, max_image_dimentions, min_image_dimentions);\n }\n \n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 962,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::getFormattedImage"
+          ],
+          "git_context": "void LLSnapshotLivePreview::estimateDataSize()",
+          "guard_evidence": [
+            "if (!keyCaptureCurrent()) return nullptr;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 1015,
+          "head_start": 1009,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@1009,7",
+          "patch": " \n LLPointer<LLImageFormatted> LLSnapshotLivePreview::getFormattedImage()\n {\n+    if (!keyCaptureCurrent()) return nullptr;\n     if (!mFormattedImage)\n     {\n         // Apply the filter to mPreviewImage\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 1037,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::saveTexture"
+          ],
+          "git_context": "void LLSnapshotLivePreview::getSize(S32& w, S32& h) const",
+          "guard_evidence": [
+            "if (!keyCaptureCurrent()) return;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 1091,
+          "head_start": 1085,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@1085,7",
+          "patch": " \n void LLSnapshotLivePreview::saveTexture(bool outfit_snapshot, std::string name)\n {\n+    if (!keyCaptureCurrent()) return;\n     LLImageDataSharedLock lock(mPreviewImage);\n \n     LL_DEBUGS(\"Snapshot\") << \"saving texture: \" << mPreviewImage->getWidth() << \"x\" << mPreviewImage->getHeight() << LL_ENDL;\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
+            {
+              "commit": "37984f46628",
+              "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
+            },
+            {
+              "commit": "92335aa294a",
+              "subject": "[BDMerge C6] Snapshot floater conveniences"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 1106,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSnapshotLivePreview::saveLocal"
+          ],
+          "git_context": "void LLSnapshotLivePreview::saveTexture(bool outfit_snapshot, std::string name)",
+          "guard_evidence": [
+            "if (!keyCaptureCurrent()) return;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 1161,
+          "head_start": 1155,
+          "id": "indra/newview/llsnapshotlivepreview.cpp@1155,7",
+          "patch": " \n void LLSnapshotLivePreview::saveLocal(const snapshot_saved_signal_t::slot_type& success_cb, const snapshot_saved_signal_t::slot_type& failure_cb)\n {\n+    if (!keyCaptureCurrent()) return;\n     // Update mFormattedImage if necessary\n     getFormattedImage();\n \n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            },
             {
               "commit": "37984f46628",
               "subject": "Actor chroma key WP2: K0 preflight, late K2 composite, Studio key policy, snapshot contract"
@@ -165757,6 +166414,82 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/llsnapshotlivepreview.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
+        "camera",
+        "director-shell",
+        "rig"
+      ],
+      "hunks": [
+        {
+          "base_count": 7,
+          "base_start": 76,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 83,
+          "head_start": 76,
+          "id": "indra/newview/llsnapshotlivepreview.h@76,8",
+          "patch": " \n     LLSnapshotModel::ESnapshotType getSnapshotType() const { return mSnapshotType; }\n     LLSnapshotModel::ESnapshotFormat getSnapshotFormat() const { return mSnapshotFormat; }\n-    bool getSnapshotUpToDate() const { return mSnapshotUpToDate; }\n+    bool getSnapshotUpToDate() const;\n+    bool keyCaptureCurrent() const;\n     bool isSnapshotActive() { return mSnapshotActive; }\n     LLViewerTexture* getThumbnailImage() const { return mThumbnailImage ; }\n     S32  getThumbnailWidth() const { return mThumbnailWidth ; }\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 167,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (private:)"
+          ],
+          "git_context": "private:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 175,
+          "head_start": 168,
+          "id": "indra/newview/llsnapshotlivepreview.h@168,8",
+          "patch": "     LLSnapshotModel::ESnapshotType              mSnapshotType;\n     LLSnapshotModel::ESnapshotFormat    mSnapshotFormat;\n     bool                        mSnapshotUpToDate;\n+    U64                         mKeyCaptureRevision = 0;\n+    U64                         mKeyAttemptRevision = 0;\n     LLFrameTimer                mFallAnimTimer;\n     LLVector3                   mCameraPos;\n     LLQuaternion                mCameraRot;\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "175023be5cb",
+              "subject": "Actor chroma key WP2 fixes: zero-alpha fill guard, stale snapshot preview guard, key-off snapshot layout parity"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/llsnapshotlivepreview.h",
       "slice": 99
     },
     {

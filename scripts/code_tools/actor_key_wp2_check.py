@@ -193,6 +193,9 @@ struct LLGLSLShader{
 };
 std::unique_ptr<LLGLSLShader>gActorKeyCompositeProgram;
 struct ActorKeyPrograms{LLGLSLShader blur,matte,occluder;};std::unique_ptr<ActorKeyPrograms>sActorKeyPrograms;
+struct ActorKeyLensProgram{LLGLSLShader shader;};
+std::map<LLGLSLShader*,std::unique_ptr<ActorKeyLensProgram>>sActorKeyLensPrograms;
+unsigned gFrameCount=42;
 int liveAllocations=0;
 struct LLRenderTarget{
  unsigned width=0,height=0,format=0;bool owned=false;
@@ -209,6 +212,9 @@ struct LLPipeline{
  struct Pack{}mMainRT,aux;Pack* mRT=&mMainRT;
  LLRenderTarget mActorKeyScene,mActorKeyMatte{32,16,18};S32 mActorKeyDrawFBO=0,mActorKeyViewport[4]={};
  LLRenderTarget mActorKeyCoverage,mActorKeyBlurA,mActorKeyBlurB;
+ LLRenderTarget mKeyDiopterCov,mKeyLensStage[3];LLRenderTarget* mKeyLensCurrent=nullptr;
+ unsigned mKeyLensFrame=42,mKeyLensRan=0,mKeyLensComplete=0;
+ bool lensCoverageValid()const;
  bool mActorKeyReady=false;U32 mActorKeySceneFrame=0,mActorKeyDepthSrc=0,mActorKeyCoverageFrame=0,mActorKeyMatteFrame=0;
  const void* mActorKeyMatteRT=nullptr;
  std::vector<float>mActorKeyTestMatte,mActorKeyTestScene,mActorKeyTestOutput;unsigned mActorKeyTestFrames=0;
@@ -216,7 +222,7 @@ struct LLPipeline{
  bool preflightActorKey(bool,bool,bool);
  void releaseActorKeyTargets();
 };
-"""+scope+method(NV/'pipeline.cpp','bool actor_key_copy(')+'\n'+method(NV/'pipeline.cpp','bool LLPipeline::preflightActorKey(')+'\n'+method(NV/'pipeline.cpp','void LLPipeline::releaseActorKeyTargets()')
+"""+scope+method(NV/'pipeline.cpp','bool LLPipeline::lensCoverageValid() const')+method(NV/'pipeline.cpp','bool actor_key_copy(')+'\n'+method(NV/'pipeline.cpp','bool LLPipeline::preflightActorKey(')+'\n'+method(NV/'pipeline.cpp','void LLPipeline::releaseActorKeyTargets()')
     fixture+=r"""
 int main(){
  for(bool snapshot:{false,true})for(unsigned mode=0;mode<3;++mode)for(unsigned fail=1;fail<=5;++fail){
@@ -229,6 +235,11 @@ int main(){
   assert(draw==7&&read==2&&viewport[0]==11&&viewport[2]==64);assert(actor_key_copy(p.mActorKeyScene,p.mActorKeyViewport));
   assert(copySource==7&&copyReadBuffer==103&&read==2&&buffers[2]==102&&buffers[7]==101&&pack==77);
   assert(!p.preflightActorKey(true,false,false));assert(!p.preflightActorKey(false,true,false));assert(!p.preflightActorKey(false,false,true));
+  p.mKeyLensRan=8;assert(!p.preflightActorKey(false,false,true));
+  p.mKeyLensComplete=8;p.mKeyLensCurrent=&p.mActorKeyMatte;
+  assert(p.preflightActorKey(false,false,true)); // same-frame first activation
+  p.mKeyLensFrame=41;assert(!p.preflightActorKey(false,false,true));
+  p.mKeyLensFrame=42;p.mKeyLensRan=p.mKeyLensComplete=0;p.mKeyLensCurrent=nullptr;
   p.matte=false;assert(!p.preflightActorKey(false,false,false));
  }
  LLPipeline p;settings["ActorKeySelfTest"]=1;assert(p.preflightActorKey(false,false,false));assert(p.mActorKeyTestOutput.size()==64*32*4);

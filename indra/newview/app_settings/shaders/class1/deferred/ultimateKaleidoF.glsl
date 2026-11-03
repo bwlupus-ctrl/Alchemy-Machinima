@@ -47,7 +47,24 @@
 
 /*[EXTRA_CODE_HERE]*/
 
+#ifdef AL_KEY_COVERAGE_ONLY
+out vec4 frag_data[1];
+#define KAL_VALUE vec4
+#else
 out vec4 frag_data[3];
+#define KAL_VALUE vec3
+#endif
+
+#ifdef AL_KEY_COVERAGE_ONLY
+uniform sampler2D keyCoverage;
+uniform int keyInputPacked; // K1 is RG; later stages are RGB + shadow A.
+vec4 keySample(vec2 uv)
+{
+    vec4 c = textureLod(keyCoverage, uv, 0.0);
+    return keyInputPacked != 0 ? vec4(c.rrr, c.g) : c;
+}
+#endif
+
 
 in vec2 vary_fragcoord;
 
@@ -678,7 +695,11 @@ void main()
     // single bilinear tap of the scene at the folded uv (the pattern is a
     // coordinate fold, not a gather -> stays full-res)
     vec2 fuv = kal_wrapUV(srcUV);
+#ifdef AL_KEY_COVERAGE_ONLY
+    vec4 col = keySample(fuv);
+#else
     vec3 col = textureLod(diffuseRect, fuv, 0.0).rgb;
+#endif
 
     // Iridescence: hashed per-cell tint, like light catching each facet of
     // a cut surface differently. Mild by design (+-18% per channel at full).
@@ -687,7 +708,9 @@ void main()
         vec3 th = vec3(kal_hashCell(vec2(cellKey, 101.3)),
                        kal_hashCell(vec2(cellKey, 107.9)),
                        kal_hashCell(vec2(cellKey, 113.1)));
+#ifndef AL_KEY_COVERAGE_ONLY
         col *= mix(vec3(1.0), 0.82 + 0.36 * th, kal_cell2.x);
+#endif
     }
 
     // seam soften: feather the mirror lines (TAA crawl on a locked camera).
@@ -701,8 +724,13 @@ void main()
         if (w > 1e-3)
         {
             vec2 off = (1.0 / screen_res) * (1.0 + kal_look.x * 3.0);
+#ifdef AL_KEY_COVERAGE_ONLY
+            vec4 a = keySample(kal_wrapUV(srcUV + off));
+            vec4 b = keySample(kal_wrapUV(srcUV - off));
+#else
             vec3 a = textureLod(diffuseRect, kal_wrapUV(srcUV + off), 0.0).rgb;
             vec3 b = textureLod(diffuseRect, kal_wrapUV(srcUV - off), 0.0).rgb;
+#endif
             col = mix(col, 0.5 * (a + b), w * 0.5);
         }
     }
@@ -713,7 +741,11 @@ void main()
     if (pmode > 0)
     {
         hold = kal_holdMask(uv, pradN);
+#ifdef AL_KEY_COVERAGE_ONLY
+        vec4 orig = keySample(uv);
+#else
         vec3 orig = textureLod(diffuseRect, uv, 0.0).rgb;
+#endif
         col = mix(col, orig, hold);                 // hold = 1 -> subject in front
     }
 
@@ -721,7 +753,11 @@ void main()
     float blendW = clamp(kal_look.y, 0.0, 1.0);
     if (blendW < 0.999)
     {
+#ifdef AL_KEY_COVERAGE_ONLY
+        vec4 orig = keySample(uv);
+#else
         vec3 orig = textureLod(diffuseRect, uv, 0.0).rgb;
+#endif
         col = mix(orig, col, blendW);
     }
 
@@ -732,6 +768,9 @@ void main()
     // views (setup aids; not a capture path).
     vec2 warpUV = mix(fuv, uv, max(hold, 1.0 - blendW));
 
+#ifdef AL_KEY_COVERAGE_ONLY
+    frag_data[0] = clamp(col, 0.0, 1.0);
+#else
     // ---- setup views ------------------------------------------------------
 #ifdef AL_SENSOR_HDR
     if (sensor_diagnostics != 0) col = texture(diffuseRect, uv).rgb;
@@ -784,4 +823,5 @@ void main()
 #endif
     frag_data[1] = vec4(0.0);
     frag_data[2] = vec4(warpUV, 0.0, 0.0);
+#endif
 }
