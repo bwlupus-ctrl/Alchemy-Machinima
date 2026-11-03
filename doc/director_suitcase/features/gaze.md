@@ -67,7 +67,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@333,115", "indra/newview/CMakeLists.txt@1286,162", "indra/newview/CMakeLists.txt@2947,185"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,15959", "indra/newview/app_settings/settings.xml@29305,2466"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@1714,12", "indra/newview/llappviewer.cpp@5369,37", "indra/newview/llappviewer.cpp@5657,48", "indra/newview/llappviewer.cpp@5968,30"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,34", "indra/newview/llappviewer.cpp@1715,12", "indra/newview/llappviewer.cpp@5370,37", "indra/newview/llappviewer.cpp@5658,48", "indra/newview/llappviewer.cpp@5969,30"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@201,9", "indra/newview/llstartup.cpp@2264,11"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/app_settings/key_bindings.xml", "hunks": ["indra/newview/app_settings/key_bindings.xml@1,13", "indra/newview/app_settings/key_bindings.xml@47,13", "indra/newview/app_settings/key_bindings.xml@136,13", "indra/newview/app_settings/key_bindings.xml@232,13"]}

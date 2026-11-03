@@ -523,10 +523,10 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5658,48",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -4453,6 +4453,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -4760,6 +4761,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -5085,6 +5087,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -10366,13 +10369,13 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@1714,12",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@5968,30",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@1715,12",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5658,48",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@5969,30",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -14171,6 +14174,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -14478,6 +14482,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -14803,6 +14808,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -22025,14 +22031,14 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@379,60",
-          "indra/newview/llappviewer.cpp@1621,8",
-          "indra/newview/llappviewer.cpp@1940,24",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@4575,17",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@5915,44"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@380,60",
+          "indra/newview/llappviewer.cpp@1622,8",
+          "indra/newview/llappviewer.cpp@1941,24",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@4576,17",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@5916,44"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -25087,6 +25093,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -25627,6 +25634,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -25952,6 +25960,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -33447,8 +33456,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5335,24"
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5336,24"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -36244,6 +36253,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -36949,6 +36959,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -37274,6 +37285,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -44954,14 +44966,14 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5335,24",
-          "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@5968,30",
-          "indra/newview/llappviewer.cpp@6429,15",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5336,24",
+          "indra/newview/llappviewer.cpp@5658,48",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@5969,30",
+          "indra/newview/llappviewer.cpp@6430,15",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -52680,6 +52692,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -53452,6 +53465,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -53777,6 +53791,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -65075,9 +65090,9 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@4645,10",
-          "indra/newview/llappviewer.cpp@6021,8"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@4646,10",
+          "indra/newview/llappviewer.cpp@6022,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -69527,6 +69542,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -69809,6 +69825,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -70134,6 +70151,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -72790,7 +72808,7 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -74717,6 +74735,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -75161,6 +75180,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -75486,6 +75506,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -82544,6 +82565,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -86323,16 +86345,16 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@154,7",
-          "indra/newview/llappviewer.cpp@1940,24",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@2863,7",
-          "indra/newview/llappviewer.cpp@4575,17",
-          "indra/newview/llappviewer.cpp@4604,10",
-          "indra/newview/llappviewer.cpp@4715,11",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6429,15",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@155,7",
+          "indra/newview/llappviewer.cpp@1941,24",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@2864,7",
+          "indra/newview/llappviewer.cpp@4576,17",
+          "indra/newview/llappviewer.cpp@4605,10",
+          "indra/newview/llappviewer.cpp@4716,11",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@6430,15",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -93610,6 +93632,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -93917,6 +93940,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -94242,6 +94266,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -108119,11 +108144,11 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@1714,12",
-          "indra/newview/llappviewer.cpp@5369,37",
-          "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@5968,30"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@1715,12",
+          "indra/newview/llappviewer.cpp@5370,37",
+          "indra/newview/llappviewer.cpp@5658,48",
+          "indra/newview/llappviewer.cpp@5969,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -110641,6 +110666,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -110923,6 +110949,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -111248,6 +111275,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -115529,12 +115557,12 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@1940,24",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5657,48",
-          "indra/newview/llappviewer.cpp@5915,44",
-          "indra/newview/llappviewer.cpp@6429,15"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@1941,24",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5658,48",
+          "indra/newview/llappviewer.cpp@5916,44",
+          "indra/newview/llappviewer.cpp@6430,15"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -121037,6 +121065,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -121344,6 +121373,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -121669,6 +121699,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -130327,11 +130358,11 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@2289,8",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@2290,8",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -135757,6 +135788,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -136082,6 +136114,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -146037,9 +146070,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5335,24"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5336,24"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -151736,6 +151769,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -152043,6 +152077,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -152368,6 +152403,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -159004,10 +159040,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@2183,17",
-          "indra/newview/llappviewer.cpp@3607,7",
-          "indra/newview/llappviewer.cpp@3617,7",
-          "indra/newview/llappviewer.cpp@6449,8"
+          "indra/newview/llappviewer.cpp@2184,17",
+          "indra/newview/llappviewer.cpp@3608,7",
+          "indra/newview/llappviewer.cpp@3618,7",
+          "indra/newview/llappviewer.cpp@6450,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -162312,6 +162348,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -162637,6 +162674,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -169015,9 +169053,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -170935,6 +170973,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -171260,6 +171299,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -175186,11 +175226,11 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@913,14",
-          "indra/newview/llappviewer.cpp@1714,12",
-          "indra/newview/llappviewer.cpp@5335,24",
-          "indra/newview/llappviewer.cpp@5968,30"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@914,14",
+          "indra/newview/llappviewer.cpp@1715,12",
+          "indra/newview/llappviewer.cpp@5336,24",
+          "indra/newview/llappviewer.cpp@5969,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -177268,6 +177308,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -177944,6 +177985,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -178269,6 +178311,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -181612,11 +181655,11 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@1940,24",
-          "indra/newview/llappviewer.cpp@5613,9",
-          "indra/newview/llappviewer.cpp@5968,30",
-          "indra/newview/llappviewer.cpp@6104,7"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@1941,24",
+          "indra/newview/llappviewer.cpp@5614,9",
+          "indra/newview/llappviewer.cpp@5969,30",
+          "indra/newview/llappviewer.cpp@6105,7"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -182846,6 +182889,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -183171,6 +183215,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -187037,15 +187082,15 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@273,8",
-          "indra/newview/llappviewer.cpp@1940,24",
-          "indra/newview/llappviewer.cpp@4827,12",
-          "indra/newview/llappviewer.cpp@4956,12",
-          "indra/newview/llappviewer.cpp@5794,119",
-          "indra/newview/llappviewer.cpp@5915,44",
-          "indra/newview/llappviewer.cpp@6429,15",
-          "indra/newview/llappviewer.cpp@6467,45"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@274,8",
+          "indra/newview/llappviewer.cpp@1941,24",
+          "indra/newview/llappviewer.cpp@4828,12",
+          "indra/newview/llappviewer.cpp@4957,12",
+          "indra/newview/llappviewer.cpp@5795,119",
+          "indra/newview/llappviewer.cpp@5916,44",
+          "indra/newview/llappviewer.cpp@6430,15",
+          "indra/newview/llappviewer.cpp@6468,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -191729,6 +191774,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -192094,6 +192140,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -192419,6 +192466,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
@@ -200470,9 +200518,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@72,33",
-          "indra/newview/llappviewer.cpp@2611,53",
-          "indra/newview/llappviewer.cpp@5794,119"
+          "indra/newview/llappviewer.cpp@72,34",
+          "indra/newview/llappviewer.cpp@2612,53",
+          "indra/newview/llappviewer.cpp@5795,119"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -202930,6 +202978,7 @@
           "LLActorMover::resolveLocalMotionPhase",
           "LLActorMover::resolveLocomotionRole",
           "LLActorMover::restoreDirectorLookAtPose",
+          "LLActorMover::restoreHotGazeCopy",
           "LLActorMover::restoreHotGazePose",
           "LLActorMover::restoreHotGazes",
           "LLActorMover::resumeMove",
@@ -203581,6 +203630,7 @@
           "indra/newview/llfloatersnapshot.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llgesturemgr.h",
+          "indra/newview/llghostavatar.h",
           "indra/newview/llgltfmateriallist.h",
           "indra/newview/llgroupiconctrl.h",
           "indra/newview/llgroupmgr.h",
@@ -203906,6 +203956,7 @@
           "LLFrameTimer::updateFrameTime",
           "LLGLTFMaterialList::flushUpdates",
           "LLGestureMgr::instance",
+          "LLGhostAvatar::hasOffsetHotGazes",
           "LLGridManager::getInstance",
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",

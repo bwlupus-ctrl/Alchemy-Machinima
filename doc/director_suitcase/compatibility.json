@@ -7473,6 +7473,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llappviewer.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llappviewer.cpp",
     "dependency": "indra/newview/alavatarstaging.h",
     "excluded": false,
     "origin": "fork-added",

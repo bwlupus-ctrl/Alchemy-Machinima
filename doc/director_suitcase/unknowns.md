@@ -254,24 +254,24 @@ All 3021 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/settings.xml@29272,10`
 - `indra/newview/app_settings/settings.xml@29283,10`
 - `indra/newview/app_settings/settings.xml@29294,10`
-- `indra/newview/llappviewer.cpp@558,16`
-- `indra/newview/llappviewer.cpp@667,12`
-- `indra/newview/llappviewer.cpp@774,7`
-- `indra/newview/llappviewer.cpp@829,8`
-- `indra/newview/llappviewer.cpp@872,8`
-- `indra/newview/llappviewer.cpp@1417,22`
-- `indra/newview/llappviewer.cpp@1480,49`
-- `indra/newview/llappviewer.cpp@1677,9`
-- `indra/newview/llappviewer.cpp@1694,14`
-- `indra/newview/llappviewer.cpp@1755,15`
-- `indra/newview/llappviewer.cpp@1776,12`
-- `indra/newview/llappviewer.cpp@1843,23`
-- `indra/newview/llappviewer.cpp@2108,9`
-- `indra/newview/llappviewer.cpp@2433,25`
-- `indra/newview/llappviewer.cpp@2496,25`
-- `indra/newview/llappviewer.cpp@2757,7`
-- `indra/newview/llappviewer.cpp@5063,9`
-- `indra/newview/llappviewer.cpp@5466,15`
+- `indra/newview/llappviewer.cpp@559,16`
+- `indra/newview/llappviewer.cpp@668,12`
+- `indra/newview/llappviewer.cpp@775,7`
+- `indra/newview/llappviewer.cpp@830,8`
+- `indra/newview/llappviewer.cpp@873,8`
+- `indra/newview/llappviewer.cpp@1418,22`
+- `indra/newview/llappviewer.cpp@1481,49`
+- `indra/newview/llappviewer.cpp@1678,9`
+- `indra/newview/llappviewer.cpp@1695,14`
+- `indra/newview/llappviewer.cpp@1756,15`
+- `indra/newview/llappviewer.cpp@1777,12`
+- `indra/newview/llappviewer.cpp@1844,23`
+- `indra/newview/llappviewer.cpp@2109,9`
+- `indra/newview/llappviewer.cpp@2434,25`
+- `indra/newview/llappviewer.cpp@2497,25`
+- `indra/newview/llappviewer.cpp@2758,7`
+- `indra/newview/llappviewer.cpp@5064,9`
+- `indra/newview/llappviewer.cpp@5467,15`
 - `indra/newview/llfloaterenvironmentadjust.cpp@682,32`
 - `indra/newview/llfloaterhoverheight.cpp@149,31`
 - `indra/newview/llpanelmaininventory.cpp@145,8`
@@ -1816,10 +1816,10 @@ All 3021 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/settings.xml@31772,209`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@31982,189`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llappviewer.cpp@25,19`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@72,33`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@154,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@273,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@829,8`: unknown/non-function (public:)
+- `indra/newview/llappviewer.cpp@72,34`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@155,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@274,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@830,8`: unknown/non-function (public:)
 - `indra/newview/llfloaterenvironmentadjust.cpp@27,39`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterenvironmentadjust.h@31,19`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterenvironmentadjust.h@60,19`: unknown/non-function (public:)

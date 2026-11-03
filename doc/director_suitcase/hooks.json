@@ -10922,6 +10922,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
+            {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
             },
@@ -10936,10 +10940,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -10980,14 +10980,18 @@
           "git_context": "",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 33,
-          "head_end": 104,
+          "head_count": 34,
+          "head_end": 105,
           "head_start": 72,
-          "id": "indra/newview/llappviewer.cpp@72,33",
-          "patch": " #include \"llmimetypes.h\"\n #include \"llslurl.h\"\n #include \"llstartup.h\"\n+#include \"llpresentationtime.h\"\n+#include \"alpanelweathersettings.h\"     // [Temporal Capture] presentation clock\n #include \"llfocusmgr.h\"\n+#include \"llsliderwheel.h\" // [SliderWheel] cancelAllForQuit\n #include \"llurlfloaterdispatchhandler.h\"\n #include \"llviewerjoystick.h\"\n+#include \"llactormover.h\"    // TP-away walk suspend/resume state machine (idle tick)\n+#include \"alobjectpathmover.h\"\n+#include \"alprojectortracker.h\" // post-animation projector drives\n+#include \"alghoststudio.h\"      // per-instance Keep facing transforms (idle tick)\n+#include \"alavatarstaging.h\"    // staged avatar/ghost transforms (idle tick/logout)\n+#include \"aldanceball.h\"        // client-only multi-avatar dance playback\n+#include \"altoolghostedit.h\"    // [GhostStudio] per-frame manip-proxy sync (idle tick)\n+#include \"aldirectoranimswitcher.h\" // presentation-time animation switchboard\n+#include \"allocalfogmanager.h\"      // client-only atmospheric volumes\n+#include \"alcinelightrigmanager.h\"  // client-only cinematic lights\n+#include \"alcolorchart.h\"\n+#include \"alvcambonepov.h\"          // skeleton-attached prim-free cameras\n+#include \"aldirectorswitcher.h\" // presentation-time camera switch schedule\n+#include \"altron.h\"             // [TronT0] shared clock latch (idle tick)\n+#include \"alsteppedanimruntime.h\"\n+#include \"alframelimiter.h\" // [FrameLimiter] frame rate cap\n+#include \"llviewerpartsim.h\"\n+#include \"llcinematiccamera.h\"\n+#include \"llflycamrecorder.h\"\n+#include \"llpathcamera.h\"    // per-node path camera source (authored actor+camera TAKE)\n+#include \"llheadrotmotion.h\" // [BDMerge B4] per-frame push of head/eye rotation limits\n #include \"llcalc.h\"\n #include \"llconversationlog.h\"\n #if LL_WINDOWS\n",
+          "id": "indra/newview/llappviewer.cpp@72,34",
+          "patch": " #include \"llmimetypes.h\"\n #include \"llslurl.h\"\n #include \"llstartup.h\"\n+#include \"llpresentationtime.h\"\n+#include \"alpanelweathersettings.h\"     // [Temporal Capture] presentation clock\n #include \"llfocusmgr.h\"\n+#include \"llsliderwheel.h\" // [SliderWheel] cancelAllForQuit\n #include \"llurlfloaterdispatchhandler.h\"\n #include \"llviewerjoystick.h\"\n+#include \"llactormover.h\"    // TP-away walk suspend/resume state machine (idle tick)\n+#include \"alobjectpathmover.h\"\n+#include \"alprojectortracker.h\" // post-animation projector drives\n+#include \"alghoststudio.h\"\n+#include \"llghostavatar.h\"      // per-instance Keep facing transforms (idle tick)\n+#include \"alavatarstaging.h\"    // staged avatar/ghost transforms (idle tick/logout)\n+#include \"aldanceball.h\"        // client-only multi-avatar dance playback\n+#include \"altoolghostedit.h\"    // [GhostStudio] per-frame manip-proxy sync (idle tick)\n+#include \"aldirectoranimswitcher.h\" // presentation-time animation switchboard\n+#include \"allocalfogmanager.h\"      // client-only atmospheric volumes\n+#include \"alcinelightrigmanager.h\"  // client-only cinematic lights\n+#include \"alcolorchart.h\"\n+#include \"alvcambonepov.h\"          // skeleton-attached prim-free cameras\n+#include \"aldirectorswitcher.h\" // presentation-time camera switch schedule\n+#include \"altron.h\"             // [TronT0] shared clock latch (idle tick)\n+#include \"alsteppedanimruntime.h\"\n+#include \"alframelimiter.h\" // [FrameLimiter] frame rate cap\n+#include \"llviewerpartsim.h\"\n+#include \"llcinematiccamera.h\"\n+#include \"llflycamrecorder.h\"\n+#include \"llpathcamera.h\"    // per-node path camera source (authored actor+camera TAKE)\n+#include \"llheadrotmotion.h\" // [BDMerge B4] per-frame push of head/eye rotation limits\n #include \"llcalc.h\"\n #include \"llconversationlog.h\"\n #if LL_WINDOWS\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11003,10 +11007,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11035,13 +11035,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 160,
-          "head_start": 154,
-          "id": "indra/newview/llappviewer.cpp@154,7",
+          "head_end": 161,
+          "head_start": 155,
+          "id": "indra/newview/llappviewer.cpp@155,7",
           "patch": " #include \"llweb.h\"\n // [SL:KB] - Patch: Build-AssetRecovery | Checked: 2011-11-24 (Catznip-3.2)\n #include \"llfloaterassetrecovery.h\"\n+#include \"llfloaterdirector.h\"\n // [/SL:KB]\n #include \"llspellcheck.h\"\n #include \"llscenemonitor.h\"\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11057,10 +11061,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -11089,13 +11089,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 280,
-          "head_start": 273,
-          "id": "indra/newview/llappviewer.cpp@273,8",
+          "head_end": 281,
+          "head_start": 274,
+          "id": "indra/newview/llappviewer.cpp@274,8",
           "patch": " #include \"llcallbacklist.h\"\n #include \"lldeferredsounds.h\"\n #include \"pipeline.h\"\n+#include \"llprismlens.h\"\n+#include \"alderenderlist.h\"\n #include \"llgesturemgr.h\"\n #include \"llsky.h\"\n #include \"llvlcomposition.h\"\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11111,10 +11115,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -11149,13 +11149,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 60,
-          "head_end": 438,
-          "head_start": 379,
-          "id": "indra/newview/llappviewer.cpp@379,60",
+          "head_end": 439,
+          "head_start": 380,
+          "id": "indra/newview/llappviewer.cpp@380,60",
           "patch": " U64MicrosecondsImplicit gFrameTime = 0;\n F32SecondsImplicit gFrameTimeSeconds = 0.f;\n F32SecondsImplicit gFrameIntervalSeconds = 0.f;\n+\n+U64 gCameraDispatchSerial = 0;\n+ECameraOwner gCameraDispatchOwner = ECameraOwner::AGENT;\n+bool gCameraDispatchFlycamWrote = false;\n+bool gCameraDispatchForeignSinceFlycamWrite = false;\n+std::array<ALCameraDispatchSample, 4> gCameraDispatchSamples;\n+U32 gCameraDispatchSampleStart = 0;\n+U32 gCameraDispatchSampleCount = 0;\n+\n+void alCameraDispatchFinalizePresented()\n+{\n+    if (gCameraDispatchSampleCount == 0)\n+        return;\n+    const U32 newest = (gCameraDispatchSampleStart +\n+        gCameraDispatchSampleCount - 1) % gCameraDispatchSamples.size();\n+    ALCameraDispatchSample& sample = gCameraDispatchSamples[newest];\n+    if (gFrameCount > sample.frameCountAtSample)\n+        sample.presented = true;\n+}\n+\n+void alCameraDispatchSampleFinal()\n+{\n+    alCameraDispatchFinalizePresented();\n+    U32 sample_index = 0;\n+    if (gCameraDispatchSampleCount < gCameraDispatchSamples.size())\n+    {\n+        sample_index = (gCameraDispatchSampleStart +\n+            gCameraDispatchSampleCount) % gCameraDispatchSamples.size();\n+        ++gCameraDispatchSampleCount;\n+    }\n+    else\n+    {\n+        sample_index = gCameraDispatchSampleStart;\n+        gCameraDispatchSampleStart = (gCameraDispatchSampleStart + 1) %\n+            gCameraDispatchSamples.size();\n+    }\n+\n+    LLViewerCamera* camera = LLViewerCamera::getInstance();\n+    ALCameraDispatchSample& sample = gCameraDispatchSamples[sample_index];\n+    sample.serial = gCameraDispatchSerial;\n+    sample.owner = gCameraDispatchOwner;\n+    sample.dt = gFrameIntervalSeconds.value();\n+    sample.positionGlobal = gAgent.getPosGlobalFromAgent(camera->getOrigin());\n+    sample.rotation = camera->getQuaternion();\n+    sample.xAxis = camera->mXAxis;\n+    sample.yAxis = camera->mYAxis;\n+    sample.zAxis = camera->mZAxis;\n+    sample.flycamWrote = gCameraDispatchFlycamWrote;\n+    sample.frameCountAtSample = gFrameCount;\n+    sample.presented = false;\n+\n+    if (gCameraDispatchOwner != ECameraOwner::FLYCAM)\n+        gCameraDispatchForeignSinceFlycamWrite = true;\n+}\n F32 gFPSClamped = 10.f;                     // Pretend we start at target rate.\n F32 gFrameDTClamped = 0.f;                  // Time between adjacent checks to network for packets\n U64MicrosecondsImplicit gStartTime = 0; // gStartTime is \"private\", used only to calculate gFrameTimeSeconds\n",
           "purpose": "Edits gCameraDispatchSerial, gCameraDispatchOwner, gCameraDispatchFlycamWrote, gCameraDispatchForeignSinceFlycamWrite, ALCameraDispatchSample, gCameraDispatchSamples, gCameraDispatchSampleStart, gCameraDispatchSampleCount, gFrameCount, LLViewerCamera",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11171,10 +11175,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -11203,13 +11203,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 16,
-          "head_end": 573,
-          "head_start": 558,
-          "id": "indra/newview/llappviewer.cpp@558,16",
+          "head_end": 574,
+          "head_start": 559,
+          "id": "indra/newview/llappviewer.cpp@559,16",
           "patch": "         return;\n     }\n \n+    // Functional self-test (in-world): the session is never allowed to go Away on its own --\n+    // not during the run, not during teardown, and not if the logout is blocked by a dialog.\n+    // Independent of the AFKTimeout setting (and of an RLV allowidle restriction), which the\n+    // run restores or cannot change.  Never set in a normal session.\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        gAwayTriggerTimer.reset();\n+        return;\n+    }\n+\n     // check idle timers\n     F32 current_idle = gAwayTriggerTimer.getElapsedTimeF32();\n     static LLCachedControl<S32> afk_timeout_cc(gSavedSettings, \"AFKTimeout\", 300);\n",
           "purpose": "Comment evidence: Functional self-test (in-world): the session is never allowed to go Away on its own -- not during the run, not during teardown, and not if the logout is blocked by a dialog. Independent of the AFKTimeout setting (and of an RLV allowidle restriction), which the run restores or can",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11225,10 +11229,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11259,13 +11259,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 678,
-          "head_start": 667,
-          "id": "indra/newview/llappviewer.cpp@667,12",
+          "head_end": 679,
+          "head_start": 668,
+          "id": "indra/newview/llappviewer.cpp@668,12",
           "patch": "     LLRender::sNsightDebugSupport = gSavedSettings.getBOOL(\"RenderNsightDebugSupport\");\n     LLRender::sAnisotropicFilteringLevel = static_cast<F32>(gSavedSettings.getU32(\"RenderAnisotropicLevel\"));\n     LLImageGL::sCompressTextures        = gSavedSettings.getBOOL(\"RenderCompressTextures\");\n-    LLVOVolume::sLODFactor              = llclamp(gSavedSettings.getF32(\"RenderVolumeLODFactor\"), 0.01f, MAX_LOD_FACTOR);\n-    LLVOVolume::sDistanceFactor         = 1.f-LLVOVolume::sLODFactor * 0.1f;\n+    // [BDMerge Batch4] Machinima High-LOD: honor a persisted-ON master toggle at startup\n+    // (raised object-LOD ceiling, force-LOD-3, clamped-positive distance factor).\n+    LLVOVolume::sMachinimaForceMaxLOD   = gSavedSettings.getBOOL(\"BDMergeMachinimaHighLOD\");\n+    LLVOVolume::sLODFactor              = llclamp(gSavedSettings.getF32(\"RenderVolumeLODFactor\"), 0.01f,\n+                                                  LLVOVolume::sMachinimaForceMaxLOD ? MACHINIMA_MAX_LOD_FACTOR : MAX_LOD_FACTOR);\n+    LLVOVolume::sDistanceFactor         = llmax(0.1f, 1.f - LLVOVolume::sLODFactor * 0.1f);\n     LLVolumeImplFlexible::sUpdateFactor = gSavedSettings.getF32(\"RenderFlexTimeFactor\");\n     LLVOTree::sTreeFactor               = gSavedSettings.getF32(\"RenderTreeLODFactor\");\n     LLVOAvatar::sLODFactor              = llclamp(gSavedSettings.getF32(\"RenderAvatarLODFactor\"), 0.f, MAX_AVATAR_LOD_FACTOR);\n",
           "purpose": "Comment evidence: [BDMerge Batch4] Machinima High-LOD: honor a persisted-ON master toggle at startup (raised object-LOD ceiling, force-LOD-3, clamped-positive distance factor).",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11281,10 +11285,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11314,13 +11314,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 780,
-          "head_start": 774,
-          "id": "indra/newview/llappviewer.cpp@774,7",
+          "head_end": 781,
+          "head_start": 775,
+          "id": "indra/newview/llappviewer.cpp@775,7",
           "patch": " \n     // Need to do this initialization before we do anything else, since anything\n     // that touches files should really go through the lldir API\n-    gDirUtilp->initAppDirs(\"AlchemyNext\");\n+    gDirUtilp->initAppDirs(\"AlchemyMachinima\");\n     //\n     // IMPORTANT! Do NOT put anything that will write\n     // into the log files during normal startup until AFTER\n",
           "purpose": "Edits gDirUtilp",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11336,10 +11340,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11369,13 +11369,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 836,
-          "head_start": 829,
-          "id": "indra/newview/llappviewer.cpp@829,8",
+          "head_end": 837,
+          "head_start": 830,
+          "id": "indra/newview/llappviewer.cpp@830,8",
           "patch": " \n namespace\n {\n+    void applyMachinimaDebugLogging();\n+\n     // Polls one skinned fonts.xml path; on a detected mtime change,\n     // schedules a font reload through the same idle-tick mechanism the\n     // AlchemyUIFontOverrides setting listener uses. We don't re-parse\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11391,10 +11395,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11423,13 +11423,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 8,
-          "head_end": 879,
-          "head_start": 872,
-          "id": "indra/newview/llappviewer.cpp@872,8",
+          "head_end": 880,
+          "head_start": 873,
+          "id": "indra/newview/llappviewer.cpp@873,8",
           "patch": " \n bool LLAppViewer::init()\n {\n+    // Unconditional: must precede error handling, configuration and all TLS use.\n+    if (OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT, nullptr) != 1) return false;\n     LL_PROFILE_ZONE_SCOPED;\n \n     setupErrorHandling(mSecondInstance);\n",
           "purpose": "Comment evidence: Unconditional: must precede error handling, configuration and all TLS use.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11445,10 +11449,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11480,13 +11480,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 926,
-          "head_start": 913,
-          "id": "indra/newview/llappviewer.cpp@913,14",
+          "head_end": 927,
+          "head_start": 914,
+          "id": "indra/newview/llappviewer.cpp@914,14",
           "patch": "         // quit immediately\n         return false;\n     }\n+    ALSteppedAnimRuntime::initialize();\n+\n+    applyMachinimaDebugLogging();\n+    gSavedSettings.getControl(\"MachinimaDebugLogging\")->getSignal()->connect(\n+        [](LLControlVariable*, const LLSD&, const LLSD&)\n+        {\n+            applyMachinimaDebugLogging();\n+        });\n \n     LL_INFOS(\"InitInfo\") << \"Configuration initialized.\" << LL_ENDL ;\n \n",
           "purpose": "Edits ALSteppedAnimRuntime, gSavedSettings, LLControlVariable, LLSD",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11502,10 +11506,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -11536,13 +11536,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 22,
-          "head_end": 1438,
-          "head_start": 1417,
-          "id": "indra/newview/llappviewer.cpp@1417,22",
+          "head_end": 1439,
+          "head_start": 1418,
+          "id": "indra/newview/llappviewer.cpp@1418,22",
           "patch": "     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32(\"MaxHeapSize\") ;\n #else\n     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32(\"MaxHeapSize64\");\n+    // [BDMerge G5.0] 0 = auto-size from installed physical RAM.\n+    // A fixed cap makes updateMemoryInfo() report\n+    // available memory as min(true available, cap - private commit), so a machine with\n+    // far more RAM than the cap can misread as \"low system memory\" and\n+    // trigger the emergency texture purge with plenty actually free.\n+    if (max_heap_size_gb.value() <= 0.f)\n+    {\n+        const F32Gigabytes phys_gb = F32Gigabytes::convert(gSysMemory.getPhysicalMemoryKB());\n+        // Leave proportionally more room for Windows and other applications\n+        // on small machines. The ratio rises smoothly from ~75% at 4 GB to\n+        // 87.5% at 64 GB and stays there for large workstations.\n+        const F32 auto_ratio = llclamp(0.75f + llmin(phys_gb.value(), 64.f) / 512.f,\n+                                       0.75f,\n+                                       0.875f);\n+        max_heap_size_gb = F32Gigabytes(phys_gb.value() * auto_ratio);\n+    }\n #endif\n \n     LLMemory::initMaxHeapSizeGB(max_heap_size_gb);\n",
           "purpose": "Comment evidence: [BDMerge G5.0] 0 = auto-size from installed physical RAM. A fixed cap makes updateMemoryInfo() report available memory as min(true available, cap - private commit), so a machine with far more RAM than the cap can misread as \"low system memory\" and trigger the emergency texture pu",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11558,10 +11562,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11597,13 +11597,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 49,
-          "head_end": 1528,
-          "head_start": 1480,
-          "id": "indra/newview/llappviewer.cpp@1480,49",
+          "head_end": 1529,
+          "head_start": 1481,
+          "id": "indra/newview/llappviewer.cpp@1481,49",
           "patch": "     return ret;\n }\n \n+// [FrameLimiter] One cached bool read per frame; everything else is skipped when the cap is off.\n+static bool frameLimiterEnabled()\n+{\n+    static LLCachedControl<bool> enabled(gSavedSettings, \"FramerateLimitEnabled\", false);\n+    return enabled;\n+}\n+\n+static S32 frameLimiterFps()\n+{\n+    static LLCachedControl<U32> limit_fps(gSavedSettings, \"FramerateLimitFPS\", 60);\n+    return (S32)limit_fps;\n+}\n+\n+// [FrameLimiter] Opt-in driver pacing (wglSwapIntervalEXT); off = CPU pacing only.\n+static bool frameLimiterVSyncLock()\n+{\n+    static LLCachedControl<bool> lock(gSavedSettings, \"FrameLimiterVSyncLock\", false);\n+    return lock;\n+}\n+\n+// [FrameLimiter] The CACHED viewer VSync setting (never a WGL query). With VSync on and the cap at or\n+// above the exact refresh of the window's monitor the cap uses HEAD's end-of-frame wait (nothing else).\n+static bool frameLimiterVSyncSetting()\n+{\n+    static LLCachedControl<bool> vsync(gSavedSettings, \"RenderVSyncEnable\", true);\n+    return vsync;\n+}\n+\n bool LLAppViewer::doFrame()\n {\n     LL_PROFILE_ZONE_SCOPED;\n     LL_PROFILE_GPU_ZONE(\"doFrame\");\n \n+    // [FrameLimiter] One cached bool per frame; the pacer anchors itself on the previous deadline.\n+    const bool frame_limiter_on = frameLimiterEnabled();\n+    // [FrameLimiter] The wait is taken just before the present (swap() in\n+    // llviewerdisplay.cpp); the end-of-frame wait below only runs when nothing\n+    // was presented this frame. The cached VSync setting (and the window monitor's exact refresh, read\n+    // in beginFrame) only tells the pacer when to use HEAD's scheduling instead: VSync on and the cap at\n+    // the refresh = HEAD's end-of-frame wait on every frame, no wait before the present.\n+    ALFrameLimiter::beginFrame(frame_limiter_on, frameLimiterFps(), frameLimiterVSyncLock(),\n+                               frameLimiterVSyncSetting());\n+\n     resumeMainloopTimeout(\"Main:doFrameStart\");\n \n #ifdef LL_DISCORD\n",
           "purpose": "Comment evidence: [FrameLimiter] One cached bool read per frame; everything else is skipped when the cap is off. [FrameLimiter] Opt-in driver pacing (wglSwapIntervalEXT); off = CPU pacing only. [FrameLimiter] The CACHED viewer VSync setting (never a WGL query). With VSync on and the cap at or abov",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11619,10 +11623,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11656,13 +11656,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1628,
-          "head_start": 1621,
-          "id": "indra/newview/llappviewer.cpp@1621,8",
+          "head_end": 1629,
+          "head_start": 1622,
+          "id": "indra/newview/llappviewer.cpp@1622,8",
           "patch": "                 LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"df JoystickKeyboard\");\n                 pingMainloopTimeout(\"Main:JoystickKeyboard\");\n \n+                joystick->beginMainLoop(); // [XInputPad] advances even when scan is gated out\n+\n                 // Scan keyboard for movement keys.  Command keys and typing\n                 // are handled by windows callbacks.  Don't do this until we're\n                 // done initializing.  JC\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11678,10 +11682,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -11708,13 +11708,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 1685,
-          "head_start": 1677,
-          "id": "indra/newview/llappviewer.cpp@1677,9",
+          "head_end": 1686,
+          "head_start": 1678,
+          "id": "indra/newview/llappviewer.cpp@1678,9",
           "patch": "                 resumeMainloopTimeout(\"df snapshot n disconnect\");\n             }\n \n+            // [ProbeCost] Never reuse a previous iteration, including skipped displays.\n+            gPipeline.mMainSunShadowToken = false;\n+\n             // Render scene.\n             // *TODO: Should we run display() even during gHeadlessClient?  DK 2011-02-18\n             if (!LLApp::isExiting() && !gHeadlessClient && gViewerWindow)\n",
           "purpose": "Comment evidence: [ProbeCost] Never reuse a previous iteration, including skipped displays.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11730,10 +11734,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11763,13 +11763,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 1707,
-          "head_start": 1694,
-          "id": "indra/newview/llappviewer.cpp@1694,14",
+          "head_end": 1708,
+          "head_start": 1695,
+          "id": "indra/newview/llappviewer.cpp@1695,14",
           "patch": "                     LLPerfStats::RecordSceneTime T(LLPerfStats::StatType_t::RENDER_IDLE);\n                     LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"df Snapshot\");\n                     pingMainloopTimeout(\"Main:Snapshot\");\n-                    gPipeline.mReflectionMapManager.update();\n+                    // [ProbeBeforePresent] FALSE preserves the original\n+                    // post-display update site for live A/B captures.\n+                    static LLCachedControl<bool> probe_before_present(\n+                        gSavedSettings, \"RenderProbeUpdateBeforePresent\", true);\n+                    if (!probe_before_present)\n+                    {\n+                        gPipeline.mReflectionMapManager.update();\n+                    }\n                     LLFloaterSnapshot::update(); // take snapshots\n                     LLFloaterSimpleSnapshot::update();\n                     gGLActive = false;\n",
           "purpose": "Comment evidence: [ProbeBeforePresent] FALSE preserves the original post-display update site for live A/B captures.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11785,10 +11789,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11823,13 +11823,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 1725,
-          "head_start": 1714,
-          "id": "indra/newview/llappviewer.cpp@1714,12",
+          "head_end": 1726,
+          "head_start": 1715,
+          "id": "indra/newview/llappviewer.cpp@1715,12",
           "patch": "             }\n         }\n \n+        LLActorMover::instance().restoreHotGazes();\n+        if (ALSteppedAnimRuntime::sHasOverlay)\n+        {\n+            ALSteppedAnimRuntime::instance().endFrameRestore();\n+        }\n+\n         {\n             LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"df pauseMainloopTimeout\");\n             pingMainloopTimeout(\"Main:Sleep\");\n",
           "purpose": "Edits LLActorMover, ALSteppedAnimRuntime",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11845,10 +11849,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -11875,13 +11875,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 15,
-          "head_end": 1769,
-          "head_start": 1755,
-          "id": "indra/newview/llappviewer.cpp@1755,15",
+          "head_end": 1770,
+          "head_start": 1756,
+          "id": "indra/newview/llappviewer.cpp@1756,15",
           "patch": "             native_dialog_open = LLWindowSDL::dialogOpen();\n #endif\n \n+            // [FrameLimiter] When the cap is on, an unfocused-but-visible window (the user\n+            // clicked over to OBS) is paced by the cap, not by the background yield: the yield\n+            // sleeps on top of the render time and would drop a 30 fps cap to ~18 fps. A\n+            // hidden or MINIMISED window keeps today's yield (Windows still reports a\n+            // minimised window as visible, so check getMinimized() too).\n+            const bool window_idle = gViewerWindow\n+                && (!gViewerWindow->getWindow()->getVisible() || gViewerWindow->getWindow()->getMinimized());\n+            const bool limiter_holds_pace = frame_limiter_on && !window_idle;\n+\n             // yield cooperatively when not running as foreground window\n             // and when not quiting (causes trouble at mac's cleanup stage)\n             if (!LLApp::isExiting()\n",
           "purpose": "Comment evidence: [FrameLimiter] When the cap is on, an unfocused-but-visible window (the user clicked over to OBS) is paced by the cap, not by the background yield: the yield sleeps on top of the render time and would drop a 30 fps cap to ~18 fps. A hidden or MINIMISED window keeps today's yield ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11897,10 +11901,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "mixed/perf-review",
@@ -11931,13 +11931,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 1787,
-          "head_start": 1776,
-          "id": "indra/newview/llappviewer.cpp@1776,12",
+          "head_end": 1788,
+          "head_start": 1777,
+          "id": "indra/newview/llappviewer.cpp@1777,12",
           "patch": "                 S32 milliseconds_to_sleep = llclamp((S32)s_background_yield_time, 0, 1000);\n                 // don't sleep when BackgroundYieldTime set to 0, since this will still yield to other threads\n                 // of equal priority on Windows\n-                if (milliseconds_to_sleep > 0)\n+                if (limiter_holds_pace)\n+                {\n+                    // Skip the sleep, keep the worker-thread pause.\n+                    LLAppViewer::getTextureCache()->pause();\n+                }\n+                else if (milliseconds_to_sleep > 0)\n                 {\n                     LLPerfStats::RecordSceneTime T ( LLPerfStats::StatType_t::RENDER_SLEEP );\n                     ms_sleep(milliseconds_to_sleep);\n",
           "purpose": "Comment evidence: Skip the sleep, keep the worker-thread pause.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -11953,10 +11957,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -11985,13 +11985,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 23,
-          "head_end": 1865,
-          "head_start": 1843,
-          "id": "indra/newview/llappviewer.cpp@1843,23",
+          "head_end": 1866,
+          "head_start": 1844,
+          "id": "indra/newview/llappviewer.cpp@1844,23",
           "patch": "                 LLLFSThread::sLocal->pause();\n             }\n \n+            // [FrameLimiter] Fallback pacing: a frame that presented was already paced\n+            // just before SwapBuffers (this returns 0 then). A frame that did not\n+            // present (minimised or hidden window, skipped display) is paced here,\n+            // so VSync's swap wait and the background/minimised yield above already\n+            // count as elapsed time (no double wait), and a slow frame gets no wait\n+            // and no catch-up.\n+            // fallbackPending() is false for a frame that presented (paced there), so no\n+            // zero-length sleep record is made on presented frames; except under HEAD's scheduling\n+            // (VSync on, cap at the refresh), where every frame is paced here exactly as in HEAD.\n+            if (frame_limiter_on && ALFrameLimiter::fallbackPending() && !LLApp::isExiting())\n+            {\n+                // Recorded as sleep (like the background yield) so AutoTune does not read the\n+                // deliberate wait as a slow frame and keep lowering quality toward TargetFPS.\n+                LLPerfStats::RecordSceneTime T(LLPerfStats::StatType_t::RENDER_SLEEP);\n+                ALFrameLimiter::endFrameWait(frameLimiterFps());\n+            }\n+\n             {\n                 LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"df resumeMainloopTimeout\");\n                 resumeMainloopTimeout();\n",
           "purpose": "Comment evidence: [FrameLimiter] Fallback pacing: a frame that presented was already paced just before SwapBuffers (this returns 0 then). A frame that did not present (minimised or hidden window, skipped display) is paced here, so VSync's swap wait and the background/minimised yield above already ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12007,10 +12011,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "mixed/perf-review",
@@ -12047,13 +12047,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 24,
-          "head_end": 1963,
-          "head_start": 1940,
-          "id": "indra/newview/llappviewer.cpp@1940,24",
+          "head_end": 1964,
+          "head_start": 1941,
+          "id": "indra/newview/llappviewer.cpp@1941,24",
           "patch": " \n bool LLAppViewer::cleanup()\n {\n+    ALProjectorTracker::instance().clear();\n+    ALColorChart::shutdownSession(); // release chart GL resources before context shutdown\n+    ALMediaFile::beginShutdown(gSavedSettings.getBOOL(\"VCamMediaCacheKeepBetweenSessions\"));\n+    LLPrismLens::shutdownMediaFiles();\n+    ALMediaFile::drainShutdown(); // one monotonic two-second budget; never join\n+    // [XInputRumble] The main loop no longer advances patterns; stop the pad now,\n+    // not when the joystick is terminated much later in cleanup.\n+    if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);\n+\n+    ALFrameLimiter::shutdown(); // [FrameLimiter] close the high-resolution timer handle\n+\n+    // [AvatarLightResponse] Quit-time flush: the Director floater skips its close-save while quitting, and\n+    // a slider debounce may still be pending. flushIfDirty() writes only a real unsaved edit of a loaded account.\n+    if (ALAvatarLightResponse::instanceExists())\n+    {\n+        ALAvatarLightResponse::instance().flushIfDirty();\n+    }\n+\n #if LL_VELOPACK\n     // Apply any pending Velopack update before shutdown\n     if (velopack_is_update_pending())\n",
           "purpose": "Comment evidence: [XInputRumble] The main loop no longer advances patterns; stop the pad now, not when the joystick is terminated much later in cleanup. [AvatarLightResponse] Quit-time flush: the Director floater skips its close-save while quitting, and a slider debounce may still be pending. flus",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12069,10 +12073,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "mixed/perf-review",
@@ -12101,13 +12101,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 2116,
-          "head_start": 2108,
-          "id": "indra/newview/llappviewer.cpp@2108,9",
+          "head_end": 2117,
+          "head_start": 2109,
+          "id": "indra/newview/llappviewer.cpp@2109,9",
           "patch": "     removeCacheFiles(\"*.tmp\");\n     removeCacheFiles(\"*.lso\");\n     removeCacheFiles(\"*.out\");\n-    removeCacheFiles(\"*.dsf\");\n+    removeCacheFiles(\"*.dsf\");   // legacy: decoded sounds used to live loose in the cache root\n+    // decoded sounds now live in the dedicated \"sounds\" subfolder -- clear it too\n+    gDirUtilp->deleteFilesInDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, \"sounds\"), \"*.dsf\");\n     removeCacheFiles(\"*.bodypart\");\n     removeCacheFiles(\"*.clothing\");\n \n",
           "purpose": "Comment evidence: decoded sounds now live in the dedicated \"sounds\" subfolder -- clear it too",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12123,10 +12127,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -12161,13 +12161,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 17,
-          "head_end": 2199,
-          "head_start": 2183,
-          "id": "indra/newview/llappviewer.cpp@2183,17",
+          "head_end": 2200,
+          "head_start": 2184,
+          "id": "indra/newview/llappviewer.cpp@2184,17",
           "patch": " \n     // Must do this after all panels have been deleted because panels that have persistent rects\n     // save their rects on delete.\n-    gSavedSettings.saveToFile(gSavedSettings.getString(\"ClientSettingsFile\"), true);\n+    if (!ALUIPerfSelfTest::suppressSettingsSave())\n+    {\n+        ALEnvOnlyDiagnostics::cancel(); // Restore temporary diagnostic lighting before persistence.\n+        gSavedSettings.saveToFile(gSavedSettings.getString(\"ClientSettingsFile\"), true);\n+    }\n+    else\n+    {\n+        LL_INFOS(\"UIPerfSelfTest\")\n+            << \"Skipping global settings save after UI performance self-test\"\n+            << LL_ENDL;\n+    }\n \n     LLUIColorTable::instance().saveUserSettings(gSavedSettings.getBOOL(\"ResetUserColorsOnLogout\"));\n \n",
           "purpose": "Edits gSavedSettings, ALUIPerfSelfTest, ALEnvOnlyDiagnostics, LL_INFOS, LL_ENDL",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12183,10 +12187,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12218,13 +12218,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 2296,
-          "head_start": 2289,
-          "id": "indra/newview/llappviewer.cpp@2289,8",
+          "head_end": 2297,
+          "head_start": 2290,
+          "id": "indra/newview/llappviewer.cpp@2290,8",
           "patch": "         gDirUtilp->deleteDirAndContents(user_path);\n     }\n \n+    LLPipeline::flushRelightTakes(); // Drain dedicated take records before worker teardown.\n+\n     // Delete workers first\n     // shotdown all worker threads before deleting them in case of co-dependencies\n     mAppCoreHttp.requestStop();\n",
           "purpose": "Edits LLPipeline",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12240,10 +12244,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12273,13 +12273,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 25,
-          "head_end": 2457,
-          "head_start": 2433,
-          "id": "indra/newview/llappviewer.cpp@2433,25",
+          "head_end": 2458,
+          "head_start": 2434,
+          "id": "indra/newview/llappviewer.cpp@2434,25",
           "patch": " \n     removeDumpDir();\n \n+    // [BDMerge FastExit] Everything durable is now persisted (settings, per-account\n+    // settings, mute list, conversation/transaction logs, inventory cache) and all\n+    // child processes (SLVoice, media/CEF plugins) and worker threads have already\n+    // been shut down above - the only thing left in the normal path is ~LLAppViewer\n+    // plus the C/C++ static-destructor and CRT heap teardown, which merely frees\n+    // memory the OS is about to reclaim anyway. On a long, bloated session that\n+    // teardown (the CRT walking and freeing millions of allocations) is what makes\n+    // the client take an age to actually disappear. Hand the whole address space\n+    // back to the OS at once instead. removeMarkerFiles() is normally called later\n+    // from ~LLAppViewer, so do it here first or the next launch flags a false crash.\n+    // Gated (default on); set BDMergeFastExit=0 for a fully graceful teardown.\n+    static LLCachedControl<bool> fast_exit(gSavedSettings, \"BDMergeFastExit\", true);\n+    if (fast_exit || ALMediaFile::jobsRemain())\n+    {\n+        LL_INFOS(\"BDMerge\") << \"[BDMerge FastExit] Persistence and subsystem shutdown complete; skipping static teardown and exiting now.\" << LL_ENDL; // [DebugLogging] tagged\n+        removeMarkerFiles();\n+        _exit(0);\n+    }\n+\n     // return 0;\n     return true;\n }\n",
           "purpose": "Comment evidence: [BDMerge FastExit] Everything durable is now persisted (settings, per-account settings, mute list, conversation/transaction logs, inventory cache) and all child processes (SLVoice, media/CEF plugins) and worker threads have already been shut down above - the only thing left in th",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12295,10 +12299,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -12330,13 +12330,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 25,
-          "head_end": 2520,
-          "head_start": 2496,
-          "id": "indra/newview/llappviewer.cpp@2496,25",
+          "head_end": 2521,
+          "head_start": 2497,
+          "id": "indra/newview/llappviewer.cpp@2497,25",
           "patch": " \n     // always use at least 2 threads for image decoding to prevent\n     // a single texture blocking all other textures from decoding\n-    S32 image_decode_count = llclamp(cores - 6, 2, 16);\n+    // [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs\n+    // (measured: ~45 threads' worth of queued decode demand on 32 threads);\n+    // 0 = stock ceiling of 16\n+    U32 decode_ceiling = gSavedSettings.getU32(\"BDMergeDecodeThreadCeiling\");\n+    const U32 configured_decode_ceiling = decode_ceiling > 0 ? llmin(decode_ceiling, 256u) : 16u;\n+    const U32 physical_mb = gSysMemory.getPhysicalMemoryKB().value() / 1024u;\n+    // A decoder can transiently hold a full raw image plus conversion and\n+    // cache copies. Limit concurrency to one worker per 2 GB of installed RAM\n+    // before applying the CPU/configured ceilings: 4/8/16/32 GB -> 2/4/8/16.\n+    const U32 memory_decode_ceiling = llclamp(physical_mb / 2048u, 2u, 256u);\n+    const S32 effective_decode_ceiling = (S32)llmin(configured_decode_ceiling,\n+                                                    memory_decode_ceiling);\n+    S32 image_decode_count = llclamp(cores - 6, 2, effective_decode_ceiling);\n+\n+    LL_INFOS(\"ThreadPool\") << \"ImageDecode workers: \" << image_decode_count\n+                            << \" (cores \" << cores\n+                            << \", configured ceiling \" << configured_decode_ceiling\n+                            << \", memory ceiling \" << memory_decode_ceiling << \")\"\n+                            << LL_ENDL;\n \n     threadCounts[\"ImageDecode\"] = image_decode_count;\n     gSavedSettings.setLLSD(\"ThreadPoolSizes\", threadCounts);\n",
           "purpose": "Comment evidence: [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs (measured: ~45 threads' worth of queued decode demand on 32 threads); 0 = stock ceiling of 16 A decoder can transiently hold a full raw image plus conversion and cache copies. Limit concurrency to one worker per 2 ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12352,10 +12356,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -12398,13 +12398,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 53,
-          "head_end": 2663,
-          "head_start": 2611,
-          "id": "indra/newview/llappviewer.cpp@2611,53",
+          "head_end": 2664,
+          "head_start": 2612,
+          "id": "indra/newview/llappviewer.cpp@2612,53",
           "patch": "     }\n }\n \n+namespace\n+{\n+    void applyMachinimaDebugLogging()\n+    {\n+        static const char* const machinima_tags[] =\n+        {\n+            \"GhostStudio\",\n+            \"GhostDeferred\",\n+            \"GhostDeferredContamination\",\n+            \"CloneFidelity\",\n+            \"CinematicCam\",\n+            \"CameraShake\",\n+            \"DirectorCast\",\n+            \"Director\",\n+            \"ActorMover\",\n+            \"ActorPath\",\n+            \"ObjectPath\",\n+            \"Weather\",\n+            \"HeroBeam\",\n+            \"NSpotDbg\",\n+            \"BDMerge\",\n+            \"BDMergeTexSpike\",\n+            \"AOEngine\",\n+            // [DebugLogging] additional fork tags\n+            \"CineRigShadow\",\n+            \"ActorMask\",\n+            \"ProbeSched\",\n+            \"LiveProbe\",\n+            \"AvatarLightResponse\",\n+            \"ReShadeBridge\",\n+            \"BDMergeMemory\",\n+            \"VRAMGovernor\",\n+            \"UltimateDiopter\",\n+            \"GhostDeferredInvariant\",\n+            \"FlycamRecorder\"\n+        };\n+\n+        const LLError::ELevel level = gSavedSettings.getBOOL(\"MachinimaDebugLogging\")\n+            ? LLError::LEVEL_INFO\n+            : LLError::LEVEL_WARN;\n+        for (const char* tag : machinima_tags)\n+        {\n+            LLError::setTagLevel(tag, level);\n+        }\n+    }\n+}\n+\n void LLAppViewer::initLoggingAndGetLastDuration()\n {\n     //\n",
           "purpose": "Comment evidence: [DebugLogging] additional fork tags",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12420,10 +12424,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "mixed/perf-review",
@@ -12480,13 +12480,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2763,
-          "head_start": 2757,
-          "id": "indra/newview/llappviewer.cpp@2757,7",
+          "head_end": 2764,
+          "head_start": 2758,
+          "id": "indra/newview/llappviewer.cpp@2758,7",
           "patch": " bool LLAppViewer::loadSettingsFromDirectory(const std::string& location_key,\n                         bool set_defaults)\n {\n+    ALScopedPresetMaterializing preset_guard;\n     if (!mSettingsLocationList)\n     {\n         LL_ERRS() << \"Invalid settings location list\" << LL_ENDL;\n",
           "purpose": "Edits ALScopedPresetMaterializing",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12502,10 +12506,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -12534,13 +12534,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2869,
-          "head_start": 2863,
-          "id": "indra/newview/llappviewer.cpp@2863,7",
+          "head_end": 2870,
+          "head_start": 2864,
+          "id": "indra/newview/llappviewer.cpp@2864,7",
           "patch": " void LLAppViewer::loadColorSettings()\n {\n     LLUIColorTable::instance().loadFromSettings();\n+    ALDirectorTheme::init();\n }\n \n namespace\n",
           "purpose": "Edits ALDirectorTheme",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12556,10 +12560,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12588,13 +12588,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 3613,
-          "head_start": 3607,
-          "id": "indra/newview/llappviewer.cpp@3607,7",
+          "head_end": 3614,
+          "head_start": 3608,
+          "id": "indra/newview/llappviewer.cpp@3608,7",
           "patch": " \n     // Set this flag in case we crash while initializing GL\n     gSavedSettings.setBOOL(\"RenderInitError\", true);\n+    ALEnvOnlyDiagnostics::cancel(); // Restore temporary diagnostic lighting before persistence.\n     gSavedSettings.saveToFile( gSavedSettings.getString(\"ClientSettingsFile\"), true );\n \n     gPipeline.init();\n",
           "purpose": "Edits ALEnvOnlyDiagnostics",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12610,10 +12614,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12642,13 +12642,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 3623,
-          "head_start": 3617,
-          "id": "indra/newview/llappviewer.cpp@3617,7",
+          "head_end": 3624,
+          "head_start": 3618,
+          "id": "indra/newview/llappviewer.cpp@3618,7",
           "patch": "     gViewerWindow->initGLDefaults();\n \n     gSavedSettings.setBOOL(\"RenderInitError\", false);\n+    ALEnvOnlyDiagnostics::cancel(); // Restore temporary diagnostic lighting before persistence.\n     gSavedSettings.saveToFile( gSavedSettings.getString(\"ClientSettingsFile\"), true );\n \n     // If we have a startup crash, it's usually near GL initialization, so simulate that.\n",
           "purpose": "Edits ALEnvOnlyDiagnostics",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12664,10 +12668,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12702,13 +12702,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 17,
-          "head_end": 4591,
-          "head_start": 4575,
-          "id": "indra/newview/llappviewer.cpp@4575,17",
+          "head_end": 4592,
+          "head_start": 4576,
+          "id": "indra/newview/llappviewer.cpp@4576,17",
           "patch": " \n void LLAppViewer::forceQuit()\n {\n+    if (!isError())\n+        LLFloaterDirector::prepareRecoveryForShutdown();\n     LLApp::setQuitting();\n }\n \n void LLAppViewer::fastQuit(S32 error_code)\n {\n+    if (!isError())\n+        LLFloaterDirector::prepareRecoveryForShutdown();\n+    // [XInputRumble] _exit below skips LLViewerJoystick::terminate.\n+    if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);\n     // finish pending transfers\n     flushLFSIO();\n     // let sim know we're logging out\n",
           "purpose": "Comment evidence: [XInputRumble] _exit below skips LLViewerJoystick::terminate.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12724,10 +12728,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12756,13 +12756,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 4613,
-          "head_start": 4604,
-          "id": "indra/newview/llappviewer.cpp@4604,10",
+          "head_end": 4614,
+          "head_start": 4605,
+          "id": "indra/newview/llappviewer.cpp@4605,10",
           "patch": " {\n     LL_INFOS() << \"requestQuit\" << LL_ENDL;\n \n+    // Final recovery capture belongs before closeAllChildren() and the logout\n+    // teardown, while Director's model/UI dependencies are known to be alive.\n+    LLFloaterDirector::prepareRecoveryForShutdown();\n+\n     LLViewerRegion* region = gAgent.getRegion();\n \n     if ((LLStartUp::getStartupState() < STATE_STARTED) || !region)\n",
           "purpose": "Comment evidence: Final recovery capture belongs before closeAllChildren() and the logout teardown, while Director's model/UI dependencies are known to be alive.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12778,10 +12782,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12810,13 +12810,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 4654,
-          "head_start": 4645,
-          "id": "indra/newview/llappviewer.cpp@4645,10",
+          "head_end": 4655,
+          "head_start": 4646,
+          "id": "indra/newview/llappviewer.cpp@4646,10",
           "patch": "     // editing things.\n     if (gFloaterView)\n     {\n+        // [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and\n+        // latch the quit flag, so no settle can send a hover / region-environment update during\n+        // logout. Covers sliders outside floaters (Quick Settings pulldown) too.\n+        LLSliderWheel::cancelAllForQuit();\n         // application is quitting\n         gFloaterView->closeAllChildren(true);\n         mClosingFloaters = true;\n",
           "purpose": "Comment evidence: [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and latch the quit flag, so no settle can send a hover / region-environment update during logout. Covers sliders outside floaters (Quick Settings pulldown) too.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12832,10 +12836,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12864,13 +12864,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 4725,
-          "head_start": 4715,
-          "id": "indra/newview/llappviewer.cpp@4715,11",
+          "head_end": 4726,
+          "head_start": 4716,
+          "id": "indra/newview/llappviewer.cpp@4716,11",
           "patch": " \n void LLAppViewer::abortQuit()\n {\n+    LLFloaterDirector::cancelRecoveryShutdown();\n     LL_INFOS() << \"abortQuit()\" << LL_ENDL;\n     mQuitRequested = false;\n     mClosingFloaters = false;\n+    ALUIPerfSelfTest::quitAborted();\n }\n \n void LLAppViewer::migrateCacheDirectory()\n",
           "purpose": "Edits LLFloaterDirector, ALUIPerfSelfTest",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12886,10 +12890,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12923,13 +12923,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 4838,
-          "head_start": 4827,
-          "id": "indra/newview/llappviewer.cpp@4827,12",
+          "head_end": 4839,
+          "head_start": 4828,
+          "id": "indra/newview/llappviewer.cpp@4828,12",
           "patch": " {\n     LL_PROFILE_ZONE_SCOPED;\n     mPurgeCache = false;\n+    const bool purge_media = gSavedSettings.getBOOL(\"PurgeCacheOnStartup\") ||\n+        gSavedSettings.getBOOL(\"PurgeCacheOnNextStartup\") ||\n+        gSavedSettings.getBOOL(\"VCamMediaCachePurgePending\");\n+    // The general one-shot is consumed below even if another viewer owns the\n+    // media cache. Only the media lock owner's completed sweep acknowledges this.\n+    if (purge_media) gSavedSettings.setBOOL(\"VCamMediaCachePurgePending\", true);\n     bool read_only = mSecondInstance;\n     LLAppViewer::getTextureCache()->setReadOnly(read_only) ;\n     LLVOCache::initParamSingleton(read_only);\n",
           "purpose": "Comment evidence: The general one-shot is consumed below even if another viewer owns the media cache. Only the media lock owner's completed sweep acknowledges this.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -12945,10 +12949,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -12981,13 +12981,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 12,
-          "head_end": 4967,
-          "head_start": 4956,
-          "id": "indra/newview/llappviewer.cpp@4956,12",
+          "head_end": 4968,
+          "head_start": 4957,
+          "id": "indra/newview/llappviewer.cpp@4957,12",
           "patch": "     // Remove old, stale CEF cache folders\n     purgeCefStaleCaches();\n \n+    // Retain the Preferences request after its persisted flag was consumed\n+    // above, also in a read-only viewer that wins the separate media lock.\n+    // Media cleanup acquires its own exclusive lock off-main,\n+    // including when either VCam enable is off. purgeCache() stays non-recursive.\n+    LLPrismLens::initializeMediaFiles(purge_media);\n+\n     return true;\n }\n \n",
           "purpose": "Comment evidence: Retain the Preferences request after its persisted flag was consumed above, also in a read-only viewer that wins the separate media lock. Media cleanup acquires its own exclusive lock off-main, including when either VCam enable is off. purgeCache() stays non-recursive.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13003,10 +13007,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13033,13 +13033,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 5071,
-          "head_start": 5063,
-          "id": "indra/newview/llappviewer.cpp@5063,9",
+          "head_end": 5072,
+          "head_start": 5064,
+          "id": "indra/newview/llappviewer.cpp@5064,9",
           "patch": "     LLViewerShaderMgr::instance()->clearShaderCache();\n     purgeCefStaleCaches();\n     gDirUtilp->deleteFilesInDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, \"\"), \"*\");\n+    // deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its\n+    // own sweep to be cleared along with the rest of the cache.\n+    gDirUtilp->deleteFilesInDir(gDirUtilp->getExpandedFilename(LL_PATH_CACHE, \"sounds\"), \"*\");\n }\n \n //purge cache immediately, do not wait until the next login.\n",
           "purpose": "Comment evidence: deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its own sweep to be cleared along with the rest of the cache.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13055,10 +13059,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -13094,13 +13094,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 24,
-          "head_end": 5358,
-          "head_start": 5335,
-          "id": "indra/newview/llappviewer.cpp@5335,24",
+          "head_end": 5359,
+          "head_start": 5336,
+          "id": "indra/newview/llappviewer.cpp@5336,24",
           "patch": " \n     LLFrameTimer::updateFrameTime();\n     LLFrameTimer::updateFrameCount();\n+    // [Temporal Capture] Advance the presentation clock and freeze this\n+    // iteration's immutable time context BEFORE any cinematic consumer (object\n+    // path/ghost updates, gObjectList.update, particles, camera) runs later in\n+    // idle() or in the following display(). Wall/network time is untouched.\n+    // See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle presentation tick\");\n+        LLPresentationTime::instance().tick();\n+    }\n+    // [TronT0] Latch the shared Tron clock immediately after the\n+    // presentation clock ticks, before any consumer runs later this\n+    // iteration -- see altron.h. Cheap no-op work while TronEnabled is off\n+    // (a handful of cached-setting reads and a fmod).\n+    ALTron::latchFrame();\n+    if (ALSteppedAnimRuntime::sActive)\n+    {\n+        ALSteppedAnimRuntime::instance().beginFrame();\n+    }\n     LLEventTimer::updateClass();\n     LLPerfStats::updateClass();\n \n",
           "purpose": "Comment evidence: [Temporal Capture] Advance the presentation clock and freeze this iteration's immutable time context BEFORE any cinematic consumer (object path/ghost updates, gObjectList.update, particles, camera) runs later in idle() or in the following display(). Wall/network time is untouched",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13116,10 +13120,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13155,13 +13155,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 37,
-          "head_end": 5405,
-          "head_start": 5369,
-          "id": "indra/newview/llappviewer.cpp@5369,37",
+          "head_end": 5406,
+          "head_start": 5370,
+          "id": "indra/newview/llappviewer.cpp@5370,37",
           "patch": "     {\n         LLWebsocketMgr::instance().update();\n     }\n+    // [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md)\n+    {\n+        static LLCachedControl<bool> bdmerge_sample(gSavedSettings, \"BDMergeSamplePatch\", false);\n+        static bool bdmerge_sample_prev = false;\n+        if (bdmerge_sample && !bdmerge_sample_prev)\n+        {\n+            LL_INFOS(\"BDMerge\") << \"BDMergeSamplePatch toggled on (A0.1 scaffolding no-op)\" << LL_ENDL;\n+        }\n+        bdmerge_sample_prev = bdmerge_sample;\n+    }\n+    // [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black\n+    // Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static\n+    // constraint members, since llcharacter can't read gSavedSettings directly. When\n+    // the gate is off, explicitly resets to the original stock constants so behavior\n+    // stays bit-identical to stock rather than drifting from a stale pushed value.\n+    {\n+        static LLCachedControl<bool> bdmerge_head_eye_limits(gSavedSettings, \"BDMergeHeadEyeLimits\", false);\n+        if (bdmerge_head_eye_limits)\n+        {\n+            static LLCachedControl<F32> bdmerge_head_limit_deg(gSavedSettings, \"BDMergeHeadRotationLimit\", 72.0f);\n+            static LLCachedControl<F32> bdmerge_eye_limit_deg(gSavedSettings, \"BDMergeEyeRotationLimit\", 27.0f);\n+            LLHeadRotMotion::setHeadRotationConstraint(bdmerge_head_limit_deg * DEG_TO_RAD);\n+            LLEyeMotion::setEyeRotationConstraint(bdmerge_eye_limit_deg * DEG_TO_RAD);\n+        }\n+        else\n+        {\n+            LLHeadRotMotion::resetHeadRotationConstraint();\n+            LLEyeMotion::resetEyeRotationConstraint();\n+        }\n+    }\n+\n     F32 dt_raw = idle_timer.getElapsedTimeAndResetF32();\n \n     LLGLTFMaterialList::flushUpdates();\n",
           "purpose": "Comment evidence: [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md) [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static constraint members, since llcha",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13177,10 +13181,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13215,13 +13215,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 15,
-          "head_end": 5480,
-          "head_start": 5466,
-          "id": "indra/newview/llappviewer.cpp@5466,15",
+          "head_end": 5481,
+          "head_start": 5467,
+          "id": "indra/newview/llappviewer.cpp@5467,15",
           "patch": "         gGLActive = false;\n     }\n \n+    // Login-screen tests are ticked by idle_startup(). Once an authorized\n+    // in-world test reaches STATE_STARTED, idle_startup() is no longer called.\n+    // Keep the active-runner check as the zero-cost gate for normal sessions.\n+    if (LLStartUp::getStartupState() >= STATE_STARTED &&\n+        ALUIPerfSelfTest::isActive())\n+    {\n+        ALUIPerfSelfTest::tick();\n+    }\n+\n \n     F32 yaw = 0.f;              // radians\n \n",
           "purpose": "Comment evidence: Login-screen tests are ticked by idle_startup(). Once an authorized in-world test reaches STATE_STARTED, idle_startup() is no longer called. Keep the active-runner check as the zero-cost gate for normal sessions.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13237,10 +13241,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -13271,13 +13271,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 9,
-          "head_end": 5621,
-          "head_start": 5613,
-          "id": "indra/newview/llappviewer.cpp@5613,9",
+          "head_end": 5622,
+          "head_start": 5614,
+          "id": "indra/newview/llappviewer.cpp@5614,9",
           "patch": "     // opening chat.\n     gViewerWindow->updateUI();\n \n+    if (gDisconnected || gTeleportDisplay || logoutRequestSent())\n+        ALProjectorTracker::instance().clear();\n+\n     if (gDisconnected)\n     {\n         return;\n",
           "purpose": "Edits gDisconnected, gTeleportDisplay, ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13293,10 +13297,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13329,13 +13329,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 48,
-          "head_end": 5704,
-          "head_start": 5657,
-          "id": "indra/newview/llappviewer.cpp@5657,48",
+          "head_end": 5705,
+          "head_start": 5658,
+          "id": "indra/newview/llappviewer.cpp@5658,48",
           "patch": "         gAgent.updateAgentPosition(gFrameDTClamped, yaw, current_mouse.mX, current_mouse.mY);\n     }\n \n+    // [ObjectPath] client-side object drives (props on splines): advance and\n+    // re-assert each enrolled object's rendered transform BEFORE\n+    // gObjectList.update(), so the driven mount's new pose is consumed THIS\n+    // frame by object interpolation, the seated-avatar root slave, the skeleton\n+    // world-matrix solve and the moved-drawable list -- instead of one frame\n+    // late. The old late call site (after updateSuspendState) left the object\n+    // model at frame N while its drawable, the seated skeleton and the\n+    // bone-lock camera all read frame N-1, which is the moving-mount camera\n+    // jitter. dt_raw is this frame's raw elapsed delta (computed above); the\n+    // mover re-clamps it to [0, 0.25]. Deliberately NOT gFrameDTClamped: that\n+    // floors dt at 0.005s (its 200 FPS cap), which would run drives ~1.5x fast\n+    // above 200 FPS. The mover can no longer read gFrameIntervalSeconds because\n+    // that is set inside gObjectList.update() below. The mover self-gates on\n+    // FreezeTime. Zero cost with no drives.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle path mover\");\n+        ALObjectPathMover::instance().update(dt_raw);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle ghost studio\");\n+        ALGhostStudio::instance().updatePerFrame();\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle avatar staging\");\n+        ALAvatarStaging::instance().update();\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle dance ball\");\n+        ALDanceBall::instance().tick();\n+    }\n+\n     {\n         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))\n         {\n             gObjectList.update(gAgent);\n+            // [GhostStudio] TRUE-mirror clones copy their source's FINAL pose\n+            // (post-motion, post-gaze/IK) -- which only exists once every\n+            // avatar's updateCharacter() has run above. Must stay immediately\n+            // after gObjectList.update() and before any render-side consumer.\n+            ALGhostStudio::instance().updatePostObjectList();\n+            // [AvatarLightResponse] per-frame table rebuild / counter roll / 1 Hz debug log\n+            ALAvatarLightResponse::tick();\n         }\n     }\n \n",
           "purpose": "Comment evidence: [ObjectPath] client-side object drives (props on splines): advance and re-assert each enrolled object's rendered transform BEFORE gObjectList.update(), so the driven mount's new pose is consumed THIS frame by object interpolation, the seated-avatar root slave, the skeleton world-",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13351,10 +13355,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13397,13 +13397,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 119,
-          "head_end": 5912,
-          "head_start": 5794,
-          "id": "indra/newview/llappviewer.cpp@5794,119",
+          "head_end": 5913,
+          "head_start": 5795,
+          "id": "indra/newview/llappviewer.cpp@5795,119",
           "patch": "         gPipeline.updateMove();\n     }\n \n-    LLWorld::getInstance()->updateParticles();\n+    // [BDMerge B3] Freeze World: hold the particle simulation while the world\n+    // is frozen so existing particles hang in place instead of aging out\n+    // (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the\n+    // merge spec for this item requires the full scene — including particles —\n+    // to stop). Camera updates below run regardless, so agent camera, flycam\n+    // and LLCinematicCamera all stay live while frozen.\n+    {\n+        static LLCachedControl<bool> bdmerge_freeze_world(gSavedSettings, \"BDMergeFreezeWorld\", false);\n+        static LLCachedControl<bool> use_freeze_world(gSavedSettings, \"UseFreezeWorld\", false);\n+        if (!(bdmerge_freeze_world && use_freeze_world))\n+        {\n+            LLWorld::getInstance()->updateParticles();\n+        }\n+    }\n+\n+    // [ActorMover] TP-away suspend/resume: run the per-actor walk state machine\n+    // once per frame, BEFORE the character update (applyOverride) and the camera\n+    // dispatch below, so a teleport/derez suspends the walk (and releases the\n+    // path camera) the same frame instead of leaving a stale override pose.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle actor mover suspend\");\n+        LLActorMover::instance().updateSuspendState();\n+    }\n \n+    // [GhostStudio] drive the in-world manipulation proxy once per frame HERE in\n+    // idle -- before render -- so any proxy creation / selection / toolset switch\n+    // happens off the render path, and the sync observes this frame's manip drag.\n+    // Near-zero cost when edit mode is off (an idempotent early-out).\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle ghost manip proxy\");\n+        ALToolGhostEdit::getInstance()->getManipProxy().tick();\n+    }\n+\n+    // NOTE: ALObjectPathMover::update() was MOVED from here to just before\n+    // gObjectList.update() above, to fix moving-mount camera jitter (the driven\n+    // pose must be consumed by the same-frame object/skeleton sequence, not\n+    // queued after it). See the comment at that call site.\n+\n+    // Weather library freezes once here, before all main/Prism/VCam draws.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle weather library\");\n+        ALPanelWeatherSettings::updateLibraryWeather();\n+    }\n+\n+    // [Director Switcher] Resolve program for this frozen presentation frame\n+    // before camera-owner arbitration. Inert while disarmed. Higher-priority\n+    // pilot/recorder/path cameras still win below.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle director switcher\");\n+        ALDirectorSwitcher::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    // [Anim Switchboard] Resolve the directed-animation program for this same\n+    // frozen presentation frame. Inert while disarmed.\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle anim switcher\");\n+        ALDirectorAnimSwitcher::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle local fog\");\n+        ALLocalFogManager::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle cine light rig\");\n+        ALCineLightRigManager::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle vcam bone pov\");\n+        ALVCamBonePov::instance().tick(\n+            LLPresentationTime::currentFrame().presentation_time);\n+    }\n+\n+    ++gCameraDispatchSerial;\n+    gCameraDispatchFlycamWrote = false;\n     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())\n     {\n+        gCameraDispatchOwner = ECameraOwner::PILOT;\n         gAgentPilot.moveCamera();\n     }\n+    else if (LLFlycamRecorder::instance().isPlaybackActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::RECORDER;\n+        // recorded camera path playback / scrubbing (phoenix port)\n+        LLFlycamRecorder::instance().updateCamera();\n+    }\n+    else if (LLPathCamera::instance().isActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::PATH;\n+        // per-node path camera: the cameras authored on Subject A's path drive\n+        // the render camera as the actor walks (a walk + camera = one take).\n+        // Below recorder playback, above the auto cinematic patterns. Releases\n+        // to the agent camera the same frame the walk ends / actor derezzes.\n+        LLPathCamera::instance().updateCamera();\n+    }\n+    else if (LLCinematicCamera::instance().isActive())\n+    {\n+        gCameraDispatchOwner = ECameraOwner::CINE;\n+        // automated cinematic camera (bone lock / orbit / hover / sweep / crane)\n+        LLCinematicCamera::instance().updateCamera();\n+    }\n     else if (LLViewerJoystick::getInstance()->getOverrideCamera())\n     {\n+        gCameraDispatchOwner = ECameraOwner::FLYCAM;\n         LLViewerJoystick::getInstance()->moveFlycam();\n     }\n     else\n     {\n+        gCameraDispatchOwner = ECameraOwner::AGENT;\n         if (LLToolMgr::getInstance()->inBuildMode())\n         {\n             LLViewerJoystick::getInstance()->moveObjects();\n",
           "purpose": "Comment evidence: [BDMerge B3] Freeze World: hold the particle simulation while the world is frozen so existing particles hang in place instead of aging out (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the merge spec for this item requires the full scene — including particles ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13419,10 +13423,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13459,13 +13459,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 44,
-          "head_end": 5958,
-          "head_start": 5915,
-          "id": "indra/newview/llappviewer.cpp@5915,44",
+          "head_end": 5959,
+          "head_start": 5916,
+          "id": "indra/newview/llappviewer.cpp@5916,44",
           "patch": "         gAgentCamera.updateCamera();\n     }\n \n+    // Follow the final VCam/flycam camera; hidden costs one cached bool test.\n+    static LLCachedControl<bool> color_chart_show(gSavedSettings, \"AlchemyColorChartShow\", false);\n+    if (color_chart_show) ALColorChart::instance().idle();\n+\n+    // The ownership sampler and recorder must observe the same final,\n+    // post-operator camera.  Keep this immediately before onIdleFrame().\n+    alCameraDispatchSampleFinal();\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle flycam recorder\");\n+        LLFlycamRecorder::instance().onIdleFrame();\n+    }\n+\n     // update media focus\n-    LLViewerMediaFocus::getInstance()->update();\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle media focus\");\n+        LLViewerMediaFocus::getInstance()->update();\n+    }\n \n     // Update marketplace\n-    LLMarketplaceInventoryImporter::update();\n-    LLMarketplaceInventoryNotifications::update();\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle marketplace\");\n+        LLMarketplaceInventoryImporter::update();\n+        LLMarketplaceInventoryNotifications::update();\n+    }\n \n     // objects and camera should be in sync, do LOD calculations now\n     {\n-        gObjectList.updateApparentAngles(gAgent);\n+        {\n+            LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle apparent angles\");\n+            gObjectList.updateApparentAngles(gAgent);\n+        }\n     }\n \n     // Update AV render info\n-    LLAvatarRenderInfoAccountant::getInstance()->idle();\n+    {\n+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"idle av render info\");\n+        LLAvatarRenderInfoAccountant::getInstance()->idle();\n+    }\n \n     {\n         LL_PROFILE_ZONE_NAMED_CATEGORY_APP(\"audio update\"); //LL_RECORD_BLOCK_TIME(FTM_AUDIO_UPDATE);\n",
           "purpose": "Comment evidence: Follow the final VCam/flycam camera; hidden costs one cached bool test. The ownership sampler and recorder must observe the same final, post-operator camera.  Keep this immediately before onIdleFrame().",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13481,10 +13485,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13519,17 +13519,21 @@
           "guard_evidence": [
             "if (ALSteppedAnimRuntime::sActive)",
             "if (ALSteppedAnimRuntime::sHasOverlay)",
-            "if (LLActorMover::instance().hasHotGazes())"
+            "if (LLActorMover::instance().hasHotGazes() || LLGhostAvatar::hasOffsetHotGazes())"
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 30,
-          "head_end": 5997,
-          "head_start": 5968,
-          "id": "indra/newview/llappviewer.cpp@5968,30",
-          "patch": "         }\n     }\n \n+    if (ALSteppedAnimRuntime::sActive)\n+    {\n+        ALSteppedAnimRuntime::instance().applyHeld();\n+        if (ALSteppedAnimRuntime::sHasOverlay)\n+        {\n+            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();\n+        }\n+    }\n+\n+    // HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check.\n+    LLActorMover::instance().applyHotGazes();\n+    if (LLActorMover::instance().hasHotGazes())\n+    {\n+        ALGhostStudio::instance().updatePostObjectList(true);\n+        LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions(true);\n+    }\n+    // HOT_GAZE_PRESENT_END\n+\n+    // applyHeld above is the stepped base skeleton writer (including\n+    // boil/smear and held root yaw). Sample/capture and place projectors here,\n+    // then finish their drawable/bounds/child mesh work before display() can\n+    // enter its earliest hero, mirror or cube-probe render pass.\n+    ALProjectorTracker::instance().update(dt_raw);\n+\n     // Handle shutdown process, for example,\n     // wait for floaters to close, send quit message,\n     // forcibly quit if it has taken too long\n",
+          "head_end": 5998,
+          "head_start": 5969,
+          "id": "indra/newview/llappviewer.cpp@5969,30",
+          "patch": "         }\n     }\n \n+    if (ALSteppedAnimRuntime::sActive)\n+    {\n+        ALSteppedAnimRuntime::instance().applyHeld();\n+        if (ALSteppedAnimRuntime::sHasOverlay)\n+        {\n+            LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions();\n+        }\n+    }\n+\n+    // HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check.\n+    LLActorMover::instance().applyHotGazes();\n+    if (LLActorMover::instance().hasHotGazes() || LLGhostAvatar::hasOffsetHotGazes())\n+    {\n+        ALGhostStudio::instance().updatePostObjectList(true);\n+        LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions(true);\n+    }\n+    // HOT_GAZE_PRESENT_END\n+\n+    // applyHeld above is the stepped base skeleton writer (including\n+    // boil/smear and held root yaw). Sample/capture and place projectors here,\n+    // then finish their drawable/bounds/child mesh work before display() can\n+    // enter its earliest hero, mirror or cube-probe render pass.\n+    ALProjectorTracker::instance().update(dt_raw);\n+\n     // Handle shutdown process, for example,\n     // wait for floaters to close, send quit message,\n     // forcibly quit if it has taken too long\n",
           "purpose": "Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13545,10 +13549,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13577,13 +13577,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 6028,
-          "head_start": 6021,
-          "id": "indra/newview/llappviewer.cpp@6021,8",
+          "head_end": 6029,
+          "head_start": 6022,
+          "id": "indra/newview/llappviewer.cpp@6022,8",
           "patch": "     {\n         if (!mClosingFloaters)\n         {\n+            // [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles\n+            LLSliderWheel::cancelAllForQuit();\n             // application is quitting\n             gFloaterView->closeAllChildren(true);\n             mClosingFloaters = true;\n",
           "purpose": "Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13599,10 +13603,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13631,13 +13631,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 6110,
-          "head_start": 6104,
-          "id": "indra/newview/llappviewer.cpp@6104,7",
+          "head_end": 6111,
+          "head_start": 6105,
+          "id": "indra/newview/llappviewer.cpp@6105,7",
           "patch": " \n void LLAppViewer::sendLogoutRequest()\n {\n+    ALProjectorTracker::instance().clear();\n     if(!mLogoutRequestSent && gMessageSystem)\n     {\n         //Set internal status variables and marker files before actually starting the logout process\n",
           "purpose": "Edits ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13653,10 +13657,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13691,13 +13691,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 15,
-          "head_end": 6443,
-          "head_start": 6429,
-          "id": "indra/newview/llappviewer.cpp@6429,15",
+          "head_end": 6444,
+          "head_start": 6430,
+          "id": "indra/newview/llappviewer.cpp@6430,15",
           "patch": " \n void LLAppViewer::disconnectViewer()\n {\n+    if (LLPresentationTime::instanceExists())\n+    {\n+        LLPresentationTime::instance().cancelWorldWindDown();\n+    }\n+    ALColorChart::shutdownSession();\n+    // Write/clean the Director recovery BEFORE Prism/rig/world teardown below\n+    // (a forced disconnect would otherwise save a stripped scene). Latched.\n+    if (!isError())\n+        LLFloaterDirector::prepareRecoveryForShutdown();\n     if (gDisconnected)\n     {\n         return;\n",
           "purpose": "Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13713,10 +13717,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13745,13 +13745,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 6456,
-          "head_start": 6449,
-          "id": "indra/newview/llappviewer.cpp@6449,8",
+          "head_end": 6457,
+          "head_start": 6450,
+          "id": "indra/newview/llappviewer.cpp@6450,8",
           "patch": " \n     LL_INFOS() << \"Disconnecting viewer!\" << LL_ENDL;\n \n+    ALExposureSettingsHistory::clear();\n+\n     // Dump our frame statistics\n \n     // Remember if we were flying\n",
           "purpose": "Edits ALExposureSettingsHistory",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13767,10 +13771,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -13810,13 +13810,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 45,
-          "head_end": 6511,
-          "head_start": 6467,
-          "id": "indra/newview/llappviewer.cpp@6467,45",
+          "head_end": 6512,
+          "head_start": 6468,
+          "id": "indra/newview/llappviewer.cpp@6468,45",
           "patch": "         LLSelectMgr::getInstance()->deselectAll();\n     }\n \n+    // Local light emitters must leave mLights before the region/object list is\n+    // torn down. This is idempotent on logout, relog, and final shutdown.\n+    ALCineLightRigManager::instance().shutdown();\n+\n+    // [DirFix] The path editor's shared edit session (edit owner/actor/node,\n+    // the transient path-edit tool, a held path-camera preview) is per-session\n+    // UI state pointing at avatars about to be torn down; end it here, before\n+    // the views and objects go. Idempotent on logout, relog and final quit.\n+    LLActorMover::instance().resetEditSession();\n+\n+    // [ClientHeight] Session-only local avatar height offsets are keyed by avatar/clone/linkset\n+    // ids; they must not leak into a different account or relog session.\n+    if (ALClientHeight::instanceExists())\n+    {\n+        ALClientHeight::getInstance()->clearSession();\n+    }\n+\n+    if (ALAvatarStaging::instanceExists())\n+    {\n+        ALAvatarStaging::getInstance()->clear();\n+    }\n+\n+    // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set\n+    // must not survive a session; clear it on logout/relog (this runs before\n+    // reconnecting to a new session and again on quit).\n+    LLPipeline::clearVolumetricShafts();\n+\n+    // Prism capture/display definitions are viewer-local session state. Never\n+    // carry object UUID bindings into a different account or relog session;\n+    // saved Director scene files remain available for an explicit reload.\n+    LLPrismLens::clearDesignations();\n+\n+    // Session derenders (objects and avatars) belong to this session only; a\n+    // relog in the same process must not carry them over. Permanent entries stay.\n+    if (ALDerenderList::instanceExists())\n+    {\n+        ALDerenderList::getInstance()->purgeSessionEntries();\n+    }\n+\n     // save inventory if appropriate\n     if (gInventory.isInventoryUsable()\n         && gAgent.getID().notNull()) // Shouldn't be null at this stage\n",
           "purpose": "Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "276b4981192",
+              "subject": "Hot gaze + clone QoL interplay: solo-hidden mirror sources propagate, staggered clones inherit delayed reactions"
+            },
             {
               "commit": "c55b1f73a61",
               "subject": "Gaze hot targets fix round 2: mirror clones inherit source reactions, real-painter checks, rekey motor kept, particle refresh"
@@ -13832,10 +13836,6 @@
             {
               "commit": "3694fb7d97c",
               "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",

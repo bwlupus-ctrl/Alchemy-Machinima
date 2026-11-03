@@ -190,10 +190,10 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "05b44e27e078c5a3471903604618ab3a90019ab4",
+    "head_source_tree": "50317145f4c031f7c814fd9c8310399d757d74ba",
     "hook_files": 498,
     "hunks": 3021,
-    "input_sha256": "6a74850293ab36e11fdd3555178a4fa9bb158cae7fcd69b641771df0bbdced42",
+    "input_sha256": "d3fa677c2bb933fe3f96f2b1ba13f813a8fe3f90a7dcfd290ba9d17321d44f79",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2023
   },
@@ -28006,7 +28006,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
         "gaze"
       ],
       "class": "OWNED",
@@ -28035,7 +28034,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
         "gaze"
       ],
       "class": "OWNED",
