@@ -1,0 +1,45 @@
+{
+  "base": "0288b1ed379",
+  "files": {
+    "llactormover.cpp": [
+      {
+        "before": "    GHOST_STYLE_DATAMOSH = 75,\n    GHOST_STYLE_SCANBUILD = 76,\n    GHOST_STYLE_CONTOUR = 77,\n    GHOST_STYLE_STUDIO_END = 78, // exclusive; only implemented ids are valid\n};\nstatic_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,\n              \"Live Actor FX ids collide with the Studio overlay range\");\n",
+        "after": "    GHOST_STYLE_DATAMOSH = 75,\n    GHOST_STYLE_SCANBUILD = 76,\n    GHOST_STYLE_CONTOUR = 77,\n    GHOST_STYLE_DECODE = 78,\n    GHOST_STYLE_GLYPH_SKIN = 79,\n    GHOST_STYLE_CONSTRUCT_WIRE = 80,\n    GHOST_STYLE_DEJA_VU = 81,\n    GHOST_STYLE_OPERATOR = 82,\n    GHOST_STYLE_DIAL_OUT = 83,\n    GHOST_STYLE_SOURCE = 84,\n    GHOST_STYLE_STUDIO_END = 85, // exclusive; only implemented ids are valid\n};\nstatic_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,\n              \"Live Actor FX ids collide with the Studio overlay range\");\n"
+      },
+      {
+        "before": "    return scene.get();\n}\nstatic LLStaticHashedString sGhostDissolveProgress(\"ghostDissolveProgress\");\nstatic LLStaticHashedString sGhostCoverageLayerStrength(\n    \"ghostCoverageLayerStrength\");\nstatic LLStaticHashedString sGhostIndexedMaterialFactor(\n",
+        "after": "    return scene.get();\n}\nstatic LLStaticHashedString sGhostDissolveProgress(\"ghostDissolveProgress\");\nstatic LLStaticHashedString sGhostDecodeScrub(\"ghostDecodeScrub\");\nstatic LLStaticHashedString sGhostCoverageLayerStrength(\n    \"ghostCoverageLayerStrength\");\nstatic LLStaticHashedString sGhostIndexedMaterialFactor(\n"
+      },
+      {
+        "before": "            tile_y * gViewerWindow->getWorldViewHeightRaw());\n    }\n    return offset;\n}\n\n// ---------------------------------------------------------------------------\n",
+        "after": "            tile_y * gViewerWindow->getWorldViewHeightRaw());\n    }\n    return offset;\n}\n\nLLVector2 actor_ghost_screen_size()\n{\n    LLVector2 size(1.f, 1.f);\n    if (gViewerWindow)\n    {\n        // Fractional final tiles are cropped by rawSnapshot. The screen field\n        // spans the zoomed image, not ceil(zoom) complete tile viewports.\n        const F32 zoom = gSnapshot\n            ? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f;\n        size.mV[VX] = llmax(static_cast<F32>(gViewerWindow->getWorldViewWidthRaw()) * zoom, 1.f);\n        size.mV[VY] = llmax(static_cast<F32>(gViewerWindow->getWorldViewHeightRaw()) * zoom, 1.f);\n    }\n    return size;\n}\n\n// ---------------------------------------------------------------------------\n"
+      },
+      {
+        "before": "        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)\n        : actor_ghost_studio_frame_time(gp.mEffectFps);\n    bool glow_only = false;\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n",
+        "after": "        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)\n        : actor_ghost_studio_frame_time(gp.mEffectFps);\n    bool glow_only = false;\n    // Matrix monitor looks use the whole snapshot field, including tile subregions.\n    const bool matrix_screen = !gp.mWorldLinear\n        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR);\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n"
+      },
+      {
+        "before": "    const LLVector2 ghost_frag_offset = gp.mWorldLinear\n        ? LLRenderPass::actorFxFragOffset() : actor_ghost_frag_offset();\n    const LLVector2 ghost_screen_size = gp.mWorldLinear\n        ? LLRenderPass::actorFxScreenSize() : LLVector2(1.f, 1.f);\n    F32 coverage_fade = 0.f;\n    auto apply_program = [&](LLGLSLShader* sh)\n    {\n",
+        "after": "    const LLVector2 ghost_frag_offset = gp.mWorldLinear\n        ? LLRenderPass::actorFxFragOffset() : actor_ghost_frag_offset();\n    const LLVector2 ghost_screen_size = gp.mWorldLinear\n        ? LLRenderPass::actorFxScreenSize()\n        : (matrix_screen ? actor_ghost_screen_size() : LLVector2(1.f, 1.f));\n    F32 coverage_fade = 0.f;\n    auto apply_program = [&](LLGLSLShader* sh)\n    {\n"
+      },
+      {
+        "before": "            if (!gp.mWorldLinear)\n            {\n                studio_apply_phase2(sh, studio_frame);\n            }\n            if (gp.mWorldLinear)\n            {\n",
+        "after": "            if (!gp.mWorldLinear)\n            {\n                studio_apply_phase2(sh, studio_frame);\n                if (matrix_screen)\n                {\n                    sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);\n                    sh->uniform2f(sGhostScreenOrigin, 0.f, 0.f);\n                }\n            }\n            if (gp.mWorldLinear)\n            {\n"
+      },
+      {
+        "before": "            }\n            sh->uniform1f(sGhostDissolveProgress,\n                          llclamp(gp.mDissolveProgress, 0.f, 1.f));\n        }\n        // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a\n        // COLOR array (PBR) read the generic, whose GL boot default is BLACK\n",
+        "after": "            }\n            sh->uniform1f(sGhostDissolveProgress,\n                          llclamp(gp.mDissolveProgress, 0.f, 1.f));\n            sh->uniform1i(sGhostDecodeScrub, gp.mDecodeScrub ? 1 : 0);\n        }\n        // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a\n        // COLOR array (PBR) read the generic, whose GL boot default is BLACK\n"
+      },
+      {
+        "before": "                    path_gp.mDistort = (S32)ghost_distort;\n                    path_gp.mDistortAmount = (F32)ghost_distort_amount;\n                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,\n                                             GHOST_ALPHA, llclamp(ALGhostStudio::remapRetiredOverlayStyle((S32)ghost_style), 0, 27),\n                                             path_gp,\n                                             ghostStaticFacesFor(g.mAv->getID()));\n                }\n",
+        "after": "                    path_gp.mDistort = (S32)ghost_distort;\n                    path_gp.mDistortAmount = (F32)ghost_distort_amount;\n                    drew = drawGeometryGhost(g.mAv, bit->second, g.mFoot, g.mTint,\n                                             GHOST_ALPHA, ALGhostStudio::resolveOverlayStyle((S32)ghost_style),\n                                             path_gp,\n                                             ghostStaticFacesFor(g.mAv->getID()));\n                }\n"
+      }
+    ],
+    "llactormover.h": [
+      {
+        "before": "        bool       mIsClone = false;\n        F32        mFadeAlpha = 1.f; // presentation coverage; never authored opacity\n        F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1\n        // actorghostF historically composites after tone mapping and therefore\n        // authors its output in display/sRGB space.  The native live Wire pass\n        // is submitted into the linear HDR world target instead; flag that one\n",
+        "after": "        bool       mIsClone = false;\n        F32        mFadeAlpha = 1.f; // presentation coverage; never authored opacity\n        F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1\n        bool       mDecodeScrub = false; // Decode animates unless explicitly scrubbed\n        // actorghostF historically composites after tone mapping and therefore\n        // authors its output in display/sRGB space.  The native live Wire pass\n        // is submitted into the linear HDR world target instead; flag that one\n"
+      }
+    ]
+  }
+}

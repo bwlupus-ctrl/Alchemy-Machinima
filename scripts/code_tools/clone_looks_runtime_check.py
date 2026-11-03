@@ -14,6 +14,41 @@ def check():
     path = Path('indra/newview/llactormover.cpp')
     overlay = method(path, 'void LLActorMover::renderStudioGhosts(')
     draw = method(path, 'S32 drawGeometryGhost(')
+    # Matrix ids must be reachable from every real selector and persistence,
+    # and must take the existing TEXTURED solid range dispatch.
+    import re
+    import xml.etree.ElementTree as ET
+    source = path.read_text(encoding='utf-8')
+    names = ('DECODE', 'GLYPH_SKIN', 'CONSTRUCT_WIRE', 'DEJA_VU', 'OPERATOR', 'DIAL_OUT', 'SOURCE')
+    for value, name in enumerate(names, 78):
+        assert re.search(r'GHOST_STYLE_' + name + r'\s*=\s*' + str(value) + r'\b', source)
+    assert 'GHOST_STYLE_STUDIO_END = 85' in source
+    assert 'style >= GHOST_STYLE_STUDIO_BASE && style < GHOST_STYLE_STUDIO_END' in draw
+    assert '? static_cast<S32>(GHOST_STYLE_THERMAL) : style' in draw
+    assert 'sh->uniform1i(sGhostLook, style)' in draw
+    assert 'const LLVector2 ghost_screen_size = gp.mWorldLinear' in draw
+    assert '? LLRenderPass::actorFxScreenSize()' in draw
+    assert ': (matrix_screen ? actor_ghost_screen_size() : LLVector2(1.f, 1.f))' in draw
+    assert 'sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV)' in draw
+    heading = method(path, 'void LLActorMover::renderHeadingPreview(')
+    assert 'ALGhostStudio::resolveOverlayStyle((S32)ghost_style)' in heading
+    assert 'ALGhostStudio::isOverlayStyle' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8') or 'isOverlayStyle(' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8')
+    assert '(style >= 64 && style <= 84 && style != 68 && style != 72)' in Path('indra/newview/alghoststudio.h').read_text(encoding='utf-8')
+    xui = Path('indra/newview/skins/default/xui/en')
+    selectors = 0
+    for file in ('panel_ghost_studio.xml', 'panel_dpage_cast_ghosts.xml', 'panel_path_editor.xml', 'panel_dpage_cast_path.xml'):
+        for combo in ET.parse(xui/file).iter('combo_box'):
+            if combo.get('name') in ('style_combo','ghost_style_combo') or combo.get('name','').startswith('crowd_mix_look_'):
+                values = [n.get('value') for n in combo.findall('combo_box.item')]
+                assert all(values.count(str(i)) == 1 for i in range(78,85)), (file,combo.get('name'),values)
+                selectors += 1
+    assert selectors == 16, selectors
+    for look in range(78,85):
+        assert f'case {look}: return ' in Path('indra/newview/alpanelghoststudio.cpp').read_text(encoding='utf-8')
+    # Existing CPU clock and per-instance UUID seed reach the shared upload.
+    assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
+    assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
+    assert 'inst.mId.mData[0] | (inst.mId.mData[1] << 8)' in overlay
     assert '++invocation;' in overlay
     assert 'studio_prepare_item(inst.mStyle, inst.mAlpha, phase2,' in overlay
     assert 'studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),' in overlay
@@ -63,7 +98,7 @@ def check():
         assert field in overlay, field
     assert 'remapRetiredOverlayStyle(gSavedSettings.getS32(' in studio
     assert 'gSavedSettings.setS32(name, look);' in studio
-    assert 'llclamp(ALGhostStudio::remapRetiredOverlayStyle((S32)ghost_style), 0, 27)' in path.read_text()
+    assert 'ALGhostStudio::resolveOverlayStyle((S32)ghost_style)' in heading
     import xml.etree.ElementTree as ET
     xml = ET.parse('indra/newview/skins/default/xui/en/panel_ghost_studio.xml')
     for name in ['style_combo'] + ['crowd_mix_look_'+str(i) for i in range(1,7)]:
@@ -510,13 +545,22 @@ int main(){
     directory.mkdir(parents=True, exist_ok=True)
     vcvars = next((Path(os.environ['ProgramFiles'])/'Microsoft Visual Studio').glob(
         '*/Community/VC/Auxiliary/Build/vcvars64.bat'))
+    # Discover the native-fixture compiler environment once for this run.
+    # Every control still compiles fresh production source and runs its own exe.
+    env_cmd = directory/'environment.cmd'
+    env_cmd.write_text(f'@echo off\ncall "{vcvars}" >nul\nset\n')
+    environment = os.environ.copy()
+    env_result = subprocess.run(['cmd','/d','/c',str(env_cmd)],capture_output=True,text=True,check=True)
+    for line in env_result.stdout.splitlines():
+        key,separator,value=line.partition('=')
+        if separator and key:environment[key]=value
     def execute(name, text, passing):
         cpp, exe = directory/(name+'.cpp'), directory/(name+'.exe')
         cpp.write_text(text, encoding='utf-8')
         cmd = directory/(name+'.cmd')
-        cmd.write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /std:c++17 /EHsc '
+        cmd.write_text(f'@echo off\ncl /nologo /std:c++17 /EHsc '
                        f'/Fo"{directory/(name+".obj")}" /Fe"{exe}" "{cpp}"\nexit /b %ERRORLEVEL%\n')
-        subprocess.run(['cmd','/d','/c',str(cmd)],check=True)
+        subprocess.run(['cmd','/d','/c',str(cmd)],check=True,env=environment)
         result = subprocess.run([str(exe)],capture_output=True,text=True)
         assert (result.returncode == 0) == passing, (name,result.stdout,result.stderr)
         print(result.stdout if passing else 'PASS negative control rejected: '+name+'; '+result.stderr.strip(),flush=True)
@@ -549,6 +593,124 @@ int main(){
          'else if (false)')):
         assert fixture.count(before)==1
         results.append(execute(name,fixture.replace(before,after),False))
+    clock = r'''
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <iostream>
+using F32=float;using F64=double;using U32=uint32_t;
+constexpr U32 U32_MAX=UINT32_MAX;
+template<class T>T llmax(T a,T b){return std::max(a,b);}
+template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}
+U32 gFrameCount=0;bool gSnapshot=false;double now=100.;
+struct LLFrameTimer{static double getElapsedSeconds(){return now;}};
+'''+method(path, 'F32 actor_ghost_studio_frame_time(')+r'''
+int main(){
+ assert(actor_ghost_studio_frame_time(0)==0);
+ ++gFrameCount;now=100.501;
+ assert(std::abs(actor_ghost_studio_frame_time(0)-.501)<1e-6);
+ assert(actor_ghost_studio_frame_time(12)==.5f);
+ assert(actor_ghost_studio_frame_time(30)==.5f);
+ now=100.54; // Other clones in SAME render frame share the captured clock.
+ assert(std::abs(actor_ghost_studio_frame_time(0)-.501)<1e-6);
+ assert(actor_ghost_studio_frame_time(12)==.5f);
+ ++gFrameCount;
+ assert(std::abs(actor_ghost_studio_frame_time(0)-.54)<1e-6);
+ assert(actor_ghost_studio_frame_time(12)==.5f);
+ assert(std::abs(actor_ghost_studio_frame_time(30)-16.f/30)<1e-6);
+ ++gFrameCount;now=100.59;
+ assert(std::abs(actor_ghost_studio_frame_time(12)-7.f/12)<1e-6);
+ gSnapshot=true;++gFrameCount;now=101.;float frozen=actor_ghost_studio_frame_time(12);
+ ++gFrameCount;now=105.;assert(actor_ghost_studio_frame_time(12)==frozen);
+ gSnapshot=false;++gFrameCount;assert(actor_ghost_studio_frame_time(0)==5.f);
+ std::cout<<"PASS production Studio Effect fps 0/12/30; per-clone rates, same-frame hold, frame advance, snapshot freeze\n";
+}
+'''
+    results.append(execute('matrix_clock',clock,True))
+    assert clock.count('floor(real_time * fps) / fps')==1
+    results.append(execute('matrix_clock_no_step',clock.replace('floor(real_time * fps) / fps','real_time'),False))
+    # Compile the complete REAL parameter struct and the exact apply_program
+    # uploads. Export the spy's values to the GL fixture, rather than inventing
+    # shader defaults in Runner.render. Studio/path both default-construct gp.
+    params = method(Path('indra/newview/llactormover.h'), '    struct GhostDrawParams') + ';'
+    uploads = '\n'.join(re.findall(
+        r'sh->uniform1[fi]\(sGhost(?:DissolveProgress|DecodeScrub),[^;]+;', draw))
+    assert uploads.count('sh->') == 2
+    default_fixture = r'''
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <map>
+#include <vector>
+using F32=float;using S32=int;using U64=unsigned long long;using U8=unsigned char;
+struct LLQuaternion{};struct LLVector3{};struct LLMatrix4{};
+struct LLUUID{bool operator<(const LLUUID&)const{return false;}};
+using GhostCoverageMask=int;const int GHOST_COVERAGE_NONE=0;
+template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}
+''' + params + r'''
+const int sGhostDissolveProgress=1,sGhostDecodeScrub=2;
+struct UploadSpy{
+ float dissolve=-99;int scrub=-99;
+ void uniform1f(int key,float value){assert(key==1);dissolve=value;}
+ void uniform1i(int key,int value){assert(key==2);scrub=value;}
+};
+UploadSpy upload(const GhostDrawParams& gp){UploadSpy spy;auto* sh=&spy;
+''' + uploads + r'''
+ return spy;
+}
+int main(){
+ GhostDrawParams studio,path,live;
+ for(auto* gp:{&studio,&path,&live}){
+  assert(gp->mDissolveProgress==.5f);assert(!gp->mDecodeScrub);
+  auto s=upload(*gp);assert(s.dissolve==.5f && s.scrub==0);
+ }
+ studio.mDecodeScrub=true;studio.mDissolveProgress=0;
+ auto manual=upload(studio);assert(manual.scrub==1 && manual.dissolve==0);
+ auto s=upload(path);
+ std::cout<<"{\"ghostDissolveProgress\":"<<s.dissolve<<",\"ghostDecodeScrub\":"<<s.scrub<<"}\n";
+}
+'''
+    defaults = execute('matrix_draw_defaults', default_fixture, True)
+    (directory/'matrix_draw_defaults.json').write_text(json.dumps(json.loads(defaults['stdout']),indent=2))
+    results.append(defaults)
+    results.append(execute('matrix_default_scrub',default_fixture.replace('mDecodeScrub = false','mDecodeScrub = true'),False))
+    snapshot = r'''
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <iostream>
+using F32=float;using S32=int;
+enum {VX,VY};bool gSnapshot=false;
+template<class T>T llmax(T a,T b){return std::max(a,b);}
+int llceil(float x){return (int)std::ceil(x);}
+struct LLVector2{float mV[2];LLVector2(float x=0,float y=0):mV{x,y}{}};
+struct LLViewerCamera{
+ float zoom=1;int sub=0;
+ static LLViewerCamera* getInstance(){static LLViewerCamera c;return &c;}
+ float getZoomFactor(){return zoom;}int getZoomSubRegion(){return sub;}
+};
+struct Window{int getWorldViewWidthRaw(){return 192;}int getWorldViewHeightRaw(){return 256;}};
+Window window;Window* gViewerWindow=&window;
+''' + method(path,'LLVector2 actor_ghost_frag_offset(') + method(path,'LLVector2 actor_ghost_screen_size(') + r'''
+int main(){
+ auto* c=LLViewerCamera::getInstance();
+ for(float zoom:{1.f,2.f,2.4f}){
+  c->zoom=zoom;gSnapshot=zoom>1;
+  int tiles=gSnapshot?llceil(zoom):1;
+  auto size=actor_ghost_screen_size();
+  assert(size.mV[0]==192*zoom && size.mV[1]==256*zoom);
+  for(int sub=0;sub<tiles*tiles;++sub){
+   c->sub=sub;auto offset=actor_ghost_frag_offset();
+   assert(offset.mV[0]==(sub%tiles)*192 && offset.mV[1]==(sub/tiles)*256);
+  }
+ }
+ std::cout<<"PASS production whole-image dimensions and tile offsets: ordinary, 2x, noninteger zoom\n";
+}
+'''
+    results.append(execute('matrix_snapshot_field',snapshot,True))
+    results.append(execute('matrix_tile_size',snapshot.replace('? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f','? 1.f : 1.f'),False))
+    results.append(execute('matrix_rounded_tile_size',snapshot.replace('? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f','? static_cast<F32>(llceil(LLViewerCamera::getInstance()->getZoomFactor())) : 1.f'),False))
     (directory/'results.json').write_text(json.dumps(results,indent=2))
 
 

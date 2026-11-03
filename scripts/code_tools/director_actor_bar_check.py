@@ -33,6 +33,8 @@ def hot_gaze_baseline(source, name):
     # Peel independent layers newest first. In particular, retiring renderer
     # looks must preserve interplay until its own exact allowance reverses it.
     for filename, digest, label in (
+        ("matrix_mover_hunks.json",
+         "f1084f70936ab1631b2a81b0ffb5bdb74e59320c2b509600c084a3babe32cb20", "Matrix"),
         ("ashfix_mover_hunks.json",
          "f345ee66bf29b1e58aebb895667f0b35e88b7569461f9ffe3ded53767071b135", "retired-look"),
         ("hot_clone_interplay_hunks.json",

@@ -134,7 +134,7 @@ uniform vec2 ghostFragOffset;
 #ifndef GHOST_WORLD_PASS
 uniform sampler2D ghostSceneMap;
 uniform int ghostSceneValid;
-uniform vec2 ghostScreenSize; // actual viewport, including 4K / snapshot tiles
+uniform vec2 ghostScreenSize; // whole image, including high-resolution snapshot tiles
 uniform vec2 ghostScreenOrigin;
 uniform vec2 ghostVelocity; // screen pixels per frame, bottom-up; zero = fallback
 #endif
@@ -167,6 +167,7 @@ uniform vec4 ghostTronColor;
 // field as native beauty + shadow. Ghost Studio keeps its historical automatic
 // dissolve when this world-only permutation is absent.
 uniform float ghostDissolveProgress;
+uniform int ghostDecodeScrub; // explicit opt-in; shared dissolve defaults are not a scrub
 in vec3 vary_object_position;
 // [R2-2] indexed-batch slot filter: >= 0 draws ONLY fragments whose
 // per-vertex material slot matches (the clone re-draws a multi-material
@@ -265,6 +266,96 @@ float ghost_ridge(vec2 p)
 {
     return 1.0 - abs(ghost_fbm(p) - 0.5) * 2.0;
 }
+
+const vec3 MX_GREEN = vec3(0.20, 1.00, 0.38);   // display-space (Studio is post-tonemap)
+const vec3 MX_DARK  = vec3(0.004, 0.018, 0.008);
+
+float mx_seg(vec2 p, vec2 a, vec2 b)             // Studio twin of ghostTronSegDist (that one is world-pass only)
+{
+    vec2 ab = b - a, ap = p - a;
+    float t = clamp(dot(ap, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+    return length(ap - ab * t);
+}
+
+// Dominant rest-space plane from the CAPTURED footprint. Per-triangle constant
+// (cross of derivatives), so the choice cannot flicker per pixel; it switches
+// only across triangle edges near 45 deg, where glyphs are ambiguous anyway.
+// Adds the z-dominant case look 74 lacks (tops of shoulders/head smear there).
+void mx_plane(vec3 oPx, vec3 oPy, vec3 fwP, out vec2 p2, out vec2 fw2, out float axisSeed)
+{
+    vec3 P  = vary_object_position;
+    vec3 cr = cross(oPx, oPy);
+    float crl = dot(cr, cr);
+    vec3 nb = crl > 1e-16 ? abs(cr * inversesqrt(crl)) : vec3(0.0, 1.0, 0.0);
+    if (nb.y >= nb.x && nb.y >= nb.z) { p2 = P.xz; fw2 = fwP.xz; axisSeed = 11.0; } // front/back
+    else if (nb.x >= nb.z)            { p2 = P.yz; fw2 = fwP.yz; axisSeed = 23.0; } // sides
+    else                              { p2 = P.xy; fw2 = fwP.xy; axisSeed = 37.0; } // tops / soles
+}
+
+// Procedural katakana-ish glyph: 3 strokes, mirrored 50% (as in the film).
+// f = 0..1 inside the glyph box (y up), id = 0..1, aa = px footprint in box units.
+float mx_glyph(vec2 f, float id, vec2 aa)
+{
+    float h0 = ghost_hash(vec2(id, 1.7)), h1 = ghost_hash(vec2(id, 5.3));
+    float h2 = ghost_hash(vec2(id, 9.1)), h3 = ghost_hash(vec2(id, 13.7));
+    if (h2 > 0.5) f.x = 1.0 - f.x;
+    float cx = 0.3 + 0.2 * floor(h0 * 2.999);                                 // vertical stem
+    float d  = mx_seg(f, vec2(cx, 0.08), vec2(cx, 0.63 + 0.30 * h1));
+    float cy = 0.25 + 0.275 * floor(h1 * 2.999);                              // cross bar
+    float len = 0.4 + 0.4 * h2;
+    float x0 = h0 > 0.5 ? 0.15 : 0.85 - len;
+    d = min(d, mx_seg(f, vec2(x0, cy), vec2(x0 + len, cy)));
+    d = h3 > 0.5 ? min(d, mx_seg(f, vec2(0.2, 0.9), vec2(0.5 + 0.3 * h3, 0.35)))  // diagonal tick
+                 : min(d, length(f - vec2(0.75, 0.2)) - 0.02);               // dot
+    float a = max(aa.x, aa.y);
+    float w = max(0.11, 0.6 * a);                                             // never thinner than ~0.6 px
+    return 1.0 - smoothstep(w - a, w + a, d);
+}
+
+// Body-locked glyph tiling. cell in metres; scrollM in metres (grows with time
+// => cells travel DOWN, -z). Returns AA'd ink; LOD collapses to a cell-constant
+// "bar" below ~6 px so crowds never shimmer.
+float mx_cells(vec2 p2, vec2 fw2, vec2 cell, float scrollM, float epochHz, float seed,
+               out vec2 ci, out float lod)
+{
+    vec2 q  = (p2 + vec2(0.0, scrollM)) / cell;
+    ci      = floor(q);
+    vec2 cf = q - ci;
+    const vec2 inset = vec2(0.12, 0.10);
+    vec2 f  = (cf - inset) / (1.0 - 2.0 * inset);
+    vec2 aa = fw2 / cell / (1.0 - 2.0 * inset);
+    float t = mod(ghostTime, 4096.0);
+    float epoch = floor(t * epochHz + ghost_hash(ci + seed) * 7.0);           // per-cell mutation epoch
+    float id    = ghost_hash(ci * 0.37 + vec2(epoch * 0.011, seed));
+    float inBox = step(0.0, f.x) * step(f.x, 1.0) * step(0.0, f.y) * step(f.y, 1.0);
+    float g     = inBox * mx_glyph(clamp(f, 0.0, 1.0), id, aa);
+    float cellPx = cell.x / max(fw2.x, 1e-6);
+    lod = smoothstep(6.0, 11.0, cellPx);
+    float gut = smoothstep(0.0, 2.0 * max(fw2.x / cell.x, 1e-5), min(cf.x, 1.0 - cf.x));
+    return mix(0.45 * gut, g, lod);
+}
+
+// lattice + pulses in one rest-space plane; cellM metres; seed per plane
+vec2 mx_wire(vec2 p2, vec2 fw2, float cellM, float t, float seed)   // returns (line, pulse)
+{
+    vec2 q  = p2 / cellM;
+    vec2 g  = abs(fract(q) - 0.5);                                   // 0 on a line
+    vec2 aa = fw2 / cellM + 1e-6;
+    vec2 lw = max(vec2(0.035), aa * 0.7);                            // >= ~0.7 px half-width
+    vec2 L  = 1.0 - smoothstep(lw - aa, lw + aa, g);                 // L.x: lines of constant x; L.y: constant y
+    // Lines are centered at cell + .5: both halves need the SAME pulse id.
+    vec2 lid = floor(q);
+    float hx = ghost_hash(vec2(lid.x, seed)),       hy = ghost_hash(vec2(lid.y, seed + 3.0));
+    float sx = (1.0 + 1.0 * hx) * sign(hx - 0.5),   sy = (1.0 + 1.0 * hy) * sign(hy - 0.5); // periods/s, random dir
+    float ux = fract(q.y * 0.25 - t * sx + hx * 7.0);                // pulse param along a constant-x line (period 4 cells)
+    float uy = fract(q.x * 0.25 - t * sy + hy * 7.0);
+    float px = pow(1.0 - smoothstep(0.0, 0.11, abs(ux - 0.5)), 2.0) * step(0.35, hx);
+    float py = pow(1.0 - smoothstep(0.0, 0.11, abs(uy - 0.5)), 2.0) * step(0.35, hy);
+    float guard = smoothstep(3.0, 6.0, cellM / max(max(fw2.x, fw2.y), 1e-6));   // drop sub-3px lattices
+    return vec2(max(L.x, L.y), L.x * px + L.y * py) * guard;
+}
+
+
 #endif
 
 vec3 heat_lut(float x)
@@ -474,7 +565,8 @@ float cloneFadeCoverage(float progress)
 
 void main()
 {
-    if (ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
+    bool matrixLook = ghostLook >= 78 && ghostLook <= 84;
+    if (!matrixLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
     vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
     float ghostDissolveEdge = 0.0;
 #ifndef GHOST_WORLD_PASS
@@ -494,6 +586,16 @@ void main()
         fz = fwidth(-vary_position.z);
     }
     vec3 fwP = abs(oPx) + abs(oPy);
+#endif
+    if (matrixLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
+#ifndef GHOST_WORLD_PASS
+    // Matrix taps use the gradients captured above every discard. Preserve
+    // the historical sampler/footprint arithmetic for every existing look.
+#undef GHOST_DIFFUSE_SAMPLE
+#define GHOST_DIFFUSE_SAMPLE(uv_) (matrixLook ? textureGrad(diffuseMap, uv_, uvDx, uvDy) : texture(diffuseMap, uv_))
+    vec2 distortFootprint = matrixLook ? uvPx : vec2(0.0);
+#else
+    vec2 distortFootprint = vec2(0.0);
 #endif
 #ifdef GHOST_SHARED_DISSOLVE
     // [TronT2 fix] Tron Suit seam footprint, taken here in uniform control
@@ -545,6 +647,91 @@ void main()
     float voxelShade = 1.0;
     float vhsBand = 0.0;
 
+    // Separate uniform paths preserve the parent's derivative instructions for
+    // old looks. A per-expression conditional lets some drivers hoist fwidth
+    // across the Voxel UV quantization and changes old material boundaries.
+    if (matrixLook)
+    {
+    // Distortions alter the common sampling coordinates before any look is
+    // evaluated. Thus every look consumes the same distorted source sample.
+    if (ghostDistort == 1 && distort > 0.001) // Pixelate
+    {
+        vec2 px = max(distortFootprint * mix(2.0, 64.0, distort), vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+    }
+    else if (ghostDistort == 2 && distort > 0.001) // Voxel
+    {
+        float cells = mix(80.0, 10.0, distort);
+        vec3 cell = floor(vary_position * cells) / cells;
+        vec2 px = max(distortFootprint * mix(3.0, 38.0, distort), vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+        voxelShade = 0.68 + 0.32 * ghost_hash(cell.xy + cell.z);
+    }
+    else if (ghostDistort == 3 && distort > 0.001) // Lens / magnify
+    {
+        vec2 center = ghostDistortParams.yz;
+        vec2 d = uv - center;
+        float radius = mix(0.28, 0.48, distort);
+        float q = length(d) / radius;
+        if (q < 1.0)
+            uv = center + d * mix(0.48, 0.88, q * q) * distort
+                        + d * (1.0 - distort);
+    }
+    else if (ghostDistort == 4 && distort > 0.001) // Wave / ripple
+    {
+        uv += vec2(sin(uv.y * 42.0 + ghostTime * 4.2 + ghostAux.w),
+                   cos(uv.x * 35.0 - ghostTime * 3.4)) * (0.002 + 0.025 * distort);
+    }
+    else if (ghostDistort == 6 && distort > 0.001) // Block glitch
+    {
+        float beat = floor(ghostTime * 7.0);
+        vec2 block = floor(uv * vec2(12.0, 22.0));
+        float r = ghost_hash(block + vec2(beat, ghostAux.w));
+        uv.x += step(1.0 - 0.38 * distort, r) * (r - 0.5) * 0.28 * distort;
+    }
+    else if (ghostDistort == 7 && distort > 0.001) // Vertical tear
+    {
+        float slice = floor(fragCoord.x / 13.0);
+        float beat = floor(ghostTime * 8.0);
+        float r = ghost_hash(vec2(slice, beat + ghostAux.w));
+        uv.y += step(1.0 - 0.35 * distort, r) * (r - 0.5) * 0.24 * distort;
+    }
+    else if (ghostDistort == 8 && distort > 0.001) // VHS / tracking
+    {
+        float roll = fract(fragCoord.y / 180.0 - ghostTime * 0.32);
+        vhsBand = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
+        float lineNoise = ghost_hash(vec2(floor(fragCoord.y / 3.0),
+                                           floor(ghostTime * 12.0)));
+        uv.x += (lineNoise - 0.5) * 0.035 * distort + vhsBand * 0.02 * distort;
+    }
+    // Clamp ONLY when a distortion actually offset the UV. Applying it to the
+    // undistorted base sample corrupts legitimately tiled/wrapped textures
+    // (fishnet, repeating patterns): it collapses their repeats onto the edge
+    // texel, so those parts pick up the edge's alpha and drop out. The Clone and
+    // any no-distortion look must wrap exactly as authored.
+    // No UV clamp here. The texture's own wrap mode (repeat/clamp) handles any
+    // out-of-[0,1] UVs the distortions produce -- exactly as the real render does,
+    // and as this shader did before the distortion layer was added. The layer's
+    // original unconditional clamp collapsed tiled/wrapped textures (fishnet,
+    // repeating patterns) onto the edge texel, dropping those parts to the edge's
+    // alpha (the Clone regression), and did not even bound the final UV because the
+    // legacy pixelate/glitch below still move it. Wrapped sampling is the authored,
+    // correct behavior for every look and distortion.
+
+    // [GhostStudio] pixelation: quantize the sampling UV in ~screen-pixel
+    // blocks. distortFootprint is the UV footprint of ONE screen pixel here, so
+    // multiplying by the block size snaps the texture into blocks that stay
+    // screen-sized regardless of zoom. Reads strongest on the textured clone;
+    // flat-tint styles only show it through the alpha/mask stage.
+    if (ghostAux.z > 0.5)
+    {
+        vec2 px = max(distortFootprint * ghostAux.z, vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+    }
+
+    }
+    else
+    {
     // Distortions alter the common sampling coordinates before any look is
     // evaluated. Thus every look consumes the same distorted source sample.
     if (ghostDistort == 1 && distort > 0.001) // Pixelate
@@ -620,6 +807,8 @@ void main()
     {
         vec2 px = max(fwidth(uv) * ghostAux.z, vec2(1e-6));
         uv = (floor(uv / px) + 0.5) * px;
+    }
+
     }
 
     // [GhostStudio] glitch: a few horizontal screen bands tear sideways for a
@@ -1297,6 +1486,233 @@ void main()
         rgb   = mix(paper, ink, inkAmt);
         alpha = color.a * tex.a * mix(inkAmt, 1.0, 1.0);
     }
+    else if (ghostLook == 78) // Studio: Decode
+{
+    vec3 P = vary_object_position;
+    float t = mod(ghostTime, 4096.0);
+    float h = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
+    // Section 8's code-above/head, texture-below/head convention: encode
+    // downward, hold code, decode upward, hold texture (six seconds total).
+    float cyc = fract((t + ghostAux.w * 0.9549) / 6.0) * 6.0;
+    float front, dir;                                // front in h-space; dir=+1 descending head
+    if      (cyc < 2.6) { front = 1.0 - cyc / 2.6;          dir =  1.0; }
+    else if (cyc < 4.0) { front = -0.25;                    dir =  1.0; }
+    else if (cyc < 5.2) { front = (cyc - 4.0) / 1.2;        dir =  1.0; }
+    else                { front = 1.25;                     dir =  1.0; }
+    if (ghostDecodeScrub != 0)                     // explicit manual scrub, including zero
+    { front = 1.15 - ghostDissolveProgress * 1.35; dir = 1.0; }
+    float s = (h - front) * dir;                     // >0 code side, <0 decoded side
+    float fwh = fwP.z / 2.25 + 1e-6;                 // h-space footprint
+
+    // rain: body-locked columns, independent per-column speeds (74's law, new glyphs)
+    vec2 p2, fw2; float as;  mx_plane(oPx, oPy, fwP, p2, fw2, as);
+    vec2 cell = vec2(0.03, 0.045);
+    float colSeed = ghost_hash(vec2(floor(p2.x / cell.x), ghostAux.w + as));
+    float speed = 0.6 + 1.2 * colSeed;               // rows/s
+    float headH = fract(t * speed * 0.12 + colSeed * 3.0);
+    float below = fract(headH - (1.0 - h));
+    float trail = pow(1.0 - clamp(below / 0.35, 0.0, 1.0), 1.8);
+    vec2 ci; float lod;
+    float ink = mx_cells(p2, fw2, cell, 0.0, 2.5, as, ci, lod) * trail;
+    float rainHead = (1.0 - smoothstep(0.0, 0.08, below)) * lod;
+
+    // write head + wake
+    float head  = 1.0 - smoothstep(0.0, 0.010 + 2.0 * fwh, abs(s));           // ~2 px core
+    float halo  = 1.0 - smoothstep(0.0, 0.06, abs(s));
+    float wake  = clamp(-s / 0.12, 0.0, 1.0);                                   // 0 at head .. 1 settled
+    float reveal = step(ghost_hash(ci + 0.5), wake);                             // per-cell digital snap
+    float residual = (1.0 - wake) * (1.0 - wake);                                // green bleed fading out
+
+    vec3 green = mix(MX_GREEN, color.rgb, 0.25);
+    vec3 codeRGB = MX_DARK + green * ink * 1.5 + vec3(0.65, 1.0, 0.75) * rainHead * ink * 1.1;
+    vec3 bodyRGB = tex.rgb * color.rgb;
+    vec3 decRGB  = mix(codeRGB, bodyRGB, reveal);
+    decRGB = mix(decRGB, green * (0.4 + lum), residual * 0.35);                 // settling tint
+    float codeSide = step(0.0, s);
+    rgb   = mix(decRGB, codeRGB, codeSide);
+    rgb  += green * (head * 3.0 + halo * 0.6) + green * edge * 0.25 * codeSide;   // write head, soft halo, faint code rim
+    float codeAlpha = 0.85 + 0.15 * ink;                                          // code side is a drawn dark body, not a hole
+    alpha = color.a * tex.a * mix(1.0, codeAlpha, codeSide);
+}
+
+    else if (ghostLook == 79) // Studio: Glyph Skin
+{
+    vec2 p2, fw2; float as;  mx_plane(oPx, oPy, fwP, p2, fw2, as);
+    float t = mod(ghostTime, 4096.0);
+    vec2 cell = vec2(0.028, 0.040);
+    float scrollM = t * 0.12;                                   // metres; cells travel down (-z)
+    vec2 ci; float lod;
+    float ink = mx_cells(p2, fw2, cell, scrollM, 4.0, as + ghostAux.w, ci, lod);
+    // per-cell brightness epoch (1.5 Hz random walk) + sparse white hits (4 Hz)
+    float cb  = ghost_hash(ci + vec2(as, ghostAux.w));
+    float ep  = floor(t * 1.5 + cb * 5.0);
+    float eph = floor(t * 4.0 + cb * 3.0);
+    float bright = 0.30 + 0.70 * ghost_hash(ci * 0.71 + vec2(ep * 0.017, as));
+    float hit    = step(0.94, ghost_hash(ci + vec2(eph * 0.031, 2.0 + ghostAux.w)));
+    bright *= 0.45 + 0.55 * smoothstep(0.05, 0.7, lum);         // texture luminance keeps face/cloth legible
+    float rimK = smoothstep(0.15, 0.70, edge);
+    vec3 green = mix(MX_GREEN, color.rgb, 0.30);
+    rgb   = MX_DARK * (1.0 + lum)
+          + green * ink * (1.0 * bright + 1.8 * rimK)
+          + vec3(0.85, 1.0, 0.9) * ink * hit * 1.6
+          + green * rimK * 0.35;                                 // thin continuous rim so the shape never breaks up
+    alpha = color.a * tex.a;
+}
+
+    else if (ghostLook == 80) // Studio: Construct Wire
+{
+    vec3 P = vary_object_position;
+    float t = mod(ghostTime, 4096.0);
+    float seed = fract(ghostAux.w * 0.15915494) * 13.0;
+    // triplanar SUM with pow-6 weights (ghostTronSeams law): lines blend, no hard seam
+    vec3 cr = cross(oPx, oPy); float crl = dot(cr, cr);
+    vec3 w = crl > 1e-16 ? pow(max(abs(cr * inversesqrt(crl)), vec3(1e-4)), vec3(6.0)) : vec3(0.0, 1.0, 0.0);
+    w /= max(w.x + w.y + w.z, 1e-30);
+    const float cellM = 0.09;
+    vec2 wire = vec2(0.0);
+    if (w.x > 1e-3) wire += w.x * mx_wire(P.yz, fwP.yz, cellM, t, seed + 1.0);
+    if (w.y > 1e-3) wire += w.y * mx_wire(P.xz, fwP.xz, cellM, t, seed + 2.0);
+    if (w.z > 1e-3) wire += w.z * mx_wire(P.xy, fwP.xy, cellM, t, seed + 3.0);
+    wire = min(wire, vec2(1.0));
+    // faint glyph fill (dominant plane is fine here: it is 25% intensity)
+    vec2 p2, fw2; float as;  mx_plane(oPx, oPy, fwP, p2, fw2, as);
+    vec2 ci; float lod;
+    float fill = mx_cells(p2, fw2, vec2(0.03, 0.045), t * 0.05, 3.0, as + seed, ci, lod) * 0.25;
+    float rimK = smoothstep(0.10, 0.65, edge);
+    vec3 green = mix(MX_GREEN, color.rgb, 0.3);
+    rgb   = MX_DARK * 2.0 + green * (wire.x * 0.9 + wire.y * 2.6 + fill + rimK * 0.9)
+          + vec3(1.0) * wire.y * 0.6;                            // pulse cores go white
+    alpha = color.a * tex.a * clamp(0.35 + wire.x * 0.6 + wire.y + rimK * 0.4 + fill * 0.5, 0.0, 1.0);
+}
+
+    else if (ghostLook == 81) // Studio: Deja Vu
+{
+    float t = mod(ghostTime, 4096.0);
+    float seed = fract(ghostAux.w * 0.15915494);
+    // schedule (Phase B replaces these 6 lines with the ghostEcho uniform, see below)
+    float slotF = t / 1.6 + seed * 3.0;
+    float slot  = floor(slotF);
+    float fire  = step(0.45, ghost_hash(vec2(slot, seed)));
+    float onset = ghost_hash(vec2(slot, seed + 1.0)) * 1.25;
+    float len   = 0.15 + 0.15 * ghost_hash(vec2(slot, seed + 2.0));
+    float local = (slotF - slot) * 1.6 - onset;
+    float win   = fire * step(0.0, local) * step(local, len);              // 1 inside a stutter
+    float sub   = floor(local * 14.0);                                     // 14 Hz sub-flicks
+    float dirS  = sign(ghost_hash(vec2(slot, sub + seed)) - 0.5);
+    float amp   = win * (0.3 + 0.7 * ghost_hash(vec2(slot + 7.0, sub)));
+    float pxs   = ghostScreenSize.y / 1080.0;                               // resolution-relative pixels
+    float offPx = dirS * amp * mix(8.0, 36.0, ghost_hash(vec2(slot, 9.0))) * pxs;
+    // screen-x shift -> material UV via the captured UV gradient (Datamosh law); footprint preserved
+    vec2  oUV   = uvDx * offPx;
+    vec4  echo  = textureGrad(diffuseMap, uv + oUV, uvDx, uvDy);
+    float ew    = activeGhostAlpha.x > 0.5 ? echo.a : 1.0;                 // never let a hidden texel's RGB in
+    vec3  authoredRGB = activeMaterialFactor.rgb * vary_vertex_color.rgb;
+    vec3  echoRGB = mix(tex.rgb, echo.rgb * authoredRGB, ew);
+    vec4  split = textureGrad(diffuseMap, uv + oUV * 1.6, uvDx, uvDy);     // chroma split, R only
+    float sw    = activeGhostAlpha.x > 0.5 ? split.a : 1.0;
+    echoRGB.r   = mix(echoRGB.r, split.r * authoredRGB.r, sw);
+    // green scan tear: a screen-space band sweeping down during the window
+    vec2  suv   = fragCoord / max(ghostScreenSize, vec2(1.0));
+    float tearY = 1.0 - clamp(local / max(len, 1e-3), 0.0, 1.0);
+    float band  = (1.0 - smoothstep(0.0, 0.014, abs(suv.y - tearY))) * win;
+    float above = step(tearY, suv.y) * win;                                // rows above the tear shift harder
+    vec3 green  = mix(MX_GREEN, color.rgb, 0.35);
+    float breath = 0.06 + 0.06 * sin(t * 5.655 + ghostAux.w);              // 0.9 Hz idle tint
+    vec3 body   = tex.rgb * color.rgb;
+    vec3 glitch = echoRGB * color.rgb * mix(vec3(1.0), vec3(0.75, 1.05, 0.8), 0.5 + 0.5 * above);
+    rgb   = mix(body, glitch, win * 0.85) + green * breath * (0.5 + lum)
+          + green * band * 2.5 + green * edge * win * 0.8;
+    alpha = color.a * tex.a;
+}
+
+    else if (ghostLook == 82) // Studio: Operator -- monitor roll and phosphor
+{
+    float t = mod(ghostTime, 4096.0);
+    vec2 suv = fragCoord / max(ghostScreenSize, vec2(1.0));
+    float roll = fract(suv.y - t * 0.4 + ghostAux.w * 0.15915494);
+    float retrace = 1.0 - smoothstep(0.0, 0.065, min(roll, 1.0 - roll));
+    float dropout = step(0.965, ghost_hash(vec2(floor(fragCoord.y), floor(t * 20.0) + ghostAux.w)));
+    float triad = 0.72 + 0.28 * step(1.0, mod(floor(fragCoord.x), 3.0));
+    vec2 p2, fw2; float axisSeed; mx_plane(oPx, oPy, fwP, p2, fw2, axisSeed);
+    vec2 ci; float lod;
+    float ink = mx_cells(p2, fw2, vec2(0.03, 0.045), t * 0.08, 3.0, axisSeed + ghostAux.w, ci, lod);
+    vec3 green = mix(MX_GREEN, color.rgb, 0.15);
+    rgb = MX_DARK + green * ((lum * 1.3 * triad + ink * 0.15) * (1.0 - dropout * 0.85)
+                            + retrace * (0.35 + lum) + edge * 0.12);
+    alpha = color.a * tex.a;
+}
+else if (ghostLook == 83) // Studio: Dial Out -- departing columns become rising code
+{
+    float t = mod(ghostTime, 4096.0);
+    float cycle = mod(t + ghostAux.w * 0.7957747, 5.0);
+    vec2 p2, fw2; float axisSeed; mx_plane(oPx, oPy, fwP, p2, fw2, axisSeed);
+    float column = ghost_hash(vec2(floor(p2.x / 0.04), axisSeed + ghostAux.w));
+    float departure = 0.3 + column * 1.4;
+    float gone = smoothstep(departure, departure + 0.35, cycle)
+               * (1.0 - smoothstep(3.0 + column, 3.45 + column, cycle));
+    float fade = 1.0 - smoothstep(departure + 0.6, departure + 1.6, cycle);
+    // Reconnection restores both opacity and the textured material.
+    fade = max(fade, smoothstep(3.0 + column, 3.45 + column, cycle));
+    vec2 ci; float lod;
+    float ink = mx_cells(p2, fw2, vec2(0.04, 0.05), -t * 0.5, 4.0, axisSeed + ghostAux.w, ci, lod);
+    // Departure/reconnection are column masks too. Fade their high-frequency
+    // state to a phase-dependent column average with the captured footprint.
+    float maskLod = smoothstep(6.0, 11.0, 0.04 / max(fw2.x, 1e-6));
+    float meanGone = 0.0, meanOpacity = 0.0;
+    for (int i = 0; i < 16; ++i)
+    {
+        float c = (float(i) + 0.5) / 16.0;
+        float d = 0.3 + c * 1.4;
+        float reconnect = smoothstep(3.0 + c, 3.45 + c, cycle);
+        float g = smoothstep(d, d + 0.35, cycle) * (1.0 - reconnect);
+        float f = max(1.0 - smoothstep(d + 0.6, d + 1.6, cycle), reconnect);
+        meanGone += g / 16.0;
+        meanOpacity += mix(1.0, f * (0.35 + ink * 0.65), g) / 16.0;
+    }
+    float departureOpacity = mix(meanOpacity, mix(1.0, fade * (0.35 + ink * 0.65), gone), maskLod);
+    gone = mix(meanGone, gone, maskLod);
+    vec3 green = mix(MX_GREEN, color.rgb, 0.25);
+    rgb = mix(tex.rgb * color.rgb, MX_DARK + green * (ink * 2.0 + edge * 0.4), gone);
+    alpha = color.a * tex.a * departureOpacity;
+}
+else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
+{
+    float t = mod(ghostTime, 4096.0);
+    vec2 p2, fw2; float axisSeed; mx_plane(oPx, oPy, fwP, p2, fw2, axisSeed);
+    vec2 cell = vec2(0.022, 0.032);
+    vec2 q = p2 / cell, ci = floor(q), cf = fract(q);
+    float lineSeed = ghost_hash(vec2(ci.y, axisSeed + ghostAux.w));
+    float typing = mod(t * 20.0 + lineSeed * 64.0, 64.0);
+    float column = mod(ci.x + 32.0, 64.0);
+    float epoch = floor((t * 20.0 + lineSeed * 64.0) / 64.0);
+    vec2 dotQ = (cf - vec2(0.12, 0.10)) / vec2(0.76, 0.80) * vec2(5.0, 7.0);
+    vec2 bit = floor(dotQ), f = fract(dotQ);
+    vec2 aa = max(fw2 / cell / vec2(0.76, 0.80) * vec2(5.0, 7.0), vec2(1e-5));
+    float glyphSeed = ghost_hash(ci * 0.37 + vec2(epoch * 0.011, ghostAux.w + axisSeed));
+    // ASCII-like stems plus hashed cross-strokes, five columns by seven rows.
+    float on = step(0.48, ghost_hash(bit + glyphSeed * 19.0));
+    on = max(on, float(bit.x == 0.0 && bit.y > 0.0 && bit.y < 6.0));
+    vec2 box = smoothstep(vec2(0.0), aa, min(f, 1.0 - f));
+    float inBox = float(dotQ.x >= 0.0 && dotQ.x < 5.0 && dotQ.y >= 0.0 && dotQ.y < 7.0);
+    float ink = on * box.x * box.y * inBox;
+    float lod = smoothstep(6.0, 11.0, min(cell.x / max(fw2.x, 1e-6), cell.y / max(fw2.y, 1e-6)));
+    ink = mix(0.32, ink, lod);
+    float cursor = float(abs(column - floor(typing)) < 0.5) * step(0.5, fract(t * 2.0 + lineSeed));
+    float typed = step(column, typing);
+    // The row phase, typing edge and cursor must lose contrast with the ink;
+    // otherwise unresolved rows still switch whole pixels between cell states.
+    // Unresolved terminal rows retain broad, seeded typing motion rather than
+    // becoming a static grey fill. This envelope spans many cells, and its
+    // contrast also falls with the captured local footprint.
+    float coarseTyped = 0.5 + 0.4 * sin(p2.y * 4.0 - t * 3.0 + ghostAux.w + axisSeed)
+                              / (1.0 + fw2.y * 4.0);
+    typed = mix(coarseTyped, typed, lod);
+    cursor *= lod;
+    float bright = 0.4 + 0.6 * lum;
+    rgb = vec3(0.004) + vec3(0.85, 1.0, 0.9) * bright * max(ink * typed, cursor * 0.9);
+    alpha = color.a * tex.a;
+}
+
     else if (ghostLook == 77) // Studio: Contour
     {
         float z   = -vary_position.z;                                        // eye depth, metres
