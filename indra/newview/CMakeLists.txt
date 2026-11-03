@@ -2,7 +2,6 @@
 
 include(BuildPackagesInfo)
 include(BuildVersion)
-sl_addon_source_hash("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 include(CMakeCopyIfDifferent)
 include(Velopack)
 include(TemplateCheck)
