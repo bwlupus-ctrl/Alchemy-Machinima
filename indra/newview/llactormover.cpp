@@ -12476,6 +12476,7 @@ LLImageGL* studio_scene_copy(StudioSceneCache& cache, U64 invocation, F64 now,
     return scene.get();
 }
 static LLStaticHashedString sGhostDissolveProgress("ghostDissolveProgress");
+static LLStaticHashedString sGhostDecodeScrub("ghostDecodeScrub");
 static LLStaticHashedString sGhostCoverageLayerStrength(
     "ghostCoverageLayerStrength");
 static LLStaticHashedString sGhostIndexedMaterialFactor(
@@ -12638,6 +12639,21 @@ LLVector2 actor_ghost_frag_offset()
             tile_y * gViewerWindow->getWorldViewHeightRaw());
     }
     return offset;
+}
+
+LLVector2 actor_ghost_screen_size()
+{
+    LLVector2 size(1.f, 1.f);
+    if (gViewerWindow)
+    {
+        // Fractional final tiles are cropped by rawSnapshot. The screen field
+        // spans the zoomed image, not ceil(zoom) complete tile viewports.
+        const F32 zoom = gSnapshot
+            ? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f;
+        size.mV[VX] = llmax(static_cast<F32>(gViewerWindow->getWorldViewWidthRaw()) * zoom, 1.f);
+        size.mV[VY] = llmax(static_cast<F32>(gViewerWindow->getWorldViewHeightRaw()) * zoom, 1.f);
+    }
+    return size;
 }
 
 // ---------------------------------------------------------------------------
@@ -13107,11 +13123,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     bool glow_only = false;
     F32 studio_displace = 0.f;
     // Matrix monitor looks also work in path previews, which have no Studio
-    // transient frame. Read the viewport once, then upload to both programs.
+    // transient frame. Use the whole snapshot field, including tile subregions.
     const bool matrix_screen = !gp.mWorldLinear
         && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR);
-    GLint matrix_viewport[4] = {0, 0, 1, 1};
-    if (matrix_screen) glGetIntegerv(GL_VIEWPORT, matrix_viewport);
 
     // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
     // Supply its bottom-up whole-image pixel origin so scanlines, noise and
@@ -13119,7 +13133,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     const LLVector2 ghost_frag_offset = gp.mWorldLinear
         ? LLRenderPass::actorFxFragOffset() : actor_ghost_frag_offset();
     const LLVector2 ghost_screen_size = gp.mWorldLinear
-        ? LLRenderPass::actorFxScreenSize() : LLVector2(1.f, 1.f);
+        ? LLRenderPass::actorFxScreenSize()
+        : (matrix_screen ? actor_ghost_screen_size() : LLVector2(1.f, 1.f));
     F32 coverage_fade = 0.f;
     auto apply_program = [&](LLGLSLShader* sh)
     {
@@ -13183,10 +13198,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 if (matrix_screen)
                 {
                     sh->uniform1f(sGhostDisplace, 0.f);
-                    sh->uniform2f(sGhostScreenSize, static_cast<F32>(matrix_viewport[2]),
-                                  static_cast<F32>(matrix_viewport[3]));
-                    sh->uniform2f(sGhostScreenOrigin, static_cast<F32>(matrix_viewport[0]),
-                                  static_cast<F32>(matrix_viewport[1]));
+                    sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);
+                    sh->uniform2f(sGhostScreenOrigin, 0.f, 0.f);
                 }
             }
             if (gp.mWorldLinear)
@@ -13206,6 +13219,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             sh->uniform1f(sGhostDissolveProgress,
                           llclamp(gp.mDissolveProgress, 0.f, 1.f));
+            sh->uniform1i(sGhostDecodeScrub, gp.mDecodeScrub ? 1 : 0);
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK

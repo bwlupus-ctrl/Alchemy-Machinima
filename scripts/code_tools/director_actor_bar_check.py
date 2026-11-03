@@ -17,7 +17,7 @@ def hot_gaze_baseline(source, name):
     if name == "llactormover.cpp":
         # Reverse only the exact Matrix enum/viewport/path-registration delta.
         raw = (Path(__file__).parent / "matrix_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n")
-        assert hashlib.sha256(raw).hexdigest() == "996a68eca7d0e00dbf338161df20dabe20f808d1dd308c72de61cc52816d0410", "Matrix allowance pin"
+        assert hashlib.sha256(raw).hexdigest() == "b30fd021701b9391a6fee842bcea999bb4c1def39e6ff75cf5b71fb2788b5ade", "Matrix allowance pin"
         matrix = json.loads(raw)
         baseline = subprocess.check_output(["git", "show", matrix["base"] + ":indra/newview/" + name]).decode("utf-8").replace("\r\n", "\n")
         for hunk in matrix["hunks"]:

@@ -134,7 +134,7 @@ uniform vec2 ghostFragOffset;
 #ifndef GHOST_WORLD_PASS
 uniform sampler2D ghostSceneMap;
 uniform int ghostSceneValid;
-uniform vec2 ghostScreenSize; // actual viewport, including 4K / snapshot tiles
+uniform vec2 ghostScreenSize; // whole image, including high-resolution snapshot tiles
 uniform vec2 ghostScreenOrigin;
 uniform vec2 ghostVelocity; // screen pixels per frame, bottom-up; zero = fallback
 uniform float ghostDisplace;
@@ -168,6 +168,7 @@ uniform vec4 ghostTronColor;
 // field as native beauty + shadow. Ghost Studio keeps its historical automatic
 // dissolve when this world-only permutation is absent.
 uniform float ghostDissolveProgress;
+uniform int ghostDecodeScrub; // explicit opt-in; shared dissolve defaults are not a scrub
 in vec3 vary_object_position;
 // [R2-2] indexed-batch slot filter: >= 0 draws ONLY fragments whose
 // per-vertex material slot matches (the clone re-draws a multi-material
@@ -647,18 +648,103 @@ void main()
     float voxelShade = 1.0;
     float vhsBand = 0.0;
 
+    // Separate uniform paths preserve the parent's derivative instructions for
+    // old looks. A per-expression conditional lets some drivers hoist fwidth
+    // across the Voxel UV quantization and changes old material boundaries.
+    if (matrixLook)
+    {
     // Distortions alter the common sampling coordinates before any look is
     // evaluated. Thus every look consumes the same distorted source sample.
     if (ghostDistort == 1 && distort > 0.001) // Pixelate
     {
-        vec2 px = max((matrixLook ? distortFootprint : fwidth(uv)) * mix(2.0, 64.0, distort), vec2(1e-6));
+        vec2 px = max(distortFootprint * mix(2.0, 64.0, distort), vec2(1e-6));
         uv = (floor(uv / px) + 0.5) * px;
     }
     else if (ghostDistort == 2 && distort > 0.001) // Voxel
     {
         float cells = mix(80.0, 10.0, distort);
         vec3 cell = floor(vary_position * cells) / cells;
-        vec2 px = max((matrixLook ? distortFootprint : fwidth(uv)) * mix(3.0, 38.0, distort), vec2(1e-6));
+        vec2 px = max(distortFootprint * mix(3.0, 38.0, distort), vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+        voxelShade = 0.68 + 0.32 * ghost_hash(cell.xy + cell.z);
+    }
+    else if (ghostDistort == 3 && distort > 0.001) // Lens / magnify
+    {
+        vec2 center = ghostDistortParams.yz;
+        vec2 d = uv - center;
+        float radius = mix(0.28, 0.48, distort);
+        float q = length(d) / radius;
+        if (q < 1.0)
+            uv = center + d * mix(0.48, 0.88, q * q) * distort
+                        + d * (1.0 - distort);
+    }
+    else if (ghostDistort == 4 && distort > 0.001) // Wave / ripple
+    {
+        uv += vec2(sin(uv.y * 42.0 + ghostTime * 4.2 + ghostAux.w),
+                   cos(uv.x * 35.0 - ghostTime * 3.4)) * (0.002 + 0.025 * distort);
+    }
+    else if (ghostDistort == 6 && distort > 0.001) // Block glitch
+    {
+        float beat = floor(ghostTime * 7.0);
+        vec2 block = floor(uv * vec2(12.0, 22.0));
+        float r = ghost_hash(block + vec2(beat, ghostAux.w));
+        uv.x += step(1.0 - 0.38 * distort, r) * (r - 0.5) * 0.28 * distort;
+    }
+    else if (ghostDistort == 7 && distort > 0.001) // Vertical tear
+    {
+        float slice = floor(fragCoord.x / 13.0);
+        float beat = floor(ghostTime * 8.0);
+        float r = ghost_hash(vec2(slice, beat + ghostAux.w));
+        uv.y += step(1.0 - 0.35 * distort, r) * (r - 0.5) * 0.24 * distort;
+    }
+    else if (ghostDistort == 8 && distort > 0.001) // VHS / tracking
+    {
+        float roll = fract(fragCoord.y / 180.0 - ghostTime * 0.32);
+        vhsBand = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
+        float lineNoise = ghost_hash(vec2(floor(fragCoord.y / 3.0),
+                                           floor(ghostTime * 12.0)));
+        uv.x += (lineNoise - 0.5) * 0.035 * distort + vhsBand * 0.02 * distort;
+    }
+    // Clamp ONLY when a distortion actually offset the UV. Applying it to the
+    // undistorted base sample corrupts legitimately tiled/wrapped textures
+    // (fishnet, repeating patterns): it collapses their repeats onto the edge
+    // texel, so those parts pick up the edge's alpha and drop out. The Clone and
+    // any no-distortion look must wrap exactly as authored.
+    // No UV clamp here. The texture's own wrap mode (repeat/clamp) handles any
+    // out-of-[0,1] UVs the distortions produce -- exactly as the real render does,
+    // and as this shader did before the distortion layer was added. The layer's
+    // original unconditional clamp collapsed tiled/wrapped textures (fishnet,
+    // repeating patterns) onto the edge texel, dropping those parts to the edge's
+    // alpha (the Clone regression), and did not even bound the final UV because the
+    // legacy pixelate/glitch below still move it. Wrapped sampling is the authored,
+    // correct behavior for every look and distortion.
+
+    // [GhostStudio] pixelation: quantize the sampling UV in ~screen-pixel
+    // blocks. distortFootprint is the UV footprint of ONE screen pixel here, so
+    // multiplying by the block size snaps the texture into blocks that stay
+    // screen-sized regardless of zoom. Reads strongest on the textured clone;
+    // flat-tint styles only show it through the alpha/mask stage.
+    if (ghostAux.z > 0.5)
+    {
+        vec2 px = max(distortFootprint * ghostAux.z, vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+    }
+
+    }
+    else
+    {
+    // Distortions alter the common sampling coordinates before any look is
+    // evaluated. Thus every look consumes the same distorted source sample.
+    if (ghostDistort == 1 && distort > 0.001) // Pixelate
+    {
+        vec2 px = max(fwidth(uv) * mix(2.0, 64.0, distort), vec2(1e-6));
+        uv = (floor(uv / px) + 0.5) * px;
+    }
+    else if (ghostDistort == 2 && distort > 0.001) // Voxel
+    {
+        float cells = mix(80.0, 10.0, distort);
+        vec3 cell = floor(vary_position * cells) / cells;
+        vec2 px = max(fwidth(uv) * mix(3.0, 38.0, distort), vec2(1e-6));
         uv = (floor(uv / px) + 0.5) * px;
         voxelShade = 0.68 + 0.32 * ghost_hash(cell.xy + cell.z);
     }
@@ -720,8 +806,10 @@ void main()
     // flat-tint styles only show it through the alpha/mask stage.
     if (ghostAux.z > 0.5)
     {
-        vec2 px = max((matrixLook ? distortFootprint : fwidth(uv)) * ghostAux.z, vec2(1e-6));
+        vec2 px = max(fwidth(uv) * ghostAux.z, vec2(1e-6));
         uv = (floor(uv / px) + 0.5) * px;
+    }
+
     }
 
     // [GhostStudio] glitch: a few horizontal screen bands tear sideways for a
@@ -1412,7 +1500,7 @@ void main()
     else if (cyc < 4.0) { front = -0.25;                    dir =  1.0; }
     else if (cyc < 5.2) { front = (cyc - 4.0) / 1.2;        dir =  1.0; }
     else                { front = 1.25;                     dir =  1.0; }
-    if (ghostDissolveProgress > 0.0)                 // manual scrub, same contract as look 76
+    if (ghostDecodeScrub != 0)                     // explicit manual scrub, including zero
     { front = 1.15 - ghostDissolveProgress * 1.35; dir = 1.0; }
     float s = (h - front) * dir;                     // >0 code side, <0 decoded side
     float fwh = fwP.z / 2.25 + 1e-6;                 // h-space footprint
@@ -1525,7 +1613,7 @@ void main()
     float sw    = activeGhostAlpha.x > 0.5 ? split.a : 1.0;
     echoRGB.r   = mix(echoRGB.r, split.r * authoredRGB.r, sw);
     // green scan tear: a screen-space band sweeping down during the window
-    vec2  suv   = (gl_FragCoord.xy - ghostScreenOrigin) / ghostScreenSize;   // look-64 convention
+    vec2  suv   = fragCoord / max(ghostScreenSize, vec2(1.0));
     float tearY = 1.0 - clamp(local / max(len, 1e-3), 0.0, 1.0);
     float band  = (1.0 - smoothstep(0.0, 0.014, abs(suv.y - tearY))) * win;
     float above = step(tearY, suv.y) * win;                                // rows above the tear shift harder
@@ -1541,11 +1629,11 @@ void main()
     else if (ghostLook == 82) // Studio: Operator -- monitor roll and phosphor
 {
     float t = mod(ghostTime, 4096.0);
-    vec2 suv = (gl_FragCoord.xy - ghostScreenOrigin) / max(ghostScreenSize, vec2(1.0));
+    vec2 suv = fragCoord / max(ghostScreenSize, vec2(1.0));
     float roll = fract(suv.y - t * 0.4 + ghostAux.w * 0.15915494);
     float retrace = 1.0 - smoothstep(0.0, 0.065, min(roll, 1.0 - roll));
-    float dropout = step(0.965, ghost_hash(vec2(floor(gl_FragCoord.y), floor(t * 20.0) + ghostAux.w)));
-    float triad = 0.72 + 0.28 * step(1.0, mod(floor(gl_FragCoord.x), 3.0));
+    float dropout = step(0.965, ghost_hash(vec2(floor(fragCoord.y), floor(t * 20.0) + ghostAux.w)));
+    float triad = 0.72 + 0.28 * step(1.0, mod(floor(fragCoord.x), 3.0));
     vec2 p2, fw2; float axisSeed; mx_plane(oPx, oPy, fwP, p2, fw2, axisSeed);
     vec2 ci; float lod;
     float ink = mx_cells(p2, fw2, vec2(0.03, 0.045), t * 0.08, 3.0, axisSeed + ghostAux.w, ci, lod);
@@ -1568,9 +1656,25 @@ else if (ghostLook == 83) // Studio: Dial Out -- departing columns become rising
     fade = max(fade, smoothstep(3.0 + column, 3.45 + column, cycle));
     vec2 ci; float lod;
     float ink = mx_cells(p2, fw2, vec2(0.04, 0.05), -t * 0.5, 4.0, axisSeed + ghostAux.w, ci, lod);
+    // Departure/reconnection are column masks too. Fade their high-frequency
+    // state to a phase-dependent column average with the captured footprint.
+    float maskLod = smoothstep(6.0, 11.0, 0.04 / max(fw2.x, 1e-6));
+    float meanGone = 0.0, meanOpacity = 0.0;
+    for (int i = 0; i < 16; ++i)
+    {
+        float c = (float(i) + 0.5) / 16.0;
+        float d = 0.3 + c * 1.4;
+        float reconnect = smoothstep(3.0 + c, 3.45 + c, cycle);
+        float g = smoothstep(d, d + 0.35, cycle) * (1.0 - reconnect);
+        float f = max(1.0 - smoothstep(d + 0.6, d + 1.6, cycle), reconnect);
+        meanGone += g / 16.0;
+        meanOpacity += mix(1.0, f * (0.35 + ink * 0.65), g) / 16.0;
+    }
+    float departureOpacity = mix(meanOpacity, mix(1.0, fade * (0.35 + ink * 0.65), gone), maskLod);
+    gone = mix(meanGone, gone, maskLod);
     vec3 green = mix(MX_GREEN, color.rgb, 0.25);
     rgb = mix(tex.rgb * color.rgb, MX_DARK + green * (ink * 2.0 + edge * 0.4), gone);
-    alpha = color.a * tex.a * mix(1.0, fade * (0.35 + ink * 0.65), gone);
+    alpha = color.a * tex.a * departureOpacity;
 }
 else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
 {
@@ -1596,6 +1700,15 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     ink = mix(0.32, ink, lod);
     float cursor = float(abs(column - floor(typing)) < 0.5) * step(0.5, fract(t * 2.0 + lineSeed));
     float typed = step(column, typing);
+    // The row phase, typing edge and cursor must lose contrast with the ink;
+    // otherwise unresolved rows still switch whole pixels between cell states.
+    // Unresolved terminal rows retain broad, seeded typing motion rather than
+    // becoming a static grey fill. This envelope spans many cells, and its
+    // contrast also falls with the captured local footprint.
+    float coarseTyped = 0.5 + 0.4 * sin(p2.y * 4.0 - t * 3.0 + ghostAux.w + axisSeed)
+                              / (1.0 + fw2.y * 4.0);
+    typed = mix(coarseTyped, typed, lod);
+    cursor *= lod;
     float bright = 0.4 + 0.6 * lum;
     rgb = vec3(0.004) + vec3(0.85, 1.0, 0.9) * bright * max(ink * typed, cursor * 0.9);
     alpha = color.a * tex.a;

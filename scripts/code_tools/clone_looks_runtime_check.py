@@ -26,8 +26,10 @@ def check():
     assert 'style >= GHOST_STYLE_STUDIO_BASE && style < GHOST_STYLE_STUDIO_END' in draw
     assert '? static_cast<S32>(GHOST_STYLE_THERMAL) : style' in draw
     assert 'sh->uniform1i(sGhostLook, style)' in draw
-    assert 'if (matrix_screen) glGetIntegerv(GL_VIEWPORT, matrix_viewport)' in draw
-    assert 'sh->uniform2f(sGhostScreenSize, static_cast<F32>(matrix_viewport[2])' in draw
+    assert 'const LLVector2 ghost_screen_size = gp.mWorldLinear' in draw
+    assert '? LLRenderPass::actorFxScreenSize()' in draw
+    assert ': (matrix_screen ? actor_ghost_screen_size() : LLVector2(1.f, 1.f))' in draw
+    assert 'sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV)' in draw
     assert 'sh->uniform1f(sGhostDisplace, 0.f)' in draw
     heading = method(path, 'void LLActorMover::renderHeadingPreview(')
     assert 'ALGhostStudio::isOverlayStyle((S32)ghost_style)' in heading
@@ -502,13 +504,22 @@ int main(){
     directory.mkdir(parents=True, exist_ok=True)
     vcvars = next((Path(os.environ['ProgramFiles'])/'Microsoft Visual Studio').glob(
         '*/Community/VC/Auxiliary/Build/vcvars64.bat'))
+    # Discover the native-fixture compiler environment once for this run.
+    # Every control still compiles fresh production source and runs its own exe.
+    env_cmd = directory/'environment.cmd'
+    env_cmd.write_text(f'@echo off\ncall "{vcvars}" >nul\nset\n')
+    environment = os.environ.copy()
+    env_result = subprocess.run(['cmd','/d','/c',str(env_cmd)],capture_output=True,text=True,check=True)
+    for line in env_result.stdout.splitlines():
+        key,separator,value=line.partition('=')
+        if separator and key:environment[key]=value
     def execute(name, text, passing):
         cpp, exe = directory/(name+'.cpp'), directory/(name+'.exe')
         cpp.write_text(text, encoding='utf-8')
         cmd = directory/(name+'.cmd')
-        cmd.write_text(f'@echo off\ncall "{vcvars}" >nul\ncl /nologo /std:c++17 /EHsc '
+        cmd.write_text(f'@echo off\ncl /nologo /std:c++17 /EHsc '
                        f'/Fo"{directory/(name+".obj")}" /Fe"{exe}" "{cpp}"\nexit /b %ERRORLEVEL%\n')
-        subprocess.run(['cmd','/d','/c',str(cmd)],check=True)
+        subprocess.run(['cmd','/d','/c',str(cmd)],check=True,env=environment)
         result = subprocess.run([str(exe)],capture_output=True,text=True)
         assert (result.returncode == 0) == passing, (name,result.stdout,result.stderr)
         print(result.stdout if passing else 'PASS negative control rejected: '+name+'; '+result.stderr.strip(),flush=True)
@@ -575,6 +586,87 @@ int main(){
     results.append(execute('matrix_clock',clock,True))
     assert clock.count('floor(real_time * fps) / fps')==1
     results.append(execute('matrix_clock_no_step',clock.replace('floor(real_time * fps) / fps','real_time'),False))
+    # Compile the complete REAL parameter struct and the exact apply_program
+    # uploads. Export the spy's values to the GL fixture, rather than inventing
+    # shader defaults in Runner.render. Studio/path both default-construct gp.
+    params = method(Path('indra/newview/llactormover.h'), '    struct GhostDrawParams') + ';'
+    uploads = '\n'.join(re.findall(
+        r'sh->uniform1[fi]\(sGhost(?:DissolveProgress|DecodeScrub),[^;]+;', draw))
+    assert uploads.count('sh->') == 2
+    default_fixture = r'''
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <map>
+#include <vector>
+using F32=float;using S32=int;using U64=unsigned long long;using U8=unsigned char;
+struct LLQuaternion{};struct LLVector3{};struct LLMatrix4{};
+struct LLUUID{bool operator<(const LLUUID&)const{return false;}};
+using GhostCoverageMask=int;const int GHOST_COVERAGE_NONE=0;
+template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}
+''' + params + r'''
+const int sGhostDissolveProgress=1,sGhostDecodeScrub=2;
+struct UploadSpy{
+ float dissolve=-99;int scrub=-99;
+ void uniform1f(int key,float value){assert(key==1);dissolve=value;}
+ void uniform1i(int key,int value){assert(key==2);scrub=value;}
+};
+UploadSpy upload(const GhostDrawParams& gp){UploadSpy spy;auto* sh=&spy;
+''' + uploads + r'''
+ return spy;
+}
+int main(){
+ GhostDrawParams studio,path,live;
+ for(auto* gp:{&studio,&path,&live}){
+  assert(gp->mDissolveProgress==.5f);assert(!gp->mDecodeScrub);
+  auto s=upload(*gp);assert(s.dissolve==.5f && s.scrub==0);
+ }
+ studio.mDecodeScrub=true;studio.mDissolveProgress=0;
+ auto manual=upload(studio);assert(manual.scrub==1 && manual.dissolve==0);
+ auto s=upload(path);
+ std::cout<<"{\"ghostDissolveProgress\":"<<s.dissolve<<",\"ghostDecodeScrub\":"<<s.scrub<<"}\n";
+}
+'''
+    defaults = execute('matrix_draw_defaults', default_fixture, True)
+    (directory/'matrix_draw_defaults.json').write_text(json.dumps(json.loads(defaults['stdout']),indent=2))
+    results.append(defaults)
+    results.append(execute('matrix_default_scrub',default_fixture.replace('mDecodeScrub = false','mDecodeScrub = true'),False))
+    snapshot = r'''
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <iostream>
+using F32=float;using S32=int;
+enum {VX,VY};bool gSnapshot=false;
+template<class T>T llmax(T a,T b){return std::max(a,b);}
+int llceil(float x){return (int)std::ceil(x);}
+struct LLVector2{float mV[2];LLVector2(float x=0,float y=0):mV{x,y}{}};
+struct LLViewerCamera{
+ float zoom=1;int sub=0;
+ static LLViewerCamera* getInstance(){static LLViewerCamera c;return &c;}
+ float getZoomFactor(){return zoom;}int getZoomSubRegion(){return sub;}
+};
+struct Window{int getWorldViewWidthRaw(){return 192;}int getWorldViewHeightRaw(){return 256;}};
+Window window;Window* gViewerWindow=&window;
+''' + method(path,'LLVector2 actor_ghost_frag_offset(') + method(path,'LLVector2 actor_ghost_screen_size(') + r'''
+int main(){
+ auto* c=LLViewerCamera::getInstance();
+ for(float zoom:{1.f,2.f,2.4f}){
+  c->zoom=zoom;gSnapshot=zoom>1;
+  int tiles=gSnapshot?llceil(zoom):1;
+  auto size=actor_ghost_screen_size();
+  assert(size.mV[0]==192*zoom && size.mV[1]==256*zoom);
+  for(int sub=0;sub<tiles*tiles;++sub){
+   c->sub=sub;auto offset=actor_ghost_frag_offset();
+   assert(offset.mV[0]==(sub%tiles)*192 && offset.mV[1]==(sub/tiles)*256);
+  }
+ }
+ std::cout<<"PASS production whole-image dimensions and tile offsets: ordinary, 2x, noninteger zoom\n";
+}
+'''
+    results.append(execute('matrix_snapshot_field',snapshot,True))
+    results.append(execute('matrix_tile_size',snapshot.replace('? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f','? 1.f : 1.f'),False))
+    results.append(execute('matrix_rounded_tile_size',snapshot.replace('? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f','? static_cast<F32>(llceil(LLViewerCamera::getInstance()->getZoomFactor())) : 1.f'),False))
     (directory/'results.json').write_text(json.dumps(results,indent=2))
 
 

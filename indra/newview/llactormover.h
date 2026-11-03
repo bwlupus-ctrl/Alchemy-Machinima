@@ -1123,6 +1123,7 @@ public:
         bool       mIsClone = false;
         F32        mFadeAlpha = 1.f; // presentation coverage; never authored opacity
         F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1
+        bool       mDecodeScrub = false; // Decode animates unless explicitly scrubbed
         // actorghostF historically composites after tone mapping and therefore
         // authors its output in display/sRGB space.  The native live Wire pass
         // is submitted into the linear HDR world target instead; flag that one

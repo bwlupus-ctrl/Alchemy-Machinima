@@ -33,6 +33,9 @@ class Runner:
         self.gl = g = gl or G.GL()
         self.definitions = {}
         self.width, self.height = width, height
+        # Emitted by the native fixture executing the production struct and
+        # apply_program uploads; do not silently substitute test-only defaults.
+        self.draw_defaults = json.loads((ROOT/'.tmp/looks2_20261102/runtime/matrix_draw_defaults.json').read_text())
         self.scene_copies = self.displaced_sweeps = 0
         self.projection_x = .7 * height / width
         for cap in (0x0B71, 0x0BE2, 0x0C11, 0x8DB9, 0x0B44, 0x0BD0):
@@ -157,7 +160,8 @@ class Runner:
                shift_y=0., rotation=0., slot=-1, adjacent_slots=False,
                velocity=(0.,0.), displace=0., scene=False, composite=False, sweeps=False, timing=False,
                occlude=False, keep=False, stale_scene=False, opacity=.85, attachment_rotation=0., scene_rect=False,
-               fade=1., native_fade=False, depth_test=False, held_pose=None):
+               fade=1., native_fade=False, depth_test=False, held_pose=None,
+               screen_size=None, frag_offset=(0.,0.), tile=None, pixel_size=0.):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 68:
@@ -193,18 +197,20 @@ class Runner:
         # Production Clone's solid sweep has no rim; toolkit looks use y=1.
         clone_fixture = getattr(self, 'avatar_fixture', False) and look == 1
         floats('ghostParams', 0., 0. if clone_fixture else 1., 0., 8.)
-        floats('ghostAux', .5 if mask else 0., 1., 0., phase)
+        floats('ghostAux', .5 if mask else 0., 1., pixel_size, phase)
         floats('ghostFx', 0., 0., 0., 1.)
         floats('ghostAlpha', 0. if opaque else 1., 1.)
         floats('ghostDistortParams', .4 if distort else 0., .5, .5, 0.)
-        floats('ghostScreenSize', self.width, self.height)
+        floats('ghostScreenSize', *(screen_size or (self.width, self.height)))
+        floats('ghostFragOffset', *frag_offset)
         floats('ghostScreenOrigin', 0., 0.)
         floats('ghostVelocity', *velocity)
         floats('ghostDisplace', displace)
         floats('ghostWorldUp', -np.sin(rotation), np.cos(rotation), 0.)
         g.ui(loc('ghostSceneValid'), int(scene))
         g.ui(loc('ghostSceneMap'), 1)
-        floats('ghostDissolveProgress', .28 if look == 10 else 0.)
+        floats('ghostDissolveProgress', self.draw_defaults['ghostDissolveProgress'] if look == 78 else (.28 if look == 10 else 0.))
+        g.ui(loc('ghostDecodeScrub'), self.draw_defaults['ghostDecodeScrub'])
         floats('ghostCoverageLayerStrength', -1.)
         floats('alrParams', 0., 0., 1., 0.)
         # Indexed fixture arrays: same material contract on each slot.
@@ -231,6 +237,11 @@ class Runner:
         view = view @ attach
         # Orthographic camera allows exact integer-pixel reprojection tests.
         proj = np.diag([scale*self.projection_x, scale*.85, -.1, 1.]).astype(np.float32)
+        if tile is not None:
+            tx,ty,nx,ny=tile
+            crop=np.diag([nx,ny,1,1]).astype(np.float32)
+            crop[0,3]=nx-1-2*tx;crop[1,3]=ny-1-2*ty
+            proj=crop@proj
         for name, mat in (('modelview_matrix', view), ('projection_matrix', proj),
                           ('modelview_projection_matrix', proj@view), ('texture_matrix0', np.eye(4,dtype=np.float32))):
             a = np.ascontiguousarray(mat.T)
@@ -304,6 +315,8 @@ class Runner:
             g.enable(0x0BE2)
             g.fn('glBlendFuncSeparate',None,g.U,g.U,g.U,g.U)(0x0302,0x0303,0,1)
         if getattr(self, 'avatar_fixture', False):
+            self.pixel_size = pixel_size
+            self.adjacent_slots = adjacent_slots
             self.draw_avatar(pr, look, view, proj, phase, displace)
         else:
             g.draw(0x0004,0,len(self.verts))
@@ -746,10 +759,15 @@ class AvatarRunner(Runner):
             g.matrix(loc('modelview_projection_matrix'),1,0,a.ctypes.data_as(C.POINTER(g.F)))
             a=np.ascontiguousarray(np.linalg.inv(mat[:3,:3]).astype(np.float32))
             self.mat3(loc('normal_matrix'),1,0,a.ctypes.data_as(C.POINTER(g.F)))
-            f('ghostAux',b['cutoff'],1,0,phase)
+            f('ghostAux',b['cutoff'],1,getattr(self,'pixel_size',0.),phase)
             f('ghostAlpha',int(b['alpha_mode']),1)
             if self.alpha_poison and b['name']=='invisible':f('ghostAlpha',0,1)
             g.bind_tex(0x0DE1,b['texture']);g.bind_buf(0x8892,b['vbo'])
+            ix=g.attr_loc(pr,b'texture_index')
+            if ix>=0:
+                # Deliberately filter contiguous material batches at boundaries.
+                self.disable_attr(ix)
+                self.attri(ix, int(self.adjacent_slots and b['name'] in ('hair','attachment')))
             for name,count,offset in (('position',3,0),('normal',3,12),('texcoord0',2,24)):
                 ix=g.attr_loc(pr,name.encode())
                 if ix>=0:
@@ -1032,6 +1050,195 @@ def matrix_specific_checks(r, pr, tree, out):
     return result
 
 
+class FragmentVariant:
+    def __init__(self, tree, replacements):
+        self.tree,self.replacements=tree,replacements
+
+    def read(self,path):
+        s=self.tree.read(path)
+        if path==F:
+            for before,after in self.replacements:
+                assert s.count(before)==1,(before,s.count(before))
+                s=s.replace(before,after)
+        return s
+
+
+def matrix_fix_checks(tree, active_time, gl=None):
+    """Round-1 reproductions: same assertions must reject each pre-fix defect."""
+    result={}
+    r=AvatarRunner(384,512,gl)
+    pr=r.program(tree)
+    r.only={'mesh'}
+    def decode_checks(program):
+        clone=r.render(pr,1,opacity=1)
+        pos=r.render(r.program(tree,probe=True),78,opacity=1)
+        h=(pos[...,2]+1.15)/2.25;mask=pos[...,3]>.99
+        frames=[r.render(program,78,time=float(t),phase=0,opacity=1) for t in np.arange(0,6,.25)]
+        rows=[]
+        for lo in np.arange(.15,.85,.05):
+            row=mask&(h>=lo)&(h<lo+.05)
+            if row.sum()<10:continue
+            errors=[float(np.mean(np.abs(a[row,:3]-clone[row,:3]))) for a in frames]
+            assert min(errors)<.01 and max(errors)>.1,('default Decode row never switches',lo,errors)
+            rows.append([float(lo),min(errors),max(errors)])
+        assert len(rows)>=12
+        return rows
+    result['decode_default_rows']=decode_checks(pr)
+    # Use an unambiguous insertion inside Decode, after its actual scrub branch.
+    marker='{ front = 1.15 - ghostDissolveProgress * 1.35; dir = 1.0; }'
+    diagnostic=FragmentVariant(tree,[(marker,marker+'\n frag_color=vec4(front,0.,0.,1.);return;')])
+    head_pr=r.program(diagnostic)
+    def head_motion(program):
+        fronts=[]
+        for t in (0.,.5,1.,2.6,4.,5.2):
+            a=r.render(program,78,time=t,phase=0,opacity=1)
+            fronts.append(float(a[a[...,3]>.99,0].mean()))
+        assert max(fronts)-min(fronts)>1.,('default Decode head parked',fronts)
+        return fronts
+    result['decode_default_fronts']=head_motion(head_pr)
+    bad_decode=FragmentVariant(tree,[('if (ghostDecodeScrub != 0)','if (ghostDissolveProgress > 0.0)')])
+    bad_head=FragmentVariant(diagnostic,[('if (ghostDecodeScrub != 0)','if (ghostDissolveProgress > 0.0)')])
+    def rejected(fn,label):
+        try:fn()
+        except AssertionError as error:
+            print('PASS negative control rejected:',label,str(error)[:200],flush=True)
+            return True
+        raise AssertionError('insensitive negative control: '+label)
+    result['decode_parked_head_rejected']=rejected(lambda:head_motion(r.program(bad_head)),'Decode >0 head')
+    result['decode_parked_rows_rejected']=rejected(lambda:decode_checks(r.program(bad_decode)),'Decode >0 rows')
+    r.only=None
+    tiled=AvatarRunner(192,256,r.gl)
+    tile_pr=tiled.program(tree)
+    def assembly(full_pr,part_pr,look,time,wrong_size=False,full_runner=r):
+        full=full_runner.render(full_pr,look,time=time,phase=0,opacity=1)
+        assembled=np.zeros_like(full)
+        w,h=full_runner.width,full_runner.height
+        nx,ny=w/tiled.width,h/tiled.height
+        for ty in range(int(np.ceil(ny))):
+            for tx in range(int(np.ceil(nx))):
+                a=tiled.render(part_pr,look,time=time,phase=0,opacity=1,
+                               tile=(tx,ty,nx,ny),frag_offset=(tx*192,ty*256),
+                               screen_size=(192,256) if wrong_size else (w,h))
+                readw,readh=min(192,w-tx*192),min(256,h-ty*256)
+                assembled[ty*256:ty*256+readh,tx*192:tx*192+readw]=a[:readh,:readw]
+        assert np.array_equal(full[...,3],assembled[...,3]),('tiled coverage',look)
+        e=np.abs(full[...,:3]-assembled[...,:3])
+        metrics=dict(mean=float(e.mean()),p99=float(np.quantile(e,.99)),maximum=float(e.max()))
+        assert metrics['mean']<1e-6 and metrics['p99']<1e-5,('snapshot tile field',look,time,metrics)
+        return metrics
+    result['snapshot_tiles']={}
+    for look,times in ((1,(0.,)),(79,(.5,)),(81,(0.,active_time)),(82,(.1,1.,2.))):
+        for t in times:
+            result['snapshot_tiles'][f'{look}_{t}']=assembly(pr,tile_pr,look,t)
+    fractional=AvatarRunner(480,640,r.gl)
+    fractional_pr=fractional.program(tree)
+    for look,t in ((1,0.),(79,.5),(81,active_time),(82,1.)):
+        result['snapshot_tiles'][f'fractional_{look}']=assembly(fractional_pr,tile_pr,look,t,full_runner=fractional)
+    old_screen=FragmentVariant(tree,[
+        ('vec2  suv   = fragCoord / max(ghostScreenSize, vec2(1.0));',
+         'vec2  suv   = (gl_FragCoord.xy - ghostScreenOrigin) / ghostScreenSize;'),
+        ('vec2 suv = fragCoord / max(ghostScreenSize, vec2(1.0));',
+         'vec2 suv = (gl_FragCoord.xy - ghostScreenOrigin) / ghostScreenSize;'),
+        ('floor(fragCoord.y), floor(t * 20.0)','floor(gl_FragCoord.y), floor(t * 20.0)'),
+        ('mod(floor(fragCoord.x), 3.0)','mod(floor(gl_FragCoord.x), 3.0)')])
+    old_full=r.program(old_screen);old_tile=tiled.program(old_screen)
+    result['tile_deja_rejected']=rejected(lambda:assembly(old_full,old_tile,81,active_time,True),'Deja active tiles')
+    result['tile_operator_rejected']=rejected(lambda:assembly(old_full,old_tile,82,1.,True),'Operator tiles')
+    # Isolate hair and plausible 4x6cm rigid jewelry. Each region must pass;
+    # neither may be diluted into a whole-avatar percentile.
+    aa=AvatarRunner(1024,1408,r.gl)
+    aa_pr=aa.program(tree)
+    attachment=next(b for b in aa.batches if b['name']=='attachment')
+    attachment['transform']=np.diag([.04,.03,.06,1.]).astype(np.float32)
+    attachment['transform'][:3,3]=(.2,-.2,0.)
+    def region_check(program,look,region,time,scale,rotation):
+        aa.only={region}
+        opts=dict(time=time,phase=0,opacity=1,scale=scale,rotation=rotation,
+                  attachment_rotation=rotation*.7)
+        dx=2/(aa.projection_x*aa.width*scale);dy=2/(.85*aa.height*scale)
+        actual=np.clip(aa.render(program,look,shift=.5*dx,**opts),0,1)
+        reference=np.zeros_like(actual)
+        for jy in (-.375,-.125,.125,.375):
+            for jx in (-.375,-.125,.125,.375):
+                reference+=np.clip(aa.render(program,look,shift=(.5+jx)*dx,shift_y=jy*dy,**opts),0,1)/16
+        valid=aa.render(aa_pr,1,shift=.5*dx,**opts)[...,3]>.99
+        # Erode without wrapping or repeatedly growing the erosion in-place.
+        original=valid.copy()
+        for axis in (0,1):valid &= np.roll(original,2,axis)&np.roll(original,-2,axis)
+        assert valid.sum()>=10,(region,scale,rotation,'empty regional AA oracle',valid.sum())
+        err=actual[valid]-reference[valid]
+        rgb=err[:,:3]
+        values=dict(region=region,time=time,scale=scale,rotation=rotation,pixels=int(valid.sum()),
+                    p99=float(np.quantile(np.abs(rgb),.99)),rms=float(np.sqrt(np.mean(rgb**2))),
+                    rgba_p99=float(np.quantile(np.abs(err),.99)),rgba_rms=float(np.sqrt(np.mean(err**2))))
+        assert values['p99']<.15 and values['rms']<.04 and values['rgba_p99']<.15 and values['rgba_rms']<.04,('regional mask shimmer',look,values)
+        return values
+    result['regional_aa']={}
+    for look in (83,84):
+        measurements=[]
+        for region in ('attachment','hair'):
+            for t in (1.3,2.3,3.6):
+                for scale,rot in ((1.,0.),(.65,.37),(1.,.79)):
+                    measurements.append(region_check(aa_pr,look,region,t,scale,rot))
+        result['regional_aa'][str(look)]=measurements
+    # Reintroduce only the unfiltered state masks, keeping all glyph AA.
+    raw_masks=FragmentVariant(tree,[
+        ('float maskLod = smoothstep(6.0, 11.0, 0.04 / max(fw2.x, 1e-6));','float maskLod = 1.0;'),
+        ('typed = mix(coarseTyped, typed, lod);','typed = typed;'),('cursor *= lod;','cursor *= 1.0;')])
+    bad_masks=aa.program(raw_masks)
+    for look in (83,84):
+        result[f'{look}_raw_mask_rejected']=rejected(
+            lambda look=look:region_check(bad_masks,look,'attachment',1.3,1.,.37),f'{look} raw state masks')
+    print('PASS fix-round default Decode, snapshot assembly, regional state-mask AA and negative controls',flush=True)
+    return result
+
+
+def matrix_distortion_parity(tree, gl=None):
+    r=AvatarRunner(160,224,gl)
+    base=G.SourceTree('e5111701a39')
+    results={}
+    for label,defs in (('static',()),('skinned',('HAS_SKIN',))):
+        old=r.program(base,defs);new=r.program(tree,defs)
+        maximum=0.;count=0
+        for look in range(78):
+            for distort in range(9):
+                for fade in (1.,.43):
+                    for slot in (-1,0,1):
+                        opts=dict(distort=distort,fade=fade,slot=slot,adjacent_slots=True)
+                        error=float(np.max(np.abs(r.render(old,look,**opts)-r.render(new,look,**opts))))
+                        assert error==0.,('exact-base distortion/fade/slot parity',label,look,opts,error)
+                        maximum=max(maximum,error);count+=1
+            # Also cover the separate legacy creative Pixel size path.
+            for fade in (1.,.43):
+                for slot in (-1,0,1):
+                    opts=dict(pixel_size=7.,fade=fade,slot=slot,adjacent_slots=True)
+                    error=float(np.max(np.abs(r.render(old,look,**opts)-r.render(new,look,**opts))))
+                    assert error==0.,('exact-base Pixel size parity',label,look,opts,error)
+                    count+=1
+        results[label]=dict(cases=count,max_error=maximum)
+        print('PASS exact-base distortions 0..8, Pixel size, fade, material boundaries:',label,count,'max',maximum,flush=True)
+    # The old ternary changed derivative arithmetic in the compiled Voxel path.
+    reviewed=G.SourceTree('68a3e7d06dd').read(F)
+    current=tree.read(F)
+    start=current.index('    // Separate uniform paths preserve')
+    end=current.index('    // [GhostStudio] glitch:',start)
+    old_start=reviewed.index('    // Distortions alter the common sampling coordinates')
+    old_end=reviewed.index('    // [GhostStudio] glitch:',old_start)
+    control=FragmentVariant(tree,[(current[start:end],reviewed[old_start:old_end])])
+    # Keep the review's original resolution so derivative-sensitive faces have
+    # identical coverage, rather than depending on a coarse fixture to fail.
+    q=AvatarRunner(320,448,r.gl)
+    old=q.program(base);bad=q.program(control)
+    errors=[]
+    for slot in (-1,0):
+        for fade in (1.,.43):
+            opts=dict(distort=2,slot=slot,fade=fade,adjacent_slots=True)
+            errors.append(float(np.max(np.abs(q.render(old,1,**opts)-q.render(bad,1,**opts)))))
+    assert max(errors)>0.,('Voxel parity negative control insensitive',errors)
+    results['ternary_footprint_rejected_max_error']=max(errors)
+    return results
+
+
 def matrix_avatar_checks(out):
     out.mkdir(parents=True,exist_ok=True)
     r=AvatarRunner(640,896)
@@ -1119,6 +1326,7 @@ def matrix_avatar_checks(out):
                                hidden_body_max_error=hidden,subpixel=aa)
         print('PASS avatar geometry/mask/prime/time/fps/seeds/AA:',look,name,flush=True)
     result['specific'] = matrix_specific_checks(r, pr, tree, out)
+    result['fix_round_1'] = matrix_fix_checks(tree,result['specific']['deja_vu']['active_time'],r.gl)
     # Sensitivity controls: assertions must reject a displaced body, alpha-free
     # invisible batch, system-body overdraw and accidentally included BLEND.
     bad=r.render(pr,79,time=.5,displace=1,opacity=1)
@@ -1187,6 +1395,7 @@ def matrix_avatar_checks(out):
     for look in range(78,85):
         assert np.any(r.render(skin,look)[...,3]),('empty skinned avatar',look)
     result['parity']={'base':'e5111701a39','static_max_error':parity,'skinned_max_error':skinparity}
+    result['parity']['distortions_fade_material_slots']=matrix_distortion_parity(tree,r.gl)
     sheet=Image.new('RGB',(7*256,3*386),'#101010');draw=ImageDraw.Draw(sheet)
     for i,name in enumerate(MATRIX_NAMES):
         for j in range(3):
