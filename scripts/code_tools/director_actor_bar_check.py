@@ -1,11 +1,44 @@
 """Exercise the production session actor setter and Cast synchronization without a viewer build."""
 from pathlib import Path
+from native_check_tools import check_directory, vcvars64
 import os
 import re
 import subprocess
 import xml.etree.ElementTree as ET
 
-from relight_area_policy_check import method
+from relight_area_policy_check import method as source_method
+
+
+def hot_gaze_baseline(source, name):
+    # Exact feature hunks with context, pinned by content. Restore only Hot Gaze
+    # before applying the existing phase-2/rekey/actor-bar baseline guards.
+    import hashlib
+    import json
+    data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(data).hexdigest() == "5be04f5e918bdb1298df907da8cbe6478a3e345914876f59ab89d1ce0046ed25"
+    allowed = json.loads(data)
+    if name not in allowed["files"]:
+        return source
+    original = subprocess.check_output(["git", "show", allowed["base"] + ":indra/newview/" + name]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowed["files"][name]:
+        assert original.count(hunk["before"]) == 1, "Hot Gaze baseline hunk"
+        assert source.count(hunk["after"]) == 1, "Hot Gaze exact feature hunk"
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == original, ("Hot Gaze reversal must reproduce its exact baseline", name)
+    return source
+
+
+def method(path, signature):
+    # The old actor-bar fixture still executes the same production transaction
+    # code. New Hot Gaze behavior is exercised by its own native contract and
+    # the extended clone transaction fixture, without broadening old stubs.
+    if path.name in ("llactormover.cpp", "lldirectorcast.cpp") and path.parent.name == "newview":
+        source = hot_gaze_baseline(path.read_text(encoding="utf-8"), path.name)
+        baseline = check_directory("actorbar_baseline") / path.name
+        baseline.parent.mkdir(parents=True, exist_ok=True)
+        baseline.write_text(source, encoding="utf-8")
+        return source_method(baseline, signature)
+    return source_method(path, signature)
 
 
 def reverse_qol_allowance(path, source):
@@ -109,8 +142,8 @@ def main():
         'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',
         'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
-    guarded_mover = current_mover
-    # Reverse only QoL against the reviewed phase-2 HEAD, then phase 2.
+    guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
+    # Reversal order: Hot Gaze, QoL, phase 2, rekey, then the original guard.
     guarded_mover = reverse_qol_allowance("indra/newview/llactormover.cpp", guarded_mover)
     import json
     phase2_bytes = normalize((Path(__file__).parent / 'clone_looks2_mover_hunks.json').read_text(encoding='utf-8')).encode()
@@ -141,14 +174,18 @@ def main():
         guarded_mover = guarded_mover.replace(new, old)
     if guarded_mover != normalize(base_mover):
         import difflib
-        def changed(a, b):
-            return {l for l in difflib.unified_diff(a.splitlines(), b.splitlines(), lineterm="", n=0)
-                    if l[:1] in "+-" and not l.startswith(("+++", "---"))}
         looks_old = normalize(subprocess.check_output(["git", "show", "c5dd757d341:indra/newview/llactormover.cpp"]).decode())
         looks_new = normalize(subprocess.check_output(["git", "show", "ba1e2f1e0bb:indra/newview/llactormover.cpp"]).decode())
-        extra = changed(normalize(base_mover), guarded_mover) - changed(looks_old, looks_new)
-        assert not extra, sorted(extra)[:10]
-    baseline = Path(".tmp/actorbar_20261101/actor_round2_cast.cpp")
+        # Reverse exact phase-1 hunks from fixed reviewed commits. A set of
+        # changed lines could hide duplicates, reordering or removed context.
+        old_lines, new_lines = looks_old.splitlines(True), looks_new.splitlines(True)
+        for group in difflib.SequenceMatcher(None, old_lines, new_lines, autojunk=False).get_grouped_opcodes(3):
+            before = ''.join(old_lines[group[0][1]:group[-1][2]])
+            after = ''.join(new_lines[group[0][3]:group[-1][4]])
+            assert looks_old.count(before) == guarded_mover.count(after) == 1, 'phase-1 exact feature hunk'
+            guarded_mover = guarded_mover.replace(after, before, 1)
+    assert guarded_mover == normalize(base_mover), 'original round-2 mover baseline must match exactly'
+    baseline = check_directory("actorbar_baseline") / "actor_round2_cast.cpp"
     baseline.parent.mkdir(parents=True, exist_ok=True)
     baseline.write_text(base_cast, encoding="utf-8")
     for signature in ('void LLDirectorCast::touchScene()', 'LLSD LLDirectorCast::sceneData() const',
@@ -885,11 +922,10 @@ int main() {
     std::cout << "PASS: live/parked scene round trips, live loaded stable alias refresh/despawn/delete, wholesale alias winner with path/history/defaults, parked Studio animation speed\n";
 }
 '''
-    directory = Path(".tmp/actorbar_20261101/contract").resolve()
+    directory = check_directory("actorbar")
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "actor.cpp").write_text(fixture, encoding="utf-8")
-    vcvars = next((Path(os.environ["ProgramFiles"]) / "Microsoft Visual Studio").glob(
-        "*/Community/VC/Auxiliary/Build/vcvars64.bat"))
+    vcvars = vcvars64()
     (directory / "compile.cmd").write_text(
         f'@echo off\ncall "{vcvars}" >nul\n'
         f'cl /nologo /std:c++17 /EHsc /Fo"{directory / "actor.obj"}" '

@@ -234,10 +234,12 @@ def production_input(compiler):
 #include <string>
 #include <iostream>
 using U32=unsigned;using S32=int;
-bool dragon_enabled=false;int gSavedSettings=0;
+bool dragon_enabled=false,hot_enabled=false;int gSavedSettings=0;
 template<class T> struct LLCachedControl {
- LLCachedControl(int&,const char*,T) {}
- T operator()() const {return static_cast<T>(dragon_enabled);}
+ bool hot;
+ LLCachedControl(int&,const char* name,T):hot(std::string(name)=="DirectorHotGazeGamepad") {}
+ T operator()() const {return static_cast<T>(hot?hot_enabled:dragon_enabled);}
+ operator T() const {return operator()();}
 };
 '''+enums+r'''
 struct LLViewerJoystick {
@@ -259,6 +261,11 @@ void blink();void setUIHeld(bool);bool uiHeld();void setPadHeld(bool);
 '''+actions+r'''
 int main() {
  LLViewerJoystick j;
+ for(U32 mask:{1U,2U,4U,8U}) {
+  hot_enabled=false;assert(j.povBlinkPadConflict(mask).empty());
+  hot_enabled=true;assert(j.povBlinkPadConflict(mask).find("Hot targets")!=std::string::npos);
+ }
+ hot_enabled=false;
  const U32 masks[]={16,32,64,128};const int indices[]={7,6,8,9};
  for(int k=0;k<4;++k) {
   assert(j.povBlinkPadConflict(masks[k]).empty());
@@ -307,7 +314,8 @@ int main() {
 '''
     compile_controls(compiler, source, 'pov_input', {
         'disabled_modules': ('const bool active = (mFlycamEnabled && (i <= CROUCH || i == FLYCAM)) ||',
-                            'const bool active = dragon() || i <= CROUCH || i == FLYCAM ||')})
+                            'const bool active = dragon() || i <= CROUCH || i == FLYCAM ||'),
+        'hot_dpad_conflict': ('if (hot_gaze && (mask & 0x000fU))', 'if (false)')})
     for setting in ('JoystickAvatarEnabled','JoystickFlycamEnabled'):
         assert 'getControl("'+setting+'")' in joystick
         assert 'm'+('Avatar' if 'Avatar' in setting else 'Flycam')+'Enabled = gSavedSettings.getBOOL("'+setting+'")' in joystick
@@ -508,7 +516,7 @@ def integration_contract():
     assert 'mFXAAMap' not in call and 'scratch->' not in cpp
     conflict=(ROOT/'indra/newview/llkeyconflict.cpp').read_text(encoding='utf8')
     save=conflict[conflict.index('void LLKeyConflictHandler::saveToSettings('):]
-    assert save.index('LLViewerInput::loadKeysXML(filename, keys)')<save.index('switch (mLoadMode)')<save.index('setS32("KeyBindingsMigrationVersion", 3)')
+    assert save.index('LLViewerInput::loadKeysXML(filename, keys)')<save.index('switch (mLoadMode)')<save.index('setS32("KeyBindingsMigrationVersion", 4)')
     print('PASS real render_ui order: finalize/gather/HUD/ghosts/blink/UI; no redirection; depth/alpha preserved; AA scratch never borrowed; later debug/capture cannot observe blink copies')
 
 

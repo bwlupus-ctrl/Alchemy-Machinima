@@ -111,4 +111,20 @@
         <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
          value="World wind-down" tool_tip="Gradually freeze the world clock, or spin back up to its previous speed" />
     </rows>
+    <rows name="director_hot_gaze_1" value="director_hot_gaze_1">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         tool_tip="Fire hot gaze Slot 1; Hold mode releases on key up" value="Gaze: Hot target 1" />
+    </rows>
+    <rows name="director_hot_gaze_2" value="director_hot_gaze_2">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         tool_tip="Fire hot gaze Slot 2; Hold mode releases on key up" value="Gaze: Hot target 2" />
+    </rows>
+    <rows name="director_hot_gaze_3" value="director_hot_gaze_3">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         tool_tip="Fire hot gaze Slot 3; Hold mode releases on key up" value="Gaze: Hot target 3" />
+    </rows>
+    <rows name="director_hot_gaze_4" value="director_hot_gaze_4">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         tool_tip="Fire hot gaze Slot 4; Hold mode releases on key up" value="Gaze: Hot target 4" />
+    </rows>
 </contents>

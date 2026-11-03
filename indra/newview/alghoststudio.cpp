@@ -2417,10 +2417,68 @@ bool ALGhostStudio::canApplyMotionTilt(const Instance& inst, const LLGhostAvatar
         !LLActorMover::instance().isDriving(ghost->getID());
 }
 
-void ALGhostStudio::updatePostObjectList()
+void ALGhostStudio::updatePostObjectList(bool hot_gaze)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     assert_main_thread();
+    if (hot_gaze)
+    {
+        // A second pass copies only inherited hot rotations, after Stepped.
+        // Preserve delayed/held poses and the QoL private overlay body domain.
+        std::vector<Instance*> hot_order;
+        auto hot_body = [&](const Instance& inst) -> LLGhostAvatar*
+        {
+            return inst.mKind == BACKING_ENTITY_CLONE ? resolveEntityClone(inst.mId) :
+                dynamic_cast<LLGhostAvatar*>(resolveOverlayAvatar(inst));
+        };
+        {
+            std::map<LLUUID, Instance*> instances;
+            std::map<LLUUID, U8> visited;
+            for (Instance& inst : mInstances)
+            {
+                instances[inst.mId] = &inst;
+                if (inst.mEntityId.notNull()) instances[inst.mEntityId] = &inst;
+                if (inst.mOverlayAvatar.notNull()) instances[inst.mOverlayAvatar] = &inst;
+            }
+            std::function<void(Instance&)> visit = [&](Instance& inst)
+            {
+                if (visited[inst.mId]) return; // also stop malformed source cycles
+                visited[inst.mId] = 1;
+                if (LLGhostAvatar* ghost = hot_body(inst))
+                {
+                    auto parent = instances.find(ghost->getAnimationSourceId());
+                    if (parent != instances.end()) visit(*parent->second);
+                }
+                hot_order.push_back(&inst);
+            };
+            for (Instance& inst : mInstances) visit(inst);
+        }
+        std::set<LLUUID> stamped_helpers;
+        for (Instance* inst : hot_order)
+        {
+            if (!isVisible(*inst) || inst->mDeleting || inst->mStartOffset > 0.f ||
+                (inst->mKind == BACKING_OVERLAY &&
+                    (inst->mOverlayAvatar.isNull() || inst->mPose == POSE_FROZEN))) continue;
+            LLGhostAvatar* ghost = hot_body(*inst);
+            if (!ghost || !LLActorMover::instance().hasHotGazePose(ghost->reflectSource())) continue;
+            if (!stamped_helpers.insert(ghost->getID()).second) continue;
+            const S32 mode = ghost->getEntityDriveMode();
+            if (mode == DRIVE_REFLECT) ghost->applyReflectStamp(inst->mReflectPlaneNormal, true);
+            else if (mode == DRIVE_TRUE_MIRROR)
+            {
+                ghost->applyTrueMirrorStamp(true);
+                if (ALGhostAnimMirrorMath::eligible(inst->mDriveMode,
+                        inst->mDirectedMirrorFreezeDrive, inst->mDirectedMirror, mode))
+                    ghost->applyDirectedMirrorStamp(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);
+            }
+            else continue;
+            // A directly targeted clone owns its own final layer, then passes
+            // that presented pose to any downstream clone in the same chain.
+            LLActorMover::instance().applyHotGaze(ghost);
+        }
+        return;
+    }
+
     // Hook point: called from LLAppViewer::idle() immediately after
     // gObjectList.update(gAgent). By then every avatar -- source and clone
     // alike -- has run LLVOAvatar::updateCharacter() for this frame

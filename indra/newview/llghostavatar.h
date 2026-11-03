@@ -225,14 +225,15 @@ public:
     // clone's world position is never touched: it mirrors the pose in place.
     // Self-gates on the drive mode; a missing/dead/unbuilt source HOLDS the
     // last stamped pose (the paused controller keeps it).
-    void applyTrueMirrorStamp();
+    // hot_gaze permits the late rotation-only copy, captured for frame-end restore.
+    void applyTrueMirrorStamp(bool hot_gaze = false);
     void setDirectedMirror(bool enabled);
-    void applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive);
+    void applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive, bool hot_gaze = false);
     // True while this clone is in DRIVE_TRUE_MIRROR. Used by LLActorMover to
     // skip its root override and gaze layer (the stamp owns the pose).
     bool isTrueMirrorDriven() const;
     bool isPoseStampDriven() const;
-    void applyReflectStamp(const LLVector3& plane_normal);
+    void applyReflectStamp(const LLVector3& plane_normal, bool hot_gaze = false);
     LLVOAvatar* reflectSource() const;
     const LLUUID& getAnimationSourceId() const { return mAnimationSourceId; }
     // All live runtimes, including disabled/frozen clones. Updated only when
@@ -310,7 +311,7 @@ private:
     void synchronizeCloneAnimations(
         const std::map<LLUUID, S32>& desired_animations);
     // [TrueMirror] helpers for applyTrueMirrorStamp().
-    void stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing);
+    void stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing, bool hot_gaze = false);
     void stampTrueMirrorFace(LLVOAvatar* source);
     void buildTrueMirrorParamSets();
     void moveStampedAttachments();

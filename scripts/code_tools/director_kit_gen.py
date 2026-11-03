@@ -356,8 +356,11 @@ def validate_data(data: dict) -> None:
     # Unified shell Actor: remove four per-page actor choices; add two Gaze scope rows, 2402 -> 2400.
     # Clone QoL: +17 rows for stagger, swap, mixed looks, fades and solo; session state stays out of scenes.
     # POV eye blink: exactly 15 Lens > Filters rows (13 workflow + 2 XInput mappings), 2417 -> 2432 (11/02).
-    if len(pages) != 38 or row_count != 2432:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2432")
+    # Hot targets: one selected-slot editor, +18 rows, 2400 -> 2418 (11/02).
+    # Fix round 1: Object Centre / Picked spot, Point XYZ and reset nudge: +5, 2418 -> 2423.
+    # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets = 2455.
+    if len(pages) != 38 or row_count != 2455:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2455")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

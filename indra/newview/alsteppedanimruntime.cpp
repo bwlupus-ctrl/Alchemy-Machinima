@@ -10,6 +10,7 @@
 #include "alvcambonepov.h"
 #include "fsfloaterposer.h"
 #include "llagent.h"
+#include "llactormover.h"
 #include "llagentcamera.h"
 #include "llcallingcard.h"
 #include "llcharacter.h"
@@ -1005,6 +1006,7 @@ void ALSteppedAnimRuntime::restoreOverlay(LLVOAvatar* avatar, Entry& entry)
 
 void ALSteppedAnimRuntime::endFrameRestore()
 {
+    LLActorMover::instance().restoreHotGazes();
     LL_PROFILE_ZONE_NAMED("StepAnim::endFrameRestore");
     static LLCachedControl<bool> verify(gSavedSettings, "StepAnimDebugVerify");
     if (verify)

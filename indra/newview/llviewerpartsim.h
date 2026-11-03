@@ -157,7 +157,7 @@ public:
     void shift(const LLVector3 &offset);
 
     void updateSimulation();
-    void refreshStepAnimAttachmentSourcePositions();
+    void refreshStepAnimAttachmentSourcePositions(bool hot_gaze = false);
     void clearStepAnimDeferredSources();
     static void clearStepAnimParticleDebt();
     static U64 sStepParticleEpoch;

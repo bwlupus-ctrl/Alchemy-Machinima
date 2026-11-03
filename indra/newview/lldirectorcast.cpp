@@ -1205,6 +1205,10 @@ void LLDirectorCast::remove(const LLUUID& id)
         return;
     }
     const std::string group = it->mGroup;
+    for (S32 i = 0; i < 4; ++i)
+        if (mHotGazeSlots[i].mWho == actor_id ||
+            (!group.empty() && mHotGazeSlots[i].mGroup == group))
+            LLActorMover::instance().releaseHotGazeSlot(i);
     LLActorMover::instance().clearDirectorLookAtRuntime(actor_id);
     mCast.erase(it);
     ++mGazeCueRevision;
@@ -1255,6 +1259,9 @@ bool LLDirectorCast::rewriteActorReferences(const LLUUID& old_id, const LLUUID& 
     targets(mSelfGazeTarget, mSelfEyeGazeTarget, mSelfGazeCues);
     for (auto& member : mCast)
         targets(member.mGazeTarget, member.mEyeGazeTarget, member.mGazeCues);
+    if (ALGazeHot::rewrite(mHotGazeSlots, old_id, new_id))
+    { changed = true; ++mHotGazeRevision; }
+    LLActorMover::instance().rewriteHotGazeReferences(old_id, new_id);
     changed |= LLActorMover::instance().rewriteActorReferences(old_id, new_id);
     ALAvatarSubjectPicker::rewriteActorReferences(old_id, new_id);
     ALKitHistory::rewriteActorReferences(old_id, new_id);
@@ -2088,6 +2095,10 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
         m->mGroup = name;   // "" = ungroup; no registry to keep in sync
         if (old != name)
         {
+            for (S32 i = 0; i < 4; ++i)
+                if ((!old.empty() && mHotGazeSlots[i].mGroup == old) ||
+                    (!name.empty() && mHotGazeSlots[i].mGroup == name))
+                    LLActorMover::instance().releaseHotGazeSlot(i);
             pruneGroupData(old);   // retagging the last member retires the group
             ++mCastRevision;       // group pickers and their representatives
             touchScene();
@@ -2168,6 +2179,8 @@ bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string&
     }
     // the stepped rate rides along by the same rule (the target's own rate wins on a merge)
     ALSteppedAnim::renameGroupRate(mGroupRates, old_name, new_name);
+    for (auto& slot : mHotGazeSlots)
+        if (slot.mGroup == old_name) { slot.mGroup = new_name; ++mHotGazeRevision; }
     ++mCastRevision;
     touchScene();
     return true;
@@ -2188,6 +2201,13 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
             any = true;
         }
     }
+    for (S32 i = 0; i < 4; ++i)
+        if (mHotGazeSlots[i].mGroup == name)
+        {
+            LLActorMover::instance().releaseHotGazeSlot(i);
+            mHotGazeSlots[i].mGroup.clear(); mHotGazeSlots[i].mWho.setNull();
+            ++mHotGazeRevision; any = true;
+        }
     mGroupDelays.erase(name);
     mGroupRates.erase(name);
     if (any)
@@ -2244,7 +2264,14 @@ void LLDirectorCast::pruneGroupData(const std::string& name)
 {
     if (!name.empty() && membersInGroup(name).empty())
     {
-        mGroupDelays.erase(name);
+        for (S32 i = 0; i < 4; ++i)
+        if (mHotGazeSlots[i].mGroup == name)
+        {
+            LLActorMover::instance().releaseHotGazeSlot(i);
+            mHotGazeSlots[i].mGroup.clear(); mHotGazeSlots[i].mWho.setNull();
+            ++mHotGazeRevision;
+        }
+    mGroupDelays.erase(name);
         ALSteppedAnim::pruneGroupRate(mGroupRates, name, false);
     }
 }
@@ -2425,6 +2452,12 @@ bool LLDirectorCast::resetToMark(const LLUUID& id)
 LLSD LLDirectorCast::sceneData() const
 {
     LLSD data = LLSD::emptyMap();
+    data["hot_gaze_slots"] = ALGazeHot::writeSlots(mHotGazeSlots, [](const LLUUID& id) {
+        auto& studio = ALGhostStudio::instance();
+        const auto* clone = studio.getInstance(id);
+        if (!clone) clone = studio.findInstanceByRuntime(id);
+        return !clone || clone->mKind != ALGhostStudio::BACKING_ENTITY_CLONE;
+    });
     LLSD cast_arr = LLSD::emptyArray();
     for (const CastMember& m : mCast)
     {
@@ -2836,6 +2869,16 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         mGroupRates = ALSteppedAnim::readGroupRates(data["group_rates"], getGroupNames());
     }
 
+    LLActorMover::instance().clearHotGazes();
+    mHotGazeSlots = ALGazeHot::readSlots(data["hot_gaze_slots"]);
+    for (auto& slot : mHotGazeSlots)
+    {
+        if (slot.mWho.notNull()) slot.mWho = loadedSceneMemberId(slot.mWho, scene_actor_ids);
+        if (slot.mTarget.mCastRef.notNull())
+            slot.mTarget.mCastRef = canonicalSceneActorId(slot.mTarget.mCastRef, scene_actor_ids);
+    }
+    ++mHotGazeRevision;
+
     // [AvatarLightResponse] merge (never replace) the scene's stored light responses
     if (data.has("light_response"))
     {
@@ -3065,4 +3108,38 @@ void LLDirectorCast::setCloneFadeAlpha(const LLUUID& id, F32 alpha)
     style.mStyle = 10; // the existing native noise-threshold dissolve, including shadows
     style.mAlpha = 1.f;
     style.mDissolveProgress = 1.f-alpha;
+}
+
+void LLDirectorCast::setHotGazeTargetName(S32 index, const std::string& name)
+{
+    if (index < 0 || index >= 4 || mHotGazeSlots[index].mTargetName == name) return;
+    mHotGazeSlots[index].mTargetName = name; ++mHotGazeRevision;
+}
+
+void LLDirectorCast::setHotGazeSlot(S32 index, const ALGazeHot::Slot& slot)
+{
+    if (index < 0 || index >= 4) return;
+    LLActorMover::instance().releaseHotGazeSlot(index);
+    mHotGazeSlots[index] = slot;
+    if (slot.mWho.notNull()) mHotGazeSlots[index].mWho = canonicalActorId(slot.mWho);
+    if (slot.mTarget.mCastRef.notNull())
+        mHotGazeSlots[index].mTarget.mCastRef = canonicalActorId(slot.mTarget.mCastRef);
+    ++mHotGazeRevision;
+    touchScene();
+}
+
+void LLDirectorCast::hotGazeInput(S32 index, bool down)
+{
+    if (index < 0 || index >= 4) return;
+    auto& mover = LLActorMover::instance();
+    if (!down) { mover.hotGazeInput(index, false); return; }
+    const auto& slot = mHotGazeSlots[index];
+    if (!slot.mHasTarget) return;
+    const uuid_vec_t actors = slot.mGroup.empty() ? uuid_vec_t{slot.mWho} : membersInGroup(slot.mGroup);
+    for (const LLUUID& actor : actors)
+    {
+        if (actor.isNull() || !resolve(actor)) continue;
+        mover.fireHotGaze(actor, index, slot.mTarget, slot.mSnap, slot.mDwell,
+                          slot.mReturn, slot.mHold, slot.mStay, slot.mHead, slot.mEyes, slot.mTorso);
+    }
 }

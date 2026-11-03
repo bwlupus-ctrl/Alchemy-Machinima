@@ -581,7 +581,7 @@ void LLKeyConflictHandler::saveToSettings(bool temporary)
                     fclose(fp);
                     if (!temporary)
                     {
-                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 3);
+                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 4);
                     }
                 }
             }

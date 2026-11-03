@@ -10,6 +10,11 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanellensgaze.h"
+#include "alghoststudio.h"
+#include "alobjectproperties.h"
+#include "lltool.h"
+#include "lltoolmgr.h"
+#include "llviewerwindow.h"
 
 #include "llactormover.h"
 #include "algazemath.h"
@@ -20,6 +25,7 @@
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "llcontrolavatar.h"
 #include "lldirectorcast.h"
 #include "llcallbacklist.h"      // [Machinima] persistent idle tick for random-perf cycling
 #include "llfloaterreg.h"
@@ -384,8 +390,12 @@ ALPanelLensGaze::ALPanelLensGaze()
     alRegisterMachinimaResetControl();
 }
 
+namespace { void cancelHotGazePick(LLView* owner); }
+
 ALPanelLensGaze::~ALPanelLensGaze()
 {
+    cancelHotGazePick(this);
+    if (mHotButtonSlot >= 0 && LLActorMover::instanceExists()) LLActorMover::instance().hotGazeInput(mHotButtonSlot, false);
     actorGazePanels().erase(this);
 }
 
@@ -430,6 +440,7 @@ void al_gaze_register_random_perf_idle()
 
 bool ALPanelLensGaze::postBuild()
 {
+    buildHotControls();
     mStatus = getChild<LLTextBox>("gaze_status");
     mEditActor = findChild<LLComboBox>("gaze_edit_actor");
     mApplyTo = findChild<LLComboBox>("gaze_apply_to");
@@ -985,6 +996,8 @@ void ALPanelLensGaze::draw()
                                  cast.getActorChoiceRevision(),
                                  cast.getGazeConfigRevision(),
                                  cast.getGazeCueRevision(),
+                                 cast.getHotGazeRevision(),
+                                 ALGhostStudio::instance().getInstanceRevision(),
                                  mover.getGazeRevision(),
                                  mSettingsRevision,
                                  mSelectionRevision }))
@@ -1006,6 +1019,12 @@ void ALPanelLensGaze::draw()
 
 void ALPanelLensGaze::onVisibilityChange(bool new_visibility)
 {
+    if (!new_visibility) cancelHotGazePick(this);
+    if (!new_visibility && mHotButtonSlot >= 0)
+    {
+        LLDirectorCast::instance().hotGazeInput(mHotButtonSlot, false);
+        mHotButtonSlot = -1;
+    }
     if (new_visibility)
     {
         mStructureGate.reset();
@@ -1218,6 +1237,7 @@ void ALPanelLensGaze::refreshCastCombo(bool force)
 void ALPanelLensGaze::refreshControls()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshControls");
+    refreshHotControls();
     LLActorMover& mover = LLActorMover::instance();
     LLDirectorCast& cast = LLDirectorCast::instance();
     // Every edit row reads+presents ONE actor: the edited actor for a specific
@@ -2259,4 +2279,238 @@ void ALPanelLensGaze::onGazeCues()
     {
         LLFloaterReg::showInstance("gaze_cues", LLSD(actor.asString()));
     }
+}
+
+namespace
+{
+class HotGazePickTool final : public LLTool
+{
+public:
+    HotGazePickTool() : LLTool("Hot gaze target") {}
+    static HotGazePickTool& instance() { static HotGazePickTool t; return t; }
+    S32 mSlot = 0;
+    bool mPoint = false, mPending = false;
+    U64 mGeneration = 0, mPendingGeneration = 0, mSceneRevision = 0;
+    LLHandle<LLView> mOwner;
+    void cancel()
+    {
+        ++mGeneration; mOwner.markDead();
+        if (LLToolMgr::instanceExists() && LLToolMgr::getInstance()->getCurrentTool() == this) LLToolMgr::getInstance()->clearTransientTool();
+    }
+    void begin(S32 slot, bool point, LLView* owner)
+    {
+        ++mGeneration; mSlot = slot; mPoint = point; mOwner = owner->getHandle();
+        mSceneRevision = LLDirectorCast::instance().getHotGazeRevision();
+    }
+    bool handleKey(KEY key, MASK) override
+    { if (key != KEY_ESCAPE) return false; cancel(); return true; }
+    bool handleRightMouseDown(S32, S32, MASK) override { cancel(); return true; }
+    bool validOwner() const
+    {
+        return !mOwner.isDead() && mOwner.get()->isInVisibleChain() &&
+            LLDirectorCast::instanceExists() && mSceneRevision == LLDirectorCast::instance().getHotGazeRevision();
+    }
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override
+    {
+        if (!validOwner()) { cancel(); return false; }
+        if (mPending) return true;
+        mPending = true; mPendingGeneration = mGeneration;
+        gViewerWindow->pickAsync(x, y, mask, [](const LLPickInfo& pick) {
+            auto& tool = instance(); tool.mPending = false;
+            if (tool.mOwner.isDead() || !tool.mOwner.get()->isInVisibleChain() ||
+                !LLDirectorCast::instanceExists() || tool.mSceneRevision != LLDirectorCast::instance().getHotGazeRevision() ||
+                tool.mGeneration != tool.mPendingGeneration ||
+                LLToolMgr::getInstance()->getCurrentTool() != &tool) { tool.cancel(); return; }
+            const S32 index = tool.mSlot; const bool point = tool.mPoint;
+            LLToolMgr::getInstance()->clearTransientTool();
+            auto& cast = LLDirectorCast::instance();
+            auto slot = cast.getHotGazeSlots()[index];
+            if (point && pick.mPickType != LLPickInfo::PICK_INVALID)
+            {
+                slot.mTarget = {}; slot.mTarget.mMode = LLActorMover::GazeTarget::FIXED_POINT;
+                slot.mTarget.mFixedPoint = pick.mPosGlobal;
+                slot.mTargetName = llformat("Point %.1f, %.1f, %.1f", pick.mPosGlobal.mdV[0],
+                                            pick.mPosGlobal.mdV[1], pick.mPosGlobal.mdV[2]);
+                slot.mHasTarget = true;
+            }
+            else if (!point && pick.getObject())
+            {
+                LLViewerObject* object = pick.getObject();
+                slot.mTarget = {}; slot.mTarget.mMode = LLActorMover::GazeTarget::OBJECT;
+                slot.mTarget.mObjectRef = object->getID();
+                slot.mTarget.mPickedSpot = true;
+                const LLVector3 hit = gAgent.getPosAgentFromGlobal(pick.mPosGlobal);
+                LLVOAvatar* body = object->asAvatar();
+                if (!body) body = object->getAvatarAncestor();
+                if (!body) body = object->getRootEdit()->getControlAvatar();
+                LLJoint* nearest = nullptr; F32 distance = F32_MAX;
+                if (body)
+                    for (size_t j = 0; j < body->getSkeletonJointCount(); ++j)
+                    {
+                        LLJoint* joint = body->getSkeletonJoint(static_cast<S32>(j));
+                        const F32 d = (hit - LLActorMover::hotGazeJointPosition(body, joint)).magVecSquared();
+                        if (d < distance) { distance = d; nearest = joint; }
+                    }
+                if (nearest)
+                {
+                    slot.mTarget.mObjectJoint = nearest->getName();
+                    slot.mTarget.mObjectOffset = ((hit - LLActorMover::hotGazeJointPosition(body, nearest)) *
+                        ~nearest->getWorldRotation()) / llmax(fabsf(body->getUniformScale()), .001f);
+                }
+                else slot.mTarget.mObjectOffset = (hit - object->getRenderPosition()) * ~object->getRenderRotation();
+                const auto* props = ALObjectPropertiesCache::instance().get(object->getID());
+                slot.mTargetName = props && !props->mName.empty() ? props->mName : "Object (name pending)";
+                if (body) slot.mTargetName = body->getFullname().empty() ? "Avatar picked spot" : body->getFullname();
+                else LLSelectMgr::getInstance()->requestObjectPropertiesFamily(object);
+                slot.mHasTarget = true;
+            }
+            else return;
+            cast.setHotGazeSlot(index, slot);
+        });
+        return true;
+    }
+    bool handleHover(S32, S32, MASK) override
+    {
+        if (!validOwner()) { cancel(); return false; }
+        gViewerWindow->setCursor(UI_CURSOR_TOOLPICKOBJECT3); return true;
+    }
+    void handleDeselect() override { ++mGeneration; mOwner.markDead(); }
+};
+void cancelHotGazePick(LLView* owner)
+{
+    auto& tool = HotGazePickTool::instance();
+    if (tool.mOwner.get() == owner) tool.cancel();
+}
+}
+
+void ALPanelLensGaze::buildHotControls()
+{
+    mHotSlot = findChild<LLComboBox>("hot_slot");
+    if (!mHotSlot) return;
+    mHotWho = getChild<LLComboBox>("hot_who"); mHotTarget = getChild<LLComboBox>("hot_target");
+    mHotActor = getChild<LLComboBox>("hot_actor"); mHotAfter = getChild<LLComboBox>("hot_after");
+    mHotMode = getChild<LLComboBox>("hot_mode"); mHotSnap = getChild<LLSpinCtrl>("hot_snap");
+    mHotDwell = getChild<LLSpinCtrl>("hot_dwell"); mHotReturn = getChild<LLSpinCtrl>("hot_return");
+    mHotHead = getChild<LLSliderCtrl>("hot_head"); mHotEyes = getChild<LLSliderCtrl>("hot_eyes");
+    mHotTorso = getChild<LLSliderCtrl>("hot_torso"); mHotName = getChild<LLTextBox>("hot_name");
+    mHotPick = getChild<LLButton>("hot_pick");
+    mHotSpot = getChild<LLComboBox>("hot_spot");
+    mHotX = getChild<LLSpinCtrl>("hot_x"); mHotY = getChild<LLSpinCtrl>("hot_y"); mHotZ = getChild<LLSpinCtrl>("hot_z");
+    mHotSlot->setCommitCallback([this](LLUICtrl*, const LLSD&) {
+        cancelHotGazePick(this);
+        mHotSlotIndex = llclamp(mHotSlot->getValue().asInteger(), 0, 3); refreshHotControls();
+    });
+    for (LLUICtrl* control : std::initializer_list<LLUICtrl*>{mHotWho, mHotTarget, mHotActor,
+         mHotAfter, mHotMode, mHotSnap, mHotDwell, mHotReturn, mHotHead, mHotEyes, mHotTorso, mHotSpot, mHotX, mHotY, mHotZ})
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { commitHotControls(); });
+    getChild<LLButton>("hot_nudge_reset")->setClickedCallback([this](LLUICtrl*, const LLSD&) {
+        cancelHotGazePick(this);
+        auto& cast = LLDirectorCast::instance(); auto slot = cast.getHotGazeSlots()[mHotSlotIndex];
+        slot.mTarget.mPointNudge.clear(); cast.setHotGazeSlot(mHotSlotIndex, slot); refreshHotControls();
+    });
+    mHotPick->setClickedCallback([this](LLUICtrl*, const LLSD&) {
+        auto& tool = HotGazePickTool::instance();
+        tool.begin(mHotSlotIndex, mHotTarget->getValue().asInteger() == 3, this);
+        LLToolMgr::getInstance()->setTransientTool(&tool);
+    });
+    getChild<LLButton>("hot_clear")->setClickedCallback([this](LLUICtrl*, const LLSD&) {
+        cancelHotGazePick(this);
+        auto& cast = LLDirectorCast::instance(); auto slot = cast.getHotGazeSlots()[mHotSlotIndex];
+        slot.mHasTarget = false; slot.mTarget = {}; slot.mTargetName.clear();
+        cast.setHotGazeSlot(mHotSlotIndex, slot); refreshHotControls();
+    });
+    getChild<LLButton>("hot_reset")->setClickedCallback([this](LLUICtrl*, const LLSD&) {
+        cancelHotGazePick(this);
+        LLDirectorCast::instance().setHotGazeSlot(mHotSlotIndex, {}); refreshHotControls();
+    });
+    auto* fire = getChild<LLButton>("hot_fire");
+    fire->setMouseDownCallback([this](LLUICtrl*, const LLSD&) {
+        mHotButtonSlot = mHotSlotIndex; LLDirectorCast::instance().hotGazeInput(mHotButtonSlot, true);
+    });
+    fire->setMouseUpCallback([this](LLUICtrl*, const LLSD&) {
+        if (mHotButtonSlot >= 0 && LLActorMover::instanceExists()) LLActorMover::instance().hotGazeInput(mHotButtonSlot, false);
+        mHotButtonSlot = -1;
+    });
+    mHotPropertiesConnection = ALObjectPropertiesCache::instance().setChangeCallback([](const LLUUID& id) {
+        const auto* props = ALObjectPropertiesCache::instance().get(id);
+        if (!props || props->mName.empty()) return;
+        auto& cast = LLDirectorCast::instance();
+        for (S32 i = 0; i < 4; ++i)
+        {
+            auto slot = cast.getHotGazeSlots()[i];
+            if (slot.mHasTarget && slot.mTarget.mMode == LLActorMover::GazeTarget::OBJECT &&
+                slot.mTarget.mObjectRef == id && slot.mTargetName != props->mName)
+            { cast.setHotGazeTargetName(i, props->mName); }
+        }
+    });
+}
+
+void ALPanelLensGaze::refreshHotControls()
+{
+    if (!mHotSlot) return;
+    auto& cast = LLDirectorCast::instance(); const auto& slot = cast.getHotGazeSlots()[mHotSlotIndex];
+    if (mHotChoiceGate.changed({cast.getCastRevision(), ALGhostStudio::instance().getInstanceRevision()}))
+    {
+        mHotWho->removeall(); mHotActor->removeall(); // ui-draw-lint: allow(raw-write) Actor and clone choice lists rebuild only when their model revisions change.
+        mHotWho->add("Choose actor or group", ""); mHotActor->add("Choose target actor", LLUUID::null);
+        mHotWho->add("You", gAgentID.asString()); mHotActor->add("You", gAgentID);
+        std::set<LLUUID> seen{gAgentID};
+        auto add = [&](const LLUUID& id, const std::string& name) {
+            if (id.isNull() || !seen.insert(id).second) return;
+            const std::string label = name.empty() ? "Actor " + id.asString().substr(0, 8) : name;
+            mHotWho->add(label, id.asString()); mHotActor->add(label, id);
+        };
+        for (const auto& actor : cast.getCast()) add(actor.mId, actor.mLastName);
+        for (const auto& clone : ALGhostStudio::instance().getInstances())
+            if (clone.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                add(clone.mEntityId.notNull() ? clone.mEntityId : clone.mId, clone.mName);
+        for (const auto& group : cast.getGroupNames()) mHotWho->add("Group: " + group, "group:" + group);
+    }
+    setValueIfChanged(mHotSlot, mHotSlotIndex);
+    setValueIfChanged(mHotWho, slot.mGroup.empty() ? slot.mWho.asString() : "group:" + slot.mGroup);
+    setValueIfChanged(mHotTarget, static_cast<S32>(slot.mTarget.mMode));
+    setValueIfChanged(mHotActor, slot.mTarget.mCastRef);
+    setValueIfChanged(mHotSpot, slot.mTarget.mPickedSpot ? 1 : 0);
+    setEnabledIfChanged(mHotSpot, slot.mTarget.mMode == LLActorMover::GazeTarget::OBJECT);
+    const LLVector3& nudge = slot.mTarget.mPointNudge;
+    setValueIfChanged(mHotX, nudge.mV[0]); setValueIfChanged(mHotY, nudge.mV[1]); setValueIfChanged(mHotZ, nudge.mV[2]);
+    for (auto* spinner : {mHotX, mHotY, mHotZ})
+        setEnabledIfChanged(spinner, slot.mTarget.mMode == LLActorMover::GazeTarget::FIXED_POINT);
+    setEnabledIfChanged(mHotActor, slot.mTarget.mMode == LLActorMover::GazeTarget::CAST_MEMBER);
+    setEnabledIfChanged(mHotPick, slot.mTarget.mMode == LLActorMover::GazeTarget::OBJECT || slot.mTarget.mMode == LLActorMover::GazeTarget::FIXED_POINT);
+    setTextIfChanged(mHotName, slot.mHasTarget ? slot.mTargetName : "No target");
+    setValueIfChanged(mHotSnap, slot.mSnap); setValueIfChanged(mHotDwell, slot.mDwell);
+    setValueIfChanged(mHotReturn, slot.mReturn); setValueIfChanged(mHotHead, slot.mHead);
+    setValueIfChanged(mHotEyes, slot.mEyes); setValueIfChanged(mHotTorso, slot.mTorso);
+    setValueIfChanged(mHotAfter, slot.mStay ? 1 : 0); setValueIfChanged(mHotMode, slot.mHold ? 1 : 0);
+    setEnabledIfChanged(mHotDwell, !slot.mHold && !slot.mStay);
+    setEnabledIfChanged(mHotAfter, !slot.mHold);
+}
+
+void ALPanelLensGaze::commitHotControls()
+{
+    cancelHotGazePick(this);
+    auto& cast = LLDirectorCast::instance(); auto slot = cast.getHotGazeSlots()[mHotSlotIndex];
+    const std::string who = mHotWho->getValue().asString();
+    slot.mGroup = who.compare(0, 6, "group:") == 0 ? who.substr(6) : "";
+    slot.mWho = slot.mGroup.empty() && !who.empty() ? LLUUID(who) : LLUUID::null;
+    const auto mode = static_cast<LLActorMover::GazeTarget::EMode>(mHotTarget->getValue().asInteger());
+    if (mode != slot.mTarget.mMode) { slot.mTarget = {}; slot.mHasTarget = false; slot.mTargetName.clear(); }
+    slot.mTarget.mMode = mode;
+    if (mode == LLActorMover::GazeTarget::CAMERA)
+    { slot.mHasTarget = true; slot.mTargetName = "Camera"; }
+    else if (mode == LLActorMover::GazeTarget::CAST_MEMBER)
+    {
+        slot.mTarget.mCastRef = mHotActor->getValue().asUUID();
+        slot.mHasTarget = slot.mTarget.mCastRef.notNull();
+        slot.mTargetName = mHotActor->getSelectedItemLabel();
+    }
+    slot.mTarget.mPickedSpot = mHotSpot->getValue().asInteger() == 1;
+    slot.mTarget.mPointNudge.set(static_cast<F32>(mHotX->getValue().asReal()),
+        static_cast<F32>(mHotY->getValue().asReal()), static_cast<F32>(mHotZ->getValue().asReal()));
+    slot.mSnap = static_cast<F32>(mHotSnap->getValue().asReal()); slot.mDwell = static_cast<F32>(mHotDwell->getValue().asReal());
+    slot.mReturn = static_cast<F32>(mHotReturn->getValue().asReal()); slot.mHead = static_cast<F32>(mHotHead->getValue().asReal());
+    slot.mEyes = static_cast<F32>(mHotEyes->getValue().asReal()); slot.mTorso = static_cast<F32>(mHotTorso->getValue().asReal());
+    slot.mStay = mHotAfter->getValue().asInteger() == 1; slot.mHold = mHotMode->getValue().asInteger() == 1;
+    cast.setHotGazeSlot(mHotSlotIndex, slot); refreshHotControls();
 }

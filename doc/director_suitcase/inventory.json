@@ -7,28 +7,35 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
       "HOOK": 498,
-      "OWNED": 884,
-      "TOOLING": 362
+      "OWNED": 888,
+      "TOOLING": 364
     },
     "dirty_product_inputs": [
       "indra/newview/CMakeLists.txt",
-      "indra/newview/alkitpresets.cpp",
-      "indra/newview/alpovblink.cpp",
-      "indra/newview/alpovblink.h",
-      "indra/newview/alpovblinkmath.h",
+      "indra/newview/algazehot.h",
+      "indra/newview/algazehotslots.h",
+      "indra/newview/alghoststudio.cpp",
+      "indra/newview/alghoststudio.h",
+      "indra/newview/alpanellensgaze.cpp",
+      "indra/newview/alpanellensgaze.h",
+      "indra/newview/alsteppedanimruntime.cpp",
       "indra/newview/app_settings/key_bindings.xml",
       "indra/newview/app_settings/settings.xml",
-      "indra/newview/app_settings/shaders/class1/deferred/povBlinkF.glsl",
-      "indra/newview/llfloaterdirector.cpp",
-      "indra/newview/llfloaterdirector.h",
+      "indra/newview/llactormover.cpp",
+      "indra/newview/llactormover.h",
+      "indra/newview/llappviewer.cpp",
+      "indra/newview/lldirectorcast.cpp",
+      "indra/newview/lldirectorcast.h",
+      "indra/newview/llghostavatar.cpp",
+      "indra/newview/llghostavatar.h",
       "indra/newview/llkeyconflict.cpp",
-      "indra/newview/llviewerdisplay.cpp",
       "indra/newview/llviewerinput.cpp",
       "indra/newview/llviewerjoystick.cpp",
       "indra/newview/llviewerjoystick.h",
-      "indra/newview/llviewershadermgr.cpp",
-      "indra/newview/pipeline.cpp",
-      "indra/newview/skins/default/xui/en/control_table_contents_movement.xml",
+      "indra/newview/llviewerpartsim.cpp",
+      "indra/newview/llviewerpartsim.h",
+      "indra/newview/llvoavatar.cpp",
+      "indra/newview/skins/default/xui/en/control_table_contents_machinima.xml",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -70,13 +77,19 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+      "indra/newview/tests/algazehot_test.cpp",
       "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_clone_rekey_check.py",
+      "scripts/code_tools/director_gaze_hot_check.py",
+      "scripts/code_tools/director_gaze_hot_integration.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json",
       "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/hot_gaze_mover_hunks.json",
+      "scripts/code_tools/native_check_tools.py",
       "scripts/code_tools/pov_blink_check.py",
-      "scripts/code_tools/pov_blink_pipeline_hunks.json"
+      "scripts/code_tools/test_key_binding_migration.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -90,14 +103,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "793e900675237ad1d20078e2ff05fb93317b0cb4fe5ffc725a806099fcc95553",
+        "csv_sha256": "9e17f118933c3d0a44aaa968a0bc18e93f790f8f688a99862167cad7ff30652f",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 39,
           "popovers": 6
         },
-        "entries": 4650,
+        "entries": 4695,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -138,9 +151,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2499,
+        "generated_kit_rows": 2522,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2105,
+        "interactive_rows": 2127,
         "pages": 38,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -183,7 +196,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3867,
+        "settings_declared": 3868,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -248,21 +261,21 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2223,
+        "independent_json_rows": 2246,
         "multi_page_settings": 21,
         "owner_roots": 35,
         "pages": 38,
-        "rows": 2223,
-        "unresolved_rows": 59
+        "rows": 2246,
+        "unresolved_rows": 74
       },
-      "wiring_rows": 2223
+      "wiring_rows": 2246
     },
-    "head_source_tree": "7b421045878582269911004adf71b42692db9c4f",
+    "head_source_tree": "1f55c958acccd650fd56c6977fb0b26272a7a726",
     "hook_files": 498,
-    "hunks": 3014,
-    "input_sha256": "7018da6c2d6e56c9279461f366f771b3785d26d95f53c7e57487decfe63ab0f2",
+    "hunks": 3019,
+    "input_sha256": "c6626a4e4d4ff4fdb2378f877a7e37bee0e27999e211c68e4b6b574886899f7f",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2009
+    "settings": 2022
   },
   "paths": [
     {
@@ -17511,6 +17524,50 @@
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "capture-sidecar",
+        "sensor"
+      ],
+      "git_status": "A",
+      "layer": 6,
+      "path": "indra/newview/alpovblink.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alpovblink.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alpovblinkmath.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
         "path/prefix",
         "owned source / hook delta identifiers and comments"
       ],
@@ -21781,6 +21838,19 @@
       "layer": 10,
       "path": "indra/newview/app_settings/shaders/class1/deferred/postDeferredF.glsl",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/app_settings/shaders/class1/deferred/povBlinkF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
       "candidate_features_from_subjects": [
@@ -27360,11 +27430,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
-        "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -30689,10 +30755,8 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
         "gaze",
-        "roto-tron",
-        "sensor"
+        "roto-tron"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -35812,6 +35876,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "camera",
         "director-shell",
         "looks",
         "roto-tron",
@@ -40337,6 +40402,32 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/nearby_lights_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/pov_blink_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/pov_blink_pipeline_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

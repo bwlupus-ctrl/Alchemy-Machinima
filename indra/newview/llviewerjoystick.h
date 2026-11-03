@@ -189,6 +189,8 @@ private:
     void scanXInputAssociation();
     void pollXInputState();
     void handleXInputDpad();
+    void handleHotGazeInput();
+    U16 mHotGazeButtons = 0;
     void xInputHint(const std::string& message);
     bool xInputAssociated() const;
     void updateXInputTakeover(bool reset = false);

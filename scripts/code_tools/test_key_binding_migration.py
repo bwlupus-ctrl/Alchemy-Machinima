@@ -31,7 +31,7 @@ constexpr KEY KEY_NONE = 0;
 constexpr MASK MASK_NONE = 0;
 struct LLKeyboard {
     static bool keyFromString(const std::string& s, KEY* key) {
-        *key = s.size() == 1 ? s[0] : KEY_NONE;
+        *key = s == "F9" ? 1009 : s.size() == 1 ? s[0] : KEY_NONE;
         return *key != KEY_NONE;
     }
     static bool maskFromString(const std::string& s, MASK* mask) {
@@ -59,6 +59,32 @@ struct LLViewerInput {
 ''' + rule + r'''
 int main() {
     using Mode = LLViewerInput::KeyMode;
+    Mode blinkDefaults;
+    blinkDefaults.bindings.add({"F9", "NONE", "pov_eye_blink"});
+    for (int marker : {0, 1, 2, 3, 4}) {
+        Mode user;
+        migrateBindingMode(user, blinkDefaults, marker, 1);
+        assert(user.bindings.size() == (marker < 3 ? 1u : 0u));
+    }
+    Mode customBlink;
+    customBlink.bindings.add({"F9", "SHIFT", "custom_command"});
+    migrateBindingMode(customBlink, blinkDefaults, 2, 1);
+    assert(customBlink.bindings.size() == 1); // any occupied F9 mask blocks migration
+    Mode clearedBlink;
+    clearedBlink.bindings.add({"", "NONE", "pov_eye_blink"});
+    migrateBindingMode(clearedBlink, blinkDefaults, 2, 1);
+    assert(clearedBlink.bindings.size() == 1); // explicit command clear survives
+    Mode hotDefaults;
+    for(int i=1;i<=4;++i) hotDefaults.bindings.add({std::to_string(i), "CTL_ALT", LLViewerInput::Command(("director_hot_gaze_"+std::to_string(i)).c_str())});
+    for(int version:{0,1,2,3,4}) {
+        Mode user; migrateBindingMode(user,hotDefaults,version,1);
+        assert(user.bindings.size()==(version<4?4u:0u));
+    }
+    Mode customHot;
+    customHot.bindings.add({"2","SHIFT","custom_command"});
+    customHot.bindings.add({"","NONE","director_hot_gaze_3"});
+    migrateBindingMode(customHot,hotDefaults,2,1);
+    assert(customHot.bindings.size()==4); // add only 1 and 4; occupied/cleared survive
     Mode defaults;
     defaults.bindings.add({"V", "CTL_ALT", "toggle_viewfinder"});
     defaults.bindings.add({"W", "NONE", "push_forward"});
@@ -131,7 +157,7 @@ def check_legacy_detection():
         return text[start:text.index('\nS32 count_masks(', start)]
     current_loader = loader(source)
     migration_start = current_loader.index("    // HEAD's fallback decision")
-    assert current_loader[:migration_start] + '    return binding_count;\n}\n' == loader(original)
+    assert current_loader == loader(original)  # Hot Gaze changes only the existing shared migration rule
     assert current_loader.index('// fix version') < migration_start
     constructor = 'LLViewerInput::Keys::Keys()'
     def keys_constructor(text):
@@ -140,7 +166,7 @@ def check_legacy_detection():
     assert keys_constructor(source) == keys_constructor(original)
     shared_loader = source[source.index('void LLViewerInput::migrateKeysXML('):source.index('S32 LLViewerInput::loadBindingsXML(')]
     assert 'xml_version' not in shared_loader
-    assert 'binding_count == 0 || migration_version >= 2' in shared_loader
+    assert 'binding_count == 0 || migration_version >= 4' in shared_loader
     assert 'getS32("KeyBindingsMigrationVersion")' in shared_loader
     header = 'indra/newview/llviewerinput.h'
     version = 'const S32 keybindings_xml_version = 1;'
@@ -150,39 +176,90 @@ def check_legacy_detection():
     def save(text):
         begin = text.index('void LLKeyConflictHandler::saveToSettings(')
         return text[begin:text.index('\nvoid ', begin + 10)]
-    marker = '''                    if (!temporary)
-                    {
-                        gSavedSettings.setS32("KeyBindingsMigrationVersion", 2);
-                    }
-'''
-    assert marker in save(conflict)
-    assert save(conflict).replace(marker, '') == save(head(path))
+    assert 'LLViewerInput::loadKeysXML(filename, keys)' in save(conflict)
+    assert 'parser.readXUI(filename, keys)' not in save(conflict)
+    assert save(conflict).index('LLViewerInput::loadKeysXML(filename, keys)') < save(conflict).index('switch (mLoadMode)')
     shipped = 'indra/newview/app_settings/key_bindings.xml'
     import xml.etree.ElementTree as ET
     assert ET.fromstring((ROOT / shipped).read_text()).attrib == ET.fromstring(head(shipped)).attrib
+    for mode in ET.parse(ROOT / shipped).getroot():
+        expected = [('pov_eye_blink', 'F9', 'NONE')] + [
+            ('director_hot_gaze_' + str(i), str(i), 'CTL_ALT') for i in range(1, 5)]
+        for command, key, mask in expected:
+            bindings = [b for b in mode if b.get('command') == command]
+            assert len(bindings) == 1 and bindings[0].get('key') == key and bindings[0].get('mask') == mask
     settings = ET.parse(ROOT / 'indra/newview/app_settings/settings.xml').getroot().find('map')
     entries = list(settings)
     setting = entries[next(i for i, e in enumerate(entries) if e.tag == 'key' and e.text == 'KeyBindingsMigrationVersion') + 1]
     values = list(setting)
     fields = {values[i].text: values[i + 1].text for i in range(0, len(values), 2)}
     assert fields['Persist'] == '1' and fields['Type'] == 'S32' and fields['Value'] == '0'
-    assert conflict.count('setS32("KeyBindingsMigrationVersion", 2)') == 1
-    print('PASS: git show HEAD legacy loader and Controls save identical apart from migration/marker; file format version unchanged; marker globally persisted')
+    assert conflict.count('setS32("KeyBindingsMigrationVersion", 4)') == 1
+    print('PASS: legacy loader/file format preserved; Controls save migrates all modes before splicing the edited mode and advancing marker 4')
+
+
+def roundtrip_source():
+    from relight_area_policy_check import method
+    input_source = ROOT / 'indra/newview/llviewerinput.cpp'
+    save = method(ROOT / 'indra/newview/llkeyconflict.cpp', 'void LLKeyConflictHandler::saveToSettings(')
+    splice = save[save.index('            switch (mLoadMode)'):save.index('            keys.xml_version.set')]
+    migration = method(input_source, 'void LLViewerInput::migrateKeysXML(')
+    load = method(input_source, 'bool LLViewerInput::loadKeysXML(')
+    preamble = build_source().split('int main()')[0]
+    preamble = preamble.replace('struct Bindings : std::vector<KeyBinding> {', 'struct Bindings : std::vector<KeyBinding> { void set(const Bindings& b,bool){*this=b;}')
+    preamble = preamble.replace('struct KeyMode { Bindings bindings; };', 'struct KeyMode { Bindings bindings; bool isProvided()const{return true;} }; struct Keys {KeyMode first_person,third_person,sitting,edit_avatar;bool validateBlock()const{return true;}}; static void migrateKeysXML(const std::string&,Keys&,S32,Keys* = nullptr);static bool loadKeysXML(const std::string&,Keys&);int loadBindingMode(KeyMode& m,int){return int(m.bindings.size());}')
+    return preamble + r'''
+#include <map>
+#include <sstream>
+constexpr int MODE_FIRST_PERSON=0,MODE_THIRD_PERSON=1,MODE_SITTING=2,MODE_EDIT_AVATAR=3,LL_PATH_APP_SETTINGS=0;
+struct Settings{int marker=0;int getS32(const char*){return marker;}void setS32(const char*,int v){marker=v;}}gSavedSettings;
+struct Directory{std::string getExpandedFilename(int,const char*){return "defaults";}}directory,*gDirUtilp=&directory;
+// A parser boundary double actually serializes and reparses every mode. It
+// deliberately keeps no migrated runtime state between save and reload.
+std::map<std::string,std::string> files;
+void write(const std::string& path,const LLViewerInput::Keys& keys){std::ostringstream s;
+ for(auto* m:{&keys.first_person,&keys.third_person,&keys.sitting,&keys.edit_avatar}){
+ s<<m->bindings.size()<<"\n";for(auto& b:m->bindings)s<<b.key<<" "<<b.mask<<" "<<b.command.getValue()<<"\n";}
+ files[path]=s.str();}
+struct LLSimpleXUIParser{bool readXUI(const std::string& path,LLViewerInput::Keys& keys){if(!files.count(path))return false;std::istringstream s(files[path]);
+ for(auto* m:{&keys.first_person,&keys.third_person,&keys.sitting,&keys.edit_avatar}){int n;s>>n;for(int i=0;i<n;++i){std::string k,mask,c;s>>k>>mask>>c;m->bindings.add({k,mask,LLViewerInput::Command(c.c_str())});}}return true;}};
+#define LL_ERRS() std::cerr
+#define LL_ENDL std::endl
+''' + migration + '\n' + load + r'''
+void saveMode(int mLoadMode,const LLViewerInput::KeyMode& mode){LLViewerInput::Keys keys;std::string filename="user";
+''' + 'if (' + ('LLViewerInput::loadKeysXML(filename, keys)' if 'LLViewerInput::loadKeysXML(filename, keys)' in save else 'false') + ') {\n' + splice + r'''
+ write("user",keys);
+''' + next(line.strip() for line in save.splitlines() if 'setS32("KeyBindingsMigrationVersion"' in line) + r'''
+}}
+int main(){using Input=LLViewerInput;Input::Keys defaults;
+ for(auto* m:{&defaults.first_person,&defaults.third_person,&defaults.sitting,&defaults.edit_avatar}){
+ m->bindings.add({"F9","NONE","pov_eye_blink"});m->bindings.add({"V","CTL_ALT","toggle_viewfinder"});for(int i=1;i<=4;++i)m->bindings.add({std::to_string(i),"CTL_ALT",Input::Command(("director_hot_gaze_"+std::to_string(i)).c_str())});}
+ write("defaults",defaults);
+ for(int marker:{0,1,2,3})for(int edited:{0,1,2,3}){
+ gSavedSettings.marker=marker;Input::Keys raw;for(auto* m:{&raw.first_person,&raw.third_person,&raw.sitting,&raw.edit_avatar}){m->bindings.add({"W","NONE","push_forward"});if(marker>=3)m->bindings.add({"F9","NONE","pov_eye_blink"});}write("user",raw);
+ Input::Keys runtime;assert(Input::loadKeysXML("user",runtime));
+ auto* mode=edited==0?&runtime.first_person:edited==1?&runtime.third_person:edited==2?&runtime.sitting:&runtime.edit_avatar;
+ mode->bindings.add({"B","SHIFT","edited_command"});saveMode(edited,*mode);
+ assert(gSavedSettings.marker==4);Input::Keys reloaded;assert(Input::loadKeysXML("user",reloaded));
+ int n=0;for(auto* m:{&reloaded.first_person,&reloaded.third_person,&reloaded.sitting,&reloaded.edit_avatar}){
+ for(int i=1;i<=4;++i){const auto command="director_hot_gaze_"+std::to_string(i);assert(std::count_if(m->bindings.begin(),m->bindings.end(),[&](const auto& b){return b.command.getValue()==command;})==1);}
+ assert(std::count_if(m->bindings.begin(),m->bindings.end(),[](const auto& b){return b.command.getValue()=="pov_eye_blink" && b.key=="F9" && b.mask=="NONE";})==1);
+ assert(m->bindings.size()==size_t(6+(marker<2?1:0)+(n++==edited?1:0)));}
+ }
+ std::cout<<"PASS: production load/migrate + Controls mode splice + serialized save/reload, edit each mode at markers 0..3: defaults survive in all four modes\n";
+}
+'''
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--compiler', default='cl.exe')
-    args = parser.parse_args()
+    from native_check_tools import compile_run, check_directory
     check_legacy_detection()
-    with tempfile.TemporaryDirectory(prefix='key_migration_', dir=ROOT / '.tmp') as scratch:
-        source = Path(scratch) / 'test.cpp'
-        source.write_text(build_source(), encoding='utf-8')
-        exe = Path(scratch) / 'test.exe'
-        subprocess.run([args.compiler, '/nologo', '/std:c++17', '/EHsc', '/W4', '/WX',
-                        str(source), '/Fe:' + str(exe),
-                        '/Fo:' + str(Path(scratch) / 'test.obj')], check=True, cwd=scratch)
-        return subprocess.run([str(exe)], check=False).returncode
+    directory = check_directory('key_migration')
+    for name, source in [('rules', build_source()), ('roundtrip', roundtrip_source())]:
+        result = compile_run(directory, source, name, ['/W4', '/WX'])
+        assert result.returncode == 0, result.stdout + result.stderr
+        print(result.stdout.strip())
+    return 0
 
 
 if __name__ == '__main__':
