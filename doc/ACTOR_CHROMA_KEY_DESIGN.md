@@ -1,6 +1,6 @@
-# Actor Chroma Key / Matte — design (v19)
+# Actor Chroma Key / Matte — design (v20)
 
-Status: DESIGN ONLY (2026-11-02). **v19** = v18 with D53 replaced after Codex design review r5 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r5.md`: 0 P0, 1 P1 — R42; R37-R41 confirmed fixed). **v18** = v17 revised after Codex design review r4 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r4.md`: 0 P0, 4 P1, 1 P2) and with the user's final answers to Q4 and Q5. **v17** = v16 revised after Codex design review r3 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r3.md`: 0 P0, 5 P1, 2 P2; dispositions §A19). **v16** = v15 revised after Codex design review r2
+Status: DESIGN ONLY (2026-11-02). **v20** = v19 with D54's suppression record extended to the classic/system avatar paths after Codex design review r6 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r6.md`: 0 P0, 1 P1 — R43). **v19** = v18 with D53 replaced after Codex design review r5 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r5.md`: 0 P0, 1 P1 — R42; R37-R41 confirmed fixed). **v18** = v17 revised after Codex design review r4 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r4.md`: 0 P0, 4 P1, 1 P2) and with the user's final answers to Q4 and Q5. **v17** = v16 revised after Codex design review r3 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r3.md`: 0 P0, 5 P1, 2 P2; dispositions §A19). **v16** = v15 revised after Codex design review r2
 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r2.md`: 0 P0, 8 P1, 4 P2 open), by **simplification**: the
 clone layer, its depth copy, per-sweep layer output, the deferred-draw queue and the late-failure rollback
 are all withdrawn. v15 (review r1) and v14 (refresh of the approved v13 against main 3a64bb9c5c4) are
@@ -14,6 +14,12 @@ code or in-world.
 operational instructions that v16 withdraws have been deleted from it, not overridden. Part B is the v13
 text (ReShade guard, snapshots, actor shadows, review history); each of its section headings carries a
 banner — KEPT, KEPT WITH DELTAS (§A13) or SUPERSEDED. Where Part A and Part B disagree, Part A wins.
+
+## Changelog v19 → v20 (Codex design review r6)
+
+| # | Change | Finding | Where |
+|---|---|---|---|
+| 1 | D54's suppression record gains a **typed system domain**: `SystemComponentKey {canonical actor-FX id, part ∈ {BodyOpaque, BodyTransparent, RigidEyes}}`, recorded at the UUID-overload beauty call sites (classic eyes and body, lldrawpoolavatar.cpp:1226-1232, 1270-1276) and consumed by the key's system coverage before `renderSkinned` / `renderRigid`; WP1b captures system components under the same key; contributor trace enumerates the system domain | R43 | §A9 |
 
 ## Changelog v18 → v19 (Codex design review r5)
 
@@ -114,6 +120,7 @@ supersedes D7 (D41); shortcut Ctrl+Alt+K, supersedes D9 (D42).
 | D52 (v18) | Lens coverage: beauty-decided selections, additive optical support excluded | §A8 |
 | D53 (v18) | ~~Coverage disposition per owner~~ — replaced by D54 in v19 | §A9 |
 | D54 (v19) | Coverage disposition per component and per render path, from the beauty decision recorded at that path's own suppression predicate; one contributor per visible component | §A9 |
+| D55 (v20) | The record has two typed domains: draw-info components (`LLDrawInfo*`) and system components (`SystemComponentKey`); both beauty and key look up the same key | §A9 |
 
 ## A1. Audit summary
 
@@ -436,6 +443,26 @@ WP1b (required for v1):
    Readiness stays per path: a PBR command that is not PBR-ready is not suppressed natively, so its native draw is the
    contributor (fail-open preserved), even when the owner's legacy parts are replacement-owned, and vice versa.
    The silhouette's caller is unaffected (it records nothing and keeps its own admission).
+   **System domain (D55, R43).** Classic (BOM/system) eyes and body are not `LLDrawInfo`s: the avatar pool asks the
+   **UUID** overload `shouldSuppressSharedActorFx(actor_id)` (lldrawpool.cpp:1077-1099; it notifies
+   `LLActorMaskEligibility::suppress(actor_id)`, a separate set from draw infos, llactormaskeligibility.h:30-42) for
+   the rigid eyes (lldrawpoolavatar.cpp:1226-1232) and for the classic body meshes (1270-1276: opaque meshes in the
+   opaque stage, hair/skirt/lashes in the alpha stage). The key therefore keeps a second, typed record
+   `mSystemSuppressed`: `SystemComponentKey { LLUUID id; Part part; }` with `Part ∈ {BodyOpaque, BodyTransparent,
+   RigidEyes}`, where `id` is **`get_actor_fx_id(avatarp)`** — the identity the beauty call already uses (1226, 1270),
+   which canonicalises the Director's self identity — and `part` is the stage the call site is in. Recorded beside the
+   existing eligibility notification, beauty passes only.
+   - **Consumers.** K1's system coverage (`renderSystemSilCover(av, cover, phase)`, pipeline.cpp:29069-29089, which
+     calls `renderSkinned` and `renderRigid`, llactormover.cpp:16486, 16497) looks up `{get_actor_fx_id(av), part}`
+     before each call in the key policy: phase A skips `renderSkinned` when `BodyOpaque` is suppressed and
+     `renderRigid` when `RigidEyes` is suppressed; phase B skips the transparent layers when `BodyTransparent` is
+     suppressed. The silhouette's call is unchanged.
+   - **Captures.** WP1b records shared system draws (`renderSystemActorGhost`, llactormover.cpp:19484-19489,
+     19525-19530) under the same `SystemComponentKey` (body opaque stage, body alpha stage, eyes).
+   - **Rule** (same as draw infos): not suppressed → native system coverage; suppressed + coverage-bearing capture →
+     WP1b replay only; suppressed without capture (zero Cover, hidden/derendered source) → no contributor, coverage 0.
+   - The **contributor trace** lists system components alongside draw-info components, including suppressed
+     components with no contributor.
 3. **Replay** each captured component with the **actual beauty program variant** compiled with
    `#define AL_KEY_COVERAGE_OUT` (separate program objects cloned from the world, system and PBR actor-ghost
    programs; every discard, deformation and alpha computation kept), outputting **scalar coverage in R**
@@ -445,6 +472,7 @@ WP1b (required for v1):
 Acceptance: hole readback with the silhouette OFF and ON for Replace Dissolve 50 %, **Layer Dissolve 50 %** and Distort over a bright set (holes 0); Cover opacity 0, ε, 0.5, 1 for BOM, legacy and shared/indexed PBR (0 → coverage 0 with and without replacement shaders available; ε → coverage ≈ ε, continuous); native BOM / no-mesh body, legacy mesh, indexed PBR, Layer vs Replace, a fractional-alpha
 component (coverage = its alpha), and a replacement-not-ready component (native coverage present); W-K8.
 **R42 fixtures (v19):** an isolated PBR BLEND card with authored alpha 0.5 over a bright set, outside the body silhouette, under an **ordinary Layer** look (Chrome; Hologram) — scalar/static, rigged and indexed — must read coverage 0.5 ± 1/255 with contributor count 1 (WP1b PBR replay); the same card with PBR not ready → 0.5 from the native replay, count 1; the same owner mixing that PBR card with legacy parts under ordinary Layer → legacy parts from the native replay, the PBR card from the WP1b replay, each count 1; Replace PBR card → WP1b replay only; zero Cover PBR and legacy → 0, count 0; hidden/derendered source → 0, count 0. Each fixture asserts the numeric coverage and the contributor count, not only holes or opaque coverage.
+**R43 fixtures (v20)**, run through the real avatar pool → K1 path with the silhouette OFF and ON, numeric readback and contributor counts, for a keyed classic BOM / no-mesh avatar's **body (opaque)**, **eyes (rigid)** and **system transparent parts (hair, skirt, lashes)**, plus a rigged mesh attachment on the same avatar (draw-info domain): (a) **Replace** Dissolve 50 % over a bright set → holes 0, each part count 1 (WP1b system replay); (b) **Layer Dissolve** 50 % → same; (c) **ordinary Layer** (Chrome) → native system coverage, count 1, no WP1b contribution; (d) **zero Cover** → 0 for body, eyes and transparent parts, count 0, with and without replacement shaders available; (e) Cover ε / 0.5 / 1 → continuous, count 1; (f) replacement not ready → native, count 1; (g) the Director self avatar (identity canonicalisation) for (a) and (d); (h) hidden/derendered source → 0, count 0.
 
 ## A10. Virtual Prism displays are set occluders
 
@@ -748,6 +776,16 @@ lldrawpoolalpha.cpp:545-549 and 1670-1674 (PBR vs legacy predicate selection), l
 | Finding | Sev | Verified | v19 disposition |
 |---|---|---|---|
 | R42 owner-wide disposition misses the PBR suppression law; blended PBR counted twice | P1 | yes | **FIXED** — D54: per component and per render path, recorded at the predicate each path calls (legacy `shouldSuppressSharedActorFx`, PBR `shouldSuppressSharedActorFxPBR` incl. ordinary Layer); exactly one contributor per visible component; the key's generic shared hook contributes nothing; fractional ordinary-Layer PBR fixtures with numeric coverage and contributor counts (§A5, §A9) |
+
+### r6 (v20)
+
+Anchors re-read for r6: lldrawpoolavatar.cpp:1224-1234 and 1268-1278 (UUID overload at the eye and body call sites),
+lldrawpool.cpp:1077-1099 (UUID overload recording `suppress(actor_id)`), llactormaskeligibility.h:28-44 (separate body
+and draw-info sets), llactormover.cpp:16480-16498 (`renderSkinned` / `renderRigid` in the system coverage replay).
+
+| Finding | Sev | Verified | v20 disposition |
+|---|---|---|---|
+| R43 draw-info-only record cannot suppress BOM body/eye coverage | P1 | yes | **FIXED** — typed system record `SystemComponentKey {get_actor_fx_id, BodyOpaque / BodyTransparent / RigidEyes}` written at the UUID beauty call sites, looked up before `renderSkinned` / `renderRigid` / transparent layers in the key's system coverage, shared system captures keyed the same way; trace covers the system domain; BOM body/eyes/system-transparent fixtures under Replace, Layer Dissolve, ordinary Layer, zero Cover (§A9, D55) |
 
 ---
 
