@@ -1,6 +1,7 @@
 {
-  "base": "4afbf00ba09",
-  "description": "Remove reserved Studio look ids 68/72 and their displaced emission sweep; canonical Clone fallback only. Clock and remaining looks unchanged.",
+  "base": "a1b30ddbb5f1a7e8492978f88f8dbb34b33717a2",
+  "feature": "b4c0f5acbc4f1f326a4761756879eeebf83e2371",
+  "description": "Retired-look layer only, derived from the merged interplay baseline. Reverse before interplay and Hot Gaze; unique exact context and full-file equality are required.",
   "files": {
     "llactormover.cpp": [
       {
@@ -66,6 +67,24 @@
       {
         "before": "            {\n                drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,\n                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,\n                    ALGhostStudio::isOverlayStyle(inst.mStyle) ? inst.mStyle : 0, gp,\n                    item.mStatic, nullptr, inputs);\n            });\n    }\n",
         "after": "            {\n                drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,\n                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,\n                    ALGhostStudio::resolveOverlayStyle(inst.mStyle), gp,\n                    item.mStatic, nullptr, inputs);\n            });\n    }\n"
+      }
+    ],
+    "alghoststudio.cpp": [
+      {
+        "before": "            mVariationConnections.emplace_back(control->getSignal()->connect(\n                [this, name](LLControlVariable*, const LLSD&, const LLSD&)\n                {\n                    LLUUID id = mSelected;\n                    if (const auto* group = groupForMember(id)) id = mGroups.representative(group->mId);\n                    if (const auto* inst = getInstance(id)) applyCrowdVariation(id, inst->mCrowdSeed, std::string(name).find(\"GhostStudioStart\") == 0 || std::string(name) == \"GhostStudioRippleFrom\", std::string(name).find(\"GhostStudioStart\") != 0 && std::string(name) != \"GhostStudioRippleFrom\");\n                }));\n\n    // Runtime UUID consumers enroll here. Replacement and removal always walk\n    // this registry, so adding a new consumer cannot require editing every\n",
+        "after": "            mVariationConnections.emplace_back(control->getSignal()->connect(\n                [this, name](LLControlVariable*, const LLSD&, const LLSD&)\n                {\n                    if (std::string(name).find(\"GhostStudioMixLook\") == 0)\n                    {\n                        const S32 old = gSavedSettings.getS32(name);\n                        const S32 look = remapRetiredOverlayStyle(old);\n                        if (old != look)\n                        {\n                            gSavedSettings.setS32(name, look);\n                            return; // the canonical value emits the normal update\n                        }\n                    }\n                    LLUUID id = mSelected;\n                    if (const auto* group = groupForMember(id)) id = mGroups.representative(group->mId);\n                    if (const auto* inst = getInstance(id)) applyCrowdVariation(id, inst->mCrowdSeed, std::string(name).find(\"GhostStudioStart\") == 0 || std::string(name) == \"GhostStudioRippleFrom\", std::string(name).find(\"GhostStudioStart\") != 0 && std::string(name) != \"GhostStudioRippleFrom\");\n                }));\n\n    for (S32 i = 1; i <= 6; ++i)\n    {\n        const std::string name = \"GhostStudioMixLook\" + std::to_string(i);\n        const S32 old = gSavedSettings.getS32(name);\n        const S32 look = remapRetiredOverlayStyle(old);\n        if (old != look) gSavedSettings.setS32(name, look);\n    }\n\n    // Runtime UUID consumers enroll here. Replacement and removal always walk\n    // this registry, so adding a new consumer cannot require editing every\n"
+      },
+      {
+        "before": "    Instance* inst = getInstance(id);\n    if (!inst || inst->mPose != POSE_LIVE || inst->mPoseRateHz <= 0.f)\n        return false;\n    const bool need_bounds = inst->mStyle == 64 || inst->mStyle == 68\n        || inst->mStyle == 72 || inst->mStyle == 75;\n    // Changing from a historical look to phase 2 refreshes an uncaptured bound\n    // once, rather than culling against a smaller current live pose.\n    if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh\n",
+        "after": "    Instance* inst = getInstance(id);\n    if (!inst || inst->mPose != POSE_LIVE || inst->mPoseRateHz <= 0.f)\n        return false;\n    const bool need_bounds = inst->mStyle == 64 || inst->mStyle == 75;\n    // Changing from a historical look to phase 2 refreshes an uncaptured bound\n    // once, rather than culling against a smaller current live pose.\n    if (!inst->mCadencePalettes.empty() && now < inst->mNextPoseRefresh\n"
+      },
+      {
+        "before": "    std::vector<S32> looks;\n    for (S32 i=1; i<=6; ++i)\n    {\n        const S32 look = gSavedSettings.getS32(\"GhostStudioMixLook\"+std::to_string(i));\n        if (isOverlayStyle(look) && std::find(looks.begin(), looks.end(), look) == looks.end()) looks.push_back(look);\n    }\n    F64 low = std::numeric_limits<F64>::max(), high = -low;\n",
+        "after": "    std::vector<S32> looks;\n    for (S32 i=1; i<=6; ++i)\n    {\n        const S32 look = remapRetiredOverlayStyle(gSavedSettings.getS32(\"GhostStudioMixLook\"+std::to_string(i)));\n        if (isOverlayStyle(look) && std::find(looks.begin(), looks.end(), look) == looks.end()) looks.push_back(look);\n    }\n    F64 low = std::numeric_limits<F64>::max(), high = -low;\n"
+      },
+      {
+        "before": "            {\n                if (mix && !looks.empty())\n                {\n                    if (!inst.mCrowdMixed) inst.mCrowdSingleStyle = inst.mStyle;\n                    inst.mCrowdMixed = true;\n                    inst.mStyle = looks[ALCloneQol::lookIndex(seed, stable, inst.mCrowdRow, by_row, (U32)looks.size())];\n                }\n                else if (inst.mCrowdMixed)\n                {\n                    inst.mStyle = inst.mCrowdSingleStyle;\n                    inst.mCrowdMixed = false;\n                }\n            }\n",
+        "after": "            {\n                if (mix && !looks.empty())\n                {\n                    if (!inst.mCrowdMixed) inst.mCrowdSingleStyle = resolveOverlayStyle(inst.mStyle);\n                    inst.mCrowdMixed = true;\n                    inst.mStyle = looks[ALCloneQol::lookIndex(seed, stable, inst.mCrowdRow, by_row, (U32)looks.size())];\n                }\n                else if (inst.mCrowdMixed)\n                {\n                    inst.mStyle = resolveOverlayStyle(inst.mCrowdSingleStyle);\n                    inst.mCrowdMixed = false;\n                }\n            }\n"
       }
     ]
   }

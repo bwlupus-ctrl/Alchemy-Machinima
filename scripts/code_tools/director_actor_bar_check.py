@@ -9,34 +9,38 @@ import xml.etree.ElementTree as ET
 from relight_area_policy_check import method as source_method
 
 
-def hot_gaze_baseline(source, name):
-    # Exact feature hunks with context, pinned by content. Restore only Hot Gaze
-    # before applying the existing phase-2/rekey/actor-bar baseline guards.
+def reverse_feature_allowance(source, name, filename, digest, label):
+    """Reverse one pinned layer, then require its entire historical baseline."""
     import hashlib
     import json
-    if name == 'llactormover.cpp':
-        # Reverse only this brief's exact, reviewable renderer delta before
-        # applying the existing Hot Gaze/QoL/phase-2 baseline guards.
-        raw = (Path(__file__).parent / 'ashfix_mover_hunks.json').read_bytes().replace(b'\r\n', b'\n')
-        assert hashlib.sha256(raw).hexdigest() == '923361662de1a1d8684d3ac9eb94c348467a51e6ad3c8397334237100fe98f21', 'retired-look allowance pin'
-        retired = json.loads(raw)
-        baseline = subprocess.check_output(['git', 'show', retired['base']+':indra/newview/'+name]).decode('utf-8').replace('\r\n', '\n')
-        for hunk in retired['files'][name]:
-            assert baseline.count(hunk['before']) == 1, 'retired-look baseline hunk'
-            assert source.count(hunk['after']) == 1, 'retired-look exact feature hunk'
-            source = source.replace(hunk['after'], hunk['before'], 1)
-        assert source == baseline, 'retired-look reversal must reproduce requested base exactly'
-    data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n")
-    assert hashlib.sha256(data).hexdigest() == "9bab828ec9c93d9efd79b588c60b9c73cb44211a4f00dc7bedd98cf081a333d7"
-    allowed = json.loads(data)
+    raw = (Path(__file__).parent / filename).read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == digest, (label, "allowance pin")
+    allowed = json.loads(raw)
     if name not in allowed["files"]:
         return source
-    original = subprocess.check_output(["git", "show", allowed["base"] + ":indra/newview/" + name]).decode("utf-8").replace("\r\n", "\n")
+    original = subprocess.check_output([
+        "git", "show", allowed["base"] + ":indra/newview/" + name
+    ]).decode("utf-8").replace("\r\n", "\n")
     for hunk in allowed["files"][name]:
-        assert original.count(hunk["before"]) == 1, "Hot Gaze baseline hunk"
-        assert source.count(hunk["after"]) == 1, "Hot Gaze exact feature hunk"
+        assert original.count(hunk["before"]) == 1, (label, "baseline hunk", name)
+        assert source.count(hunk["after"]) == 1, (label, "exact feature hunk", name)
         source = source.replace(hunk["after"], hunk["before"], 1)
-    assert source == original, ("Hot Gaze reversal must reproduce its exact baseline", name)
+    assert source == original, (label, "reversal must reproduce its exact baseline", name)
+    return source
+
+
+def hot_gaze_baseline(source, name):
+    # Peel independent layers newest first. In particular, retiring renderer
+    # looks must preserve interplay until its own exact allowance reverses it.
+    for filename, digest, label in (
+        ("ashfix_mover_hunks.json",
+         "f345ee66bf29b1e58aebb895667f0b35e88b7569461f9ffe3ded53767071b135", "retired-look"),
+        ("hot_clone_interplay_hunks.json",
+         "4169dfa99685ba2a6d85308c1c4e1bfb8e490fb777f45fd9b3f6e76bfc140337", "Hot Gaze / clone interplay"),
+        ("hot_gaze_mover_hunks.json",
+         "c352097782c87b09eafae9ed80b081bb71314862dfabfd5ecb8292d14f37c411", "Hot Gaze"),
+    ):
+        source = reverse_feature_allowance(source, name, filename, digest, label)
     return source
 
 
@@ -154,8 +158,13 @@ def main():
         'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',
         'bool LLActorMover::rewriteActorReferences(': 'fc6510b35824ac02735fad71f323a4254048ec9164dd97faebc1b36e333e7a95',
     }
+    # Guard every additional file covered by the new layers, including Studio
+    # where retirement and interplay both changed the Hot Gaze implementation.
+    for name in ("alghoststudio.cpp", "llactormover.h"):
+        hot_gaze_baseline((nv / name).read_text(encoding="utf-8"), name)
     guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
-    # Reversal order: Hot Gaze, QoL, phase 2, rekey, then the original guard.
+    # Reversal order: retired looks, interplay, Hot Gaze, QoL, phase 2,
+    # rekey, phase 1, then the unchanged original round-2 guard.
     guarded_mover = reverse_qol_allowance("indra/newview/llactormover.cpp", guarded_mover)
     import json
     phase2_bytes = normalize((Path(__file__).parent / 'clone_looks2_mover_hunks.json').read_text(encoding='utf-8')).encode()
