@@ -173,6 +173,7 @@ ALKitRow::~ALKitRow()
 
 ALKitRow::Params::Params() :
     kind("kind"),
+    code_readout("code_readout", ""),
     widget("widget", ""),
     label("label", ""),
     label_name("label_name", ""),
@@ -214,6 +215,7 @@ ALKitRow::ALKitRow(const Params& p) :
     mResetSettings(p.reset_settings),
     mDefaultValue(p.default_value),
     mLabelName(p.label_name),
+    mCodeReadoutName(p.code_readout),
     mRowHeight(p.row_height),
     mExplicitRowHeight(p.row_height.isProvided()),
     mActionRow(p.action_row),
@@ -330,6 +332,16 @@ bool ALKitRow::postBuild()
 
     mLabel = LLUICtrlFactory::create<LLTextBox>(label);
     addChild(mLabel);
+    if (!mCodeReadoutName.empty())
+    {
+        LLTextBox::Params readout;
+        readout.name = mCodeReadoutName;
+        readout.rect = LLRect(0, 20, 156, 0);
+        readout.font = ALKitStyle::monoFont();
+        readout.text_color = ALKitStyle::color(ALKitStyle::MUTED);
+        mCodeReadout = LLUICtrlFactory::create<LLTextBox>(readout);
+        addChild(mCodeReadout);
+    }
 
     if (mControl)
     {
@@ -557,7 +569,7 @@ S32 ALKitRow::heightForWidth(S32 width) const
         return mRowHeight > 28 ? mRowHeight : 120;
     if (mMeta.kind == "viewport")
         return (mRowHeight > 28 ? mRowHeight : 180) + 6;
-    return llmax(28, mRowHeight);
+    return llmax(mCodeReadout ? 56 : 28, mRowHeight);
 }
 
 // A label wider than its box is elided with an ellipsis; the full text moves to the tooltip.
@@ -591,6 +603,7 @@ void ALKitRow::layoutRow(S32 w)
     // track width and never narrows the label track.
     constexpr S32 kFavoriteW = 18;
     const S32 h = heightForWidth(w);
+    const S32 code_offset = mCodeReadout ? 12 : 0;
     const S32 value_width = mFillWidth && mMeta.kind == "toggle" ? 24 : ALKitStyle::VALUE_W;
     // A full-width toggle spends its otherwise empty track on its label, as
     // authored in the cache-lifetime mockup. Other rows keep the 100 px track.
@@ -611,7 +624,7 @@ void ALKitRow::layoutRow(S32 w)
             mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
         const auto* text = dynamic_cast<LLTextBox*>(mControl);
         const bool top_aligned = mMeta.kind == "readout" && text && text->getWordWrap();
-        mLabel->setOrigin(ALKitStyle::ROW_INSET, mLabelWrap ? 4 : top_aligned ? h - 24 : (h - 20) / 2);
+        mLabel->setOrigin(ALKitStyle::ROW_INSET, mLabelWrap ? 4 : top_aligned ? h - 24 : (h - 20) / 2 + code_offset);
         mLabel->setVisible(!full_span_custom);
         fitLabel(label_width);
     }
@@ -710,7 +723,7 @@ void ALKitRow::layoutRow(S32 w)
             }
         }
         const S32 control_x = mMeta.kind == "number" ? x + cw + ALKitStyle::COL_GAP : x;
-        mControl->setOrigin(control_x, (h - height) / 2);
+        mControl->setOrigin(control_x, (h - height) / 2 + code_offset);
         if (mActionRow)
         {
             // Geometry-less hosted panels cannot rely on XUI's initial parent
@@ -747,21 +760,26 @@ void ALKitRow::layoutRow(S32 w)
         }
     }
 
+    if (mCodeReadout)
+    {
+        mCodeReadout->reshape(span, 20, true);
+        mCodeReadout->setOrigin(x, 4);
+    }
     if (mValueText)
     {
         mValueText->reshape(value_width, 20, true);
-        mValueText->setOrigin(x + cw + ALKitStyle::COL_GAP, (h - 20) / 2);
+        mValueText->setOrigin(x + cw + ALKitStyle::COL_GAP, (h - 20) / 2 + code_offset);
     }
     if (mReset)
     {
         mReset->reshape(ALKitStyle::RESET_W, 20, true);
-        mReset->setOrigin(w - ALKitStyle::ROW_INSET - ALKitStyle::RESET_W, (h - 20) / 2);
+        mReset->setOrigin(w - ALKitStyle::ROW_INSET - ALKitStyle::RESET_W, (h - 20) / 2 + code_offset);
     }
     if (mFavorite)
     {
         mFavorite->reshape(kFavoriteW, 18, true);
         mFavorite->setOrigin(full_span_custom ? ALKitStyle::ROW_INSET : x + cw + 2 * ALKitStyle::COL_GAP + value_width,
-                             (h - 18) / 2);
+                             (h - 18) / 2 + code_offset);
     }
 }
 

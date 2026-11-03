@@ -12,6 +12,18 @@ from relight_area_policy_check import method as source_method
 def actor_key_baseline(source, name):
     """Reverse only the content-pinned WP01 delta before the old guard chain."""
     import hashlib, json
+    # WP5 adds only a presentation sink at the existing self-test log. Reverse
+    # its exact pinned hunks before the older renderer-preservation assertions.
+    ui_raw = (Path(__file__).parent / "actor_key_wp5_ui_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(ui_raw).hexdigest() == "894ee578fbfdd6dab7adfa76d659aa2ddd53cf364a3f147f8afee0d38794cf04", "WP5 UI allowance pin"
+    ui = json.loads(ui_raw)
+    if name == "pipeline.cpp":
+        ui_base = subprocess.check_output(["git", "show", ui["base"] + ":indra/newview/pipeline.cpp"]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in ui["hunks"]:
+            assert ui_base.count(hunk["before"]) == 1, "WP5 UI baseline hunk"
+            assert source.count(hunk["after"]) == 1, "WP5 UI exact hunk"
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == ui_base, "WP5 UI reversal must reproduce its exact base"
     wp2_raw = (Path(__file__).parent / "actor_key_wp2_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(wp2_raw).hexdigest() == "c8b94aabe721bd86e80863693d2b7ce30ae14b86ed98d376bfde03b29c109280", "WP2 allowance pin"
     wp2 = json.loads(wp2_raw)

@@ -621,6 +621,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         "vcam_tab": "ALPanelDirectorVCam::postBuild",
         "takes_tab": "ALPanelFlycamRecorder::postBuild",
         "stepped_tab": "ALPanelSteppedAnim::bindSteppedPage",
+        "key_tab": "ALPanelActorKey::postBuild",
         "temporal_tab": "ALPanelTemporalCapture::postBuild",
         "actors_tab": "ALPanelAvatarLightResponse::postBuild",
         "switchboard_tab": "ALPanelDirectorAnimSwitcher::postBuild",

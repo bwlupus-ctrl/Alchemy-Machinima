@@ -51,6 +51,7 @@
 #include "alvcamautovol.h"
 #include "alcinelightrig.h"
 #include "alactorchromakey.h"
+#include "alactorkeyui.h" // WP5 diagnostic feedback only
 #include "alcoverpolicy.h"
 #include "alcinelightrigmanager.h"
 #include "alrelightmath.h"
@@ -29466,7 +29467,10 @@ void LLPipeline::selfTestActorKey(bool invert)
             pass &= ll_round(expected*codes) == ll_round(mActorKeyTestOutput[i]*codes);
         }
     }
-    LL_INFOS("ActorKey") << "ACTORKEY SELFTEST " << (!valid || !found[0] || !found[1] ? "INCONCLUSIVE" : pass ? "PASS" : "FAIL")
+    const char* verdict = !valid || !found[0] || !found[1] ? "INCONCLUSIVE" : pass ? "PASS" : "FAIL";
+    ALActorKeyUI::recordSelfTest(llformat("Key self-test %s, frame %u/8 (%s).", verdict,
+        mActorKeyTestFrames + 1, !valid ? "invalid sample" : !found[0] || !found[1] ? "missing actor or key block" : "key and actor sampled"));
+    LL_INFOS("ActorKey") << "ACTORKEY SELFTEST " << verdict
         << " frame=" << ++mActorKeyTestFrames << "/8 bits=" << (codes == 1023 ? 10 : 8)
         << " set=" << found[0] << " actor=" << found[1] << LL_ENDL;
     if (mActorKeyTestFrames >= 8) { mActorKeyTestFrames = 0; gSavedSettings.setU32("ActorKeySelfTest", 0); }

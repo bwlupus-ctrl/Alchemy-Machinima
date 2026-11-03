@@ -73,6 +73,7 @@ PAGE_OWNER_FILES = {
     "atmosphere_tab": {"panel_atmospheric_volumes.xml", "floater_lightbox_settings.xml"},
     "projector_shafts_tab": {"panel_projector_shafts.xml", "floater_lightbox_settings.xml"},
     "shadows_probes_tab": {"floater_lightbox_settings.xml"},
+    "key_tab": {"panel_dpage_capture_key.xml"},
     "temporal_tab": {"panel_temporal_capture.xml"},
     "scene_options_tab": {"floater_director.xml"},
     "director_settings_tab": {"panel_dpage_settings_director_settings.xml"},
@@ -115,6 +116,7 @@ PAGE_OWNER_CLASSES = {
     "atmosphere_tab": {"ALPanelAtmosphericVolumes", "ALFloaterLightBox"},
     "projector_shafts_tab": {"ALPanelProjectorShafts", "ALFloaterLightBox"},
     "shadows_probes_tab": {"ALFloaterLightBox"},
+    "key_tab": {"ALPanelActorKey"},
     "temporal_tab": {"ALPanelTemporalCapture"},
     "scene_options_tab": {"LLFloaterDirector"},
     "director_settings_tab": {"LLFloaterDirector"},
@@ -368,6 +370,7 @@ EXPECTED_SHORTCUTS = {
 }
 
 ADAPTERS = {
+    "key_tab": "ALPanelActorKey",
     "move_tab": "ALActorMoverKitAdapter", "path_tab": "ALPathKitAdapter",
     "props_tab": "ALPropMoverKitAdapter", "ghosts_tab": "ALGhostStudioKitAdapter",
     "dance_tab": "ALDanceBallKitAdapter", "animate_tab": "ALAnimateKitAdapter",

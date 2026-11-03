@@ -1,0 +1,13 @@
+{
+  "base": "27d77b5c272",
+  "hunks": [
+    {
+      "before": "#include \"alactorchromakey.h\"\n",
+      "after": "#include \"alactorchromakey.h\"\n#include \"alactorkeyui.h\" // WP5 diagnostic feedback only\n"
+    },
+    {
+      "before": "    LL_INFOS(\"ActorKey\") << \"ACTORKEY SELFTEST \" << (!valid || !found[0] || !found[1] ? \"INCONCLUSIVE\" : pass ? \"PASS\" : \"FAIL\")",
+      "after": "    const char* verdict = !valid || !found[0] || !found[1] ? \"INCONCLUSIVE\" : pass ? \"PASS\" : \"FAIL\";\n    ALActorKeyUI::recordSelfTest(llformat(\"Key self-test %s, frame %u/8 (%s).\", verdict,\n        mActorKeyTestFrames + 1, !valid ? \"invalid sample\" : !found[0] || !found[1] ? \"missing actor or key block\" : \"key and actor sampled\"));\n    LL_INFOS(\"ActorKey\") << \"ACTORKEY SELFTEST \" << verdict"
+    }
+  ]
+}

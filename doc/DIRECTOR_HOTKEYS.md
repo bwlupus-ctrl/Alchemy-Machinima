@@ -10,7 +10,7 @@ from `LLViewerWindow::handleKey`; master switch `DirectorHotkeysEnabled`
 
 | Source | Where | Result |
 |---|---|---|
-| Viewer keybinding defaults | `indra/newview/app_settings/key_bindings.xml` (LLViewerInput; user copy in `user_settings` overrides) | **No F-keys bound** in any mode (first_person / third_person / edit_avatar / sitting). The "F" bindings there are the letter F (fly), not F-keys. |
+| Viewer keybinding defaults | `indra/newview/app_settings/key_bindings.xml` (LLViewerInput; user copy in `user_settings` overrides) | **F9 is POV eye blink** in every mode (first_person / third_person / edit_avatar / sitting). The "F" bindings there are the letter F (fly), not F-keys. |
 | Menu accelerators | `grep shortcut=` over `skins/default/xui/en/*.xml` | Hits in `menu_viewer.xml`, `menu_login.xml`, `panel_script_ed.xml` — itemized below. |
 | Hardcoded key handling | `grep KEY_F1..KEY_F12` over `indra/newview` + `indra/llwindow` | `llfloaterhowto.cpp` (F1 closes the guidebook), `llinventorygallery.cpp` / `lloutfitgallery.cpp` (F2 = rename while that gallery has keyboard focus), `llpreviewgesture.cpp` (blocks the Ctrl+F10 combo in the gesture editor UI), `llviewerinput.cpp` (F-key repeat suppression + user F2–F12 remap support). `llwindow` hits are only key-name/translation tables, not bindings. |
 | Gestures | `LLGestureMgr::triggerGesture` (llviewerwindow.cpp:3386) | Users may bind **any** F2–F12 (± modifiers) to gestures at runtime. Gestures are checked **before** our hook, so a user gesture always pre-empts a Director key — safe by construction, but a gesture on F3 will shadow ACTION. |
@@ -27,7 +27,7 @@ from `LLViewerWindow::handleKey`; master switch `DirectorHotkeysEnabled`
 | F6 | Free | — | **SAFE** → reserved |
 | F7 | Free | — | **SAFE** → reserved |
 | F8 | Free | — | **SAFE** → reserved |
-| F9 | Free | — | SAFE — left unreserved (headroom) |
+| F9 | POV eye blink (`pov_eye_blink`) | `key_bindings.xml`, `llviewerinput.cpp` | Reserved; rebindable (migration v3) |
 | F10 | Free in-viewer. Gesture editor refuses the Ctrl+F10 combo (`llpreviewgesture.cpp`), and F10 is the Windows menu-bar convention in native apps (not intercepted by this GL window) | `llpreviewgesture.cpp:949` | SAFE — left unreserved |
 | F11 | Free (no fullscreen binding in this fork) | — | SAFE — left unreserved |
 | F12 | Free | — | SAFE — left unreserved |
@@ -41,6 +41,13 @@ any nonzero mask before doing anything):
 | Ctrl+Alt+F2…F6, F8, F9 | Rendering feature toggles (Selected, Highlighted, Dynamic Textures, Foot Shadows, Fog, Test FRInfo, Flexible) | `menu_viewer.xml:2966–3032` |
 | Shift+F1 | Script editor help | `panel_script_ed.xml:169` (floater-local) |
 | Alt+F4 | OS window close | OS |
+
+## Actor key shortcut
+
+Ctrl+Alt+K toggles actor chroma key in all four viewer input modes. It is the
+rebindable **Toggle Actor Key** action in Controls. Existing customised key
+bindings are preserved by migration version 5; integration must retain the
+version 3 POV blink and version 4 hot-gaze migrations.
 
 ## Reserved Director keys
 

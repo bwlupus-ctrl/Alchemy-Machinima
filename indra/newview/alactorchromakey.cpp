@@ -5,6 +5,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alactorchromakey.h"
+#include "alactorkeyui.h" // WP5 global settings presentation listeners
 
 #include "alcinelightrigmanager.h"
 #include "alghoststudio.h"
@@ -29,6 +30,24 @@ ALActorKeySet<LLUUID> ALActorChromaKey::sKeyed;
 U64 ALActorChromaKey::sRevision = 1;
 U32 ALActorChromaKey::sSuppress = 0;
 
+namespace
+{
+template <typename Callback>
+void watchActorKeyControls(Callback callback)
+{
+    // Revision also covers edge/output controls whose values do not change membership.
+    const char* controls[] = {"ActorKeySubjects", "ActorKeyIncludeClones", "ActorKeyIncludeAnimesh",
+        "ActorKeyMode", "ActorKeyColorPreset", "ActorKeyColor", "ActorKeyMatteInvert",
+        "ActorKeyFeather", "ActorKeyChoke", "ActorKeyEdgeMode", "ActorKeyAlphaCoverage",
+        "ActorKeyHideHUD", "ActorKeyShadow", "ActorKeyShadowIsolation", "ActorKeyShadowStrength",
+        "ActorKeyShadowCascades", "ActorKeyShadowSoftness", "ActorKeyMatteShadow",
+        "ActorKeyCoverBias", "ActorKeyGlassSource", "ActorKeyDebugView", "ActorKeyDebugFailPreflight"};
+    for (const char* name : controls)
+        if (auto control = gSavedSettings.getControl(name))
+            control->getSignal()->connect(callback);
+}
+}
+
 // static
 void ALActorChromaKey::initialize()
 {
@@ -51,16 +70,8 @@ void ALActorChromaKey::initialize()
                 gPipeline.releaseActorKeyTargets();
             }
         });
-    // Revision also covers edge/output controls whose values do not change membership.
-    const char* controls[] = {"ActorKeySubjects", "ActorKeyIncludeClones", "ActorKeyIncludeAnimesh",
-        "ActorKeyMode", "ActorKeyColorPreset", "ActorKeyColor", "ActorKeyMatteInvert",
-        "ActorKeyFeather", "ActorKeyChoke", "ActorKeyEdgeMode", "ActorKeyAlphaCoverage",
-        "ActorKeyHideHUD", "ActorKeyShadow", "ActorKeyShadowIsolation", "ActorKeyShadowStrength",
-        "ActorKeyShadowCascades", "ActorKeyShadowSoftness", "ActorKeyMatteShadow",
-        "ActorKeyCoverBias", "ActorKeyGlassSource", "ActorKeyDebugView", "ActorKeyDebugFailPreflight"};
-    for (const char* name : controls)
-        if (auto control = gSavedSettings.getControl(name))
-            control->getSignal()->connect([](LLControlVariable*, const LLSD&, const LLSD&) { ++sRevision; });
+    ALActorKeyUI::initialize();
+    watchActorKeyControls([](LLControlVariable*, const LLSD&, const LLSD&) { ++sRevision; });
 }
 
 // static

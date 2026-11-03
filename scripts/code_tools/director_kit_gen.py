@@ -358,9 +358,9 @@ def validate_data(data: dict) -> None:
     # POV eye blink: exactly 15 Lens > Filters rows (13 workflow + 2 XInput mappings), 2417 -> 2432 (11/02).
     # Hot targets: one selected-slot editor, +18 rows, 2400 -> 2418 (11/02).
     # Fix round 1: Object Centre / Picked spot, Point XYZ and reset nudge: +5, 2418 -> 2423.
-    # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets = 2455.
-    if len(pages) != 38 or row_count != 2455:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 38/2455")
+    # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets + 33 Capture Key (WP5) = 2488.
+    if len(pages) != 39 or row_count != 2488:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2488")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -832,7 +832,7 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         # disabled row (e.g. reserved for a later version, but read by code) is not.
         attrs["unconnected"] = "true"
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
-               ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"))
+               ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"), ("code_readout", "code_readout"))
     for src, dst in mapping:
         if row.get(src) not in (None, ""):
             attrs[dst] = scalar(row[src])
@@ -2028,7 +2028,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "camera_group/shot_tab": "kit (P0)", "camera_group/moves_tab": "kit (P0)",
                 "camera_group/operator_tab": "kit (P0)", "camera_group/frame_orbit_tab": "kit (P0)",
                 "camera_group/takes_tab": "kit (P0)", "capture_group/temporal_tab": "kit (P0)",
-                "capture_group/scene_options_tab": "kit (P0)",
+                "capture_group/scene_options_tab": "kit (P0)", "capture_group/key_tab": "kit (P0)",
                 "settings_group/director_settings_tab": "kit (P0)",
                 "performance_group/animate_tab": "kit (P0)",
                 "light_group/exposure_tab": "kit (P0)",
@@ -2054,7 +2054,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
     # 10/15 batch 3, cast_group/dance_tab: legacy 2 -> 1.
     # 10/15 batch 3, cast_group/ghosts_tab: legacy 1 -> 0 (no legacy page remains).
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 37, "pure kit (new)": 1}):
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 38, "pure kit (new)": 1}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -2131,8 +2131,8 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # Projector Shafts page (10/23): the Projector Cones card switch became the page master (48 -> 47).
     card_headers = sum(bool(entry[0]) for entries in generated_headers.values() for entry in entries)
     page_masters = sum(not entry[0] for entries in generated_headers.values() for entry in entries)
-    if (card_headers, page_masters) != (47, 13):
-        raise GenError(f"header switch coverage drift: {card_headers} cards / {page_masters} masters; expected 47/13")
+    if (card_headers, page_masters) != (47, 14):
+        raise GenError(f"header switch coverage drift: {card_headers} cards / {page_masters} masters; expected 47/14")
     quick = quick_page()
     apply_kit_xui_style(quick)
     page_files["quick_group/quick_tab"] = "panel_dpage_quick.xml"
@@ -2251,8 +2251,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         for path, payload in outputs.items():
             if path.name.startswith("panel_dpage_"):
                 actual_headers.extend(header_destinations(ET.fromstring(payload)))
-        checks.append(("all 47 card/option headers and 13 page masters have unique search destinations",
-                       len(header_hits) == len(actual_headers) == 60 and
+        checks.append(("all 47 card/option headers and 14 page masters have unique search destinations",
+                       len(header_hits) == len(actual_headers) == 61 and
                        {(h[8], h[11], h[7]) for h in header_hits} ==
                        {(h[3], h[5], h[2]) for h in actual_headers}))
         rejects = []
@@ -2270,8 +2270,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         reload_settings = quick_safety_tripwire(config.get("header_quick_allowlist", {}), {str(p): p.read_text(encoding="utf-8") for p in (ROOT / "indra/newview").rglob("*.cpp")})
         # Weather shelter/quality now use resident variants, adding two reviewed
         # runtime headers. Their reload regressions are planted explicitly below.
-        checks.append(("only 16 reviewed setting headers/masters are Quick-safe; allowlist and tripwire agree",
-                       len(safe_headers) == 16 and all((node.get("enable_setting") or node.get("master_setting")) and
+        checks.append(("only 17 reviewed setting headers/masters are Quick-safe; allowlist and tripwire agree",
+                       len(safe_headers) == 17 and all((node.get("enable_setting") or node.get("master_setting")) and
                        (node.get("enable_setting") or node.get("master_setting")) not in reload_settings for node in safe_headers)))
         reload_settings |= quick_unsafe_listener_settings((ROOT / "indra/newview/llviewercontrol.cpp").read_text(encoding="utf-8").replace("RlvSettingNames::Main", '"RestrainedLove"'))
         rejects = []
@@ -2434,7 +2434,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("label") == "Keep breathing while paused" and
                        all(word in next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("keywords", "")
                            for word in ("breathing", "breathe", "idle", "life", "pause", "freeze", "wind down", "slow motion"))))
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 37, "pure kit (new)": 1})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 38, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -2635,7 +2635,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            row.find("kit_switch").get("control_name") == row.get("setting") and
                            row.get("setting").encode() in outputs[out_dir / "director_kit_index.xml"]
                            for row in purge_rows + pin_rows)))
-        checks.append(("39 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 39))
+        checks.append(("40 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 40))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",
