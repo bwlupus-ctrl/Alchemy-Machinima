@@ -281,6 +281,519 @@
   },
   {
     "change": "added",
+    "comment": "Actor chroma key: AlphaCoverage. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyAlphaCoverage",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Choke. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0.0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyChoke",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Color. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": [
+      {
+        "tag": "real",
+        "value": "0"
+      },
+      {
+        "tag": "real",
+        "value": "0.6941176470588235"
+      },
+      {
+        "tag": "real",
+        "value": "0.25098039215686274"
+      }
+    ],
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyColor",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Color3"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: ColorPreset. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyColorPreset",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: CoverBias. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "-8.0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyCoverBias",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: DebugFailPreflight. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyDebugFailPreflight",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: DebugView. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyDebugView",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: EdgeMode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyEdgeMode",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Enabled. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyEnabled",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Feather. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1.5",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyFeather",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: GlassSource. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyGlassSource",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: HideHUD. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyHideHUD",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: IncludeAnimesh. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyIncludeAnimesh",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: IncludeClones. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "clones"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyIncludeClones",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: MatteInvert. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyMatteInvert",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: MatteShadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyMatteShadow",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Mode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyMode",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: SelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeySelfTest",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Shadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyShadow",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: ShadowCascades. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "2",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyShadowCascades",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: ShadowIsolation. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyShadowIsolation",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: ShadowSelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyShadowSelfTest",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: ShadowSoftness. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0.5",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyShadowSoftness",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: ShadowStrength. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0.5",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeyShadowStrength",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Actor chroma key: Subjects. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "ActorKeySubjects",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
     "comment": "[ActorMover] Asset UUID of the custom locomotion animation used when ActorMoverUseCustomAnim is on. The Animation Explorer's \"To Actor Mover\" button fills this.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

@@ -34,6 +34,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alkitshell.cpp`
 - `indra/newview/alkitshell.h`
 - `indra/newview/allightrigmap.cpp`
+- `indra/newview/alpanelactorkey.h`
 - `indra/newview/alpanelactormover.cpp`
 - `indra/newview/alpanelactormover.h`
 - `indra/newview/alpanelatmosphericvolumes.h`
@@ -104,9 +105,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/llui/llsliderctrl.h", "hunks": ["indra/llui/llsliderctrl.h@51,19", "indra/llui/llsliderctrl.h@155,17"]}
 - {"path": "indra/llui/llspinctrl.cpp", "hunks": ["indra/llui/llspinctrl.cpp@185,29", "indra/llui/llspinctrl.cpp@250,7", "indra/llui/llspinctrl.cpp@294,7", "indra/llui/llspinctrl.cpp@455,20", "indra/llui/llspinctrl.cpp@485,7"]}
 - {"path": "indra/llui/llspinctrl.h", "hunks": ["indra/llui/llspinctrl.h@78,20"]}
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,53", "indra/newview/CMakeLists.txt@333,115", "indra/newview/CMakeLists.txt@1134,56", "indra/newview/CMakeLists.txt@1286,162", "indra/newview/CMakeLists.txt@2842,31"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6556,15959", "indra/newview/app_settings/settings.xml@25624,428"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,34", "indra/newview/llappviewer.cpp@4646,10", "indra/newview/llappviewer.cpp@6022,8"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@188,53", "indra/newview/CMakeLists.txt@335,117", "indra/newview/CMakeLists.txt@1138,56", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2851,32"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6556,14744", "indra/newview/app_settings/settings.xml@25624,1573"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@4648,10", "indra/newview/llappviewer.cpp@6025,8"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@27,39", "indra/newview/llfloaterenvironmentadjust.cpp@299,100", "indra/newview/llfloaterenvironmentadjust.cpp@1123,296"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@31,19", "indra/newview/llfloaterenvironmentadjust.h@60,19"]}
 - {"path": "indra/newview/llfloaterhoverheight.cpp", "hunks": ["indra/newview/llfloaterhoverheight.cpp@29,50"]}
@@ -185,6 +186,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 218, "text": "alkitshell.cpp", "source": "indra/newview/alkitshell.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1172, "text": "alkitshell.h", "source": "indra/newview/alkitshell.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 226, "text": "allightrigmap.cpp", "source": "indra/newview/allightrigmap.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1408, "text": "alpanelactorkey.h", "source": "indra/newview/alpanelactorkey.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 419, "text": "alpanelactormover.cpp", "source": "indra/newview/alpanelactormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1401, "text": "alpanelactormover.h", "source": "indra/newview/alpanelactormover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1403, "text": "alpanelatmosphericvolumes.h", "source": "indra/newview/alpanelatmosphericvolumes.h"}
@@ -255,6 +257,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 795, "text": "llpaneleditwater.cpp", "source": "indra/newview/llpaneleditwater.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 826, "text": "llpanelmaininventory.cpp", "source": "indra/newview/llpanelmaininventory.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 853, "text": "llpanelsnapshotlocal.cpp", "source": "indra/newview/llpanelsnapshotlocal.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 855, "text": "llpanelsnapshotpostcard.cpp", "source": "indra/newview/llpanelsnapshotpostcard.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 856, "text": "llpanelsnapshotprofile.cpp", "source": "indra/newview/llpanelsnapshotprofile.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 950, "text": "llstartup.cpp", "source": "indra/newview/llstartup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1024, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
 

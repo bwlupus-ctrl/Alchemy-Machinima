@@ -58,28 +58,31 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/llfloaterdirector.cpp`
 - `indra/newview/llfloaterdirector.h`
 - `indra/newview/llprismlens.cpp`
+- `indra/newview/llreshadebridge.cpp`
+- `indra/newview/llreshadebridgeabi.h`
 - `indra/newview/skins/default/xui/en/floater_director.xml`
 - `indra/newview/skins/default/xui/en/floater_prism_manager.xml`
 - `indra/newview/skins/default/xui/en/panel_ghost_studio.xml`
 - `indra/newview/skins/default/xui/en/panel_weather_settings.xml`
 - `indra/newview/slweather.cpp`
 - `indra/newview/slweather.h`
+- `reshade-addon/src/sl_key_bracket.hpp`
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@333,115", "indra/newview/CMakeLists.txt@1286,162", "indra/newview/CMakeLists.txt@2842,31", "indra/newview/CMakeLists.txt@2879,20"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,15959", "indra/newview/app_settings/settings.xml@29305,2466", "indra/newview/app_settings/settings.xml@31772,209", "indra/newview/app_settings/settings.xml@31982,189"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,34", "indra/newview/llappviewer.cpp@2612,53", "indra/newview/llappviewer.cpp@5795,119"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,117", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2851,32", "indra/newview/CMakeLists.txt@2889,20"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,14744", "indra/newview/app_settings/settings.xml@29305,2466", "indra/newview/app_settings/settings.xml@31772,209", "indra/newview/app_settings/settings.xml@31982,364"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2614,53", "indra/newview/llappviewer.cpp@5798,119"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@53,10", "indra/newview/llviewercontrol.cpp@1133,66", "indra/newview/llviewercontrol.cpp@1279,33"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2093,236"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@498,1376"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1398"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@593,2064"]}
-- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@783,16", "indra/newview/llviewerdisplay.cpp@885,16"]}
+- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@785,16", "indra/newview/llviewerdisplay.cpp@887,16"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@27,11", "indra/newview/llvovolume.cpp@622,26", "indra/newview/llvovolume.cpp@4975,12", "indra/newview/llvovolume.cpp@4994,8", "indra/newview/llvovolume.cpp@5008,8", "indra/newview/llvovolume.cpp@5076,21"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,41", "indra/newview/pipeline.cpp@218,16", "indra/newview/pipeline.cpp@1205,16", "indra/newview/pipeline.cpp@1693,29165", "indra/newview/pipeline.cpp@33330,1054"]}
-- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@225,345", "indra/newview/pipeline.h@878,67", "indra/newview/pipeline.h@1353,31", "indra/newview/pipeline.h@1491,409"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,45", "indra/newview/pipeline.cpp@222,16", "indra/newview/pipeline.cpp@1211,16", "indra/newview/pipeline.cpp@1701,29928", "indra/newview/pipeline.cpp@34230,979"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@911,100", "indra/newview/pipeline.h@1419,31", "indra/newview/pipeline.h@1557,409"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
-- {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13574,361"]}
+- {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13574,368"]}
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@305,18", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@423,25"]}
 - {"path": "indra/newview/llagent.cpp", "hunks": ["indra/newview/llagent.cpp@26,12", "indra/newview/llagent.cpp@1087,17", "indra/newview/llagent.cpp@4783,9"]}
 - {"path": "indra/newview/llviewermessage.cpp", "hunks": ["indra/newview/llviewermessage.cpp@25,11", "indra/newview/llviewermessage.cpp@3349,7", "indra/newview/llviewermessage.cpp@6679,7"]}
@@ -293,6 +296,17 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 14, "text": "llbutton.cpp", "source": "indra/llui/llbutton.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 19, "text": "llcombobox.cpp", "source": "indra/llui/llcombobox.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 40, "text": "llfolderviewitem.cpp", "source": "indra/llui/llfolderviewitem.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 45, "text": "lllineeditor.cpp", "source": "indra/llui/lllineeditor.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 49, "text": "llmenugl.cpp", "source": "indra/llui/llmenugl.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 69, "text": "llscrolllistctrl.cpp", "source": "indra/llui/llscrolllistctrl.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 82, "text": "lltextbase.cpp", "source": "indra/llui/lltextbase.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 109, "text": "llview.cpp", "source": "indra/llui/llview.cpp"}
+- {"file": "indra/llwindow/CMakeLists.txt", "line": 18, "text": "llwindow.cpp", "source": "indra/llwindow/llwindow.cpp"}
+- {"file": "indra/llwindow/CMakeLists.txt", "line": 29, "text": "llwindow.h", "source": "indra/llwindow/llwindow.h"}
+- {"file": "indra/llwindow/CMakeLists.txt", "line": 118, "text": "llwindowwin32.h", "source": "indra/llwindow/llwindowwin32.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 364, "text": "alavatarlightresponse.cpp # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1312, "text": "alavatarlightresponse.h # [AvatarLightResponse]", "source": "indra/newview/alavatarlightresponse.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 202, "text": "aldirectortabmigration.cpp", "source": "indra/newview/aldirectortabmigration.cpp"}
@@ -348,16 +362,23 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 494, "text": "lldrawpoolwater.cpp", "source": "indra/newview/lldrawpoolwater.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 497, "text": "lldynamictexture.cpp", "source": "indra/newview/lldynamictexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 512, "text": "llfetchedgltfmaterial.cpp", "source": "indra/newview/llfetchedgltfmaterial.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 513, "text": "llfilepicker.cpp", "source": "indra/newview/llfilepicker.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 518, "text": "llfloaterabout.cpp", "source": "indra/newview/llfloaterabout.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 412, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1391, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 621, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 716, "text": "llinventorymodel.cpp", "source": "indra/newview/llinventorymodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 729, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 750, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 901, "text": "llprismlens.cpp", "source": "indra/newview/llprismlens.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 909, "text": "llreflectionmapmanager.cpp", "source": "indra/newview/llreflectionmapmanager.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1906, "text": "llreflectionmapmanager.h", "source": "indra/newview/llreflectionmapmanager.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 914, "text": "llreshadebridge.cpp", "source": "indra/newview/llreshadebridge.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1912, "text": "llreshadebridgeabi.h", "source": "indra/newview/llreshadebridgeabi.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 916, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 944, "text": "llsnapshotlivepreview.cpp", "source": "indra/newview/llsnapshotlivepreview.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 954, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 968, "text": "lltextureview.cpp", "source": "indra/newview/lltextureview.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 992, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2026, "text": "llviewercamera.h", "source": "indra/newview/llviewercamera.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1024, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}

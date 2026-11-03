@@ -48,6 +48,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/llfloaterdirector.cpp`
 - `indra/newview/llghostavatar.cpp`
 - `indra/newview/llghostavatar.h`
+- `indra/newview/llreshadebridge.cpp`
 - `indra/newview/llreshadebridgeabi.h`
 - `indra/newview/skins/default/xui/en/panel_dance_ball.xml`
 - `indra/newview/skins/default/xui/en/panel_ghost_studio.xml`
@@ -58,12 +59,12 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@333,115", "indra/newview/CMakeLists.txt@1286,162", "indra/newview/CMakeLists.txt@2842,31"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,15959", "indra/newview/app_settings/settings.xml@23067,203", "indra/newview/app_settings/settings.xml@24063,65", "indra/newview/app_settings/settings.xml@29160,100", "indra/newview/app_settings/settings.xml@29305,2466"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,117", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2851,32"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,14744", "indra/newview/app_settings/settings.xml@22957,412", "indra/newview/app_settings/settings.xml@23480,362", "indra/newview/app_settings/settings.xml@29160,100", "indra/newview/app_settings/settings.xml@29305,2466"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1789,13"]}
-- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@2077,28"]}
-- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@178,8", "indra/newview/llviewerwindow.cpp@4048,19"]}
+- {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@2083,28"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@179,8", "indra/newview/llviewerwindow.cpp@4049,19"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@485,30"]}
 - {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@4376,35", "indra/newview/llselectmgr.cpp@4559,28"]}
@@ -167,6 +168,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 412, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 668, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1679, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 914, "text": "llreshadebridge.cpp", "source": "indra/newview/llreshadebridge.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1912, "text": "llreshadebridgeabi.h", "source": "indra/newview/llreshadebridgeabi.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 930, "text": "llselectmgr.cpp", "source": "indra/newview/llselectmgr.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1026, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
