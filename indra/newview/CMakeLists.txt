@@ -335,6 +335,7 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormaskeligibility.cpp # [ActorMask]
+    alactorchromakey.cpp # [ActorKey] WP0/WP1
     alactormaskdiagnostics.cpp # [ActorMask] WP7
     llactormover.cpp
     alghostattachmentenumerator.cpp
@@ -1288,6 +1289,9 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormaskeligibility.h # [ActorMask]
+    alactorchromakey.h
+    alactorkeyset.h
+    alcoverpolicy.h
     alactormaskdiagnostics.h # [ActorMask] WP7
     llactormover.h
     alghostattachmentenumerator.h
@@ -2842,6 +2846,7 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    alactorkeyset.cpp # [ActorKey] pure membership TUT
     fsinventorycustomtabmodel.cpp
     allocallightsize.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]

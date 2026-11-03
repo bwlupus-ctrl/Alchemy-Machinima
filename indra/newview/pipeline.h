@@ -96,6 +96,7 @@ static const U32 SL_SIDECAR_ATTACHMENT  = 1;
 static const U32 SL_COVERAGE_ATTACHMENT = 2;
 static const U32 ALR_RIM_PARITY_ATTACHMENT = 3;
 
+struct CoverPolicy;
 class LLPipeline
 {
 public:
@@ -841,7 +842,21 @@ public:
     // froxel/projector volumetrics.
     bool ensureSilCover();
     void renderSilCover(U32 phase);
-    void renderGhostSilCover(U32 phase);
+    void renderGhostSilCover(U32 phase, const CoverPolicy& policy);
+    bool renderCover(U32 phase, const CoverPolicy& policy);
+    void buildActorKeyCoverageAndMatte();
+    void releaseActorKeyTargets();
+    bool actorKeyMatteValid() const; // WP2 consumes only a matching stamp.
+    bool ensureKeyCoverage();
+    bool ensureKeyPrograms();
+    void buildActorKeyMatte();
+    void renderActorKeyPrismOccluders();
+    LLRenderTarget mActorKeyCoverage, mActorKeyMatte, mActorKeyBlurA, mActorKeyBlurB;
+    U32 mActorKeyDepthSrc = 0;
+    U32 mActorKeyCoverageFrame = ~0u, mActorKeyMatteFrame = ~0u;
+    const void* mActorKeyMatteRT = nullptr;
+    U32 mActorKeyMatteWidth = 0, mActorKeyMatteHeight = 0;
+    glm::mat4 mActorKeyProjection{}, mActorKeyModelview{};
     void releaseSilCovers();
     bool mSilCoverValid = false;
 

@@ -9,6 +9,24 @@ import xml.etree.ElementTree as ET
 from relight_area_policy_check import method as source_method
 
 
+def actor_key_baseline(source, name):
+    """Reverse only the content-pinned WP01 delta before the old guard chain."""
+    import hashlib, json
+    raw = (Path(__file__).parent / "actor_key_wp01_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == "130f8a609515880460dd6ad86d6fd633a971b4dc36eb1c06155cbe0162fee58f", "WP01 allowance pin"
+    allowance = json.loads(raw)
+    path = "indra/newview/" + name
+    if path not in allowance["files"]:
+        return source
+    original = subprocess.check_output(["git", "show", allowance["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowance["files"][path]:
+        assert original.count(hunk["before"]) == 1, ("WP01 baseline hunk", path)
+        assert source.count(hunk["after"]) == 1, ("WP01 exact hunk", path)
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == original, ("WP01 reversal must reproduce its exact base", path)
+    return source
+
+
 def hot_gaze_baseline(source, name):
     # Exact feature hunks with context, pinned by content. Restore only Hot Gaze
     # before applying the existing phase-2/rekey/actor-bar baseline guards.
@@ -33,7 +51,7 @@ def method(path, signature):
     # code. New Hot Gaze behavior is exercised by its own native contract and
     # the extended clone transaction fixture, without broadening old stubs.
     if path.name in ("llactormover.cpp", "lldirectorcast.cpp") and path.parent.name == "newview":
-        source = hot_gaze_baseline(path.read_text(encoding="utf-8"), path.name)
+        source = hot_gaze_baseline(actor_key_baseline(path.read_text(encoding="utf-8"), path.name), path.name)
         baseline = check_directory("actorbar_baseline") / path.name
         baseline.parent.mkdir(parents=True, exist_ok=True)
         baseline.write_text(source, encoding="utf-8")
@@ -59,6 +77,7 @@ def reverse_qol_allowance(path, source):
 
 def main():
     nv = Path("indra/newview")
+    actor_key_baseline((nv / "llactormover.h").read_text(encoding="utf-8"), "llactormover.h")
     xui = nv / "skins/default/xui/en"
     removed = {"anim_speed_avatar", "gaze_edit_actor", "sa_actor_target", "actor_style_target"}
     index = (xui / "director_kit_index.xml").read_text(encoding="utf-8")
@@ -86,7 +105,7 @@ def main():
         assert "\t" + widget + "\t" in index
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
-        guarded = (nv / path).read_text(encoding="utf-8")
+        guarded = actor_key_baseline((nv / path).read_text(encoding="utf-8"), path)
         if path == "pipeline.cpp":
             # Remove only the two pinned blink hooks before reversing clone QoL.
             import hashlib, json
@@ -136,7 +155,7 @@ def main():
     # Round-2 mover plus Clone Studio look registration and the two exact
     # transaction-time reference-rewrite methods below. Hashes pin their full
     # content: an unrelated mover edit still fails the original baseline guard.
-    current_mover = normalize((nv / "llactormover.cpp").read_text(encoding="utf-8"))
+    current_mover = actor_key_baseline(normalize((nv / "llactormover.cpp").read_text(encoding="utf-8")), "llactormover.cpp")
     import hashlib
     rekey_methods = {
         'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',

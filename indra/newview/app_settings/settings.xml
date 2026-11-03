@@ -32166,5 +32166,180 @@
         <key>Type</key><string>U32</string>
         <key>Value</key><integer>64</integer>
     </map>
+    <key>ActorKeyEnabled</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Enabled. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeySubjects</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Subjects. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyIncludeClones</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: IncludeClones. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>ActorKeyIncludeAnimesh</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: IncludeAnimesh. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyMode</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Mode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyColorPreset</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: ColorPreset. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyColor</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Color. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Color3</string>
+      <key>Value</key><array><real>0</real><real>0.6941176470588235</real><real>0.25098039215686274</real></array>
+    </map>
+    <key>ActorKeyMatteInvert</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: MatteInvert. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyFeather</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Feather. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5</real>
+    </map>
+    <key>ActorKeyChoke</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Choke. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>ActorKeyEdgeMode</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: EdgeMode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyAlphaCoverage</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: AlphaCoverage. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>ActorKeyHideHUD</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: HideHUD. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>ActorKeyShadow</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: Shadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>ActorKeyShadowIsolation</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: ShadowIsolation. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyShadowStrength</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: ShadowStrength. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>ActorKeyShadowCascades</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: ShadowCascades. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>ActorKeyShadowSoftness</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: ShadowSoftness. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>ActorKeyMatteShadow</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: MatteShadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyShadowSelfTest</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: ShadowSelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeySelfTest</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: SelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyCoverBias</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: CoverBias. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-8.0</real>
+    </map>
+    <key>ActorKeyGlassSource</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: GlassSource. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyDebugView</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: DebugView. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>ActorKeyDebugFailPreflight</key>
+    <map>
+      <key>Comment</key><string>Actor chroma key: DebugFailPreflight. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
 </map>
 </llsd>

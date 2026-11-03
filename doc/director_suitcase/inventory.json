@@ -10,9 +10,19 @@
       "OWNED": 890,
       "TOOLING": 369
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/app_settings/settings.xml",
+      "indra/newview/llactormover.cpp",
+      "indra/newview/llactormover.h",
+      "indra/newview/llappviewer.cpp",
+      "indra/newview/llvoavatar.cpp",
+      "indra/newview/pipeline.cpp",
+      "indra/newview/pipeline.h",
+      "scripts/code_tools/director_actor_bar_check.py"
+    ],
     "evidence": {
-      "functional_csv_hash_matches": true,
+      "functional_csv_hash_matches": false,
       "functional_meta": {
         "actions": [
           "RUN",
@@ -193,7 +203,7 @@
     "head_source_tree": "05b44e27e078c5a3471903604618ab3a90019ab4",
     "hook_files": 498,
     "hunks": 3021,
-    "input_sha256": "6a74850293ab36e11fdd3555178a4fa9bb158cae7fcd69b641771df0bbdced42",
+    "input_sha256": "fc5708beb0edb5d375c25d970d69c9b26710719a4fd0b8bda2c64e5b25d45e0b",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2023
   },

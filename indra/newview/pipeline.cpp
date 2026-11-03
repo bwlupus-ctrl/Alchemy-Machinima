@@ -50,6 +50,8 @@
 #include "alsensorsettings.h"
 #include "alvcamautovol.h"
 #include "alcinelightrig.h"
+#include "alactorchromakey.h"
+#include "alcoverpolicy.h"
 #include "alcinelightrigmanager.h"
 #include "alrelightmath.h"
 #include "alareashadowmath.h"
@@ -1341,6 +1343,8 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
 
     S32 shadow_detail = RenderShadowDetail;
     bool ssao = RenderDeferredSSAO;
+
+    if (ALActorChromaKey::sActive && mRT == &mMainRT) releaseActorKeyTargets();
 
     // [ActorMask] Detach before deferredScreen.allocate destroys its depth.
     const bool had_actor_mask = mRT->actorMask.isComplete();
@@ -3209,6 +3213,7 @@ void LLPipeline::releaseScreenBuffers()
     mActorMaskAllocated = false;
     releaseRigRimAux();
     releaseLensPyramid();
+    if (ALActorChromaKey::sActive) releaseActorKeyTargets();
     releaseSilCovers(); // [AvatarSilhouette] Detach every shared-depth cover first.
     auto release_pack = [](RenderTargetPack& rt)
     {
@@ -6532,7 +6537,6 @@ U32 LLPipeline::sCurRenderPoolType = 0 ;
 namespace
 {
 struct SilCoverPass { U32 pass; bool rigged, pbr, masked, material, vec3Position; };
-bool silCoverFor(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLVector2& cover);
 bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,
                        const LLVector2& cover, bool blended,
                        bool apply_model_matrix = true);
@@ -7139,7 +7143,7 @@ GhostCoverageMask LLPipeline::getGhostDeferredCoverageThisFrame(const LLUUID& in
     return it != mGhostDeferredCoverage.end() ? it->second : GHOST_COVERAGE_NONE;
 }
 
-void LLPipeline::renderGhostSilCover(U32 phase)
+void LLPipeline::renderGhostSilCover(U32 phase, const CoverPolicy& policy)
 {
     struct Counters
     {
@@ -7150,6 +7154,7 @@ void LLPipeline::renderGhostSilCover(U32 phase)
     static Counters c;
     auto log_tick = [&]()
     {
+        if (policy.key) return;
         if (c.timer.getElapsedTimeF32() < 1.f) return;
         c.timer.reset();
         LL_INFOS("AvatarSilhouette") << "[ALR] SILCOVER proxies=" << c.proxies
@@ -7201,7 +7206,7 @@ void LLPipeline::renderGhostSilCover(U32 phase)
                 LLDrawInfo* di = batch.mInfo;
                 if (!selected || !di) continue;
                 LLVector2 cover;
-                if (!silCoverFor(proxy.mInstanceId, di->mActorFxOwner,
+                if (!policy.proxyCover(proxy.mInstanceId, di->mActorFxOwner,
                                  di->mActorFxFallbackOwner, cover)) continue;
                 const bool pbr = di->mGLTFMaterial.notNull() || !di->mGLTFMaterialList.empty();
                 const bool material = di->mMaterial.notNull() || !di->mMaterialSlotList.empty();
@@ -7224,7 +7229,7 @@ void LLPipeline::renderGhostSilCover(U32 phase)
                 const LLDrawInfo* di = face ? face->mDrawInfo : nullptr;
                 if (!vb || !di) continue;
                 LLVector2 cover;
-                if (!silCoverFor(proxy.mInstanceId, di->mActorFxOwner,
+                if (!policy.proxyCover(proxy.mInstanceId, di->mActorFxOwner,
                                  di->mActorFxFallbackOwner, cover)) continue;
                 LLGLSLShader& shader = gSilCoverProgram[ACTOR_MASK_STATIC];
                 shader.bind();
@@ -26402,6 +26407,13 @@ void LLPipeline::renderFinalize()
     const glm::mat4 actor_path_projection = get_current_projection();
     const glm::mat4 actor_path_modelview = get_current_modelview();
     const FinalizeGuides render_actor_path_guides{*this, actor_path_projection, actor_path_modelview};
+    if (ALActorChromaKey::sActive && actorKeyMatteValid())
+    {
+        const bool match = mActorKeyProjection == actor_path_projection &&
+                           mActorKeyModelview == actor_path_modelview;
+        llassert(match); // I-MATRIX: K1 and FinalizeGuides must use the same live camera.
+        if (!match) mActorKeyMatteFrame = ~0u;
+    }
 
     // ReShade decouple: assume no raw-scene capture until applyOnLensFilters
     // actually performs one this frame. Reset unconditionally (including the
@@ -28736,15 +28748,6 @@ private:
     std::optional<State> mBefore;
 };
 
-bool silCoverFor(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLVector2& cover)
-{
-    const ALLightResponse::Packed* p = ALAvatarLightResponse::instance().peek(k1, k2, k3);
-    if (!p || p->mSil.mV[VW] <= 0.f) return false;
-    const F32 amount = p->mSil.mV[VW];
-    cover.set(p->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
-              p->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
-    return cover.mV[VX] > 0.f || cover.mV[VY] > 0.f;
-}
 
 struct ActorMaskPass { U32 pass; bool rigged, pbr, masked, material, vec3Position; };
 // Verified against lldrawpool.h; every entry has an explicit rigged partner.
@@ -28993,7 +28996,7 @@ void LLPipeline::renderSilCover(U32 phase)
     {
         // Counter-only guard probe: renderGhostSilCover returns before queue
         // access or any GL work in these views (T23).
-        renderGhostSilCover(phase);
+        renderGhostSilCover(phase, {mRT->silCover, -8.f, "silhouette", false});
         return;
     }
 
@@ -29005,8 +29008,18 @@ void LLPipeline::renderSilCover(U32 phase)
         mSilCoverValid = false;
         return;
     }
+    static LLCachedControl<F32> bias(gSavedSettings, "AvatarSilhouetteCoverBias", -8.f);
+    const CoverPolicy policy{mRT->silCover, llclamp(static_cast<F32>(bias), -64.f, 0.f), "silhouette", false};
+    mSilCoverValid = renderCover(phase, policy);
+}
+
+// Caller owns view eligibility, target allocation and restore scopes. This engine
+// has no silhouette enable/gain/target/validity dependency.
+bool LLPipeline::renderCover(U32 phase, const CoverPolicy& policy)
+{
+    const bool blended = phase != 0;
     for (auto& shader : gSilCoverProgram)
-        if (!shader.isComplete()) { mSilCoverValid = false; return; }
+        if (!shader.isComplete()) return false;
 
     struct ProjectionStackGuard
     {
@@ -29029,10 +29042,9 @@ void LLPipeline::renderSilCover(U32 phase)
     LLGLEnable offset(GL_POLYGON_OFFSET_FILL);
     LLGLEnable cull(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    static LLCachedControl<F32> bias(gSavedSettings, "AvatarSilhouetteCoverBias", -8.f);
-    glPolygonOffset(0.f, llclamp(static_cast<F32>(bias), -64.f, 0.f));
+    glPolygonOffset(0.f, policy.bias);
 
-    auto& target = mRT->silCover;
+    auto& target = policy.target;
     target.bindTarget();
     struct FlushCover { LLRenderTarget& target; ~FlushCover() { target.flush(); } } flush{target};
     gGL.setColorMask(true, true);
@@ -29053,7 +29065,7 @@ void LLPipeline::renderSilCover(U32 phase)
     {
         if (!di || !visited.insert(di).second) return;
         LLVector2 cover;
-        if (!silCoverFor(di->mActorFxOwner, di->mActorFxFallbackOwner, LLUUID::null, cover)) return;
+        if (!policy.nativeCover(di->mActorFxOwner, di->mActorFxFallbackOwner, cover)) return;
         drawSilCoverBatch(*di, pass, cover, blended);
     };
 
@@ -29125,8 +29137,8 @@ void LLPipeline::renderSilCover(U32 phase)
     for (LLVOAvatar* av : bodies)
     {
         LLVector2 cover;
-        const LLUUID key = ALAvatarLightResponse::keyForAvatar(av);
-        if (silCoverFor(key, LLUUID::null, LLUUID::null, cover))
+        const LLUUID key = policy.key ? av->getActorFxOwnerId() : ALAvatarLightResponse::keyForAvatar(av);
+        if (policy.nativeCover(key, LLUUID::null, cover))
             mover.renderSystemSilCover(av, cover, phase);
     }
     {
@@ -29134,16 +29146,248 @@ void LLPipeline::renderSilCover(U32 phase)
             blended ? "ghost hook B" : "ghost hook A");
         ScopedActorMaskState hook_state;
         ScopedSilCoverState hook_blend(blended);
-        renderGhostSilCover(phase);
+        renderGhostSilCover(phase, policy);
     }
     {
         ScopedSilCoverInvariant hook_invariant(
             blended ? "shared hook B" : "shared hook A");
         ScopedActorMaskState hook_state;
         ScopedSilCoverState hook_blend(blended);
-        mover.renderSharedProxySilCover(phase);
+        mover.renderSharedProxySilCover(phase, policy);
     }
-    mSilCoverValid = true;
+    return true;
+}
+
+namespace
+{
+// Lazy objects: key OFF never creates, compiles, or binds a key program.
+struct ActorKeyPrograms { LLGLSLShader blur, matte, occluder; };
+std::unique_ptr<ActorKeyPrograms> sActorKeyPrograms;
+}
+
+void LLPipeline::releaseActorKeyTargets()
+{
+    mActorKeyCoverage.release(); // shared depth must be detached first
+    mActorKeyMatte.release();
+    mActorKeyBlurA.release();
+    mActorKeyBlurB.release();
+    mActorKeyDepthSrc = 0;
+    mActorKeyCoverageFrame = mActorKeyMatteFrame = ~0u;
+    mActorKeyMatteRT = nullptr;
+    if (sActorKeyPrograms)
+    {
+        sActorKeyPrograms->blur.unload();
+        sActorKeyPrograms->matte.unload();
+        sActorKeyPrograms->occluder.unload();
+        sActorKeyPrograms.reset();
+    }
+}
+
+bool LLPipeline::ensureKeyPrograms()
+{
+    if (!sActorKeyPrograms) sActorKeyPrograms = std::make_unique<ActorKeyPrograms>();
+    auto load = [](LLGLSLShader& shader, const char* name, const char* vertex, const char* fragment)
+    {
+        if (shader.isComplete()) return true;
+        shader.mName = name;
+        shader.mFeatures = LLShaderFeatures();
+        shader.mShaderLevel = 1;
+        shader.mShaderFiles.clear();
+        shader.mShaderFiles.push_back(std::make_pair(vertex, GL_VERTEX_SHADER));
+        shader.mShaderFiles.push_back(std::make_pair(fragment, GL_FRAGMENT_SHADER));
+        shader.clearPermutations();
+        return shader.createShader();
+    };
+    return load(sActorKeyPrograms->blur, "ActorKey Blur", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyBlurF.glsl") &&
+        load(sActorKeyPrograms->matte, "ActorKey Matte", "deferred/postDeferredNoTCV.glsl", "alchemy/actorKeyMatteF.glsl") &&
+        load(sActorKeyPrograms->occluder, "ActorKey Prism occluder", "alchemy/actorKeyOccluderV.glsl", "alchemy/actorKeyOccluderF.glsl");
+}
+
+bool LLPipeline::ensureKeyCoverage()
+{
+    auto& depth = mMainRT.deferredScreen;
+    if (!depth.isComplete() || !depth.getDepth() || !depth.getWidth() || !depth.getHeight()) return false;
+    if (mActorKeyCoverage.isComplete() && mActorKeyCoverage.getWidth() == depth.getWidth() &&
+        mActorKeyCoverage.getHeight() == depth.getHeight() && mActorKeyDepthSrc == depth.getDepth()) return true;
+    mActorKeyCoverage.release();
+    mActorKeyDepthSrc = 0;
+    if (!mActorKeyCoverage.allocate(depth.getWidth(), depth.getHeight(), GL_R8, false)) return false;
+    depth.shareDepthBuffer(mActorKeyCoverage);
+    GLint draw = 0, read = 0, attachment = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mActorKeyCoverage.getFBO());
+    glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+        GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &attachment);
+    const bool complete = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read);
+    if (!complete || static_cast<U32>(attachment) != depth.getDepth())
+    {
+        mActorKeyCoverage.release();
+        return false;
+    }
+    mActorKeyDepthSrc = depth.getDepth();
+    return true;
+}
+
+bool LLPipeline::actorKeyMatteValid() const
+{
+    return ALActorChromaKey::sActive && !ALActorChromaKey::suppressed() &&
+        mActorKeyCoverageFrame == gFrameCount && mActorKeyMatteFrame == gFrameCount &&
+        mActorKeyMatteRT == &mMainRT && mRT == &mMainRT &&
+        mActorKeyMatteWidth == mMainRT.deferredScreen.getWidth() &&
+        mActorKeyMatteHeight == mMainRT.deferredScreen.getHeight() &&
+        mActorKeyMatte.isComplete();
+}
+
+void LLPipeline::buildActorKeyCoverageAndMatte()
+{
+    if (!ALActorChromaKey::sActive) return;
+    mActorKeyCoverageFrame = mActorKeyMatteFrame = ~0u;
+    if (mRT != &mMainRT || gCubeSnapshot || sPrismLensRender || sPrismPreviewRender ||
+        sReflectionRender || sImpostorRender || sRenderingHUDs || ALActorChromaKey::suppressed() ||
+        LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD) return;
+    LL_PROFILE_ZONE_NAMED("ActorKey::coverageAndMatte");
+    mActorKeyProjection = get_current_projection();
+    mActorKeyModelview = get_current_modelview();
+    ScopedActorMaskState saved_state;
+    LLGLDisable dither(GL_DITHER);
+    LLGLDisable srgb(GL_FRAMEBUFFER_SRGB);
+    LLGLDisable stencil(GL_STENCIL_TEST);
+    if (!ensureKeyCoverage() || !ensureKeyPrograms()) return;
+    static LLCachedControl<F32> bias(gSavedSettings, "ActorKeyCoverBias", -8.f);
+    static LLCachedControl<bool> alpha(gSavedSettings, "ActorKeyAlphaCoverage", true);
+    const CoverPolicy policy{mActorKeyCoverage, llclamp(bias(), -64.f, 0.f), "ActorKey", true};
+    for (U32 phase = 0; phase < (alpha() ? 2u : 1u); ++phase)
+    {
+        LL_PROFILE_ZONE_NAMED("ActorKey::coverageA/B");
+        ScopedSilCoverState blend_state(phase != 0);
+        if (!renderCover(phase, policy)) return;
+    }
+    // WP1b interface: captured styled replay belongs HERE, before set occluders.
+    renderActorKeyPrismOccluders(); // last coverage writer, in all output modes
+    mActorKeyCoverageFrame = gFrameCount;
+    buildActorKeyMatte();
+}
+
+void LLPipeline::renderActorKeyPrismOccluders()
+{
+    if (!gPrismLensProgram.isComplete()) return; // match beauty readiness
+    LLPrismLens::CompositeState states[LLPrismLens::MAX_DISPLAY_BINDINGS];
+    const U32 count = llmin(LLPrismLens::getCompositeStates(&mMainRT.screen, states,
+        LLPrismLens::MAX_DISPLAY_BINDINGS), LLPrismLens::MAX_DISPLAY_BINDINGS);
+    struct ScissorBoxScope
+    {
+        GLint box[4];
+        ScissorBoxScope() { glGetIntegerv(GL_SCISSOR_BOX, box); }
+        ~ScissorBoxScope() { glScissor(box[0], box[1], box[2], box[3]); }
+    } scissor_box;
+    mActorKeyCoverage.bindTarget();
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLDisable blend(GL_BLEND), cull(GL_CULL_FACE), offset(GL_POLYGON_OFFSET_FILL);
+    sActorKeyPrograms->occluder.bind();
+    gGL.setColorMask(true, true);
+    glEnable(GL_SCISSOR_TEST);
+    gGL.matrixMode(LLRender::MM_PROJECTION); gGL.pushMatrix(); gGL.loadMatrix(gGLProjection);
+    gGL.matrixMode(LLRender::MM_MODELVIEW); gGL.pushMatrix(); gGL.loadMatrix(gGLModelView);
+    for (U32 i = 0; i < count; ++i)
+    {
+        const auto& state = states[i];
+        if (!state.mVirtual || state.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
+            state.mScissor[2] <= 0 || state.mScissor[3] <= 0 ||
+            (!state.mBlack && !mPrismLensOutput[state.mCaptureSlot].isComplete())) continue;
+        glScissor(state.mScissor[0], state.mScissor[1], state.mScissor[2], state.mScissor[3]);
+        sActorKeyPrograms->occluder.uniform1f(LLStaticHashedString("edgeFeather"), state.mEdgeFeather);
+        const F32 (&c)[4][3] = state.mVirtualCorners;
+        gGL.begin(LLRender::TRIANGLES);
+        gGL.vertex3fv(c[0]); gGL.vertex3fv(c[1]); gGL.vertex3fv(c[2]);
+        gGL.vertex3fv(c[0]); gGL.vertex3fv(c[2]); gGL.vertex3fv(c[3]);
+        gGL.end(); gGL.flush();
+    }
+    gGL.matrixMode(LLRender::MM_MODELVIEW); gGL.popMatrix();
+    gGL.matrixMode(LLRender::MM_PROJECTION); gGL.popMatrix();
+    mActorKeyCoverage.flush();
+}
+
+void LLPipeline::buildActorKeyMatte()
+{
+    LL_PROFILE_ZONE_NAMED("ActorKey::matte");
+    const U32 w = mActorKeyCoverage.getWidth(), h = mActorKeyCoverage.getHeight();
+    if (!h || !w || mActorKeyCoverageFrame != gFrameCount) return;
+    auto ensure = [](LLRenderTarget& target, U32 width, U32 height, U32 format)
+    {
+        if (target.isComplete() && target.getWidth() == width && target.getHeight() == height) return true;
+        target.release();
+        return target.allocate(width, height, format, false);
+    };
+    if (!ensure(mActorKeyMatte, w, h, GL_RG8)) return;
+    static LLCachedControl<F32> feather(gSavedSettings, "ActorKeyFeather", 1.5f);
+    static LLCachedControl<F32> choke(gSavedSettings, "ActorKeyChoke", 0.f);
+    const F32 scale = h / 1080.f;
+    const F32 f = llclamp(feather(), 0.f, 32.f) * scale;
+    const F32 c = llclamp(choke(), -8.f, 8.f) * scale;
+    const F32 radius = llmax(f, fabsf(c));
+    const bool raw = radius < 0.5f;
+    glDisable(GL_SCISSOR_TEST);
+    LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+    LLGLDisable blend(GL_BLEND), cull(GL_CULL_FACE);
+    gGL.setColorMask(true, true);
+    auto triangle = [&]()
+    {
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+    };
+    if (!raw)
+    {
+        const bool half = radius >= 1.5f;
+        const U32 bw = half ? (w+1)/2 : w, bh = half ? (h+1)/2 : h;
+        if (!ensure(mActorKeyBlurA, bw, bh, GL_R8) || !ensure(mActorKeyBlurB, bw, bh, GL_R8)) return;
+        auto& blur = sActorKeyPrograms->blur;
+        auto pass = [&](LLRenderTarget& source, LLRenderTarget& dest, F32 dx, F32 dy, bool downsample)
+        {
+            dest.bindTarget();
+            blur.bind();
+            source.bindTexture(0, 0, LLTexUnit::TFO_BILINEAR);
+            blur.uniform1i(LLStaticHashedString("keySource"), 0);
+            blur.uniform2f(LLStaticHashedString("keyDirection"), dx, dy);
+            blur.uniform1f(LLStaticHashedString("keyRadius"), radius * (half ? 0.5f : 1.f));
+            blur.uniform1i(LLStaticHashedString("keyDownsample"), downsample ? 1 : 0);
+            triangle(); dest.flush();
+        };
+        if (half) pass(mActorKeyCoverage, mActorKeyBlurA, 0.f, 0.f, true);
+        pass(half ? mActorKeyBlurA : mActorKeyCoverage, mActorKeyBlurB, 1.f/bw, 0.f, false);
+        pass(mActorKeyBlurB, mActorKeyBlurA, 0.f, 1.f/bh, false);
+    }
+    mActorKeyMatte.bindTarget();
+    auto& matte = sActorKeyPrograms->matte;
+    matte.bind();
+    mActorKeyCoverage.bindTexture(0, 0, LLTexUnit::TFO_POINT);
+    // Always bind a complete texture; raw mode must not sample stale blur storage.
+    (raw ? mActorKeyCoverage : mActorKeyBlurA).bindTexture(0, 1, LLTexUnit::TFO_BILINEAR);
+    matte.uniform1i(LLStaticHashedString("keyCoverage"), 0);
+    matte.uniform1i(LLStaticHashedString("keyBlur"), 1);
+    matte.uniform1i(LLStaticHashedString("keyRaw"), raw ? 1 : 0);
+    matte.uniform1i(LLStaticHashedString("keyKeepInterior"), c <= 0.f ? 1 : 0);
+    matte.uniform1i(LLStaticHashedString("keyDebug"), 0);
+    const F32 r = llmax(radius, 0.5f), center = 0.5f + c/(2.f*r), ramp = llmax(f/(2.f*r), 1.f/255.f);
+    matte.uniform2f(LLStaticHashedString("keyRemap"), llclamp(center-ramp, 0.f, 1.f), llclamp(center+ramp, 0.f, 1.f));
+    triangle(); mActorKeyMatte.flush();
+    mActorKeyMatteFrame = gFrameCount;
+    mActorKeyMatteRT = &mMainRT;
+    mActorKeyMatteWidth = w; mActorKeyMatteHeight = h;
+    // WP1 diagnostic only, before the post chain. WP2 owns final output views.
+    static LLCachedControl<U32> debug(gSavedSettings, "ActorKeyDebugView", 0);
+    if (debug() == 1 || debug() == 2)
+    {
+        llassert(LLRenderTarget::getCurrentBoundTarget() == &mMainRT.screen);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0); // diagnostic must not write screen sidecars
+        matte.bind();
+        (debug() == 1 ? mActorKeyCoverage : mActorKeyMatte).bindTexture(0, 0, LLTexUnit::TFO_POINT);
+        matte.uniform1i(LLStaticHashedString("keyRaw"), 1);
+        matte.uniform1i(LLStaticHashedString("keyDebug"), 1);
+        triangle();
+    }
 }
 
 void LLPipeline::renderActorMask()
@@ -32106,6 +32350,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     // CineLightRigActorMaskDebug view, while this view's mask is still valid.
     if (actor_only && source == ActorMaskViewSource::MAIN)
         ALActorMaskDiagnostics::instance().endMainView(*this, *screen_target);
+
+    if (ALActorChromaKey::sActive && source == ActorMaskViewSource::MAIN)
+        buildActorKeyCoverageAndMatte();
 
     if (rim_parity_main &&
         screen_target->getNumTextures() > ALR_RIM_PARITY_ATTACHMENT &&

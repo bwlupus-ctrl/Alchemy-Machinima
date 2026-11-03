@@ -12,6 +12,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "alcoverpolicy.h"
 #include "alcameradispatch.h"
 #include "llcallbacklist.h"
 #include "alghostanimmirrormath.h"
@@ -13328,16 +13329,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             if (coverage_mode)
             {
                 LLVector2 cover;
-                const ALLightResponse::Packed* packed = ALAvatarLightResponse::instance().peek(
-                    gp.mLightResponseKey, di->mActorFxOwner, di->mActorFxFallbackOwner);
-                if (!packed || packed->mSil.mV[VW] <= 0.f)
-                {
-                    continue;
-                }
-                const F32 amount = packed->mSil.mV[VW];
-                cover.set(packed->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
-                          packed->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
-                if (cover.mV[VX] <= 0.f && cover.mV[VY] <= 0.f) continue;
+                if (!gp.mCoverPolicy->sharedCover(gp.mLightResponseKey,
+                    di->mActorFxOwner, di->mActorFxFallbackOwner, cover)) continue;
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 batch_shader->uniform2fv(sSilCover, 1, cover.mV);
                 batch_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
@@ -13874,15 +13867,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             const LLDrawInfo* alr_di = face->mDrawInfo;
             if (coverage_mode)
             {
-                const ALLightResponse::Packed* packed = ALAvatarLightResponse::instance().peek(
-                    gp.mLightResponseKey,
+                LLVector2 cover;
+                if (!gp.mCoverPolicy->sharedCover(gp.mLightResponseKey,
                     alr_di ? alr_di->mActorFxOwner : LLUUID::null,
-                    alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null);
-                if (!packed || packed->mSil.mV[VW] <= 0.f) continue;
-                const F32 amount = packed->mSil.mV[VW];
-                LLVector2 cover(packed->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
-                                packed->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
-                if (cover.mV[VX] <= 0.f && cover.mV[VY] <= 0.f) continue;
+                    alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null, cover)) continue;
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 static_shader->uniform2fv(sSilCover, 1, cover.mV);
                 static_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
@@ -19688,8 +19676,9 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
     return complete;
 }
 
-void LLActorMover::renderSharedProxySilCover(U32 phase)
+void LLActorMover::renderSharedProxySilCover(U32 phase, const CoverPolicy& policy)
 {
+    if (policy.key) return; // D54: WP1b supplies the captured styled coverage.
     if (!hasSharedActorStyleProxies()) return;
     for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
     {
@@ -19709,6 +19698,7 @@ void LLActorMover::renderSharedProxySilCover(U32 phase)
         params.mWorldLinear = true;
         params.mLightResponseKey = proxy.mWearerId;
         params.mSilCoverPhase = phase == 0 ? 1 : 2;
+        params.mCoverPolicy = &policy;
         if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
         {
             bool complete = true;
