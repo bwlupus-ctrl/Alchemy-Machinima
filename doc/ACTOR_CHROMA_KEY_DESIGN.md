@@ -1,6 +1,6 @@
-# Actor Chroma Key / Matte — design (v18)
+# Actor Chroma Key / Matte — design (v19)
 
-Status: DESIGN ONLY (2026-11-02). **v18** = v17 revised after Codex design review r4 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r4.md`: 0 P0, 4 P1, 1 P2) and with the user's final answers to Q4 and Q5. **v17** = v16 revised after Codex design review r3 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r3.md`: 0 P0, 5 P1, 2 P2; dispositions §A19). **v16** = v15 revised after Codex design review r2
+Status: DESIGN ONLY (2026-11-02). **v19** = v18 with D53 replaced after Codex design review r5 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r5.md`: 0 P0, 1 P1 — R42; R37-R41 confirmed fixed). **v18** = v17 revised after Codex design review r4 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r4.md`: 0 P0, 4 P1, 1 P2) and with the user's final answers to Q4 and Q5. **v17** = v16 revised after Codex design review r3 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r3.md`: 0 P0, 5 P1, 2 P2; dispositions §A19). **v16** = v15 revised after Codex design review r2
 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r2.md`: 0 P0, 8 P1, 4 P2 open), by **simplification**: the
 clone layer, its depth copy, per-sweep layer output, the deferred-draw queue and the late-failure rollback
 are all withdrawn. v15 (review r1) and v14 (refresh of the approved v13 against main 3a64bb9c5c4) are
@@ -14,6 +14,12 @@ code or in-world.
 operational instructions that v16 withdraws have been deleted from it, not overridden. Part B is the v13
 text (ReShade guard, snapshots, actor shadows, review history); each of its section headings carries a
 banner — KEPT, KEPT WITH DELTAS (§A13) or SUPERSEDED. Where Part A and Part B disagree, Part A wins.
+
+## Changelog v18 → v19 (Codex design review r5)
+
+| # | Change | Finding | Where |
+|---|---|---|---|
+| 1 | D53 replaced by **D54**: coverage disposition is decided **per component and per render path** from the beauty decision that path actually took this frame — legacy/system draws through `shouldSuppressSharedActorFx`, PBR draws through `shouldSuppressSharedActorFxPBR` (which also suppresses ordinary Layer when PBR-ready) — and each visible component has exactly one coverage contributor; the key's generic shared hook contributes nothing (shared components come only from the WP1b replay of what the shared pass drew, with its actual material law) | R42 | §A5, §A9 |
 
 ## Changelog v17 → v18 (Codex design review r4; final user answers)
 
@@ -106,7 +112,8 @@ supersedes D7 (D41); shortcut Ctrl+Alt+K, supersedes D9 (D42).
 | D50 (user, final) | Q5: Scene-mode Glass refracts the graded image just before the key | §A7 |
 | D51 (v18) | Studio scene-cache lifecycle on keyed frames has one owner, ordered K0 begin → reserve → use | §A7 |
 | D52 (v18) | Lens coverage: beauty-decided selections, additive optical support excluded | §A8 |
-| D53 (v18) | Coverage disposition per owner from the native-beauty predicates | §A9 |
+| D53 (v18) | ~~Coverage disposition per owner~~ — replaced by D54 in v19 | §A9 |
+| D54 (v19) | Coverage disposition per component and per render path, from the beauty decision recorded at that path's own suppression predicate; one contributor per visible component | §A9 |
 
 ## A1. Audit summary
 
@@ -218,8 +225,7 @@ proxyCover(instance); sharedCover(owner, fallback); bias; tag; }`.
 - Proxy domain (lookups at pipeline.cpp:7172-7173, 7195-7196): `instanceKeyed(proxy.mInstanceId)` only —
   the harvested draws carry the source's owners and must not re-admit an excluded clone.
 - Shared FX domain: `gp.mCoverPolicy` reaches both inner `drawGeometryGhost` coverage branches (rigged
-  13238-13253, static 13783-13796), which today call `ALAvatarLightResponse::peek` themselves; the
-  silhouette's policy reproduces that `peek` expression exactly.
+  13238-13253, static 13783-13796), which today call `ALAvatarLightResponse::peek` themselves; the silhouette's policy reproduces that `peek` expression exactly. **For the key policy (v19, D54) `sharedCover` refuses every component**: the generic shared hook (`renderSharedProxySilCover`, pipeline.cpp:29098-29103, incl. its PBR conversion 19600-19625) writes no key coverage; shared components are contributed only by the WP1b replay of what the shared pass actually drew (§A9).
 - The silhouette's own gates move to its caller: `sSilFrameMask & 6` early-out/release (28940-28947),
   `ensureSilCover` (28117, called at 28962), `mSilCoverValid`, its target (28994) and bias (28991-28992).
   The key's caller has `ensureKeyCoverage`, `ActorKeyCoverBias` (−8), its stamp and validity.
@@ -237,8 +243,7 @@ mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender && !sReflectionRender && 
 Matrices at K1 are the live world camera's (INFERENCE; I-MATRIX compares with the `FinalizeGuides`
 capture at 26363-26365). Render maps and alpha groups are still valid (the silhouette's own Phase B uses
 them later, at 26780).
-Acceptance (WP1 entry gate): with the silhouette **OFF**, a keyed plain actor, a keyed opaque Replace actor
-and a keyed GhostDeferred clone show coverage 1 in `ActorKeyDebugView = Coverage`; silhouette ON (haze 0.3,
+Acceptance (WP1 entry gate): with the silhouette **OFF**, a keyed plain actor and a keyed GhostDeferred clone show coverage 1 (styled actors are WP1b's gate, §A9) in `ActorKeyDebugView = Coverage`; silhouette ON (haze 0.3,
 rim 0.7) leaves the key coverage at 1 and the silhouette's `silCover` byte-identical to key OFF
 (I-SILPARITY); U-DOMAIN: Who ∈ {All, Me}, Include clones OFF, GhostDeferredEnable {ON, OFF}, source keyed
 → the clone's coverage is 0 in every domain.
@@ -404,20 +409,42 @@ WP1b (required for v1):
    matrices reference, material, frame time}`. A component the replacement did **not** draw (modules or
    readiness unavailable: llactormover.cpp:17388-17394, lldrawpool.cpp:1165-1168 — native beauty fails
    open) is not captured, so it keeps native coverage.
-2. **Coverage disposition per owner from the native-beauty predicates (D53).** The key evaluates exactly the predicates the native pass uses (lldrawpool.cpp): `shared_actor_fx_zero_cover` (1044-1049: enabled Replace with alpha ≤ 0) and `shared_actor_fx_owns_native_beauty` (1062-1072: Replace, **or Layer with Dissolve**, and `isSharedActorStyleReady`). Three dispositions:
-   - **intentionally absent** — zero Cover: beauty shows only the set and no replay queue exists (llactormover.cpp:117-123, 19436-19440); the key gives the owner **no contributor** in any domain, regardless of readiness or module availability;
-   - **replacement owns** — owns-native-beauty true (Replace ready, Layer Dissolve ready): the captured replay (step 3) is the only contributor; native render maps and alpha groups, the system-body path and the shared domain — the generic `GHOST_STYLE_GHOST` draw (19586-19596) and its PBR-conversion branch (19600-19625) — refuse the owner;
-   - **native visible** — everything else (style off, ordinary additive Layer, a replacement not ready: the native pass fails open, 17388-17394, lldrawpool.cpp:1165-1168): native coverage as §A5; no replay.
-   The silhouette's caller is unaffected.
+2. **Coverage disposition per component and per render path (D54; replaces D53).** The decision is not re-derived
+   per owner; it is **recorded where the beauty took it**, per draw, by the predicate that render path actually calls:
+   - **legacy / BOM / system path** — `LLRenderPass::shouldSuppressSharedActorFx` (lldrawpool.cpp:1077 by owner, 1101 per draw info; built on
+     `shared_actor_fx_zero_cover` 1044-1049 and `shared_actor_fx_owns_native_beauty` 1062-1072: Replace or Layer
+     Dissolve, with `isSharedActorStyleReady`, llactormover.cpp:18638-18658);
+   - **PBR path** — `LLRenderPass::shouldSuppressSharedActorFxPBR` (lldrawpool.cpp:1140-1180: hidden source /
+     derendered → suppressed; zero Cover → suppressed; otherwise suppressed whenever the style is enabled and
+     `isSharedActorStylePBRReady` (llactormover.cpp:18615-18635, `mPBRReady`) — **for every mode, including ordinary
+     Layer**), as called by the alpha pool (lldrawpoolalpha.cpp:547, 1672) and the render-map loops.
+   At each such call site the beauty already notifies `LLActorMaskEligibility::suppress(&params)` when armed; the key
+   adds the same one-line record into its own per-frame set `mBeautySuppressed` (LLDrawInfo*, beauty passes only —
+   `depth_only` calls are not recorded). The shared pass records, in the WP1b capture (step 1), every component it
+   drew **as a coverage-bearing draw**: Replace and Layer-Dissolve legacy/system components, and every shared PBR
+   command (drawn once, opacity 1 in Layer, normal alpha blending, authored BLEND alpha: llactormover.cpp:18789-18790,
+   19014-19024; sharedActorFxPbrF.glsl:849-854). Ordinary-Layer **legacy** treatment draws are recorded as
+   non-coverage-bearing (the native draw underneath stays visible and is the contributor).
+   **Rule — exactly one contributor per visible component:**
+   - native draw info **not** in `mBeautySuppressed` → the generic native replay (§A5) is its contributor;
+   - native draw info in `mBeautySuppressed` **and** a coverage-bearing shared capture of that component → the WP1b
+     replay (step 3) is its contributor; the generic native replay skips that draw info (`drawSilCoverBatch` is called
+     only for unsuppressed infos in the key policy);
+   - in `mBeautySuppressed` **without** a coverage-bearing capture (zero Cover, hidden/derendered source) → **no
+     contributor** (coverage 0), independent of readiness;
+   - the generic shared hook never contributes (§A5); non-coverage-bearing shared draws never contribute.
+   Readiness stays per path: a PBR command that is not PBR-ready is not suppressed natively, so its native draw is the
+   contributor (fail-open preserved), even when the owner's legacy parts are replacement-owned, and vice versa.
+   The silhouette's caller is unaffected (it records nothing and keeps its own admission).
 3. **Replay** each captured component with the **actual beauty program variant** compiled with
    `#define AL_KEY_COVERAGE_OUT` (separate program objects cloned from the world, system and PBR actor-ghost
    programs; every discard, deformation and alpha computation kept), outputting **scalar coverage in R**
    (`vec4(a, a, a, a)`) into `mActorKeyCoverage` with the coverage union blend `(ONE, ONE_MINUS_SRC_COLOR)`
    — the same contract as silCoverF.glsl:145-146 — so fractional alpha stays fractional.
-4. A per-component **contributor trace** (debug) records which domain wrote each component's coverage; it
-   must show exactly one contributor per captured component.
+4. A per-component **contributor trace** (debug) records which path wrote each component's coverage (native replay / WP1b replay / none) and the predicate result that decided it; it must show exactly one contributor per visible component and none for suppressed-without-capture components.
 Acceptance: hole readback with the silhouette OFF and ON for Replace Dissolve 50 %, **Layer Dissolve 50 %** and Distort over a bright set (holes 0); Cover opacity 0, ε, 0.5, 1 for BOM, legacy and shared/indexed PBR (0 → coverage 0 with and without replacement shaders available; ε → coverage ≈ ε, continuous); native BOM / no-mesh body, legacy mesh, indexed PBR, Layer vs Replace, a fractional-alpha
 component (coverage = its alpha), and a replacement-not-ready component (native coverage present); W-K8.
+**R42 fixtures (v19):** an isolated PBR BLEND card with authored alpha 0.5 over a bright set, outside the body silhouette, under an **ordinary Layer** look (Chrome; Hologram) — scalar/static, rigged and indexed — must read coverage 0.5 ± 1/255 with contributor count 1 (WP1b PBR replay); the same card with PBR not ready → 0.5 from the native replay, count 1; the same owner mixing that PBR card with legacy parts under ordinary Layer → legacy parts from the native replay, the PBR card from the WP1b replay, each count 1; Replace PBR card → WP1b replay only; zero Cover PBR and legacy → 0, count 0; hidden/derendered source → 0, count 0. Each fixture asserts the numeric coverage and the contributor count, not only holes or opaque coverage.
 
 ## A10. Virtual Prism displays are set occluders
 
@@ -711,6 +738,16 @@ r4 re-verdicts: R30 not fixed in full (continues as R37); R31-R36 fixed. Anchors
 | R39 Layer Dissolve / zero Cover ownership | P1 | yes | **FIXED** — dispositions from `shared_actor_fx_owns_native_beauty` / `shared_actor_fx_zero_cover`; Layer Dissolve owns; zero Cover has no contributor; readiness fail-open kept distinct; opacity 0/ε/0.5/1 fixtures (§A9, D53) |
 | R40 occluder before styled replay | P1 | yes | **FIXED** — set occluders are the last coverage writer, stamp after them; styled × virtual-screen fixtures (§A5, §A10) |
 | R41 Studio early exits | P2 | yes | **FIXED** — completion at the unconditional caller; every early return is a successful no-op; serial-scoped (§A6 step 5) |
+
+### r5 (v19)
+
+r5 re-verdicts: R37-R41 fixed. Anchors re-read for r5: lldrawpool.cpp:1140-1182 (`shouldSuppressSharedActorFxPBR`),
+lldrawpoolalpha.cpp:545-549 and 1670-1674 (PBR vs legacy predicate selection), llactormover.cpp:18615-18660
+(`isSharedActorStylePBRReady` / `isSharedActorStyleReady`).
+
+| Finding | Sev | Verified | v19 disposition |
+|---|---|---|---|
+| R42 owner-wide disposition misses the PBR suppression law; blended PBR counted twice | P1 | yes | **FIXED** — D54: per component and per render path, recorded at the predicate each path calls (legacy `shouldSuppressSharedActorFx`, PBR `shouldSuppressSharedActorFxPBR` incl. ordinary Layer); exactly one contributor per visible component; the key's generic shared hook contributes nothing; fractional ordinary-Layer PBR fixtures with numeric coverage and contributor counts (§A5, §A9) |
 
 ---
 
