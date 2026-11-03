@@ -7059,6 +7059,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.cpp",
     "dependency": "indra/newview/alcoverpolicy.h",
     "excluded": false,
     "origin": "fork-added",
@@ -7918,6 +7927,15 @@
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llcontrolavatar.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
     "action": "carry/adapt fork source",
@@ -9183,6 +9201,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llfloatersnapshot.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloatersnapshot.cpp",
     "dependency": "indra/newview/llfloaterbigpreview.h",
     "excluded": false,
     "origin": "fork-added",
@@ -10028,6 +10055,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/llsnapshotlivepreview.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/llspatialpartition.cpp",
     "dependency": "indra/newview/alprobedirty.h",
     "excluded": false,
@@ -10363,6 +10399,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llviewerdisplay.cpp",
     "dependency": "indra/newview/alpovblink.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerdisplay.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -11425,6 +11470,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llviewerwindow.cpp",
     "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerwindow.cpp",
+    "dependency": "indra/newview/alactorchromakey.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -16236,6 +16236,7 @@ void LLActorMover::renderStudioGhosts()
     for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)
+            || (ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame() && !(inst.mAlpha > 0.f))
             || !(inst.mFadeAlpha > 0.f))
         {
             continue;

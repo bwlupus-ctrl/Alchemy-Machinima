@@ -2,9 +2,9 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3020 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3043 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
-## Unknown product-path features (154)
+## Unknown product-path features (150)
 
 - `indra/llappearance/llavatarappearance.h` (HOOK)
 - `indra/llaudio/llaudiodecodemgr.cpp` (HOOK)
@@ -25,7 +25,6 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llcombobox.h` (HOOK)
 - `indra/llui/llcontainerview.h` (HOOK)
 - `indra/llui/llfolderview.h` (HOOK)
-- `indra/llui/llfolderviewitem.cpp` (HOOK)
 - `indra/llui/llfolderviewitem.h` (HOOK)
 - `indra/llui/lllineeditor.h` (HOOK)
 - `indra/llui/lllocalcliprect.h` (HOOK)
@@ -34,13 +33,11 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrollbar.h` (HOOK)
 - `indra/llui/llscrollcontainer.h` (HOOK)
 - `indra/llui/lltabcontainer.h` (HOOK)
-- `indra/llui/lltextbase.cpp` (HOOK)
 - `indra/llui/lltextbase.h` (HOOK)
 - `indra/llui/lluicolortable.h` (HOOK)
 - `indra/llui/llviewereventrecorder.h` (HOOK)
 - `indra/llui/llviewquery.cpp` (HOOK)
-- `indra/llwindow/llwindow.h` (HOOK)
-- `indra/llwindow/llwindowwin32.h` (HOOK)
+- `indra/llwindow/llwindowsdl.cpp` (HOOK)
 - `indra/llxml/llcontrol.cpp` (HOOK)
 - `indra/llxml/llcontrol.h` (HOOK)
 - `indra/newview/alcoverpolicy.h` (OWNED)
@@ -54,6 +51,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/posestand.xml` (OWNED)
 - `indra/newview/app_settings/settings_per_account.xml` (HOOK)
 - `indra/newview/app_settings/shaders/class1/alchemy/actorKeyBlurF.glsl` (OWNED)
+- `indra/newview/app_settings/shaders/class1/alchemy/actorKeyCompositeF.glsl` (OWNED)
 - `indra/newview/app_settings/shaders/class1/alchemy/actorKeyMatteF.glsl` (OWNED)
 - `indra/newview/app_settings/shaders/class1/avatar/objectSkinV.glsl` (HOOK)
 - `indra/newview/app_settings/shaders/class1/deferred/cineFisheyeF.glsl` (OWNED)
@@ -82,13 +80,11 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class3/environment/underWaterF.glsl` (HOOK)
 - `indra/newview/fsfloaterposestand.cpp` (OWNED)
 - `indra/newview/llaisapi.h` (HOOK)
-- `indra/newview/llfilepicker.cpp` (HOOK)
 - `indra/newview/llfilepicker.h` (HOOK)
 - `indra/newview/llfloaterbigpreview.cpp` (OWNED)
 - `indra/newview/llfloatercamerapresets.cpp` (HOOK)
 - `indra/newview/llimview.cpp` (HOOK)
 - `indra/newview/llimview.h` (HOOK)
-- `indra/newview/llinventorymodel.cpp` (HOOK)
 - `indra/newview/llinventorymodel.h` (HOOK)
 - `indra/newview/llinventorymodelbackgroundfetch.cpp` (HOOK)
 - `indra/newview/llinventorypanel.cpp` (HOOK)
@@ -161,7 +157,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 
-## Unknown hunk features (1502)
+## Unknown hunk features (1525)
 
 - `indra/llui/llfloater.cpp@2180,30`
 - `indra/llui/llfloater.cpp@2311,18`
@@ -338,8 +334,9 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/fsfloaterposer.h@33,20`
 - `indra/newview/fsfloaterposer.h@67,8`
 - `indra/newview/fsfloaterposer.h@528,18`
-- `indra/newview/llcontrolavatar.cpp@384,20`
-- `indra/newview/llcontrolavatar.cpp@620,18`
+- `indra/newview/llcontrolavatar.cpp@385,20`
+- `indra/newview/llcontrolavatar.cpp@627,18`
+- `indra/newview/llcontrolavatar.cpp@754,7`
 - `indra/newview/lldrawpool.cpp@62,7`
 - `indra/newview/lldrawpool.cpp@2186,12`
 - `indra/newview/lldrawpool.cpp@2215,7`
@@ -383,14 +380,15 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llspatialpartition.h@484,9`
 - `indra/newview/llspatialpartition.h@594,14`
 - `indra/newview/llspatialpartition.h@904,3`
-- `indra/newview/llviewerdisplay.cpp@205,38`
-- `indra/newview/llviewerdisplay.cpp@467,9`
-- `indra/newview/llviewerdisplay.cpp@558,11`
-- `indra/newview/llviewerdisplay.cpp@712,13`
-- `indra/newview/llviewerdisplay.cpp@1353,102`
-- `indra/newview/llviewerdisplay.cpp@1520,40`
-- `indra/newview/llviewerdisplay.cpp@1825,11`
-- `indra/newview/llviewerdisplay.cpp@1946,31`
+- `indra/newview/llviewerdisplay.cpp@206,38`
+- `indra/newview/llviewerdisplay.cpp@468,9`
+- `indra/newview/llviewerdisplay.cpp@559,11`
+- `indra/newview/llviewerdisplay.cpp@713,13`
+- `indra/newview/llviewerdisplay.cpp@1354,102`
+- `indra/newview/llviewerdisplay.cpp@1521,40`
+- `indra/newview/llviewerdisplay.cpp@1826,11`
+- `indra/newview/llviewerdisplay.cpp@1874,8`
+- `indra/newview/llviewerdisplay.cpp@1951,31`
 - `indra/newview/llviewerfloaterreg.cpp@87,7`
 - `indra/newview/llviewerfloaterreg.cpp@400,8`
 - `indra/newview/llviewerfloaterreg.cpp@886,7`
@@ -439,45 +437,51 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewertexture.cpp@3705,7`
 - `indra/newview/llviewertexture.h@90,13`
 - `indra/newview/llviewertexture.h@238,23`
-- `indra/newview/llviewerwindow.cpp@77,7`
-- `indra/newview/llviewerwindow.cpp@252,7`
-- `indra/newview/llviewerwindow.cpp@1470,11`
-- `indra/newview/llviewerwindow.cpp@1503,22`
-- `indra/newview/llviewerwindow.cpp@1539,8`
-- `indra/newview/llviewerwindow.cpp@1557,7`
-- `indra/newview/llviewerwindow.cpp@1570,8`
-- `indra/newview/llviewerwindow.cpp@1581,21`
-- `indra/newview/llviewerwindow.cpp@1608,9`
-- `indra/newview/llviewerwindow.cpp@1995,7`
-- `indra/newview/llviewerwindow.cpp@2005,7`
-- `indra/newview/llviewerwindow.cpp@2035,7`
-- `indra/newview/llviewerwindow.cpp@2072,7`
-- `indra/newview/llviewerwindow.cpp@2089,7`
-- `indra/newview/llviewerwindow.cpp@2161,7`
-- `indra/newview/llviewerwindow.cpp@2182,7`
-- `indra/newview/llviewerwindow.cpp@2213,7`
-- `indra/newview/llviewerwindow.cpp@2246,7`
-- `indra/newview/llviewerwindow.cpp@2263,7`
-- `indra/newview/llviewerwindow.cpp@2274,7`
-- `indra/newview/llviewerwindow.cpp@2311,7`
-- `indra/newview/llviewerwindow.cpp@2370,31`
-- `indra/newview/llviewerwindow.cpp@2985,37`
-- `indra/newview/llviewerwindow.cpp@3461,28`
-- `indra/newview/llviewerwindow.cpp@3528,7`
-- `indra/newview/llviewerwindow.cpp@3567,12`
-- `indra/newview/llviewerwindow.cpp@3591,7`
-- `indra/newview/llviewerwindow.cpp@4280,21`
-- `indra/newview/llviewerwindow.cpp@4561,7`
-- `indra/newview/llviewerwindow.cpp@4652,7`
-- `indra/newview/llviewerwindow.cpp@4664,7`
-- `indra/newview/llviewerwindow.cpp@4732,17`
-- `indra/newview/llviewerwindow.cpp@4984,15`
-- `indra/newview/llviewerwindow.cpp@5208,11`
-- `indra/newview/llviewerwindow.cpp@5278,11`
-- `indra/newview/llviewerwindow.cpp@5738,15`
-- `indra/newview/llviewerwindow.cpp@5813,21`
-- `indra/newview/llviewerwindow.cpp@6475,7`
-- `indra/newview/llviewerwindow.cpp@7199,14`
+- `indra/newview/llviewerwindow.cpp@78,7`
+- `indra/newview/llviewerwindow.cpp@253,7`
+- `indra/newview/llviewerwindow.cpp@1471,11`
+- `indra/newview/llviewerwindow.cpp@1504,22`
+- `indra/newview/llviewerwindow.cpp@1540,8`
+- `indra/newview/llviewerwindow.cpp@1558,7`
+- `indra/newview/llviewerwindow.cpp@1571,8`
+- `indra/newview/llviewerwindow.cpp@1582,21`
+- `indra/newview/llviewerwindow.cpp@1609,9`
+- `indra/newview/llviewerwindow.cpp@1996,7`
+- `indra/newview/llviewerwindow.cpp@2006,7`
+- `indra/newview/llviewerwindow.cpp@2036,7`
+- `indra/newview/llviewerwindow.cpp@2073,7`
+- `indra/newview/llviewerwindow.cpp@2090,7`
+- `indra/newview/llviewerwindow.cpp@2162,7`
+- `indra/newview/llviewerwindow.cpp@2183,7`
+- `indra/newview/llviewerwindow.cpp@2214,7`
+- `indra/newview/llviewerwindow.cpp@2247,7`
+- `indra/newview/llviewerwindow.cpp@2264,7`
+- `indra/newview/llviewerwindow.cpp@2275,7`
+- `indra/newview/llviewerwindow.cpp@2312,7`
+- `indra/newview/llviewerwindow.cpp@2371,31`
+- `indra/newview/llviewerwindow.cpp@2986,37`
+- `indra/newview/llviewerwindow.cpp@3462,28`
+- `indra/newview/llviewerwindow.cpp@3529,7`
+- `indra/newview/llviewerwindow.cpp@3568,12`
+- `indra/newview/llviewerwindow.cpp@3592,7`
+- `indra/newview/llviewerwindow.cpp@4281,21`
+- `indra/newview/llviewerwindow.cpp@4562,7`
+- `indra/newview/llviewerwindow.cpp@4653,7`
+- `indra/newview/llviewerwindow.cpp@4665,7`
+- `indra/newview/llviewerwindow.cpp@4733,17`
+- `indra/newview/llviewerwindow.cpp@4985,15`
+- `indra/newview/llviewerwindow.cpp@5209,11`
+- `indra/newview/llviewerwindow.cpp@5279,11`
+- `indra/newview/llviewerwindow.cpp@5739,15`
+- `indra/newview/llviewerwindow.cpp@5814,21`
+- `indra/newview/llviewerwindow.cpp@5977,11`
+- `indra/newview/llviewerwindow.cpp@6140,7`
+- `indra/newview/llviewerwindow.cpp@6148,7`
+- `indra/newview/llviewerwindow.cpp@6162,7`
+- `indra/newview/llviewerwindow.cpp@6173,14`
+- `indra/newview/llviewerwindow.cpp@6294,13`
+- `indra/newview/llviewerwindow.cpp@6490,7`
+- `indra/newview/llviewerwindow.cpp@7214,14`
 - `indra/newview/llvoavatar.cpp@2340,7`
 - `indra/newview/llvoavatar.cpp@3030,7`
 - `indra/newview/llvoavatar.cpp@3129,27`
@@ -563,48 +567,48 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.cpp@1300,16`
 - `indra/newview/pipeline.cpp@1480,48`
 - `indra/newview/pipeline.cpp@1538,13`
-- `indra/newview/pipeline.cpp@31176,11`
-- `indra/newview/pipeline.cpp@31214,13`
-- `indra/newview/pipeline.cpp@31735,6`
-- `indra/newview/pipeline.cpp@32795,7`
-- `indra/newview/pipeline.cpp@32823,13`
-- `indra/newview/pipeline.cpp@32857,15`
-- `indra/newview/pipeline.cpp@33181,7`
-- `indra/newview/pipeline.cpp@33189,11`
-- `indra/newview/pipeline.cpp@34649,9`
-- `indra/newview/pipeline.cpp@34668,48`
-- `indra/newview/pipeline.cpp@34734,9`
-- `indra/newview/pipeline.cpp@34773,19`
-- `indra/newview/pipeline.cpp@34793,11`
-- `indra/newview/pipeline.cpp@34809,7`
-- `indra/newview/pipeline.cpp@34821,15`
-- `indra/newview/pipeline.cpp@34844,7`
-- `indra/newview/pipeline.cpp@34855,15`
-- `indra/newview/pipeline.cpp@34882,7`
-- `indra/newview/pipeline.cpp@34898,7`
-- `indra/newview/pipeline.cpp@34927,7`
-- `indra/newview/pipeline.cpp@35231,11`
-- `indra/newview/pipeline.cpp@35330,7`
-- `indra/newview/pipeline.cpp@35341,8`
-- `indra/newview/pipeline.cpp@35357,41`
-- `indra/newview/pipeline.cpp@35483,54`
-- `indra/newview/pipeline.cpp@35653,9`
-- `indra/newview/pipeline.cpp@35718,265`
-- `indra/newview/pipeline.cpp@36003,9`
-- `indra/newview/pipeline.cpp@36030,26`
-- `indra/newview/pipeline.cpp@36068,11`
-- `indra/newview/pipeline.cpp@36141,7`
-- `indra/newview/pipeline.cpp@36179,18`
-- `indra/newview/pipeline.cpp@36224,8`
-- `indra/newview/pipeline.cpp@36255,8`
-- `indra/newview/pipeline.cpp@36275,18`
-- `indra/newview/pipeline.cpp@38511,15`
-- `indra/newview/pipeline.h@1020,7`
-- `indra/newview/pipeline.h@1036,7`
-- `indra/newview/pipeline.h@2283,18`
-- `indra/newview/pipeline.h@2303,8`
-- `indra/newview/pipeline.h@2518,14`
-- `indra/newview/pipeline.h@2834,24`
+- `indra/newview/pipeline.cpp@31445,11`
+- `indra/newview/pipeline.cpp@31483,13`
+- `indra/newview/pipeline.cpp@32004,6`
+- `indra/newview/pipeline.cpp@33064,7`
+- `indra/newview/pipeline.cpp@33092,13`
+- `indra/newview/pipeline.cpp@33126,15`
+- `indra/newview/pipeline.cpp@33450,7`
+- `indra/newview/pipeline.cpp@33458,11`
+- `indra/newview/pipeline.cpp@34918,9`
+- `indra/newview/pipeline.cpp@34937,48`
+- `indra/newview/pipeline.cpp@35003,9`
+- `indra/newview/pipeline.cpp@35042,19`
+- `indra/newview/pipeline.cpp@35062,11`
+- `indra/newview/pipeline.cpp@35078,7`
+- `indra/newview/pipeline.cpp@35090,15`
+- `indra/newview/pipeline.cpp@35113,7`
+- `indra/newview/pipeline.cpp@35124,15`
+- `indra/newview/pipeline.cpp@35151,7`
+- `indra/newview/pipeline.cpp@35167,7`
+- `indra/newview/pipeline.cpp@35196,7`
+- `indra/newview/pipeline.cpp@35500,11`
+- `indra/newview/pipeline.cpp@35599,7`
+- `indra/newview/pipeline.cpp@35610,8`
+- `indra/newview/pipeline.cpp@35626,41`
+- `indra/newview/pipeline.cpp@35752,54`
+- `indra/newview/pipeline.cpp@35922,9`
+- `indra/newview/pipeline.cpp@35987,265`
+- `indra/newview/pipeline.cpp@36272,9`
+- `indra/newview/pipeline.cpp@36299,26`
+- `indra/newview/pipeline.cpp@36337,11`
+- `indra/newview/pipeline.cpp@36410,7`
+- `indra/newview/pipeline.cpp@36448,18`
+- `indra/newview/pipeline.cpp@36493,8`
+- `indra/newview/pipeline.cpp@36524,8`
+- `indra/newview/pipeline.cpp@36544,18`
+- `indra/newview/pipeline.cpp@38780,15`
+- `indra/newview/pipeline.h@1032,7`
+- `indra/newview/pipeline.h@1048,7`
+- `indra/newview/pipeline.h@2295,18`
+- `indra/newview/pipeline.h@2315,8`
+- `indra/newview/pipeline.h@2530,14`
+- `indra/newview/pipeline.h@2846,24`
 - `indra/newview/skins/default/textures/textures.xml@909,26`
 - `indra/newview/skins/default/xui/en/floater_fs_poser.xml@1974,7`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1,13`
@@ -790,6 +794,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llwindow/llwindowwin32.cpp@3553,8`
 - `indra/llwindow/llwindowwin32.cpp@4174,12`
 - `indra/llwindow/llwindowwin32.cpp@4193,15`
+- `indra/llwindow/llwindowwin32.cpp@4220,11`
 - `indra/newview/alderenderlist.cpp@300,9`
 - `indra/newview/alderenderlist.cpp@316,45`
 - `indra/newview/alderenderlist.cpp@363,7`
@@ -1323,7 +1328,11 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llviewereventrecorder.h@55,7`
 - `indra/llui/llviewquery.cpp@107,22`
 - `indra/llui/llviewquery.h@126,7`
-- `indra/llwindow/llwindow.h@155,8`
+- `indra/llwindow/llwindow.cpp@46,8`
+- `indra/llwindow/llwindow.h@33,7`
+- `indra/llwindow/llwindow.h@44,9`
+- `indra/llwindow/llwindow.h@159,8`
+- `indra/llwindow/llwindowsdl.cpp@1312,11`
 - `indra/llwindow/llwindowwin32.h@38,8`
 - `indra/llwindow/llwindowwin32.h@79,7`
 - `indra/llwindow/llwindowwin32.h@145,41`
@@ -1452,16 +1461,21 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@52,8`
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@69,12`
 - `indra/newview/llfloaterreporter.cpp@321,11`
-- `indra/newview/llfloatersnapshot.cpp@24,30`
-- `indra/newview/llfloatersnapshot.cpp@267,12`
-- `indra/newview/llfloatersnapshot.cpp@347,15`
-- `indra/newview/llfloatersnapshot.cpp@775,31`
-- `indra/newview/llfloatersnapshot.cpp@1006,10`
-- `indra/newview/llfloatersnapshot.cpp@1045,22`
-- `indra/newview/llfloatersnapshot.cpp@1075,24`
-- `indra/newview/llfloatersnapshot.cpp@1223,50`
-- `indra/newview/llfloatersnapshot.cpp@1278,46`
-- `indra/newview/llfloatersnapshot.cpp@1332,16`
+- `indra/newview/llfloatersnapshot.cpp@24,31`
+- `indra/newview/llfloatersnapshot.cpp@220,20`
+- `indra/newview/llfloatersnapshot.cpp@282,12`
+- `indra/newview/llfloatersnapshot.cpp@362,15`
+- `indra/newview/llfloatersnapshot.cpp@510,7`
+- `indra/newview/llfloatersnapshot.cpp@791,31`
+- `indra/newview/llfloatersnapshot.cpp@1022,10`
+- `indra/newview/llfloatersnapshot.cpp@1061,22`
+- `indra/newview/llfloatersnapshot.cpp@1091,24`
+- `indra/newview/llfloatersnapshot.cpp@1174,7`
+- `indra/newview/llfloatersnapshot.cpp@1224,7`
+- `indra/newview/llfloatersnapshot.cpp@1241,50`
+- `indra/newview/llfloatersnapshot.cpp@1296,46`
+- `indra/newview/llfloatersnapshot.cpp@1350,16`
+- `indra/newview/llfloatersnapshot.cpp@1404,7`
 - `indra/newview/llfloatersnapshot.h@24,11`
 - `indra/newview/llfloatersnapshot.h@40,7`
 - `indra/newview/llfloatersnapshot.h@158,7`
@@ -1550,8 +1564,12 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llscenemonitor.cpp@470,7`
 - `indra/newview/llselectmgr.h@245,10`
 - `indra/newview/llsnapshotlivepreview.cpp@25,11`
-- `indra/newview/llsnapshotlivepreview.cpp@118,7`
-- `indra/newview/llsnapshotlivepreview.cpp@141,7`
+- `indra/newview/llsnapshotlivepreview.cpp@54,7`
+- `indra/newview/llsnapshotlivepreview.cpp@119,7`
+- `indra/newview/llsnapshotlivepreview.cpp@142,7`
+- `indra/newview/llsnapshotlivepreview.cpp@162,8`
+- `indra/newview/llsnapshotlivepreview.cpp@677,7`
+- `indra/newview/llsnapshotlivepreview.cpp@785,15`
 - `indra/newview/llsurface.cpp@247,9`
 - `indra/newview/llsurface.cpp@1142,7`
 - `indra/newview/llsurface.cpp@1150,7`
@@ -1634,6 +1652,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_preview_animation.xml@144,9`
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@84,30`
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@225,20`
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml@508,15`
 - `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml@32,12`
 - `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml@39,25`
 - `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml@13,7`
@@ -1666,7 +1685,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 
-## Unknown/non-function contexts (1080)
+## Unknown/non-function contexts (1085)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -1890,7 +1909,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/fsfloaterposer.h@67,8`: unknown/non-function (class FSFloaterPoser : public LLFloater, public LLEditMenuHandler)
 - `indra/newview/fsfloaterposer.h@246,21`: unknown/non-function (public:)
 - `indra/newview/fsfloaterposer.h@528,18`: unknown/non-function (public:)
-- `indra/newview/llcontrolavatar.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llcontrolavatar.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@25,25`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@62,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@2780,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
@@ -1914,9 +1933,9 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llspatialpartition.h@484,9`: unknown/non-function (public:)
 - `indra/newview/llspatialpartition.h@594,14`: unknown/non-function (public:)
 - `indra/newview/llspatialpartition.h@904,3`: unknown/non-function (extern const F32 SG_MAX_OBJ_RAD;)
-- `indra/newview/llviewerdisplay.cpp@25,25`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerdisplay.cpp@65,11`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerdisplay.cpp@100,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerdisplay.cpp@25,26`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerdisplay.cpp@66,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerdisplay.cpp@101,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerfloaterreg.cpp@30,46`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerfloaterreg.cpp@87,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerfloaterreg.cpp@115,17`: unknown/non-function (declaration, XML, build list or global scope)
@@ -1942,12 +1961,12 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewertexture.h@118,22`: unknown/non-function (protected:)
 - `indra/newview/llviewertexture.h@238,23`: unknown/non-function (public:)
 - `indra/newview/llviewertexture.h@442,12`: unknown/non-function (public:)
-- `indra/newview/llviewerwindow.cpp@24,19`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerwindow.cpp@77,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerwindow.cpp@96,9`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerwindow.cpp@178,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerwindow.cpp@201,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerwindow.cpp@252,7`: unknown/non-function (extern bool gDisplaySwapBuffers;)
+- `indra/newview/llviewerwindow.cpp@24,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@78,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@97,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@179,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@202,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerwindow.cpp@253,7`: unknown/non-function (extern bool gDisplaySwapBuffers;)
 - `indra/newview/llvoavatar.cpp@24,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.cpp@49,24`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.cpp@744,7`: unknown/non-function (LLVOAvatar::LLVOAvatar(const LLUUID& id,)
@@ -1987,20 +2006,20 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.h@147,12`: unknown/non-function (public:)
 - `indra/newview/pipeline.h@172,39`: unknown/non-function (public:)
 - `indra/newview/pipeline.h@709,90`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@893,67`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1020,7`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1036,7`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1123,67`: unknown/non-function (private:)
-- `indra/newview/pipeline.h@1368,31`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@1421,20`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2231,34`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2283,18`: unknown/non-function (protected:)
-- `indra/newview/pipeline.h@2314,58`: unknown/non-function (protected:)
-- `indra/newview/pipeline.h@2472,14`: unknown/non-function (protected:)
-- `indra/newview/pipeline.h@2518,14`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2597,32`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2630,194`: unknown/non-function (public:)
-- `indra/newview/pipeline.h@2834,24`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@905,67`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1032,7`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1048,7`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1135,67`: unknown/non-function (private:)
+- `indra/newview/pipeline.h@1380,31`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@1433,20`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2243,34`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2295,18`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2326,58`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2484,14`: unknown/non-function (protected:)
+- `indra/newview/pipeline.h@2530,14`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2609,32`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2642,194`: unknown/non-function (public:)
+- `indra/newview/pipeline.h@2846,24`: unknown/non-function (public:)
 - `indra/newview/skins/default/colors.xml@2,153`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/textures/textures.xml@134,31`: unknown/non-function (with the same filename but different name)
 - `indra/newview/skins/default/textures/textures.xml@184,10`: unknown/non-function (with the same filename but different name)
@@ -2072,7 +2091,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/notifications.xml@9277,24`: unknown/non-function (Multiple SLurls were received from an untrusted browser within a short period.)
 - `indra/newview/skins/default/xui/en/notifications.xml@9340,20`: unknown/non-function (Failed to save snapshot to [PATH]: Disk is full. [NEED_MEMORY]KB is required but)
 - `indra/newview/skins/default/xui/en/notifications.xml@9395,38`: unknown/non-function (this preset or choose another name.)
-- `indra/newview/skins/default/xui/en/notifications.xml@13574,361`: unknown/non-function (Incoming instant messages from anyone who is not your friend will now be answere)
+- `indra/newview/skins/default/xui/en/notifications.xml@13574,364`: unknown/non-function (Incoming instant messages from anyone who is not your friend will now be answere)
 - `indra/newview/skins/default/xui/en/panel_preferences_advanced.xml@234,39`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml@383,19`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/strings.xml@21,9`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2555,6 +2574,9 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llview.h@707,9`: unknown/non-function (public:)
 - `indra/llui/llviewereventrecorder.h@55,7`: unknown/non-function (public:)
 - `indra/llui/llviewquery.h@126,7`: unknown/non-function (public:)
+- `indra/llwindow/llwindow.cpp@46,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llwindow/llwindow.h@33,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llwindow/llwindow.h@44,9`: unknown/non-function (class LLWindowCallbacks;)
 - `indra/llwindow/llwindowwin32.h@38,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llwindow/llwindowwin32.h@79,7`: unknown/non-function (public:)
 - `indra/llwindow/llwindowwin32.h@285,22`: unknown/non-function (protected:)
@@ -2635,7 +2657,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@38,7`: unknown/non-function (public:)
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@52,8`: unknown/non-function (public:)
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@69,12`: unknown/non-function (protected:)
-- `indra/newview/llfloatersnapshot.cpp@24,30`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llfloatersnapshot.cpp@24,31`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatersnapshot.h@24,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatersnapshot.h@40,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatersnapshot.h@158,7`: unknown/non-function (public:)
@@ -2669,6 +2691,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llpreviewanim.h@50,9`: unknown/non-function (public:)
 - `indra/newview/llselectmgr.h@245,10`: unknown/non-function (public:)
 - `indra/newview/llsnapshotlivepreview.cpp@25,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llsnapshotlivepreview.cpp@54,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llsurface.cpp@1142,7`: unknown/non-function (void LLSurface::dirtySurfacePatch(LLSurfacePatch *patchp))
 - `indra/newview/llsurface.cpp@1173,3`: unknown/non-function (F32 LLSurface::getWaterHeight() const)
 - `indra/newview/llsurface.h@118,7`: unknown/non-function (public:)
@@ -2717,6 +2740,7 @@ All 3020 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_preview_animation.xml@144,9`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@84,30`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@225,20`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/floater_snapshot.xml@508,15`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml@32,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml@39,25`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml@13,7`: unknown/non-function (declaration, XML, build list or global scope)

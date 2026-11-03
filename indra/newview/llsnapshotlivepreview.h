@@ -76,7 +76,8 @@ public:
 
     LLSnapshotModel::ESnapshotType getSnapshotType() const { return mSnapshotType; }
     LLSnapshotModel::ESnapshotFormat getSnapshotFormat() const { return mSnapshotFormat; }
-    bool getSnapshotUpToDate() const { return mSnapshotUpToDate; }
+    bool getSnapshotUpToDate() const;
+    bool keyCaptureCurrent() const;
     bool isSnapshotActive() { return mSnapshotActive; }
     LLViewerTexture* getThumbnailImage() const { return mThumbnailImage ; }
     S32  getThumbnailWidth() const { return mThumbnailWidth ; }
@@ -167,6 +168,8 @@ private:
     LLSnapshotModel::ESnapshotType              mSnapshotType;
     LLSnapshotModel::ESnapshotFormat    mSnapshotFormat;
     bool                        mSnapshotUpToDate;
+    U64                         mKeyCaptureRevision = 0;
+    U64                         mKeyAttemptRevision = 0;
     LLFrameTimer                mFallAnimTimer;
     LLVector3                   mCameraPos;
     LLQuaternion                mCameraRot;

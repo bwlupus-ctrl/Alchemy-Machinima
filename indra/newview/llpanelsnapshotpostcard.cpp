@@ -167,6 +167,9 @@ void LLPanelSnapshotPostcard::sendPostcard()
 {
     if (!gAgent.getRegion()) return;
 
+    auto image = mSnapshotFloater->getImageData();
+    if (!image) return;
+
     // upload the image
     std::string url = gAgent.getRegion()->getCapability("SendPostcard");
     if (!url.empty())
@@ -177,7 +180,7 @@ void LLPanelSnapshotPostcard::sendPostcard()
             getChild<LLUICtrl>("subject_form")->getValue().asString(),
             getChild<LLUICtrl>("msg_form")->getValue().asString(),
             mSnapshotFloater->getPosTakenGlobal(),
-            mSnapshotFloater->getImageData(),
+            image,
             [](LLUUID, LLUUID, LLUUID, LLSD response) {
                 LLPanelSnapshotPostcard::sendPostcardFinished(response);
             }));

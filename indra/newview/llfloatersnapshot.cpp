@@ -231,7 +231,20 @@ void LLFloaterSnapshotBase::ImplBase::updateLayout(LLFloaterSnapshotBase* floate
                 ? "Keyed snapshot: exact colour only for unfiltered COLOR saves in PNG/BMP/lossless AVIF at rendered size."
                 : refusal);
         }
-        floaterp->reshape(floaterp->getRect().getWidth(), ALActorChromaKey::sActive ? 571 : 475);
+        if (!mSkipReshaping && !floaterp->isMinimized())
+        {
+            if (ALActorChromaKey::sActive && !mKeyLayoutExpanded)
+            {
+                mKeyLayoutOriginalHeight = floaterp->getRect().getHeight();
+                floaterp->reshape(floaterp->getRect().getWidth(), mKeyLayoutOriginalHeight + 96);
+                mKeyLayoutExpanded = true;
+            }
+            else if (!ALActorChromaKey::sActive && mKeyLayoutExpanded)
+            {
+                floaterp->reshape(floaterp->getRect().getWidth(), mKeyLayoutOriginalHeight);
+                mKeyLayoutExpanded = false;
+            }
+        }
     }
 
     bool use_freeze_frame = floaterp->mFreezeFrameCheck && floaterp->mFreezeFrameCheck->getValue().asBoolean();
@@ -1404,7 +1417,7 @@ S32 LLFloaterSnapshotBase::notify(const LLSD& info)
         impl->updateControls(this);
         // We've just done refresh.
         impl->setNeedRefresh(false);
-        impl->updateLayout(this);
+        if (ALActorChromaKey::sActive || impl->mKeyLayoutExpanded) impl->updateLayout(this);
 
         // The refresh button is initially hidden. We show it after the first update,
         // i.e. when preview appears.
@@ -1575,6 +1588,7 @@ LLPointer<LLImageFormatted> LLFloaterSnapshotBase::getImageData()
         return NULL;
     }
 
+    if (!previewp->keyCaptureCurrent()) return nullptr;
     LLPointer<LLImageFormatted> img = previewp->getFormattedImage();
     if (!img.get())
     {

@@ -96,6 +96,8 @@ void LLPanelSnapshotProfile::onSend()
     std::string caption = getChild<LLUICtrl>("caption")->getValue().asString();
     bool add_location = getChild<LLUICtrl>("add_location_cb")->getValue().asBoolean();
 
-    LLWebProfile::uploadImage(mSnapshotFloater->getImageData(), caption, add_location);
+    auto image = mSnapshotFloater->getImageData();
+    if (!image) return;
+    LLWebProfile::uploadImage(image, caption, add_location);
     mSnapshotFloater->postSave();
 }

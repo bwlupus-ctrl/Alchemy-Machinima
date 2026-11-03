@@ -13,7 +13,7 @@ def actor_key_baseline(source, name):
     """Reverse only the content-pinned WP01 delta before the old guard chain."""
     import hashlib, json
     wp2_raw = (Path(__file__).parent / "actor_key_wp2_hunks.json").read_bytes().replace(b"\r\n", b"\n")
-    assert hashlib.sha256(wp2_raw).hexdigest() == "c8b94aabe721bd86e80863693d2b7ce30ae14b86ed98d376bfde03b29c109280", "WP2 allowance pin"
+    assert hashlib.sha256(wp2_raw).hexdigest() == "7a464d391400c652296285e5cc64ee6efe36cef1f88eadb9a1b4fa909182da4f", "WP2 allowance pin"
     wp2 = json.loads(wp2_raw)
     wp2_path = "indra/newview/" + name
     if wp2_path in wp2["files"]:
