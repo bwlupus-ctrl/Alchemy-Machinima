@@ -172,7 +172,9 @@ public:
     void setStartOffset(F32 seconds);
     void setAnimationSource(const LLUUID& source);
     void copyHeldPoseFrom(LLVOAvatar* source);
-    void applyOffsetHistory(F64 now);
+    void applyOffsetHistory(F64 now, bool hot_gaze = false);
+    bool hasOffsetHotGaze() const { return sOffsetHotGazes.count(this) != 0; }
+    static bool hasOffsetHotGazes() { return !sOffsetHotGazes.empty(); }
     void restoreOffsetPose();
     F32 offsetHistoryLength() const;
     F32 phaseOffset(const LLUUID& animation);
@@ -199,6 +201,11 @@ public:
     void prepareOffsetDrive(S32 mode);
     bool mStartPhasePending = false;
     F64 mOffsetNextCapture = 0.;
+    // Allocated only during inherited hot presentation; ordinary history stays untouched.
+    std::map<F64, std::map<size_t, LLQuaternion>> mOffsetHotRotations;
+    F64 mOffsetLastHotTime = 0.;
+    S32 mOffsetHotSkeletonSerial = -1;
+    static std::set<const LLGhostAvatar*> sOffsetHotGazes;
     void setEntityLook(S32 look, F32 alpha);
 
     // [AutoAnimate] Actions are consumed by idleUpdate, never by UI callbacks.

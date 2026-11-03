@@ -656,7 +656,8 @@ public:
     void restoreHotGazes();
     void applyHotGazes();
     bool hasHotGazePose(const LLVOAvatar* avatar) const;
-    void captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone);
+    void captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone, bool delayed = false);
+    void restoreHotGazeCopy(LLVOAvatar* clone);
     static bool hotGazeCopiesJoint(const std::string& name);
     bool resolveHotGazeTarget(LLVOAvatar* actor, const GazeTarget& target, LLVector3d& point);
     static LLVector3 hotGazeJointPosition(LLVOAvatar* avatar, LLJoint* joint);

@@ -2424,7 +2424,8 @@ void ALGhostStudio::updatePostObjectList(bool hot_gaze)
     if (hot_gaze)
     {
         // A second pass copies only inherited hot rotations, after Stepped.
-        // Preserve delayed/held poses and the QoL private overlay body domain.
+        // Solo is render-only: hidden bodies still feed source dependencies.
+        // Preserve held poses and the QoL private overlay body domain.
         std::vector<Instance*> hot_order;
         auto hot_body = [&](const Instance& inst) -> LLGhostAvatar*
         {
@@ -2456,22 +2457,27 @@ void ALGhostStudio::updatePostObjectList(bool hot_gaze)
         std::set<LLUUID> stamped_helpers;
         for (Instance* inst : hot_order)
         {
-            if (!isVisible(*inst) || inst->mDeleting || inst->mStartOffset > 0.f ||
+            if (inst->mDeleting ||
                 (inst->mKind == BACKING_OVERLAY &&
                     (inst->mOverlayAvatar.isNull() || inst->mPose == POSE_FROZEN))) continue;
             LLGhostAvatar* ghost = hot_body(*inst);
-            if (!ghost || !LLActorMover::instance().hasHotGazePose(ghost->reflectSource())) continue;
+            if (!ghost) continue;
+            const bool delayed = inst->mKind == BACKING_ENTITY_CLONE && inst->mStartOffset > 0.f;
+            const bool source_hot = LLActorMover::instance().hasHotGazePose(ghost->reflectSource());
+            if (!source_hot && !(delayed && ghost->hasOffsetHotGaze())) continue;
             if (!stamped_helpers.insert(ghost->getID()).second) continue;
             const S32 mode = ghost->getEntityDriveMode();
-            if (mode == DRIVE_REFLECT) ghost->applyReflectStamp(inst->mReflectPlaneNormal, true);
-            else if (mode == DRIVE_TRUE_MIRROR)
+            if (mode != DRIVE_REFLECT && mode != DRIVE_TRUE_MIRROR) continue;
+            if (delayed) LLActorMover::instance().captureHotGazeCopy(nullptr, ghost, true);
+            if (source_hot && mode == DRIVE_REFLECT) ghost->applyReflectStamp(inst->mReflectPlaneNormal, true);
+            else if (source_hot && mode == DRIVE_TRUE_MIRROR)
             {
                 ghost->applyTrueMirrorStamp(true);
                 if (ALGhostAnimMirrorMath::eligible(inst->mDriveMode,
                         inst->mDirectedMirrorFreezeDrive, inst->mDirectedMirror, mode))
                     ghost->applyDirectedMirrorStamp(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);
             }
-            else continue;
+            if (delayed) ghost->applyOffsetHistory(LLTimer::getTotalSeconds(), true);
             // A directly targeted clone owns its own final layer, then passes
             // that presented pose to any downstream clone in the same chain.
             LLActorMover::instance().applyHotGaze(ghost);

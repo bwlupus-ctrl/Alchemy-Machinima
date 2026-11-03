@@ -1010,6 +1010,8 @@ LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegi
 // virtual
 LLGhostAvatar::~LLGhostAvatar()
 {
+    sOffsetHotGazes.erase(this);
+    mOffsetHotRotations.clear();
     if (mRenderOnlyHidden) --sRenderHiddenReasons;
     if (!mEntityCloneVisible) --sRenderHiddenReasons;
     releaseSourceReference();
@@ -4038,6 +4040,8 @@ std::string LLGhostAvatar::getRigDiagnosticText(bool include_live_render_state,
 
 void LLGhostAvatar::markForDeath()
 {
+    sOffsetHotGazes.erase(this);
+    mOffsetHotRotations.clear();
     // Deferred death, mirroring LLControlAvatar. markDead() must never run
     // inside a pipeline traversal, and spawn/destroy must stay on the viewer
     // thread outside any sAllowInstancesChange == false window.
@@ -4047,6 +4051,8 @@ void LLGhostAvatar::markForDeath()
 // virtual
 void LLGhostAvatar::markDead()
 {
+    sOffsetHotGazes.erase(this);
+    mOffsetHotRotations.clear();
     releaseSourceReference();
     if (ALCineLightRigManager::instanceExists())
         ALCineLightRigManager::instance().removeMirror(getID());
@@ -5583,6 +5589,8 @@ void LLGhostAvatar::setAnimationSource(const LLUUID& source)
     mAnimationSourceId = source;
     if (source.notNull()) ++sLiveSourceCounts[source];
     mOffsetHistory.clear();
+    sOffsetHotGazes.erase(this);
+    mOffsetHotRotations.clear();
 }
 F32 LLGhostAvatar::phaseOffset(const LLUUID& animation)
 {
@@ -5606,53 +5614,88 @@ void LLGhostAvatar::setStartOffset(F32 seconds)
     mPhaseArmed = true;
     if (seconds == mStartOffset) return;
     mStartOffset = seconds;
-    if (seconds == 0.f) { restoreOffsetPose(); mOffsetHistory.clear(); }
+    if (seconds == 0.f) { restoreOffsetPose(); mOffsetHistory.clear(); sOffsetHotGazes.erase(this); mOffsetHotRotations.clear(); }
     if (mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED) restartEntityAnimation();
 }
 F32 LLGhostAvatar::offsetHistoryLength() const
 {
     return mOffsetHistory.size() > 1 ? F32(mOffsetHistory.back().time-mOffsetHistory.front().time) : 0.f;
 }
-void LLGhostAvatar::applyOffsetHistory(F64 now)
+std::set<const LLGhostAvatar*> LLGhostAvatar::sOffsetHotGazes;
+
+void LLGhostAvatar::applyOffsetHistory(F64 now, bool hot_gaze)
 {
     if (mStartOffset <= 0.f || mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED ||
         mEntityDriveMode == ALGhostStudio::DRIVE_FROZEN || !mRoot) return;
     const auto& joints = getSkeleton();
     if (!mOffsetHistory.empty() && mOffsetHistory.back().positions.size() != joints.size())
+    {
         mOffsetHistory.clear();
-    mOffsetRestore.time = now;
-    mOffsetRestore.rotations.resize(joints.size());
-    mOffsetRestore.positions.resize(joints.size());
-    for (size_t i=0; i<joints.size(); ++i)
-    {
-        mOffsetRestore.rotations[i] = joints[i] ? joints[i]->getRotation() : LLQuaternion();
-        mOffsetRestore.positions[i] = joints[i] ? joints[i]->getPosition() : LLVector3::zero;
+        sOffsetHotGazes.erase(this);
+        mOffsetHotRotations.clear();
     }
-    if (!mTrueMirrorParamSetsBuilt) buildTrueMirrorParamSets();
-    for (S32 id : mTrueMirrorFaceParamIds)
-        if (LLVisualParam* param = getVisualParam(id)) mOffsetRestore.face[id] = param->getWeight();
-    for (S32 id : mTrueMirrorPhysicsParamIds)
-        if (LLVisualParam* param = getVisualParam(id)) mOffsetRestore.face[id] = param->getWeight();
-    for (const ClonedLinkset& linkset : mClonedLinksets)
+    if (hot_gaze)
     {
-        LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
-        LLControlAvatar* avatar = root ? root->getControlAvatar() : nullptr;
-        if (!avatar || avatar->isDead()) continue;
-        auto& pose = mOffsetRestore.attachments[avatar->getID()];
-        const auto& skeleton = avatar->getSkeleton();
-        pose.rotations.resize(skeleton.size()); pose.positions.resize(skeleton.size());
-        for (size_t i=0; i<skeleton.size(); ++i)
+        if (mOffsetHistory.empty()) return;
+        if (mOffsetHotSkeletonSerial != getSkeletonSerialNum())
         {
-            pose.rotations[i] = skeleton[i] ? skeleton[i]->getRotation() : LLQuaternion();
-            pose.positions[i] = skeleton[i] ? skeleton[i]->getPosition() : LLVector3::zero;
+            sOffsetHotGazes.erase(this);
+            mOffsetHotRotations.clear();
+            mOffsetHotSkeletonSerial = getSkeletonSerialNum();
         }
+        // Patch only this frame's 30 Hz input, never an earlier history sample.
+        // The stamp touched gaze rotations only; restore its delayed/Stepped
+        // presentation base before layering the delayed sample below.
+        if (mOffsetHistory.back().time == mOffsetRestore.time &&
+            LLActorMover::instance().hasHotGazePose(reflectSource()))
+        {
+            auto& input = mOffsetHotRotations[mOffsetHistory.back().time];
+            for (size_t i = 0; i < joints.size(); ++i)
+                if (joints[i] && LLActorMover::hotGazeCopiesJoint(joints[i]->getName()))
+                    input[i] = joints[i]->getRotation();
+            mOffsetLastHotTime = mOffsetHistory.back().time;
+            sOffsetHotGazes.insert(this);
+        }
+        while (!mOffsetHotRotations.empty() && mOffsetHotRotations.begin()->first < mOffsetHistory.front().time)
+            mOffsetHotRotations.erase(mOffsetHotRotations.begin());
+        LLActorMover::instance().restoreHotGazeCopy(this);
     }
-    mOffsetNeedsRestore = true;
-    if (now >= mOffsetNextCapture || mOffsetHistory.empty())
+    else
     {
-        mOffsetHistory.push_back(mOffsetRestore);
-        while (mOffsetHistory.size() > 61) mOffsetHistory.pop_front();
-        mOffsetNextCapture = now + 1./30.;
+        mOffsetRestore.time = now;
+        mOffsetRestore.rotations.resize(joints.size());
+        mOffsetRestore.positions.resize(joints.size());
+        for (size_t i=0; i<joints.size(); ++i)
+        {
+            mOffsetRestore.rotations[i] = joints[i] ? joints[i]->getRotation() : LLQuaternion();
+            mOffsetRestore.positions[i] = joints[i] ? joints[i]->getPosition() : LLVector3::zero;
+        }
+        if (!mTrueMirrorParamSetsBuilt) buildTrueMirrorParamSets();
+        for (S32 id : mTrueMirrorFaceParamIds)
+            if (LLVisualParam* param = getVisualParam(id)) mOffsetRestore.face[id] = param->getWeight();
+        for (S32 id : mTrueMirrorPhysicsParamIds)
+            if (LLVisualParam* param = getVisualParam(id)) mOffsetRestore.face[id] = param->getWeight();
+        for (const ClonedLinkset& linkset : mClonedLinksets)
+        {
+            LLViewerObject* root = gObjectList.findObject(linkset.mRoot);
+            LLControlAvatar* avatar = root ? root->getControlAvatar() : nullptr;
+            if (!avatar || avatar->isDead()) continue;
+            auto& pose = mOffsetRestore.attachments[avatar->getID()];
+            const auto& skeleton = avatar->getSkeleton();
+            pose.rotations.resize(skeleton.size()); pose.positions.resize(skeleton.size());
+            for (size_t i=0; i<skeleton.size(); ++i)
+            {
+                pose.rotations[i] = skeleton[i] ? skeleton[i]->getRotation() : LLQuaternion();
+                pose.positions[i] = skeleton[i] ? skeleton[i]->getPosition() : LLVector3::zero;
+            }
+        }
+        mOffsetNeedsRestore = true;
+        if (now >= mOffsetNextCapture || mOffsetHistory.empty())
+        {
+            mOffsetHistory.push_back(mOffsetRestore);
+            while (mOffsetHistory.size() > 61) mOffsetHistory.pop_front();
+            mOffsetNextCapture = now + 1./30.;
+        }
     }
     const F64 target = now - llmin(mStartOffset, 2.f);
     size_t next = 0;
@@ -5660,6 +5703,38 @@ void LLGhostAvatar::applyOffsetHistory(F64 now)
     const auto& b = mOffsetHistory[next];
     const auto& a = mOffsetHistory[next ? next-1 : 0];
     const F32 t = b.time > a.time ? F32(llclamp((target-a.time)/(b.time-a.time), 0., 1.)) : 0.f;
+    if (hot_gaze)
+    {
+        static const std::map<size_t, LLQuaternion> no_hot;
+        const auto hot_a = mOffsetHotRotations.find(a.time), hot_b = mOffsetHotRotations.find(b.time);
+        const auto& from_pose = hot_a != mOffsetHotRotations.end() ? hot_a->second : no_hot;
+        const auto& to_pose = hot_b != mOffsetHotRotations.end() ? hot_b->second : no_hot;
+        // A fresh history clamps its ordinary pose to the first sample. Hot
+        // input must instead wait a full offset before it can be presented.
+        if (target >= a.time)
+            for (size_t i = 0; i < joints.size(); ++i)
+            {
+                const auto from = from_pose.find(i), to = to_pose.find(i);
+                // Do not interpolate a new reaction backwards into the prior
+                // ordinary sample: its onset must wait the full start offset.
+                if (joints[i] && (from != from_pose.end() ||
+                    (to != to_pose.end() && target >= b.time)))
+                    joints[i]->setRotation(slerp(t,
+                        from != from_pose.end() ? from->second : a.rotations[i],
+                        to != to_pose.end() ? to->second : b.rotations[i]));
+            }
+        if (target >= mOffsetLastHotTime && from_pose.empty() && to_pose.empty())
+        {
+            sOffsetHotGazes.erase(this);
+            mOffsetHotRotations.clear();
+        }
+        mRoot->updateWorldMatrixChildren();
+        markStepAnimPoseChanged();
+        invalidateSkinPalettesForOverlay();
+        syncStepAnimAttachmentMatrices();
+        moveStampedAttachments();
+        return;
+    }
     for (size_t i=0; i<joints.size(); ++i)
         if (joints[i])
         {
@@ -5771,6 +5846,12 @@ void LLGhostAvatar::prepareOffsetDrive(S32 mode)
     if (mode == mEntityDriveMode) return;
     if (mode == ALGhostStudio::DRIVE_FROZEN)
     {
+        if (mStartOffset > 0.f)
+        {
+            LLActorMover::instance().restoreHotGazePose(this);
+            LLActorMover::instance().restoreHotGazeCopy(this);
+        }
+        sOffsetHotGazes.erase(this);
         mOffsetFrozenAt = LLTimer::getTotalSeconds();
         return; // latch the displayed delayed image, retaining independent input
     }
@@ -5783,6 +5864,13 @@ void LLGhostAvatar::prepareOffsetDrive(S32 mode)
         const F64 paused = LLTimer::getTotalSeconds()-mOffsetFrozenAt;
         for (auto& frame : mOffsetHistory) frame.time += paused;
         mOffsetNextCapture += paused;
+        mOffsetLastHotTime += paused;
+        decltype(mOffsetHotRotations) shifted;
+        for (auto& frame : mOffsetHotRotations) shifted.emplace(frame.first + paused, std::move(frame.second));
+        mOffsetHotRotations.swap(shifted);
+        if (mStartOffset > 0.f && (mode == ALGhostStudio::DRIVE_TRUE_MIRROR || mode == ALGhostStudio::DRIVE_REFLECT) &&
+            !mOffsetHotRotations.empty())
+            sOffsetHotGazes.insert(this);
     }
-    else mOffsetHistory.clear();
+    else { mOffsetHistory.clear(); sOffsetHotGazes.erase(this); mOffsetHotRotations.clear(); }
 }

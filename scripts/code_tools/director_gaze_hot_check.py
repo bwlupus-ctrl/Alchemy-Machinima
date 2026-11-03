@@ -73,8 +73,9 @@ struct LLVOAvatar:LLViewerObject {
  bool isSitting(){return false;} bool isBuilt(){return true;}bool isGhostAvatar(){return ghost;} int getSkeletonSerialNum(){return 1;}int getAppearanceSerialNum(){return 1;}
  LLVisualParam* getVisualParam(const char* n){auto i=params.find(n);return i==params.end()?nullptr:&i->second;}
  float getVisualParamWeight(LLVisualParam* p){return p->weight;}bool setVisualParamWeight(LLVisualParam* p,float v){p->weight=v;return true;}
- void updateVisualParams(){}void markStepAnimPoseChanged(){}void syncStepAnimAttachmentMatrices(){}
- int invalidateSkinPalettesForOverlay(){return 0;}void invalidateSkinPalettesAfterOverlay(){}
+ int poseChanges=0,skinChanges=0,attachmentSyncs=0;LLQuaternion attachmentHead;
+ void dirtyMesh(){}void updateVisualParams(){}void markStepAnimPoseChanged(){++poseChanges;}void syncStepAnimAttachmentMatrices(){++attachmentSyncs;attachmentHead=getJoint("mHead")->getRotation();}
+ int invalidateSkinPalettesForOverlay(){return ++skinChanges;}void invalidateSkinPalettesAfterOverlay(){}
 };
 ''' + method(NV/'llactormover.cpp','LLVector3 gazeRenderedJointPosition(') + r'''
 struct Agent {Region* getRegion(){return &region;} LLVector3 getPosAgentFromGlobal(LLVector3d p){return LLVector3(p);}
@@ -104,7 +105,7 @@ struct LLActorMover {
  std::map<LLUUID,HotGaze> mHotGazes;std::map<LLUUID,DirectorGaze> mHotGazeCopies;
  static LLActorMover& instance(){static LLActorMover m;return m;}
  bool hasHotGazes()const{return !mHotGazes.empty();}
- static bool hotGazeCopiesJoint(const std::string&);bool hasHotGazePose(const LLVOAvatar*)const;void captureHotGazeCopy(LLVOAvatar*,LLVOAvatar*);
+ static bool hotGazeCopiesJoint(const std::string&);bool hasHotGazePose(const LLVOAvatar*)const;void captureHotGazeCopy(LLVOAvatar*,LLVOAvatar*,bool=false);void restoreHotGazeCopy(LLVOAvatar*);
  struct Move{bool mIsPath=false;float mDist=0,mDir=1;LLQuaternion mCurRot;};
  struct Path{std::vector<int>mNodes;bool mDirty=false;float mTotalLength=0;void evalAtDistance(float,LLVector3d&,LLVector3d&)const{}};
  const Path* getPath(LLUUID){return nullptr;}
@@ -128,7 +129,7 @@ struct LLActorMover {
     source += (NV/'tests/algazehot_test.cpp').read_text(encoding='utf-8')
     for sig in ('ALGhostAnimMirrorMath::GazeWeights LLActorMover::getGazeWrittenWeights(', 'void LLActorMover::invalidateGazeCache(', 'bool LLActorMover::ensureGazeOwner(',
                 'void LLActorMover::invalidateDirectorCache(', 'bool LLActorMover::ensureDirectorOwner(',
-                'bool LLActorMover::hotGazeCopiesJoint(', 'void LLActorMover::captureHotGazeCopy(',
+                'bool LLActorMover::hotGazeCopiesJoint(', 'void LLActorMover::captureHotGazeCopy(', 'void LLActorMover::restoreHotGazeCopy(',
                 'bool LLActorMover::rewriteGazeTarget(', 'void LLActorMover::captureDirectorLookAtPose(',
                 'void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime)',
                 'bool LLActorMover::resolveHotGazeTarget(', 'void LLActorMover::releaseHotGazeSlot(',
@@ -251,7 +252,14 @@ def check():
     result=compile_run(out,source,'algazehot_test',flags,libs)
     assert result.returncode==0,result.stdout+result.stderr
     print(result.stdout.strip())
+    history = method(NV/'llghostavatar.cpp','void LLGhostAvatar::applyOffsetHistory(')
     controls={
+        'offset_hot_publication_missing':(history,history.replace('        markStepAnimPoseChanged();','        (void)0;').replace('        invalidateSkinPalettesForOverlay();','        (void)0;').replace('        syncStepAnimAttachmentMatrices();','        (void)0;')),
+        'solo_hidden_source_excluded':('            if (inst->mDeleting ||', '            if (!isVisible(*inst) || inst->mDeleting ||'),
+        'offset_hot_input_missing':('                    input[i] = joints[i]->getRotation();', '                    (void)i; // mutant: omit delayed hot input'),
+        'offset_hot_tail_missing':('LLActorMover::instance().hasHotGazes() || LLGhostAvatar::hasOffsetHotGazes()', 'LLActorMover::instance().hasHotGazes()'),
+        'offset_hot_early_interpolation':('to != to_pose.end() && target >= b.time', 'to != to_pose.end()'),
+        'offset_hot_sample_retroactive':('mOffsetHistory.back().time == mOffsetRestore.time &&', 'true &&'),
         'production_paint_return':(paint,paint[:paint.index('{')+1]+' return;'+paint[paint.index('{')+1:]),
         'flip_composition_missing':('                    ghost->applyDirectedMirrorStamp(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);','                    (void)mode; // mutant: omit late flip composition'),
         'clone_copy_missing':('        ALGhostStudio::instance().updatePostObjectList(true);','        /* mutant: no source presentation copy */'),
