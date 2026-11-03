@@ -9,6 +9,42 @@ import xml.etree.ElementTree as ET
 from relight_area_policy_check import method as source_method
 
 
+# Forward integration order; each baseline is immutable main plus earlier layers.
+ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f521240063afe57136c341bc1898177c75ee839f0580'), ('actor_key_wp2_hunks.json', 'f3a43e5c9d72ce23e55e7692d985609b36e11c8e1d177828dd707b5b9754baf8'), ('actor_key_lens_hunks.json', '844681a5ef69be59d5b25963eb31c390313762ad9877fafd4cd5845d887745b8'), ('actor_key_wp1b_hunks.json', '61e677b1d11538f03a399943091deeab599c599cd6d0d8904064c52264d80edf'), ('actor_key_shadow_hunks.json', 'b1575e291227801c5ed9b2ab5645ed52964b3f1651e7dc9d53a34fb2780d6b67'), ('actor_key_wp5_ui_hunks.json', 'c12e8b597cf14cd0a6fb06484ca436acbb8595bbe833e6a078311a1fd8231130'))
+
+
+def actor_key_baseline(source, name):
+    """Peel only exact key deltas; full-file equality rejects unrelated edits."""
+    import hashlib, json
+    path = "indra/newview/" + name
+    layers = []
+    for filename, digest in ACTOR_KEY_LAYERS:
+        raw = (Path(__file__).parent / filename).read_bytes().replace(b"\r\n", b"\n")
+        assert hashlib.sha256(raw).hexdigest() == digest, (filename, "allowance pin")
+        data = json.loads(raw)
+        assert data["integration_base"] == "ab2329ba39f", (filename, "integration base")
+        assert data["integration_predecessors"] == [item[0] for item in layers], (filename, "layer order")
+        files = data.get("files", {"indra/newview/pipeline.cpp": data.get("hunks", [])})
+        layers.append((filename, files))
+    if not any(path in files for _, files in layers):
+        return source
+    baseline = subprocess.check_output(["git", "show", "ab2329ba39f:" + path]).decode("utf-8").replace("\r\n", "\n")
+    checkpoints = []
+    for filename, files in layers:
+        before = baseline
+        for hunk in files.get(path, []):
+            assert baseline.count(hunk["before"]) == 1, (filename, "baseline hunk", name)
+            baseline = baseline.replace(hunk["before"], hunk["after"], 1)
+        checkpoints.append((filename, files.get(path, []), before, baseline))
+    for filename, hunks, before, after in reversed(checkpoints):
+        assert source == after, (filename, "full feature source", name)
+        for hunk in hunks:
+            assert source.count(hunk["after"]) == 1, (filename, "exact feature hunk", name)
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == before, (filename, "reversal must reproduce exact baseline", name)
+    return source
+
+
 def reverse_feature_allowance(source, name, filename, digest, label):
     """Reverse one pinned layer, then require its entire historical baseline."""
     import hashlib
@@ -51,7 +87,7 @@ def method(path, signature):
     # code. New Hot Gaze behavior is exercised by its own native contract and
     # the extended clone transaction fixture, without broadening old stubs.
     if path.name in ("llactormover.cpp", "lldirectorcast.cpp") and path.parent.name == "newview":
-        source = hot_gaze_baseline(path.read_text(encoding="utf-8"), path.name)
+        source = hot_gaze_baseline(actor_key_baseline(path.read_text(encoding="utf-8"), path.name), path.name)
         baseline = check_directory("actorbar_baseline") / path.name
         baseline.parent.mkdir(parents=True, exist_ok=True)
         baseline.write_text(source, encoding="utf-8")
@@ -77,6 +113,7 @@ def reverse_qol_allowance(path, source):
 
 def main():
     nv = Path("indra/newview")
+    actor_key_baseline((nv / "llactormover.h").read_text(encoding="utf-8"), "llactormover.h")
     xui = nv / "skins/default/xui/en"
     removed = {"anim_speed_avatar", "gaze_edit_actor", "sa_actor_target", "actor_style_target"}
     index = (xui / "director_kit_index.xml").read_text(encoding="utf-8")
@@ -104,7 +141,7 @@ def main():
         assert "\t" + widget + "\t" in index
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
-        guarded = (nv / path).read_text(encoding="utf-8")
+        guarded = actor_key_baseline((nv / path).read_text(encoding="utf-8"), path)
         if path == "pipeline.cpp":
             # Remove only the two pinned blink hooks before reversing clone QoL.
             import hashlib, json
@@ -154,7 +191,7 @@ def main():
     # Round-2 mover plus Clone Studio look registration and the two exact
     # transaction-time reference-rewrite methods below. Hashes pin their full
     # content: an unrelated mover edit still fails the original baseline guard.
-    current_mover = normalize((nv / "llactormover.cpp").read_text(encoding="utf-8"))
+    current_mover = actor_key_baseline(normalize((nv / "llactormover.cpp").read_text(encoding="utf-8")), "llactormover.cpp")
     import hashlib
     rekey_methods = {
         'bool LLActorMover::rewriteGazeTarget(': '334e1f5af6f3cf254d171550133cc40df87ac11c96500cde799a8baf4056767f',
@@ -163,9 +200,9 @@ def main():
     # Guard every additional file covered by the new layers, including Studio
     # where retirement and interplay both changed the Hot Gaze implementation.
     for name in ("alghoststudio.cpp", "llactormover.h"):
-        hot_gaze_baseline((nv / name).read_text(encoding="utf-8"), name)
+        hot_gaze_baseline(actor_key_baseline((nv / name).read_text(encoding="utf-8"), name), name)
     guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
-    # Reversal order: retired looks, interplay, Hot Gaze, QoL, phase 2,
+    # Reversal order: key WP5/WP4/WP1b/LENS/WP2/WP01, Matrix, retired looks, interplay, Hot Gaze, QoL, phase 2,
     # rekey, phase 1, then the unchanged original round-2 guard.
     guarded_mover = reverse_qol_allowance("indra/newview/llactormover.cpp", guarded_mover)
     import json

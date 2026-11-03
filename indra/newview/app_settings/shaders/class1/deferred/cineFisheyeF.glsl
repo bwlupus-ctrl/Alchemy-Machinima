@@ -19,6 +19,17 @@
 
 out vec4 frag_color;
 
+#ifdef AL_KEY_COVERAGE_ONLY
+uniform sampler2D keyCoverage;
+uniform int keyInputPacked; // K1 is RG; later stages are RGB + shadow A.
+vec4 keySample(vec2 uv)
+{
+    vec4 c = textureLod(keyCoverage, uv, 0.0);
+    return keyInputPacked != 0 ? vec4(c.rrr, c.g) : c;
+}
+#endif
+
+
 in vec2 vary_fragcoord;
 
 uniform sampler2D diffuseMap;
@@ -45,15 +56,27 @@ void main()
     vec2 src = c * g / max(fisheye_params2.z, 0.25);
     vec2 suv = vec2(src.x / aspect, src.y) * 0.5 + 0.5 +
                fisheye_params2.xy;
+#ifdef AL_KEY_COVERAGE_ONLY
+    vec4 col = keySample(suv);
+#else
     vec3 col = texture(diffuseMap, suv).rgb;
+#endif
     if (any(lessThan(suv, vec2(0.0))) ||
         any(greaterThan(suv, vec2(1.0))))
     {
+#ifdef AL_KEY_COVERAGE_ONLY
+        col = vec4(0.0);
+#else
         col = vec3(0.0);
+#endif
     }
 
     float v = 1.0 - smoothstep(
         fisheye_params.z - fisheye_params.w,
         fisheye_params.z + fisheye_params.w, r);
+#ifdef AL_KEY_COVERAGE_ONLY
+    frag_color = clamp(col, 0.0, 1.0);
+#else
     frag_color = vec4(col * v, 1.0);
+#endif
 }

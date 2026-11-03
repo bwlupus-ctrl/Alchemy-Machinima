@@ -54,6 +54,7 @@
 #include "llnotificationsutil.h"
 #include "llslurl.h"
 #include "llsnapshotlivepreview.h"
+#include "alactorchromakey.h"
 #include "lltoolfocus.h"
 #include "llviewercontrol.h"
 #include "llviewermenufile.h"   // upload_new_resource()
@@ -159,8 +160,22 @@ F32 LLSnapshotLivePreview::getImageAspect()
     return (mKeepAspectRatio ? ((F32)getRect().getWidth()) / ((F32)getRect().getHeight()) : ((F32)getWidth()) / ((F32)getHeight()));
 }
 
+bool LLSnapshotLivePreview::keyCaptureCurrent() const
+{
+    return !ALActorChromaKey::sActive ||
+        (mKeyCaptureRevision != 0 && mKeyCaptureRevision == ALActorChromaKey::revision() &&
+         ALActorChromaKey::snapshotPlaceholder().empty());
+}
+
+bool LLSnapshotLivePreview::getSnapshotUpToDate() const
+{
+    return mSnapshotUpToDate && keyCaptureCurrent();
+}
+
 void LLSnapshotLivePreview::updateSnapshot(bool new_snapshot, bool new_thumbnail, F32 delay)
 {
+    if (new_snapshot && ALActorChromaKey::sActive && ALActorChromaKey::snapshotRequestExplicit())
+        ALActorChromaKey::explicitSnapshotRequest();
     LL_DEBUGS("Snapshot") << "updateSnapshot: mSnapshotUpToDate = " << getSnapshotUpToDate() << LL_ENDL;
 
     // Update snapshot if requested.
@@ -674,6 +689,7 @@ LLViewerTexture* LLSnapshotLivePreview::getBigThumbnailImage()
 //static
 bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
 {
+    ALActorChromaKey::SnapshotRequestScope automatic_key_request(false);
     LLSnapshotLivePreview* previewp = (LLSnapshotLivePreview*)snapshot_preview;
     if (previewp->getWidth() == 0 || previewp->getHeight() == 0)
     {
@@ -724,6 +740,10 @@ bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
         previewp->mForceUpdateSnapshot = false;
     }
 
+    if (ALActorChromaKey::sActive && previewp->mSnapshotUpToDate &&
+        previewp->mKeyAttemptRevision == ALActorChromaKey::revision() &&
+        !ALActorChromaKey::snapshotPlaceholder().empty()) return false;
+
     if (previewp->getSnapshotUpToDate() && previewp->getThumbnailUpToDate())
     {
         return false;
@@ -746,6 +766,12 @@ bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
         previewp->getWindow()->incBusyCount();
         previewp->setImageScaled(false);
 
+        // Stamp only a successfully finalized capture under the same key revision.
+        const bool key_active = ALActorChromaKey::sActive;
+        const U64 key_revision = ALActorChromaKey::revision();
+        const U64 key_serial = ALActorChromaKey::finalizeSerial();
+        previewp->mKeyAttemptRevision = key_active ? key_revision : 0;
+        previewp->mKeyCaptureRevision = 0;
         // grab the raw image
         if (gViewerWindow->rawSnapshot(
                 previewp->mPreviewImage,
@@ -761,6 +787,12 @@ bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
                 previewp->mSnapshotBufferType,
                 previewp->getMaxImageSize()))
         {
+            if (key_active && ALActorChromaKey::sActive &&
+                key_revision == ALActorChromaKey::revision() &&
+                previewp->mSnapshotBufferType == LLSnapshotModel::SNAPSHOT_TYPE_COLOR &&
+                ALActorChromaKey::finalizeSerial() > key_serial &&
+                ALActorChromaKey::snapshotPlaceholder().empty())
+                previewp->mKeyCaptureRevision = key_revision;
             // Invalidate/delete any existing encoded image
             previewp->mPreviewImageEncoded = NULL;
             // Invalidate/delete any existing formatted image
@@ -769,7 +801,7 @@ bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
             previewp->estimateDataSize();
 
             // Full size preview is set: get the decoded image result and save it for animation
-            if (use_freeze_frame && previewp->mAllowFullScreenPreview)
+            if (use_freeze_frame && previewp->mAllowFullScreenPreview && previewp->keyCaptureCurrent())
             {
                 previewp->prepareFreezeFrame();
             }
@@ -780,6 +812,15 @@ bool LLSnapshotLivePreview::onIdle( void* snapshot_preview )
             // We need to update the thumbnail though
             previewp->setThumbnailImageSize();
             previewp->generateThumbnailImage(true) ;
+        }
+        if (ALActorChromaKey::sActive && !ALActorChromaKey::snapshotPlaceholder().empty())
+        {
+            previewp->mThumbnailImage = nullptr;
+            previewp->mBigThumbnailImage = nullptr;
+            previewp->mThumbnailUpToDate = true;
+            previewp->mBigThumbnailUpToDate = true;
+            previewp->mFormattedImage = nullptr;
+            previewp->mPreviewImageEncoded = nullptr;
         }
         previewp->getWindow()->decBusyCount();
         previewp->setVisible(use_freeze_frame && previewp->mAllowFullScreenPreview); // only show fullscreen preview when in freeze frame mode
@@ -922,6 +963,7 @@ LLPointer<LLImageRaw> LLSnapshotLivePreview::getEncodedImage()
 
 bool LLSnapshotLivePreview::createUploadFile(const std::string &out_filename, const S32 max_image_dimentions, const S32 min_image_dimentions)
 {
+    if (!keyCaptureCurrent()) return false;
     return LLViewerTextureList::createUploadFile(mPreviewImage, out_filename, max_image_dimentions, min_image_dimentions);
 }
 
@@ -967,6 +1009,7 @@ void LLSnapshotLivePreview::estimateDataSize()
 
 LLPointer<LLImageFormatted> LLSnapshotLivePreview::getFormattedImage()
 {
+    if (!keyCaptureCurrent()) return nullptr;
     if (!mFormattedImage)
     {
         // Apply the filter to mPreviewImage
@@ -1042,6 +1085,7 @@ void LLSnapshotLivePreview::getSize(S32& w, S32& h) const
 
 void LLSnapshotLivePreview::saveTexture(bool outfit_snapshot, std::string name)
 {
+    if (!keyCaptureCurrent()) return;
     LLImageDataSharedLock lock(mPreviewImage);
 
     LL_DEBUGS("Snapshot") << "saving texture: " << mPreviewImage->getWidth() << "x" << mPreviewImage->getHeight() << LL_ENDL;
@@ -1111,6 +1155,7 @@ void LLSnapshotLivePreview::saveTexture(bool outfit_snapshot, std::string name)
 
 void LLSnapshotLivePreview::saveLocal(const snapshot_saved_signal_t::slot_type& success_cb, const snapshot_saved_signal_t::slot_type& failure_cb)
 {
+    if (!keyCaptureCurrent()) return;
     // Update mFormattedImage if necessary
     getFormattedImage();
 

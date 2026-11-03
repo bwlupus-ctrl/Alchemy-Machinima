@@ -644,7 +644,7 @@ int main(){
 #include <map>
 #include <vector>
 using F32=float;using S32=int;using U64=unsigned long long;using U8=unsigned char;
-struct LLQuaternion{};struct LLVector3{};struct LLMatrix4{};
+struct LLQuaternion{};struct LLVector3{};struct LLMatrix4{};struct LLColor3{};struct CoverPolicy;
 struct LLUUID{bool operator<(const LLUUID&)const{return false;}};
 using GhostCoverageMask=int;const int GHOST_COVERAGE_NONE=0;
 template<class T>T llclamp(T v,T a,T b){return std::clamp(v,a,b);}

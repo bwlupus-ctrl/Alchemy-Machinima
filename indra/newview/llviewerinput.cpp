@@ -1031,6 +1031,13 @@ bool pov_eye_blink(EKeystate s)
     return true;
 }
 
+bool toggle_actor_key(EKeystate s)
+{
+    if (s == KEYSTATE_DOWN)
+        gSavedSettings.setBOOL("ActorKeyEnabled", !gSavedSettings.getBOOL("ActorKeyEnabled"));
+    return true;
+}
+
 bool toggle_viewfinder(EKeystate s)
 {
     if (KEYSTATE_DOWN != s) return true;
@@ -1216,6 +1223,7 @@ REGISTER_KEYBOARD_ACTION("roll_left", camera_roll_left);
 REGISTER_KEYBOARD_ACTION("roll_right", camera_roll_right);
 REGISTER_KEYBOARD_ACTION("roll_reset", camera_roll_reset);
 REGISTER_KEYBOARD_ACTION("toggle_viewfinder", toggle_viewfinder);
+REGISTER_KEYBOARD_ACTION("toggle_actor_key", toggle_actor_key);
 REGISTER_KEYBOARD_ACTION("pov_eye_blink", pov_eye_blink);
 // [Machinima] Actor Gaze look-at-camera toggles. Regular (NOT global) actions:
 // the regular key path debounces OS auto-repeat via gKeyboard->getKeyRepeated so
@@ -1654,13 +1662,13 @@ namespace
 void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMode& defaults, S32 migration_version, S32 binding_count,
     LLViewerInput::KeyMode* additions = nullptr)
 {
-    if (binding_count == 0 || migration_version >= 4) return;
+    if (binding_count == 0 || migration_version >= 5) return;
     static const struct
     {
         S32 version;
         const char* command;
     } introduced[] = {{2, "toggle_viewfinder"}, {3, "pov_eye_blink"}, {4, "director_hot_gaze_1"},
-        {4, "director_hot_gaze_2"}, {4, "director_hot_gaze_3"}, {4, "director_hot_gaze_4"}};
+        {4, "director_hot_gaze_2"}, {4, "director_hot_gaze_3"}, {4, "director_hot_gaze_4"}, {5, "toggle_actor_key"}};
 
     for (const auto& binding : defaults.bindings)
     {
@@ -1695,7 +1703,7 @@ void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMo
 void LLViewerInput::migrateKeysXML(const std::string& filename, Keys& keys, S32 binding_count, Keys* additions)
 {
     const S32 migration_version = gSavedSettings.getS32("KeyBindingsMigrationVersion");
-    if (binding_count == 0 || migration_version >= 4) return;
+    if (binding_count == 0 || migration_version >= 5) return;
 
     const std::string defaults_filename = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "key_bindings.xml");
     if (filename == defaults_filename) return;

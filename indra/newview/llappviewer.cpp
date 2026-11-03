@@ -88,6 +88,7 @@
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
 #include "aldirectoranimswitcher.h" // presentation-time animation switchboard
 #include "allocalfogmanager.h"      // client-only atmospheric volumes
+#include "alactorchromakey.h"
 #include "alcinelightrigmanager.h"  // client-only cinematic lights
 #include "alcolorchart.h"
 #include "alvcambonepov.h"          // skeleton-attached prim-free cameras
@@ -915,6 +916,7 @@ bool LLAppViewer::init()
         return false;
     }
     ALSteppedAnimRuntime::initialize();
+    ALActorChromaKey::initialize();
 
     applyMachinimaDebugLogging();
     gSavedSettings.getControl("MachinimaDebugLogging")->getSignal()->connect(
@@ -5692,6 +5694,7 @@ void LLAppViewer::idle()
     {
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
         {
+            if (ALActorChromaKey::sActive) ALActorChromaKey::tick();
             gObjectList.update(gAgent);
             // [GhostStudio] TRUE-mirror clones copy their source's FINAL pose
             // (post-motion, post-gaze/IK) -- which only exists once every

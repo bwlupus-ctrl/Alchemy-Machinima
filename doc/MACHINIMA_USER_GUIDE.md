@@ -951,6 +951,78 @@ Key settings: `PrismLensEnabled` (master), `PrismLensZoom`, `PrismLensResolution
 
 ---
 
+### 10.2 Actor chroma key — Director > Capture > Key
+
+Search Director for **chroma**, **green screen**, **matte** or **key**. Enable **Key actors**,
+use the header Quick tile **Key**, or press **Ctrl+Alt+K**. The shortcut is rebindable as
+**Toggle actor key** in Preferences > Controls, in every movement mode. F9 remains POV blink.
+Key actors starts **off at every login**; key settings never join a look preset. The toggle-on
+notice can be suppressed with Don't show me this again.
+
+1. Choose **Actors on key** to retain actors on a flat colour, **Set only** to replace actors
+   with that colour while retaining the set, or **Alpha matte** for white actors on black.
+   Alpha matte is greyscale; lens colour fringes reduce to luma. **Invert matte** swaps black
+   and white. **Grey shadow in matte** requests actor shadows in that matte.
+2. Choose **Key colour**: Chroma Green (0,177,64, the default), Pure Green (0,255,0),
+   Chroma Blue (0,71,187), Pure Blue (0,0,255), Magenta (255,0,255), Pure Black (0,0,0),
+   Pure White (255,255,255), Mid Grey (128,128,128), or Custom. Select Custom to enable
+   its swatch; picking a colour selects Custom. **Codes** gives the actual 8-bit RGB values
+   to enter in OBS or your compositor. Chroma Green and Chroma Blue are conventions.
+3. Under **Who**, select All avatars, Director cast, Actor-only lit or Me only. **Include
+   clones** defaults on for entity and overlay Ghost Studio clones. Off keys entity clones
+   out with the set and hides overlay clones; Set only keeps excluded clones as set.
+   Animesh is opt-in and defaults off. The keyed count reports clones and impostors.
+4. With Actors on key and clones included, **Glass refracts: Scene** (default) uses the
+   graded image just before keying, including set and actors. It excludes later overlays and
+   other overlay clones. **Key colour** refracts the keyed frame; Glass tints that colour,
+   so your keyer's tolerance determines how much replacement background shows through.
+5. **Feather** defaults to 1.5 pixels at 1080p (0–32, scaled to output height). **Choke**
+   defaults to 0 (−8 to 8): positive shrinks, negative grows. Choose Blend or Hard edges;
+   **Hair and alpha coverage** is on by default for translucent hair and lashes.
+6. **Keep actor shadows** defaults on in Actors on key. It requires sun/moon shadows in
+   Graphics. Fast is the default isolation; Exact compares actor and set shadows; All sun
+   shadows retains the full sun/moon shadow. Strength defaults to 0.50 (up to 0.85),
+   Cascades to 2 (1–4), Softness to 0.50. Shadow status reports the darkest RGB codes
+   implied by Strength. Projector/spot shadows are not retained. Fast may darken where an
+   actor shadow overlaps a set shadow; use Exact. Very dark shadows need a looser keyer
+   (for example OBS Similarity) or a separate matte / Set only pass.
+7. Check **Status**, **ReShade**, **Guarantee** and **Capture warnings** before recording.
+   Green means keying, amber means arming, suspended or warnings, and red means refused
+   with a reason. Unevaluated guard state is amber/unknown, never verified exactness.
+   The badge **KEY ON · <mode>** appears only while the UI is visible.
+8. Hide UI with **Ctrl+Alt+F1** and record the viewer window in OBS. The badge disappears.
+   **Hide HUD attachments** defaults on. Warnings identify guides configured to survive UI
+   hiding, the viewfinder (survives both hide mechanisms), physics shapes, area-shadow debug,
+   debug text, RLVa overlays, opted-in HUD attachments, the colour chart and Warm blink.
+   Disable unwanted overlays; hiding the UI alone does not remove all of them. Alpha matte
+   suppresses the colour chart and blink. Ghost Edit rings are suppressed with UI hidden
+   while keying, but actor path guides are keyed with the set.
+
+**ReShade integration:** the page reads the bridge's key guard status, refusal reason,
+overlay causes and exactness guarantee. Retry is visible on guard refusal and re-arms
+the actual guard after you correct the reported cause. It never simulates a guard
+acknowledgement. With a verified absence of ReShade, the guarantee is “Key colour
+is exact.” With ReShade loaded, the guarantee is: “Key colour is exact except where ReShade's
+own UI draws, and an add-on effect switched on mid-key may tint ONE frame before keying stops.”
+ReShade's UI, OSD, tutorial and reload splash may contaminate captured pixels. The ReShade
+readout names active overlay causes reported by the bridge.
+
+**Diagnostics:** Debug view selects Off, Coverage, Matte, Actor shadow or Lens coverage and
+resets off at login. **Self-test** requests WP2's eight-frame key/actor pixel comparison before
+overlays; the log records **ACTORKEY SELFTEST PASS / FAIL / INCONCLUSIVE** with frame and
+sample availability. **Last result** shows the actual latest frame verdict; it is not inferred
+from a cleared request. A missing actor or key block is inconclusive. **Exact shadow test**
+requests the shadow diagnostic. Live shadow verification and that diagnostic require WP4's
+integration; pending feedback is labelled explicitly. A request is never treated as PASS.
+
+Known limits: overlay clones are not camera-processed; Scene glass cannot refract other overlay
+clones. An excluded overlay clone in front of an actor in Set only does not cut the actor's key
+silhouette. DoF and motion blur are not matte-aware. Crowds can cost more because keyed avatars
+stay live rather than becoming impostors. Lens coverage or preflight failure suspends keying
+with its reason; check status again after changing lens/debug settings. Keyed snapshot failure
+refuses the snapshot rather than silently returning an unkeyed image. Final acceptance requires
+in-world tests of styled actors (W-K8), lens warps (W-K11) and Fast/Exact actor shadows (W-9a).
+
 ## 11. Quick reference
 
 ### Hotkeys

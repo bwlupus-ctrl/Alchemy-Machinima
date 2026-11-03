@@ -1,5 +1,802 @@
-# Actor Chroma Key / Matte — design (v13)
+# Actor Chroma Key / Matte — design (v20)
 
+Status: DESIGN ONLY (2026-11-02). **v20** = v19 with D54's suppression record extended to the classic/system avatar paths after Codex design review r6 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r6.md`: 0 P0, 1 P1 — R43). **v19** = v18 with D53 replaced after Codex design review r5 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r5.md`: 0 P0, 1 P1 — R42; R37-R41 confirmed fixed). **v18** = v17 revised after Codex design review r4 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r4.md`: 0 P0, 4 P1, 1 P2) and with the user's final answers to Q4 and Q5. **v17** = v16 revised after Codex design review r3 (`.tmp/chromakey_v14_20261102/REVIEW_codex_r3.md`: 0 P0, 5 P1, 2 P2; dispositions §A19). **v16** = v15 revised after Codex design review r2
+(`.tmp/chromakey_v14_20261102/REVIEW_codex_r2.md`: 0 P0, 8 P1, 4 P2 open), by **simplification**: the
+clone layer, its depth copy, per-sweep layer output, the deferred-draw queue and the late-failure rollback
+are all withdrawn. v15 (review r1) and v14 (refresh of the approved v13 against main 3a64bb9c5c4) are
+summarised in the changelogs below. No source edits, no build, no commit. Every file:line in Part A was
+read in `I:\alchemy-machinima-chromakey2` (= main 3a64bb9c5c4) on 2026-11-02; the anchor audit is
+`.tmp/chromakey_v14_20261102/AUDIT.md`.
+Labels: **PROVES** = read in code, **IMPLIES** = from a design doc, **INFERENCE** = not yet checked in
+code or in-world.
+
+**How to read this document.** Part A is the complete, self-consistent v16 specification; earlier v14/v15
+operational instructions that v16 withdraws have been deleted from it, not overridden. Part B is the v13
+text (ReShade guard, snapshots, actor shadows, review history); each of its section headings carries a
+banner — KEPT, KEPT WITH DELTAS (§A13) or SUPERSEDED. Where Part A and Part B disagree, Part A wins.
+
+## Changelog v19 → v20 (Codex design review r6)
+
+| # | Change | Finding | Where |
+|---|---|---|---|
+| 1 | D54's suppression record gains a **typed system domain**: `SystemComponentKey {canonical actor-FX id, part ∈ {BodyOpaque, BodyTransparent, RigidEyes}}`, recorded at the UUID-overload beauty call sites (classic eyes and body, lldrawpoolavatar.cpp:1226-1232, 1270-1276) and consumed by the key's system coverage before `renderSkinned` / `renderRigid`; WP1b captures system components under the same key; contributor trace enumerates the system domain | R43 | §A9 |
+
+## Changelog v18 → v19 (Codex design review r5)
+
+| # | Change | Finding | Where |
+|---|---|---|---|
+| 1 | D53 replaced by **D54**: coverage disposition is decided **per component and per render path** from the beauty decision that path actually took this frame — legacy/system draws through `shouldSuppressSharedActorFx`, PBR draws through `shouldSuppressSharedActorFxPBR` (which also suppresses ordinary Layer when PBR-ready) — and each visible component has exactly one coverage contributor; the key's generic shared hook contributes nothing (shared components come only from the WP1b replay of what the shared pass drew, with its actual material law) | R42 | §A5, §A9 |
+
+## Changelog v17 → v18 (Codex design review r4; final user answers)
+
+| # | Change | Findings | Where |
+|---|---|---|---|
+| 1 | **User decisions recorded (final):** Q4 = overlay clones keep today's look (not camera-processed, identical key on/off) — D49; Q5 = Scene-mode Glass shows the graded image just before the key — D50 | user | §A0, §A7, §A17 |
+| 2 | One ordered owner of the Studio scene-cache lifecycle on keyed frames: K0 runs the cache `begin`/expiry, then reserves; Studio's own `begin` does not expire again that frame; a reservation pins lifetime without marking pixels valid; a counter proves zero post-K2 allocation | R37 | §A7 |
+| 3 | Diopter nonlinear operations: coverage follows the **beauty-decided** winner per channel at every selection (seam `max`, deterministic ties) and ignores additive optical support (halo ghost light is colour-only, like bloom); coverage stays in [0, 1] | R38 | §A8 |
+| 4 | Coverage ownership derived from the **same beauty predicates** the native pass uses (`shared_actor_fx_owns_native_beauty`, `shared_actor_fx_zero_cover`, lldrawpool.cpp:1044-1072): native visible / replacement owns (incl. Layer Dissolve) / intentionally absent (zero Cover) | R39 | §A9 |
+| 5 | K1 order: generic coverage → WP1b styled replay → **virtual-Prism set occluders last** → coverage stamp → matte | R40 | §A5, §A10 |
+| 6 | Snapshot completion promoted at the unconditional Studio call site, covering every early return | R41 | §A6 |
+
+## Changelog v16 → v17 (Codex design review r3) — history; v18 rows above take precedence
+
+| # | Change | Findings | Where |
+|---|---|---|---|
+| 1 | **No droppable WPs for user requirements.** WP-LENS (Q3 lens warp), WP4 (keep actor shadows, D5) and WP1b (styled-actor coverage) are required for v1 acceptance; a WP may be dropped only with the user's explicit sign-off recorded in §A17; gate **G-REQ** enforces it | R36 | §A0 D37, §A16 |
+| 2 | Glass: every Glass scene cache is **prepared in K0 preflight**; Scene-mode Glass gets its source copied **before** the key write; fill mode does no copy (`ghostSceneValid` forced to 1); the snapshot stamp becomes complete only after the Studio pass. Nothing fallible remains after the destructive write | R30 | §A6, §A7 |
+| 3 | Scene-mode Glass parity: v16 claimed today's look; it cannot be, because today's Glass refracts later overlays and rear clones drawn after the key point. The contract is stated plainly and put to the user as **Q5** (recommendation: refract the pre-key image) | R31 | §A7, §A17 |
+| 4 | Lens coverage within the 4-attachment engine: **separate coverage passes** run right after each beauty lens pass with the same inputs, ≤ 2 attachments, own targets; production lens programs and the beauty pass are untouched (no MRT added to them) | R32 | §A8 |
+| 5 | Ghost Edit ring suppressed while keying when the UI is hidden | R33 | §A7 |
+| 6 | AUDIT.md: withdrawn instructions deleted (B1, C6, D12 rewritten; historical notes removed); K2 anchor corrected to pipeline.cpp:27167 | R34 | AUDIT.md, §A6 |
+| 7 | Styled coverage: one authoritative contributor per component across **all three** domains (native, system, shared incl. its PBR branch); suppression only for components the replacement actually drew; R-scalar coverage output; actual world/system/PBR variants | R35 | §A9 |
+| 8 | Alpha matte reduces lens per-channel coverage to luma (greyscale matte); shadow through lens coverage uses the green-channel weights (bounded scalar) | r3 notes | §A6, §A8 |
+
+## Changelog v15 → v16 (Codex design review r2; simplification) — history; v17 rows above take precedence
+
+| # | Change | Findings | Where |
+|---|---|---|---|
+| 1 | **K2 moves to directly after the final blit**, inside `renderFinalizePresent` (after `present_program.unbind()`, pipeline.cpp:27167), drawing into the same bound framebuffer as the blit. Every grade/look effect is already applied there; everything that draws later (composition guides, focus point, physics, colour chart, HUD, RLVa overlay, overlay clones, blink, UI) is an overlay drawn in today's order. No call is deferred, no queue, no P re-binding | R16, R22, R27, R28 | §A2, §A6 |
+| 2 | **Overlay clones are drawn after the key, onto the keyed frame, in one Studio pass in today's far-to-near order** (coordinator proposal). Included clones: Actors on key → today's look; Set only → filled with the key colour; Alpha matte → filled white. Excluded clones: not drawn (Actors on key, Alpha matte) or today's look (Set only). Fill uses a separate program variant; the normal ghost program is untouched | R19, R23, R24, R29, R8, R9, R13 | §A7 |
+| 3 | Clone layer L, its depth copy, `studio_layer_out`, the Studio begin/partition/end split and the Glass "L over P" composition are **withdrawn** | (removes the sources of R19, R23, R24, R28) | — |
+| 4 | **Composite = copy + blend-off.** K2 copies the bound framebuffer's colour into `mActorKeyScene` (same colour format), then writes `mode(S, key, m, g)` with blending off. Exact for key pixels; actor pixels round-trip exactly; per-channel coverage is trivial | R20 | §A6 |
+| 5 | **Decide everything before any write**: K0 preflights every resource K2 and the fill pass need; once K2 starts nothing fallible remains. No rollback exists or is needed | R22 | §A6 |
+| 6 | **Lens coverage is produced by the lens passes themselves**: when the key is armed, the diopter gather/composite, kaleidoscope and fisheye run key-variant programs (separate program objects, `#define AL_KEY_COVERAGE`) that carry the matte through the *same* sample positions and weights into an extra attachment (rgb = per-channel coverage, a = shadow term). No replay, no recorded commands, no timing cycle. WP-LENS stays separately droppable (fallback D7, with a mandatory user notice) | R6, R21 | §A8 |
+| 7 | Glass: **Key colour** = today's code unchanged (copies the bound framebuffer, now keyed). **Scene** (default) = copy from `mActorKeyScene`, the pre-key image; disclosed: a Scene-mode Glass clone does not refract other overlay clones | R15, R23 | §A7 |
+| 8 | Styled-actor coverage (WP1b): per-component capture of the shared beauty commands, and generic coverage of an owner whose look changes coverage is suppressed, so holes are not ORed back | R12, R25 | §A9 |
+| 9 | Colour chart: drawn after K2 as today (an overlay over the keyed image), not drawn in Alpha matte | R26 | §A3 |
+| 10 | Self-test reads a block **after K2 and before any overlay** (so clone emission cannot be misread); qualification = matte 0, lens coverage 0, shadow 0 | R29 | §A6 |
+| 11 | Resource stamps after each last intended writer (coverage, matte, lens coverage, scene copy), checked at each consumer | R28 | §A6 |
+| 12 | New user question **Q4** (overlay clones and camera processing), because review r2 rejects the scope rebuttal of R1 and only the user can settle it | R1 | §A17 |
+| 13 | UI row count corrected to 33 (census 39 pages / 2433 rows); stale WP recipes, audit rows and help text rewritten | R27 | §A14, §A16, AUDIT.md |
+
+## Changelog v14 → v15 (Codex design review r1) — still in force unless row 3 above withdrew it
+
+Coverage policy domains (native / proxy instance / shared FX) with silhouette gates moved to the caller
+(R2, R4); `GL_DITHER` off for exact codes (R10); subject-column shadow endpoint (R11);
+virtual Prism displays as set occluders (R17); capture warnings (R15); the overlay-clone scope rebuttal
+(R1, now Q4); AUDIT.md corrections (R18). Withdrawn in v16: clone layer, depth copy, per-sweep layer
+output, Studio split, deferred queue, rollback, lens replay commands, chart-stays-before-key.
+
+## Changelog v13 → v14 — still in force
+
+Late composite outside the blit shader (blit programs never modified); coverage from the Avatar
+Silhouette replay engine instead of the R8 bit mask; WP0 (a6ce747a60b) not ported (no KEY_BIT); Include
+clones (entity + overlay) default ON; Director v2 Capture > Key page; cost/off-path inventory; re-cut WPs;
+96-row anchor audit; user answers Q1-Q3 (blink after the key, Glass Scene/Key colour option, key warps
+with lenses) and the Ctrl+Alt+K shortcut.
+
+## A0. Decisions
+
+**User, fixed:** three modes (Actors on key, Set only, Alpha matte); presets with Chroma Green `#00B140`
+default; All avatars default; feather/choke; alpha coverage; blend-to-key edges; session-only master
+toggle; actor sun/moon shadows on the key (D5); kill switch independent; feather in px at 1080p; ReShade
+D26 (no DLL change, soft bracket + key guard, refuse red) and the D30 guarantee statement.
+**User, 2026-11-02:** key as late as possible, all grade/look effects on actors and none on the key colour;
+Include clones; Q1 blink lids after the key, never in Alpha matte (D39); Q2 Glass refracts Scene / Key
+colour, default Scene (D40); Q3 key warps with fisheye/diopter/kaleidoscope, RLVa sphere still suspends,
+supersedes D7 (D41); shortcut Ctrl+Alt+K, supersedes D9 (D42).
+
+**Lead decisions (current):**
+
+| # | Decision | § |
+|---|---|---|
+| D31 (v16) | K2 = `ALActorChromaKey::compositeLate()` directly after the final blit draw in `renderFinalizePresent`, same bound framebuffer, before every post-blit overlay | §A2, §A6 |
+| D32 | Include clones default **ON** (clones are performers; with OFF a clone next to the user would vanish into the key on first use) | §A4 |
+| D33 (v16) | Excluded overlay clones: not drawn in Actors on key and Alpha matte; drawn with today's look in Set only | §A7 |
+| D34 | Coverage reuses the silhouette replay engine via a domain policy; WP0 redone, no KEY_BIT | §A5 |
+| D35 (v16) | Post-blit overlays keep today's order after K2; the colour chart is an overlay over the keyed image, not drawn in Alpha matte | §A3 |
+| D36 | Director v2 Capture > Key page is the single home | §A14 |
+| D37 (v17) | **No silently droppable WPs.** WP-LENS (Q3), WP4 (D5 keep shadows) and WP1b (styled actors keyed) are required for v1 acceptance. A WP may be dropped only with the user's explicit sign-off recorded in §A17 (date, scope, visible fallback); gate G-REQ enforces this | §A16 |
+| D38 | Never keyed: Prism lens/preview renders, cube/probe/mirror/impostor/HUD renders, 360 faces, the disconnected screen | §A6 |
+| D43 (v16) | Overlay clones draw after the key with today's code; included clones in Set only / Alpha matte draw as a key-colour / white fill | §A7 |
+| D44 (v16) | Decide-before-write: K0 preflight; no rollback | §A6 |
+| D45 (v17) | Every Glass cache is prepared in K0; Scene-mode Glass source copied before the key write; fill does no copy | §A7 |
+| D46 (v17) | Lens coverage by separate coverage passes, ≤ 2 attachments, key-owned targets; render-target engine unchanged | §A8 |
+| D47 (v17) | Ghost Edit ring drawn while keying only when the UI is visible | §A7 |
+| D48 (v17) | Styled coverage: exactly one contributor per captured component across native, system and shared domains | §A9 |
+| D49 (user, final) | Q4: overlay clones keep today's look — not camera-processed, identical with the key on and off | §A7 |
+| D50 (user, final) | Q5: Scene-mode Glass refracts the graded image just before the key | §A7 |
+| D51 (v18) | Studio scene-cache lifecycle on keyed frames has one owner, ordered K0 begin → reserve → use | §A7 |
+| D52 (v18) | Lens coverage: beauty-decided selections, additive optical support excluded | §A8 |
+| D53 (v18) | ~~Coverage disposition per owner~~ — replaced by D54 in v19 | §A9 |
+| D54 (v19) | Coverage disposition per component and per render path, from the beauty decision recorded at that path's own suppression predicate; one contributor per visible component | §A9 |
+| D55 (v20) | The record has two typed domains: draw-info components (`LLDrawInfo*`) and system components (`SystemComponentKey`); both beauty and key look up the same key | §A9 |
+
+## A1. Audit summary
+
+96 v13 anchors were checked (AUDIT.md, with v15/v16 corrections): 7 still valid, 64 moved, 12 invalid,
+12 new facts, 1 not re-audited (external ReShade tree). What still matters for v16:
+- The final blit is in `renderFinalizePresent` (pipeline.cpp:26997; draw 27160-27164, `unbind` 27167);
+  there are two present programs, `gSensorBlitProgram` (a `clone()`, llviewershadermgr.cpp:1969) and
+  `gBlitWithEffectsProgram` (27046). Neither is modified.
+- After the blit today: area-shadow debug (27170-27189), composition guides / focus point / physics
+  (27197-27206), colour chart `presentUnlit` (26547-26557), `gatherFrame` (llviewerdisplay.cpp:1860), HUD
+  elements (1867), RLVa `@setoverlay` (1870-1873), HUD attachments (1875), `renderStudioGhosts` (1899),
+  UI 3D/2D (1908, 1926).
+- `renderFinalize` (26337) splits into the sensor chain (26409-26539) and `renderFinalizeLegacy` (26825);
+  the RLVa sphere has two sites (26442, 26936); lens stages: diopter/kaleidoscope (sensor 26458-26463,
+  legacy 26956-26981), fisheye (26464-26469, 26987-26995).
+- Coverage engine: `renderSilCover` (28937-29105), proxy hook `renderGhostSilCover` (7110), shared FX hook
+  `LLActorMover::renderSharedProxySilCover` (llactormover.cpp:19570), `ScopedSilCoverState` (28499).
+- Overlay clones: `renderStudioGhosts` (llactormover.cpp:15972-16330), sorted far-to-near (16132-16140),
+  interface program selection (12913-12918), Glass scene copy from the bound framebuffer (12331-12385).
+- ReShade ABI 1.2, flags 0x1-0x8 (llreshadebridgeabi.h:76-93); add-on unchanged (bridge.cpp:71, 1152
+  present, 1153 finish, 1157 begin).
+
+## A2. Render order with the key on (authoritative; current code vs. v16 additions)
+
+```
+display()                                                          llviewerdisplay.cpp:456
+ └ renderDeferredLighting(MAIN)                                    pipeline.cpp:30666
+     … lighting, forward alpha, ghost post-deferred, renderPrismDisplays (32062),
+     ALActorMaskDiagnostics::endMainView (32064-32067)
+     [K1 NEW] buildCoverageAndMatte(): coverage Phase A+B (§A5) → virtual-Prism occluders (§A10)
+              → blur/remap (+ §5 shadow term) → mActorKeyMatte (RG8), stamped
+ └ render_ui()                                                     llviewerdisplay.cpp:1825
+     renderFinalize()                                              pipeline.cpp:26337
+       post chain, sensor (26409-26539) or legacy (26825); lens stages use the key-variant
+       programs when the key is armed (§A8) → lens coverage alongside the colour
+       [K0 NEW] decision + preflight, between 26543 and the call at 26545 (§A6)
+       renderFinalizePresent()                                     26997
+         buffer visualisation / velocity debug (26999-27037)       (active → K0 not keyed)
+         final blit, program UNCHANGED (27040-27167)
+         [K2 NEW] compositeLate(): copy bound FB → mActorKeyScene; blend-off composite into the
+                  same FB; self-test block readback; stamp       ← the key colour is written here
+         area-shadow debug (27170-27189)          — today's order, over the key (warning)
+         composition guides, focus point, physics (27197-27206) — today's order, over the key
+       colour chart presentUnlit (26547-26557)    — today's order, over the key; skipped in Alpha matte
+     LLReShadeBridge::gatherFrame() (1860)        — publishes KEY/ARM from K0
+     render_hud_elements (1867), RLVa @setoverlay (1870-1873)  — today's order, over the key
+     render_hud_attachments (1875)                — skipped while keying if ActorKeyHideHUD (default)
+     renderStudioGhosts (1899)                    — one pass, today's order; per-instance key policy (§A7)
+     POV blink lids (blink branch's single call site, after Studio, before UI) — D39; none in Alpha matte
+     render_ui_3d / render_ui_2d (1908, 1926)     — UI, viewfinder, KEY badge
+ └ swap() → LLWindowWin32::swapBuffers → ReShade raw present bracket (Part B §4.2)
+```
+
+Everything that changes actor pixels (exposure, tonemap, grade, S-Log/LUT, sensor/ISO noise, bloom,
+godrays, DoF, motion blur, Roto Ink, lens warps, sensor vignette, AA, CAS, vignette, CVD, grain, dither)
+is upstream of K2. Everything after K2 is an overlay: UI-class draws, the chart, the RLVa overlay, opt-in
+HUD, overlay clones and the blink lids. **The key colour itself is written once, flat, by K2; afterwards it
+is only covered (never graded) by those overlays.** That is the "as late as possible" point: the last
+moment at which all image processing is complete.
+
+## A3. What reaches actor pixels and what reaches the key
+
+| Effect | Actor pixels | Key pixels | Note |
+|---|---|---|---|
+| Exposure, tonemap, grade, S-Log gamut, LUT, Lens Looks; sensor/ISO noise, sensor vignette, CAS | yes | no | upstream of K2 |
+| Bloom, CA, flare, godrays, shafts, froxel, haze | yes | no | a halo past the silhouette is cut at the matte edge |
+| DoF, motion blur | yes | no | defocus extends past the sharp matte (v13 limit kept) |
+| Roto Ink, Tron, on-lens filters | yes | no | ink over the set is keyed with the set |
+| Vignette, CVD, film grain, shader dither (blit) | yes | no | K2 replaces set pixels entirely |
+| Fisheye / diopter / kaleidoscope | yes | — | key follows the warp via lens coverage (§A8, D41); out-of-range fisheye black = coverage 0 = key colour |
+| RLVa sphere | yes | — | key suspended for the frame |
+| Prism / VCam secondary feeds | — | — | never keyed; a feed on an in-world screen is set content; a prim-free virtual screen is a set occluder (§A10) |
+| VCam POV modes | yes | no | they move the main camera |
+| Actor path guides | in the image | keyed with the set | composited before the blit (sensor Stage D 26505-26527) |
+| Composition guides, focus point, physics, area debug | over everything | over the key | today's order; warnings (§A12) |
+| Colour chart (unlit) | overlay | over the key | today's call and order; skipped in Alpha matte (a matte is data) |
+| HUD elements, RLVa `@setoverlay` | over everything | over the key | today's order; RLVa enforcement preserved |
+| HUD attachments | — | — | hidden while keying by default; else today's order over the key |
+| Studio overlay clones | drawn over the keyed frame | covered where the clone is | today's code (§A7); user decision D49 |
+| POV blink lids | yes | yes | D39; occluder, not a grade; none in Alpha matte |
+| ReShade | — | — | D26/D30 (Part B §4.1-4.2) |
+
+## A4. Who is keyed
+
+`ActorKeySubjects`: 0 All avatars (default), 1 Director cast, 2 actor-only lit (read-only
+`ALCineLightRigManager::actorOnlyRecipients()`), 3 Me only. `ActorKeyIncludeClones` (default ON, D32),
+`ActorKeyIncludeAnimesh` (default OFF). A clone (entity `LLGhostAvatar`, llghostavatar.h:56, or an
+`ALGhostStudio` BACKING_OVERLAY instance) is keyed iff Include clones is on and (Who = All, or the clone
+is in the selected set, or its source avatar is). `ALActorChromaKey::tick()` (once per frame, only while
+active) builds `mKeyedAvatars`, `mKeyedOwners` (`getActorFxOwnerId()` + worn-animesh wearer owner) and
+`mKeyedInstances`; `instanceKeyed(inst)` is the only place source membership is resolved. `revision()`
+drives the UI. Coverage replays native submissions only, so impostored / muted / jellydolled /
+too-complex / derendered (llactormover.cpp:16376) avatars are keyed with the set; `keepsLive(av)` joins
+the OR list at llvoavatar.cpp:4678-4684 under the existing `!isVisuallyMuted()` guard (crowd cost real
+and disclosed; never silently capped). No KEY_BIT, no change to the light registry, forward light sets,
+bit-mask pass, eligibility recorder or the 8347 gate (D34).
+
+## A5. Coverage (K1) — reusing the mask/silhouette engine
+
+`renderSilCover(phase)` (28937-29105) replays Phase A (kActorMaskPasses + six fullbright maps,
+29019-29040) and Phase B (`PASS_ALPHA(_RIGGED)` alpha groups, 29041-29067) plus system bodies
+(`renderSystemSilCover`, llactormover.cpp:16448-16503), proxy clones (`renderGhostSilCover`, 7110) and
+shared Actor FX proxies (`renderSharedProxySilCover`, llactormover.cpp:19570), LEQUAL + polygon offset,
+Phase B blending `(ONE, ONE_MINUS_SRC_COLOR)`.
+
+**Policy object** (from v15, unchanged): `CoverPolicy { target; nativeCover(owner, fallback);
+proxyCover(instance); sharedCover(owner, fallback); bias; tag; }`.
+- Native domain (render maps, alpha groups, system bodies): owner ∈ keyed owners.
+- Proxy domain (lookups at pipeline.cpp:7172-7173, 7195-7196): `instanceKeyed(proxy.mInstanceId)` only —
+  the harvested draws carry the source's owners and must not re-admit an excluded clone.
+- Shared FX domain: `gp.mCoverPolicy` reaches both inner `drawGeometryGhost` coverage branches (rigged
+  13238-13253, static 13783-13796), which today call `ALAvatarLightResponse::peek` themselves; the silhouette's policy reproduces that `peek` expression exactly. **For the key policy (v19, D54) `sharedCover` refuses every component**: the generic shared hook (`renderSharedProxySilCover`, pipeline.cpp:29098-29103, incl. its PBR conversion 19600-19625) writes no key coverage; shared components are contributed only by the WP1b replay of what the shared pass actually drew (§A9).
+- The silhouette's own gates move to its caller: `sSilFrameMask & 6` early-out/release (28940-28947),
+  `ensureSilCover` (28117, called at 28962), `mSilCoverValid`, its target (28994) and bias (28991-28992).
+  The key's caller has `ensureKeyCoverage`, `ActorKeyCoverBias` (−8), its stamp and validity.
+
+**K1** runs once per frame right after pipeline.cpp:32067, only when `sActive && source == MAIN &&
+mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender && !sReflectionRender && !sImpostorRender &&
+!sRenderingHUDs && sCurCameraID == CAMERA_WORLD` and not inside the 360 `SuppressScope`:
+1. ensure `mActorKeyCoverage` (R8, `deferredScreen` size, shares its depth; `ensureSilCover` pattern);
+2. coverage Phase A, then Phase B when `ActorKeyAlphaCoverage`, through the key policy (G of the RG
+   output is dropped by the R8 target);
+3. WP1b styled suppression and replay (§A9), then the virtual-Prism set-occluder pass (§A10) as the **last coverage writer**; stamp the coverage here;
+4. matte build (Part B §3.6: zero-radius branch, half-res blur, choke/feather remap, interior exactly 1,
+   exterior exactly 0) into `mActorKeyMatte` (RG8; G = Part B §5 shadow term); stamp
+   `{gFrameCount, &mMainRT, w, h}`.
+Matrices at K1 are the live world camera's (INFERENCE; I-MATRIX compares with the `FinalizeGuides`
+capture at 26363-26365). Render maps and alpha groups are still valid (the silhouette's own Phase B uses
+them later, at 26780).
+Acceptance (WP1 entry gate): with the silhouette **OFF**, a keyed plain actor and a keyed GhostDeferred clone show coverage 1 (styled actors are WP1b's gate, §A9) in `ActorKeyDebugView = Coverage`; silhouette ON (haze 0.3,
+rim 0.7) leaves the key coverage at 1 and the silhouette's `silCover` byte-identical to key OFF
+(I-SILPARITY); U-DOMAIN: Who ∈ {All, Me}, Include clones OFF, GhostDeferredEnable {ON, OFF}, source keyed
+→ the clone's coverage is 0 in every domain.
+
+## A6. K0 decision/preflight and K2 composite
+
+**K0** (in `renderFinalize`, after both chains, between 26543 and the `renderFinalizePresent` call at
+26545):
+```
+key_now = sActive && !gDisconnected && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
+          !sPrismPreviewRender && !sImpostorRender && !sRenderingHUDs && !SuppressScope::active() &&
+          matteValid(gFrameCount, mRT) && !rlv_sphere_ran && !diopter_debug_view &&
+          RenderBufferVisualization < 0 && !(BDMergeVelocityBuffer && BDMergeVelocityDebug) &&
+          lensCoverageValid() &&            // §A8: every lens stage that ran produced coverage
+          preflight() &&                    // below
+          keyGuardAllows();                 // Part B §4.2 (D26)
+```
+`rlv_sphere_ran` is set inside both sphere blocks (26442-26447; 26936-26941 via an out-parameter of
+`renderFinalizeLegacy`). `lensCoverageValid()` is true when no lens stage ran, or every stage that ran
+produced its coverage output this frame (§A8). (Only under a user-signed waiver of WP-LENS, §A17, would it become `!diopter_warped && !fisheye_warped`, the D7 behaviour.) **Preflight (D44)** checks, before anything is written: `gActorKeyCompositeProgram`
+complete; `mActorKeyScene` allocated at the bound framebuffer's size **and colour format** (queried with
+`glGetFramebufferAttachmentParameteriv` on the current draw framebuffer — the window, or the
+`scratch_space` FBO of an oversized snapshot, llviewerwindow.cpp:6043-6062); when an included overlay clone exists in Set only or Alpha matte, the key-fill program variants complete (§A7); **every Glass scene cache the frame will use** (`StudioSceneCache`, llactormover.cpp:12245; today allocated on first use at 12355-12363) allocated at the bound framebuffer's viewport (§A7); the lens coverage targets (§A8). Any failure → not
+keyed, reason shown, the frame is exactly today's (nothing was written). Injected by `ActorKeyDebugFailPreflight` (1 program, 2 scene copy, 3 fill program, 4 lens coverage, 5 Glass cache — first use and after a resize, in all three modes).
+
+**K2** (`compositeLate`, in `renderFinalizePresent` immediately after `present_program.unbind()` at
+27167, before the area-shadow debug block). Runs only when `key_now`:
+1. Assert the draw framebuffer binding and viewport are the ones the blit just used (no rebinding at all).
+2. Copy the finished pre-key image into `mActorKeyScene` → **S** (same UNORM format, sampled with texelFetch). The copy selects its source explicitly as `studio_scene_copy` does (llactormover.cpp:12368-12379): save the read FBO and read buffer, bind the current draw FBO as read FBO with read buffer = its draw buffer 0, copy, restore both and LLRender's texture-unit cache; tests use distinct read/draw FBOs, a non-default read buffer, a non-zero viewport origin and a bound pack buffer. When Scene-mode Glass will be drawn, the same source is also copied into the prepared Glass cache with today's copy code — still before any destructive write (§A7).
+3. Blend-off full-screen draw with `gActorKeyCompositeProgram` (`alchemy/actorKeyCompositeF.glsl`, vertex
+   `postDeferredNoTCV.glsl`; new program, no permutation on existing ones), state scoped by RAII:
+   `LLGLDisable(GL_BLEND)`, `LLGLDisable(GL_FRAMEBUFFER_SRGB)`, `LLGLDisable(GL_DITHER)` (`GL_DITHER` is
+   enabled by default, llgl.cpp:2542), depth test/write off, colour mask RGB on / A off, debug asserts on
+   sRGB and dither. Inputs: S (texelFetch), coverage `m` (matte R, or the lens coverage rgb when a lens
+   ran — per channel), shadow `g` (matte G or lens coverage a), key colour (uniform `code/255`), shadow
+   strength `s`, mode, invert, edge mode (`m_e = hard ? step(0.5, m) : m`, per channel).
+   - Actors on key: `out = mix(key·(1 − s·g), S, m_e)`
+   - Set only: `out = mix(S, key, m_e)`
+   - Alpha matte: `v = m_e` (per channel; `1 − v` with Invert; `max(v, 0.5·g)` with matte shadow).
+   Exactness (arithmetic PROVES; readback proves hardware): a pure set pixel (`m = 0, g = 0`) writes the
+   uniform key exactly; a pure actor pixel (`m = 1`) writes `S`, the texel read from a texture of the
+   same UNORM format — an exact round trip for 8- and 10-bit codes. No blending is involved, so
+   per-channel coverage needs no special mechanism (R20).
+4. Self-test (`ActorKeySelfTest`): read a 16×16 block of pixels whose `m` (all channels), `g` and lens
+   coverage are 0 — after the composite and **before any overlay** — and require every pixel to equal the
+   key codes (v13 8-bit / 10-bit criteria); also read one 16×16 actor block (`m = 1`) and require it to equal
+   S. INCONCLUSIVE when no qualifying block exists. Over 8 consecutive frames when requested.
+5. Snapshot stamp, provisional: K2 records `sFinalizeSerial` and size with `keyed = provisional`. Completion is decided **at the unconditional call site** in `render_ui` right after `renderStudioGhosts()` returns (llviewerdisplay.cpp:1899): `ALActorChromaKey::finishStudioFrame(serial)` promotes that serial to `complete` unless a Glass copy failure or a forbidden post-K2 allocation was recorded for it. Every early return of the Studio pass — no enabled instances (llactormover.cpp:15984-15986), no drawable items (16064-16066), all categories deferred-covered — is a successful no-op. Only the serial K2 provisioned can be promoted; a K0 refusal clears the stamp for that serial. `rawSnapshot` reads back only a complete stamp (Part B §4.4). Tests: snapshots with no Studio instances, all disabled, source unavailable, all categories deferred-covered, and an injected Glass failure; a refused or empty earlier serial is never promoted.
+6. Resource stamps (R28): coverage stamped after K1 step 3 (after the set-occluder pass), matte after step 4, lens coverage after the
+   last lens stage, S after K2 step 2; each consumer checks the stamp of exactly the resource it reads
+   (I-REBIND per resource). Registration: matte and lens coverage are sampled with the blit's normalised
+   coordinates over the same screen triangle and viewport, so resolution divisor, DPI and snapshot
+   reallocation are covered; tests include a non-zero viewport origin, divisor 2, a scratch snapshot
+   and a live resize.
+
+## A7. Overlay clones with the key on (one Studio pass, today's order)
+
+`renderStudioGhosts` (llactormover.cpp:15972) is called once, where it is today (llviewerdisplay.cpp:1899),
+after K2 has written the keyed frame. Per instance, in today's far-to-near order (16132-16140), with
+`ALActorChromaKey::studioPolicy(inst)`:
+
+| Mode | Included clone | Excluded clone |
+|---|---|---|
+| Actors on key | today's look, today's code | not drawn |
+| Set only | key-colour **fill** | today's look (set content) |
+| Alpha matte | white fill (black with Invert) | not drawn |
+
+- **Today's look** = the unchanged code path, drawn onto the keyed frame with today's depth (the blit's
+  `gl_FragDepth`, blitWithEffectsF.glsl:127) and today's blending, so in opaque clone pixels the result is
+  bit-identical to key OFF, and translucent clones blend over the key exactly as translucent foreground
+  over a physical green screen. No clone layer, no alpha bookkeeping, no partitions: Datamosh history,
+  depth priming and Glass ordering are untouched (R8, R9, R13, R19, R23, R24 do not arise).
+- **Fill** = the same draw with `gp.mKeyFill = colour`: `apply_program` (the selection at 12913-12918)
+  binds `gActorGhostKeyFillProgram` / its rigged variant — clones of the interface ghost program with
+  `#define AL_KEY_FILL`, which keep every discard, deformation and alpha computation and output
+  `vec4(fill, alpha)` instead of the look colour. Sweeps keep their blend state (opaque sweeps write the
+  fill exactly; alpha sweeps blend it by the look's alpha); additive/emission sweeps (`BT_ADD` 14148,
+  `(SRC_ALPHA, ONE, …)` 14278/14344, glow 14368) are skipped in fill mode — light, not coverage. The fill runs inside a `GL_DITHER`-off and `GL_FRAMEBUFFER_SRGB`-off scope (both asserted). The normal programs are not changed.
+- **Glass and other scene-reading looks** (`studio_scene_copy`, llactormover.cpp:12331; one copy before
+  each Glass draw today, 12160-12169; `ghostSceneValid` passed to the shader at 12194, which changes RGB and
+  alpha, actorghostF.glsl:1257-1268). **Cache lifecycle on keyed frames (D51, R37).** Today `renderStudioGhosts` calls `scene_caches.begin()` (llactormover.cpp:15980-15982), which expires caches idle for more than 3 s (12250-12252, 12264-12272; a new cache has `mLastUse = 0`, 12248, and only a successful copy refreshes it, 12380-12381) and clears snapshot entries. On a keyed frame this lifecycle has **one ordered owner**: K0 calls `begin(gSnapshot, now)` itself, then **reserves** each cache the frame will use (`get(snapshot, viewport)`, allocation at the bound framebuffer's viewport, `mReservedFrame = gFrameCount`, `mLastUse = now` as a lifetime pin; `mInvocation` stays 0, so no pixels are marked valid). Studio's own `begin()` sees that this frame was already begun by K0 and does not expire again. `studio_scene_copy` consumes the reserved texture at its exact extent; a reallocation attempt on a keyed frame after K2 is a **forbidden allocation**: counted, logged once, the Glass draws without a scene (today's null path) and the frame's snapshot serial is not promoted (§A6 step 5). Key OFF: today's lifecycle unchanged. Fill mode reserves nothing. Tests: first-use and >3 s-idle Key-colour Glass, a snapshot, a resize, with a counter proving zero post-K2 allocations and failure injection at that allocator.
+  - **Key colour** (and excluded Glass in Set only): today's code unchanged — a fresh copy of the bound
+    framebuffer before each Glass draw (keyed frame + overlays + farther clones), into the prepared cache.
+  - **Scene** (default): the Glass source is the **pre-key image**, copied into the reserved cache with today's copy code at K2 step 2, *before* the key write, over the **full viewport** (so every Glass rect samples valid pixels); Scene-mode Glass draws do no further copy.
+    This source contains the set and actors as graded, but not the overlays drawn after the key point
+    (composition guides, chart, HUD, RLVa overlay) nor overlay clones behind the Glass. Today's look also
+    refracts those; matching it would need a second, unkeyed rendering of every post-key overlay and clone.
+    **User decision Q5 (final): the graded image just before the key (D50).**
+  - **Fill mode** (Set only / Alpha matte, included Glass): no copy; `ghostSceneValid` is forced to 1 so the
+    footprint alpha is today's opaque full-scene alpha.
+  - Glass tints what it samples (actorghostF.glsl:1255-1268): with Key colour, the new background shows
+    through only as far as the keyer accepts the tinted key.
+- **Edit ring** (llactormover.cpp:16274-16317: drawn whenever the Ghost Edit tool is active, outside the per-instance loop): on a keyed frame (`keyedThisFrame()`, set by K2 and valid through the Studio pass) it is drawn only when the UI is visible (`RENDER_DEBUG_FEATURE_UI` and `getUIVisibility()`), so it never reaches a UI-hidden keyed or matte output (D47). Every other Studio draw: unchanged.
+- **Overlay clones are not camera-processed** — exactly as today with the key off (interface program,
+  12913-12918; "late Ghost Studio overlays are intentionally unchanged", actorghostF.glsl:1873-1874).
+  **User decision Q4 (final): keep today's look (D49).**
+- **GhostDeferred** (`GhostDeferredEnable`) parts of a Clone-style overlay are in the beauty and covered in
+  K1 when included (proxy domain); when excluded they are set geometry. Their uncovered categories follow
+  the table above.
+Acceptance: I-CLONEPARITY (production sweeps through the real `drawGeometryGhost`: key ON Actors on key vs
+key OFF, identical inside opaque clone pixels incl. a solid Clone at 40 % instance alpha, emissive eyes,
+Ash/Arc, Datamosh, front Glass over rear Clone/Glass in Key-colour mode; Scene-mode Glass is checked against its stated source — the pre-key image — with the source contents read back separately, per Q5); fill fixtures (Set only and
+Alpha matte: Dissolve-50 % and Distort overlay looks fill exactly their visible footprint; emission adds
+nothing); W-K1 … W-K4, W-K10, W-K13 (Datamosh smear continuous while keying).
+
+## A8. Lens warps: coverage passes beside the lens passes (WP-LENS, required)
+
+A depth uv is not a coverage map (kaleidoscope mixes colours of two samplings, ultimateKaleidoF.glsl:
+710-725, and coordinates separately, 733; the diopter gathers colours in pass 1 and mixes clear and
+diopter results in pass 2, ultimateDiopterGatherF.glsl:599-651, ultimateDiopterF.glsl:99-119, 191-197;
+fisheye blacks out out-of-range samples, cineFisheyeF.glsl:48-53), and replaying the stages afterwards
+cannot reuse gathered colours (r2 R21). K2 needs the matte warped exactly as the image. v17 does this with **coverage passes**: right after each
+beauty lens pass, while its inputs are still bound and valid, a separate draw with a key-coverage program
+reads the *same* inputs (beauty source colour for the sample weights, the beauty pass's own outputs for
+metadata such as the diopter mask `m`, the same uniforms) plus the incoming coverage, and writes coverage
+to **key-owned** targets. The production lens programs, their targets and the beauty output are not
+changed at all; no attachment is added to any existing render target (the engine caps targets at four
+attachments, llrendertarget.cpp:340-346, and hard-codes four draw buffers, 586-600, 943-947).
+- **Diopter gather** (pipeline.cpp:17193-17212; beauty target `mDiopterMap` with three attachments,
+  1640-1645): coverage pass 1 uses `gKeyDiopterGatherCovProgram` (production gather source with
+  `#define AL_KEY_COVERAGE_ONLY`: identical tap positions and weights — the weights still come from the
+  beauty source colour, ultimateDiopterGatherF.glsl:563-589 — but it accumulates the coverage texture
+  instead of colour) into `mKeyDiopterCov` (2 attachments, RGBA16F: 0 = clear-branch coverage, 1 =
+  diopter-branch coverage; rgb per channel, a = shadow term).
+- **Diopter composite** (17334-17345): coverage pass 2 with `gKeyDiopterCompositeCovProgram` reads `mKeyDiopterCov`, the beauty gather's colours **and** metadata (attachments 0/1: `cClear`/`cDio` RGB, `m`, rim — inputs, not outputs) and replays every beauty decision with the beauty values (D52):
+  - convex mixes (clear/diopter by `m`, ghost band, master A/B 191-197, CA taps 165-178 per channel) apply the same weights to coverage;
+  - **selections follow the beauty winner per channel**: the seam ghost `max(0.5·(gDio+gClear), 0.5·(cClear+cDio))` (ultimateDiopterF.glsl:112-116) is evaluated on the beauty colours, and coverage takes the coverage of the winning candidate in each channel (tie → the local candidate, the second argument);
+  - **additive optical support is excluded**: the halo ghost light `g·e·w` (147-161; energy from beauty luminance, threshold and knee) adds no coverage — it is colour-only light, like bloom (v13 §4: a highlight's glow past the silhouette is cut at the matte edge; a set highlight's ghost on an actor stays actor). Every remaining operation is a convex mix or a selection, so coverage and the shadow term stay in [0, 1].
+  Output: stage coverage (1 attachment). Residual (stated, tested): halo ghost light of an actor highlight that lands on the set is keyed out.
+- **Kaleidoscope** (renderUltimateKaleidoscope, pipeline.cpp:17886): one coverage pass with the same fold, subject hold and seam soften (ultimateKaleidoF.glsl:693-733) → 1 attachment; any selection uses the beauty winner as above. The WP-LENS brief lists every nonlinear operation in the four lens shaders with its rule (convex mix / beauty-decided selection / colour-only), and the reviewer checks the list against the shaders.
+- **Fisheye** (renderCineFisheye, 16185): one coverage pass sampling coverage at `suv`; out of range → 0
+  (cineFisheyeF.glsl:48-53); the vignette (55-57) is colour and is not applied.
+- **Shadow term** (a): sampled with the green-channel weights where weights are per channel (a bounded
+  scalar: the convex combination of the G taps). **Alpha matte** reduces rgb coverage to luma
+  (0.2126, 0.7152, 0.0722) so the matte stays greyscale; Actors on key / Set only use per-channel coverage.
+- The first stage's coverage input is the K1 matte (rgb = R, a = G); each stage's coverage output feeds the
+  next (diopter → fisheye chains). Non-moving stages between them (sensor vignette, AA, CAS, Roto) are not
+  applied to coverage (edge softness only; documented).
+- `lensCoverageValid()` (K0) requires a coverage output for every lens stage that ran this frame; the first
+  frame after arming is valid because coverage passes run in the same frame as their beauty pass.
+- Cost (only while keying with a lens): one coverage pass per lens pass, about the same cost as the beauty
+  pass (gather taps dominate; INFERENCE ≈ +100 % of the active lens passes) and `mKeyDiopterCov` (2 ×
+  RGBA16F, 133 MB at 4K) plus one RGBA16F output per later stage (66 MB each).
+Acceptance (required for v1, G-REQ): I-LENSINPUTS (the beauty pass's outputs are bit-identical with the key
+on and off — the coverage pass only reads them); an integration test gather → composite → fisheye on the
+real targets (FBO completeness, every attachment written, beauty parity, all bindings and draw buffers
+restored, OFF frees the key targets); seam fixtures with bright-set/dark-actor and dark-set/bright-actor reversed candidates, ties, fractional masks, all-one and all-zero masks and channel-separated CA; halo taps below and above threshold (coverage unchanged); an image-to-matte fixture against a white-on-black render with the **same beauty weights and beauty-decided selections**, covering kaleidoscope subject hold + seam soften, diopter seam max, double image,
+halo ghost taps, channel-specific CA, partial A/B 0.3/0.7, both chains, diopter → fisheye, an off-centre
+fisheye with a border-touching shape, and constant zero actor/shadow input (coverage 0, shadow 0);
+first activation, ON/OFF and snapshot reallocation; W-K11.
+
+## A9. Styled actors: coverage of the beauty treatment (WP1b, required)
+
+Shared Actor FX beauty draws several components per styled actor — legacy rigged/static, PBR commands,
+the system body/eyes via `renderSystemActorGhost` (llactormover.cpp:19482-19531, 16603-16652,
+16725-16734) — with the look's inputs (19455-19468); Dissolve discards procedural holes
+(actorghostF.glsl:903-940); the generic coverage replay draws the undeformed geometry
+(pipeline.cpp:29010-29065; system bodies 16449-16497) and Phase B only ever increases coverage.
+WP1b (required for v1):
+1. **Capture per component**: while the shared beauty pass runs, every component it actually draws this
+   frame — legacy rigged/static, PBR commands, system body/eyes via `renderSystemActorGhost` — records
+   `{owner, component id, the exact GhostDrawParams, program variant (world / system / PBR), palette and
+   matrices reference, material, frame time}`. A component the replacement did **not** draw (modules or
+   readiness unavailable: llactormover.cpp:17388-17394, lldrawpool.cpp:1165-1168 — native beauty fails
+   open) is not captured, so it keeps native coverage.
+2. **Coverage disposition per component and per render path (D54; replaces D53).** The decision is not re-derived
+   per owner; it is **recorded where the beauty took it**, per draw, by the predicate that render path actually calls:
+   - **legacy / BOM / system path** — `LLRenderPass::shouldSuppressSharedActorFx` (lldrawpool.cpp:1077 by owner, 1101 per draw info; built on
+     `shared_actor_fx_zero_cover` 1044-1049 and `shared_actor_fx_owns_native_beauty` 1062-1072: Replace or Layer
+     Dissolve, with `isSharedActorStyleReady`, llactormover.cpp:18638-18658);
+   - **PBR path** — `LLRenderPass::shouldSuppressSharedActorFxPBR` (lldrawpool.cpp:1140-1180: hidden source /
+     derendered → suppressed; zero Cover → suppressed; otherwise suppressed whenever the style is enabled and
+     `isSharedActorStylePBRReady` (llactormover.cpp:18615-18635, `mPBRReady`) — **for every mode, including ordinary
+     Layer**), as called by the alpha pool (lldrawpoolalpha.cpp:547, 1672) and the render-map loops.
+   At each such call site the beauty already notifies `LLActorMaskEligibility::suppress(&params)` when armed; the key
+   adds the same one-line record into its own per-frame set `mBeautySuppressed` (LLDrawInfo*, beauty passes only —
+   `depth_only` calls are not recorded). The shared pass records, in the WP1b capture (step 1), every component it
+   drew **as a coverage-bearing draw**: Replace and Layer-Dissolve legacy/system components, and every shared PBR
+   command (drawn once, opacity 1 in Layer, normal alpha blending, authored BLEND alpha: llactormover.cpp:18789-18790,
+   19014-19024; sharedActorFxPbrF.glsl:849-854). Ordinary-Layer **legacy** treatment draws are recorded as
+   non-coverage-bearing (the native draw underneath stays visible and is the contributor).
+   **Rule — exactly one contributor per visible component:**
+   - native draw info **not** in `mBeautySuppressed` → the generic native replay (§A5) is its contributor;
+   - native draw info in `mBeautySuppressed` **and** a coverage-bearing shared capture of that component → the WP1b
+     replay (step 3) is its contributor; the generic native replay skips that draw info (`drawSilCoverBatch` is called
+     only for unsuppressed infos in the key policy);
+   - in `mBeautySuppressed` **without** a coverage-bearing capture (zero Cover, hidden/derendered source) → **no
+     contributor** (coverage 0), independent of readiness;
+   - the generic shared hook never contributes (§A5); non-coverage-bearing shared draws never contribute.
+   Readiness stays per path: a PBR command that is not PBR-ready is not suppressed natively, so its native draw is the
+   contributor (fail-open preserved), even when the owner's legacy parts are replacement-owned, and vice versa.
+   The silhouette's caller is unaffected (it records nothing and keeps its own admission).
+   **System domain (D55, R43).** Classic (BOM/system) eyes and body are not `LLDrawInfo`s: the avatar pool asks the
+   **UUID** overload `shouldSuppressSharedActorFx(actor_id)` (lldrawpool.cpp:1077-1099; it notifies
+   `LLActorMaskEligibility::suppress(actor_id)`, a separate set from draw infos, llactormaskeligibility.h:30-42) for
+   the rigid eyes (lldrawpoolavatar.cpp:1226-1232) and for the classic body meshes (1270-1276: opaque meshes in the
+   opaque stage, hair/skirt/lashes in the alpha stage). The key therefore keeps a second, typed record
+   `mSystemSuppressed`: `SystemComponentKey { LLUUID id; Part part; }` with `Part ∈ {BodyOpaque, BodyTransparent,
+   RigidEyes}`, where `id` is **`get_actor_fx_id(avatarp)`** — the identity the beauty call already uses (1226, 1270),
+   which canonicalises the Director's self identity — and `part` is the stage the call site is in. Recorded beside the
+   existing eligibility notification, beauty passes only.
+   - **Consumers.** K1's system coverage (`renderSystemSilCover(av, cover, phase)`, pipeline.cpp:29069-29089, which
+     calls `renderSkinned` and `renderRigid`, llactormover.cpp:16486, 16497) looks up `{get_actor_fx_id(av), part}`
+     before each call in the key policy: phase A skips `renderSkinned` when `BodyOpaque` is suppressed and
+     `renderRigid` when `RigidEyes` is suppressed; phase B skips the transparent layers when `BodyTransparent` is
+     suppressed. The silhouette's call is unchanged.
+   - **Captures.** WP1b records shared system draws (`renderSystemActorGhost`, llactormover.cpp:19484-19489,
+     19525-19530) under the same `SystemComponentKey` (body opaque stage, body alpha stage, eyes).
+   - **Rule** (same as draw infos): not suppressed → native system coverage; suppressed + coverage-bearing capture →
+     WP1b replay only; suppressed without capture (zero Cover, hidden/derendered source) → no contributor, coverage 0.
+   - The **contributor trace** lists system components alongside draw-info components, including suppressed
+     components with no contributor.
+3. **Replay** each captured component with the **actual beauty program variant** compiled with
+   `#define AL_KEY_COVERAGE_OUT` (separate program objects cloned from the world, system and PBR actor-ghost
+   programs; every discard, deformation and alpha computation kept), outputting **scalar coverage in R**
+   (`vec4(a, a, a, a)`) into `mActorKeyCoverage` with the coverage union blend `(ONE, ONE_MINUS_SRC_COLOR)`
+   — the same contract as silCoverF.glsl:145-146 — so fractional alpha stays fractional.
+4. A per-component **contributor trace** (debug) records which path wrote each component's coverage (native replay / WP1b replay / none) and the predicate result that decided it; it must show exactly one contributor per visible component and none for suppressed-without-capture components.
+Acceptance: hole readback with the silhouette OFF and ON for Replace Dissolve 50 %, **Layer Dissolve 50 %** and Distort over a bright set (holes 0); Cover opacity 0, ε, 0.5, 1 for BOM, legacy and shared/indexed PBR (0 → coverage 0 with and without replacement shaders available; ε → coverage ≈ ε, continuous); native BOM / no-mesh body, legacy mesh, indexed PBR, Layer vs Replace, a fractional-alpha
+component (coverage = its alpha), and a replacement-not-ready component (native coverage present); W-K8.
+**R42 fixtures (v19):** an isolated PBR BLEND card with authored alpha 0.5 over a bright set, outside the body silhouette, under an **ordinary Layer** look (Chrome; Hologram) — scalar/static, rigged and indexed — must read coverage 0.5 ± 1/255 with contributor count 1 (WP1b PBR replay); the same card with PBR not ready → 0.5 from the native replay, count 1; the same owner mixing that PBR card with legacy parts under ordinary Layer → legacy parts from the native replay, the PBR card from the WP1b replay, each count 1; Replace PBR card → WP1b replay only; zero Cover PBR and legacy → 0, count 0; hidden/derendered source → 0, count 0. Each fixture asserts the numeric coverage and the contributor count, not only holes or opaque coverage.
+**R43 fixtures (v20)**, run through the real avatar pool → K1 path with the silhouette OFF and ON, numeric readback and contributor counts, for a keyed classic BOM / no-mesh avatar's **body (opaque)**, **eyes (rigid)** and **system transparent parts (hair, skirt, lashes)**, plus a rigged mesh attachment on the same avatar (draw-info domain): (a) **Replace** Dissolve 50 % over a bright set → holes 0, each part count 1 (WP1b system replay); (b) **Layer Dissolve** 50 % → same; (c) **ordinary Layer** (Chrome) → native system coverage, count 1, no WP1b contribution; (d) **zero Cover** → 0 for body, eyes and transparent parts, count 0, with and without replacement shaders available; (e) Cover ε / 0.5 / 1 → continuous, count 1; (f) replacement not ready → native, count 1; (g) the Director self avatar (identity canonicalisation) for (a) and (d); (h) hidden/derendered source → 0, count 0.
+
+## A10. Virtual Prism displays are set occluders
+
+`renderPrismDisplays` draws with depth writes off (pipeline.cpp:32296) and supports prim-free virtual
+screens (32383-32386, 32444-32465), right before K1. After every coverage contributor — generic Phase A/B and the WP1b styled replay — K1 draws, as the last writer before the stamp and the matte, the same virtual
+display quads (same matrices, gates, scissor, fragment discard, depth test as 32294-32300 and
+32383-32425) into the coverage target writing 0. Prim-backed displays need nothing (their face is in the
+G-buffer). Beauty depth policy unchanged. Acceptance: W-K14 (virtual screen across an actor, all modes).
+
+## A11. Interactions with parallel branches
+
+- **POV blink** (`feature/pov-blink`): lids drawn by one call after `renderStudioGhosts` and before the UI
+  (the blink branch's new single call site). With v16 the key is written at K2 (directly after the blit),
+  overlay clones follow, then the lids: D39 holds (lids after the key, over actors, clones and key). The
+  blink reads the bound framebuffer (keyed frame + clones). In Alpha matte the call returns without drawing
+  (`ALActorChromaKey::suppressesBlink()`). Snapshots never contain lids (live-only by the blink's design).
+  Recommended lid style for keyed takes: Dark.
+- **Clone fade**: a fade that is not authored vertex/material alpha must be exposed per owner/instance to
+  the coverage policy (`cover = fade`) and is automatically honoured by the overlay draw and fill.
+- **Clone solo**: hidden actors/clones are not drawn → not covered, not drawn after the key.
+
+## A12. Warnings and suspensions
+
+K0 suspends for: RLVa sphere, buffer visualisation, velocity debug, diopter/kaleidoscope debug view,
+missing lens coverage, preflight failure, guard state, stale matte. The **Capture warnings** readout lists,
+when active, everything that will be recorded over the key with UI hidden: composition guides (UI-hidden
+option, default on), the viewfinder (always, when enabled — it survives both hide mechanisms,
+llviewerwindow.cpp:3370-3375), physics shapes and the area-shadow debug view (not UI-gated,
+pipeline.cpp:9200-9243, 27170-27187), debug text (llviewerdisplay.cpp:1929-1931), the RLVa overlay,
+opted-in HUD attachments, the colour chart, the Warm blink style. The Ghost Edit ring is not drawn with UI hidden while keying (§A7).
+
+## A13. Deltas to Part B sections marked "KEPT WITH DELTAS"
+
+- §3.6 matte build: input = K1 coverage; debug views via `ActorKeyDebugView` (1 coverage, 2 matte, 3 shadow
+  term, 4 lens coverage), drawn by K2 in place of the composite.
+- §3.7a presets/exactness: values and criteria unchanged; written by K2 with blend, sRGB and dither off.
+- §4 table → §A3. §4.1 viewer flag: published by `gatherFrame()` (1860) from K0 (now after K2 in the same
+  frame). §4.4 snapshots: serial/keyed flag recorded by K2 step 5; P is simply the framebuffer bound for the
+  blit (window or scratch).
+- §5 actor shadows (WP4, required): predicate = keyed-owner set (`ownerKeyed(di.mActorFxOwner) ||
+  ownerKeyed(di.mActorFxFallbackOwner)`, `avatarKeyed(av)` in `LLDrawPoolAvatar::renderShadow`); replay
+  at both endpoints — the subject column (35650-35690: its own `column_result`, `view0/proj0`, target
+  pairing) and ordinary slices (36081-36115) — with paired clears (35745-35758), per-slice validity
+  (frame + column/ordinary + generation, for retained/skipped generations and the early exits at
+  34950-34953, 35134-35154, 35258-35265), target-sequence nesting (35274-35295), and a re-derivation of the
+  avatar shadow-caster changes (lldrawpoolavatar.cpp:505). Shadow term crosses lens stages in the lens
+  coverage alpha (§A8). Required for v1 (D37); offering only All sun shadows needs the user's recorded sign-off.
+- §9 limits: item 2 (styled) per WP1b; item 10 (lens suspend) superseded by §A8;
+  new: overlay clones not camera-processed (user decision D49); Scene-mode Glass does not refract other overlay clones;
+  actor path guides keyed with the set; an excluded overlay clone in front of an actor in Set only does not
+  cut the actor's key silhouette.
+- §10 → §A15. §11 tests: kept except KEY_BIT tests (U-BITS, U-OWNER, forward-lookup defence).
+- §12: D7 superseded by D41, D9 by D42; D31-D44 current (§A0). §14: items 1-2 void; item 3 → per-resource
+  stamps (§A6 step 6); item 4 → K2's sRGB/dither scope.
+- §6 hotkey: Ctrl+Alt+K rebindable action (§A14).
+
+## A14. Director UI (Director v2, Capture > Key)
+
+Workflow: Director → Capture → **Key** (search: chroma, green screen, matte, key) → tick **Key actors**
+(or Ctrl+Alt+K, or the header Quick tile "Key") → Mode, Key colour → status (green keying; amber arming or
+warnings; red refused + reason) → hide UI (Ctrl+Alt+F1) → record the window in OBS.
+
+Kit page `key_tab` in the Capture group of `director_mockup_data.json` (one-line compact JSON + newline),
+XUI `panel_dpage_capture_key.xml`; every row has help `h`, keywords `kw`, default `d`, reset like
+neighbouring rows; dynamic rows via `show_if` + settings listeners, never in `draw()`.
+
+| Card | Row | Kind (widget) | Setting | Default / range | Help — keywords |
+|---|---|---|---|---|---|
+| Chroma key | Key actors | toggle `ak_enable` | ActorKeyEnabled (session) | off | Replaces the set with a flat key colour (or makes a matte) for compositing. Ctrl+Alt+K toggles (rebindable). Off at every login — chroma key green screen blue screen keying composite obs matte |
+| | Status | readout `ak_status` | — | — | keying / arming / suspended (reason) / refused (reason) — status suspended refused |
+| | ReShade | readout `ak_reshade` | — | — | Part B §4.1 item 3 — reshade bridge guard |
+| | Guarantee | readout `ak_guarantee` | — | — | D30 statement verbatim; "Key colour is exact." without ReShade — exact guarantee |
+| | Retry | button `ak_retry` (show_if refused) | — | — | Re-arms the ReShade key guard — retry guard |
+| | Mode | combo `ak_mode` | ActorKeyMode | 0 Actors on key / Set only / Alpha matte | Actors on key: actors stay, everything else becomes the key colour. Set only: actors become the key colour. Alpha matte: white actors on black (greyscale; lens colour fringes reduced to luma) — mode set only matte holdout |
+| | Key colour | combo `ak_preset` | ActorKeyColorPreset | 0 Chroma Green … 8 Custom | The colour that replaces the set — green blue magenta black white preset |
+| | Custom colour | color `ak_color` (enabled on Custom) | ActorKeyColor | 0,177,64 /255 | Picking a colour switches the preset to Custom — custom colour |
+| | Codes | readout `ak_codes` | — | "0,177,64" | Exact 0-255 values written, for your keyer — rgb codes |
+| | Invert matte | toggle `ak_invert` (show_if Alpha matte) | ActorKeyMatteInvert | off | White set, black actors — invert |
+| Who | Who | combo `ak_who` | ActorKeySubjects | 0 All / Director cast / Actor-only lit / Me only | Which avatars count as actors — who subjects cast |
+| | Include clones | toggle `ak_clones` | ActorKeyIncludeClones | **on** | Ghost Studio clones (entity and overlay) count as actors. Off: entity clones are keyed out like the set; overlay clones are hidden (Set only: kept as set) — clones ghost studio overlay entity |
+| | Glass refracts | combo `ak_glass` (show_if Actors on key and Include clones) | ActorKeyGlassSource | 0 Scene / Key colour | Scene: glass clones refract the graded image as it was just before the key (set and actors; not later overlays or other overlay clones). Key colour: glass refracts the keyed frame; Glass tints it, so the new background shows through only as far as your keyer accepts — glass refract see-through |
+| | Include animesh | toggle `ak_animesh` | ActorKeyIncludeAnimesh | off | Animesh creatures count as actors — animesh |
+| | Keyed | readout `ak_count` | — | — | "3 keyed · 2 clones · 1 not keyed (impostor)" — count |
+| Edge | Feather | slider `ak_feather` | ActorKeyFeather | 1.5 px (0-32 at 1080p) | Edge softness — feather |
+| | Choke | slider `ak_choke` | ActorKeyChoke | 0 (−8..8) | Shrink (+) / grow (−) — choke |
+| | Edge fill | combo `ak_edge` | ActorKeyEdgeMode | 0 Blend / Hard | — edge hard blend |
+| | Hair and alpha coverage | toggle `ak_alpha` | ActorKeyAlphaCoverage | on | Keeps see-through hair and lashes — hair alpha |
+| Actor shadows (show_if Actors on key; last row show_if Alpha matte) | Keep actor shadows | toggle `ak_shadow` | ActorKeyShadow | on | Actor sun/moon shadows darken the key — shadow |
+| | Isolation | combo `ak_iso` | ActorKeyShadowIsolation | 0 Fast / Exact / All sun shadows | — isolation |
+| | Strength | slider `ak_sstr` + code readout | ActorKeyShadowStrength | 0.5 (0-0.85) | — shadow strength |
+| | Cascades | combo `ak_scasc` | ActorKeyShadowCascades | 2 (1-4) | — cascades |
+| | Softness | slider `ak_ssoft` | ActorKeyShadowSoftness | 0.5 (0-1) | — softness |
+| | Status | readout `ak_sstatus` | — | — | — shadow status |
+| | Grey shadow in matte | toggle `ak_mshadow` | ActorKeyMatteShadow | off | — matte shadow |
+| Output | Hide HUD attachments | toggle `ak_hud` | ActorKeyHideHUD | on | — hud |
+| | Capture warnings | readout `ak_warn` | — | — | §A12 list — warnings guides viewfinder physics debug chart |
+| | Known limits | readout `ak_limits` | — | — | §A13 §9 list — limits |
+| Diagnostics | Debug view | combo `ak_debug` | ActorKeyDebugView (session) | 0 Off / Coverage / Matte / Actor shadow / Lens coverage | — debug |
+| | Self-test | button `ak_selftest` | ActorKeySelfTest | — | Reads a 16×16 block of key pixels and an actor block before overlays, logs PASS/FAIL/INCONCLUSIVE — self test |
+| | Exact shadow test | button `ak_shadowtest` | ActorKeyShadowSelfTest | — | — shadow test |
+| | Last result | readout `ak_result` | — | — | — result |
+
+33 rows; census in director_kit_gen.py:357 → 39 pages / 2433 rows (comment names this page). Header
+Quick tile "Key" (`header_quick_policy` `capture_group/key_tab/ActorKeyEnabled: "setting"`). Shortcut
+**Ctrl+Alt+K**: rebindable action `toggle_actor_key` like `toggle_viewfinder` (llviewerinput.cpp:982,
+1166): binding in all four modes of `key_bindings.xml`, `REGISTER_KEYBOARD_ACTION`, a
+`control_table_contents_movement.xml` row, `llkeyconflict.cpp`, and the next `introduced[]` migration
+version (llviewerinput.cpp:1602; the blink branch takes 3 for `pov_eye_blink` on F9; the second branch to
+merge renumbers). Checked free on main: key_bindings.xml, every en XUI `shortcut=`, code. Notification on
+toggle-on; badge "KEY ON · <mode>" in `render_ui_2d`, UI-visible only. Readouts refresh from `revision()`
+≤ 2 Hz via `setTextIfChanged`; page `draw()` has a Tracy zone. No `ActorKey*` setting joins a look preset.
+
+**Settings** (Part B §7 stands, with): `ActorKeyIncludeClones` widened to entity + overlay clones
+(default true); new `ActorKeyCoverBias` (F32 −8, −64..0), `ActorKeyGlassSource` (U32 0, 0 Scene / 1 Key
+colour), `ActorKeyDebugView` (U32 0, session; 1 coverage, 2 matte, 3 shadow, 4 lens coverage),
+`ActorKeyDebugFailPreflight` (U32 0, session; §A6); `CineLightRigActorMaskDebug` gains no values;
+`ActorKeyHideReShadeOverlay` not added (v1.1).
+
+**Files.** New: `alactorchromakey.h/.cpp`; shaders `alchemy/actorKeyCompositeF.glsl`,
+`alchemy/actorKeyBlurF.glsl`, `alchemy/actorKeyMatteF.glsl`; `AL_KEY_FILL` and `AL_KEY_COVERAGE` blocks in
+`interface/actorghostF.glsl`, `deferred/ultimateDiopterGatherF.glsl`, `deferred/ultimateDiopterF.glsl`,
+`deferred/ultimateKaleidoF.glsl`, `deferred/cineFisheyeF.glsl` (compiled only into the new variant
+programs); `scripts/code_tools/actor_key_gl_check.py`; `tests/alactorchromakey_test.cpp`;
+`panel_dpage_capture_key.xml`. Modified: `pipeline.cpp/.h` (K1 after 32067; K0 before 26545; K2 after
+27167; sphere flags; coverage policy; lens variant selection; chart skip in Alpha matte; targets and
+release paths), `llactormover.cpp/.h` (policy into `drawGeometryGhost` coverage branches, Studio
+per-instance policy + fill, Glass Scene source, WP1b capture), `llviewerdisplay.cpp` (HUD-attachment
+gate, blink suppression hook, badge), `llvoavatar.cpp`, `llviewershadermgr.*`, `llshadermgr.*`,
+snapshot files (Part B §4.4), ReShade bridge + add-on (Part B §4.1-4.3), shadow files (WP4),
+`key_bindings.xml`, `llviewerinput.cpp`, `control_table_contents_movement.xml`, `llkeyconflict.cpp`,
+Director kit files, `settings.xml`, `notifications.xml`, `DIRECTOR_HOTKEYS.md`, `MACHINIMA_USER_GUIDE.md`.
+Not touched: `alcinelightrigmanager.*`, `llactormaskeligibility.*`, `selectForwardLightSet`,
+`blitWithEffectsF.glsl`, the production lens/ghost programs' compiled code, the Lightbox.
+
+## A15. Cost
+
+**Off (default).** Touch points with `sActive == false`: K1 call, K0, K2 call, Studio policy, blink
+suppression, keep-live term, `tick()` — one static bool test each; lens coverage passes run only when armed (one static test per stage); the silhouette policy object is passed once per phase (draws
+identical). **No program, shader or uniform of the normal path changes** (lens coverage programs, coverage-replay variants and the fill program are separate objects), no render target, no GL state, no log line. Gate I-OFFPATH2: ordered draw
+trace, GL state snapshot and pixels identical to main with the key OFF and after an ON→OFF transition;
+allocation counters back to baseline after OFF.
+
+**On, 3840×2160.** Memory: coverage R8 8.3 MB; blur 2 × 2.1 MB; matte RG8 16.6 MB; scene copy S 33.2 MB
+(RGBA8 or RGB10_A2); lens coverage: diopter 2 × RGBA16F 133 MB, later stages 66.4 MB each (only with a lens);
+shadows ≈ 32 MB Fast (+32 Exact). Typical without lens ≈ 95 MB (with Fast shadows).
+GPU (INFERENCE, to be measured): coverage A+B 0.2-0.6 ms (1-3 avatars); blur+remap 0.15-0.3 ms; shadow
+term 0.3-0.8 ms; scene copy ≈ 0.1 ms; composite ≈ 0.05-0.1 ms; fill and Glass Scene copy: as today's clone
+draws; lens coverage passes ≈ +100 % of the active lens passes (INFERENCE). Order of magnitude ≈ 1-2 ms of 16.7 ms at 4K/60
+with 3 actors and Fast shadows. Keep-live (no impostors for keyed avatars) dominates in crowds; disclosed,
+never silently capped. Tracy zones `ActorKey::coverageA/B`, `::matte`, `::shadowCascade[j]`,
+`::shadowTerm`, `::lensCoverage`, `::sceneCopy`, `::composite`, `::fill`.
+
+## A16. Work packages
+
+Process: Codex implements from `--prompt-file` briefs with off-limits lists; Opus adversarial review
+(beauty pass + key-off path for every shared-GL change); loop to 0 must-fix; `cxs\zs_check.ps1` after each
+round; checkpoint commit → `prebuild_guard` (xui_layout_check, ui_draw_lint) → **one** fresh build
+(`cxs\fresh_build.ps1`) after all WPs converge. No WP is droppable without the user's explicit, recorded sign-off (D37): WP-LENS, WP4 and WP1b are required for v1 acceptance. **G-REQ** (release gate): the build is accepted only when W-K8 (styled holes), W-K11 (lens warps) and W-9a (actor shadows, Fast and Exact) pass; any waiver is a dated entry in §A17 with the user's sign-off and a visible status.
+
+- **WP0 — key model.** Redo (salvage only `initialize()`, `gatherKeyRecipients()` and 4 settings from
+  a6ce747a60b): keyed sets, `instanceKeyed`, `tick`, `keepsLive` (llvoavatar.cpp:4678-4684), `revision`, all
+  settings (§A14 + `ActorKeyCoverBias`, `ActorKeyGlassSource`, `ActorKeyDebugView`,
+  `ActorKeyDebugFailPreflight`). Gates: zs_check; TUT keyed-set tests; reviewer proves no light-side file
+  changes.
+- **WP1 — coverage + matte (K1).** `CoverPolicy` through `renderSilCover`, `renderGhostSilCover`,
+  `renderSharedProxySilCover` and both inner coverage branches; silhouette gates to its caller; key target;
+  virtual-Prism occluders; blur/remap; stamps. Gates: zs_check; WP1 entry gate (silhouette OFF) + U-DOMAIN
+  + I-SILPARITY (§A5); GL harness (remap, coverage accumulation); I-MATRIX; W-K14.
+- **WP2 — K0, K2, Studio policy.** K0 with both sphere sites and preflight; K2 after 27167 (scene copy,
+  blend-off composite, sRGB/dither scope, self-test block, snapshot stamp); colour-chart skip in Alpha
+  matte; Studio per-instance policy, key-fill program variants and fill mode, Glass Scene source = S;
+  HUD-attachment gate; blink suppression hook; 360 SuppressScope; Part B §4.4 snapshot contract. Gates:
+  zs_check; `actor_key_gl_check.py` (new; hidden WGL via `relight_3d_gl`, production sources: exact codes
+  on RGBA8 and RGB10_A2 with `GL_DITHER` enabled at fixture start, 64×64 blocks × 8 frames, actor
+  round-trip parity, per-channel cases `(1,0,0)/(0,1,0)/(0,0,1)` over varied S, SRGB-LEAK instrument, all
+  three modes); I-CLONEPARITY and fill fixtures (§A7, through the real `drawGeometryGhost`);
+  `clone_looks_gl_check.py` + `clone_looks_runtime_check.py` unchanged pass; `sensor_post_finalize_seams.py`
+  + sensor_post checks unchanged pass; injected preflight failures (live + snapshot: today's image / snapshot
+  refused); I-OFFPATH2; scratch-snapshot test (4K PNG from a 1080p window, UI hidden).
+- **WP3 — ReShade guard (viewer + add-on).** Part B §4.1-4.3 unchanged; flag from K0. Gates as v13
+  (U-GUARD, U-BRACKET, U-WL, U-GATE, U-COUNT, U-CONC, U-ABI, I-HASH, I-LOCKRULE, I-68GREP).
+- **WP-LENS (required).** Coverage passes for the diopter gather and composite, kaleidoscope and fisheye (both chains), ≤ 2 attachments each on key-owned targets, `lensCoverageValid()` (§A8). Gates: zs_check; I-LENSINPUTS; real-target integration test gather → composite → fisheye;
+  image-to-matte fixture; constant-input and first-activation cases (§A8); W-K11.
+- **WP1b (required).** Per-component capture (readiness-scoped), single contributor across native/system/shared incl. the PBR branch, replay with the actual world/system/PBR variants writing R-scalar coverage, contributor trace (§A9).
+  Gates: zs_check; styled fixtures; W-K8; I-SILPARITY unchanged.
+- **WP4 (required).** Part B §5 with §A13 deltas. Gates: zs_check; U-SPLIT, U-CASTER; avatar_shadow_check.py
+  + avatar_shadow_gl_check.py unchanged pass; column ON/OFF, skipped generations, per-slice validity;
+  W-17 beauty parity; W-9a with subject shadows.
+- **WP5 — Director UI + docs.** §A14 rows, XUI, Quick tile, Ctrl+Alt+K action, notification, badge, user
+  guide. Gates: director_kit_gen.py, `--check`, `--selftest`; director_wiring_table.py;
+  director_functional_manifest.py; director_page_sources.py + `--check`; director_header_check.py,
+  director_theme_check.py, director_actor_bar_check.py, kit_lint.py; `xui_layout_check.py --selftest` and
+  `--changed 3a64bb9c5c4` (0); `ui_draw_lint.py --changed 3a64bb9c5c4` (0 new); director_suitcase.py
+  `--check` (regenerate in main after merge).
+
+In-world (user; outcomes stated in advance): **W-K1** Actors on key, user + entity clone + Clone overlay
+(incl. 40 % instance alpha) + Glass overlay, UI hidden: set pixels exactly 0,177,64 (PNG picker); clones look
+as without the key; actor graded, noisy, grained; key flat. **W-K2** Include clones OFF: entity clone keyed
+out, overlay clones absent. **W-K3** Set only, clones on/off: included clones key-coloured, excluded clones
+visible as set; a near excluded translucent clone over a far included one: the far one's key silhouette shows
+through it. **W-K4** Alpha matte: included clones white, excluded absent. **W-K5** composition guides with UI
+hidden → drawn over the key, warning shown. **W-K6** RLVa `@setoverlay` covers the key. **W-K7** ISO noise,
+S-Log look, grain 0.5, vignette 0.5: actors carry all, key flat (5 picker points). **W-K8** styled actors
+(WP1b). **W-K9** blink: lids over actors, clones and key; none in Alpha matte. **W-K10** Glass Scene vs Key
+colour. **W-K11** fisheye, diopter, kaleidoscope, diopter+fisheye: key edges on the warped actor edges;
+RLVa sphere suspends. **W-K12** Ctrl+Alt+K toggles; F9 still blinks; rebinding works. **W-K13** Datamosh
+continuous while keying. **W-K14** virtual Prism screen. **W-K15** colour chart over the key in Actors on key; absent in Alpha matte. **W-K16** Ghost Edit tool active with an overlay clone selected, UI hidden, every mode incl. Invert: no ring in the output; UI shown: ring visible. Kept from v13: W-1 … W-17, W-8b/8c, W-9a … W-9m.
+
+## A17. Questions
+
+Answered (2026-11-02, final): **Q1** lids after the key, never in Alpha matte (D39). **Q2** Glass refracts Scene /
+Key colour, default Scene (D40). **Q3** key warps with lenses, sphere suspends, supersedes D7 (D41). F9 is
+the blink's → Ctrl+Alt+K (D42).
+
+**Q4 (answered, final):** overlay clones keep today's look — not camera-processed, identical with the key on and off (D49).
+**Q5 (answered, final):** Scene-mode Glass refracts the graded image just before the key (D50).
+
+**Waivers (D37):** none recorded. A required WP (WP-LENS, WP4, WP1b) may be dropped only by an entry here with date, scope and the visible fallback, signed off by the user.
+
+## A18. Biggest risks
+
+1. Lens coverage (WP-LENS, required): coverage passes must reproduce each lens pass's sampling and weights; mitigated by I-LENSINPUTS, the real-target integration test and the image-to-matte fixture.
+2. Styled coverage (WP1b, required): many component kinds and program variants; mitigated by the contributor trace and hole readbacks.
+3. Coverage policy refactor touches the silhouette; mitigated by I-SILPARITY and the silhouette-OFF gate.
+4. Actor shadows (WP4, required) on changed shadow code; mitigated by re-derivation, U-SPLIT/U-CASTER, W-17, W-9a.
+5. Keep-live cost in crowds (disclosed).
+6. Parallel branches (blink, clone fade): the second to merge owns the integration and the migration version.
+
+## A19. Review dispositions (r1 → r2 → v16)
+
+Each r2 finding was checked against the code before it was accepted (anchors re-read: pipeline.cpp:27160-27167
+blit/unbind; cineFisheyeF.glsl:55-58 vignette + alpha 1; renderUltimateDiopter 16756 with the gather at
+17193 and composite inputs at 17334; ultimateDiopterGatherF.glsl:26 `frag_data[3]`; llactormover.cpp:12913-12918
+program selection, 16132-16136 sort; `ALColorChart::presentUnlit` alcolorchart.cpp:515; llgl.cpp:2542).
+
+| Finding | r1 | r2 verdict | v16 disposition |
+|---|---|---|---|
+| R1 overlay clones not camera-processed | P1 | rebuttal rejected | **Escalated to the user as Q4** (recommendation: keep today's look). v16 keeps clones bit-identical to key OFF by drawing them after the key with today's code (§A7); the scope evidence stands (llactormover.cpp:12913-12918; actorghostF.glsl:1873-1874) |
+| R2 coverage lookup / silhouette gates | P1 | fixed | kept (§A5) |
+| R3 layer alpha | P1 | fixed | **moot** — no clone layer in v16 |
+| R4 excluded GhostDeferred clone via source owner | P1 | fixed | kept (§A5 proxy domain, U-DOMAIN) |
+| R5 FBO 0 vs scratch | P1 | fixed | **simplified** — K2 draws into the framebuffer the blit just used; no binding (§A6 step 1) |
+| R6 depth uv ≠ coverage | P1 | not fixed | **FIXED** via §A8: coverage computed by the lens passes themselves (key-variant programs) |
+| R7 fisheye border | P2 | fixed | kept (fisheye variant: out of range → 0) |
+| R8 Datamosh history | P1 | fixed | **moot** — one Studio call per frame, unchanged |
+| R9 excluded-clone depth | P1 | fixed | **moot** — clones use today's depth |
+| R10 GL_DITHER | P1 | fixed | kept (§A6 step 3; fill pass too) |
+| R11 subject column | P1 | fixed | kept (§A13 §5 delta; WP4 required since v17) |
+| R12 styled beauty coverage | P1 | not fixed | **FIXED** with R25 in WP1b (§A9) |
+| R13 depth format | P2 | fixed | **moot** — no layer depth |
+| R14 chart state | P2 | fixed | **simplified** — chart call untouched, after K2 as today (§A3) |
+| R15 warnings / Glass help | P2 | fixed | kept + rewritten for v16 (§A7, §A12, §A14) |
+| R16 fallback / scheduling gates | P2 | not fixed (fallback) | **FIXED** by D44 decide-before-write; no deferral, so no queue; I-OFFPATH2 (§A6, §A15) |
+| R17 virtual Prism screen | P1 | fixed | kept (§A10) |
+| R18 audit anchors | P2 | not fixed | **FIXED** with R27 (AUDIT.md v16 note and rows) |
+| R19 `BT_ADD` vs alpha-weighted emission in L | — | P1 | **moot** — no layer; clones draw with today's blend. Fill mode skips every additive sweep (`BT_ADD` 14148, `(SRC_ALPHA, ONE…)` 14278/14344, glow 14368) |
+| R20 per-channel coverage vs scalar blend | — | P1 | **FIXED** — K2 is copy + blend-off; per-channel `mix` per component; tests `(1,0,0)/(0,1,0)/(0,0,1)` over varied S (§A6) |
+| R21 lens replay timing / gathers / shadow alpha | — | P1 | **FIXED** — no replay: armed-frame key-variant programs produce coverage in the same pass with the beauty weights; shadow in the coverage attachment's alpha; first armed frame not keyed until coverage exists; constant-input and first-activation tests (§A8). WP-LENS stays droppable per the coordinator, with a mandatory user notice (r2 objects to dropping it; that objection is recorded) |
+| R22 rollback cannot restore today's image | — | P1 | **FIXED by removal** — every fallible step is preflighted in K0 before any write (D44); nothing is deferred, so the original draw order is today's; snapshots refuse per Part B §4.4 when K0 refuses |
+| R23 RGBA over-layer fidelity | — | P1 | **moot** — no layer; I-CLONEPARITY now compares the real draw over the keyed frame with key OFF in opaque clone pixels |
+| R24 Set-only translucent ordering | — | P1 | **FIXED** — one pass in today's far-to-near order, per-instance look or fill (§A7); W-K3 asserts the interleaved case |
+| R25 styled replay ORs original geometry | — | P1 | **FIXED** — per-component capture + suppression of generic coverage for coverage-changing looks (§A9); fixtures for BOM, legacy mesh, indexed PBR, Layer vs Replace |
+| R26 chart not set content | — | P2 | **FIXED** — chart is an overlay after K2 (today's call), not drawn in Alpha matte; no "keyed with the set" promise (§A3, W-K15) |
+| R27 stale instructions | — | P2 | **FIXED** — Part A rewritten as one coherent spec (withdrawn instructions deleted); WP recipes rewritten; AUDIT C1/C3/C4/C5/B12/B16/B17 updated |
+| R28 I-REBIND vs intended writes | — | P2 | **FIXED** — stamps after each last intended writer, checked per consumer; registration cases incl. non-zero origin, divisor, scratch, resize (§A6 step 6) |
+| R29 additive pixels misread as key | — | P2 | **FIXED** — self-test block read after K2 and before any overlay; qualification includes lens coverage; INCONCLUSIVE when no block (§A6 step 4) |
+
+### r3 (v17)
+
+r3 re-verdicts of R1-R29: R1 rebuttal accepted under Q4(a); R2, R4-R7, R10, R11, R15, R17, R20, R21, R24, R26, R28, R29 fixed; R3, R8, R9, R13, R14, R19, R23 moot; R12/R25 continue as R35, R16/R22 as R30, R18/R27 as R34.
+
+| Finding | Sev | Verified | v17 disposition |
+|---|---|---|---|
+| R30 post-key Glass allocation | P1 | yes | **FIXED** — all Glass caches prepared in K0 preflight; Scene source copied before the key write; fill does no copy; snapshot stamp complete only after the Studio pass; injected failure 5 at the cache (§A6, §A7) |
+| R31 Scene Glass not today's look | P1 | yes | **CONTRACT STATED + Q5** — verified: today's copy precedes each Glass draw and includes later overlays/rear clones (llactormover.cpp:12160-12169, 12338-12375). Identical behaviour needs an unkeyed second rendering of all post-key draws; put to the user (recommendation: pre-key image). I-CLONEPARITY scope corrected: Key-colour Glass and non-scene-reading looks must equal today; Scene Glass is checked against its stated source (§A7, §A17) |
+| R32 five MRT outputs | P1 | yes | **FIXED** — separate coverage passes with ≤ 2 attachments on key-owned targets; production lens programs/targets untouched; verified limits llrendertarget.cpp:340-346 and `mDiopterMap` 3 attachments pipeline.cpp:1640-1645 (§A8) |
+| R33 edit ring in keyed output | P2 | yes | **FIXED** — ring drawn while keying only when UI visible; W-K16 all modes incl. Invert (§A7) |
+| R34 audit residual instructions | P2 | yes | **FIXED** — B1, C6, D12 rewritten, withdrawn notes deleted; unbind anchor 27167 |
+| R35 shared generic coverage still writes holes | P1 | yes | **FIXED** — single contributor across native/system/shared (incl. PBR branch 19600-19625); readiness-scoped; R-scalar union output; actual variants; contributor trace (§A9) |
+| R36 droppable required WPs | P1 | yes | **ACCEPTED** — D37 rewritten: WP-LENS, WP4, WP1b required; waivers only with the user's recorded sign-off; G-REQ (§A0, §A16) |
+
+### r4 (v18)
+
+r4 re-verdicts: R30 not fixed in full (continues as R37); R31-R36 fixed. Anchors re-read for r4: llactormover.cpp:12245-12275
+(cache expiry/begin), ultimateDiopterF.glsl:110-117 and 145-162, lldrawpool.cpp:1043-1073, llactormover.cpp:117-124.
+
+| Finding | Sev | Verified | v18 disposition |
+|---|---|---|---|
+| R37 cache expiry between K0 and use | P1 | yes | **FIXED** — one ordered owner: K0 begin → reserve (lifetime pin, not validity) → consume; no second expiry; forbidden-allocation counter and injection (§A7, D51) |
+| R38 nonlinear diopter decisions | P1 | yes | **FIXED** — beauty-decided per-channel winners (deterministic ties), halo light excluded from coverage (colour-only), [0,1] bound, residual stated; seam/halo/reversed-candidate fixtures (§A8, D52) |
+| R39 Layer Dissolve / zero Cover ownership | P1 | yes | **FIXED** — dispositions from `shared_actor_fx_owns_native_beauty` / `shared_actor_fx_zero_cover`; Layer Dissolve owns; zero Cover has no contributor; readiness fail-open kept distinct; opacity 0/ε/0.5/1 fixtures (§A9, D53) |
+| R40 occluder before styled replay | P1 | yes | **FIXED** — set occluders are the last coverage writer, stamp after them; styled × virtual-screen fixtures (§A5, §A10) |
+| R41 Studio early exits | P2 | yes | **FIXED** — completion at the unconditional caller; every early return is a successful no-op; serial-scoped (§A6 step 5) |
+
+### r5 (v19)
+
+r5 re-verdicts: R37-R41 fixed. Anchors re-read for r5: lldrawpool.cpp:1140-1182 (`shouldSuppressSharedActorFxPBR`),
+lldrawpoolalpha.cpp:545-549 and 1670-1674 (PBR vs legacy predicate selection), llactormover.cpp:18615-18660
+(`isSharedActorStylePBRReady` / `isSharedActorStyleReady`).
+
+| Finding | Sev | Verified | v19 disposition |
+|---|---|---|---|
+| R42 owner-wide disposition misses the PBR suppression law; blended PBR counted twice | P1 | yes | **FIXED** — D54: per component and per render path, recorded at the predicate each path calls (legacy `shouldSuppressSharedActorFx`, PBR `shouldSuppressSharedActorFxPBR` incl. ordinary Layer); exactly one contributor per visible component; the key's generic shared hook contributes nothing; fractional ordinary-Layer PBR fixtures with numeric coverage and contributor counts (§A5, §A9) |
+
+### r6 (v20)
+
+Anchors re-read for r6: lldrawpoolavatar.cpp:1224-1234 and 1268-1278 (UUID overload at the eye and body call sites),
+lldrawpool.cpp:1077-1099 (UUID overload recording `suppress(actor_id)`), llactormaskeligibility.h:28-44 (separate body
+and draw-info sets), llactormover.cpp:16480-16498 (`renderSkinned` / `renderRigid` in the system coverage replay).
+
+| Finding | Sev | Verified | v20 disposition |
+|---|---|---|---|
+| R43 draw-info-only record cannot suppress BOM body/eye coverage | P1 | yes | **FIXED** — typed system record `SystemComponentKey {get_actor_fx_id, BodyOpaque / BodyTransparent / RigidEyes}` written at the UUID beauty call sites, looked up before `renderSkinned` / `renderRigid` / transparent layers in the key's system coverage, shared system captures keyed the same way; trace covers the system domain; BOM body/eyes/system-transparent fixtures under Replace, Layer Dissolve, ordinary Layer, zero Cover (§A9, D55) |
+
+---
+
+# Part B — v13 design text (history and retained sections)
+
+Banners on each section heading say whether it is kept, kept with deltas (§A13), or superseded.
+Original v13 header follows.
+
+## v13 header (historical)
+
+Actor Chroma Key / Matte — design (v13)
 Status: DESIGN ONLY (2026-10-05, v13 after Codex round 11: NOT APPROVED → revised (checklist precision only); D26 and D30 decided by the
 user: v1 = no ReShade DLL change). No source edits, no build, no commit. Written by Fable from the code
 at HEAD; every file:line cited was read, not recalled.
@@ -234,6 +1031,8 @@ Related: `doc/CINE_RIG_ACTOR_MASK_BRIEF_V3.md` (the mask this feature builds on)
 
 ## 0. Fixed by the user (not reopened)
 
+> **v16:** KEPT (§A0 adds the 2026-11-02 decisions).
+
 - Three modes: **Actors on key** (avatars stay, set becomes the key colour), **Set only** (avatars become
   the key colour, set stays), **Alpha matte** (white actors on black, invertible).
 - Key colour: presets for the common chroma colours (Chroma Green `#00B140`, Pure Green `#00FF00`,
@@ -244,6 +1043,8 @@ Related: `doc/CINE_RIG_ACTOR_MASK_BRIEF_V3.md` (the mask this feature builds on)
 - Output is the viewport itself, toggled on/off. OBS captures what the user sees (with ReShade loaded: bounded by the v1 guarantee statement, §1). Viewer snapshots are keyed by the viewer with every present blocked until the keyed readback completes, so ReShade is never involved; exact codes for unfiltered COLOR snapshots saved lossless at rendered size (§4.4, v10).
 
 ## 1. Summary
+
+> **v16:** SUPERSEDED BY §A2-§A8. The D30 guarantee statement is KEPT verbatim.
 
 The Cine Light Rig Actor Mask is the right **substrate**: a full-resolution, depth-exact, per-avatar
 silhouette already drawn with GL-state hygiene, probes and a debug view. It is **not** a drop-in matte:
@@ -282,6 +1083,8 @@ is accepted by the user for v1 (D30); the v1.1 fork bypass (§4.2a) removes it.
 ---
 
 ## 2. The Actor Mask as read in the code
+
+> **v16:** KEPT as background (anchors moved, AUDIT.md section A); §2.5 verdict SUPERSEDED BY §A5.
 
 ### 2.1 Target, format, resolution, lifetime
 - `RenderTargetPack::actorMask` is `GL_R8`, allocated at `deferredScreen` size and sharing its depth
@@ -333,6 +1136,8 @@ the existing pass needs to change its output; all additions are new code behind 
 
 ### 3.1 Data flow (main view, key ON)
 
+> **v16:** SUPERSEDED BY §A2.
+
 ```
 generateSunShadow() (main view), per cascade j:
   [key+shadow] ensureActorShadowTargets()  (lazy, rollback → All-shadows)                       [§5.2]
@@ -372,6 +1177,9 @@ Key is applied only for `mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender`
 mirrors, impostors and 360 faces never see the key (see §9 for consequences).
 
 ### 3.2 Gate and demand
+
+> **v16:** SUPERSEDED BY §A4 (no `actorMaskWanted()`, D34).
+
 - New static `ALActorChromaKey::sActive` (cached from `ActorKeyEnabled` via a settings listener, the
   `sAnyActorOnly` pattern) and `LLPipeline::actorMaskWanted()` = `anyActorOnly() || sActive`.
 - `actorMaskWanted()` replaces `anyActorOnly()` **only** at: `ensureActorMask` (23371), the
@@ -384,6 +1192,9 @@ mirrors, impostors and 360 faces never see the key (see §9 for consequences).
 - WP7 diagnostics stay gated on `anyActorOnly()`; the key gets its own 5 s summary line (`ACTORKEY`).
 
 ### 3.3 Key recipients: light bits vs mask bytes (Codex R1 P0-5, P0-6)
+
+> **v16:** SUPERSEDED BY §A4 (no KEY_BIT).
+
 PROVES: `recipientBit()` and `byteForOwner()` return 0 whenever `!sAnyActorOnly`
 (alcinelightrigmanager.cpp:951, 963), and `drawByte()` is their union (973-977). Key-only rendering
 therefore cannot reuse them, and bit 7 must never leak into the light side. Two byte spaces:
@@ -446,6 +1257,9 @@ from `ActorKeySubjects` (§3.4), then the mask table as the union. Unit-tested i
   keeps every visible avatar live (no impostors) — intended for a keyed shot; the UI says so (§6, D12).
 
 ### 3.4 Which actors are keyed — `ActorKeySubjects`
+
+> **v16:** KEPT WITH DELTAS (§A4 clone rule).
+
 | Value | Set | Source |
 |---|---|---|
 | 0 | **All avatars** (default) | `LLCharacter::sInstances` → `LLVOAvatar`, dead/control excluded; same walk as `collectRotoInkCandidates` case 2 (pipeline.cpp:16565-16576) |
@@ -460,6 +1274,9 @@ reached through the attachment walk's control-avatar branch, brief §5.4.2 item 
 ship 0 as default (the mental model is "people vs set"); Director cast is the one for crowd scenes.
 
 ### 3.5 Alpha coverage pass (`renderActorKeyCoverage`)
+
+> **v16:** SUPERSEDED BY §A5.
+
 Runs right after `renderActorMask()` in the MAIN MASK view, same depth, same saved-state wrappers
 (`ScopedActorMaskState`, `LLScopedActorMaskInvariant("key coverage")`).
 1. Bind `mActorKeyCoverage` (R8, full res, shares `deferredScreen` depth like the mask). Clear 0.
@@ -494,6 +1311,9 @@ would still work, but the mask pass is frozen, reviewed code shared with lightin
 rule 1 (off path and beauty pass provably unchanged) trivially true.
 
 ### 3.6 Matte build (`ALActorChromaKey::buildMatte`)
+
+> **v16:** KEPT WITH DELTAS (§A13).
+
 Called from the `endMainView` site (pipeline.cpp:25206-25209; screen still bound, mask valid), under
 the same guards as the debug view, **before** the debug view draw so the debug overlay can also show the
 matte (debug mode 3 "Key matte").
@@ -526,6 +1346,9 @@ Cost: two half-res separable passes plus one full-res remap; measured by the Tra
 `ActorKey::buildMatte`, not budgeted here.
 
 ### 3.7 Composite in the final blit
+
+> **v16:** SUPERSEDED BY §A6 (K2 after the blit; blit programs unchanged).
+
 `blitWithEffectsF.glsl` (class1/alchemy) currently ends `vignette → CVD → grain → dither → preview →
 clampHDRRange → frag_color` (lines 80-91). `clampHDRRange` is **not a clamp**: it replaces infinities
 with 1 and NaNs with 0 (deferredUtil.glsl:349-358) and passes finite values through untouched. Add,
@@ -575,6 +1398,8 @@ false for the session, `ACTORKEY NO-PROGRAM` once, UI status "unavailable (shade
 Mode 3 output is written to all three channels; alpha untouched.
 
 ### 3.7a Key colour presets and the exactness guarantee
+
+> **v16:** KEPT WITH DELTAS (§A13: written by K2, blend/sRGB/dither off).
 
 Presets (`ActorKeyColorPreset`); values are 8-bit sRGB display codes written by the blit as `code/255`:
 
@@ -630,6 +1455,9 @@ Chroma Green, not Pure Green, is the default: 4:2:0 subsampling smears a saturat
 more than a mid-saturation one; INFERENCE from compositing practice, not measured here).
 
 ### 3.8 Why not elsewhere in the chain
+
+> **v16:** SUPERSEDED BY §A2.
+
 - Before `colorCorrect` (HDR, linear): the key colour would be tonemapped, graded, bloomed and dithered;
   pure green is impossible and bloom would halo the key edge. Rejected.
 - Between `colorCorrect` and the blit (display-referred ping/pong): correct colour space, but
@@ -642,6 +1470,8 @@ more than a mid-saturation one; INFERENCE from compositing practice, not measure
 ---
 
 ## 4. Interactions with the rest of the post chain
+
+> **v16:** Table SUPERSEDED BY §A3; subsections as marked.
 
 | Stage | Order vs key | Effect in mode 1 (actors on key) | Effect in mode 2 (set only) | Note |
 |---|---|---|---|---|
@@ -661,6 +1491,9 @@ more than a mid-saturation one; INFERENCE from compositing practice, not measure
 | ReShade add-on (present time) | **after** | Any enabled technique recolours/blurs the key | same | §4.1 |
 
 ### 4.1 ReShade: the problem and the viewer side (D6)
+
+> **v16:** KEPT WITH DELTAS (§A13).
+
 The add-on runs on the swapchain at present, after the UI (contract §1; llreshadebridge.cpp:221-225
 confirms `gatherFrame()` is post-blit, pre-UI). Anything enabled in ReShade therefore contaminates the
 key: RTGI/MXAO shade the key edge, sharpeners ring it, LUTs shift the colour, grain dithers it. FX code
@@ -756,6 +1589,9 @@ Viewer side (ABI MINOR 1.2 → **1.3**, additive; `llreshadebridgeabi.h`, `llres
 4. `SL_GBufferProvider.fx` needs nothing; the matte is not published as a semantic (D13, later).
 
 ### 4.2 ReShade add-on: key bypass (D6)
+
+> **v16:** KEPT.
+
 Files: `reshade-addon/src/sl_reshade_bridge.cpp` (all logic), `reshade-addon/src/sl_depth_pin.hpp`
 (untouched: the GD private-ABI pin is unrelated and its exact-binary check stays), the vendored
 `llreshadebridgeabi.h` copy the add-on compiles against (bumped to 1.3 in lockstep).
@@ -1138,6 +1974,9 @@ keying (§4.2 key guard). The in-world self-test with ReShade loaded and RTGI in
 acceptance: PASS means the exact codes reached the readback.
 
 ### 4.2a [DEFERRED — v1.1, NOT IN v1] Hard bypass in the ReShade fork (Codex R3 P0-1, R4 P0-1..P0-3)
+
+> **v16:** KEPT (deferred v1.1).
+
 **Status (D26 decided 2026-10-05): v1.1 spec only — nothing in this section is implemented, built,
 deployed or reviewed in v1.** v1 ships the soft bracket + key guard (§4.2) on the stock
 deployed DLL. This section is the exact design for the follow-up, rebased onto 6.8.0 per §4.2b
@@ -1232,6 +2071,9 @@ guard still counts techniques (expected 0) and reports; `false` → the v1 brack
 DLL build/deploy and depth pin: §4.2b option (a).
 
 ### 4.2b ReShade release provenance (Codex R4 P1-5) — decision D26: DECIDED (c) for v1
+
+> **v16:** KEPT.
+
 Facts (2026-10-05):
 - PROVES deployed: `I:\alchemy-machinima\build-Windows-vs2026-os\newview\Release\opengl32.dll` — file
   version 6.8.0.2155, product version "6.8.0" (no "UNOFFICIAL"), company "crosire", not Authenticode
@@ -1261,6 +2103,9 @@ ReShade upgrade with a feature. Trigger for doing (a): the user wants the overla
 or the guard ever refuses in practice.
 
 ### 4.3 Add-on build, deploy and the stale-binary handshake (D6)
+
+> **v16:** KEPT.
+
 Memory `reshade-gbuffer-stale-addon`: a stale deployed `.addon` once produced black albedo and broken
 specular that looked like a viewer bug. The handshake makes a stale add-on **visible**, the deploy step
 makes it unlikely:
@@ -1327,6 +2172,9 @@ makes it unlikely:
    silently disables itself. Status line: "ReShade DLL <ver> (SL bypass ABI 2)".
 
 ### 4.4 Snapshots while keying (v9, Codex R7 P0-1; v10 = Codex R8 P0-1 / P1-3)
+
+> **v16:** KEPT WITH DELTAS (§A13: serial set by K2).
+
 What holds (PROVES; R8 confirmed the routing): save, thumbnail, postcard and inventory snapshots all
 converge on `rawSnapshot`; 360 uses `simpleSnapshot`; Prism and cube auxiliary renders are intentionally
 unkeyed. `LLPipeline::sRenderDeferred` is always true (llappviewer.cpp:624) and `display()` resets its
@@ -1407,6 +2255,8 @@ PNG/BMP/lossless AVIF" when the key is on.
 ---
 
 ## 5. Keeping actor shadows in mode 1 (D5, v1)
+
+> **v16:** KEPT WITH DELTAS (§A13; WP4 droppable, fallback All sun shadows).
 
 In mode 1 every set pixel becomes the key, so the actor's shadow on the floor and its contact shading
 disappear with the set. v2 keeps the **sun/moon shadow cast by keyed actors** as a darkening of the key
@@ -1721,6 +2571,8 @@ shadow layer and the two-pass workflow remains the exact answer.
 
 ## 6. UI
 
+> **v16:** SUPERSEDED BY §A14 (status wording, notification and badge rules KEPT).
+
 Home: the Lightbox **"Actor Mask" tab** (`floater_lightbox_settings.xml`, panel `actor_mask_settings`,
 host `alfloaterlightbox.cpp`), renamed **"Actor Mask & Key"**. New section above the existing
 Actor-only controls, all `control_name`-bound; dynamic rows driven by **settings listeners** (the
@@ -1793,6 +2645,8 @@ F3-F8). Update `DIRECTOR_HOTKEYS.md` (F9 reserved).
 
 ## 7. Settings (`app_settings/settings.xml`)
 
+> **v16:** KEPT WITH DELTAS (§A14 Settings).
+
 | Setting | Type | Default | Persist | Range / values |
 |---|---|---|---|---|
 | ActorKeyEnabled | Boolean | false | **no** | master toggle |
@@ -1829,6 +2683,8 @@ presets (they are output settings, not a look).
 ---
 
 ## 8. Files and shaders
+
+> **v16:** SUPERSEDED BY §A14 Files (ReShade/snapshot/shadow file lists here remain accurate for those parts).
 
 New
 - `indra/newview/alactorchromakey.h/.cpp` — model + render helper: statics (`sActive`), setting
@@ -1914,6 +2770,8 @@ Shader permutation count: no new permutations on existing programs. New program 
 
 ## 9. Edge cases and known limits
 
+> **v16:** KEPT WITH DELTAS (§A13).
+
 1. Impostored, visually muted, jellydolled, too-complex, `isTooSlow` avatars: not in the mask → mode 1
    keys them **out** (they vanish), mode 2 leaves them un-keyed. UI shows "N not keyed (impostor)";
    `ACTORKEY IMPOSTOR <id>` once per transition. If the A8 keep-live hook covers key recipients
@@ -1954,6 +2812,8 @@ Shader permutation count: no new permutations on existing programs. New program 
 
 ## 10. Performance
 
+> **v16:** SUPERSEDED BY §A15.
+
 OFF (default): `sActive == false` → `actorMaskWanted()` collapses to `anyActorOnly()` (one static
 read); no targets allocated; no listener work beyond the setting signal; `render_hud_attachments` and
 the blit read one static each. Zero draws, zero logs. Reviewer checks the off path explicitly against
@@ -1978,6 +2838,8 @@ measurement, not guessed here.
 ---
 
 ## 11. Test plan
+
+> **v16:** KEPT WITH DELTAS (§A13; new tests §A5-§A10, §A16).
 
 Unit (TUT, `alactorchromakey_test.cpp`, `alcinelightrigmodel_test.cpp`):
 - Two byte spaces (§3.3): with 0 rig lights and N key subjects, every light-side accessor
@@ -2303,6 +3165,8 @@ own UI draws, and an add-on effect switched on mid-key may tint ONE frame before
 
 ## 12. Decisions still open (v2)
 
+> **v16:** KEPT; D7 superseded by D41, D9 by D42; D31-D44 in §A0; Q4 open (§A17).
+
 D1-D15 are closed (see the v2 table at the top). New items raised by the v2 work, each with a
 recommendation; silence = the recommendation stands:
 
@@ -2327,6 +3191,8 @@ recommendation; silence = the recommendation stands:
 ---
 
 ## 13. Work packages — v1 only (sequential; each Codex-implemented, Opus/Codex adversarially reviewed, one build at the end)
+
+> **v16:** SUPERSEDED BY §A16.
 
 v1 scope per D26 (decided): WP0, WP1, WP2, WP3, WP4 (add-on), WP5. No ReShade DLL work; the fork
 bypass (§4.2a) is a separate v1.1 package listed after the build line for reference only.
@@ -2412,6 +3278,9 @@ two-entry depth-pin table + three-way `Prefix` check; `deploy_reshade.ps1` with 
 `ActorKeyHideReShadeOverlay` (D25); test 9e. Gets its own design review when scheduled.
 
 ## 14. Closed checklist — Codex round 12, v1 scope only
+
+> **v16:** KEPT as the v13 review record WITH DELTAS (§A13).
+
 Every item is either **RESOLVED** (design-level, with file:line evidence and the section where it is
 addressed) or an **IMPLEMENTATION-TIME** check (verifiable only in code or in-world) with a named
 acceptance test. Nothing is left open. Closed in the v2-v12 headers and not repeated: everything Codex

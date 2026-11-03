@@ -2,6 +2,8 @@
 
 include(BuildPackagesInfo)
 include(BuildVersion)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/SLAddonSourceHash.cmake")
+sl_addon_source_hash("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 include(CMakeCopyIfDifferent)
 include(Velopack)
 include(TemplateCheck)
@@ -335,6 +337,7 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormaskeligibility.cpp # [ActorMask]
+    alactorchromakey.cpp # [ActorKey] WP0/WP1
     alactormaskdiagnostics.cpp # [ActorMask] WP7
     llactormover.cpp
     alghostattachmentenumerator.cpp
@@ -421,6 +424,7 @@ set(viewer_SOURCE_FILES
     alpaneldof.cpp
     alpanelexposurehub.cpp
     alpanelexposurepage.cpp
+    alpanelactorkey.cpp
     alpanelgazecues.cpp
     alpanellenslooks.cpp
     alpanellightcues.cpp
@@ -1288,6 +1292,10 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormaskeligibility.h # [ActorMask]
+    alactorkeyui.h
+    alactorchromakey.h
+    alactorkeyset.h
+    alcoverpolicy.h
     alactormaskdiagnostics.h # [ActorMask] WP7
     llactormover.h
     alghostattachmentenumerator.h
@@ -1397,6 +1405,7 @@ set(viewer_HEADER_FILES
     alpaneldof.h
     alpanelexposurehub.h
     alpanelexposurepage.h
+    alpanelactorkey.h
     alpanelgazecues.h
     alpanellenslooks.h
     alpanellightcues.h
@@ -2842,6 +2851,7 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    alactorkeyset.cpp # [ActorKey] pure membership TUT
     fsinventorycustomtabmodel.cpp
     allocallightsize.cpp
     alghostautoanimmodel.cpp # [AutoAnimate]

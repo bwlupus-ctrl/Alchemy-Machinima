@@ -46,6 +46,8 @@
 //
 // Globals
 //
+std::atomic<bool> LLWindow::sPresentBlocked{false};
+std::atomic<U64> LLWindow::sBlockedPresents{0};
 LLWindow* gWindowp = nullptr;
 LLSplashScreen *gSplashScreenp = NULL;
 bool gDebugClicks = false;

@@ -30,7 +30,7 @@ public:
     struct Params : public LLInitParam::Block<Params, LLPanel::Params>
     {
         Mandatory<std::string> kind;
-        Optional<std::string>  widget, label, label_name, help, keywords, unit, sub, setting, bind, reset_settings, default_value, link_to,
+        Optional<std::string>  code_readout, widget, label, label_name, help, keywords, unit, sub, setting, bind, reset_settings, default_value, link_to,
             action, mirror_setting;
         // Undo owner declaration for a code-bound row that keeps widget history (kit_lint enforces it):
         // "global" = state with no selected subject. Subject rows use widget_history=false.
@@ -121,7 +121,7 @@ private:
     void         showContextMenu(S32, S32);
     ALKitCard*   card() const;
     ALKitRowMeta mMeta;
-    std::string  mBind, mResetSettings, mDefaultValue, mLabelName;
+    std::string  mBind, mResetSettings, mDefaultValue, mLabelName, mCodeReadoutName;
     S32          mRowHeight  = 28;
     bool         mExplicitRowHeight = false;
     bool         mActionRow = false;
@@ -133,6 +133,7 @@ private:
     std::array<LLUICtrl*, 3>           mVec{ { nullptr, nullptr, nullptr } };
     std::vector<std::string>            mSegmentLabels;
     S32                                mVecCount  = 0;
+    LLTextBox*                         mCodeReadout = nullptr;
     LLTextBox*                         mLabel     = nullptr;
     LLTextBox*                         mValueText = nullptr;
     LLButton*                          mReset     = nullptr;

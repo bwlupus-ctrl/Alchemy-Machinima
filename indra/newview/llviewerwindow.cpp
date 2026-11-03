@@ -32,6 +32,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llactormover.h"
+#include "alactorchromakey.h"
 #include "llviewerwindow.h"
 #include "alkithistory.h"
 #include "alhidecursor.h"
@@ -5976,6 +5977,11 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
         return false;
     }
 
+    ALActorChromaKey::SnapshotScope key_snapshot;
+    if (ALActorChromaKey::sActive && type == LLSnapshotModel::SNAPSHOT_TYPE_COLOR &&
+        !ALActorChromaKey::snapshotRequestAllowed(image_width, image_height)) return false;
+    bool key_refused = false;
+
     //check if there is enough memory for the snapshot image
     if(image_width * image_height > (1 << 22)) //if snapshot image is larger than 2K by 2K
     {
@@ -6134,7 +6140,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
 
     // Subimages are in fact partial rendering of the final view. This happens when the final view is bigger than the screen.
     // In most common cases, scale_factor is 1 and there's no more than 1 iteration on x and y
-    for (int subimage_y = 0; subimage_y < scale_factor; ++subimage_y)
+    for (int subimage_y = 0; !key_refused && subimage_y < scale_factor; ++subimage_y)
     {
         S32 subimage_y_offset = llclamp(buffer_y_offset - (subimage_y * window_height), 0, window_height);;
         // handle fractional columns
@@ -6142,7 +6148,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
             llmax(0, (window_height * (subimage_y + 1)) - (buffer_y_offset + raw->getHeight())));
 
         S32 output_buffer_offset_x = 0;
-        for (int subimage_x = 0; subimage_x < scale_factor; ++subimage_x)
+        for (int subimage_x = 0; !key_refused && subimage_x < scale_factor; ++subimage_x)
         {
             gDisplaySwapBuffers = false;
             gDepthDirty = true;
@@ -6156,6 +6162,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
             if (read_width && read_height)
             {
                 const U32 subfield = subimage_x+(subimage_y*llceil(scale_factor));
+                const U64 key_before = ALActorChromaKey::sActive ? ALActorChromaKey::finalizeSerial() : 0;
                 display(do_rebuild, scale_factor, subfield, true);
 
                 if (!LLPipeline::sRenderDeferred)
@@ -6166,7 +6173,14 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
                     swap();
                 }
 
-                for (U32 out_y = 0; out_y < read_height ; out_y++)
+                if (ALActorChromaKey::sActive && type == LLSnapshotModel::SNAPSHOT_TYPE_COLOR &&
+                    !ALActorChromaKey::snapshotComplete(key_before, window_width, window_height))
+                {
+                    key_refused = true;
+                    if (ALActorChromaKey::reason().empty()) ALActorChromaKey::refuse("no completed keyed finalize for snapshot tile");
+                    ALActorChromaKey::snapshotRefused(image_width, image_height);
+                }
+                for (U32 out_y = 0; !key_refused && out_y < read_height ; out_y++)
                 {
                     S32 output_buffer_offset = (
                                                 (out_y * (raw->getWidth())) // ...plus iterated y...
@@ -6280,13 +6294,13 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
     // Note: this formula depends on the number of components being 3.  Not obvious, but it's correct.
     image_width += (image_width * 3) % 4;
 
-    bool ret = true ;
+    bool ret = !key_refused;
     // Resize image
-    if(llabs(image_width - image_buffer_x) > 4 || llabs(image_height - image_buffer_y) > 4)
+    if(!key_refused && (llabs(image_width - image_buffer_x) > 4 || llabs(image_height - image_buffer_y) > 4))
     {
         ret = raw->scale( image_width, image_height );
     }
-    else if(image_width != image_buffer_x || image_height != image_buffer_y)
+    else if(!key_refused && (image_width != image_buffer_x || image_height != image_buffer_y))
     {
         ret = raw->scale( image_width, image_height, false );
     }
@@ -6326,6 +6340,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
 
 bool LLViewerWindow::simpleSnapshot(LLImageRaw* raw, S32 image_width, S32 image_height, const int num_render_passes)
 {
+    ALActorChromaKey::SuppressScope key_suppressed;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_APP;
     gDisplaySwapBuffers = false;
 

@@ -1,0 +1,22 @@
+{
+  "base": "f5d64e0e10d041877f98bc551d0fd39eeb4acf25",
+  "hunks": [
+    {
+      "before": "#include \"alvcamautovol.h\"\n#include \"alcinelightrig.h\"\n#include \"alactorchromakey.h\"\n#include \"alcoverpolicy.h\"\n#include \"alcinelightrigmanager.h\"\n#include \"alrelightmath.h\"\n",
+      "after": "#include \"alvcamautovol.h\"\n#include \"alcinelightrig.h\"\n#include \"alactorchromakey.h\"\n#include \"alactorkeyui.h\" // WP5 diagnostic feedback only\n#include \"alcoverpolicy.h\"\n#include \"alcinelightrigmanager.h\"\n#include \"alrelightmath.h\"\n"
+    },
+    {
+      "before": "            pass &= ll_round(expected*codes) == ll_round(mActorKeyTestOutput[i]*codes);\n        }\n    }\n    LL_INFOS(\"ActorKey\") << \"ACTORKEY SELFTEST \" << (!valid || !found[0] || !found[1] ? \"INCONCLUSIVE\" : pass ? \"PASS\" : \"FAIL\")\n        << \" frame=\" << ++mActorKeyTestFrames << \"/8 bits=\" << (codes == 1023 ? 10 : 8)\n        << \" set=\" << found[0] << \" actor=\" << found[1] << LL_ENDL;\n    if (mActorKeyTestFrames >= 8) { mActorKeyTestFrames = 0; gSavedSettings.setU32(\"ActorKeySelfTest\", 0); }\n",
+      "after": "            pass &= ll_round(expected*codes) == ll_round(mActorKeyTestOutput[i]*codes);\n        }\n    }\n    const char* verdict = !valid || !found[0] || !found[1] ? \"INCONCLUSIVE\" : pass ? \"PASS\" : \"FAIL\";\n    ALActorKeyUI::recordSelfTest(llformat(\"Key self-test %s, frame %u/8 (%s).\", verdict,\n        mActorKeyTestFrames + 1, !valid ? \"invalid sample\" : !found[0] || !found[1] ? \"missing actor or key block\" : \"key and actor sampled\"));\n    LL_INFOS(\"ActorKey\") << \"ACTORKEY SELFTEST \" << verdict\n        << \" frame=\" << ++mActorKeyTestFrames << \"/8 bits=\" << (codes == 1023 ? 10 : 8)\n        << \" set=\" << found[0] << \" actor=\" << found[1] << LL_ENDL;\n    if (mActorKeyTestFrames >= 8) { mActorKeyTestFrames = 0; gSavedSettings.setU32(\"ActorKeySelfTest\", 0); }\n"
+    }
+  ],
+  "integration_base": "ab2329ba39f",
+  "integration_predecessors": [
+    "actor_key_wp01_hunks.json",
+    "actor_key_wp2_hunks.json",
+    "actor_key_lens_hunks.json",
+    "actor_key_wp1b_hunks.json",
+    "actor_key_shadow_hunks.json"
+  ],
+  "integration_order": "WP01, WP2, LENS, WP1b, WP4, WP5; reverse before Matrix, ashfix, interplay, hot gaze, blink, QoL, phase 2 and original guards. WP3 does not change these guarded files."
+}

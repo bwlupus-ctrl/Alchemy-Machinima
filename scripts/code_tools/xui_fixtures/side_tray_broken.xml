@@ -1,0 +1,5 @@
+<panel_container name="side_tray" width="200" height="100" layout="topleft">
+  <panel name="first" width="400" height="200" follows="all">
+    <button name="clipped_button" label="A" top="5" left="180" width="40" height="20" />
+  </panel>
+</panel_container>

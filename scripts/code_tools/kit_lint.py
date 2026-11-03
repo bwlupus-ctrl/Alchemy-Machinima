@@ -793,6 +793,18 @@ def check_homes(trees: list[Tree], homes: dict[str, str], pending: dict[str, str
                     and ({w.easy for w in occurrences} == {True, False} or explicit_local_shortcut)
                     and {w.attr for w in occurrences} <= mode_attrs):
                 continue
+            # A page master and its own bool row are the same page's explicit
+            # switch mirror (Capture Key A14). Require the actual ancestor,
+            # distinct runtime names, and exactly these two writers; this does
+            # not admit arbitrary same-page controls or cross-page copies.
+            masters = [w for w in occurrences if w.attr == "master_setting" and w.node.tag == "kit_page"]
+            rows = [w for w in occurrences if w.attr == "setting" and w.row_node is not None
+                    and w.row_node.attrs.get("kind") == "toggle"]
+            master_pair = (len(occurrences) == 2 and len(pages) == 1 and len(masters) == len(rows) == 1
+                           and rows[0].row_node.ancestor("kit_page") is masters[0].node
+                           and masters[0].node.attrs.get("master_widget") != rows[0].row)
+            if master_pair:
+                continue
             legitimate_pair = (len(occurrences) == 2 and len(pages) == 1
                                and {w.easy for w in occurrences} == {True, False}
                                and all(w.row_node is not None for w in occurrences)
@@ -1031,6 +1043,22 @@ def run_selftest(as_json: bool) -> int:
         control = Node("slider", {"name": widget, "increment": "1"}, 5, row)
         row.children = [control]; card_node.children = [row]; root.children.append(card_node)
         return Tree(name, root, page_name, None)
+
+    master_mirror = writer_tree("master_mirror.xml", "key_tab", "ak_enable", "ActorKeyEnabled")
+    master_mirror.root.attrs.update(master_widget="ActorKeyEnabled", master_setting="ActorKeyEnabled")
+    mirror_row = master_mirror.root.children[0].children[0]
+    mirror_row.attrs["kind"] = "toggle"
+    record("WP5_page_master_mirror", not check_homes([master_mirror], {}, {}, {}),
+           "a page master and its own bool row share one home")
+    foreign = writer_tree("foreign.xml", "other", "foreign", "ActorKeyEnabled")
+    record("WP5_master_mirror_rejects_third", bool(check_homes([master_mirror, foreign], {}, {}, {})),
+           "a third or cross-page writer is still rejected")
+    detached = writer_tree("detached.xml", "key_tab", "detached", "ActorKeyEnabled")
+    detached.root.children[0].children[0].attrs["kind"] = "toggle"
+    master_only = Tree("master_only.xml", Node("kit_page", {
+        "master_widget": "ActorKeyEnabled", "master_setting": "ActorKeyEnabled"}, 1, None), "key_tab", None)
+    record("WP5_master_mirror_requires_ancestor", bool(check_homes([master_only, detached], {}, {}, {})),
+           "unrelated same-page roots are not master mirrors")
 
     k2_trees = [writer_tree("k2a.xml", "same", "one", "K2"),
                 writer_tree("k2b.xml", "same", "two", "K2")]

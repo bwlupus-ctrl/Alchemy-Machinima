@@ -3,13 +3,13 @@
   "source": "scripts/code_tools/director_kit/director_mockup_data.json",
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
-    "pages": 38,
-    "rows": 2246,
-    "owner_roots": 35,
+    "pages": 39,
+    "rows": 2279,
+    "owner_roots": 36,
     "unresolved_rows": 74,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2246
+    "independent_json_rows": 2279
   },
   "setting_conflicts": [
     {
@@ -543,6 +543,594 @@
           "line": 9128,
           "group": "Global",
           "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyAlphaCoverage",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 110,
+          "widget": "ak_alpha",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32246,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyChoke",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 97,
+          "widget": "ak_choke",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32232,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyColor",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 52,
+          "widget": "ak_color",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32211,
+          "group": "Global",
+          "type": "Color3"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyColorPreset",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 37,
+          "widget": "ak_preset",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32204,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyDebugView",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 166,
+          "widget": "ak_debug",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32330,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyEdgeMode",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 102,
+          "widget": "ak_edge",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32239,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyEnabled",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 13,
+          "widget": "ak_enable",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32169,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyFeather",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 92,
+          "widget": "ak_feather",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32225,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyGlassSource",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 76,
+          "widget": "ak_glass",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32323,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyHideHUD",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 155,
+          "widget": "ak_hud",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32253,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyIncludeAnimesh",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 84,
+          "widget": "ak_animesh",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32190,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyIncludeClones",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 73,
+          "widget": "ak_clones",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32183,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyMatteInvert",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 58,
+          "widget": "ak_invert",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32218,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyMatteShadow",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 150,
+          "widget": "ak_mshadow",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32295,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyMode",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 28,
+          "widget": "ak_mode",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32197,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyShadow",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 115,
+          "widget": "ak_shadow",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32260,
+          "group": "Global",
+          "type": "Boolean"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyShadowCascades",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 132,
+          "widget": "ak_scasc",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32281,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyShadowIsolation",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 118,
+          "widget": "ak_iso",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32267,
+          "group": "Global",
+          "type": "U32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyShadowSoftness",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 142,
+          "widget": "ak_ssoft",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32288,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeyShadowStrength",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 127,
+          "widget": "ak_sstr",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32274,
+          "group": "Global",
+          "type": "F32"
+        }
+      ],
+      "writable_home": null
+    },
+    {
+      "setting": "ActorKeySubjects",
+      "pages": [
+        "key_tab"
+      ],
+      "xui_writers": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "line": 63,
+          "widget": "ak_who",
+          "root": {
+            "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+            "tag": "panel",
+            "name": "key_tab_logic",
+            "line": 3
+          }
+        }
+      ],
+      "declarations": [
+        {
+          "file": "indra/newview/app_settings/settings.xml",
+          "line": 32176,
+          "group": "Global",
+          "type": "U32"
         }
       ],
       "writable_home": null
@@ -58446,7 +59034,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1900,
+              "line": 1903,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58459,7 +59047,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2000,
+              "line": 2003,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58619,7 +59207,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1901,
+              "line": 1904,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58632,7 +59220,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2002,
+              "line": 2005,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58759,7 +59347,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1902,
+              "line": 1905,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58772,7 +59360,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2004,
+              "line": 2007,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -58899,7 +59487,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1903,
+              "line": 1906,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -58912,7 +59500,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2006,
+              "line": 2009,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59085,7 +59673,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1907,
+              "line": 1910,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -59098,7 +59686,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2014,
+              "line": 2017,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59225,7 +59813,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1904,
+              "line": 1907,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -59238,7 +59826,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2008,
+              "line": 2011,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59365,7 +59953,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1905,
+              "line": 1908,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -59378,7 +59966,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2010,
+              "line": 2013,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59505,7 +60093,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1906,
+              "line": 1909,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -59518,7 +60106,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2012,
+              "line": 2015,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -175062,7 +175650,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 29692,
+              "line": 30465,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -175129,7 +175717,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25007,
+              "line": 25039,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -175196,7 +175784,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25019,
+              "line": 25051,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -225192,7 +225780,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20936,
+              "line": 20968,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225283,7 +225871,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20953,
+              "line": 20985,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225530,7 +226118,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20955,
+              "line": 20987,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225699,7 +226287,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20958,
+              "line": 20990,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225790,7 +226378,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20959,
+              "line": 20991,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225881,7 +226469,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20960,
+              "line": 20992,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -225972,7 +226560,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20961,
+              "line": 20993,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -226063,7 +226651,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20962,
+              "line": 20994,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -226154,7 +226742,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20963,
+              "line": 20995,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -226245,7 +226833,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20964,
+              "line": 20996,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -226414,7 +227002,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20971,
+              "line": 21003,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -226505,7 +227093,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 20973,
+              "line": 21005,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -226908,7 +227496,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21425,
+              "line": 21457,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -227256,7 +227844,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21426,
+              "line": 21458,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -227347,7 +227935,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21424,
+              "line": 21456,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -227704,7 +228292,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21420,
+              "line": 21452,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228107,7 +228695,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21436,
+              "line": 21468,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228432,7 +229020,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21443,
+              "line": 21475,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -240421,6 +241009,1906 @@
               }
             }
           ],
+          "unresolved": [],
+          "other_writers": []
+        }
+      ]
+    },
+    {
+      "key": "key_tab",
+      "label": "Key",
+      "group": "capture_group",
+      "group_label": "Capture",
+      "row_count": 33,
+      "owner_roots": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+          "tag": "panel",
+          "name": "key_tab_logic",
+          "line": 3,
+          "matched_rows": 33,
+          "evidence": "row-widget match"
+        }
+      ],
+      "owner_classes": [
+        {
+          "class": "ALPanelActorKey",
+          "reference_count": 24
+        },
+        {
+          "class": "LLReShadeBridge",
+          "reference_count": 1
+        }
+      ],
+      "classification": {
+        "logic_class": "code-driven",
+        "setting_bound_rows": 23,
+        "setting_coverage": 0.69697,
+        "cpp_referenced_rows": 21,
+        "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
+      },
+      "unresolved_row_count": 0,
+      "rows": [
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Key actors",
+          "kind": "toggle",
+          "widget": "ak_enable",
+          "matched_widget": "ak_enable",
+          "declared_setting": "ActorKeyEnabled",
+          "resolved_setting": "ActorKeyEnabled",
+          "setting_candidates": [
+            "ActorKeyEnabled"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32169,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 13,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyEnabled",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Status",
+          "kind": "readout",
+          "widget": "ak_status",
+          "matched_widget": "ak_status",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 16,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "ReShade",
+          "kind": "readout",
+          "widget": "ak_reshade",
+          "matched_widget": "ak_reshade",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 19,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Guarantee",
+          "kind": "readout",
+          "widget": "ak_guarantee",
+          "matched_widget": "ak_guarantee",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 22,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Retry",
+          "kind": "button",
+          "widget": "ak_retry",
+          "matched_widget": "ak_retry",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 25,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 146,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mRetry = mPage->findRow(\"ak_retry\");"
+            },
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 147,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "auto* retry = getChild<LLButton>(\"ak_retry\");"
+            },
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 149,
+              "class": "LLReShadeBridge",
+              "function": "retryKeyGuard",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "retry->setCommitCallback([this](LLUICtrl*, const LLSD&)"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 5,
+          "label": "Mode",
+          "kind": "combo",
+          "widget": "ak_mode",
+          "matched_widget": "ak_mode",
+          "declared_setting": "ActorKeyMode",
+          "resolved_setting": "ActorKeyMode",
+          "setting_candidates": [
+            "ActorKeyMode"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32197,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Actors on key",
+            "Set only",
+            "Alpha matte"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 28,
+              "tag": "combo_box",
+              "control_name": "ActorKeyMode",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
+          "label": "Key colour",
+          "kind": "combo",
+          "widget": "ak_preset",
+          "matched_widget": "ak_preset",
+          "declared_setting": "ActorKeyColorPreset",
+          "resolved_setting": "ActorKeyColorPreset",
+          "setting_candidates": [
+            "ActorKeyColorPreset"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32204,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Chroma Green #00B140",
+            "Pure Green #00FF00",
+            "Chroma Blue #0047BB",
+            "Pure Blue #0000FF",
+            "Magenta #FF00FF",
+            "Pure Black #000000",
+            "Pure White #FFFFFF",
+            "Mid Grey #808080",
+            "Custom"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 37,
+              "tag": "combo_box",
+              "control_name": "ActorKeyColorPreset",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 7,
+          "label": "Custom colour",
+          "kind": "color",
+          "widget": "ak_color",
+          "matched_widget": "ak_color",
+          "declared_setting": "ActorKeyColor",
+          "resolved_setting": "ActorKeyColor",
+          "setting_candidates": [
+            "ActorKeyColor"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32211,
+              "group": "Global",
+              "type": "Color3"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 52,
+              "tag": "color_swatch",
+              "control_name": "ActorKeyColor",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 139,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mColour = getChild<LLUICtrl>(\"ak_color\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "Codes",
+          "kind": "readout",
+          "widget": "ak_codes",
+          "matched_widget": "ak_codes",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 55,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_chroma",
+          "card_title": "Chroma key",
+          "option_index": null,
+          "option_label": null,
+          "index": 9,
+          "label": "Invert matte",
+          "kind": "toggle",
+          "widget": "ak_invert",
+          "matched_widget": "ak_invert",
+          "declared_setting": "ActorKeyMatteInvert",
+          "resolved_setting": "ActorKeyMatteInvert",
+          "setting_candidates": [
+            "ActorKeyMatteInvert"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32218,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 58,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyMatteInvert",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_subjects",
+          "card_title": "Who",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Who",
+          "kind": "combo",
+          "widget": "ak_who",
+          "matched_widget": "ak_who",
+          "declared_setting": "ActorKeySubjects",
+          "resolved_setting": "ActorKeySubjects",
+          "setting_candidates": [
+            "ActorKeySubjects"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32176,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "All avatars",
+            "Director cast",
+            "Actor-only lit",
+            "Me only"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 63,
+              "tag": "combo_box",
+              "control_name": "ActorKeySubjects",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_subjects",
+          "card_title": "Who",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Include clones",
+          "kind": "toggle",
+          "widget": "ak_clones",
+          "matched_widget": "ak_clones",
+          "declared_setting": "ActorKeyIncludeClones",
+          "resolved_setting": "ActorKeyIncludeClones",
+          "setting_candidates": [
+            "ActorKeyIncludeClones"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32183,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 73,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyIncludeClones",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_subjects",
+          "card_title": "Who",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Glass refracts",
+          "kind": "combo",
+          "widget": "ak_glass",
+          "matched_widget": "ak_glass",
+          "declared_setting": "ActorKeyGlassSource",
+          "resolved_setting": "ActorKeyGlassSource",
+          "setting_candidates": [
+            "ActorKeyGlassSource"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32323,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Scene",
+            "Key colour"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 76,
+              "tag": "combo_box",
+              "control_name": "ActorKeyGlassSource",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_subjects",
+          "card_title": "Who",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Include animesh",
+          "kind": "toggle",
+          "widget": "ak_animesh",
+          "matched_widget": "ak_animesh",
+          "declared_setting": "ActorKeyIncludeAnimesh",
+          "resolved_setting": "ActorKeyIncludeAnimesh",
+          "setting_candidates": [
+            "ActorKeyIncludeAnimesh"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32190,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 84,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyIncludeAnimesh",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_subjects",
+          "card_title": "Who",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Keyed",
+          "kind": "readout",
+          "widget": "ak_count",
+          "matched_widget": "ak_count",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 87,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_edges",
+          "card_title": "Edge",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Feather",
+          "kind": "slider",
+          "widget": "ak_feather",
+          "matched_widget": "ak_feather",
+          "declared_setting": "ActorKeyFeather",
+          "resolved_setting": "ActorKeyFeather",
+          "setting_candidates": [
+            "ActorKeyFeather"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32225,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 92,
+              "tag": "slider",
+              "control_name": "ActorKeyFeather",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_edges",
+          "card_title": "Edge",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Choke",
+          "kind": "slider",
+          "widget": "ak_choke",
+          "matched_widget": "ak_choke",
+          "declared_setting": "ActorKeyChoke",
+          "resolved_setting": "ActorKeyChoke",
+          "setting_candidates": [
+            "ActorKeyChoke"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32232,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 97,
+              "tag": "slider",
+              "control_name": "ActorKeyChoke",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_edges",
+          "card_title": "Edge",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Edge fill",
+          "kind": "combo",
+          "widget": "ak_edge",
+          "matched_widget": "ak_edge",
+          "declared_setting": "ActorKeyEdgeMode",
+          "resolved_setting": "ActorKeyEdgeMode",
+          "setting_candidates": [
+            "ActorKeyEdgeMode"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32239,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Blend",
+            "Hard"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 102,
+              "tag": "combo_box",
+              "control_name": "ActorKeyEdgeMode",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_edges",
+          "card_title": "Edge",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Hair and alpha coverage",
+          "kind": "toggle",
+          "widget": "ak_alpha",
+          "matched_widget": "ak_alpha",
+          "declared_setting": "ActorKeyAlphaCoverage",
+          "resolved_setting": "ActorKeyAlphaCoverage",
+          "setting_candidates": [
+            "ActorKeyAlphaCoverage"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32246,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 110,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyAlphaCoverage",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Keep actor shadows",
+          "kind": "toggle",
+          "widget": "ak_shadow",
+          "matched_widget": "ak_shadow",
+          "declared_setting": "ActorKeyShadow",
+          "resolved_setting": "ActorKeyShadow",
+          "setting_candidates": [
+            "ActorKeyShadow"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32260,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 115,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyShadow",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 140,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mShadow = getChild<LLUICtrl>(\"ak_shadow\");"
+            },
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Isolation",
+          "kind": "combo",
+          "widget": "ak_iso",
+          "matched_widget": "ak_iso",
+          "declared_setting": "ActorKeyShadowIsolation",
+          "resolved_setting": "ActorKeyShadowIsolation",
+          "setting_candidates": [
+            "ActorKeyShadowIsolation"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32267,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Fast",
+            "Exact",
+            "All sun shadows"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 118,
+              "tag": "combo_box",
+              "control_name": "ActorKeyShadowIsolation",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Strength",
+          "kind": "slider",
+          "widget": "ak_sstr",
+          "matched_widget": "ak_sstr",
+          "declared_setting": "ActorKeyShadowStrength",
+          "resolved_setting": "ActorKeyShadowStrength",
+          "setting_candidates": [
+            "ActorKeyShadowStrength"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32274,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 127,
+              "tag": "slider",
+              "control_name": "ActorKeyShadowStrength",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Cascades",
+          "kind": "combo",
+          "widget": "ak_scasc",
+          "matched_widget": "ak_scasc",
+          "declared_setting": "ActorKeyShadowCascades",
+          "resolved_setting": "ActorKeyShadowCascades",
+          "setting_candidates": [
+            "ActorKeyShadowCascades"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32281,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 132,
+              "tag": "combo_box",
+              "control_name": "ActorKeyShadowCascades",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Softness",
+          "kind": "slider",
+          "widget": "ak_ssoft",
+          "matched_widget": "ak_ssoft",
+          "declared_setting": "ActorKeyShadowSoftness",
+          "resolved_setting": "ActorKeyShadowSoftness",
+          "setting_candidates": [
+            "ActorKeyShadowSoftness"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32288,
+              "group": "Global",
+              "type": "F32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 142,
+              "tag": "slider",
+              "control_name": "ActorKeyShadowSoftness",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 5,
+          "label": "Status",
+          "kind": "readout",
+          "widget": "ak_sstatus",
+          "matched_widget": "ak_sstatus",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 147,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            },
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_shadows",
+          "card_title": "Actor shadows",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
+          "label": "Grey shadow in matte",
+          "kind": "toggle",
+          "widget": "ak_mshadow",
+          "matched_widget": "ak_mshadow",
+          "declared_setting": "ActorKeyMatteShadow",
+          "resolved_setting": "ActorKeyMatteShadow",
+          "setting_candidates": [
+            "ActorKeyMatteShadow"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32295,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 150,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyMatteShadow",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 142,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* conditional[] = {\"ak_invert\", \"ak_glass\", \"ak_shadow\", \"ak_iso\", \"ak_sstr\", \"ak_scasc\", \"ak_ssoft\", \"ak_sstatus\", \"ak_mshadow\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_output",
+          "card_title": "Output",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Hide HUD attachments",
+          "kind": "toggle",
+          "widget": "ak_hud",
+          "matched_widget": "ak_hud",
+          "declared_setting": "ActorKeyHideHUD",
+          "resolved_setting": "ActorKeyHideHUD",
+          "setting_candidates": [
+            "ActorKeyHideHUD"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32253,
+              "group": "Global",
+              "type": "Boolean"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 155,
+              "tag": "kit_switch",
+              "control_name": "ActorKeyHideHUD",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_output",
+          "card_title": "Output",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Capture warnings",
+          "kind": "readout",
+          "widget": "ak_warn",
+          "matched_widget": "ak_warn",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 158,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_output",
+          "card_title": "Output",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Known limits",
+          "kind": "readout",
+          "widget": "ak_limits",
+          "matched_widget": "ak_limits",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 161,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_diagnostics",
+          "card_title": "Diagnostics",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Debug view",
+          "kind": "combo",
+          "widget": "ak_debug",
+          "matched_widget": "ak_debug",
+          "declared_setting": "ActorKeyDebugView",
+          "resolved_setting": "ActorKeyDebugView",
+          "setting_candidates": [
+            "ActorKeyDebugView"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32330,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [
+            "Off",
+            "Coverage",
+            "Matte",
+            "Actor shadow",
+            "Lens coverage"
+          ],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 166,
+              "tag": "combo_box",
+              "control_name": "ActorKeyDebugView",
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_diagnostics",
+          "card_title": "Diagnostics",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Self-test",
+          "kind": "button",
+          "widget": "ak_selftest",
+          "matched_widget": "ak_selftest",
+          "declared_setting": "ActorKeySelfTest",
+          "resolved_setting": "ActorKeySelfTest",
+          "setting_candidates": [
+            "ActorKeySelfTest"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32309,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 177,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 155,
+              "class": "ALPanelActorKey",
+              "function": "setU32",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "getChild<LLButton>(\"ak_selftest\")->setCommitCallback([](LLUICtrl*, const LLSD&)"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_diagnostics",
+          "card_title": "Diagnostics",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Exact shadow test",
+          "kind": "button",
+          "widget": "ak_shadowtest",
+          "matched_widget": "ak_shadowtest",
+          "declared_setting": "ActorKeyShadowSelfTest",
+          "resolved_setting": "ActorKeyShadowSelfTest",
+          "setting_candidates": [
+            "ActorKeyShadowSelfTest"
+          ],
+          "setting_declarations": [
+            {
+              "file": "indra/newview/app_settings/settings.xml",
+              "line": 32302,
+              "group": "Global",
+              "type": "U32"
+            }
+          ],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 180,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 157,
+              "class": "ALPanelActorKey",
+              "function": "setU32",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "getChild<LLButton>(\"ak_shadowtest\")->setCommitCallback([](LLUICtrl*, const LLSD&)"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "ak_diagnostics",
+          "card_title": "Diagnostics",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Last result",
+          "kind": "readout",
+          "widget": "ak_result",
+          "matched_widget": "ak_result",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+              "line": 183,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+                "tag": "panel",
+                "name": "key_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelactorkey.cpp",
+              "line": 144,
+              "class": "ALPanelActorKey",
+              "function": "postBuild",
+              "wired_class": "ALPanelActorKey",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const char* readouts[] = {\"ak_status\", \"ak_reshade\", \"ak_guarantee\", \"ak_codes\", \"ak_count\", \"ak_sstatus\", \"ak_warn\", \"ak_result\", \"ak_limits\"};"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
           "unresolved": [],
           "other_writers": []
         }

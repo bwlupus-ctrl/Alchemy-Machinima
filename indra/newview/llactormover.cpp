@@ -8,10 +8,13 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alactorkeycapture.h"
 #include "llviewerregion.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "alactorchromakey.h"
+#include "alcoverpolicy.h"
 #include "alcameradispatch.h"
 #include "llcallbacklist.h"
 #include "alghostanimmirrormath.h"
@@ -12307,6 +12310,41 @@ private:
     GLint mBinding2D;
 };
 
+struct StudioKeyPrograms
+{
+    LLGLSLShader gActorGhostKeyFillProgram, gSkinnedActorGhostKeyFillProgram;
+    ~StudioKeyPrograms()
+    {
+        gActorGhostKeyFillProgram.unload();
+        gSkinnedActorGhostKeyFillProgram.unload();
+    }
+};
+std::unique_ptr<StudioKeyPrograms> sStudioKeyPrograms;
+U64 sStudioKeyBegin = 0, sStudioForbiddenAllocations = 0;
+
+bool studio_key_fill_programs()
+{
+    if (!sStudioKeyPrograms) sStudioKeyPrograms = std::make_unique<StudioKeyPrograms>();
+    auto& base = sStudioKeyPrograms->gActorGhostKeyFillProgram;
+    auto& rigged = sStudioKeyPrograms->gSkinnedActorGhostKeyFillProgram;
+    if (base.isComplete() && rigged.isComplete()) return true;
+    auto load = [](LLGLSLShader& shader, bool skin)
+    {
+        shader.mName = skin ? "Actor Ghost Key Fill Skinned" : "Actor Ghost Key Fill";
+        shader.mFeatures = LLShaderFeatures();
+        shader.mFeatures.hasObjectSkinning = skin;
+        shader.mShaderLevel = 1;
+        shader.mShaderFiles = {{"interface/actorghostV.glsl", GL_VERTEX_SHADER},
+                               {"interface/actorghostF.glsl", GL_FRAGMENT_SHADER}};
+        shader.clearPermutations();
+        shader.addPermutation("AL_KEY_FILL", "1");
+        if (skin) shader.addPermutation("HAS_SKIN", "1");
+        return shader.createShader();
+    };
+    base.mRiggedVariant = &rigged;
+    return load(base, false) && load(rigged, true);
+}
+
 // Called only for a drawable, positive-alpha Glass in the camera frustum.
 // Current DRAW framebuffer is the final present + HUD composition, not screen
 // (the earlier HDR world target). Never attach the copy to the draw framebuffer.
@@ -12315,6 +12353,8 @@ struct StudioSceneCache
     LLPointer<LLImageGL> mScene;
     F64 mLastUse = 0.0;
     U64 mInvocation = 0;
+    U32 mReservedFrame = ~0u;
+    U64 mReservedSerial = 0, mPreKeySerial = 0;
     void expire(F64 now)
     {
         if (mScene && now - mLastUse > 3.0) mScene = nullptr;
@@ -12347,6 +12387,8 @@ struct StudioSceneCaches
         return mSnapshot[size];
     }
 };
+
+StudioSceneCache* sStudioKeyCache = nullptr;
 
 StudioSceneCaches& studio_scene_caches()
 {
@@ -12449,6 +12491,35 @@ LLImageGL* studio_scene_copy(StudioSceneCache& cache, U64 invocation, F64 now,
     cache.mLastUse = now;
     return scene.get();
 }
+U32 studio_key_failure()
+{
+    static LLCachedControl<U32> fail(gSavedSettings, "ActorKeyDebugFailPreflight", 0);
+    return fail();
+}
+
+LLImageGL* studio_key_scene(StudioSceneCache& cache, U64 invocation, F64 now,
+    const GLint (&viewport)[4], const std::array<GLint, 4>& rect, bool pre_key)
+{
+    if (cache.mReservedFrame != gFrameCount || cache.mReservedSerial != ALActorChromaKey::finalizeSerial() ||
+        !cache.mScene || !cache.mScene->getHasGLTexture() ||
+        cache.mScene->getWidth() != viewport[2] || cache.mScene->getHeight() != viewport[3])
+    {
+        ++sStudioForbiddenAllocations;
+        ALActorChromaKey::studioFailure("forbidden post-K2 Glass allocation");
+        return nullptr;
+    }
+    if (studio_key_failure() == 6) { ALActorChromaKey::studioFailure("injected Glass copy failure"); return nullptr; }
+    if (pre_key)
+    {
+        if (cache.mPreKeySerial == ALActorChromaKey::finalizeSerial()) return cache.mScene.get();
+        ALActorChromaKey::studioFailure("missing pre-key Glass source");
+        return nullptr;
+    }
+    auto* result = studio_scene_copy(cache, invocation, now, viewport, rect);
+    if (!result || glGetError() != GL_NO_ERROR) ALActorChromaKey::studioFailure("Glass copy failed");
+    return result;
+}
+
 static LLStaticHashedString sGhostDissolveProgress("ghostDissolveProgress");
 static LLStaticHashedString sGhostDecodeScrub("ghostDecodeScrub");
 static LLStaticHashedString sGhostCoverageLayerStrength(
@@ -13001,6 +13072,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // path ghosts and every legacy overlay keep the interface program.
     LLGLSLShader* fx_base = gp.mWorldLinear
         ? &gWorldActorGhostProgram : &gActorGhostProgram;
+    if (gp.mKeyFill) fx_base = &sStudioKeyPrograms->gActorGhostKeyFillProgram;
     LLGLSLShader* fx = fx_base->mRiggedVariant;
     const bool have_fx = fx && fx->mProgramObject;
     if (!coverage_mode && gp.mWorldLinear && !have_fx)
@@ -13174,6 +13246,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);
                     sh->uniform2f(sGhostScreenOrigin, 0.f, 0.f);
                 }
+                if (gp.mKeyFill)
+                {
+                    sh->uniform3fv(LLStaticHashedString("ghostKeyFill"), 1, gp.mKeyFillColour.mV);
+                    sh->uniform1i(sGhostSceneValid, 1);
+                }
             }
             if (gp.mWorldLinear)
             {
@@ -13336,16 +13413,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             if (coverage_mode)
             {
                 LLVector2 cover;
-                const ALLightResponse::Packed* packed = ALAvatarLightResponse::instance().peek(
-                    gp.mLightResponseKey, di->mActorFxOwner, di->mActorFxFallbackOwner);
-                if (!packed || packed->mSil.mV[VW] <= 0.f)
-                {
-                    continue;
-                }
-                const F32 amount = packed->mSil.mV[VW];
-                cover.set(packed->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
-                          packed->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
-                if (cover.mV[VX] <= 0.f && cover.mV[VY] <= 0.f) continue;
+                if (!gp.mCoverPolicy->sharedCover(gp.mLightResponseKey,
+                    di->mActorFxOwner, di->mActorFxFallbackOwner, cover)) continue;
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 batch_shader->uniform2fv(sSilCover, 1, cover.mV);
                 batch_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
@@ -13583,6 +13652,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 di->mVertexBuffer->drawRange(
                     LLRender::TRIANGLES, di->mStart, di->mEnd,
                     di->mCount, di->mOffset);
+                if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only && subset != SWEEP_GLOW)
+                    ALActorKeyCapture::instance().capture(di, di->mActorFxOwner,
+                        gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f,
+                        di->mVertexBuffer, di->mStart, di->mEnd, di->mCount, di->mOffset, false, is_blend);
                 continue;
             }
 
@@ -13616,6 +13689,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 di->mVertexBuffer->setBuffer();
                 di->mVertexBuffer->drawRange(LLRender::TRIANGLES, di->mStart,
                                              di->mEnd, di->mCount, di->mOffset);
+                if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only && subset != SWEEP_GLOW)
+                    ALActorKeyCapture::instance().capture(di, di->mActorFxOwner,
+                        gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f,
+                        di->mVertexBuffer, di->mStart, di->mEnd, di->mCount, di->mOffset, false, is_blend);
                 batch_shader->uniform1i(sMaskIndexed, 0);
                 batch_shader->uniform1i(sMaskMaterialSlots, 0);
                 continue;
@@ -13828,6 +13905,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 di->mVertexBuffer->setBuffer();
                 di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
                                              di->mStart, di->mEnd, di->mCount, di->mOffset);
+                if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only && subset != SWEEP_GLOW)
+                    ALActorKeyCapture::instance().capture(di, di->mActorFxOwner,
+                        gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f,
+                        di->mVertexBuffer, di->mStart, di->mEnd, di->mCount, di->mOffset, false, is_blend);
             }
         }
         if (tex_mat_on)
@@ -13882,15 +13963,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             const LLDrawInfo* alr_di = face->mDrawInfo;
             if (coverage_mode)
             {
-                const ALLightResponse::Packed* packed = ALAvatarLightResponse::instance().peek(
-                    gp.mLightResponseKey,
+                LLVector2 cover;
+                if (!gp.mCoverPolicy->sharedCover(gp.mLightResponseKey,
                     alr_di ? alr_di->mActorFxOwner : LLUUID::null,
-                    alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null);
-                if (!packed || packed->mSil.mV[VW] <= 0.f) continue;
-                const F32 amount = packed->mSil.mV[VW];
-                LLVector2 cover(packed->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
-                                packed->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
-                if (cover.mV[VX] <= 0.f && cover.mV[VY] <= 0.f) continue;
+                    alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null, cover)) continue;
                 static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
                 static_shader->uniform2fv(sSilCover, 1, cover.mV);
                 static_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
@@ -14072,6 +14148,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
                           face->getGeomIndex() + face->getGeomCount() - 1,
                           face->getIndicesCount(), face->getIndicesStart());
+            if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only)
+                ALActorKeyCapture::instance().capture(alr_di, alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                    gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f, vb,
+                    face->getGeomIndex(), face->getGeomIndex() + face->getGeomCount() - 1,
+                    face->getIndicesCount(), face->getIndicesStart(), false, is_blend);
             gGL.popMatrix();
         }
         gGL.syncMatrices();
@@ -14242,7 +14323,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 draw_static(SWEEP_BLEND, true, true, true);
             }
         }
-        if (overlay_mask & GHOST_COVERAGE_RIGGED_GLOW)
+        if (!gp.mKeyFill && (overlay_mask & GHOST_COVERAGE_RIGGED_GLOW))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
@@ -14437,7 +14518,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // the exact actorghost program and geometry subset from this queue item:
     // animated scanlines/noise, mask cutoffs, authored BLEND coverage, indexed
     // material slots and the moving dissolve boundary therefore cannot drift.
-    if (gp.mWorldLinear && LLRenderPass::actorFxLookNeedsSyntheticBloom(style))
+    if (!gp.mKeyFill && gp.mWorldLinear && LLRenderPass::actorFxLookNeedsSyntheticBloom(style))
     {
         ScopedSharedActorHDRDrawBuffer hdr_only(true);
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
@@ -16058,6 +16139,69 @@ const std::vector<LLActorMover::GhostStaticFace>* LLActorMover::ghostStaticFaces
 // impostored sources DO yield (the collector reads spatial-group draw maps,
 // not cull results). Sorted far-to-near so translucent styles stack correctly
 // against each other on the cleared-depth overlay.
+bool LLActorMover::preflightStudioKey(const S32 (&viewport)[4])
+{
+    const F64 now = LLTimer::getTotalSeconds();
+    auto& caches = studio_scene_caches();
+    sStudioKeyCache = nullptr;
+    caches.begin(gSnapshot, now);
+    sStudioKeyBegin = ALActorChromaKey::finalizeSerial();
+    const U32 fail = studio_key_failure(); // Subscribe in K0, before the destructive key write.
+    auto& studio = ALGhostStudio::instance();
+    bool glass = false;
+    for (auto& inst : studio.getInstances())
+    {
+        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst) ||
+            !(inst.mAlpha > 0.f) || !(inst.mFadeAlpha > 0.f)) continue;
+        const auto policy = ALActorChromaKey::requestedStudioPolicy(inst.mId);
+        if (policy == ALActorChromaKey::StudioPolicy::Skip) continue;
+        if (policy == ALActorChromaKey::StudioPolicy::Fill)
+        {
+            if (fail == 3 || !studio_key_fill_programs()) return false;
+        }
+        else if (inst.mStyle == GHOST_STYLE_GLASS) glass = true;
+    }
+    if (fail == 3 || fail == 5) return false;
+    if (!glass) return true;
+    ScopedStudioTexture texture(0);
+    auto& cache = caches.get(gSnapshot, viewport);
+    sStudioKeyCache = &cache;
+    auto& scene = cache.mScene;
+    if (!scene || !scene->getHasGLTexture() || scene->getWidth() != viewport[2] || scene->getHeight() != viewport[3])
+    {
+        scene = new LLImageGL(false, false);
+        scene->setSize(viewport[2], viewport[3], 4);
+        if (!scene->createGLTexture()) return false;
+        gGL.getTexUnit(0)->bindManual(LLTexUnit::TT_TEXTURE, scene->getTexName());
+        LLImageGL::setManualImage(GL_TEXTURE_2D, 0, GL_RGBA8, viewport[2], viewport[3],
+                                 GL_RGBA, GL_UNSIGNED_BYTE, nullptr, false);
+        gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_BILINEAR);
+        gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        if (glGetError() != GL_NO_ERROR) { scene = nullptr; return false; }
+    }
+    cache.mReservedFrame = gFrameCount;
+    cache.mReservedSerial = ALActorChromaKey::finalizeSerial();
+    cache.mLastUse = now; // D51: pin lifetime, never claim pixel validity.
+    cache.mInvocation = cache.mPreKeySerial = 0;
+    return true;
+}
+
+bool LLActorMover::captureStudioKeyScene(const S32 (&viewport)[4])
+{
+    if (ALActorChromaKey::mode() != 0 || !ALActorChromaKey::sceneGlass() || !sStudioKeyCache) return true;
+    auto& cache = *sStudioKeyCache;
+    if (cache.mReservedSerial != ALActorChromaKey::finalizeSerial()) return true;
+    if (cache.mReservedFrame != gFrameCount || !cache.mScene || !cache.mScene->getHasGLTexture() ||
+        cache.mScene->getWidth() != viewport[2] || cache.mScene->getHeight() != viewport[3]) return false;
+    const auto* result = studio_scene_copy(cache, 0, LLTimer::getTotalSeconds(), viewport,
+                                          {0, 0, viewport[2], viewport[3]});
+    if (!result || glGetError() != GL_NO_ERROR) return false;
+    cache.mPreKeySerial = ALActorChromaKey::finalizeSerial();
+    return true;
+}
+
+void LLActorMover::releaseStudioKeyPrograms() { sStudioKeyPrograms.reset(); }
+
 void LLActorMover::renderStudioGhosts()
 {
     static U64 invocation = 0;
@@ -16068,7 +16212,8 @@ void LLActorMover::renderStudioGhosts()
     last_frame = frame;
     const F64 pose_now = LLTimer::getTotalSeconds();
     auto& scene_caches = studio_scene_caches();
-    scene_caches.begin(gSnapshot, pose_now);
+    if (!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() || sStudioKeyBegin != ALActorChromaKey::finalizeSerial())
+        scene_caches.begin(gSnapshot, pose_now);
     ALGhostStudio& studio = ALGhostStudio::instance();
     if (!studio.anyEnabled())
     {
@@ -16096,6 +16241,7 @@ void LLActorMover::renderStudioGhosts()
     {
         inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);
         if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)
+            || (ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame() && !(inst.mAlpha > 0.f))
             || !(inst.mFadeAlpha > 0.f))
         {
             continue;
@@ -16236,6 +16382,17 @@ void LLActorMover::renderStudioGhosts()
     for (const StudioItem& item : items)
     {
         const ALGhostStudio::Instance& inst = *item.mInst;
+        const auto key_policy = ALActorChromaKey::sActive ? ALActorChromaKey::studioPolicy(inst.mId)
+            : ALActorChromaKey::StudioPolicy::Look;
+        if (key_policy == ALActorChromaKey::StudioPolicy::Skip) continue;
+        const bool key_fill = key_policy == ALActorChromaKey::StudioPolicy::Fill;
+        std::optional<LLGLDisable> key_srgb, key_dither;
+        if (key_fill)
+        {
+            key_srgb.emplace(GL_FRAMEBUFFER_SRGB); key_dither.emplace(GL_DITHER);
+            llassert(!glIsEnabled(GL_FRAMEBUFFER_SRGB) && !glIsEnabled(GL_DITHER));
+        }
+
 
         // [GhostDeferred] per-CATEGORY suppression: ask the pipeline which
         // categories of this clone the deferred pass drew THIS frame. The query
@@ -16269,6 +16426,12 @@ void LLActorMover::renderStudioGhosts()
         }
 
         GhostDrawParams gp;
+        gp.mKeyFill = key_fill;
+        if (key_fill)
+        {
+            const F32 value = ALActorChromaKey::matteInvert() ? 0.f : 1.f;
+            gp.mKeyFillColour = ALActorChromaKey::mode() == 2 ? LLColor3(value, value, value) : ALActorChromaKey::colour();
+        }
         // Collected overlay vertices are already in the live source avatar's
         // world orientation. Instance rotation is absolute (the same contract
         // entity clones and the editor use), so apply only the delta from the
@@ -16348,9 +16511,13 @@ void LLActorMover::renderStudioGhosts()
             instance_frame ? &*instance_frame : nullptr,
             [&]() -> LLImageGL*
             {
+                if (key_fill) return nullptr;
                 const auto rect = studio_glass_rect(item.mFootAgent, radius, clip_from_agent,
                                                     look_frame->mViewport);
-                LLImageGL* scene = studio_scene_copy(scene_caches.get(gSnapshot, look_frame->mViewport), invocation, pose_now,
+                LLImageGL* scene = ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame()
+                    ? studio_key_scene(scene_caches.get(gSnapshot, look_frame->mViewport), invocation, pose_now,
+                                       look_frame->mViewport, rect, ALActorChromaKey::mode() == 0 && ALActorChromaKey::sceneGlass())
+                    : studio_scene_copy(scene_caches.get(gSnapshot, look_frame->mViewport), invocation, pose_now,
                                                       look_frame->mViewport, rect);
                 if (scene)
                 {
@@ -16383,7 +16550,9 @@ void LLActorMover::renderStudioGhosts()
     // the current tool -- it can never leak into a filmed frame (the tool is
     // gone the moment the operator leaves edit mode, and studio ghosts render
     // with the UI hidden precisely because they are NOT gated like this).
-    if (LLToolMgr::getInstance()->getCurrentTool() == ALToolGhostEdit::getInstance())
+    if ((!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() ||
+         (gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) && gViewerWindow->getUIVisibility())) &&
+        LLToolMgr::getInstance()->getCurrentTool() == ALToolGhostEdit::getInstance())
     {
         if (ALGhostStudio::Instance* inst = studio.getInstance(studio.getSelected());
             inst && inst->mKind == ALGhostStudio::BACKING_OVERLAY)
@@ -16552,7 +16721,7 @@ U32 LLActorMover::renderSystemActorMask(LLVOAvatar* avatar, U8 byte)
     return draws;
 }
 
-U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase)
+U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase, bool key)
 {
     if (!actorMaskAvatarEligible(avatar) || avatar->isControlAvatar()) return 0;
     LLGLSLShader* saved_avatar_shader = LLDrawPoolAvatar::sVertexProgram;
@@ -16589,7 +16758,18 @@ U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cove
         gravity = gravity * rot_mat;
         body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY, 1, gravity.mV);
     }
-    U32 draws = avatar->renderSkinned() ? 1 : 0;
+    U32 draws = 0;
+    if (!key) draws = avatar->renderSkinned() ? 1 : 0;
+    else
+    {
+        const SystemComponentKey body{ALActorKeyCapture::systemActorId(avatar), phase == 0
+            ? SystemComponentKey::BodyOpaque : SystemComponentKey::BodyTransparent};
+        if (ALActorKeyCapture::instance().native(body))
+        {
+            draws = avatar->renderSkinned() ? 1 : 0;
+            if (draws) ALActorKeyCapture::instance().contributed(body);
+        }
+    }
     body_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
     if (phase == 0)
     {
@@ -16600,7 +16780,17 @@ U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cove
         eye_shader.uniform2fv(sSilCover, 1, cover.mV);
         eye_shader.uniform1i(sSilBlended, 0);
         eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
-        draws += avatar->renderRigid() ? 1 : 0;
+        if (!key) draws += avatar->renderRigid() ? 1 : 0;
+        else
+        {
+            const SystemComponentKey eyes{ALActorKeyCapture::systemActorId(avatar), SystemComponentKey::RigidEyes};
+            if (ALActorKeyCapture::instance().native(eyes))
+            {
+                const U32 eye_draws = avatar->renderRigid() ? 1 : 0;
+                draws += eye_draws;
+                if (eye_draws) ALActorKeyCapture::instance().contributed(eyes);
+            }
+        }
         eye_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
     }
     LLDrawPoolAvatar::sVertexProgram = saved_avatar_shader;
@@ -16863,19 +17053,43 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY,
                                1, gravity.mV);
     }
+    U32 key_body_drawn = 0;
     if (blend_sweep)
     {
         // The stock transparent path assumes the opaque pass already uploaded
         // this program's palette. Shared alpha can be interleaved much later,
         // so explicitly seed it from the first available classic body mesh.
         avatar->uploadActorGhostPalette();
-        avatar->renderTransparent(true);
+        key_body_drawn = avatar->renderTransparent(true);
     }
     else
     {
         LLDrawPoolAvatar::sSkipOpaque = false;
         LLDrawPoolAvatar::sSkipTransparent = true;
-        avatar->renderSkinned();
+        key_body_drawn = avatar->renderSkinned();
+    }
+    if (ALActorKeyCapture::sArmed && !depth_only)
+    {
+        const SystemComponentKey component{ALActorKeyCapture::systemActorId(avatar), blend_sweep
+            ? SystemComponentKey::BodyTransparent : SystemComponentKey::BodyOpaque};
+        LLPointer<LLVOAvatar> source(avatar);
+        ALActorKeyCapture::instance().capture(component,
+            style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE || coverage_replacement,
+            key_body_drawn, [source, blend_sweep](LLGLSLShader& shader) mutable
+            {
+                LLGLSLShader* saved = LLDrawPoolAvatar::sVertexProgram;
+                const S32 channel = LLDrawPoolAvatar::sDiffuseChannel;
+                const bool opaque = LLDrawPoolAvatar::sSkipOpaque, transparent = LLDrawPoolAvatar::sSkipTransparent;
+                LLDrawPoolAvatar::sVertexProgram = &shader;
+                LLDrawPoolAvatar::sDiffuseChannel = shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+                LLDrawPoolAvatar::sSkipOpaque = blend_sweep;
+                LLDrawPoolAvatar::sSkipTransparent = !blend_sweep;
+                if (blend_sweep) { source->uploadActorGhostPalette(); source->renderTransparent(true); }
+                else source->renderSkinned();
+                shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+                LLDrawPoolAvatar::sVertexProgram = saved; LLDrawPoolAvatar::sDiffuseChannel = channel;
+                LLDrawPoolAvatar::sSkipOpaque = opaque; LLDrawPoolAvatar::sSkipTransparent = transparent;
+            });
     }
     body_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
 
@@ -16888,7 +17102,23 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         LLDrawPoolAvatar::sVertexProgram = &eye_shader;
         LLDrawPoolAvatar::sDiffuseChannel = eye_diffuse;
         upload(eye_shader, LLDrawPoolAvatar::sMinimumAlpha);
-        avatar->renderRigid();
+        const U32 key_eyes_drawn = avatar->renderRigid();
+        if (ALActorKeyCapture::sArmed && !depth_only)
+        {
+            LLPointer<LLVOAvatar> source(avatar);
+            ALActorKeyCapture::instance().capture({ALActorKeyCapture::systemActorId(avatar), SystemComponentKey::RigidEyes},
+                style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE || coverage_replacement,
+                key_eyes_drawn, [source](LLGLSLShader& shader) mutable
+                {
+                    LLGLSLShader* saved = LLDrawPoolAvatar::sVertexProgram;
+                    const S32 channel = LLDrawPoolAvatar::sDiffuseChannel;
+                    LLDrawPoolAvatar::sVertexProgram = &shader;
+                    LLDrawPoolAvatar::sDiffuseChannel = shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+                    source->renderRigid();
+                    shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+                    LLDrawPoolAvatar::sVertexProgram = saved; LLDrawPoolAvatar::sDiffuseChannel = channel;
+                });
+        }
         eye_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
     }
 
@@ -19022,6 +19252,14 @@ bool LLActorMover::renderSharedActorPBRCommands(
             // geometry exactly once. shared_replay preserves the proxy style
             // just uploaded above and bypasses only native-pass suppression.
             LLRenderPass::pushGLTFBatchIndexed(*draw_info, maps, true);
+            if (ALActorKeyCapture::sArmed && !depth && !glow && !topology_wire)
+            {
+                const bool double_sided = std::any_of(draw_info->mGLTFMaterialList.begin(),
+                    draw_info->mGLTFMaterialList.end(), [](const auto& slot) { return slot.notNull() && slot->mDoubleSided; });
+                ALActorKeyCapture::instance().capture(policy_info, policy_info ? policy_info->mActorFxOwner : proxy.mAvatar->getActorFxOwnerId(), true,
+                    vb, draw_info->mStart, draw_info->mEnd, draw_info->mCount, draw_info->mOffset, double_sided,
+                    command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND);
+            }
             if (glow && !synthetic)
             {
                 shader->uniform1i(sSyntheticEnabled, 0);
@@ -19087,6 +19325,13 @@ bool LLActorMover::renderSharedActorPBRCommands(
                           face->getGeomIndex() + face->getGeomCount() - 1,
                           face->getIndicesCount(), face->getIndicesStart());
         }
+        if (ALActorKeyCapture::sArmed && !depth && !glow && !topology_wire)
+            ALActorKeyCapture::instance().capture(policy_info, policy_info ? policy_info->mActorFxOwner : proxy.mAvatar->getActorFxOwnerId(), true, vb,
+                command.mRigged ? draw_info->mStart : face->getGeomIndex(),
+                command.mRigged ? draw_info->mEnd : face->getGeomIndex() + face->getGeomCount() - 1,
+                command.mRigged ? draw_info->mCount : face->getIndicesCount(),
+                command.mRigged ? draw_info->mOffset : face->getIndicesStart(), false,
+                command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND);
         if (uses_texture_matrix)
         {
             LLRenderPass::teardownGLTFTextureMatrix(texture_matrix);
@@ -19673,8 +19918,9 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
     return complete;
 }
 
-void LLActorMover::renderSharedProxySilCover(U32 phase)
+void LLActorMover::renderSharedProxySilCover(U32 phase, const CoverPolicy& policy)
 {
+    if (policy.key) return; // D54: WP1b supplies the captured styled coverage.
     if (!hasSharedActorStyleProxies()) return;
     for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
     {
@@ -19694,6 +19940,7 @@ void LLActorMover::renderSharedProxySilCover(U32 phase)
         params.mWorldLinear = true;
         params.mLightResponseKey = proxy.mWearerId;
         params.mSilCoverPhase = phase == 0 ? 1 : 2;
+        params.mCoverPolicy = &policy;
         if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
         {
             bool complete = true;

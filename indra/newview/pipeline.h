@@ -96,6 +96,7 @@ static const U32 SL_SIDECAR_ATTACHMENT  = 1;
 static const U32 SL_COVERAGE_ATTACHMENT = 2;
 static const U32 ALR_RIM_PARITY_ATTACHMENT = 3;
 
+struct CoverPolicy;
 class LLPipeline
 {
 public:
@@ -237,7 +238,7 @@ public:
         const glm::mat4& modelview, U32 attachment);
     void renderFinalizeScene(bool hdr, const FinalizeGuides& guides);
     void renderFinalizeLegacy(bool hdr, LLRenderTarget*& src, LLRenderTarget*& dst, bool& diopter,
-        bool& fisheye, const FinalizeGuides& guides);
+        bool& fisheye, const FinalizeGuides& guides, bool& rlv_sphere_ran);
     void renderFinalizePresent(LLRenderTarget* src, bool diopter, bool fisheye);
     enum class SensorStage { Legacy, Exposure, Optics, Camera, Godrays };
     LLGLSLShader* colorCorrectProgram(SensorStage stage, U32 permutation);
@@ -841,7 +842,39 @@ public:
     // froxel/projector volumetrics.
     bool ensureSilCover();
     void renderSilCover(U32 phase);
-    void renderGhostSilCover(U32 phase);
+    void renderGhostSilCover(U32 phase, const CoverPolicy& policy);
+    bool renderCover(U32 phase, const CoverPolicy& policy);
+    void buildActorKeyCoverageAndMatte();
+    void releaseActorKeyTargets();
+    // A8: gather, composite, kaleidoscope, fisheye; never beauty attachments.
+    void renderActorKeyLens(U32 stage, LLGLSLShader& beauty, U32 width, U32 height);
+    bool lensCoverageValid() const;
+    LLRenderTarget mKeyDiopterCov, mKeyLensStage[3];
+    LLRenderTarget* mKeyLensCurrent = nullptr;
+    U32 mKeyLensFrame = ~0u, mKeyLensRan = 0, mKeyLensComplete = 0;
+    bool actorKeyMatteValid() const; // WP2 consumes only a matching stamp.
+    bool ensureKeyCoverage();
+    bool ensureKeyPrograms();
+    void buildActorKeyMatte();
+    bool preflightActorKey(bool sphere, bool diopter, bool fisheye);
+    void compositeActorKey();
+    void selfTestActorKey(bool invert);
+    LLRenderTarget mActorKeyScene;
+    bool mActorKeyReady = false;
+    S32 mActorKeyViewport[4] = {};
+    S32 mActorKeyDrawFBO = 0;
+    U32 mActorKeySceneFrame = ~0u;
+    // Diagnostic storage is allocated only in K0, before any destructive write.
+    std::vector<F32> mActorKeyTestMatte, mActorKeyTestScene, mActorKeyTestOutput;
+    U32 mActorKeyTestFrames = 0;
+    U64 mActorKeyTestSerial = 0;
+    void renderActorKeyPrismOccluders();
+    LLRenderTarget mActorKeyCoverage, mActorKeyMatte, mActorKeyBlurA, mActorKeyBlurB;
+    U32 mActorKeyDepthSrc = 0;
+    U32 mActorKeyCoverageFrame = ~0u, mActorKeyMatteFrame = ~0u;
+    const void* mActorKeyMatteRT = nullptr;
+    U32 mActorKeyMatteWidth = 0, mActorKeyMatteHeight = 0;
+    glm::mat4 mActorKeyProjection{}, mActorKeyModelview{};
     void releaseSilCovers();
     bool mSilCoverValid = false;
 
@@ -915,6 +948,39 @@ public:
 
     void renderHighlight(const LLViewerObject* obj, F32 fade);
 
+    // WP4: one cull/sort, immutable draw-only replays under a single state lifetime.
+    class LLShadowCascadeScope;
+    void prepareShadowCascade(LLCamera& camera, LLCullResult& result, bool do_cull);
+    void drawShadowCascade(const glm::mat4& view, const glm::mat4& proj,
+                          LLCamera& camera, LLCullResult& result, bool include_rigged,
+                          bool include_alpha_blend, bool include_alpha_cutout, bool accounting);
+    void renderKeyShadowCascade(U32 slice, bool column, const glm::mat4& view, const glm::mat4& proj,
+                                LLCamera& camera, LLCullResult& result, bool do_cull, bool alpha_cutout);
+    void releaseActorShadowTargets();
+    void diagnoseKeyShadowOwners(LLCullResult& result, U32 slice);
+    bool ensureActorShadowTargets(bool exact);
+    bool buildActorKeyShadowTerm(U32 width, U32 height);
+    enum class SunShadowStage { All, Matrices, Meta, Tuning, Directions };
+    void bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const* maps = nullptr,
+                            SunShadowStage stage = SunShadowStage::All);
+    enum { CASTER_ALL, CASTER_KEY_ONLY, CASTER_SET_ONLY };
+    static U8 sShadowCasterFilter;
+    static bool skipKeyShadowCaster(const LLDrawInfo* draw);
+    static bool skipKeyShadowAvatar(const LLVOAvatar* avatar);
+    LLRenderTarget mActorShadow[4], mSetShadow[4], mActorShadowLit;
+    LLRenderTarget mActorKeyShadowVisibility, mActorKeySetVisibility, mActorKeyShadowBlurA, mActorKeyShadowBlurB;
+    struct ActorShadowSlice
+    {
+        U32 frame = ~0u;
+        U64 generation = 0;
+        bool column = false, valid = false;
+    };
+    ActorShadowSlice mActorShadowSlice[4];
+    U64 mActorShadowGeneration = 0, mActorShadowRevision = 0;
+    U32 mActorShadowFrame = ~0u;
+    bool mActorShadowReady = false, mActorShadowFallback = false;
+    S32 mActorShadowIsolation = 0;
+    U32 mActorShadowCascades = 0;
     void renderShadow(const glm::mat4& view, const glm::mat4& proj,
                       LLCamera& camera, LLCullResult& result,
                       bool depth_clamp, bool do_cull = true,

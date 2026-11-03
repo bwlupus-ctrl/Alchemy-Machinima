@@ -13931,4 +13931,11 @@ The pinned colour chart is outside this region or more than 512 m away. Placemen
   <notification icon="notifytip.tga" name="FSInventoryCustomTabsLoadIncomplete" type="notifytip">
     Custom inventory tabs could not be loaded completely. Changes cannot be saved until valid tab settings are restored. Adding tabs is disabled.
   </notification>
+  <notification name="ActorKeySnapshotRefused" type="notifytip">
+    Snapshot not taken: the keyed frame could not be completed ([REASON]). Try again.
+  </notification>
+  <notification name="ActorKeyEnabled" type="notify" label="Actor key is ON">
+    Actor key is ON: [MODE], key RGB [COLOUR]. Ctrl+Alt+K (or your rebound Toggle actor key shortcut), the Director header Quick tile Key, or Capture &gt; Key turns it off. Check Status and Capture warnings before hiding the UI to record.
+    <usetemplate name="okignore" yestext="OK" ignoretext="Notify when actor key is enabled" />
+  </notification>
 </notifications>

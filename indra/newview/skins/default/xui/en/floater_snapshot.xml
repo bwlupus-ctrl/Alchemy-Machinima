@@ -5,7 +5,7 @@
  can_minimize="true"
  can_resize="false"
  can_close="true"
- height="475"
+ height="540"
  layout="topleft"
  name="Snapshot"
  single_instance="true"
@@ -13,7 +13,7 @@
  save_rect="true"
  save_visibility="false"
  title="SNAPSHOT"
- width="624"
+ width="644"
  min_height="455">
     <floater.string
      name="unknown">
@@ -67,6 +67,7 @@
  	 name="local_failed_str">
  	    Failed to save to computer.
  	</string>
+    <!-- xui-check: exclusive retract_btn extend_btn -->
     <button
      follows="left|top"
      height="25"
@@ -83,7 +84,7 @@
 	 label="REFRESH"
      name="new_snapshot_btn"
      top_pad="26"
-     width="167" />
+     width="86" />
     <!-- [BDMerge C6] detachable big preview toggle (donor: Black Dragon
          fab3226ac5). Hidden by default and overlapping new_snapshot_btn;
          LLFloaterSnapshot::postBuild shrinks REFRESH to 86px and shows this
@@ -139,12 +140,12 @@
 	   top_delta="0"
        width="31" />
 	<panel
-     height="179"
+     height="185"
      layout="topleft"
 	 follows="top|left"
      left="0"
      name="advanced_options_panel"
-     top_pad="-6"
+     top_pad="6"
      width="210">
         <view_border 
          bevel_style="in"
@@ -295,7 +296,7 @@
     </panel>
 	<panel_container
      follows="left|top"
-     height="230"
+     height="240"
      layout="topleft"
      left="0"
      name="panel_container"
@@ -343,13 +344,13 @@
          layout="topleft"
          name="status_hr"
          width="199"
-         top_pad="-16"/>
+         top_pad="5"/>
 	<panel
        background_visible="false"
        follows="left|top"
        font="SansSerifLarge"
        halign="center"
-       height="20"
+       height="24"
        layout="topleft"
        left="10"
        length="1"
@@ -380,7 +381,7 @@
        follows="left|top"
        font="SansSerifLarge"
        halign="center"
-       height="20"
+       height="24"
        layout="topleft"
        left="10"
        length="1"
@@ -476,7 +477,7 @@
     halign="left"
     name="image_res_text"
     top_delta="5"
-    width="250">
+    width="258">
        [WIDTH]px (width) x [HEIGHT]px (height)
    </text>
    <text
@@ -484,13 +485,13 @@
     font="SansSerifSmall"
     height="14"
     layout="topleft"
-    left="-185"
+    left="-164"
     length="1"
     halign="right"
     name="file_size_label"
     top_delta="0"
     type="string"
-    width="50">
+    width="64">
        [SIZE] KB
    </text>
    <text
@@ -498,14 +499,25 @@
     font="SansSerifSmall"
     height="14"
     layout="topleft"
-    left="-130"
+    left="-136"
     length="1"
     halign="right"
     name="360_label"
     text_color="HTMLLinkColor"
     top_delta="0"
     type="string"
-    width="115">
+    width="128">
     Take a 360 snapshot
    </text>
+  <!-- Hidden at the legacy extent; bottom anchoring moves this into the added
+       footer when the event-driven key layout extends the floater by 96 px. -->
+  <!-- Static latent rectangles overlap only while this note is hidden. The
+       bottom-anchored note moves below both controls before becoming drawn. -->
+  <!-- xui-check: allow-overlap panel_container actor_key_snapshot_note -->
+  <!-- xui-check: allow-overlap thumbnail_placeholder actor_key_snapshot_note -->
+  <text name="actor_key_snapshot_note" layout="topleft" top="440" left="10"
+        right="-10" height="96" follows="left|right|bottom" font="SansSerifSmall"
+        word_wrap="true" visible="false">
+    Keyed snapshot: exact colour only for unfiltered COLOR saves in PNG/BMP/lossless AVIF at rendered size.
+  </text>
 </floater>

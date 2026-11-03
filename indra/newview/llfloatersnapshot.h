@@ -145,6 +145,8 @@ public:
     bool mNeedRefresh;
     bool mAdvanced;
     bool mSkipReshaping;
+    bool mKeyLayoutExpanded = false;
+    S32 mKeyLayoutOriginalHeight = 0;
     EStatus mStatus;
 };
 

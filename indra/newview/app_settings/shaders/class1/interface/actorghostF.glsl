@@ -134,6 +134,9 @@ uniform vec2 ghostFragOffset;
 #ifndef GHOST_WORLD_PASS
 uniform sampler2D ghostSceneMap;
 uniform int ghostSceneValid;
+#ifdef AL_KEY_FILL
+uniform vec3 ghostKeyFill;
+#endif
 uniform vec2 ghostScreenSize; // whole image, including high-resolution snapshot tiles
 uniform vec2 ghostScreenOrigin;
 uniform vec2 ghostVelocity; // screen pixels per frame, bottom-up; zero = fallback
@@ -2354,5 +2357,13 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     {
         rgb = vec3(1.0, 0.0, 1.0);
     }
+#ifdef AL_KEY_FILL
+    // Preserve all discards, deformation and alpha; replace only RGB.
+    rgb = ghostKeyFill;
+#endif
+#ifdef AL_KEY_COVERAGE_OUT
+    frag_color = vec4(clamp(alpha, 0.0, 1.0));
+#else
     frag_color = max(vec4(rgb, alpha), vec4(0));
+#endif
 }

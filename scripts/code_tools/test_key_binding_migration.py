@@ -85,6 +85,20 @@ int main() {
     customHot.bindings.add({"","NONE","director_hot_gaze_3"});
     migrateBindingMode(customHot,hotDefaults,2,1);
     assert(customHot.bindings.size()==4); // add only 1 and 4; occupied/cleared survive
+    Mode keyDefaults;
+    keyDefaults.bindings.add({"K", "CTL_ALT", "toggle_actor_key"});
+    for (int marker : {0, 1, 2, 3, 4, 5}) {
+        Mode user; migrateBindingMode(user, keyDefaults, marker, 1);
+        assert(user.bindings.size() == (marker < 5 ? 1u : 0u));
+    }
+    Mode occupiedKey;
+    occupiedKey.bindings.add({"K", "SHIFT", "custom_command"});
+    migrateBindingMode(occupiedKey, keyDefaults, 4, 1);
+    assert(occupiedKey.bindings.size() == 1);
+    Mode clearedKey;
+    clearedKey.bindings.add({"", "NONE", "toggle_actor_key"});
+    migrateBindingMode(clearedKey, keyDefaults, 4, 1);
+    assert(clearedKey.bindings.size() == 1);
     Mode defaults;
     defaults.bindings.add({"V", "CTL_ALT", "toggle_viewfinder"});
     defaults.bindings.add({"W", "NONE", "push_forward"});
@@ -166,7 +180,7 @@ def check_legacy_detection():
     assert keys_constructor(source) == keys_constructor(original)
     shared_loader = source[source.index('void LLViewerInput::migrateKeysXML('):source.index('S32 LLViewerInput::loadBindingsXML(')]
     assert 'xml_version' not in shared_loader
-    assert 'binding_count == 0 || migration_version >= 4' in shared_loader
+    assert 'binding_count == 0 || migration_version >= 5' in shared_loader
     assert 'getS32("KeyBindingsMigrationVersion")' in shared_loader
     header = 'indra/newview/llviewerinput.h'
     version = 'const S32 keybindings_xml_version = 1;'
@@ -183,7 +197,7 @@ def check_legacy_detection():
     import xml.etree.ElementTree as ET
     assert ET.fromstring((ROOT / shipped).read_text()).attrib == ET.fromstring(head(shipped)).attrib
     for mode in ET.parse(ROOT / shipped).getroot():
-        expected = [('pov_eye_blink', 'F9', 'NONE')] + [
+        expected = [('pov_eye_blink', 'F9', 'NONE'), ('toggle_actor_key', 'K', 'CTL_ALT')] + [
             ('director_hot_gaze_' + str(i), str(i), 'CTL_ALT') for i in range(1, 5)]
         for command, key, mask in expected:
             bindings = [b for b in mode if b.get('command') == command]
@@ -194,8 +208,8 @@ def check_legacy_detection():
     values = list(setting)
     fields = {values[i].text: values[i + 1].text for i in range(0, len(values), 2)}
     assert fields['Persist'] == '1' and fields['Type'] == 'S32' and fields['Value'] == '0'
-    assert conflict.count('setS32("KeyBindingsMigrationVersion", 4)') == 1
-    print('PASS: legacy loader/file format preserved; Controls save migrates all modes before splicing the edited mode and advancing marker 4')
+    assert conflict.count('setS32("KeyBindingsMigrationVersion", 5)') == 1
+    print('PASS: legacy loader/file format preserved; Controls save migrates all modes before splicing the edited mode and advancing marker 5')
 
 
 def roundtrip_source():
@@ -233,20 +247,21 @@ void saveMode(int mLoadMode,const LLViewerInput::KeyMode& mode){LLViewerInput::K
 }}
 int main(){using Input=LLViewerInput;Input::Keys defaults;
  for(auto* m:{&defaults.first_person,&defaults.third_person,&defaults.sitting,&defaults.edit_avatar}){
- m->bindings.add({"F9","NONE","pov_eye_blink"});m->bindings.add({"V","CTL_ALT","toggle_viewfinder"});for(int i=1;i<=4;++i)m->bindings.add({std::to_string(i),"CTL_ALT",Input::Command(("director_hot_gaze_"+std::to_string(i)).c_str())});}
+ m->bindings.add({"F9","NONE","pov_eye_blink"});m->bindings.add({"V","CTL_ALT","toggle_viewfinder"});m->bindings.add({"K","CTL_ALT","toggle_actor_key"});for(int i=1;i<=4;++i)m->bindings.add({std::to_string(i),"CTL_ALT",Input::Command(("director_hot_gaze_"+std::to_string(i)).c_str())});}
  write("defaults",defaults);
- for(int marker:{0,1,2,3})for(int edited:{0,1,2,3}){
- gSavedSettings.marker=marker;Input::Keys raw;for(auto* m:{&raw.first_person,&raw.third_person,&raw.sitting,&raw.edit_avatar}){m->bindings.add({"W","NONE","push_forward"});if(marker>=3)m->bindings.add({"F9","NONE","pov_eye_blink"});}write("user",raw);
+ for(int marker:{0,1,2,3,4})for(int edited:{0,1,2,3}){
+ gSavedSettings.marker=marker;Input::Keys raw;for(auto* m:{&raw.first_person,&raw.third_person,&raw.sitting,&raw.edit_avatar}){m->bindings.add({"W","NONE","push_forward"});if(marker>=3)m->bindings.add({"F9","NONE","pov_eye_blink"});if(marker>=4)for(int i=1;i<=4;++i)m->bindings.add({std::to_string(i),"CTL_ALT",Input::Command(("director_hot_gaze_"+std::to_string(i)).c_str())});}write("user",raw);
  Input::Keys runtime;assert(Input::loadKeysXML("user",runtime));
  auto* mode=edited==0?&runtime.first_person:edited==1?&runtime.third_person:edited==2?&runtime.sitting:&runtime.edit_avatar;
  mode->bindings.add({"B","SHIFT","edited_command"});saveMode(edited,*mode);
- assert(gSavedSettings.marker==4);Input::Keys reloaded;assert(Input::loadKeysXML("user",reloaded));
+ assert(gSavedSettings.marker==5);Input::Keys reloaded;assert(Input::loadKeysXML("user",reloaded));
  int n=0;for(auto* m:{&reloaded.first_person,&reloaded.third_person,&reloaded.sitting,&reloaded.edit_avatar}){
  for(int i=1;i<=4;++i){const auto command="director_hot_gaze_"+std::to_string(i);assert(std::count_if(m->bindings.begin(),m->bindings.end(),[&](const auto& b){return b.command.getValue()==command;})==1);}
  assert(std::count_if(m->bindings.begin(),m->bindings.end(),[](const auto& b){return b.command.getValue()=="pov_eye_blink" && b.key=="F9" && b.mask=="NONE";})==1);
- assert(m->bindings.size()==size_t(6+(marker<2?1:0)+(n++==edited?1:0)));}
+ assert(std::count_if(m->bindings.begin(),m->bindings.end(),[](const auto& b){return b.command.getValue()=="toggle_actor_key" && b.key=="K" && b.mask=="CTL_ALT";})==1);
+ assert(m->bindings.size()==size_t(7+(marker<2?1:0)+(n++==edited?1:0)));}
  }
- std::cout<<"PASS: production load/migrate + Controls mode splice + serialized save/reload, edit each mode at markers 0..3: defaults survive in all four modes\n";
+ std::cout<<"PASS: production load/migrate + Controls mode splice + serialized save/reload, edit each mode at markers 0..4: defaults survive in all four modes\n";
 }
 '''
 

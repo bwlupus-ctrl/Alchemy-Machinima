@@ -18,6 +18,22 @@
 
 out vec4 frag_color;
 
+#ifdef AL_KEY_COVERAGE_ONLY
+uniform sampler2D keyCoverage;
+uniform int keyInputPacked; // K1 is RG; later stages are RGB + shadow A.
+vec4 keySample(vec2 uv)
+{
+    vec4 c = textureLod(keyCoverage, uv, 0.0);
+    return keyInputPacked != 0 ? vec4(c.rrr, c.g) : c;
+}
+#endif
+
+#ifdef AL_KEY_COVERAGE_ONLY
+uniform sampler2D keyClear;
+uniform sampler2D keyDio;
+#endif
+
+
 in vec2 vary_fragcoord;
 
 uniform sampler2D diffuseRect;   // pass-1 A: clear RGB (linear) + mask
@@ -102,6 +118,10 @@ void main()
     vec4 b = texture(emissiveRect, uv);
     vec3 cDio = b.rgb;
     float rimW = b.a;
+#ifdef AL_KEY_COVERAGE_ONLY
+    vec4 covClear = textureLod(keyClear, uv, 0.0);
+    vec4 covDio = textureLod(keyDio, uv, 0.0);
+#endif
 
     // ---- seam double-image (optical doubling in the transition band) -----
     if (diopter_comp.x > 1e-4)
@@ -112,11 +132,24 @@ void main()
         vec3 gDio   = textureLod(emissiveRect, ud_mirror2(uv + n), 0.0).rgb;
         vec3 gClear = textureLod(diffuseRect, ud_mirror2(uv - n), 0.0).rgb;
         vec3 ghost  = max(0.5 * (gDio + gClear), 0.5 * (cClear + cDio));
+#ifdef AL_KEY_COVERAGE_ONLY
+        vec4 shifted = 0.5 * (textureLod(keyDio, ud_mirror2(uv + n), 0.0) +
+                              textureLod(keyClear, ud_mirror2(uv - n), 0.0));
+        vec4 local = 0.5 * (covClear + covDio);
+        // D52: compare BEAUTY, strictly greater; ties choose local. Shadow follows G.
+        bvec3 winner = greaterThan(0.5 * (gDio + gClear), 0.5 * (cClear + cDio));
+        vec4 ghostCov = mix(local, shifted, bvec4(winner, winner.g));
+        covClear = mix(covClear, ghostCov, band * diopter_comp.y);
+        covDio = mix(covDio, ghostCov, band * diopter_comp.y);
+#endif
         cClear = mix(cClear, ghost, band * diopter_comp.y);
         cDio   = mix(cDio,   ghost, band * diopter_comp.y);
     }
 
     vec3 lin = mix(cClear, cDio, m);
+#ifdef AL_KEY_COVERAGE_ONLY
+    vec4 cov = mix(covClear, covDio, m);
+#endif
 
     // ---- halo ghost copies: rotated/offset re-samples of the glass with
     //      soft-knee highlight extraction and spectral dispersion ----------
@@ -176,6 +209,12 @@ void main()
         ca.b = mix(textureLod(diffuseRect, uvB, 0.0).b,
                    textureLod(emissiveRect, uvB, 0.0).b, m);
         lin = mix(lin, ca, ud_sat(m));
+#ifdef AL_KEY_COVERAGE_ONLY
+        vec4 caCov = cov;
+        caCov.r = mix(textureLod(keyClear, uvR, 0.0).r, textureLod(keyDio, uvR, 0.0).r, m);
+        caCov.b = mix(textureLod(keyClear, uvB, 0.0).b, textureLod(keyDio, uvB, 0.0).b, m);
+        cov = mix(cov, caCov, ud_sat(m));
+#endif
     }
 
     // ---- edge optical vignette (single-element glass) --------------------
@@ -197,6 +236,12 @@ void main()
         disp_out = mix(orig, disp_out, ud_sat(diopter_comp2.z));
     }
 
+#ifdef AL_KEY_COVERAGE_ONLY
+    // Halo energy, vignette, rim light/darken, transfer and clipping are colour-only.
+    if (diopter_comp2.z < 0.999) cov = mix(keySample(uv), cov, ud_sat(diopter_comp2.z));
+    frag_color = clamp(cov, 0.0, 1.0);
+    return;
+#endif
     // ---- setup / debug views ---------------------------------------------
 #ifdef AL_SENSOR_HDR
     // Stage D adds diagnostics over the processed image; do not apply the

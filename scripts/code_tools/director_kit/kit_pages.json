@@ -1,6 +1,7 @@
 {
  "version": 1,
  "header_quick_allowlist": {
+  "ActorKeyEnabled": "Reviewed: runtime session master; model/notification listeners handle every entry point; no shader reload.",
   "BDMergeProjectorVolumetrics": "Reviewed: runtime shaft master; no shader-reload listener; Quick forwards the original switch commit.",
   "RenderGradNDEnabled": "Reviewed: no listeners; plain runtime setting.",
   "RenderPolarizerEnabled": "Reviewed: no listeners; plain runtime setting.",
@@ -19,6 +20,7 @@
   "AlchemyWeatherLightningQualityEnabled": "Reviewed: resident startup variant, selected at runtime; no shader reload listener."
  },
  "header_quick_policy": {
+  "capture_group/key_tab/ActorKeyEnabled": "setting",
   "light_group/projector_shafts_tab/projector_cones_enable_check": "setting",
   "camera_group/frame_orbit_tab/auto_frame_enabled": "controller",
   "camera_group/frame_orbit_tab/FlycamOrbitEnabled": "controller",
@@ -72,6 +74,9 @@
   "camera_group/shot_tab": {"bulk_subject_assignment": true}
  },
  "p0_pages": {
+  "capture_group/key_tab": {
+   "v1_sources": [], "root_class": "panel_actor_key", "root_name": "key_tab_logic", "label_names": {}
+  },
   "camera_group/shot_tab": {
    "v1_sources": [], "root_class": "panel_director_switcher", "root_name": "shot_tab_logic",
    "watch_extra": ["DirectorSwitcherBank"],

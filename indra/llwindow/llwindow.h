@@ -33,6 +33,7 @@
 #include "llcursortypes.h"
 #include "llinstancetracker.h"
 #include "llsd.h"
+#include <atomic>
 
 class LLSplashScreen;
 class LLPreeditor;
@@ -43,6 +44,9 @@ class LLWindowCallbacks;
 class LLWindow
 {
 public:
+    // SnapshotScope blocks the platform present itself, including early display exits.
+    static std::atomic<bool> sPresentBlocked;
+    static std::atomic<U64> sBlockedPresents;
 
     struct LLWindowResolution
     {

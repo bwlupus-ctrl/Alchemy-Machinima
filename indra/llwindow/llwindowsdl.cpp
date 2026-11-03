@@ -1312,6 +1312,11 @@ bool LLWindowSDL::setSizeImpl(const LLCoordWindow size)
 
 void LLWindowSDL::swapBuffers()
 {
+    if (sPresentBlocked.load(std::memory_order_relaxed))
+    {
+        sBlockedPresents.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
     if (mWindow)
     {
         SDL_GL_SwapWindow(mWindow);

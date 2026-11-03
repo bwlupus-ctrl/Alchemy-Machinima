@@ -10,6 +10,8 @@
 
 cmake_minimum_required(VERSION 3.21)
 project(sl_reshade_bridge CXX)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/SLAddonSourceHash.cmake")
+sl_addon_source_hash("${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 add_library(sl_reshade_bridge SHARED src/sl_reshade_bridge.cpp)
 

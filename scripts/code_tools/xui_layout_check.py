@@ -210,6 +210,12 @@ def parse_xml(path: Path) -> tuple[Node, OverlapPolicy]:
             # A legacy kit_page is the v1 leaf it replaces: same panel rules.
             node.legacy_kit = True
             node.tag = "panel"
+        if tag == "panel_container":
+            # LLSideTrayPanelContainer derives from LLTabContainer and its
+            # Params constructor defaults hide_tabs to true. It fits and
+            # selects pages using the same rectangle/visibility rules.
+            node.tag = "tab_container"
+            node.attrs.setdefault("hide_tabs", "true")
         if stack:
             node.parent = stack[-1]
             stack[-1].children.append(node)
@@ -1881,6 +1887,8 @@ def run_selftest(json_output: bool) -> int:
         ("hidden_overlap_broken.xml", True, "overlap"),
         ("conditional_independent_broken.xml", True, "overlap"),
         ("exclusive_overlap_broken.xml", True, "overlap"),
+        ("side_tray_current.xml", False, None),
+        ("side_tray_broken.xml", True, "clipped"),
         ("overlay_current.xml", False, None),
         ("fit_card_wide_broken.xml", True, "overlap"),
         ("kit_page_clean_current.xml", False, None),

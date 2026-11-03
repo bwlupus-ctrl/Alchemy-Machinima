@@ -28,6 +28,7 @@
 #ifndef LL_LLACTORMOVER_H
 #define LL_LLACTORMOVER_H
 
+#include "v3color.h"
 #include "lluuid.h"
 #include "llhandle.h"
 #include "llsd.h"
@@ -63,6 +64,7 @@ class LLViewerObject;   // [CloneFidelity] shared source-walk callback arg
 class LLFetchedGLTFMaterial;
 template <class T> class LLPointer;
 
+struct CoverPolicy;
 class LLActorMover
 {
 public:
@@ -813,6 +815,10 @@ public:
     void renderStudioGhosts();
     // Capture-end hook: call after the final overlay texture binding scope.
     static void releaseStudioSnapshotScratch();
+    // K0 owns begin -> reserve; K2 captures Scene Glass before replacing pixels.
+    static bool preflightStudioKey(const S32 (&viewport)[4]);
+    static bool captureStudioKeyScene(const S32 (&viewport)[4]);
+    static void releaseStudioKeyPrograms();
 
     // [ActorStyle/SharedActivation] Frame-local live-replay stream. Actor FX
     // reuses the exact harvested avatar/attachment geometry and is merged with
@@ -827,8 +833,8 @@ public:
     LLVOAvatar* sharedActorStyleProxyAvatar(size_t index) const; // [ActorMask]
     static bool actorMaskAvatarEligible(LLVOAvatar* avatar); // [ActorMask]
     U32 renderSystemActorMask(LLVOAvatar* avatar, U8 byte); // [ActorMask]
-    U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase);
-    void renderSharedProxySilCover(U32 phase);
+    U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase, bool key = false);
+    void renderSharedProxySilCover(U32 phase, const CoverPolicy& policy);
     // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
     // before any native/shared alpha is drained so already-blended world alpha
     // cannot leak through a styled actor whose sorted colour turn is later.
@@ -1134,6 +1140,8 @@ public:
         // the native/background colour, while only full-opacity Cover may use
         // opaque RGB replacement. Ghost Studio leaves this false.
         bool       mCoverMode = false;
+        bool       mKeyFill = false;
+        LLColor3   mKeyFillColour;
         // Layer normally composites over the retained native actor. Dissolve is
         // coverage-changing, so its live-world replay must instead own the
         // authored surface while the Layer alpha remains treatment strength.
@@ -1171,6 +1179,7 @@ public:
         GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;
         // [AvatarSilhouette] 0=beauty, 1=coverage Phase A, 2=coverage Phase B.
         U8 mSilCoverPhase = 0;
+        const CoverPolicy* mCoverPolicy = nullptr; // coverage replay only; never beauty
     };
 
 private:

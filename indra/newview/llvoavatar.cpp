@@ -56,6 +56,7 @@
 #include "alghoststudio.h"         // [ClientHeight] ghost instance revision
 #include "llghostavatar.h"         // [ClientHeight] stamped clone key
 #include "alderenderlist.h"
+#include "alactorchromakey.h"
 #include "alcinelightrigmanager.h" // [ActorMask]
 #include "aoengine.h"
 #include "llagent.h" //  Get state values from here
@@ -4677,6 +4678,7 @@ void LLVOAvatar::computeUpdatePeriod()
     // [ActorMask] Keep recipients live without overriding visual mute policy.
     if ((ALAvatarStaging::keepsLive(getID()) && !isVisuallyMuted()) ||
         ((ALAvatarLightResponse::keepsLive(this) ||
+          (ALActorChromaKey::sActive && ALActorChromaKey::keepsLive(this)) ||
           (ALCineLightRigManager::anyActorOnly() &&
            ALCineLightRigManager::instance().isActorOnlyRecipient(this))) &&
          !isVisuallyMuted()))

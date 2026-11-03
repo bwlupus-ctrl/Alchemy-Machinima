@@ -1474,7 +1474,7 @@ def main():
     from clone_looks_runtime_check import check as runtime_check
     runtime_check()
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--base', default='4afbf00ba09')
+    ap.add_argument('--base', default='ab2329ba39f')
     ap.add_argument('--width', type=int, default=768)
     ap.add_argument('--height', type=int, default=768)
     ap.add_argument('--out', type=Path, default=ROOT/'.tmp/matrix_20261102/renders')
@@ -1597,15 +1597,14 @@ def main():
     pr = runner.program(tree)
     for defs in ((), ('HAS_SKIN',)):
         current, previous = runner.program(tree,defs), runner.program(base,defs)
-        for look in list(range(28)) + list(NAMES):
-            if look == 69: continue
+        for look in list(range(28)) + list(range(64,85)):
             for time in (2., 2.61):
                 for fade in (1., .45):
                     a = runner.render(previous,look,time=time,fade=fade)
                     b = runner.render(current,look,time=time,fade=fade)
                     assert np.array_equal(a,b), ('base parity',defs,look,time,fade,float(np.max(np.abs(a-b))))
     stats['requested_base_unchanged_max_error'] = 0.0
-    print('PASS requested-base parity: every surviving look except Magma, static + rigged, two times/fades: 0.0',flush=True)
+    print('PASS requested-base parity: all shared/Studio IDs including Magma and Matrix, static + rigged, two times/fades: 0.0',flush=True)
     phase1 = runner.program(G.SourceTree('24b2723dcd9'))
     unchanged = [look for look in range(78) if look not in (64,68,69,72,75)]
     parity = max(float(np.max(np.abs(runner.render(pr,look)-runner.render(phase1,look))))

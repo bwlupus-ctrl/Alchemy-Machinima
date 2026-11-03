@@ -23,7 +23,24 @@
 
 /*[EXTRA_CODE_HERE]*/
 
+#ifdef AL_KEY_COVERAGE_ONLY
+out vec4 frag_data[2];
+#define UD_VALUE vec4
+#else
 out vec4 frag_data[3];
+#define UD_VALUE vec3
+#endif
+
+#ifdef AL_KEY_COVERAGE_ONLY
+uniform sampler2D keyCoverage;
+uniform int keyInputPacked; // K1 is RG; later stages are RGB + shadow A.
+vec4 keySample(vec2 uv)
+{
+    vec4 c = textureLod(keyCoverage, uv, 0.0);
+    return keyInputPacked != 0 ? vec4(c.rrr, c.g) : c;
+}
+#endif
+
 
 in vec2 vary_fragcoord;
 
@@ -522,7 +539,7 @@ vec2 ud_gatherBuv(vec2 gatherCenter, float magnify, vec2 refrDisp)
 
 // scatter-as-gather defocus in working linear, per-channel axial CA,
 // highlight bias, shaped bokeh reach, cat's-eye clipping, depth-edge protect
-vec3 ud_gather(vec2 uv, vec2 gatherCenter, float focusM, float magnify,
+UD_VALUE ud_gather(vec2 uv, vec2 gatherCenter, float focusM, float magnify,
                float floorCoC, float axialCA, vec2 refrDisp)
 {
     vec2 buv = ud_gatherBuv(gatherCenter, magnify, refrDisp);
@@ -546,7 +563,11 @@ vec3 ud_gather(vec2 uv, vec2 gatherCenter, float focusM, float magnify,
 
     vec3 cc = ud_lin(textureLod(diffuseRect, sbuv, 0.0).rgb);
     float hb0 = 1.0 + hiBias * dot(cc, UD_LUMA);
+#ifdef AL_KEY_COVERAGE_ONLY
+    vec4 sum = keySample(sbuv) * hb0;
+#else
     vec3 sum  = cc * hb0;
+#endif
     vec3 wsum = vec3(hb0);
 
     for (int i = 0; i < DIOPTER_TAPS; i++)
@@ -585,10 +606,18 @@ vec3 ud_gather(vec2 uv, vec2 gatherCenter, float focusM, float magnify,
 
         w *= 1.0 + hiBias * dot(c, UD_LUMA);
 
+#ifdef AL_KEY_COVERAGE_ONLY
+        sum += keySample(stc) * vec4(w, w.g);
+#else
         sum  += c * w;
+#endif
         wsum += w;
     }
+#ifdef AL_KEY_COVERAGE_ONLY
+    return clamp(sum / max(vec4(wsum, wsum.g), vec4(1e-4)), 0.0, 1.0);
+#else
     return sum / max(wsum, vec3(1e-4));
+#endif
 }
 
 //---------------------------------------------------------------- main
@@ -613,8 +642,8 @@ void main()
     if (int(diopter_shape2.w + 0.5) == 1)
         floorCoC = max(floorCoC, diopter_focus3.y * diopter_focus3.x);
 
-    vec3 cDio   = vec3(0.0);
-    vec3 cClear = vec3(0.0);
+    UD_VALUE cDio = UD_VALUE(0.0);
+    UD_VALUE cClear = UD_VALUE(0.0);
 
     bool needDio   = m > 0.001;
     bool needClear = m < 0.999;
@@ -646,7 +675,12 @@ void main()
     vec2 warpUV = ud_mirror2(mix(uv,
         ud_gatherBuv(dioCenter, diopter_focus3.w, refrDisp), m));
 
+#ifdef AL_KEY_COVERAGE_ONLY
+    frag_data[0] = cClear;
+    frag_data[1] = cDio;
+#else
     frag_data[0] = vec4(cClear, m);
     frag_data[1] = vec4(cDio, rim);
     frag_data[2] = vec4(warpUV, 0.0, 0.0);
+#endif
 }
