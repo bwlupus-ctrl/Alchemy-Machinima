@@ -20,6 +20,16 @@
 #include "llreshadebridge.h"
 
 #include <atomic>
+#include "alactorchromakey.h"
+#include "llnotificationsutil.h"
+#include "../../reshade-addon/src/sl_module_watch.hpp"
+#if __has_include("sl_bridge_build_info.h")
+#include "sl_bridge_build_info.h"
+#endif
+#ifndef SL_EXPECTED_ADDON_SOURCE_SHA256
+#define SL_EXPECTED_ADDON_SOURCE_SHA256 "" // unconfigured binaries fail closed
+#define SL_ADDON_COMMIT ""
+#endif
 #include <cstring>              // memcpy
 
 #include "alcameradispatch.h"  // [ReShadeReset] presented camera owner
@@ -33,6 +43,16 @@
 #include "llviewershadermgr.h" // [TronA0] gbufferAvatarTagActive (normals .w flag encoding)
 
 extern bool gSnapshot;         // llviewerdisplay.cpp
+
+#if LL_WINDOWS
+static SLKey::ModuleWatch& keyModuleWatch()
+{
+    static SLKey::ModuleWatch watch;
+    static const bool started = [&]() { watch.start(); return true; }();
+    (void)started;
+    return watch;
+}
+#endif
 
 // -----------------------------------------------------------------------------
 LLReShadeBridge& LLReShadeBridge::instance()
@@ -263,6 +283,7 @@ const SLReShadeFrame* SLReShade_GetFrame(uint32_t requested_abi)
     // [ReShadeReset] Do no cut-detection work in sessions with no ABI consumer.
     LLReShadeBridge& bridge = LLReShadeBridge::instance();
     bridge.markConsumerActive();
+    bridge.noteReader(requested_abi, gFrameCount);
     return &bridge.getFrameData();
 }
 
@@ -623,8 +644,167 @@ void LLReShadeBridge::gatherFrame()
     }
 
     f.frame_counter++;
+    if (!gSnapshot && ALActorChromaKey::sActive)
+    {
+        const bool keyed = ALActorChromaKey::keyedThisFrame();
+        const bool arm = mGuardEvalFrame == gFrameCount && mKeyGuard.arm;
+        if (keyed) f.flags |= SLRESHADE_FLAG_ACTOR_KEY;
+        else if (arm) f.flags |= SLRESHADE_FLAG_ACTOR_KEY_ARM;
+        if (keyed || arm)
+        {
+#if LL_WINDOWS
+            mKeyGuard.publish(f.frame_counter, keyModuleWatch().read(), keyed);
+#else
+            mKeyGuard.publish(f.frame_counter, 0, keyed);
+#endif
+        }
+    }
 
     // --- seqlock: close the write window ---
     std::atomic_thread_fence(std::memory_order_release);
     f.write_end = f.write_begin;
+}
+
+// ABI reports copy their payload immediately. No caller-owned pointer survives.
+void LLReShadeBridge::noteReader(U32 abi, U64 frame)
+{
+    mReaderAbi.store(abi, std::memory_order_relaxed);
+    mReaderSeenFrame.store(frame, std::memory_order_release);
+}
+void LLReShadeBridge::reportReader(const SLReShadeReaderInfo* info)
+{
+    SLReShadeReaderInfo copy{};
+    if (!SLReShade_CopyReader(&copy, info))
+    {
+        LL_WARNS_ONCE("ActorKey") << "Ignoring invalid SLReShadeReaderInfo" << LL_ENDL;
+        return;
+    }
+    mReaderInfo.store(copy, std::memory_order_release);
+    if (SLKey::sourceMatches(copy, SL_EXPECTED_ADDON_SOURCE_SHA256) && strcmp(copy.commit, SL_ADDON_COMMIT))
+        LL_INFOS("ActorKey") << "ReShade reader commit differs (informational; source hash matches): " << copy.commit << LL_ENDL;
+}
+void LLReShadeBridge::reportKeyGuard(const SLReShadeKeyGuard* report)
+{
+    SLReShadeKeyGuard copy{};
+    if (!SLReShade_CopyGuard(&copy, report)) return;
+    // Epoch is checked by the main-thread model. Atomically copy the whole
+    // fixed report; concurrent callbacks can never pair CLEAN with another id.
+    auto previous = mGuardReport.load(std::memory_order_acquire);
+    while (copy.viewer_frame >= previous.viewer_frame &&
+        !mGuardReport.compare_exchange_weak(previous, copy, std::memory_order_release, std::memory_order_acquire)) {}
+}
+extern "C"
+#if LL_WINDOWS
+__declspec(dllexport)
+#endif
+void SLReShade_ReportReader(const SLReShadeReaderInfo* info)
+{
+    LLReShadeBridge::instance().reportReader(info);
+}
+extern "C"
+#if LL_WINDOWS
+__declspec(dllexport)
+#endif
+void SLReShade_ReportKeyGuard(const SLReShadeKeyGuard* report)
+{
+    LLReShadeBridge::instance().reportKeyGuard(report);
+}
+void LLReShadeBridge::retryKeyGuard()
+{
+    mKeyGuard.reset();
+    mGuardEvalFrame = ~U64(0);
+    mGuardAllowed = false;
+    mNotifyOldReader = ALActorChromaKey::sActive;
+    ++mKeyStatus.revision;
+    mKeyStatus.state = SLKey::State::Off;
+    mKeyStatus.reason = SLKey::Reason::Off;
+    mKeyStatus.red = mKeyStatus.amber = false;
+    mKeyStatus.text = "Actor key off";
+    mGuardReport.store(SLReShadeKeyGuard{}, std::memory_order_release);
+}
+bool LLReShadeBridge::keyGuardAllows(U64 frame)
+{
+    LL_PROFILE_ZONE_NAMED("ActorKey::moduleGate");
+    if (mGuardEvalFrame == frame) return mGuardAllowed;
+    mGuardEvalFrame = frame;
+    SLReShadeReaderInfo reader{};
+    SLReShadeKeyGuard report{};
+    reader = mReaderInfo.load(std::memory_order_acquire);
+    report = mGuardReport.load(std::memory_order_acquire);
+    int gate = 0;
+    U64 module_state = 0;
+#if LL_WINDOWS
+    auto& watch = keyModuleWatch();
+    static SLKey::SettledScan<SLKey::ModuleList> scans;
+    SLKey::ModuleList result;
+    gate = scans.run(watch.notified(), GetTickCount(), [&]() { return watch.read(); }, SLKey::scanReShade, result);
+    module_state = watch.read();
+    mModuleScans = scans.scans;
+    if (!watch.notified()) LL_WARNS_ONCE("ActorKey") << "DLL notification unavailable; scanning twice every eligible frame" << LL_ENDL;
+#endif
+    const U32 abi = mReaderAbi.load(std::memory_order_relaxed);
+    const U64 seen = mReaderSeenFrame.load(std::memory_order_acquire);
+    const bool recent = abi && frame >= seen && frame-seen <= 120;
+    const bool capable = SLKey::readerCapable(abi, reader);
+    const bool hash = SLKey::sourceMatches(reader, SL_EXPECTED_ADDON_SOURCE_SHA256);
+    // Reports use the ABI frame sequence. The next gather publishes +1.
+    mGuardAllowed = mKeyGuard.evaluate(mFrame.frame_counter+1, gate, recent, capable, hash, module_state, report);
+    updateKeyStatus(gate != 0, reader, report);
+    if (mNotifyOldReader && mKeyGuard.reason == SLKey::Reason::OldReader)
+    {
+        mNotifyOldReader = false;
+        LLSD args; args["MESSAGE"] = mKeyStatus.text;
+        LLNotificationsUtil::add("GenericAlert", args);
+    }
+    return mGuardAllowed;
+}
+void LLReShadeBridge::updateKeyStatus(bool loaded, const SLReShadeReaderInfo& reader, const SLReShadeKeyGuard& report)
+{
+    KeyStatus next;
+    next.state = mKeyGuard.state; next.reason = mKeyGuard.reason; next.reshadeLoaded = loaded;
+    next.red = next.state == SLKey::State::Refused;
+    next.amber = loaded || next.state == SLKey::State::Arming;
+    next.readerAbi = mReaderAbi.load(std::memory_order_relaxed); next.readerCaps = reader.caps;
+    next.passes = report.passes; next.calls = report.effect_calls; next.gui = report.gui_flags; next.foreign = report.foreign_addons;
+    next.guarantee = loaded ? SLKey::guarantee : "Key colour is exact.";
+    using R = SLKey::Reason;
+    switch (next.reason)
+    {
+    case R::NoReShade: next.text = "ReShade: not loaded"; break;
+    case R::Settling: next.text = "ReShade: waiting for DLL loading to settle"; break;
+    case R::NoReader: next.text = "ReShade is loaded but the SL bridge add-on is not running - key refused (deploy sl_reshade_bridge.addon)"; break;
+    case R::OldReader: next.text = "ReShade add-on is OLDER than this viewer (no key guard) - key refused (run deploy_addon.ps1)"; break;
+    case R::StaleSource: next.text = "ReShade add-on binary is stale (built from different bridge sources): run deploy_addon.ps1 - key refused"; break;
+    case R::Activity: next.text = "ReShade effect activity with Effects off: " + std::to_string(report.passes) +
+        " pass(es), " + std::to_string(report.effect_calls) + " begin/finish call(s) (.addonfx / add-on effects) - key refused. Disable them in the ReShade overlay, then Retry"; break;
+    case R::Foreign: next.text = "Other ReShade add-ons are loaded (" + std::to_string(report.foreign_addons) + ", listed in ReShade.log) - key refused. Remove them from the add-on folder for keying"; break;
+    case R::Host: next.text = "Unverified ReShade build - key refused (expected 6.8.0.2155)"; break;
+    case R::CheckFailed: next.text = "ReShade check failed - key refused (see ReShade.log)"; break;
+    case R::Heartbeat: next.text = "ReShade bridge stopped confirming frames - key refused"; break;
+    default: next.text = next.state == SLKey::State::Keying ? "ReShade add-on 1.3, key bypass active" : "ReShade: checking..."; break;
+    }
+    if (loaded)
+    {
+        next.overlay = "ReShade overlay not hidden";
+        if (report.gui_flags & SLRESHADE_GUI_OVERLAY) next.overlay += "; overlay open";
+        if (report.gui_flags & SLRESHADE_GUI_OSD) next.overlay += "; FPS/clock OSD always on (ReShade.ini)";
+        if (report.gui_flags & SLRESHADE_GUI_TUTORIAL) next.overlay += "; splash shown until the ReShade tutorial is dismissed";
+        if (report.gui_flags & SLRESHADE_GUI_RELOAD_SPLASH) next.overlay += "; splash after reload (<= 5 s)";
+    }
+    const bool changed = next.text != mKeyStatus.text || next.overlay != mKeyStatus.overlay || next.state != mKeyStatus.state || next.reshadeLoaded != mKeyStatus.reshadeLoaded ||
+        next.reason != mKeyStatus.reason || next.readerAbi != mKeyStatus.readerAbi || next.readerCaps != mKeyStatus.readerCaps ||
+        next.passes != mKeyStatus.passes || next.calls != mKeyStatus.calls || next.gui != mKeyStatus.gui || next.foreign != mKeyStatus.foreign;
+    next.revision = mKeyStatus.revision + changed;
+    mKeyStatus = next;
+    if (changed)
+    {
+        LL_INFOS("ActorKey") << next.text << " reader_abi=" << next.readerAbi << " reader_caps=" << next.readerCaps
+            << " guard=" << static_cast<int>(next.state) << " guard_passes=" << next.passes << " guard_calls=" << next.calls
+            << " guard_gui=" << next.gui << " foreign=" << next.foreign << " heartbeat_miss=" << mKeyGuard.heartbeatMiss
+            << " arm_presents=" << mKeyGuard.armPresents
+#if LL_WINDOWS
+            << " module_scans=" << mModuleScans
+#endif
+            << " " << next.overlay << " " << next.guarantee << LL_ENDL;
+    }
 }

@@ -3,13 +3,13 @@
 Feeds the viewer's G-buffer and camera state to ReShade effects. Works together
 with the viewer's exported `SLReShade_GetFrame` (see
 `indra/newview/llreshadebridgeabi.h`, the single shared contract). The ABI header
-and this add-on are byte-identical to the phoenix-reshade-XL copy — one `.addon`
-serves both forks; only the viewer side differs (this fork also feeds motion).
+is included directly by this add-on; build it from the same checkout as the
+viewer.
 
 ## Architecture
 
 ```
-firestorm-bin.exe ──exports──> SLReShade_GetFrame()          (viewer side)
+AlchemyTest.exe ──exports──> SLReShade_GetFrame()          (viewer side)
         ▲                              │
         │ injected                     │ GetProcAddress, once
         ▼                              ▼
@@ -105,18 +105,13 @@ cmake -S reshade-addon -B reshade-addon/build -G "Visual Studio 18 2026" -A x64
 cmake --build reshade-addon/build --config Release
 ```
 
-or a bare `cl` from a VS x64 dev prompt:
-
-```
-cl /nologo /std:c++17 /O2 /W4 /EHsc /LD src\sl_reshade_bridge.cpp ^
-   /I external\reshade /Fe:sl_reshade_bridge.addon
-```
+Use CMake so the generated build metadata and source manifest are embedded.
 
 ## Installing
 
 1. Build the viewer (it must export `SLReShade_GetFrame` — any build after the
    ABI landed does).
-2. Install ReShade 6.x **with full add-on support** on `firestorm-bin.exe`
+2. Install ReShade 6.x **with full add-on support** on `AlchemyTest.exe`
    (OpenGL).
 3. Copy `sl_reshade_bridge.addon` next to the game's ReShade DLL (or into the
    `AddonPath` configured in `ReShade.ini`).
@@ -132,3 +127,53 @@ inert; everything else keeps working.
 `archive/reshade-rtgi-bridge` branch of the sibling alchemy repo (originally
 from crosire/reshade). Update by copying the `include/reshade*.hpp` set from a
 newer ReShade source tree.
+
+## Actor key guard (ABI 1.3)
+
+The viewer and add-on must be configured from the same bridge sources. Both
+CMake projects use `cmake/SLAddonSourceHash.cmake` to embed the normalized source
+manifest SHA-256. Configuration prints the hash and every input path. Configure
+the viewer again after bridge source changes; a same-ABI source mismatch refuses
+keying with a red status. Commit differences with an equal source hash are harmless.
+The generated `sl_bridge_build_info.h` lives only in each build directory.
+
+Use the standalone CMake commands above to build the add-on separately. A direct
+compiler invocation without the generated manifest advertises no actor-key guard
+capability. CMake links `bcrypt` and
+`version` and uses the static CRT. No ReShade DLL rebuild is involved.
+
+Deploy manually with the viewer closed, after reviewing and building both components:
+
+```powershell
+powershell -NoProfile -File scripts/deploy_addon.ps1 `
+  -Destination 'C:\path\to\Alchemy\sl_reshade_bridge.addon'
+```
+
+The script prints built/deployed binary SHA-256 values before and after copying,
+plus the configured add-on source hash. Copy errors and post-copy mismatches fail.
+This worktree has not built or deployed either binary.
+
+The add-on brackets each ARM/KEY present: it saves Effects state at raw present,
+disables ordinary effects, and restores after effects/UI have run. It never saves
+a preset or INI. A user toggle inside the bracket wins. Technique, begin and
+finish events (including off-present calls) conservatively contaminate the report.
+The viewer requires CLEAN for the previous bracket and refuses with red status
+on effect activity, missing/old readers, stale source, unknown host, foreign add-ons
+or a stopped bridge. Retry is exposed by `LLReShadeBridge::retryKeyGuard()`;
+key off/on and effect reload also re-evaluate the guard.
+
+Only the exact reviewed 6.8.0.2155 host and its Generic Depth / Effect Runtime Sync
+built-ins plus this add-on are allowed. The existing depth pin remains unchanged.
+Remove other `.addon*` files even if disabled. Module notifications use one packed
+generation/timestamp word; CLEAN requires 200 ms quiet plus identical full scans.
+Without notifications both scans run every eligible frame; steady-state caching
+expires at 500 ms. Folder contents are checked on every ARM/KEY present.
+
+ReShade's UI is not hidden. The status API exposes an unconditional amber overlay
+warning plus observable overlay/OSD/tutorial/reload causes. The exact guarantee is:
+
+> Key colour is exact except where ReShade's own UI draws, and an add-on effect switched on mid-key may tint ONE frame before keying stops.
+
+This includes ReShade/add-ons loaded mid-key. A convention-free DLL loaded outside
+the add-on folder remains the documented whitelist residual. Runtime acceptance
+and timing still require the user's viewer; native fixtures cannot prove a live capture.
