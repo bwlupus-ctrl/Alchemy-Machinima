@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alsteppedanimruntime.h"
+#include "llactormover.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerpartsim.h"
@@ -1113,24 +1114,30 @@ void LLViewerPartSim::updateSimulation()
     //LL_INFOS() << "Particles: " << sParticleCount << " Adaptive Rate: " << sParticleAdaptiveRate << LL_ENDL;
 }
 
-void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()
+void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions(bool hot_gaze)
 {
     LL_PROFILE_ZONE_NAMED("StepAnim::particleSources");
-    if (ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;
-    for (StepAnimDeferredSource& deferred : mStepAnimDeferredSources)
+    if (!hot_gaze && ALSteppedAnimRuntime::instance().activeActorCount() == 0) return;
+    // Deferred emission belongs only to the existing Stepped pass. The late
+    // hot pass refreshes positions/followers without advancing or emitting.
+    if (!hot_gaze)
     {
-        if (deferred.mSource.notNull() && !deferred.mSource->isDead())
+        for (StepAnimDeferredSource& deferred : mStepAnimDeferredSources)
         {
-            deferred.mSource->update(deferred.mDelta);
+            if (deferred.mSource.notNull() && !deferred.mSource->isDead())
+            {
+                deferred.mSource->update(deferred.mDelta);
+            }
         }
+        mStepAnimDeferredSources.clear();
     }
-    mStepAnimDeferredSources.clear();
     for (LLPointer<LLViewerPartSource>& source : mViewerPartSources)
     {
         LLViewerObject* object = source->mSourceObjectp;
         if (!object || object->isDead() || !object->isAttachment()) continue;
         LLVOAvatar* avatar = object->getAvatar();
-        if (!ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;
+        if (hot_gaze ? !LLActorMover::instance().hasHotGazePose(avatar) :
+            !ALSteppedAnimRuntime::instance().decisionFor(avatar)) continue;
         source->mPosAgent = object->getRenderPosition();
     }
     // Particle groups ran before the held attachment matrices were applied.
@@ -1143,7 +1150,8 @@ void LLViewerPartSim::refreshStepAnimAttachmentSourcePositions()
                 part->mPartSourcep.isNull()) continue;
             LLViewerObject* object = part->mPartSourcep->mSourceObjectp;
             if (!object || !object->isAttachment() ||
-                !ALSteppedAnimRuntime::instance().decisionFor(object->getAvatar())) continue;
+                (hot_gaze ? !LLActorMover::instance().hasHotGazePose(object->getAvatar()) :
+                 !ALSteppedAnimRuntime::instance().decisionFor(object->getAvatar()))) continue;
             part->mPosAgent = part->mPartSourcep->mPosAgent + part->mPosOffset;
         }
 }

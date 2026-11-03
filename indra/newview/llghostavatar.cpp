@@ -2149,11 +2149,11 @@ void LLGhostAvatar::buildReflectPartners(LLVOAvatar* source)
         << (paired == 100 && centre == 33 && unresolved == 0 ? "PASS" : "FAIL") << LL_ENDL;
 }
 
-void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
+void LLGhostAvatar::applyReflectStamp(const LLVector3& normal, bool hot_gaze)
 {
     if (mEntityDriveMode != ALGhostStudio::DRIVE_REFLECT || isDead() || !isBuilt() || !mRoot) return;
     const U32 frame = LLFrameTimer::getFrameCount();
-    if (mReflectLastFrame == frame) return;
+    if (!hot_gaze && mReflectLastFrame == frame) return;
     const bool consecutive = mReflectLastFrame + 1 == frame;
     mReflectLastFrame = frame;
     LLVOAvatar* source = reflectSource();
@@ -2170,6 +2170,7 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         }
         return;
     }
+    if (hot_gaze) LLActorMover::instance().captureHotGazeCopy(source, this);
     captureReflectPositions();
     if (mReflectPartners.empty()) buildReflectPartners(source);
     const auto& src_bones = source->getSkeleton();
@@ -2207,7 +2208,7 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         }
     }
     bool written = true;
-    if (facing || floor)
+    if (!hot_gaze && (facing || floor))
     {
         const LLQuaternion q = floor ? ALReflect::floorRootRotation(source->getRootJoint()->getWorldRotation()) :
             ALReflect::rootRotation(source->getRootJoint()->getWorldRotation(), normal);
@@ -2219,22 +2220,23 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
         }
         else written = false;
     }
-    mReflectLastRotations.clear();
+    if (!hot_gaze) mReflectLastRotations.clear();
     for (const auto& names : mReflectPartners)
     {
         LLJoint* src = src_joint(names.first);
         LLJoint* dst = dst_joint(names.second);
         if (!src || !dst) { written = false; mReflectLastRotations.emplace_back(); continue; }
+        if (hot_gaze && !LLActorMover::hotGazeCopiesJoint(dst->getName())) continue;
         ALReflect::LocalPose reflected;
         if (ALReflect::reflectLocalPose({src->getRotation(), src->getPosition()}, reflected))
         {
             dst->setRotation(reflected.rotation);
-            dst->setPosition(reflected.position);
+            if (!hot_gaze) dst->setPosition(reflected.position);
         }
         else written = false;
-        mReflectLastRotations.push_back(dst->getRotation());
+        if (!hot_gaze) mReflectLastRotations.push_back(dst->getRotation());
     }
-    if (face)
+    if (!hot_gaze && face)
     {
         if (!mTrueMirrorParamSetsBuilt) buildTrueMirrorParamSets();
         bool changed = false;
@@ -2253,8 +2255,14 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
     }
     mRoot->updateWorldMatrixChildren();
     moveStampedAttachments();
+    if (hot_gaze)
+    {
+        markStepAnimPoseChanged();
+        invalidateSkinPalettesForOverlay();
+        syncStepAnimAttachmentMatrices();
+    }
     mReflectPreviousWritten = written;
-    if (!check) return;
+    if (hot_gaze || !check) return;
     bool shape = mReflectPartners.size() == 133, symmetry = written;
     // Engine joint matrices exclude the clone's foot-pivot outer render scale
     // (updateEntityOuterTransform). Compare both root-frame vectors at that same
@@ -2288,7 +2296,7 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal)
     }
 }
 
-void LLGhostAvatar::applyTrueMirrorStamp()
+void LLGhostAvatar::applyTrueMirrorStamp(bool hot_gaze)
 {
     if (mEntityDriveMode != ALGhostStudio::DRIVE_TRUE_MIRROR ||
         isDead() || !isBuilt() || !mRoot)
@@ -2297,7 +2305,7 @@ void LLGhostAvatar::applyTrueMirrorStamp()
     }
     // Once per frame, whatever the caller.
     const U32 frame = LLFrameTimer::getFrameCount();
-    if (mTrueMirrorLastStampFrame == frame)
+    if (!hot_gaze && mTrueMirrorLastStampFrame == frame)
     {
         return;
     }
@@ -2333,8 +2341,9 @@ void LLGhostAvatar::applyTrueMirrorStamp()
     static LLCachedControl<bool> copy_face(
         gSavedSettings, "GhostTrueMirrorCopyFace", true);
 
-    stampTrueMirrorSkeleton(source, copy_facing);
-    if (copy_face)
+    if (hot_gaze) LLActorMover::instance().captureHotGazeCopy(source, this);
+    stampTrueMirrorSkeleton(source, copy_facing, hot_gaze);
+    if (!hot_gaze && copy_face)
     {
         stampTrueMirrorFace(source);
     }
@@ -2346,6 +2355,12 @@ void LLGhostAvatar::applyTrueMirrorStamp()
     // stamped pose rather than a dirty-flagged stale one.
     mRoot->updateWorldMatrixChildren();
     moveStampedAttachments();
+    if (hot_gaze)
+    {
+        markStepAnimPoseChanged();
+        invalidateSkinPalettesForOverlay();
+        syncStepAnimAttachmentMatrices();
+    }
 }
 
 void LLGhostAvatar::moveStampedAttachments()
@@ -2408,7 +2423,7 @@ void LLGhostAvatar::moveStampedAttachments()
     }
 }
 
-void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing)
+void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing, bool hot_gaze)
 {
     // Root: mRoot is NOT in mSkeleton (mSkeleton[0] is mPelvis, parented
     // under mRoot -- LLAvatarAppearance::buildSkeleton). Its local rotation IS
@@ -2416,7 +2431,7 @@ void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing
     // facing, including any procedural body turn written to the root. Its
     // POSITION is deliberately left alone: the clone keeps its own placement
     // (Studio foot lock) and mirrors the pose where it stands.
-    if (copy_facing)
+    if (!hot_gaze && copy_facing)
     {
         const LLQuaternion root_rot = source->getRootJoint()->getRotation();
         if (root_rot.isFinite())
@@ -2453,8 +2468,9 @@ void LLGhostAvatar::stampTrueMirrorSkeleton(LLVOAvatar* source, bool copy_facing
                 continue;
             }
         }
+        if (hot_gaze && !LLActorMover::hotGazeCopiesJoint(dst->getName())) continue;
         dst->setRotation(src->getRotation());
-        dst->setPosition(src->getPosition());
+        if (!hot_gaze) dst->setPosition(src->getPosition());
     }
 }
 

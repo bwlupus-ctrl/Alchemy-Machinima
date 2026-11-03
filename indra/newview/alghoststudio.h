@@ -106,7 +106,7 @@ public:
     // motion controller only, ignoring the source. FROZEN = hold the current
     // pose. TRUE_MIRROR = stamp the source's FINAL evaluated pose (post-motion,
     // post-gaze/IK/Pose-Polish local joint state + animated face morphs) onto
-    // the clone every frame from updatePostObjectList(); the clone's own
+    // the clone every frame from updatePostObjectList(bool hot_gaze = false); the clone's own
     // controller is paused so nothing competes with the stamp. Heavier than
     // MIRROR (per-joint copy per clone per frame), so MIRROR stays the default.
     // REFLECT swaps bone partners and reflects motion across a world plane.
@@ -700,7 +700,9 @@ public:
     // DRIVE_TRUE_MIRROR clone reads its source's FINAL pose (motions, then
     // Pose Polish, then gaze/IK) with zero frame lag. updatePerFrame() runs
     // BEFORE the object list and cannot see that pose.
-    void      updatePostObjectList();
+    // hot_gaze: a second, source-ordered pass of ONLY inherited hot rotations.
+    // Runs after Stepped; leaves ordinary source copies and placement intact.
+    void      updatePostObjectList(bool hot_gaze = false);
     bool reflectOwnsPosition(const Instance& inst) const;
     std::string reflectStatus(const Instance& inst) const;
     bool facePair(const LLUUID& id);

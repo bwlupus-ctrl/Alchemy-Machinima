@@ -3096,8 +3096,12 @@ bool LLActorMover::ensureDirectorOwner(LLVOAvatar* av, DirectorGaze& runtime)
     if (runtime.mGaze.mOwner.matches(av, av->getID(), av->getCreationSerial())) return false;
     // Keep the UUID's gaze envelope/aim/acquisition state, but no old-body pose
     // or local motion ownership may escape into the replacement.
+    const bool preserve_motor = runtime.mRekeyMotorPending;
+    const auto motor = runtime.mGaze.mGazeMotor;
     invalidateDirectorCache(runtime);
     ensureGazeOwner(av, runtime.mGaze);
+    if (preserve_motor) runtime.mGaze.mGazeMotor = motor;
+    runtime.mRekeyMotorPending = false;
     return true;
 }
 
@@ -19779,10 +19783,43 @@ void LLActorMover::releaseHotGazeSlot(S32 slot)
         if (entry.second.mState.mSlot == slot) entry.second.mState.release(now);
 }
 
+bool LLActorMover::hasHotGazePose(const LLVOAvatar* avatar) const
+{
+    return avatar && (mHotGazes.count(avatar->getID()) || mHotGazeCopies.count(avatar->getID()));
+}
+
+bool LLActorMover::hotGazeCopiesJoint(const std::string& name)
+{
+    return name == "mPelvis" || name == "mTorso" || name == "mChest" ||
+        name == "mNeck" || name == "mHead" || name == "mEyeLeft" || name == "mEyeRight" ||
+        name == "mFaceEyeAltLeft" || name == "mFaceEyeAltRight";
+}
+
+void LLActorMover::captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone)
+{
+    if (mHotGazes.empty() || !clone) return;
+    restoreHotGazePose(clone); // its own hot layer will be reasserted after the copy
+    if (!hasHotGazePose(source)) return;
+    auto& pose = mHotGazeCopies[clone->getID()];
+    ensureDirectorOwner(clone, pose);
+    captureDirectorLookAtPose(clone, pose, false);
+    // This inherited layer never runs gazePaint, which normally stamps these.
+    pose.mGaze.mHeldSkeletonSerial = clone->getSkeletonSerialNum();
+    pose.mGaze.mHeldAppearanceSerial = clone->getAppearanceSerialNum();
+}
+
 void LLActorMover::restoreHotGazes()
 {
+    // Undo a clone's own hot layer before undoing its inherited source layer.
     for (auto& entry : mHotGazes)
         restoreHotGazePose(LLDirectorCast::instance().resolve(entry.first));
+    for (auto& entry : mHotGazeCopies)
+    {
+        LLVOAvatar* body = LLDirectorCast::instance().resolve(entry.first);
+        restoreDirectorLookAtPose(body, entry.second);
+        if (body) body->invalidateSkinPalettesAfterOverlay();
+    }
+    mHotGazeCopies.clear();
 }
 
 void LLActorMover::applyHotGazes()
@@ -19852,14 +19889,7 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
     { restoreDirectorLookAtPose(av, hot.mPaint); mHotGazes.erase(it); return; }
     if (!av->getRootJoint() || !gazeCameraSafe(av, false)) return;
     auto& paint = hot.mPaint;
-    if (hot.mRekeyMotorPending)
-    {
-        const auto motor = paint.mGaze.mGazeMotor;
-        ensureDirectorOwner(av, paint);
-        paint.mGaze.mGazeMotor = motor;
-        hot.mRekeyMotorPending = false;
-    }
-    else ensureDirectorOwner(av, paint);
+    ensureDirectorOwner(av, paint);
     Gaze& g = paint.mGaze;
     const F32 dt = LLPresentationTime::presentationDelta();
     g.mAnimationClock.mTime = now; g.mLifeClock.mTime = now;
@@ -19900,6 +19930,7 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
 
 void LLActorMover::clearHotGazes()
 {
+    restoreHotGazes();
     for (auto& entry : mHotGazes)
         restoreDirectorLookAtPose(LLDirectorCast::instance().resolve(entry.first), entry.second.mPaint);
     mHotGazes.clear();
@@ -19917,7 +19948,7 @@ void LLActorMover::rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& 
             auto motor = saved.mPaint.mGaze.mGazeMotor;
             const U32 generation = saved.mPaint.mGaze.mHotGeneration;
             saved.mPaint = {}; // joint pointers and captures belong to the old incarnation
-            saved.mRekeyMotorPending = true;
+            saved.mPaint.mRekeyMotorPending = true;
             saved.mPaint.mGaze.mHotGeneration = generation;
             saved.mPaint.mGaze.mGazeMotor = motor; // preserve the live acquire trajectory
             mHotGazes.erase(new_id);

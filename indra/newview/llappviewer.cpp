@@ -5977,7 +5977,14 @@ void LLAppViewer::idle()
         }
     }
 
+    // HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check.
     LLActorMover::instance().applyHotGazes();
+    if (LLActorMover::instance().hasHotGazes())
+    {
+        ALGhostStudio::instance().updatePostObjectList(true);
+        LLViewerPartSim::instance().refreshStepAnimAttachmentSourcePositions(true);
+    }
+    // HOT_GAZE_PRESENT_END
 
     // applyHeld above is the stepped base skeleton writer (including
     // boil/smear and held root yaw). Sample/capture and place projectors here,

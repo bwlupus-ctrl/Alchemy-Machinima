@@ -25,6 +25,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alformationsolver.cpp`
 - `indra/newview/alformationsolver.h`
 - `indra/newview/algazeblink.h`
+- `indra/newview/algazehot.h`
 - `indra/newview/algazehotslots.h`
 - `indra/newview/algazemotor.h`
 - `indra/newview/algazepolicy.h`
@@ -60,6 +61,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alposecontinuity.h`
 - `indra/newview/alposepolish.h`
 - `indra/newview/alposesecondary.h`
+- `indra/newview/alsteppedanimruntime.cpp`
 - `indra/newview/altoolcrowdplace.cpp`
 - `indra/newview/altoolfocuspick.cpp`
 - `indra/newview/altoolghostplace.h`
@@ -112,7 +114,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@186,52", "indra/newview/CMakeLists.txt@332,115", "indra/newview/CMakeLists.txt@1118,13", "indra/newview/CMakeLists.txt@1133,54", "indra/newview/CMakeLists.txt@1283,162", "indra/newview/CMakeLists.txt@2839,31", "indra/newview/CMakeLists.txt@2944,185"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,14127", "indra/newview/app_settings/settings.xml@22767,511", "indra/newview/app_settings/settings.xml@23389,175", "indra/newview/app_settings/settings.xml@28453,2122", "indra/newview/app_settings/settings.xml@30576,1104"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@2610,53", "indra/newview/llappviewer.cpp@5656,48", "indra/newview/llappviewer.cpp@5793,119", "indra/newview/llappviewer.cpp@6457,45"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,33", "indra/newview/llappviewer.cpp@1714,12", "indra/newview/llappviewer.cpp@2611,53", "indra/newview/llappviewer.cpp@5657,48", "indra/newview/llappviewer.cpp@5794,119", "indra/newview/llappviewer.cpp@5968,23", "indra/newview/llappviewer.cpp@6460,45"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@30,11", "indra/newview/alchatcommand.cpp@57,31", "indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,11", "indra/newview/llcontrolavatar.cpp@247,21"]}
@@ -122,7 +124,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266", "indra/newview/llviewerfloaterreg.cpp@878,7"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,22", "indra/newview/llviewerjoystick.cpp@1845,1987"]}
 - {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,19", "indra/newview/llviewerwindow.cpp@6320,7", "indra/newview/llviewerwindow.cpp@6428,7"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@861,7", "indra/newview/llvoavatar.cpp@898,37", "indra/newview/llvoavatar.cpp@2439,14", "indra/newview/llvoavatar.cpp@2888,19", "indra/newview/llvoavatar.cpp@4197,14", "indra/newview/llvoavatar.cpp@4823,20", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5216,596", "indra/newview/llvoavatar.cpp@5914,48", "indra/newview/llvoavatar.cpp@8739,106", "indra/newview/llvoavatar.cpp@12830,163"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,23", "indra/newview/llvoavatar.cpp@861,7", "indra/newview/llvoavatar.cpp@898,37", "indra/newview/llvoavatar.cpp@2439,14", "indra/newview/llvoavatar.cpp@2888,19", "indra/newview/llvoavatar.cpp@4197,14", "indra/newview/llvoavatar.cpp@4823,20", "indra/newview/llvoavatar.cpp@5142,25", "indra/newview/llvoavatar.cpp@5216,596", "indra/newview/llvoavatar.cpp@5912,45", "indra/newview/llvoavatar.cpp@8734,106", "indra/newview/llvoavatar.cpp@12825,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@1189,10", "indra/newview/llvoavatar.h@1207,11", "indra/newview/llvoavatar.h@1259,17"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@156,12", "indra/newview/pipeline.cpp@1692,29125", "indra/newview/pipeline.cpp@31781,695"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1108,67"]}
@@ -256,6 +258,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 2845, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1296, "text": "alformationsolver.h", "source": "indra/newview/alformationsolver.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1425, "text": "algazeblink.h", "source": "indra/newview/algazeblink.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1428, "text": "algazehot.h", "source": "indra/newview/algazehot.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1429, "text": "algazehotslots.h", "source": "indra/newview/algazehotslots.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1430, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1427, "text": "algazepolicy.h", "source": "indra/newview/algazepolicy.h"}
@@ -288,6 +291,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1369, "text": "alpanelpropmover.h", "source": "indra/newview/alpanelpropmover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1385, "text": "alpaneltemporalcapture.h", "source": "indra/newview/alpaneltemporalcapture.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1422, "text": "alpathgeometry.h", "source": "indra/newview/alpathgeometry.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 247, "text": "alsteppedanimruntime.cpp", "source": "indra/newview/alsteppedanimruntime.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 400, "text": "altoolcrowdplace.cpp", "source": "indra/newview/altoolcrowdplace.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 401, "text": "altoolfocuspick.cpp", "source": "indra/newview/altoolfocuspick.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1373, "text": "altoolghostplace.h", "source": "indra/newview/altoolghostplace.h"}

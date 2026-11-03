@@ -655,6 +655,9 @@ public:
     void releaseHotGazeSlot(S32 slot);
     void restoreHotGazes();
     void applyHotGazes();
+    bool hasHotGazePose(const LLVOAvatar* avatar) const;
+    void captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone);
+    static bool hotGazeCopiesJoint(const std::string& name);
     bool resolveHotGazeTarget(LLVOAvatar* actor, const GazeTarget& target, LLVector3d& point);
     static LLVector3 hotGazeJointPosition(LLVOAvatar* avatar, LLJoint* joint);
     bool hasHotGazes() const { return !mHotGazes.empty(); }
@@ -1578,6 +1581,7 @@ private:
     struct DirectorGaze
     {
         Gaze             mGaze;
+        bool mRekeyMotorPending = false; // consumed at the first owner bind, even restore-only
         F32              mTargetStrength = 0.f;
         bool             mStrengthValid = false;
         S32              mMode = 0;
@@ -1800,11 +1804,11 @@ private:
         DirectorGaze mPaint;
         GazeTarget mTarget;
         LLVector3d mLastPoint;
-        bool mRekeyMotorPending = false;
         F32 mHead = 1.f, mEyes = 1.f, mTorso = .2f;
         F32 mFromHead = 1.f, mFromEyes = 1.f, mFromTorso = .2f;
     };
     std::map<LLUUID, HotGaze> mHotGazes;
+    std::map<LLUUID, DirectorGaze> mHotGazeCopies; // inherited Studio overlays; frame-local captures
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     U64 mGazeRevision = 1;
     std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime

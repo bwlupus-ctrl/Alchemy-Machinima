@@ -81,7 +81,7 @@ struct LLActorMover {
   struct {GazeTarget mAuthored;} mParamTransition;
   bool invalidated=false;
  };
- struct DirectorGaze{Gaze mGaze; GazeTarget mLastTarget,mCueFromBaseTarget,mCueFromTarget;};
+ struct DirectorGaze{bool mRekeyMotorPending=false;Gaze mGaze; GazeTarget mLastTarget,mCueFromBaseTarget,mCueFromTarget;};
  struct Follow{LLUUID mLeader;S32 mMode=0;F32 mOffset=0;};
  struct Move{bool mPathPoseEvaluated=true,mIsPath=true;};std::map<LLUUID,Move> mMoves;
  int stops=0;void stop(LLUUID id){++stops;mMoves.erase(id);}
@@ -98,7 +98,7 @@ struct LLActorMover {
  U64 mGazeRevision=0;
  static LLActorMover& instance(){static LLActorMover m;return m;}
  static bool rewriteGazeTarget(GazeTarget&,const LLUUID&,const LLUUID&);
- struct HotGaze{bool mRekeyMotorPending=false;struct State{double mRelease=-1;void release(double t){mRelease=t;}}mState;DirectorGaze mPaint;GazeTarget mTarget;};
+ struct HotGaze{struct State{double mRelease=-1;void release(double t){mRelease=t;}}mState;DirectorGaze mPaint;GazeTarget mTarget;};
  std::map<LLUUID,HotGaze> mHotGazes;
  void restoreDirectorLookAtPose(LLVOAvatar*,DirectorGaze&){}
  void rewriteHotGazeReferences(const LLUUID&,const LLUUID&);

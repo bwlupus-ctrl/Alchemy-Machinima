@@ -8,74 +8,22 @@
       "GENERATED": 723,
       "HOOK": 498,
       "OWNED": 885,
-      "TOOLING": 362
+      "TOOLING": 363
     },
     "dirty_product_inputs": [
-      "indra/newview/algazehot.h",
-      "indra/newview/algazehotslots.h",
       "indra/newview/alghoststudio.cpp",
-      "indra/newview/alpanellensgaze.cpp",
-      "indra/newview/alpanellensgaze.h",
-      "indra/newview/alsteppedanimruntime.cpp",
+      "indra/newview/alghoststudio.h",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
       "indra/newview/llappviewer.cpp",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
-      "indra/newview/llkeyconflict.cpp",
-      "indra/newview/llviewerinput.cpp",
-      "indra/newview/llvoavatar.cpp",
-      "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
-      "indra/newview/tests/algazehot_test.cpp",
+      "indra/newview/llghostavatar.cpp",
+      "indra/newview/llghostavatar.h",
+      "indra/newview/llviewerpartsim.cpp",
+      "indra/newview/llviewerpartsim.h",
       "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_clone_rekey_check.py",
       "scripts/code_tools/director_gaze_hot_check.py",
-      "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit_gen.py",
-      "scripts/code_tools/hot_gaze_mover_hunks.json",
-      "scripts/code_tools/test_key_binding_migration.py"
+      "scripts/code_tools/hot_gaze_mover_hunks.json"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -89,7 +37,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "8bb86c10e8608b9ac45d197e2a8002a3c211d37d1efa50675ef17d540d9f8114",
+        "csv_sha256": "8467421c92f0c51665d3999d13825b14866b1e8f786268403644a273d4e38d58",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
@@ -256,10 +204,10 @@
       },
       "wiring_rows": 2214
     },
-    "head_source_tree": "e5cbd8bb7790e9ab4d6e22bc6c79972992c55b46",
+    "head_source_tree": "ceeb06b7eb3d5b6b82e5251aeeb35a47acd77d9c",
     "hook_files": 498,
-    "hunks": 3015,
-    "input_sha256": "f3903d930d5f5387f8aa7e1cecd3ebfa6a61be1773783c970b6926d0c7ba749f",
+    "hunks": 3017,
+    "input_sha256": "ca77cf309def3362d08f95aeb75714097acb24b240211c902091b48545afe423",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 1997
   },
@@ -14579,6 +14527,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "actor-path",
         "gaze"
       ],
       "git_status": "A",
@@ -16964,7 +16913,6 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
         "gaze",
         "roto-tron"
       ],
@@ -16992,7 +16940,6 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "director-shell",
         "gaze",
         "roto-tron"
       ],
@@ -18271,6 +18218,7 @@
       ],
       "features": [
         "actor-bar",
+        "actor-path",
         "camera",
         "clones",
         "crowd",
@@ -26139,6 +26087,7 @@
         "gaze",
         "looks",
         "roto-tron",
+        "stepped-animation",
         "vcam",
         "weather"
       ],
@@ -26149,7 +26098,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
         "gaze"
       ],
@@ -26308,6 +26256,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "gaze",
         "vcam"
       ],
       "class": "HOOK",
@@ -40386,6 +40335,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/local_light_size_math_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/native_check_tools.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

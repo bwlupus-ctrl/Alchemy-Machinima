@@ -15,7 +15,7 @@ def hot_gaze_baseline(source, name):
     import hashlib
     import json
     data = (Path(__file__).parent / "hot_gaze_mover_hunks.json").read_bytes()
-    assert hashlib.sha256(data).hexdigest() == "3148b2d2b78248c88d18e3900d0bf3955f417f17ed0476be752bc9da00e71fb6"
+    assert hashlib.sha256(data).hexdigest() == "88ceebded87ea7e59664102cd41ce076aa356dc1b28a783cd4a23a7e182746d3"
     allowed = json.loads(data)
     if name not in allowed["files"]:
         return source
