@@ -10,8 +10,20 @@ from relight_area_policy_check import method as source_method
 
 
 def actor_key_baseline(source, name):
-    """Reverse exact pinned layers: WP4, WP1b, LENS, WP2, WP01; then old guards."""
+    """Reverse exact pinned layers: WP5, WP4, WP1b, LENS, WP2, WP01; then old guards."""
     import hashlib, json
+    # WP5 adds only a presentation sink at the existing self-test log. Reverse
+    # its exact pinned hunks before the older renderer-preservation assertions.
+    ui_raw = (Path(__file__).parent / "actor_key_wp5_ui_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(ui_raw).hexdigest() == "af0e0cea22391ed62eabd2da6ae39624622ccd1fe00e33f6f7afa6814b1a48c6", "WP5 UI allowance pin"
+    ui = json.loads(ui_raw)
+    if name == "pipeline.cpp":
+        ui_base = subprocess.check_output(["git", "show", ui["base"] + ":indra/newview/pipeline.cpp"]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in ui["hunks"]:
+            assert ui_base.count(hunk["before"]) == 1, "WP5 UI baseline hunk"
+            assert source.count(hunk["after"]) == 1, "WP5 UI exact hunk"
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == ui_base, "WP5 UI reversal must reproduce its exact base"
     shadow_raw = (Path(__file__).parent / "actor_key_shadow_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(shadow_raw).hexdigest() == "cd65f6be9d56efc755e19969f54d3293576bf90653fa5927fb05d7cfcb507aa6", "WP4 allowance pin"
     shadow = json.loads(shadow_raw)

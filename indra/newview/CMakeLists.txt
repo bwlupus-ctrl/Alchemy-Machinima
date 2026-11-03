@@ -424,6 +424,7 @@ set(viewer_SOURCE_FILES
     alpaneldof.cpp
     alpanelexposurehub.cpp
     alpanelexposurepage.cpp
+    alpanelactorkey.cpp
     alpanelgazecues.cpp
     alpanellenslooks.cpp
     alpanellightcues.cpp
@@ -1291,6 +1292,7 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormaskeligibility.h # [ActorMask]
+    alactorkeyui.h
     alactorchromakey.h
     alactorkeyset.h
     alcoverpolicy.h
@@ -1403,6 +1405,7 @@ set(viewer_HEADER_FILES
     alpaneldof.h
     alpanelexposurehub.h
     alpanelexposurepage.h
+    alpanelactorkey.h
     alpanelgazecues.h
     alpanellenslooks.h
     alpanellightcues.h

@@ -4,7 +4,7 @@ accessors and synthetic D32F casters replace logged-in scene traversal. No viewe
 """
 from pathlib import Path
 import ctypes as C
-import json, subprocess
+import json, subprocess, hashlib
 import numpy as np
 from actor_key_gl_check import Fixture, SH
 OUT=Path('.tmp/ckshadow/shadow_gl');OUT.mkdir(parents=True,exist_ok=True)
@@ -112,7 +112,10 @@ for source,dest,direction in ((a,b,(1/32.,0.)),(b,a,(0.,1/32.))):
 f.draw(matte,mat,base_uniforms+[('keyShadowExact',1),('keyShadowFiltered',1),('keyShadowSoftness',1.)],[cov,cov,a[0],vis[1][0]])
 assert f.read(mat)[...,1].max()>200 and not f.read(mat)[18:28,18:28,1].any()
 # W-17 beauty/off parity: current shader with shadow disabled byte-matches pre-WP4 shader.
-old=f.program(subprocess.check_output(['git','show','HEAD:indra/newview/app_settings/shaders/class1/alchemy/actorKeyMatteF.glsl']).decode())
+allowance_raw=Path(__file__).with_name('actor_key_shadow_hunks.json').read_bytes().replace(b'\r\n',b'\n')
+assert hashlib.sha256(allowance_raw).hexdigest() == 'cd65f6be9d56efc755e19969f54d3293576bf90653fa5927fb05d7cfcb507aa6', 'WP4 parity baseline pin'
+baseline_ref=json.loads(allowance_raw)['base']
+old=f.program(subprocess.check_output(['git','show',baseline_ref+':indra/newview/app_settings/shaders/class1/alchemy/actorKeyMatteF.glsl']).decode())
 f.draw(old,mat,base_uniforms,[cov,cov]);before=f.read(mat)
 f.draw(matte,mat,base_uniforms+[('keyShadowEnabled',0)],[cov,cov,vis[0][0],vis[1][0]]);assert np.array_equal(before,f.read(mat))
 # Negative control: full maps used as actor maps create a world-only false shadow.

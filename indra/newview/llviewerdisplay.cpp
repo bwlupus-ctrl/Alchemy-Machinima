@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alpovblink.h"
 #include "alactorchromakey.h"
+#include "alactorkeyui.h"
 
 #include "llviewerdisplay.h"
 
@@ -2225,6 +2226,8 @@ void render_ui_2d()
     {
         gViewerWindow->draw();
     }
+
+    ALActorKeyUI::drawBadge();
 
     // reset current origin for font rendering, in case of tiling render
     LLFontGL::sCurOrigin.set(0, 0);

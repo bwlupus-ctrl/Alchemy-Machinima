@@ -516,7 +516,9 @@ def integration_contract():
     assert 'mFXAAMap' not in call and 'scratch->' not in cpp
     conflict=(ROOT/'indra/newview/llkeyconflict.cpp').read_text(encoding='utf8')
     save=conflict[conflict.index('void LLKeyConflictHandler::saveToSettings('):]
-    assert save.index('LLViewerInput::loadKeysXML(filename, keys)')<save.index('switch (mLoadMode)')<save.index('setS32("KeyBindingsMigrationVersion", 4)')
+    # WP5 advances the shared migration marker to 5 for Ctrl+Alt+K while
+    # retaining blink/hot-gaze migrations before the edited mode is spliced.
+    assert save.index('LLViewerInput::loadKeysXML(filename, keys)')<save.index('switch (mLoadMode)')<save.index('setS32("KeyBindingsMigrationVersion", 5)')
     print('PASS real render_ui order: finalize/gather/HUD/ghosts/blink/UI; no redirection; depth/alpha preserved; AA scratch never borrowed; later debug/capture cannot observe blink copies')
 
 

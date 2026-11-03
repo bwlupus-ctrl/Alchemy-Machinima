@@ -1,0 +1,8 @@
+<panel_container name="side_tray" width="200" height="100" layout="topleft">
+  <panel name="first" width="400" height="200" follows="all">
+    <button name="first_button" label="A" top="5" left="5" width="40" height="20" />
+  </panel>
+  <panel name="second" width="400" height="200" follows="all">
+    <button name="second_button" label="B" top="5" left="5" width="40" height="20" />
+  </panel>
+</panel_container>
