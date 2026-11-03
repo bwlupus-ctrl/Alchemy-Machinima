@@ -74,7 +74,7 @@ extern "C" {
 /* Version packs MAJOR (high 16, breaking layout changes) and MINOR (low 16,
  * append-only additions inside the reserved tail). */
 #define SLRESHADE_ABI_MAJOR     1u
-#define SLRESHADE_ABI_MINOR     2u
+#define SLRESHADE_ABI_MINOR     3u
 #define SLRESHADE_ABI_VERSION   ((SLRESHADE_ABI_MAJOR << 16) | SLRESHADE_ABI_MINOR)
 
 /* Minor at which the v1.1 tail (SLReShadeFrameV11Tail, below) became valid.
@@ -95,6 +95,58 @@ extern "C" {
                                              odd 1/6 codes = avatar pixels.
                                              Also mirrored into the v1.1 tail
                                              as SLRESHADE_CONFIG_AVATAR_TAG.  */
+
+/* ABI 1.3 actor-key protocol. 0x20 is reserved for deferred overlay hiding. */
+#define SLRESHADE_FLAG_ACTOR_KEY 0x10u
+#define SLRESHADE_FLAG_ACTOR_KEY_ARM 0x40u
+#define SLRESHADE_READER_CAP_KEY_BYPASS 0x1u
+#define SLRESHADE_READER_CAP_KEY_GUARD 0x2u
+#define SLRESHADE_READER_CAP_HARD_BYPASS 0x4u
+#define SLRESHADE_GUARD_CLEAN 1u
+#define SLRESHADE_GUARD_CONTAMINATED 2u
+#define SLRESHADE_GUARD_SKIPPED 3u
+#define SLRESHADE_GUARD_FOREIGN_ADDON 4u
+#define SLRESHADE_GUARD_UNSETTLED 5u
+#define SLRESHADE_GUI_OVERLAY 0x1u
+#define SLRESHADE_GUI_OSD 0x2u
+#define SLRESHADE_GUI_TUTORIAL 0x4u
+#define SLRESHADE_GUI_RELOAD_SPLASH 0x8u
+#define SLRESHADE_GUI_RELOADED 0x10u
+/* Additional observable failure causes; the frozen 32-byte report stays intact. */
+#define SLRESHADE_GUI_UNVERIFIED_HOST 0x20u
+#define SLRESHADE_GUI_CHECK_FAILED 0x40u
+#define SLRESHADE_REPORT_READER_NAME "SLReShade_ReportReader"
+#define SLRESHADE_REPORT_GUARD_NAME "SLReShade_ReportKeyGuard"
+typedef struct SLReShadeReaderInfo {
+    uint32_t struct_size, abi_version, caps, reserved0;
+    char build_stamp[64];
+    char commit[16];
+    uint8_t source_sha256[32];
+} SLReShadeReaderInfo;
+typedef struct SLReShadeKeyGuard {
+    uint32_t struct_size, verdict;
+    uint64_t viewer_frame;
+    uint32_t passes, gui_flags, foreign_addons, effect_calls;
+} SLReShadeKeyGuard;
+typedef void (*SLReShade_ReportReader_t)(const SLReShadeReaderInfo*);
+typedef void (*SLReShade_ReportKeyGuard_t)(const SLReShadeKeyGuard*);
+SLRESHADE_INLINE int SLReShade_CopyReader(SLReShadeReaderInfo* dst, const SLReShadeReaderInfo* src)
+{
+    if (!dst || !src || src->struct_size < 16) return 0;
+    memset(dst, 0, sizeof(*dst));
+    memcpy(dst, src, src->struct_size < sizeof(*dst) ? src->struct_size : sizeof(*dst));
+    dst->build_stamp[63] = 0; dst->commit[15] = 0;
+    return 1;
+}
+SLRESHADE_INLINE int SLReShade_CopyGuard(SLReShadeKeyGuard* dst, const SLReShadeKeyGuard* src)
+{
+    if (!dst || !src || src->struct_size < sizeof(*dst)) return 0;
+    memcpy(dst, src, sizeof(*dst)); return 1;
+}
+#if defined(__cplusplus)
+static_assert(sizeof(SLReShadeReaderInfo) == 128, "reader info layout");
+static_assert(sizeof(SLReShadeKeyGuard) == 32, "key guard layout");
+#endif
 
 /* [TronA0] G-buffer flag encoding published in normals .w.
  *   1 (legacy): 0.0 SKIP_ATMOS, 0.34 HAS_ATMOS, 0.67 HAS_PBR, 1.0 HAS_HDRI;

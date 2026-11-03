@@ -5,6 +5,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alactorchromakey.h"
+#include "llreshadebridge.h"
 
 #include "alcinelightrigmanager.h"
 #include "alghoststudio.h"
@@ -23,6 +24,8 @@
 #include "llviewerdisplay.h"
 
 #include <algorithm>
+
+extern bool gSnapshot; // snapshot presents are blocked; preserve the live guard heartbeat
 
 bool ALActorChromaKey::sActive = false;
 ALActorKeySet<LLUUID> ALActorChromaKey::sKeyed;
@@ -45,6 +48,7 @@ void ALActorChromaKey::initialize()
         {
             ALActorChromaKey::sActive = value.asBoolean();
             ++sRevision;
+            LLReShadeBridge::instance().retryKeyGuard();
             if (!sActive)
             {
                 sKeyed = {};
@@ -226,8 +230,9 @@ struct SnapshotRefusalLatch
 
 bool ALActorChromaKey::keyGuardAllows()
 {
-    // WP3 owns the ReShade handshake. No guard bookkeeping on snapshot renders.
-    return true;
+    // Snapshot presents are blocked by WP2: do not consume the live heartbeat.
+    if (gSnapshot) return true;
+    return LLReShadeBridge::instance().keyGuardAllows(gFrameCount);
 }
 
 U32 ALActorChromaKey::mode()

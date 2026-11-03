@@ -2,6 +2,8 @@
 
 include(BuildPackagesInfo)
 include(BuildVersion)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/SLAddonSourceHash.cmake")
+sl_addon_source_hash("${CMAKE_CURRENT_SOURCE_DIR}/../..")
 include(CMakeCopyIfDifferent)
 include(Velopack)
 include(TemplateCheck)

@@ -6,32 +6,19 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 723,
-      "HOOK": 498,
-      "OWNED": 899,
-      "TOOLING": 373
+      "HOOK": 500,
+      "OWNED": 900,
+      "TOOLING": 379
     },
     "dirty_product_inputs": [
-      "indra/llwindow/llwindow.cpp",
-      "indra/llwindow/llwindow.h",
-      "indra/llwindow/llwindowsdl.cpp",
-      "indra/llwindow/llwindowwin32.cpp",
+      "indra/newview/CMakeLists.txt",
       "indra/newview/alactorchromakey.cpp",
-      "indra/newview/alactorchromakey.h",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
-      "indra/newview/llfloatersnapshot.cpp",
-      "indra/newview/llsnapshotlivepreview.cpp",
-      "indra/newview/llviewerdisplay.cpp",
-      "indra/newview/llviewerwindow.cpp",
-      "indra/newview/pipeline.cpp",
-      "indra/newview/pipeline.h",
-      "indra/newview/skins/default/xui/en/floater_snapshot.xml",
-      "indra/newview/skins/default/xui/en/notifications.xml",
-      "scripts/code_tools/actor_key_gl_check.py",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/sensor_post_dispatch_check.py",
-      "scripts/code_tools/sensor_post_gl_check.py"
+      "indra/newview/llreshadebridge.cpp",
+      "indra/newview/llreshadebridge.h",
+      "indra/newview/llreshadebridgeabi.h",
+      "reshade-addon/CMakeLists.txt",
+      "reshade-addon/README.md",
+      "reshade-addon/src/sl_reshade_bridge.cpp"
     ],
     "evidence": {
       "functional_csv_hash_matches": false,
@@ -212,10 +199,10 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "11391b6b9104720f2efc397dea4827a437a5627b",
-    "hook_files": 498,
-    "hunks": 3020,
-    "input_sha256": "cc155db604eef7f667855a77a707178aa430b5d9f3ebc03492e20ef1c2992ab8",
+    "head_source_tree": "ffff3462ac3ba20a99789f6e86c0262fe7dcd803",
+    "hook_files": 500,
+    "hunks": 3043,
+    "input_sha256": "ddba4dcaaacd287b4411ffb124e26b65d345efcbe8df0b79db3983017bb0c902",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2048
   },
@@ -11272,7 +11259,8 @@
         "common-ui",
         "rig",
         "roto-tron",
-        "vcam"
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 1,
@@ -11304,7 +11292,8 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
-        "common-ui"
+        "common-ui",
+        "weather"
       ],
       "git_status": "M",
       "layer": 1,
@@ -11427,12 +11416,14 @@
       "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
-      "feature_evidence": [],
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
       "features": [
-        "unknown"
+        "weather"
       ],
       "git_status": "M",
-      "layer": 99,
+      "layer": 8,
       "path": "indra/llui/llfolderviewitem.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -11460,10 +11451,11 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
-        "vcam"
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
-      "layer": 9,
+      "layer": 8,
       "path": "indra/llui/lllineeditor.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -11508,7 +11500,8 @@
         "clones",
         "rig",
         "roto-tron",
-        "vcam"
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 4,
@@ -11688,10 +11681,11 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
-        "vcam"
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
-      "layer": 9,
+      "layer": 8,
       "path": "indra/llui/llscrolllistctrl.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -11935,12 +11929,14 @@
       "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
-      "feature_evidence": [],
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
       "features": [
-        "unknown"
+        "weather"
       ],
       "git_status": "M",
-      "layer": 99,
+      "layer": 8,
       "path": "indra/llui/lltextbase.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -12054,7 +12050,8 @@
         "clones",
         "rig",
         "roto-tron",
-        "vcam"
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 4,
@@ -12151,13 +12148,43 @@
       "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 8,
+      "path": "indra/llwindow/llwindow.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 8,
+      "path": "indra/llwindow/llwindow.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
       "feature_evidence": [],
       "features": [
         "unknown"
       ],
       "git_status": "M",
       "layer": 99,
-      "path": "indra/llwindow/llwindow.h",
+      "path": "indra/llwindow/llwindowsdl.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -12180,12 +12207,14 @@
       "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
-      "feature_evidence": [],
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
       "features": [
-        "unknown"
+        "weather"
       ],
       "git_status": "M",
-      "layer": 99,
+      "layer": 8,
       "path": "indra/llwindow/llwindowwin32.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -12271,7 +12300,9 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -12279,6 +12310,7 @@
       ],
       "features": [
         "actor-bar",
+        "capture-sidecar",
         "clones",
         "director-shell",
         "looks",
@@ -12294,13 +12326,13 @@
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "clones"
+        "capture-sidecar"
       ],
       "git_status": "A",
-      "layer": 4,
+      "layer": 6,
       "path": "indra/newview/alactorchromakey.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -12320,7 +12352,9 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -20070,6 +20104,19 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "indra/newview/app_settings/shaders/class1/alchemy/actorKeyCompositeF.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "indra/newview/app_settings/shaders/class1/alchemy/actorKeyMatteF.glsl",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -27338,12 +27385,14 @@
       ],
       "class": "HOOK",
       "deleted": false,
-      "feature_evidence": [],
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
       "features": [
-        "unknown"
+        "weather"
       ],
       "git_status": "M",
-      "layer": 99,
+      "layer": 8,
       "path": "indra/newview/llfilepicker.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -27404,7 +27453,8 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
-        "common-ui"
+        "common-ui",
+        "weather"
       ],
       "git_status": "M",
       "layer": 1,
@@ -27988,6 +28038,7 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
+        "capture-sidecar",
         "common-ui"
       ],
       "git_status": "M",
@@ -28519,12 +28570,14 @@
       "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
-      "feature_evidence": [],
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
       "features": [
-        "unknown"
+        "weather"
       ],
       "git_status": "M",
-      "layer": 99,
+      "layer": 8,
       "path": "indra/newview/llinventorymodel.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -29507,7 +29560,9 @@
         "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
-        "camera"
+        "camera",
+        "capture-sidecar",
+        "weather"
       ],
       "git_status": "M",
       "layer": 3,
@@ -29737,7 +29792,8 @@
         "looks",
         "rig",
         "roto-tron",
-        "vcam"
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 2,
@@ -35370,10 +35426,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones",
-        "director-shell"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -39094,6 +39147,32 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/actor_key_draw_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_draw_fixture.h",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/actor_key_gl_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -39107,7 +39186,59 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/actor_key_snapshot_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_studio_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/actor_key_wp01_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_wp2_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_wp2_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
