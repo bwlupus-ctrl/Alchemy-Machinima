@@ -8,65 +8,11 @@
       "GENERATED": 725,
       "HOOK": 503,
       "OWNED": 906,
-      "TOOLING": 400
+      "TOOLING": 401
     },
     "dirty_product_inputs": [
-      "indra/newview/alghoststudio.h",
-      "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
-      "scripts/code_tools/actor_key_draw_check.py",
-      "scripts/code_tools/actor_key_studio_gl_check.py",
-      "scripts/code_tools/clone_looks_gl_check.py",
-      "scripts/code_tools/clone_looks_runtime_check.py",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_page_sources.py"
+      "scripts/code_tools/clone_looks_gl_check.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -249,10 +195,10 @@
       },
       "wiring_rows": 2276
     },
-    "head_source_tree": "e5aaa1f579d7e7b64ca06a979b57b59425d0d438",
+    "head_source_tree": "b0440c4ed3914269b10e48e790aff027f0be236a",
     "hook_files": 503,
     "hunks": 3079,
-    "input_sha256": "54290c7ea0629394f9a5b9b02d42b8e28551329d5822aa3e0831009b738b9ea2",
+    "input_sha256": "38021459638775655a532a504075ef2e16e20547d429fae8163552efe734b929",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -17146,8 +17092,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "crowd"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -23744,6 +23689,7 @@
         "actor-path",
         "clones",
         "crowd",
+        "gaze",
         "looks",
         "roto-tron",
         "sensor",
@@ -36255,6 +36201,7 @@
         "actor-path",
         "clones",
         "director-shell",
+        "gaze",
         "roto-tron",
         "vcam"
       ],
@@ -37030,8 +36977,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -37041,6 +36987,7 @@
       "features": [
         "actor-path",
         "clones",
+        "gaze",
         "vcam"
       ],
       "git_status": "A",
@@ -41242,6 +41189,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/local_light_size_math_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/looks16_mover_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

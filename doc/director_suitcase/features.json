@@ -109625,6 +109625,7 @@
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml"
@@ -109854,6 +109855,7 @@
       "indra/newview/altrajectory.h",
       "indra/newview/alvcambonepov.cpp",
       "indra/newview/alvcambonepovmath.h",
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
       "indra/newview/llcinematiccamera.cpp",
@@ -109875,6 +109877,7 @@
       "indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
       "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml"
     ],
     "settings": [
@@ -109967,7 +109970,9 @@
       "StepAnimPartHead",
       "TemporalDriveAnimation"
     ],
-    "shaders": [],
+    "shaders": [
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl"
+    ],
     "source_dependencies": {
       "indra/llcharacter/alavataranimationtime.h": {
         "includes": [
@@ -111865,6 +111870,11 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/settings.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -116092,6 +116102,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -116122,6 +116137,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -116139,12 +116159,14 @@
       "indra/newview/skins/default/xui/en/menu_viewer.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
       "indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
       "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml"
     ]
   },

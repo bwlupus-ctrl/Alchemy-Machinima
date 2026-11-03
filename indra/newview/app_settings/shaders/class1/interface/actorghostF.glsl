@@ -1741,13 +1741,14 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         float detail = 1.0 - smoothstep(0.008, 0.035, fw);
         vec3 gold = vec3(1.0, 0.79, 0.34), ivory = vec3(1.0, 0.96, 0.83);
         vec3 cyan = vec3(0.04, 0.83, 1.0), magenta = vec3(1.0, 0.025, 0.36);
+        // Production avatar rest basis: +X forward, Y lateral, Z up.
         // Fixed anatomical rest-space band, never a screen-height eye stripe.
         float eyes = exp(-pow((P.z - 0.76) / (0.018 + fwP.z), 2.0))
-                   * (1.0 - smoothstep(0.11, 0.18, abs(P.x)));
+                   * (1.0 - smoothstep(0.11, 0.18, abs(P.y)));
         vec3 restN = cross(oPx, oPy);
         restN /= max(length(restN), 1e-6);
-        float front = smoothstep(0.15, 0.75, -restN.y)
-                    * (1.0 - smoothstep(-0.02, 0.04, P.y));
+        float front = smoothstep(0.15, 0.75, restN.x)
+                    * smoothstep(-0.04, 0.02, P.x);
         if (ghostLook == 85) // Aureole
         {
             float crown = smoothstep(0.20, 0.72, P.z);
@@ -1843,7 +1844,10 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
             vec2 offset = vec2(shift * 0.12 * detail, 0.0);
             // RGB only. The unshifted authored tex.a continues to own coverage.
             vec4 tap = textureGrad(diffuseMap, uv + offset, uvDx, uvDy);
-            float tapCoverage = activeGhostAlpha.x > 0.5 ? tap.a : 1.0;
+            // Straight RGB in a partially covered filtered tap may contain
+            // arbitrary hidden texel colours, including in generated mips.
+            // Only fully covered MASK/BLEND taps can supply displaced RGB.
+            float tapCoverage = activeGhostAlpha.x > 0.5 ? step(1.0, tap.a) : 1.0;
             vec3 delayed = mix(tex.rgb, tap.rgb * activeMaterialFactor.rgb
                              * vary_vertex_color.rgb, tapCoverage);
             rgb = delayed * color.rgb * 0.85 + cyan * (edge*0.22 + drag*0.16);
@@ -1896,7 +1900,11 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
             float frenzy = smoothstep(3.0,5.2,cycle)*(1.0-smoothstep(7.5,7.8,cycle));
             float crash = exp(-pow((cycle-7.85)/0.09,2.0));
             float reset = smoothstep(8.1,8.9,cycle);
-            float row = ghost_hash(vec2(floor(P.z/0.07),floor(t*18.0)+seed));
+            float rowQ = P.z/0.07, rowId = floor(rowQ), rowF = fract(rowQ);
+            float row = ghost_hash(vec2(rowId,floor(t*18.0)+seed));
+            float adjacent = ghost_hash(vec2(rowId+(rowF<0.5?-1.0:1.0),floor(t*18.0)+seed));
+            float rowMix = 0.5*(1.0-smoothstep(0.0,max(fwP.z/0.07,1e-5),min(rowF,1.0-rowF)));
+            row = mix(row,adjacent,rowMix);
             float flow = 0.5+0.5*sin(P.z*12.0-t*3.0);
             rgb = mix(cyan,magenta,frenzy)*(0.16+edge*0.65+flow*0.25+frenzy*row*detail)
                 * (1.0-smoothstep(7.9,8.05,cycle)+reset) + ivory*crash*2.0;
@@ -1910,14 +1918,18 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
                 vec2 centre=vec2(ghost_hash(vec2(fi,seed))*0.5-0.25,
                                  ghost_hash(vec2(fi+7.0,seed))*1.4-0.65);
                 float age=fract(t/(3.1+fi*0.7)+fi*0.31);
-                float r=length(P.xz-centre);
+                float r=length(P.yz-centre);
                 hit += exp(-pow((r-age*0.8)/(0.025+age*0.07+fw),2.0))*pow(1.0-age,2.0);
                 molten += exp(-r*r/0.025)*pow(1.0-age,5.0);
             }
             float metalLod=1.0-smoothstep(0.003,0.016,fw);
             float mirror=0.5+0.5*sin((n.x+n.z*1.7)*8.0+hit*5.0+molten*4.0)*metalLod
                         + 0.10*sin(P.z*4.0-t*0.7)*(1.0-metalLod);
-            rgb = mix(vec3(0.025,0.04,0.06),vec3(0.88,0.95,1.0),mirror)
+            // Tempered petrol/bronze alloy, with its own travelling ripples;
+            // the healed surface retains colour instead of mirror chrome.
+            float temper=0.5+0.5*sin(P.z*9.0+P.y*6.0-t*0.9+hit*2.0);
+            vec3 alloy=mix(vec3(0.18,0.48,0.43),vec3(0.72,0.38,0.17),temper);
+            rgb = mix(vec3(0.025,0.055,0.065),alloy,mirror)
                 + ivory*edge*0.3 + gold*(molten*1.2+hit*0.75)*detail;
         }
         else if (ghostLook == 98) // Torn Husk
@@ -1927,9 +1939,13 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
             float tear=smoothstep(threshold-0.035-fw*4.0,threshold+0.035+fw*4.0,field);
             float border=exp(-pow((field-threshold)/(0.025+fw*4.0),2.0));
             float ribs=pow(0.5+0.5*cos(P.z*58.0),8.0)*detail;
-            float spine=exp(-abs(P.x)*42.0);
+            float spine=exp(-abs(P.y)*42.0);
+            // A broad cold sensor patch avoids a single red machine eye slit.
+            float sensor=exp(-pow((P.z-0.75)/(0.075+fwP.z),2.0))
+                        * (1.0-smoothstep(0.10,0.16,abs(P.y))) * front;
             vec3 chassis=vec3(0.02,0.03,0.045)+vec3(0.35,0.42,0.46)*(ribs+spine)
-                        + vec3(1.0,0.08,0.015)*(eyes*front*2.0+spine*(0.3+0.25*sin(t*3.0-P.z*8.0)));
+                        + cyan*sensor*0.9
+                        + vec3(1.0,0.08,0.015)*spine*(0.3+0.25*sin(t*3.0-P.z*8.0));
             rgb=mix(tex.rgb*color.rgb*0.65,chassis,tear)+vec3(1.0,0.22,0.035)*border*0.45;
         }
         else if (ghostLook == 99) // Hunter Vision
@@ -1938,7 +1954,7 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
             // the rest of the cycle hunts through candidate positions.
             float hunt = 1.0-smoothstep(0.54,0.56,fract(t/3.0));
             vec2 target=vec2(sin(t*2.1)*0.13,0.12+cos(t*1.7)*0.22)*hunt;
-            vec2 b=abs(P.xz-target);
+            vec2 b=abs(P.yz-target);
             float aa=fw+0.004;
             float vertical=(1.0-smoothstep(0.006,0.006+aa,abs(b.x-0.18)))
                            *(1.0-smoothstep(0.23,0.25,b.y))*smoothstep(0.12,0.18,b.y);
@@ -1947,19 +1963,19 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
             float ladder=pow(0.5+0.5*sin(P.z*40.0),12.0)*detail;
             vec2 suv=fragCoord/max(ghostScreenSize,vec2(1.0));
             float raster=exp(-pow((fract(suv.y-t*0.22)-0.5)/0.035,2.0));
-            float ticks=ladder*smoothstep(0.13,0.22,abs(P.x));
+            float ticks=ladder*smoothstep(0.13,0.22,abs(P.y));
             rgb=vec3(0.13,0.006,0.008)*(0.6+lum)+vec3(1.0,0.025,0.008)
                 *(vertical+horizontal+ticks*0.6+raster*0.5+edge*0.20);
         }
         else // 100: Ooze
         {
-            float slosh=sin(P.z*5.0+t*1.4)+cos(P.x*9.0-t*1.1);
-            vec2 q=vec2(P.x*9.0+sin(P.z*3.0+t)*0.45,P.z*3.0+t*0.65);
+            float slosh=sin(P.z*5.0+t*1.4)+cos(P.y*9.0-t*1.1);
+            vec2 q=vec2(P.y*9.0+sin(P.z*3.0+t)*0.45,P.z*3.0+t*0.65);
             vec2 id=floor(q), f=fract(q)-0.5;
             float life=fract(t*0.3+ghost_hash(id+seed));
             float radius=0.05+0.30*sin(life*3.1415927);
             float bubble=exp(-pow((length(f)-radius)/(0.035+fw*9.0),2.0))*(1.0-smoothstep(0.82,1.0,life));
-            float drip=exp(-abs(sin(P.x*26.0+sin(P.z*4.0+t)))*7.0)
+            float drip=exp(-abs(sin(P.y*26.0+sin(P.z*4.0+t)))*7.0)
                       *(0.5+0.5*sin(P.z*14.0+t*3.2));
             float wet=pow(max(dot(n,normalize(vec3(0.3,-0.4,0.85)+v)),0.0),32.0);
             rgb=vec3(0.025,0.17,0.095)*(1.2+slosh*0.35)+vec3(0.18,0.95,0.43)
