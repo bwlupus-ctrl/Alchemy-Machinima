@@ -22,7 +22,7 @@ def main():
         normal=runner.program(tree,skin)
         reference=runner.program(base,skin)
         fill=runner.program(tree,skin+('AL_KEY_FILL',))
-        for look in (1,10,64,68,69,72,75,78,79,80,81,82,83,84):
+        for look in (1,10,64,68,69,72,75,78,79,80,81,82,83,84,*range(85,101)):
             for opacity in (.4,1.):
                 for distort in (0,3):
                     args=dict(opaque=look==1,opacity=opacity,distort=distort,scene=look==64)
@@ -36,8 +36,9 @@ def main():
                             args['keep']=True
                         return runner.render(pr,look,**args)
                     a=render(normal)
-                    b=render(reference)
-                    assert np.array_equal(a,b),(skin,look,opacity,distort,'normal-program regression')
+                    if look < 85:
+                        b=render(reference)
+                        assert np.array_equal(a,b),(skin,look,opacity,distort,'normal-program regression')
                     for colour in (key,np.ones(3,np.float32),np.zeros(3,np.float32)):
                         g.use(fill);g.uf[3](g.loc(fill,b'ghostKeyFill'),*map(float,colour))
                         g.disable(0x0BE2)
@@ -46,7 +47,7 @@ def main():
                         visible=c[...,3]>1e-5
                         assert visible.any(),(skin,look,'empty fixture')
                         assert np.all(c[visible,:3]==colour),(skin,look,'fill RGB')
-        print('PASS WP2 Studio full GLSL:',skin,'normal vs incoming main exact; .4/1 opacity; Clone/Dissolve/Glass/retired IDs/Magma/Datamosh/Matrix 78-84; Distort; key/white/invert fill RGB and footprint alpha',flush=True)
+        print('PASS WP2 Studio full GLSL:',skin,'existing normal vs incoming main exact; .4/1 opacity; existing plus original looks 85-100; Distort; key/white/invert fill RGB and footprint alpha',flush=True)
     assert g.fn('glGetError',g.U)()==0
     # Scratch-FBO snapshot fixture: window and image sizes deliberately differ.
     # This is a production shader/PNG round-trip, not rawSnapshot integration.

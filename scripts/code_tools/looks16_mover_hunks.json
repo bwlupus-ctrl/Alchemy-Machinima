@@ -1,0 +1,16 @@
+{
+  "base": "95b4098e239",
+  "description": "16 original Studio look IDs and whole-snapshot screen dimensions for 90/91/99; no draw/sweep changes.",
+  "files": {
+    "llactormover.cpp": [
+      {
+        "before": "    GHOST_STYLE_OPERATOR = 82,\n    GHOST_STYLE_DIAL_OUT = 83,\n    GHOST_STYLE_SOURCE = 84,\n    GHOST_STYLE_STUDIO_END = 85, // exclusive; only implemented ids are valid\n};\nstatic_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,\n              \"Live Actor FX ids collide with the Studio overlay range\");\n",
+        "after": "    GHOST_STYLE_OPERATOR = 82,\n    GHOST_STYLE_DIAL_OUT = 83,\n    GHOST_STYLE_SOURCE = 84,\n    GHOST_STYLE_AUREOLE = 85,\n    GHOST_STYLE_CHOIR_LIGHT = 86,\n    GHOST_STYLE_FEATHERFALL = 87,\n    GHOST_STYLE_RAPTURE = 88,\n    GHOST_STYLE_EMITTER = 89,\n    GHOST_STYLE_BAD_RECEPTION = 90,\n    GHOST_STYLE_STATIC_VEIL = 91,\n    GHOST_STYLE_LATENCY = 92,\n    GHOST_STYLE_FACETS = 93,\n    GHOST_STYLE_COLD_GAZE = 94,\n    GHOST_STYLE_INTRUSION = 95,\n    GHOST_STYLE_OVERCLOCK = 96,\n    GHOST_STYLE_REFORM = 97,\n    GHOST_STYLE_TORN_HUSK = 98,\n    GHOST_STYLE_HUNTER_VISION = 99,\n    GHOST_STYLE_OOZE = 100,\n    GHOST_STYLE_STUDIO_END = 101, // exclusive; only implemented ids are valid\n};\nstatic_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,\n              \"Live Actor FX ids collide with the Studio overlay range\");\n"
+      },
+      {
+        "before": "    bool glow_only = false;\n    // Matrix monitor looks use the whole snapshot field, including tile subregions.\n    const bool matrix_screen = !gp.mWorldLinear\n        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR);\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n",
+        "after": "    bool glow_only = false;\n    // Matrix monitor looks use the whole snapshot field, including tile subregions.\n    const bool matrix_screen = !gp.mWorldLinear\n        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR\n            || style == GHOST_STYLE_BAD_RECEPTION || style == GHOST_STYLE_STATIC_VEIL\n            || style == GHOST_STYLE_HUNTER_VISION);\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n"
+      }
+    ]
+  }
+}

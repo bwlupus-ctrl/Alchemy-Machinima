@@ -388,7 +388,7 @@ public:
     static bool isOverlayStyle(S32 style)
     {
         return (style >= 0 && style <= 27)
-            || (style >= 64 && style <= 84 && style != 68 && style != 72);
+            || (style >= 64 && style <= 100 && style != 68 && style != 72);
     }
     static S32 resolveOverlayStyle(S32 style)
     {
@@ -606,7 +606,7 @@ public:
         }
 
         // ---- look ----
-        S32         mStyle = 0;         // EGhostStyle: shared 0..27 or Studio-only 64..84
+        S32         mStyle = 0;         // EGhostStyle: shared 0..27 or Studio-only 64..100
         F32         mAlpha = 0.6f;      // base opacity (matches the path-ghost default)
         bool        mUseActorTint = true;   // tint from the source's stable path hue
         F32         mHue = 200.f;       // degrees 0..360, used when !mUseActorTint

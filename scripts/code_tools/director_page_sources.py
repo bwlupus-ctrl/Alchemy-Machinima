@@ -1443,9 +1443,9 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
             seen.add(state[0])
             result.append(state)
     # Size budget for the per-page audit enumeration (every state is still
-    # audited). Matrix adds seven values to seven Clone selectors; Clones now
-    # has 322 states. Give that page a specific 336 budget; retain all others.
-    budget = 336 if key == 'ghosts_tab' else 320
+    # audited). The 16 cinematic choices bring Clones to 350 unique states.
+    # Keep an exact page-specific cap; unrelated pages retain their budget.
+    budget = 350 if key == 'ghosts_tab' else 320
     if len(result) > budget:
         raise RuntimeError(f"{key} has {len(result)} audit states; hard cap is {budget}")
     return result

@@ -4705,63 +4705,10 @@
       "hunks": [
         {
           "base_count": 6,
-          "base_start": 2,
-          "candidate_features_from_subjects": [
-            "capture-sidecar",
-            "director-shell",
-            "gaze"
-          ],
-          "feature_evidence": [],
-          "features": [
-            "unknown"
-          ],
-          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
-          "functions": [
-            "unknown/non-function (declaration, XML, build list or global scope)"
-          ],
-          "git_context": "",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 7,
-          "head_end": 8,
-          "head_start": 2,
-          "id": "indra/newview/CMakeLists.txt@2,7",
-          "patch": " \n include(BuildPackagesInfo)\n include(BuildVersion)\n+sl_addon_source_hash(\"${CMAKE_CURRENT_SOURCE_DIR}/../..\")\n include(CMakeCopyIfDifferent)\n include(Velopack)\n include(TemplateCheck)\n",
-          "purpose": "Edits declarations/data/build wiring; purpose unknown",
-          "range_note": "includes three context lines; count=0 is deletion anchor",
-          "recent_file_subjects": [
-            {
-              "commit": "46be428ddc5",
-              "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
-            },
-            {
-              "commit": "263447e1ced",
-              "subject": "Actor chroma key WP3: ReShade guard (viewer gate, add-on soft bracket, whitelist, source-hash handshake, ABI 1.3)"
-            },
-            {
-              "commit": "3b92963ada4",
-              "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
-            },
-            {
-              "commit": "7a104e1d779",
-              "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            }
-          ],
-          "scope": "unknown-review",
-          "settings_references": [],
-          "slice": 99
-        },
-        {
-          "base_count": 6,
           "base_start": 118,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -4777,13 +4724,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 28,
-          "head_end": 146,
-          "head_start": 119,
-          "id": "indra/newview/CMakeLists.txt@119,28",
+          "head_end": 145,
+          "head_start": 118,
+          "id": "indra/newview/CMakeLists.txt@118,28",
           "patch": "     \"${CMAKE_CURRENT_SOURCE_DIR}/app_settings/alchemy_logo.png\"\n   )\n \n+# [AbsoluteCinema] Fork branding override: the tracked mark in branding/absolute_cinema replaces\n+# the vcpkg alchemy-branding assets copied above (vcpkg itself is left untouched). Runs after the\n+# stock copies so it always wins; missing files simply keep the stock asset.\n+set(AC_BRANDING_DIR \"${CMAKE_CURRENT_SOURCE_DIR}/branding/absolute_cinema\")\n+foreach(_ac_pair\n+    \"ll_icon.ico|res/ll_icon.ico\"\n+    \"ll_icon.BMP|res/ll_icon.BMP\"\n+    \"ll_icon.BMP|res-sdl/ll_icon.BMP\"\n+    \"install_icon.ico|installers/windows/install_icon.ico\"\n+    \"alchemy_logo.png|app_settings/alchemy_logo.png\")\n+  string(REPLACE \"|\" \";\" _ac_parts \"${_ac_pair}\")\n+  list(GET _ac_parts 0 _ac_src)\n+  list(GET _ac_parts 1 _ac_dst)\n+  if (EXISTS \"${AC_BRANDING_DIR}/${_ac_src}\")\n+    execute_process(\n+      COMMAND ${CMAKE_COMMAND} -E copy_if_different\n+        \"${AC_BRANDING_DIR}/${_ac_src}\"\n+        \"${CMAKE_CURRENT_SOURCE_DIR}/${_ac_dst}\"\n+      )\n+  endif ()\n+endforeach()\n+\n if (HAVOK)\n    # When using HAVOK_TPV, the library is precompiled, so no need for this\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -4799,10 +4750,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -4814,8 +4761,7 @@
           "base_start": 148,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -4832,13 +4778,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 183,
-          "head_start": 171,
-          "id": "indra/newview/CMakeLists.txt@171,13",
+          "head_end": 182,
+          "head_start": 170,
+          "id": "indra/newview/CMakeLists.txt@170,13",
           "patch": " \n set(viewer_SOURCE_FILES\n     ao.cpp\n+    bdmergememorybudget.cpp\n+    bdmergemeshpool.cpp\n+    bdmergetexpool.cpp\n+    bdmergeenvlibrary.cpp\n+    bdmergetexspike.cpp\n     aoengine.cpp\n+    animationexplorer.cpp\n     aoset.cpp\n     alassetblocklist.cpp\n     alavataractions.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -4854,10 +4804,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "mixed/perf-review",
@@ -4869,8 +4815,7 @@
           "base_start": 158,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -4894,13 +4839,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 53,
-          "head_end": 239,
-          "head_start": 187,
-          "id": "indra/newview/CMakeLists.txt@187,53",
+          "head_end": 238,
+          "head_start": 186,
+          "id": "indra/newview/CMakeLists.txt@186,53",
           "patch": "     alcheatcodes.cpp\n     alclassifieditem.cpp\n     alderenderlist.cpp\n+    aldirectoranimswitcher.cpp\n+    aldanceball.cpp\n+    aldanceballmodel.cpp\n+    alavatarstaging.cpp\n+    alavatarstagingmodel.cpp\n+    allocalfogmanager.cpp\n+    alpovblink.cpp\n+    aldirectorhotkeys.cpp\n+    aldirectorswitcher.cpp\n+    aldirectorswitchermodel.cpp\n+    aldirectorqol.cpp\n+    aldirectortabmigration.cpp\n+    aldirectortheme.cpp\n     aldroptarget.cpp\n+    alflowgrid.cpp\n+    alkitbar.cpp\n+    alkitbinding.cpp\n+    alkitcard.cpp\n+    alkitmenu.cpp\n+    alkithelp.cpp\n+    alkithistory.cpp\n+    alkitlazypage.cpp\n+    alkitpage.cpp\n+    alkitpopover.cpp\n+    alkitpresets.cpp\n+    alkitrow.cpp\n+    alkitsearch.cpp\n+    alkitshell.cpp\n+    alkitstyle.cpp\n+    alkitswitch.cpp\n+    alpaneldirectorvcam.cpp\n+    alvcammonitorstrip.cpp\n+    alvcampagemodel.cpp\n+    alpanelrigrim.cpp\n+    alrigrimcontroller.cpp\n+    allightrigmap.cpp\n     alfloaterblocked.cpp\n     alfloaterdirectory.cpp\n     alfloaterevent.cpp\n     alfloaterexploresounds.cpp\n     alfloatergenerictext.cpp\n+    alfloaterexposurehub.cpp # [ExposureHub]\n     alfloatergroupprofile.cpp\n     alfloaterlightbox.cpp\n+    alscrollfit.cpp # [ScrollFit]\n     alfloaterparticleeditor.cpp\n+    alfloaterphototools.cpp\n     alfloaterprofilelegacy.cpp\n     alfloaterprogressview.cpp\n     alfloaterregiontracker.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -4916,10 +4865,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -4931,8 +4876,7 @@
           "base_start": 175,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -4949,13 +4893,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 252,
-          "head_start": 242,
-          "id": "indra/newview/CMakeLists.txt@242,11",
+          "head_end": 251,
+          "head_start": 241,
+          "id": "indra/newview/CMakeLists.txt@241,11",
           "patch": "     alfloatertransactionlog.cpp\n     alsceneexplorerpredicate.cpp\n     alfloaterwebprofile.cpp\n+    alflycamclassic.cpp\n+    alflycamweighted.cpp\n+    alframelimiter.cpp\n+    alsteppedanim.cpp\n+    alsteppedanimruntime.cpp\n     allegacynotificationwellwindow.cpp\n     alobjectproperties.cpp\n     alpanelaomini.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -4971,10 +4919,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "mixed/perf-review",
@@ -4986,8 +4930,7 @@
           "base_start": 202,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -5001,13 +4944,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 24,
-          "head_end": 297,
-          "head_start": 274,
-          "id": "indra/newview/CMakeLists.txt@274,24",
+          "head_end": 296,
+          "head_start": 273,
+          "id": "indra/newview/CMakeLists.txt@273,24",
           "patch": "     alsceneexplorermodel.cpp\n     alstreaminfo.cpp\n     altoolalign.cpp\n+    aluiperfselftest.cpp\n     alunzip.cpp\n     alviewermenu.cpp\n     fsfloaterposer.cpp\n+    fsfloaterposestand.cpp\n+    fsfloaterradar.cpp\n     fsjointpose.cpp\n     fsmaniprotatejoint.cpp\n     fsmaniptranslatejoint.cpp\n+    fspanelradar.cpp\n+    fspose.cpp\n     fsposeranimator.cpp\n     fsposestate.cpp\n     fsposingmotion.cpp\n+    fsradar.cpp\n+    fsradarentry.cpp\n+    fsradarlistctrl.cpp\n+    fsradarmenu.cpp\n     gltf/asset.cpp\n     gltf/accessor.cpp\n     gltf/primitive.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5023,10 +4970,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -5038,8 +4981,7 @@
           "base_start": 253,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5073,13 +5015,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 117,
-          "head_end": 450,
-          "head_start": 334,
-          "id": "indra/newview/CMakeLists.txt@334,117",
+          "head_end": 449,
+          "head_start": 333,
+          "id": "indra/newview/CMakeLists.txt@333,117",
           "patch": "     llbrowsernotification.cpp\n     llbuycurrencyhtml.cpp\n     llcallingcard.cpp\n+    llcameraoperator.cpp\n+    llactormaskeligibility.cpp # [ActorMask]\n+    alactorchromakey.cpp # [ActorKey] WP0/WP1\n+    alactormaskdiagnostics.cpp # [ActorMask] WP7\n+    llactormover.cpp\n+    alghostattachmentenumerator.cpp\n+    alghostmaterialresolver.cpp\n+    alghostspawnengine.cpp\n+    llclonefidelityaudit.cpp\n+    llghostdeferreddiagnostics.cpp\n+    alformationsolver.cpp\n+    alcinelightrig.cpp\n+    alcinelightrigmanager.cpp\n+    alcinehaze.cpp\n+    alcinerigrim.cpp\n+    allenslooks.cpp\n+    allocallightsize.cpp\n+    alenvintensity.cpp\n+    alenvonlydiagnostics.cpp\n+    alenvintensitypresets.cpp\n+    alsettingsundohistory.cpp\n+    alsettingsundohistorymodel.cpp\n+    alfloaterenvintensitypresets.cpp\n+    alrotoink.cpp\n+    altron.cpp\n+    alcinelightrigmodel.cpp\n+    alavatarlightresponse.cpp # [AvatarLightResponse]\n+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]\n+    alfloateravatarlightresponse.cpp # [AvatarLightResponse]\n+    alavatarkey.cpp # [ClientHeight]\n+    alclientheight.cpp # [ClientHeight]\n+    aldiopterpresetbank.cpp\n+    aldiopterrelevance.cpp\n+    aldirectoractorchoice.cpp\n+    aldirectorcastui.cpp\n+    alfloatercinelightcues.cpp\n+    alfloaterultimatediopter.cpp\n+    alcinecammodes.cpp\n+    alvcambonepov.cpp\n+    alweathermodel.cpp\n+    slweather.cpp\n+    alweatherbridge.cpp\n+    alweatherresources.cpp\n+    alweatherparticles.cpp\n+    alweathershelter.cpp\n+    alweatherclock.cpp\n+    alweatheruimodel.cpp\n+    alsensormodel.cpp\n+    alghostgroupmodel.cpp\n+    alghostinteractionstate.cpp\n+    alghostplacementresolver.cpp\n+    alghostplacementadapter.cpp\n+    alghostmanipproxy.cpp\n+    alcolorchart.cpp\n+    alghostnameplates.cpp\n+    alghostautoanimmodel.cpp # [AutoAnimate]\n+    alreflectanim.cpp\n+    alavataranimspeed.cpp\n+    alghoststudio.cpp\n+    alghostanimassetindex.cpp\n+    alworldoverlayviz.cpp\n+    alavatarsubjectpicker.cpp\n+    alprojectortracker.cpp\n+    alobjectpathmover.cpp\n+    alpanelghoststudio.cpp\n+    alpanelpropmover.cpp\n+    altoolcrowdplace.cpp\n+    altoolfocuspick.cpp\n+    altoolghostedit.cpp\n+    altoolghostplace.cpp\n+    altoolpathedit.cpp\n+    llcinematiccamera.cpp\n+    lldirectorcast.cpp\n+    llfloateractormover.cpp\n+    llfloaterdirector.cpp\n+    alfloateractorgaze.cpp\n+    alfloatergazecues.cpp\n+    llfloaterprismmanager.cpp\n+    alfloatertemporalcapture.cpp\n+    alpaneltemporalcapture.cpp\n+    llpresentationtime.cpp\n+    alpanelactormover.cpp\n+    alpanelsteppedanim.cpp\n+    alpanelanimpreview.cpp\n+    alpanelatmosphericvolumes.cpp\n+    alpanelavatarlightresponse.cpp\n+    alpaneldof.cpp\n+    alpanelexposurehub.cpp\n+    alpanelexposurepage.cpp\n+    alpanelactorkey.cpp\n+    alpanelgazecues.cpp\n+    alpanellenslooks.cpp\n+    alpanellightcues.cpp\n+    alpanelpracticals.cpp\n+    alpanelprojectorshafts.cpp\n+    alpanelcinelightrig.cpp\n+    alprobedirty.cpp # [ProbeOnDemand]\n+    alprojectorshaftlooks.cpp\n+    alprojectorshaftpresets.cpp\n+    alpanelcinecamparams.cpp\n+    alpanellensgaze.cpp\n+    alpaneldanceball.cpp\n+    alpaneldirectoranimswitcher.cpp\n+    alpaneldirectorswitcher.cpp\n+    alpanelweathersettings.cpp\n+    alpanelflycamorbit.cpp\n+    alpanelflycamrecorder.cpp\n+    alpanelpatheditor.cpp\n+    llflycamdrone.cpp\n+    llflycamrecorder.cpp\n+    llpathcamera.cpp\n     llcefaccelinterop.cpp\n     llcefsurfacereceiver.cpp\n     llchannelmanager.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5095,10 +5041,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5110,8 +5052,7 @@
           "base_start": 334,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -5125,13 +5066,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 532,
-          "head_start": 526,
-          "id": "indra/newview/CMakeLists.txt@526,7",
+          "head_end": 531,
+          "head_start": 525,
+          "id": "indra/newview/CMakeLists.txt@525,7",
           "patch": "     llfloateravatartextures.cpp\n     llfloaterbanduration.cpp\n     llfloaterbeacons.cpp\n+    llfloaterbigpreview.cpp\n     llfloaterbuildoptions.cpp\n     llfloaterbulkpermission.cpp\n     llfloaterbulkupload.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5147,10 +5092,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -5162,8 +5103,7 @@
           "base_start": 362,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5179,13 +5119,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 561,
-          "head_start": 555,
-          "id": "indra/newview/CMakeLists.txt@555,7",
+          "head_end": 560,
+          "head_start": 554,
+          "id": "indra/newview/CMakeLists.txt@554,7",
           "patch": "     llfloatereditextdaycycle.cpp\n     llfloateremojipicker.cpp\n     llfloaterenvironmentadjust.cpp\n+    llfloaterenvironmentsettings.cpp\n     llfloaterevent.cpp\n     llfloaterexperiencepicker.cpp\n     llfloaterexperienceprofile.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5201,10 +5145,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5216,8 +5156,7 @@
           "base_start": 459,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5233,13 +5172,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 659,
-          "head_start": 653,
-          "id": "indra/newview/CMakeLists.txt@653,7",
+          "head_end": 658,
+          "head_start": 652,
+          "id": "indra/newview/CMakeLists.txt@652,7",
           "patch": "     llfloateruipreview.cpp\n     llfloaterurlentry.cpp\n     llfloatervoicevolume.cpp\n+    llfloaterwateradjust.cpp\n     llfloaterwebcontent.cpp\n     llfloaterwhitelistentry.cpp\n     llfloaterwindowsize.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5255,10 +5198,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5270,8 +5209,7 @@
           "base_start": 469,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5287,13 +5225,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 670,
-          "head_start": 664,
-          "id": "indra/newview/CMakeLists.txt@664,7",
+          "head_end": 669,
+          "head_start": 663,
+          "id": "indra/newview/CMakeLists.txt@663,7",
           "patch": "     llflyoutcombobtn.cpp\n     llgesturelistener.cpp\n     llgesturemgr.cpp\n+    llghostavatar.cpp\n     llgiveinventory.cpp\n     llglsandbox.cpp\n     llgltffolderitem.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5309,10 +5251,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5324,8 +5262,7 @@
           "base_start": 624,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -5339,13 +5276,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 827,
-          "head_start": 820,
-          "id": "indra/newview/CMakeLists.txt@820,8",
+          "head_end": 826,
+          "head_start": 819,
+          "id": "indra/newview/CMakeLists.txt@819,8",
           "patch": "     llpanellandmedia.cpp\n     llpanellogin.cpp\n     llpanelloginlistener.cpp\n+    fsinventorycustomtabs.cpp\n+    fsinventorycustomtabmodel.cpp\n     llpanelmaininventory.cpp\n     llpanelmarketplaceinbox.cpp\n     llpanelmarketplaceinboxinventory.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5361,10 +5302,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -5376,8 +5313,7 @@
           "base_start": 698,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5393,13 +5329,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 906,
-          "head_start": 896,
-          "id": "indra/newview/CMakeLists.txt@896,11",
+          "head_end": 905,
+          "head_start": 895,
+          "id": "indra/newview/CMakeLists.txt@895,11",
           "patch": "     llpreviewscript.cpp\n     llpreviewsound.cpp\n     llpreviewtexture.cpp\n+    llprismgate.cpp\n+    llprismlens.cpp\n+    alvcammediafileio.cpp\n+    alvcammediafilepolicy.cpp\n+    llprismpreview.cpp\n     llproductinforequest.cpp\n     llprogressview.cpp\n     llrecentpeople.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5415,10 +5355,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5430,8 +5366,7 @@
           "base_start": 707,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5447,13 +5382,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 916,
-          "head_start": 910,
-          "id": "indra/newview/CMakeLists.txt@910,7",
+          "head_end": 915,
+          "head_start": 909,
+          "id": "indra/newview/CMakeLists.txt@909,7",
           "patch": "     llregioninfomodel.cpp\n     llregionposition.cpp\n     llremoteparcelrequest.cpp\n+    llreshadebridge.cpp\n     llsaveoutfitcombobtn.cpp\n     llscenemonitor.cpp\n     llsceneview.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5469,10 +5408,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5484,8 +5419,7 @@
           "base_start": 899,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5501,13 +5435,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1109,
-          "head_start": 1103,
-          "id": "indra/newview/CMakeLists.txt@1103,7",
+          "head_end": 1108,
+          "head_start": 1102,
+          "id": "indra/newview/CMakeLists.txt@1102,7",
           "patch": "     llxmlrpclistener.cpp\n     llxmlrpctransaction.cpp\n     lutcube.cpp\n+    allpm.cpp\n     noise.cpp\n     pipeline.cpp\n     rlvactions.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5523,10 +5461,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5538,8 +5472,7 @@
           "base_start": 917,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5556,13 +5489,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 1134,
-          "head_start": 1122,
-          "id": "indra/newview/CMakeLists.txt@1122,13",
+          "head_end": 1133,
+          "head_start": 1121,
+          "id": "indra/newview/CMakeLists.txt@1121,13",
           "patch": " set(viewer_HEADER_FILES\n     ViewerInstall.cmake\n     ao.h\n+    bdmergememorybudget.h\n+    bdmergemeshpool.h\n+    bdmergetexpool.h\n+    bdmergeenvlibrary.h\n+    bdmergetexspike.h\n     aoengine.h\n+    animationexplorer.h\n     aoset.h\n     alassetblocklist.h\n     alavataractions.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5578,10 +5515,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "mixed/perf-review",
@@ -5593,8 +5526,7 @@
           "base_start": 926,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5618,13 +5550,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 56,
-          "head_end": 1192,
-          "head_start": 1137,
-          "id": "indra/newview/CMakeLists.txt@1137,56",
+          "head_end": 1191,
+          "head_start": 1136,
+          "id": "indra/newview/CMakeLists.txt@1136,56",
           "patch": "     alchatcommand.h\n     alclassifieditem.h\n     alderenderlist.h\n+    aldirectoranimswitcher.h\n+    aldanceball.h\n+    aldanceballmodel.h\n+    alavatarstaging.h\n+    alavatarstagingmodel.h\n+    allocalfogmanager.h\n+    alpovblink.h\n+    alpovblinkmath.h\n+    aldirectorhotkeys.h\n+    aldirectorswitcher.h\n+    aldirectorswitchermodel.h\n+    aldirectorqol.h\n+    aldirectortabmigration.h\n+    aldirectortheme.h\n     aldroptarget.h\n+    alflowgrid.h\n+    alkitbar.h\n+    alkitbinding.h\n+    alkitcard.h\n+    alkitmenu.h\n+    alkithelp.h\n+    alkithistory.h\n+    alundosequence.h\n+    alkitlazypage.h\n+    alkitmath.h\n+    alkitpage.h\n+    alkitpopover.h\n+    alkitpresets.h\n+    alkitqol.h\n+    alkitrow.h\n+    alkitsearch.h\n+    alkitshell.h\n+    alkitstyle.h\n+    alkitswitch.h\n+    alpaneldirectorvcam.h\n+    alvcammonitorstrip.h\n+    alvcampagemodel.h\n+    alpanelrigrim.h\n+    alrigrimcontroller.h\n+    allightrigmap.h\n     alfloaterblocked.h\n     alfloaterdirectory.h\n     alfloaterevent.h\n     alfloaterexploresounds.h\n     alfloatergenerictext.h\n+    alfloaterexposurehub.h # [ExposureHub]\n     alfloatergroupprofile.h\n     alfloaterlightbox.h\n     alfloaterparticleeditor.h\n+    alfloaterphototools.h\n     alfloaterprofilelegacy.h\n     alfloaterprogressview.h\n     alfloaterregiontracker.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5640,10 +5576,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5655,8 +5587,7 @@
           "base_start": 943,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5673,13 +5604,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 1207,
-          "head_start": 1195,
-          "id": "indra/newview/CMakeLists.txt@1195,13",
+          "head_end": 1206,
+          "head_start": 1194,
+          "id": "indra/newview/CMakeLists.txt@1194,13",
           "patch": "     alfloatertransactionlog.h\n     alsceneexplorerpredicate.h\n     alfloaterwebprofile.h\n+    alflycamclassic.h\n+    alflycamweighted.h\n+    alframelimiter.h\n+    alsteppedanim.h\n+    alsteppedanimruntime.h\n+    alpanelsteppedanim.h\n+    alcameradispatch.h\n     allegacynotificationwellwindow.h\n     alobjectproperties.h\n     alpanelaomini.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5695,10 +5630,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "mixed/perf-review",
@@ -5710,8 +5641,7 @@
           "base_start": 973,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -5725,13 +5655,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 20,
-          "head_end": 1251,
-          "head_start": 1232,
-          "id": "indra/newview/CMakeLists.txt@1232,20",
+          "head_end": 1250,
+          "head_start": 1231,
+          "id": "indra/newview/CMakeLists.txt@1231,20",
           "patch": "     alunzip.h\n     alviewermenu.h\n     fsfloaterposer.h\n+    fsfloaterposestand.h\n+    fsfloaterradar.h\n     fsjointpose.h\n     fsmaniprotatejoint.h\n     fsmaniptranslatejoint.h\n+    fspanelradar.h\n+    fspose.h\n     fsposeranimator.h\n     fsposestate.h\n     fsposingmotion.h\n+    fsradar.h\n+    fsradarentry.h\n+    fsradarlistctrl.h\n+    fsradarmenu.h\n     groupchatlistener.h\n     gltf/asset.h\n     gltf/accessor.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5747,10 +5681,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -5762,8 +5692,7 @@
           "base_start": 1022,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5797,13 +5726,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 167,
-          "head_end": 1455,
-          "head_start": 1289,
-          "id": "indra/newview/CMakeLists.txt@1289,167",
+          "head_end": 1454,
+          "head_start": 1288,
+          "id": "indra/newview/CMakeLists.txt@1288,167",
           "patch": "     llbox.h\n     llbuycurrencyhtml.h\n     llcallingcard.h\n+    llcameraoperator.h\n+    llactormaskeligibility.h # [ActorMask]\n+    alactorkeyui.h\n+    alactorchromakey.h\n+    alactorkeyset.h\n+    alcoverpolicy.h\n+    alactormaskdiagnostics.h # [ActorMask] WP7\n+    llactormover.h\n+    alghostattachmentenumerator.h\n+    alghostmaterialresolver.h\n+    alghostspawnengine.h\n+    llclonefidelityaudit.h\n+    llghostcoverage.h\n+    llghostdeferreddiagnostics.h\n+    alformationsolver.h\n+    alcinelightrig.h\n+    alcinelightrigmanager.h\n+    alcinelightrigmodel.h\n+    alcineliveproberefresh.h # [LiveProbeRefresh]\n+    alavatarlightresponse.h # [AvatarLightResponse]\n+    alavatarlightresponsemodel.h # [AvatarLightResponse]\n+    alfloateravatarlightresponse.h # [AvatarLightResponse]\n+    alavatarkey.h # [ClientHeight]\n+    alclientheight.h # [ClientHeight]\n+    alclientheightmodel.h # [ClientHeight]\n+    aldiopterpresetbank.h\n+    aldiopterrelevance.h\n+    alfloatercinelightcues.h\n+    alfloaterultimatediopter.h\n+    alvcambonepov.h\n+    alcinecamobjectlock.h\n+    alcinecamobjectlockui.h\n+    alcinecampresentation.h\n+    alvcambonepovmath.h\n+    alvcamobjectpovsettings.h\n+    alvcamautovol.h\n+    alviewfinder.h\n+    alweathermodel.h\n+    slweather.h\n+    alweatherbridge.h\n+    alweatherresources.h\n+    alweatherparticles.h\n+    alweathercovercache.h\n+    alweathershelter.h\n+    alweatherclock.h\n+    alweatheruimodel.h\n+    alsensormodel.h\n+    alsensorsettings.h\n+    alghostgroupmodel.h\n+    alghostrotation.h\n+    alghostinteractionstate.h\n+    alghostplacementresolver.h\n+    alghostplacementadapter.h\n+    alghostmanipproxy.h\n+    alghostbounds.h\n+    alcolorchart.h\n+    alcolorchartdata.h\n+    alghostnameplates.h\n+    alghostautoanimmodel.h # [AutoAnimate]\n+    alareashadowmath.h\n+    alrelightmath.h\n+    alrelighttakerecord.h\n+    alrelighttakewriter.h\n+    alvramrecovery.h\n+    alavatarlifepolicy.h\n+    alghostanimnames.h\n+    alprobereach.h\n+    alshadowslotmath.h\n+    alhidecursor.h\n+    alshadowdepthmath.h\n+    alriggroupsubject.h\n+    alghostanimmirrormath.h\n+    alreflectmath.h\n+    alreflectanim.h\n+    alavataranimspeed.h\n+    alghoststudio.h\n+    alghostanimassetindex.h\n+    alworldoverlayviz.h\n+    alscrollfocus.h\n+    alscrollfit.h # [ScrollFit]\n+    alavatarsubjectpicker.h\n+    alprojectortracker.h\n+    alprojectortrackmath.h\n+    alobjectpathmover.h\n+    alpanelghoststudio.h\n+    aluiperfselftest.h\n+    aluirefresh.h # [GhostPanelPerf]\n+    alpanelpropmover.h\n+    altoolcrowdplace.h\n+    altoolfocuspick.h\n+    altoolghostedit.h\n+    altoolghostplace.h\n+    altoolpathedit.h\n+    llcinematiccamera.h\n+    lldirectorcast.h\n+    aldirectoractorchoice.h\n+    aldirectorcastui.h\n+    llfloateractormover.h\n+    llfloaterdirector.h\n+    alfloateractorgaze.h\n+    alfloatergazecues.h\n+    llfloaterprismmanager.h\n+    alfloatertemporalcapture.h\n+    alpaneltemporalcapture.h\n+    llpresentationtime.h\n+    alworldwinddown.h\n+    alworldwinddowncontrol.h\n+    lltemporalframecontext.h\n+    alpanelactormover.h\n+    alpanelanimpreview.h\n+    alpanelatmosphericvolumes.h\n+    alpanelavatarlightresponse.h\n+    alpaneldof.h\n+    alpanelexposurehub.h\n+    alpanelexposurepage.h\n+    alpanelactorkey.h\n+    alpanelgazecues.h\n+    alpanellenslooks.h\n+    alpanellightcues.h\n+    alpanelpracticals.h\n+    alpanelprojectorshafts.h\n+    alcinehaze.h\n+    alcinerigrim.h\n+    allenslooks.h\n+    allocallightsize.h\n+    alenvintensity.h\n+    alenvonlydiagnostics.h\n+    alenvintensitypresets.h\n+    alsettingsundohistory.h\n+    alsettingsundohistorymodel.h\n+    alfloaterenvintensitypresets.h\n+    alrotoink.h\n+    altron.h\n+    alpanelcinelightrig.h\n+    alprobedirty.h # [ProbeOnDemand]\n+    alprobeschedule.h # [ProbeOnDemand]\n+    alprojectorshaftlooks.h\n+    alprojectorshaftpresets.h\n+    alpanelcinecamparams.h\n+    algazemath.h\n+    alghostmotionmath.h # [GhostMotionModes]\n+    alpathgeometry.h\n+    altrajectory.h\n+    algazerecruit.h\n+    algazeblink.h\n+    algazenoise.h\n+    algazepolicy.h\n+    algazehot.h\n+    algazehotslots.h\n+    algazemotor.h\n+    alpanellensgaze.h\n+    alpaneldanceball.h\n+    alpaneldirectoranimswitcher.h\n+    alpaneldirectorswitcher.h\n+    alpanelweathersettings.h\n+    alpanelflycamorbit.h\n+    alpanelflycamrecorder.h\n+    alpanelpatheditor.h\n+    llflycamdrone.h\n+    llflycamrecorder.h\n+    llpathcamera.h\n     llcapabilityprovider.h\n     llcefaccelinterop.h\n     llcefsurfacereceiver.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5819,10 +5752,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5834,8 +5763,7 @@
           "base_start": 1105,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -5849,13 +5777,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1539,
-          "head_start": 1533,
-          "id": "indra/newview/CMakeLists.txt@1533,7",
+          "head_end": 1538,
+          "head_start": 1532,
+          "id": "indra/newview/CMakeLists.txt@1532,7",
           "patch": "     llfloateravatartextures.h\n     llfloaterbanduration.h\n     llfloaterbeacons.h\n+    llfloaterbigpreview.h\n     llfloaterbuildoptions.h\n     llfloaterbulkpermission.h\n     llfloaterbulkupload.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5871,10 +5803,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -5886,8 +5814,7 @@
           "base_start": 1133,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5903,13 +5830,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1568,
-          "head_start": 1562,
-          "id": "indra/newview/CMakeLists.txt@1562,7",
+          "head_end": 1567,
+          "head_start": 1561,
+          "id": "indra/newview/CMakeLists.txt@1561,7",
           "patch": "     llfloatereditextdaycycle.h\n     llfloateremojipicker.h\n     llfloaterenvironmentadjust.h\n+    llfloaterenvironmentsettings.h\n     llfloaterevent.h\n     llfloaterexperiencepicker.h\n     llfloaterexperienceprofile.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5925,10 +5856,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5940,8 +5867,7 @@
           "base_start": 1234,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5957,13 +5883,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1670,
-          "head_start": 1664,
-          "id": "indra/newview/CMakeLists.txt@1664,7",
+          "head_end": 1669,
+          "head_start": 1663,
+          "id": "indra/newview/CMakeLists.txt@1663,7",
           "patch": "     llfloateruipreview.h\n     llfloaterurlentry.h\n     llfloatervoicevolume.h\n+    llfloaterwateradjust.h\n     llfloaterwebcontent.h\n     llfloaterwhitelistentry.h\n     llfloaterwindowsize.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -5979,10 +5909,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -5994,8 +5920,7 @@
           "base_start": 1244,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6011,13 +5936,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1681,
-          "head_start": 1675,
-          "id": "indra/newview/CMakeLists.txt@1675,7",
+          "head_end": 1680,
+          "head_start": 1674,
+          "id": "indra/newview/CMakeLists.txt@1674,7",
           "patch": "     llflyoutcombobtn.h\n     llgesturelistener.h\n     llgesturemgr.h\n+    llghostavatar.h\n     llgiveinventory.h\n     llgltffolderitem.h\n     llgltffoldermodel.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6033,10 +5962,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -6048,8 +5973,7 @@
           "base_start": 1388,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -6063,13 +5987,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1827,
-          "head_start": 1820,
-          "id": "indra/newview/CMakeLists.txt@1820,8",
+          "head_end": 1826,
+          "head_start": 1819,
+          "id": "indra/newview/CMakeLists.txt@1819,8",
           "patch": "     llpanellandmedia.h\n     llpanellogin.h\n     llpanelloginlistener.h\n+    fsinventorycustomtabs.h\n+    fsinventorycustomtabmodel.h\n     llpanelmaininventory.h\n     llpanelmarketplaceinbox.h\n     llpanelmarketplaceinboxinventory.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6085,10 +6013,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -6100,8 +6024,7 @@
           "base_start": 1457,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6117,13 +6040,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 1903,
-          "head_start": 1891,
-          "id": "indra/newview/CMakeLists.txt@1891,13",
+          "head_end": 1902,
+          "head_start": 1890,
+          "id": "indra/newview/CMakeLists.txt@1890,13",
           "patch": "     llpreviewscript.h\n     llpreviewsound.h\n     llpreviewtexture.h\n+    llprismgate.h\n+    llprismlens.h\n+    alvcammediafileio.h\n+    alvcammediafilecontainer.h\n+    alvcammediafilepolicy.h\n+    alvcammediafileposix.h\n+    llprismpreview.h\n     llproductinforequest.h\n     llprogressview.h\n     llrecentpeople.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6139,10 +6066,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -6154,8 +6077,7 @@
           "base_start": 1466,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6171,13 +6093,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1914,
-          "head_start": 1907,
-          "id": "indra/newview/CMakeLists.txt@1907,8",
+          "head_end": 1913,
+          "head_start": 1906,
+          "id": "indra/newview/CMakeLists.txt@1906,8",
           "patch": "     llregioninfomodel.h\n     llregionposition.h\n     llremoteparcelrequest.h\n+    llreshadebridge.h\n+    llreshadebridgeabi.h\n     llresourcedata.h\n     llrootview.h\n     llsaveoutfitcombobtn.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6193,10 +6119,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -6208,8 +6130,7 @@
           "base_start": 1663,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6225,13 +6146,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2112,
-          "head_start": 2106,
-          "id": "indra/newview/CMakeLists.txt@2106,7",
+          "head_end": 2111,
+          "head_start": 2105,
+          "id": "indra/newview/CMakeLists.txt@2105,7",
           "patch": "     llxmlrpclistener.h\n     llxmlrpctransaction.h\n     lutcube.h\n+    allpm.h\n     noise.h\n     pipeline.h\n     rlvactions.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6247,10 +6172,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -6262,8 +6183,7 @@
           "base_start": 1902,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -6277,13 +6197,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2352,
-          "head_start": 2346,
-          "id": "indra/newview/CMakeLists.txt@2346,7",
+          "head_end": 2351,
+          "head_start": 2345,
+          "id": "indra/newview/CMakeLists.txt@2345,7",
           "patch": " list(APPEND viewer_SOURCE_FILES ${viewer_CHARACTER_FILES})\n \n set(viewer_MISC_FILES\n+    stage_runtime_assets.cmake\n     viewer_manifest.py\n     )\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6299,10 +6223,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -6314,8 +6234,7 @@
           "base_start": 2181,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -6331,13 +6250,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 38,
-          "head_end": 2663,
-          "head_start": 2626,
-          "id": "indra/newview/CMakeLists.txt@2626,38",
+          "head_end": 2662,
+          "head_start": 2625,
+          "id": "indra/newview/CMakeLists.txt@2625,38",
           "patch": "   set(MANIFEST_PACKAGE_OUT_FILE ${product}.tar.xz)\n endif()\n \n+# Runtime settings and XUI are consumed from the staged tree, but the viewer\n+# manifest POST_BUILD command does not run when only an asset changes. Keep a\n+# lightweight, always-run dependency for Windows developer builds so direct\n+# viewer-target builds refresh those files without forcing a C++ relink.\n+set(RUNTIME_ASSET_PACKAGE_DEPENDENCIES)\n+if(WINDOWS)\n+  set(RUNTIME_ASSET_CONFIG\n+    \"$<IF:$<BOOL:${LL_GENERATOR_IS_MULTI_CONFIG}>,$<CONFIG>,default>\")\n+  set(RUNTIME_ASSET_INDEX\n+    \"${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.txt\")\n+  set(RUNTIME_ASSET_STAMP\n+    \"${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.sha256\")\n+  add_custom_target(stage_viewer_runtime_assets\n+    COMMAND ${CMAKE_COMMAND}\n+      \"-DRUNTIME_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}\"\n+      \"-DRUNTIME_DEST_DIR=${MANIFEST_DEST_DIR}\"\n+      \"-DRUNTIME_INDEX_FILE=${RUNTIME_ASSET_INDEX}\"\n+      \"-DRUNTIME_STAMP_FILE=${RUNTIME_ASSET_STAMP}\"\n+      -P ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake\n+    # The index is intentionally not a BYPRODUCT: preserving it across `clean`\n+    # retains deletion provenance for files staged before the clean. The stamp\n+    # is disposable and exists only to retrigger package/local-dist outputs.\n+    BYPRODUCTS ${RUNTIME_ASSET_STAMP}\n+    COMMENT \"Staging viewer runtime settings, shaders, dust, and XUI\"\n+    VERBATIM\n+    )\n+  add_dependencies(${VIEWER_BINARY_NAME} stage_viewer_runtime_assets)\n+  list(APPEND RUNTIME_ASSET_PACKAGE_DEPENDENCIES\n+    ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake\n+    ${RUNTIME_ASSET_STAMP})\n+endif()\n+\n # Viewer Manifest Copy\n add_custom_command(\n   TARGET ${VIEWER_BINARY_NAME} POST_BUILD\n",
           "purpose": "Edits LL_GENERATOR_IS_MULTI_CONFIG",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6353,10 +6276,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -6368,8 +6287,7 @@
           "base_start": 2244,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -6383,13 +6301,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2727,
-          "head_start": 2721,
-          "id": "indra/newview/CMakeLists.txt@2721,7",
+          "head_end": 2726,
+          "head_start": 2720,
+          "id": "indra/newview/CMakeLists.txt@2720,7",
           "patch": "       DEPENDS\n       ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py\n       ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt\n+      ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}\n       ${VIEWER_BINARY_NAME}\n       COMMENT \"Performing viewer_manifest local dist copy\"\n       )\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6405,10 +6327,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -6420,8 +6338,7 @@
           "base_start": 2283,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -6435,13 +6352,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2767,
-          "head_start": 2761,
-          "id": "indra/newview/CMakeLists.txt@2761,7",
+          "head_end": 2766,
+          "head_start": 2760,
+          "id": "indra/newview/CMakeLists.txt@2760,7",
           "patch": "       DEPENDS\n         ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py\n         ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt\n+        ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}\n         ${VIEWER_BINARY_NAME} # Prevents two copies of manifest from running at the same time\n     COMMENT \"Performing viewer_manifest package\"\n     )\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6457,10 +6378,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "unknown-review",
@@ -6472,8 +6389,7 @@
           "base_start": 2371,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6501,13 +6417,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 32,
-          "head_end": 2881,
-          "head_start": 2850,
-          "id": "indra/newview/CMakeLists.txt@2850,32",
+          "head_end": 2880,
+          "head_start": 2849,
+          "id": "indra/newview/CMakeLists.txt@2849,32",
           "patch": "   # This creates a separate test project per file listed.\n \n   SET(viewer_TEST_SOURCE_FILES\n+    alactorkeyset.cpp # [ActorKey] pure membership TUT\n+    fsinventorycustomtabmodel.cpp\n+    allocallightsize.cpp\n+    alghostautoanimmodel.cpp # [AutoAnimate]\n+    alformationsolver.cpp\n+    alcinelightrigmodel.cpp\n+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]\n+    aldirectorswitchermodel.cpp\n+    aldirectorqol.cpp\n+    aldirectortabmigration.cpp\n+    alprojectorshaftlooks.cpp\n+    aldanceballmodel.cpp\n+    alavatarstagingmodel.cpp\n+    alweathermodel.cpp\n+    slweather.cpp\n+    alweatherbridge.cpp\n+    alweathershelter.cpp\n+    alweatherclock.cpp\n+    alweatheruimodel.cpp\n+    alsensormodel.cpp\n+    alghostgroupmodel.cpp\n+    alghostinteractionstate.cpp\n+    alghostplacementresolver.cpp\n     alsceneexplorerpredicate.cpp\n+    alsettingsundohistorymodel.cpp\n+    llprismgate.cpp\n     llagentaccess.cpp\n     lldateutil.cpp\n #    llmediadataclient.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6523,10 +6443,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -6538,8 +6454,7 @@
           "base_start": 2384,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6557,13 +6472,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 20,
-          "head_end": 2907,
-          "head_start": 2888,
-          "id": "indra/newview/CMakeLists.txt@2888,20",
+          "head_end": 2906,
+          "head_start": 2887,
+          "id": "indra/newview/CMakeLists.txt@2887,20",
           "patch": "     llworldmipmap.cpp\n   )\n \n+  set_source_files_properties(alweathershelter.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+  set_source_files_properties(alweatherbridge.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+  set_source_files_properties(alweatheruimodel.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+\n+  set_source_files_properties(\n+    llprismgate.cpp\n+    PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES\n+    aldirectorswitchermodel.cpp\n+  )\n+\n   set_source_files_properties(\n     llworldmap.cpp\n     llworldmipmap.cpp\n",
           "purpose": "Edits LL_TEST_ADDITIONAL_SOURCE_FILES",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6579,10 +6498,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",
@@ -6594,8 +6509,7 @@
           "base_start": 2438,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6622,13 +6536,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 185,
-          "head_end": 3140,
-          "head_start": 2956,
-          "id": "indra/newview/CMakeLists.txt@2956,185",
+          "head_end": 3139,
+          "head_start": 2955,
+          "id": "indra/newview/CMakeLists.txt@2955,185",
           "patch": " \n   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} \"${viewer_TEST_SOURCE_FILES}\")\n \n+  LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamclassic \"alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectorsubjectmapping \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alxinputmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alframelimiter \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alviewfinder \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitqol \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectortheme \"\" \"${test_libs}\" \"${test_project}\")\n+\n+  # ALGazeMath is deliberately header-only, so register its TUT directly\n+  # instead of inventing a production .cpp solely for the per-source macro.\n+  LL_ADD_INTEGRATION_TEST(alrelightmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alreflectmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprojectortrackmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimmirror \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostbounds \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alvramrecovery \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alavataranimationtime \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimnames \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprobereach \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowslotmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alhidecursor \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowdepthmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alriggroupsubject \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(algazemath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pose Polish math plus the real keyframe loop-seam update path.\n+  LL_ADD_INTEGRATION_TEST(alposepolish\n+    \"\"\n+    \"${test_libs};llcharacter\"\n+    \"${test_project}\"\n+  )\n+\n+  # [ClientHeight] The pure store / per-avatar resolve model is header-only\n+  # (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alclientheightmodel\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Character Mover exact path primitives are header-only pure geometry so the\n+  # runtime, preview and tests share one evaluator.\n+  LL_ADD_INTEGRATION_TEST(alpathgeometry\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [GhostMotionModes] Ghost Studio procedural motion (hover, jump, float, ...)\n+  # is a header-only pure evaluator; TUT registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alghostmotionmath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);\n+  # like ALGazeMath its TUT is registered directly against the header.\n+  LL_ADD_INTEGRATION_TEST(altrajectory\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Gaze life/feel/emotion pure leaf modules (gaze spec 2.2): soft anatomical\n+  # recruitment, asymmetric blink shape, band-limited fixation noise, and\n+  # oculomotor policy math. All header-only, TUTs registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazerecruit\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazeblink\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazenoise\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazepolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALGazeMotor is the header-only assembly core (gaze spec 6A) composing the\n+  # leaf modules above with ALTrajectory; TUT registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazemotor\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazehot\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Bone POV math and selection normalization are pure/header-only, so their\n+  # regression tests need no viewer singleton or avatar fixture.\n+  LL_ADD_INTEGRATION_TEST(alvcambonepov\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pure envelope plus real LLControlVariable write-intent cancellation.\n+  LL_ADD_INTEGRATION_TEST(alworldwinddown\n+    \"\"\n+    \"${test_libs};llxml\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alcinecamobjectlock\n+    \"alcinecammodes.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alvcammediafilepolicy\n+    \"alvcammediafilepolicy.cpp\"\n+    \"${test_libs};ll::openssl\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only preview scheduler policy: no renderer/GL fixture required.\n+  LL_ADD_INTEGRATION_TEST(llprismpreviewpolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only VP1/VP2 projector schema and demand-policy contract.\n+  LL_ADD_INTEGRATION_TEST(llprismgate\n+    \"llprismgate.cpp;aldirectorswitchermodel.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(llprismprojector\n+    \"llprismgate.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Temporary volumetric ownership policy, also verified by static_assert.\n+  LL_ADD_INTEGRATION_TEST(alvcamautovol\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §2.3 relevance model: the 181-row sRelevance table,\n+  # its predicate helpers, and the S0-S8 sweep corpus asserted against the\n+  # committed consumed-set oracle (tests/aldiopterrelevance_oracle.llsd,\n+  # regenerated by tests/aldiopterrelevance_oracle.py). The model unit is\n+  # LLUI/gSavedSettings-free, so only the production .cpp is linked in.\n+  LL_ADD_INTEGRATION_TEST(aldiopterrelevance\n+    \"aldiopterrelevance.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n   #set(TEST_DEBUG on)\n   LL_ADD_INTEGRATION_TEST(cppfeatures\n     \"\"\n",
           "purpose": "Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6644,10 +6562,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "mixed/perf-review",
@@ -6659,8 +6573,7 @@
           "base_start": 2505,
           "candidate_features_from_subjects": [
             "capture-sidecar",
-            "director-shell",
-            "gaze"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6676,13 +6589,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 40,
-          "head_end": 3241,
-          "head_start": 3202,
-          "id": "indra/newview/CMakeLists.txt@3202,40",
+          "head_end": 3240,
+          "head_start": 3201,
+          "id": "indra/newview/CMakeLists.txt@3201,40",
           "patch": "   )\n   LL_ADD_INTEGRATION_TEST(lltextureinfo \"${lltextureinfo_test_sources}\" \"${test_libs}\" \"${test_project}\")\n   #LL_ADD_INTEGRATION_TEST(lltextureinfodetails \"\" \"${test_libs}\" \"${test_project}\") test cases currently empty\n+\n+  set(llcameraoperator_test_sources\n+    llcameraoperator.cpp\n+    ../llxml/llcontrol.cpp\n+    ../llxml/llxmltree.cpp\n+    ../llxml/llxmlparser.cpp\n+    ../llcommon/commoncontrol.cpp\n+  )\n+  LL_ADD_INTEGRATION_TEST(llcameraoperator\n+    \"${llcameraoperator_test_sources}\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §6.3 Custom preset bank state machine (design doc\n+  # DIOPTER_SMART_UI_DESIGN.md). llcontrol/llxmltree/llxmlparser/commoncontrol\n+  # give a working LLControlGroup (same combination as llviewercontrollistener\n+  # and llcameraoperator above). test_libs already brings in `llfilesystem`,\n+  # which supplies the real LLDir/gDirUtilp (lldir.cpp/lldir_win32.cpp) --\n+  # aldiopterpresetbank_test_stubs.cpp must NOT also define those (Codex\n+  # review finding F1: doing so collided with the real symbols, LNK2005); it\n+  # stubs only LLNotificationsUtil::add, since the real llnotifications.cpp\n+  # needs the full LLNotifications singleton and is far too heavy here.\n+  set(aldiopterpresetbank_test_sources\n+    aldiopterpresetbank.cpp\n+    ../llxml/llcontrol.cpp\n+    ../llxml/llxmltree.cpp\n+    ../llxml/llxmlparser.cpp\n+    ../llcommon/commoncontrol.cpp\n+    tests/aldiopterpresetbank_test_stubs.cpp\n+  )\n+  LL_ADD_INTEGRATION_TEST(aldiopterpresetbank\n+    \"${aldiopterpresetbank_test_sources}\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n endif ()\n",
           "purpose": "Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95b4098e239",
+              "subject": "Remove leftover sl_addon_source_hash call from newview CMake (guard removal)"
+            },
             {
               "commit": "46be428ddc5",
               "subject": "Actor chroma key: remove the ReShade guard (key always runs with ReShade)"
@@ -6698,10 +6615,6 @@
             {
               "commit": "7a104e1d779",
               "subject": "Actor chroma key WP0+WP1: key model and coverage/matte (K1)"
-            },
-            {
-              "commit": "bee8c3bbf40",
-              "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
             }
           ],
           "scope": "creative-candidate",

@@ -19,10 +19,10 @@ def check():
     import re
     import xml.etree.ElementTree as ET
     source = path.read_text(encoding='utf-8')
-    names = ('DECODE', 'GLYPH_SKIN', 'CONSTRUCT_WIRE', 'DEJA_VU', 'OPERATOR', 'DIAL_OUT', 'SOURCE')
+    names = ('DECODE', 'GLYPH_SKIN', 'CONSTRUCT_WIRE', 'DEJA_VU', 'OPERATOR', 'DIAL_OUT', 'SOURCE', 'AUREOLE', 'CHOIR_LIGHT', 'FEATHERFALL', 'RAPTURE', 'EMITTER', 'BAD_RECEPTION', 'STATIC_VEIL', 'LATENCY', 'FACETS', 'COLD_GAZE', 'INTRUSION', 'OVERCLOCK', 'REFORM', 'TORN_HUSK', 'HUNTER_VISION', 'OOZE')
     for value, name in enumerate(names, 78):
         assert re.search(r'GHOST_STYLE_' + name + r'\s*=\s*' + str(value) + r'\b', source)
-    assert 'GHOST_STYLE_STUDIO_END = 85' in source
+    assert 'GHOST_STYLE_STUDIO_END = 101' in source
     assert 'style >= GHOST_STYLE_STUDIO_BASE && style < GHOST_STYLE_STUDIO_END' in draw
     assert '? static_cast<S32>(GHOST_STYLE_THERMAL) : style' in draw
     assert 'sh->uniform1i(sGhostLook, style)' in draw
@@ -33,18 +33,29 @@ def check():
     heading = method(path, 'void LLActorMover::renderHeadingPreview(')
     assert 'ALGhostStudio::resolveOverlayStyle((S32)ghost_style)' in heading
     assert 'ALGhostStudio::isOverlayStyle' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8') or 'isOverlayStyle(' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8')
-    assert '(style >= 64 && style <= 84 && style != 68 && style != 72)' in Path('indra/newview/alghoststudio.h').read_text(encoding='utf-8')
+    assert '(style >= 64 && style <= 100 && style != 68 && style != 72)' in Path('indra/newview/alghoststudio.h').read_text(encoding='utf-8')
     xui = Path('indra/newview/skins/default/xui/en')
     selectors = 0
     for file in ('panel_ghost_studio.xml', 'panel_dpage_cast_ghosts.xml', 'panel_path_editor.xml', 'panel_dpage_cast_path.xml'):
         for combo in ET.parse(xui/file).iter('combo_box'):
             if combo.get('name') in ('style_combo','ghost_style_combo') or combo.get('name','').startswith('crowd_mix_look_'):
                 values = [n.get('value') for n in combo.findall('combo_box.item')]
-                assert all(values.count(str(i)) == 1 for i in range(78,85)), (file,combo.get('name'),values)
+                assert all(values.count(str(i)) == 1 for i in range(78,101)), (file,combo.get('name'),values)
                 selectors += 1
     assert selectors == 16, selectors
-    for look in range(78,85):
+    for look in range(78,101):
         assert f'case {look}: return ' in Path('indra/newview/alpanelghoststudio.cpp').read_text(encoding='utf-8')
+    cinematic_names = ('Aureole', 'Choir Light', 'Featherfall', 'Rapture', 'Emitter',
+                       'Bad Reception', 'Static Veil', 'Latency', 'Facets', 'Cold Gaze',
+                       'Intrusion', 'Overclock', 'Reform', 'Torn Husk', 'Hunter Vision', 'Ooze')
+    style_names = Path('indra/newview/alpanelghoststudio.cpp').read_text(encoding='utf-8')
+    for look, name in enumerate(cinematic_names, 85):
+        assert f'case {look}: return "{name}";' in style_names
+    for file in ('panel_ghost_studio.xml', 'panel_dpage_cast_ghosts.xml', 'panel_path_editor.xml', 'panel_dpage_cast_path.xml'):
+        for combo in ET.parse(xui/file).iter('combo_box'):
+            if combo.get('name') in ('style_combo','ghost_style_combo') or combo.get('name','').startswith('crowd_mix_look_'):
+                labels = {int(n.get('value')): n.get('label') for n in combo.findall('combo_box.item')}
+                assert all(labels[i] == name for i, name in enumerate(cinematic_names, 85))
     # Existing CPU clock and per-instance UUID seed reach the shared upload.
     assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
     assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
@@ -674,6 +685,23 @@ int main(){
     defaults = execute('matrix_draw_defaults', default_fixture, True)
     (directory/'matrix_draw_defaults.json').write_text(json.dumps(json.loads(defaults['stdout']),indent=2))
     results.append(defaults)
+    # Presets/settings and crowd mixes use this same production validator.
+    # Exercise every new numeric ID and both retired IDs without inventing a
+    # second persistence registry or broadening the shared-world look range.
+    style_contract = '#include <cassert>\nusing S32=int;\nstruct Styles {\n' + '\n'.join(
+        method(Path('indra/newview/alghoststudio.h'), signature) for signature in (
+            '    static S32 remapRetiredOverlayStyle(', '    static bool isOverlayStyle(',
+            '    static S32 resolveOverlayStyle(')) + r'''
+};
+int main(){
+ for(int i=85;i<=100;++i){assert(Styles::isOverlayStyle(i));assert(Styles::resolveOverlayStyle(i)==i);}
+ assert(!Styles::isOverlayStyle(68)&&!Styles::isOverlayStyle(72));
+ assert(Styles::resolveOverlayStyle(68)==1&&Styles::resolveOverlayStyle(72)==1);
+ assert(!Styles::isOverlayStyle(101)&&Styles::resolveOverlayStyle(101)==0);
+}
+'''
+    results.append(execute('cinematic_style_persistence', style_contract, True))
+    results.append(execute('cinematic_old_style_limit', style_contract.replace('style <= 100', 'style <= 84'), False))
     results.append(execute('matrix_default_scrub',default_fixture.replace('mDecodeScrub = false','mDecodeScrub = true'),False))
     snapshot = r'''
 #include <algorithm>

@@ -569,7 +569,9 @@ float cloneFadeCoverage(float progress)
 void main()
 {
     bool matrixLook = ghostLook >= 78 && ghostLook <= 84;
-    if (!matrixLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
+    bool cinematicLook = ghostLook >= 85 && ghostLook <= 100;
+    bool safeStudioLook = matrixLook || cinematicLook;
+    if (!safeStudioLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
     vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
     float ghostDissolveEdge = 0.0;
 #ifndef GHOST_WORLD_PASS
@@ -590,13 +592,13 @@ void main()
     }
     vec3 fwP = abs(oPx) + abs(oPy);
 #endif
-    if (matrixLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
+    if (safeStudioLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
 #ifndef GHOST_WORLD_PASS
     // Matrix taps use the gradients captured above every discard. Preserve
     // the historical sampler/footprint arithmetic for every existing look.
 #undef GHOST_DIFFUSE_SAMPLE
-#define GHOST_DIFFUSE_SAMPLE(uv_) (matrixLook ? textureGrad(diffuseMap, uv_, uvDx, uvDy) : texture(diffuseMap, uv_))
-    vec2 distortFootprint = matrixLook ? uvPx : vec2(0.0);
+#define GHOST_DIFFUSE_SAMPLE(uv_) (safeStudioLook ? textureGrad(diffuseMap, uv_, uvDx, uvDy) : texture(diffuseMap, uv_))
+    vec2 distortFootprint = safeStudioLook ? uvPx : vec2(0.0);
 #else
     vec2 distortFootprint = vec2(0.0);
 #endif
@@ -653,7 +655,7 @@ void main()
     // Separate uniform paths preserve the parent's derivative instructions for
     // old looks. A per-expression conditional lets some drivers hoist fwidth
     // across the Voxel UV quantization and changes old material boundaries.
-    if (matrixLook)
+    if (safeStudioLook)
     {
     // Distortions alter the common sampling coordinates before any look is
     // evaluated. Thus every look consumes the same distorted source sample.
@@ -829,6 +831,13 @@ void main()
     }
 
     vec4 tex = GHOST_DIFFUSE_SAMPLE(uv);
+#ifndef GHOST_WORLD_PASS
+    // New materials move texture content, never MASK/BLEND coverage. Keep
+    // the historical distorted-alpha convention for every earlier Studio ID.
+    float cinematicAuthoredAlpha = tex.a;
+    if (cinematicLook && activeGhostAlpha.x > 0.5)
+        cinematicAuthoredAlpha = textureGrad(diffuseMap, vary_texcoord0.xy, uvDx, uvDy).a;
+#endif
 #ifdef GHOST_WORLD_PASS
     // Creative RGB distortions must never move authored coverage.  Keep a
     // separate sample at the original material UV for BLEND ramps and MASK
@@ -870,6 +879,9 @@ void main()
     // Legacy non-alpha-pool vertex alpha holds shininess, not opacity.
     tex.rgb *= activeMaterialFactor.rgb * vary_vertex_color.rgb;
     float sampledAuthoredAlpha = tex.a;
+#ifndef GHOST_WORLD_PASS
+    if (cinematicLook) sampledAuthoredAlpha = cinematicAuthoredAlpha;
+#endif
 #ifdef GHOST_WORLD_PASS
     sampledAuthoredAlpha = worldAuthoredTextureAlpha;
 #endif
@@ -1716,6 +1728,247 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     alpha = color.a * tex.a;
 }
 
+    else if (ghostLook >= 85 && ghostLook <= 100) // Studio: original animated materials
+    {
+        // Only the new range consumes this path. No progress-slider sentinel:
+        // the production dissolve default is 0.5, even on unrelated looks.
+        vec3 P = vary_object_position;
+        float seed = ghostAux.w;
+        float t = mod(ghostTime, 4096.0) + seed * 1.73;
+        float fw = max(max(fwP.x, fwP.y), max(fwP.z, 1e-6));
+        vec2 p2, fw2; float axisSeed;
+        mx_plane(oPx, oPy, fwP, p2, fw2, axisSeed);
+        float detail = 1.0 - smoothstep(0.008, 0.035, fw);
+        vec3 gold = vec3(1.0, 0.79, 0.34), ivory = vec3(1.0, 0.96, 0.83);
+        vec3 cyan = vec3(0.04, 0.83, 1.0), magenta = vec3(1.0, 0.025, 0.36);
+        // Fixed anatomical rest-space band, never a screen-height eye stripe.
+        float eyes = exp(-pow((P.z - 0.76) / (0.018 + fwP.z), 2.0))
+                   * (1.0 - smoothstep(0.11, 0.18, abs(P.x)));
+        vec3 restN = cross(oPx, oPy);
+        restN /= max(length(restN), 1e-6);
+        float front = smoothstep(0.15, 0.75, -restN.y)
+                    * (1.0 - smoothstep(-0.02, 0.04, P.y));
+        if (ghostLook == 85) // Aureole
+        {
+            float crown = smoothstep(0.20, 0.72, P.z);
+            // Angular normal rays turn around the crown; their centre is
+            // suppressed by the Fresnel rim, with an explicit atan guard.
+            float angle = atan(n.z + 1e-5, n.x + 1e-5);
+            float spoke = pow(0.5 + 0.5 * cos(angle * 12.0 - t * 0.7), 5.0);
+            float halo = edge * (0.22 + crown * 1.2) * (0.55 + spoke * detail);
+            rgb = tex.rgb * 0.12 + ivory * (0.11 + 0.07 * sin(P.z * 5.0 - t))
+                + gold * halo * (0.85 + 0.15 * sin(t * 1.4));
+        }
+        else if (ghostLook == 86) // Choir Light
+        {
+            float shaft = pow(0.5 + 0.5 * sin(P.x * 14.0 + P.y * 6.0 + P.z * 2.0 + sin(t * 0.4)), 4.0);
+            float wave = 0.5 + 0.5 * sin(P.z * 8.0 - t * 2.3);
+            rgb = tex.rgb * 0.10 + ivory * (0.16 + shaft * 0.6 * detail + wave * 0.42)
+                + gold * edge * (0.35 + wave * 0.3);
+        }
+        else if (ghostLook == 87) // Featherfall
+        {
+            vec2 q = p2 / vec2(0.11, 0.23);
+            q.y += t * 0.38;
+            vec2 id = floor(q), f = fract(q) - 0.5;
+            float life = 0.5 + 0.5 * sin(t * 2.0 + ghost_hash(id + seed) * 6.2831853);
+            float stem = exp(-abs(f.x + f.y * 0.35) * 32.0);
+            float barb = pow(0.5 + 0.5 * cos((f.y + abs(f.x) * 0.8) * 42.0), 4.0);
+            float feather = (stem + barb * exp(-abs(f.x) * 9.0))
+                          * (1.0 - smoothstep(0.30, 0.49, abs(f.y))) * life * detail;
+            rgb = ivory * (0.10 + 0.09 * sin(P.z * 4.0 - t))
+                + gold * (edge * (0.35 + feather * 1.7) + feather * 0.18);
+        }
+        else if (ghostLook == 88) // Rapture
+        {
+            float cycle = fract(t / 6.0);
+            float plane = mix(-1.35, 1.35, cycle);
+            float d = P.z - plane;
+            float changed = 1.0 - smoothstep(-0.08-fw, 0.08+fw, d);
+            float sweep = exp(-pow(d / (0.07 + fw), 2.0));
+            // Reset closes smoothly through the original material.
+            changed *= 1.0 - smoothstep(0.84, 1.0, cycle);
+            rgb = mix(tex.rgb * color.rgb * 0.7, ivory * (0.52 + edge * 0.6), changed)
+                + gold * sweep * 1.2;
+        }
+        else if (ghostLook == 89) // Emitter
+        {
+            float height = clamp((P.z + 1.0) / 1.95, 0.0, 1.0);
+            float pool = exp(-pow((P.z + 0.94) / 0.16, 2.0));
+            vec2 rotating = mat2(cos(t*0.4), -sin(t*0.4), sin(t*0.4), cos(t*0.4)) * P.xy;
+            float raster = 0.5 + 0.5 * sin(rotating.x * 45.0 + P.z * 30.0 - t * 4.0);
+            float row = ghost_hash(vec2(floor(P.z / 0.085), floor(t * 5.0) + seed));
+            float drop = mix(1.0, 0.15, step(0.82, row) * detail);
+            rgb = cyan * (0.22 + raster * 0.4 * detail + edge * 0.55) * (1.0-height*0.82) * drop
+                + ivory * pool * (0.65 + 0.35 * sin(t*3.0));
+        }
+        else if (ghostLook == 90) // Bad Reception
+        {
+            vec2 screen = fragCoord / max(ghostScreenSize, vec2(1.0));
+            float rowQ = P.z / 0.18;
+            float rowId = floor(rowQ), rowF = fract(rowQ);
+            float row = ghost_hash(vec2(rowId, floor(t * 3.0) + seed));
+            float adjacent = ghost_hash(vec2(rowId + (rowF < 0.5 ? -1.0 : 1.0), floor(t*3.0)+seed));
+            float rowMix = 0.5*(1.0-smoothstep(0.0,max(fwP.z/0.18,1e-5),min(rowF,1.0-rowF)));
+            float sync = exp(-pow((fract(screen.y - t*0.18) - 0.5) / 0.055, 2.0));
+            float state = mix(1.0, 0.08, step(0.70, row));
+            vec3 slab = mix(tex.rgb * 0.72 + cyan * 0.20, magenta * (0.3 + lum), step(0.88,row)) * state;
+            vec3 neighbor = mix(tex.rgb * 0.72 + cyan * 0.20, magenta * (0.3+lum), step(0.88,adjacent))
+                          * mix(1.0,0.08,step(0.70,adjacent));
+            rgb = mix(slab,neighbor,rowMix) + cyan * (sync * 0.8 + edge * 0.2);
+        }
+        else if (ghostLook == 91) // Static Veil
+        {
+            vec2 screen = fragCoord / max(ghostScreenSize.y / 1080.0, 1.0);
+            // Three-reference-pixel snow; no unfiltered single-pixel hash.
+            vec2 q = screen / 3.0;
+            float snow = ghost_noise(q + vec2(floor(t*18.0)*13.1, seed*9.0));
+            float lock = pow(0.5 + 0.5 * sin(t * 1.7), 12.0);
+            rgb = mix(vec3(snow * 0.85) + cyan * edge * 0.25, tex.rgb * color.rgb, lock);
+        }
+        else if (ghostLook == 92) // Latency
+        {
+            float rowQ = P.z / 0.08, row = floor(rowQ), rowF = fract(rowQ);
+            float rowMix = 0.5*(1.0-smoothstep(0.0,max(fwP.z/0.08,1e-5),min(rowF,1.0-rowF)));
+            float shift = 0.0, drag = 0.0;
+            for (int i=0; i<2; ++i)
+            {
+                float ri = row + (i == 0 ? 0.0 : (rowF < 0.5 ? -1.0 : 1.0));
+                float cycle = fract(t * 0.8 + ghost_hash(vec2(ri,seed)));
+                float lag = sin(cycle * 3.1415927) * (1.0-smoothstep(0.55,0.95,cycle));
+                float weight = i == 0 ? 1.0-rowMix : rowMix;
+                shift += (mod(ri,2.0)*2.0-1.0)*lag*weight;
+                drag += lag*weight;
+            }
+            vec2 offset = vec2(shift * 0.12 * detail, 0.0);
+            // RGB only. The unshifted authored tex.a continues to own coverage.
+            vec4 tap = textureGrad(diffuseMap, uv + offset, uvDx, uvDy);
+            float tapCoverage = activeGhostAlpha.x > 0.5 ? tap.a : 1.0;
+            vec3 delayed = mix(tex.rgb, tap.rgb * activeMaterialFactor.rgb
+                             * vary_vertex_color.rgb, tapCoverage);
+            rgb = delayed * color.rgb * 0.85 + cyan * (edge*0.22 + drag*0.16);
+        }
+        else if (ghostLook == 93) // Facets
+        {
+            vec2 q = p2 / 0.14;
+            vec2 id = floor(q);
+            float rnd = ghost_hash(id + seed);
+            float shatter = pow(sin(t * 1.05 + rnd * 2.0), 2.0);
+            vec2 travel = vec2(cos(rnd*6.2831853), sin(rnd*6.2831853)) * shatter * 0.22;
+            // Each triangular shard contracts and travels within its cell,
+            // exposing black gaps, then closes back to the unbroken facets.
+            vec2 f = (fract(q)-0.5) * (1.0+shatter*0.55) + 0.5 - travel;
+            float diagonal = abs(f.x + f.y - 1.0);
+            float cellFw = max(fw2.x,fw2.y)/0.14 * (1.0+shatter*0.55);
+            float seam = 1.0-smoothstep(max(0.025-cellFw,0.0), 0.025+cellFw+1e-5,
+                                       min(min(f.x,1.0-f.x),min(min(f.y,1.0-f.y),diagonal)));
+            vec2 cellAA = smoothstep(vec2(0.0), vec2(max(cellFw*2.0,1e-5)), min(f,1.0-f));
+            float facetLod = 1.0-smoothstep(0.003,0.016,max(fw2.x,fw2.y));
+            float reform = 0.5 + 0.5 * sin(t*3.0 + rnd*6.2831853);
+            float piece = cellAA.x * cellAA.y;
+            rgb = vec3(0.009,0.015,0.024) + cyan * (seam * facetLod * piece * (0.25+reform*0.65)
+                + (1.0-facetLod)*0.08*reform) + magenta * pow(rnd,16.0) * reform * facetLod * piece
+                + vec3(rnd*0.045*piece);
+        }
+        else if (ghostLook == 94) // Cold Gaze
+        {
+            float glare = eyes * front * (0.7+0.3*sin(t*2.4));
+            float face = exp(-pow((P.z-0.72)/0.16,2.0)) * front;
+            float error = ghost_noise(p2*32.0 + vec2(floor(t*10.0),seed));
+            float noiseAA = clamp(fw*16.0,0.02,0.3);
+            rgb = tex.rgb*0.035 + cyan*(edge*0.14 + glare*2.2)
+                + magenta*face*smoothstep(0.62-noiseAA,0.62+noiseAA,error)*detail*(0.35+0.3*sin(t*3.0));
+        }
+        else if (ghostLook == 95) // Intrusion
+        {
+            float epoch = floor(t / 1.8);
+            vec2 q = p2 / 0.12;
+            vec2 id = floor(q), f = fract(q);
+            float turn = step(0.5,ghost_hash(id+vec2(epoch,seed)));
+            float wire = exp(-abs(mix(f.x,f.y,turn)-0.5)/(0.045+max(fw2.x,fw2.y)/0.12));
+            float pulse = pow(0.5+0.5*sin((p2.x+p2.y)*18.0-t*5.0+seed),6.0);
+            rgb = vec3(0.006,0.012,0.018) + cyan*wire*detail*(0.3+pulse)
+                + magenta*pulse*(wire*detail*0.65+edge*0.20);
+        }
+        else if (ghostLook == 96) // Overclock
+        {
+            float cycle = mod(t,9.0);
+            float frenzy = smoothstep(3.0,5.2,cycle)*(1.0-smoothstep(7.5,7.8,cycle));
+            float crash = exp(-pow((cycle-7.85)/0.09,2.0));
+            float reset = smoothstep(8.1,8.9,cycle);
+            float row = ghost_hash(vec2(floor(P.z/0.07),floor(t*18.0)+seed));
+            float flow = 0.5+0.5*sin(P.z*12.0-t*3.0);
+            rgb = mix(cyan,magenta,frenzy)*(0.16+edge*0.65+flow*0.25+frenzy*row*detail)
+                * (1.0-smoothstep(7.9,8.05,cycle)+reset) + ivory*crash*2.0;
+        }
+        else if (ghostLook == 97) // Reform
+        {
+            float hit = 0.0, molten = 0.0;
+            for (int i=0; i<3; ++i)
+            {
+                float fi=float(i);
+                vec2 centre=vec2(ghost_hash(vec2(fi,seed))*0.5-0.25,
+                                 ghost_hash(vec2(fi+7.0,seed))*1.4-0.65);
+                float age=fract(t/(3.1+fi*0.7)+fi*0.31);
+                float r=length(P.xz-centre);
+                hit += exp(-pow((r-age*0.8)/(0.025+age*0.07+fw),2.0))*pow(1.0-age,2.0);
+                molten += exp(-r*r/0.025)*pow(1.0-age,5.0);
+            }
+            float metalLod=1.0-smoothstep(0.003,0.016,fw);
+            float mirror=0.5+0.5*sin((n.x+n.z*1.7)*8.0+hit*5.0+molten*4.0)*metalLod
+                        + 0.10*sin(P.z*4.0-t*0.7)*(1.0-metalLod);
+            rgb = mix(vec3(0.025,0.04,0.06),vec3(0.88,0.95,1.0),mirror)
+                + ivory*edge*0.3 + gold*(molten*1.2+hit*0.75)*detail;
+        }
+        else if (ghostLook == 98) // Torn Husk
+        {
+            float field=ghost_fbm(p2*5.0+vec2(sin(t*0.6),cos(t*0.4)));
+            float threshold=0.48+0.16*sin(t*0.9);
+            float tear=smoothstep(threshold-0.035-fw*4.0,threshold+0.035+fw*4.0,field);
+            float border=exp(-pow((field-threshold)/(0.025+fw*4.0),2.0));
+            float ribs=pow(0.5+0.5*cos(P.z*58.0),8.0)*detail;
+            float spine=exp(-abs(P.x)*42.0);
+            vec3 chassis=vec3(0.02,0.03,0.045)+vec3(0.35,0.42,0.46)*(ribs+spine)
+                        + vec3(1.0,0.08,0.015)*(eyes*front*2.0+spine*(0.3+0.25*sin(t*3.0-P.z*8.0)));
+            rgb=mix(tex.rgb*color.rgb*0.65,chassis,tear)+vec3(1.0,0.22,0.035)*border*0.45;
+        }
+        else if (ghostLook == 99) // Hunter Vision
+        {
+            // A short acquisition edge snaps into the body-locked centre;
+            // the rest of the cycle hunts through candidate positions.
+            float hunt = 1.0-smoothstep(0.54,0.56,fract(t/3.0));
+            vec2 target=vec2(sin(t*2.1)*0.13,0.12+cos(t*1.7)*0.22)*hunt;
+            vec2 b=abs(P.xz-target);
+            float aa=fw+0.004;
+            float vertical=(1.0-smoothstep(0.006,0.006+aa,abs(b.x-0.18)))
+                           *(1.0-smoothstep(0.23,0.25,b.y))*smoothstep(0.12,0.18,b.y);
+            float horizontal=(1.0-smoothstep(0.006,0.006+aa,abs(b.y-0.24)))
+                             *(1.0-smoothstep(0.17,0.19,b.x))*smoothstep(0.09,0.14,b.x);
+            float ladder=pow(0.5+0.5*sin(P.z*40.0),12.0)*detail;
+            vec2 suv=fragCoord/max(ghostScreenSize,vec2(1.0));
+            float raster=exp(-pow((fract(suv.y-t*0.22)-0.5)/0.035,2.0));
+            float ticks=ladder*smoothstep(0.13,0.22,abs(P.x));
+            rgb=vec3(0.13,0.006,0.008)*(0.6+lum)+vec3(1.0,0.025,0.008)
+                *(vertical+horizontal+ticks*0.6+raster*0.5+edge*0.20);
+        }
+        else // 100: Ooze
+        {
+            float slosh=sin(P.z*5.0+t*1.4)+cos(P.x*9.0-t*1.1);
+            vec2 q=vec2(P.x*9.0+sin(P.z*3.0+t)*0.45,P.z*3.0+t*0.65);
+            vec2 id=floor(q), f=fract(q)-0.5;
+            float life=fract(t*0.3+ghost_hash(id+seed));
+            float radius=0.05+0.30*sin(life*3.1415927);
+            float bubble=exp(-pow((length(f)-radius)/(0.035+fw*9.0),2.0))*(1.0-smoothstep(0.82,1.0,life));
+            float drip=exp(-abs(sin(P.x*26.0+sin(P.z*4.0+t)))*7.0)
+                      *(0.5+0.5*sin(P.z*14.0+t*3.2));
+            float wet=pow(max(dot(n,normalize(vec3(0.3,-0.4,0.85)+v)),0.0),32.0);
+            rgb=vec3(0.025,0.17,0.095)*(1.2+slosh*0.35)+vec3(0.18,0.95,0.43)
+                *(edge*0.7+(bubble*0.42+drip*0.32)*detail)+ivory*wet*0.75;
+        }
+        // Authored MASK/BLEND/vertex alpha is authoritative for every material.
+        alpha = color.a * tex.a;
+    }
+
     else if (ghostLook == 77) // Studio: Contour
     {
         float z   = -vary_position.z;                                        // eye depth, metres
@@ -2120,6 +2373,9 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     worldBloomRadiance *= flicker * max(ghostFx.w, 0.0);
 #endif
 #ifndef GHOST_WORLD_PASS
+    // New Studio materials keep authored coverage even when the shared
+    // shimmer/glitch signal above modulates their radiance.
+    if (cinematicLook) alpha = color.a * tex.a;
     rgb *= max(ghostFx.w, 0.0);
 #endif
     // Flat-tint looks have no authored texture detail to reveal a UV warp.

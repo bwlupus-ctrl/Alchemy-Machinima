@@ -166,6 +166,22 @@ const char* style_name(S32 style)
     case 82: return "Operator";
     case 83: return "Dial Out";
     case 84: return "Source";
+    case 85: return "Aureole";
+    case 86: return "Choir Light";
+    case 87: return "Featherfall";
+    case 88: return "Rapture";
+    case 89: return "Emitter";
+    case 90: return "Bad Reception";
+    case 91: return "Static Veil";
+    case 92: return "Latency";
+    case 93: return "Facets";
+    case 94: return "Cold Gaze";
+    case 95: return "Intrusion";
+    case 96: return "Overclock";
+    case 97: return "Reform";
+    case 98: return "Torn Husk";
+    case 99: return "Hunter Vision";
+    case 100: return "Ooze";
     default: return "Ghost";
     }
 }

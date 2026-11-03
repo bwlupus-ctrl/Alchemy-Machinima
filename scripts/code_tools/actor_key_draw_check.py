@@ -47,12 +47,26 @@ int main(){gActorGhostProgram.mRiggedVariant=&gSkinnedActorGhostProgram;gHighlig
  LLFetchedGLTFMaterial material;LLViewerTexture texture;material.mEmissiveTexture=&texture;
  LLDrawInfo di,bi,gi;di.mAvatar=&avatar;di.mSkinInfo=&skin;di.mVertexBuffer=&solid;bi=gi=di;bi.mVertexBuffer=&blend;gi.mVertexBuffer=&glow;gi.mGLTFMaterial=&material;
  LLFace face;face.vb=&solid;face.mDrawInfo=&di;std::vector<LLActorMover::GhostStaticFace> faces={{&face,0,.5f,false,{1}}};
- for(bool stat:{false,true})for(int look:{1,10,64,68,69,72,75,78,79,80,81,82,83,84})for(float alpha:{.4f,1.f}){
+ for(bool stat:{false,true})for(int look:{1,10,64,68,69,72,75,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100})for(float alpha:{.4f,1.f}){
  std::vector<LLActorMover::GhostBatch>batches;if(!stat)batches={{&di,0},{&bi,1},{&gi,2}};
  LLActorMover::GhostDrawParams gp;gp.mIsClone=look==1;gp.mDissolveProgress=.5f;gp.mDistort=3;gp.mDistortAmount=.5f;gp.mPhase=.73f;gp.mKeyFillColour={0.f,177.f/255.f,64.f/255.f};
  StudioLookFrame frame;frame.scene=look==64;bool complete=false;
- reset();drawGeometryGhostBaseline(&avatar,batches,{}, {1,1,1,1},alpha,look,gp,stat?&faces:nullptr,&complete,&frame);assert(complete);auto reference=trace;
- reset();drawGeometryGhost(&avatar,batches,{}, {1,1,1,1},alpha,look,gp,stat?&faces:nullptr,&complete,&frame);assert(complete&&equal(reference,trace));output(look,alpha,false,stat);
+ reset();if(look<85){drawGeometryGhostBaseline(&avatar,batches,{}, {1,1,1,1},alpha,look,gp,stat?&faces:nullptr,&complete,&frame);assert(complete);}auto reference=trace;
+ reset();drawGeometryGhost(&avatar,batches,{}, {1,1,1,1},alpha,look,gp,stat?&faces:nullptr,&complete,&frame);assert(complete&&!trace.empty());
+ if(look<85)assert(equal(reference,trace));
+ else {
+  assert(gp.mEffectFps==0.f && gp.mDissolveProgress==.5f);
+  int beauty=0;
+  for(auto& d:trace){assert(d.vb==1);if(!d.state.colour)continue;++beauty;
+   assert(d.program==(stat?1:2));assert(d.uniforms.at("ghostLook")[0]==look);
+   assert(d.uniforms.at("ghostParams")[0]==0 && d.uniforms.at("ghostParams")[1]==1);
+   assert(d.uniforms.at("ghostAux")[1]==1); // real diffuse RGB, not the white fallback
+   assert(d.uniforms.at("ghostDissolveProgress")[0]==.5f);
+   if(look==90||look==91||look==99)assert(d.uniforms.at("ghostScreenSize")[0]==256);
+  }
+  assert(beauty==1);reference=trace;
+ }
+ output(look,alpha,false,stat);
  gp.mKeyFill=true;reset();drawGeometryGhost(&avatar,batches,{}, {1,1,1,1},alpha,look,gp,stat?&faces:nullptr,&complete,&frame);assert(complete&&!trace.empty());
  for(auto& t:trace){assert(t.program==3||t.program==4);if(t.state.colour)assert(!(t.blend&&t.state.cd==LLRender::BF_ONE));assert(t.vb!=3);assert(t.uniforms.at("ghostSceneValid")[0]==1);}
  output(look,alpha,true,stat);
@@ -67,7 +81,7 @@ int main(){gActorGhostProgram.mRiggedVariant=&gSkinnedActorGhostProgram;gHighlig
     records=[json.loads(line) for line in result.stdout.splitlines()]
     (OUT/'commands.json').write_text(json.dumps(records,indent=2))
     assert 'studio_draw_displaced' not in production and 'ghostDisplace' not in production
-    print('PASS I-CLONEPARITY C++: complete incoming-main/current drawGeometryGhost; exact draw/state/uniform traces; rigged/static; Clone .4/1 with emission, Dissolve-50/Distort, Glass, retired IDs, Magma, Datamosh, Matrix 78-84; fill variants skip emission; no displaced sweep',flush=True)
+    print('PASS I-CLONEPARITY C++: incoming-main exact legacy traces; new 85-100 real textured solid sweep, actual defaults, one beauty, no blend/glow; rigged/static .4/1; fill variants; no displaced sweep',flush=True)
     for name,old,new in (
         ('fill_emission', 'if (!gp.mKeyFill && (overlay_mask & GHOST_COVERAGE_RIGGED_GLOW))', 'if (overlay_mask & GHOST_COVERAGE_RIGGED_GLOW)'),
         ('fill_program', 'if (gp.mKeyFill) fx_base =', 'if (false) fx_base ='),
@@ -132,8 +146,9 @@ def driver(records):
         selected=[r for r in records if bool(r['static'])==stat]
         for normal,fill in zip(selected[::2],selected[1::2]):
             a=render(normal)
-            b=render(normal,reference=True)
-            assert np.array_equal(a,b),(stat,normal['look'],'baseline/current pixels')
+            if normal['look'] < 85:
+                b=render(normal,reference=True)
+                assert np.array_equal(a,b),(stat,normal['look'],'baseline/current pixels')
             white=render(fill,(1,1,1))
             key=render(fill)
             assert np.any(white[...,0]>0),(stat,normal['look'],'empty footprint')

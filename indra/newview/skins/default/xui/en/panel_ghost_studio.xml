@@ -185,6 +185,22 @@
             <combo_box.item label="Operator" name="st_operator" value="82" />
             <combo_box.item label="Dial Out" name="st_dial_out" value="83" />
             <combo_box.item label="Source" name="st_source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
           <combo_box follows="left|top" height="22" layout="topleft" left="270" name="distort_combo" top="27"
            tool_tip="Independent distortion layer. Stacks with any selected look." width="190">
@@ -592,6 +608,22 @@
             <combo_box.item label="Operator" value="82" />
             <combo_box.item label="Dial Out" value="83" />
             <combo_box.item label="Source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
           <text name="crowd_mix_look_2_label" left="8" top="631" width="124" height="18" layout="topleft" follows="left|top">Look 2</text>
           <combo_box name="crowd_mix_look_2" left="138" top="628" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook2">
@@ -643,6 +675,22 @@
             <combo_box.item label="Operator" value="82" />
             <combo_box.item label="Dial Out" value="83" />
             <combo_box.item label="Source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
           <text name="crowd_mix_look_3_label" left="8" top="659" width="124" height="18" layout="topleft" follows="left|top">Look 3</text>
           <combo_box name="crowd_mix_look_3" left="138" top="656" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook3">
@@ -694,6 +742,22 @@
             <combo_box.item label="Operator" value="82" />
             <combo_box.item label="Dial Out" value="83" />
             <combo_box.item label="Source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
           <text name="crowd_mix_look_4_label" left="8" top="687" width="124" height="18" layout="topleft" follows="left|top">Look 4</text>
           <combo_box name="crowd_mix_look_4" left="138" top="684" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook4">
@@ -745,6 +809,22 @@
             <combo_box.item label="Operator" value="82" />
             <combo_box.item label="Dial Out" value="83" />
             <combo_box.item label="Source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
           <text name="crowd_mix_look_5_label" left="8" top="715" width="124" height="18" layout="topleft" follows="left|top">Look 5</text>
           <combo_box name="crowd_mix_look_5" left="138" top="712" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook5">
@@ -796,6 +876,22 @@
             <combo_box.item label="Operator" value="82" />
             <combo_box.item label="Dial Out" value="83" />
             <combo_box.item label="Source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
           <text name="crowd_mix_look_6_label" left="8" top="743" width="124" height="18" layout="topleft" follows="left|top">Look 6</text>
           <combo_box name="crowd_mix_look_6" left="138" top="740" width="212" height="22" layout="topleft" follows="left|top" initial_value="-1" tool_tip="Choose an overlay look for this crowd’s mix, or None to leave this menu unused. Up to six distinct looks; duplicate choices count once." control_name="GhostStudioMixLook6">
@@ -847,6 +943,22 @@
             <combo_box.item label="Operator" value="82" />
             <combo_box.item label="Dial Out" value="83" />
             <combo_box.item label="Source" value="84" />
+            <combo_box.item label="Aureole" value="85" />
+            <combo_box.item label="Choir Light" value="86" />
+            <combo_box.item label="Featherfall" value="87" />
+            <combo_box.item label="Rapture" value="88" />
+            <combo_box.item label="Emitter" value="89" />
+            <combo_box.item label="Bad Reception" value="90" />
+            <combo_box.item label="Static Veil" value="91" />
+            <combo_box.item label="Latency" value="92" />
+            <combo_box.item label="Facets" value="93" />
+            <combo_box.item label="Cold Gaze" value="94" />
+            <combo_box.item label="Intrusion" value="95" />
+            <combo_box.item label="Overclock" value="96" />
+            <combo_box.item label="Reform" value="97" />
+            <combo_box.item label="Torn Husk" value="98" />
+            <combo_box.item label="Hunter Vision" value="99" />
+            <combo_box.item label="Ooze" value="100" />
           </combo_box>
 </panel>
 

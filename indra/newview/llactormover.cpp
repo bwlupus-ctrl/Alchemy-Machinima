@@ -12065,7 +12065,23 @@ enum EGhostStyle : S32
     GHOST_STYLE_OPERATOR = 82,
     GHOST_STYLE_DIAL_OUT = 83,
     GHOST_STYLE_SOURCE = 84,
-    GHOST_STYLE_STUDIO_END = 85, // exclusive; only implemented ids are valid
+    GHOST_STYLE_AUREOLE = 85,
+    GHOST_STYLE_CHOIR_LIGHT = 86,
+    GHOST_STYLE_FEATHERFALL = 87,
+    GHOST_STYLE_RAPTURE = 88,
+    GHOST_STYLE_EMITTER = 89,
+    GHOST_STYLE_BAD_RECEPTION = 90,
+    GHOST_STYLE_STATIC_VEIL = 91,
+    GHOST_STYLE_LATENCY = 92,
+    GHOST_STYLE_FACETS = 93,
+    GHOST_STYLE_COLD_GAZE = 94,
+    GHOST_STYLE_INTRUSION = 95,
+    GHOST_STYLE_OVERCLOCK = 96,
+    GHOST_STYLE_REFORM = 97,
+    GHOST_STYLE_TORN_HUSK = 98,
+    GHOST_STYLE_HUNTER_VISION = 99,
+    GHOST_STYLE_OOZE = 100,
+    GHOST_STYLE_STUDIO_END = 101, // exclusive; only implemented ids are valid
 };
 static_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,
               "Live Actor FX ids collide with the Studio overlay range");
@@ -13171,7 +13187,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     bool glow_only = false;
     // Matrix monitor looks use the whole snapshot field, including tile subregions.
     const bool matrix_screen = !gp.mWorldLinear
-        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR);
+        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR
+            || style == GHOST_STYLE_BAD_RECEPTION || style == GHOST_STYLE_STATIC_VEIL
+            || style == GHOST_STYLE_HUNTER_VISION);
 
     // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
     // Supply its bottom-up whole-image pixel origin so scanlines, noise and

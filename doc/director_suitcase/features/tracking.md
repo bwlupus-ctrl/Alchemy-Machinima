@@ -18,7 +18,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@1289,167", "indra/newview/CMakeLists.txt@2956,185"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@333,117", "indra/newview/CMakeLists.txt@1288,167", "indra/newview/CMakeLists.txt@2955,185"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@1943,24", "indra/newview/llappviewer.cpp@5616,9", "indra/newview/llappviewer.cpp@5972,30", "indra/newview/llappviewer.cpp@6108,7"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@294,7", "indra/newview/alviewermenu.cpp@304,8"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@6031,7"]}
@@ -54,31 +54,31 @@ None identified by local evidence; not a claim that none is needed.
 
 ## cmake entries
 
-- {"file": "indra/newview/CMakeLists.txt", "line": 220, "text": "alpaneldirectorvcam.cpp", "source": "indra/newview/alpaneldirectorvcam.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 430, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 399, "text": "alprojectortracker.cpp", "source": "indra/newview/alprojectortracker.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1373, "text": "alprojectortracker.h", "source": "indra/newview/alprojectortracker.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1374, "text": "alprojectortrackmath.h", "source": "indra/newview/alprojectortrackmath.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 276, "text": "altoolalign.cpp", "source": "indra/newview/altoolalign.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 221, "text": "alvcammonitorstrip.cpp", "source": "indra/newview/alvcammonitorstrip.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 279, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 303, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 319, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 409, "text": "lldirectorcast.cpp", "source": "indra/newview/lldirectorcast.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 482, "text": "lldrawable.cpp", "source": "indra/newview/lldrawable.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 411, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1390, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 648, "text": "llfloatertools.cpp", "source": "indra/newview/llfloatertools.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 738, "text": "llmaniprotate.cpp", "source": "indra/newview/llmaniprotate.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 739, "text": "llmanipscale.cpp", "source": "indra/newview/llmanipscale.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 740, "text": "llmaniptranslate.cpp", "source": "indra/newview/llmaniptranslate.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 832, "text": "llpanelobject.cpp", "source": "indra/newview/llpanelobject.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 861, "text": "llpanelvolume.cpp", "source": "indra/newview/llpanelvolume.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 929, "text": "llselectmgr.cpp", "source": "indra/newview/llselectmgr.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 985, "text": "lltoolgrab.cpp", "source": "indra/newview/lltoolgrab.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1044, "text": "llviewermenu.cpp", "source": "indra/newview/llviewermenu.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1048, "text": "llviewerobject.cpp", "source": "indra/newview/llviewerobject.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1049, "text": "llviewerobjectlist.cpp", "source": "indra/newview/llviewerobjectlist.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 219, "text": "alpaneldirectorvcam.cpp", "source": "indra/newview/alpaneldirectorvcam.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 429, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 398, "text": "alprojectortracker.cpp", "source": "indra/newview/alprojectortracker.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1372, "text": "alprojectortracker.h", "source": "indra/newview/alprojectortracker.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1373, "text": "alprojectortrackmath.h", "source": "indra/newview/alprojectortrackmath.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 275, "text": "altoolalign.cpp", "source": "indra/newview/altoolalign.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 220, "text": "alvcammonitorstrip.cpp", "source": "indra/newview/alvcammonitorstrip.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 278, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 302, "text": "llagent.cpp", "source": "indra/newview/llagent.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 318, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "lldirectorcast.cpp", "source": "indra/newview/lldirectorcast.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 481, "text": "lldrawable.cpp", "source": "indra/newview/lldrawable.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 410, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1389, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 647, "text": "llfloatertools.cpp", "source": "indra/newview/llfloatertools.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 737, "text": "llmaniprotate.cpp", "source": "indra/newview/llmaniprotate.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 738, "text": "llmanipscale.cpp", "source": "indra/newview/llmanipscale.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 739, "text": "llmaniptranslate.cpp", "source": "indra/newview/llmaniptranslate.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 831, "text": "llpanelobject.cpp", "source": "indra/newview/llpanelobject.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 860, "text": "llpanelvolume.cpp", "source": "indra/newview/llpanelvolume.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 928, "text": "llselectmgr.cpp", "source": "indra/newview/llselectmgr.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 984, "text": "lltoolgrab.cpp", "source": "indra/newview/lltoolgrab.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1043, "text": "llviewermenu.cpp", "source": "indra/newview/llviewermenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1047, "text": "llviewerobject.cpp", "source": "indra/newview/llviewerobject.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1048, "text": "llviewerobjectlist.cpp", "source": "indra/newview/llviewerobjectlist.cpp"}
 
 ## kit wiring pages
 
