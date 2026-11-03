@@ -354,8 +354,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@5218,596", "indra/newview/llvoavatar.cpp@5839,10", "indra/newview/llvoavatar.cpp@5914,45", "indra/newview/llvoavatar.cpp@12827,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@5690,87"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@105,8", "indra/newview/pipeline.cpp@1697,29674", "indra/newview/pipeline.cpp@31502,430"]}
-- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@1518,409", "indra/newview/pipeline.h@1953,270"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@105,8", "indra/newview/pipeline.cpp@1697,29823", "indra/newview/pipeline.cpp@31651,430"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@1524,409", "indra/newview/pipeline.h@1959,270"]}
 - {"path": "indra/newview/skins/default/colors.xml", "hunks": ["indra/newview/skins/default/colors.xml@2,153"]}
 - {"path": "indra/newview/skins/default/textures/textures.xml", "hunks": ["indra/newview/skins/default/textures/textures.xml@1049,93"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_fs_poser.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_fs_poser.xml@1145,119", "indra/newview/skins/default/xui/en/floater_fs_poser.xml@1998,61"]}

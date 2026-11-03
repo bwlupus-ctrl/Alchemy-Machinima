@@ -2021,5 +2021,9 @@ void main()
     // Preserve all discards, deformation and alpha; replace only RGB.
     rgb = ghostKeyFill;
 #endif
+#ifdef AL_KEY_COVERAGE_OUT
+    frag_color = vec4(clamp(alpha, 0.0, 1.0));
+#else
     frag_color = max(vec4(rgb, alpha), vec4(0));
+#endif
 }

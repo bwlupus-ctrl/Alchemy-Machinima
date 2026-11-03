@@ -205,6 +205,8 @@ struct LLRenderTarget{
  bool allocate(int w,int h,unsigned f,bool){++allocations;draw=999;read=998;glViewport(0,0,1,1);if(!allocationOK)return false;if(!owned)++liveAllocations;owned=true;width=w;height=h;format=f;return true;}
  unsigned getTexture(){return 123;}
 };
+// WP1b owns recorder release; its real allocation contract is exercised by actor_key_wp1b_check.
+struct ALActorKeyCapture{static ALActorKeyCapture& instance(){static ALActorKeyCapture c;return c;}void release(){}};
 struct LLActorMover{static void releaseStudioKeyPrograms(){}static bool preflightStudioKey(const S32 (&v)[4]){assert(draw==7&&v[0]==11&&viewport[2]==64);return studioOK;}};
 bool gDisconnected=false,gCubeSnapshot=false,sPrismLensRender=false,sPrismPreviewRender=false,sImpostorRender=false,sRenderingHUDs=false;
 int RenderBufferVisualization=-1;bool BDMergeVelocityBuffer=false,BDMergeVelocityDebug=false;

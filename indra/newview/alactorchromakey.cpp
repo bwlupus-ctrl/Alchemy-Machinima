@@ -5,6 +5,14 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alactorchromakey.h"
+#include "alactorkeycapture.h"
+#include "llactormaskeligibility.h"
+#include "llglslshader.h"
+#include "llvertexbuffer.h"
+#include "llactormover.h"
+extern bool gCubeSnapshot;
+#include <array>
+#include <memory>
 
 #include "alcinelightrigmanager.h"
 #include "alghoststudio.h"
@@ -373,4 +381,279 @@ const std::string& ALActorChromaKey::snapshotPlaceholder()
 {
     static const std::string empty;
     return sActive && sRefusal.latched ? sRefusal.placeholder : empty;
+}
+
+// [ActorKey][WP1b] Capture resolved program inputs at base beauty emission.
+// Uniform reflection intentionally includes matrix arrays, indexed material arrays,
+// cloth, time and sampler units: the vec4-only LLGLSLShader cache is insufficient.
+namespace
+{
+struct KeyUniform
+{
+    std::string name;
+    GLenum type;
+    std::array<GLfloat, 16> f{};
+    std::array<GLint, 4> i{};
+};
+struct KeyCommand
+{
+    const LLDrawInfo* info = nullptr;
+    SystemComponentKey system{};
+    bool isSystem = false, bearing = false, blended = false;
+    LLUUID owner;
+    LLGLSLShader* beauty = nullptr;
+    LLUUID hash;
+    std::vector<KeyUniform> uniforms;
+    std::vector<LLActorMaskTextureState> textures;
+    std::array<glm::mat4, LLRender::NUM_MATRIX_MODES> matrices;
+    std::array<GLfloat, 4> colour{};
+    GLint polygon[2] = {GL_FILL, GL_FILL}, cullMode = GL_BACK;
+    bool cull = false;
+    std::function<void(LLGLSLShader&)> draw;
+};
+struct KeyProgram { LLGLSLShader shader; LLUUID hash; };
+std::vector<KeyCommand> sKeyCommands;
+std::map<LLGLSLShader*, std::unique_ptr<KeyProgram>> sKeyPrograms;
+U32 sKeyCaptureFrame = ~0u;
+bool sKeyCaptureValid = true;
+
+bool key_integer(GLenum type)
+{
+    switch (type)
+    {
+    case GL_INT: case GL_BOOL: case GL_INT_VEC2: case GL_INT_VEC3: case GL_INT_VEC4:
+    case GL_BOOL_VEC2: case GL_BOOL_VEC3: case GL_BOOL_VEC4:
+    case GL_SAMPLER_2D: case GL_SAMPLER_CUBE: case GL_SAMPLER_2D_RECT:
+    case GL_SAMPLER_2D_SHADOW: case GL_SAMPLER_CUBE_SHADOW:
+    case GL_SAMPLER_CUBE_MAP_ARRAY: case GL_SAMPLER_2D_MULTISAMPLE: case GL_SAMPLER_3D:
+        return true;
+    default: return false;
+    }
+}
+bool key_upload(GLuint program, const KeyUniform& u)
+{
+    const GLint loc = glGetUniformLocation(program, u.name.c_str());
+    if (loc < 0) return true; // Colour/lighting input optimized out of coverage variant.
+    switch (u.type)
+    {
+    case GL_INT_VEC2: case GL_BOOL_VEC2: glUniform2iv(loc, 1, u.i.data()); break;
+    case GL_INT_VEC3: case GL_BOOL_VEC3: glUniform3iv(loc, 1, u.i.data()); break;
+    case GL_INT_VEC4: case GL_BOOL_VEC4: glUniform4iv(loc, 1, u.i.data()); break;
+    case GL_FLOAT: glUniform1fv(loc, 1, u.f.data()); break;
+    case GL_FLOAT_VEC2: glUniform2fv(loc, 1, u.f.data()); break;
+    case GL_FLOAT_VEC3: glUniform3fv(loc, 1, u.f.data()); break;
+    case GL_FLOAT_VEC4: glUniform4fv(loc, 1, u.f.data()); break;
+    case GL_FLOAT_MAT2: glUniformMatrix2fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT3: glUniformMatrix3fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT4: glUniformMatrix4fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT2x3: glUniformMatrix2x3fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT2x4: glUniformMatrix2x4fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT3x2: glUniformMatrix3x2fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT3x4: glUniformMatrix3x4fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT4x2: glUniformMatrix4x2fv(loc, 1, GL_FALSE, u.f.data()); break;
+    case GL_FLOAT_MAT4x3: glUniformMatrix4x3fv(loc, 1, GL_FALSE, u.f.data()); break;
+    default:
+        if (!key_integer(u.type)) return false;
+        glUniform1iv(loc, 1, u.i.data()); break;
+    }
+    return true;
+}
+void key_snapshot(KeyCommand& command)
+{
+    command.beauty = LLGLSLShader::sCurBoundShaderPtr;
+    if (!command.beauty) { sKeyCaptureValid = false; return; }
+    auto& beauty = *command.beauty;
+    command.hash = beauty.mShaderHash;
+    gGL.syncMatrices();
+    GLint count = 0, max_name = 0;
+    glGetProgramiv(beauty.mProgramObject, GL_ACTIVE_UNIFORMS, &count);
+    glGetProgramiv(beauty.mProgramObject, GL_ACTIVE_UNIFORM_MAX_LENGTH, &max_name);
+    std::vector<GLchar> name(llmax(max_name, 1));
+    for (GLint index = 0; index < count; ++index)
+    {
+        GLsizei length; GLint size; GLenum type;
+        glGetActiveUniform(beauty.mProgramObject, index, (GLsizei)name.size(), &length, &size, &type, name.data());
+        const std::string base(name.data(), length);
+        for (GLint element = 0; element < size; ++element)
+        {
+            KeyUniform u; u.name = base; u.type = type;
+            const auto zero = base.find("[0]");
+            if (zero != std::string::npos) u.name.replace(zero, 3, "[" + std::to_string(element) + "]");
+            const GLint loc = glGetUniformLocation(beauty.mProgramObject, u.name.c_str());
+            if (loc < 0) continue; // Uniform blocks are managed by the original features.
+            if (key_integer(type)) glGetUniformiv(beauty.mProgramObject, loc, u.i.data());
+            else glGetUniformfv(beauty.mProgramObject, loc, u.f.data());
+            command.uniforms.push_back(std::move(u));
+        }
+    }
+    const U32 active = gGL.getCurrentTexUnitIndex();
+    GLint actual_active; glGetIntegerv(GL_ACTIVE_TEXTURE, &actual_active);
+    for (U32 unit = 0; unit < LL_NUM_TEXTURE_LAYERS; ++unit)
+        command.textures.emplace_back(*gGL.getTexUnit(unit));
+    gGL.getTexUnit(active)->activate();
+    glActiveTexture(actual_active);
+    for (U32 mode = 0; mode < LLRender::NUM_MATRIX_MODES; ++mode)
+        command.matrices[mode] = gGL.getMatrix(static_cast<LLRender::eMatrixMode>(mode));
+    const GLint colour = beauty.getAttribLocation(LLVertexBuffer::TYPE_COLOR);
+    if (colour >= 0) glGetVertexAttribfv(colour, GL_CURRENT_VERTEX_ATTRIB, command.colour.data());
+    glGetIntegerv(GL_POLYGON_MODE, command.polygon);
+    glGetIntegerv(GL_CULL_FACE_MODE, &command.cullMode);
+    command.cull = glIsEnabled(GL_CULL_FACE) != GL_FALSE;
+}
+}
+
+bool ALActorKeyCapture::sArmed = false;
+ALActorKeyCapture& ALActorKeyCapture::instance() { static ALActorKeyCapture capture; return capture; }
+void ALActorKeyCapture::beginBeauty()
+{
+    mBeautySuppressed.clear(); mSystemSuppressed.clear();
+    mDrawTrace.clear(); mSystemTrace.clear(); sKeyCommands.clear();
+    sKeyCaptureFrame = gFrameCount; sKeyCaptureValid = true; sArmed = true;
+}
+void ALActorKeyCapture::release()
+{
+    sArmed = false; std::vector<KeyCommand>().swap(sKeyCommands); sKeyPrograms.clear();
+    mBeautySuppressed.clear(); mSystemSuppressed.clear();
+    mDrawTrace.clear(); mSystemTrace.clear();
+    std::unordered_set<const LLDrawInfo*>().swap(mBeautySuppressed); sKeyCaptureFrame = ~0u;
+}
+bool ALActorKeyCapture::native(const LLDrawInfo* info)
+{
+    auto& trace = mDrawTrace[info];
+    if (mBeautySuppressed.count(info)) return false;
+    return true;
+}
+bool ALActorKeyCapture::native(const SystemComponentKey& key)
+{
+    auto& trace = mSystemTrace[key];
+    if (mSystemSuppressed.count(key)) return false;
+    return true;
+}
+void ALActorKeyCapture::capture(const LLDrawInfo* info, const LLUUID& owner, bool bearing,
+    LLVertexBuffer* vb, U32 start, U32 end, U32 count, U32 offset, bool double_sided, bool blended)
+{
+    if (!sArmed || ALActorChromaKey::suppressed() || sKeyCaptureFrame != gFrameCount || !info || !vb || !count) return;
+    GLboolean mask[4]; glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+    if (!mask[0]) return; // The same helper also emits depth-only primes.
+    KeyCommand command; command.info = info; command.owner = owner; command.bearing = bearing; command.blended = blended;
+    // A9 records every actual shared emission, including non-bearing ordinary Layer.
+    key_snapshot(command);
+    if (double_sided) command.cull = false; // Indexed binder's temporary cull scope has already restored.
+    // Geometry and material/palette/matrix inputs belong to this beauty emission.
+    LLPointer<LLVertexBuffer> buffer(vb);
+    command.draw = [buffer, start, end, count, offset](LLGLSLShader&) mutable
+    { buffer->setBuffer(); buffer->drawRange(LLRender::TRIANGLES, start, end, count, offset); };
+    sKeyCommands.push_back(std::move(command));
+}
+void ALActorKeyCapture::capture(const SystemComponentKey& key, bool bearing, U32 drawn,
+    std::function<void(LLGLSLShader&)> draw)
+{
+    if (!sArmed || ALActorChromaKey::suppressed() || sKeyCaptureFrame != gFrameCount || !drawn) return;
+    KeyCommand command; command.system = key; command.isSystem = true;
+    command.owner = key.id; command.bearing = bearing; command.blended = key.part == SystemComponentKey::BodyTransparent;
+    key_snapshot(command); command.draw = std::move(draw);
+    sKeyCommands.push_back(std::move(command));
+}
+bool ALActorKeyCapture::replay(bool include_alpha)
+{
+    sArmed = false; // Coverage never records beauty or recursively captures itself.
+    if (!sKeyCaptureValid || sKeyCaptureFrame != gFrameCount) return false;
+    struct RestoreReplayInputs
+    {
+        LLRender::eMatrixMode mode = gGL.getMatrixMode();
+        GLint polygon[2];
+        std::array<glm::mat4, LLRender::NUM_MATRIX_MODES> matrices;
+        std::vector<std::array<GLfloat, 4>> attributes;
+        RestoreReplayInputs()
+        {
+            glGetIntegerv(GL_POLYGON_MODE, polygon);
+            for (U32 i = 0; i < LLRender::NUM_MATRIX_MODES; ++i)
+                matrices[i] = gGL.getMatrix(static_cast<LLRender::eMatrixMode>(i));
+            GLint count; glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &count); attributes.resize(count);
+            for (GLint i = 0; i < count; ++i) glGetVertexAttribfv(i, GL_CURRENT_VERTEX_ATTRIB, attributes[i].data());
+        }
+        ~RestoreReplayInputs()
+        {
+            for (U32 i = 0; i < LLRender::NUM_MATRIX_MODES; ++i)
+            { gGL.matrixMode(static_cast<LLRender::eMatrixMode>(i)); gGL.loadMatrix(glm::value_ptr(matrices[i])); }
+            gGL.matrixMode(mode);
+            glPolygonMode(GL_FRONT_AND_BACK, polygon[0]);
+            for (U32 i = 0; i < attributes.size(); ++i) glVertexAttrib4fv(i, attributes[i].data());
+        }
+    } restore;
+    for (auto& command : sKeyCommands)
+    {
+        if (!ALActorChromaKey::ownerKeyed(command.owner, command.info ? command.info->mActorFxFallbackOwner : LLUUID::null)) continue;
+        const bool suppressed = command.isSystem ? mSystemSuppressed.count(command.system) != 0
+                                                 : mBeautySuppressed.count(command.info) != 0;
+        auto& trace = command.isSystem ? mSystemTrace[command.system] : mDrawTrace[command.info];
+        if (!suppressed || !command.bearing || (!include_alpha && command.blended)) continue;
+        if (!command.beauty || command.hash != command.beauty->mShaderHash) return false;
+        auto& cached = sKeyPrograms[command.beauty];
+        if (!cached) cached = std::make_unique<KeyProgram>();
+        auto& shader = cached->shader;
+        if (!shader.isComplete() || cached->hash != command.hash)
+        {
+            shader.unload();
+            shader.mName = command.beauty->mName + " Key component coverage";
+            shader.mFeatures = command.beauty->mFeatures;
+            shader.mShaderFiles = command.beauty->mShaderFiles;
+            shader.mShaderLevel = command.beauty->mShaderLevel;
+            shader.mShaderGroup = command.beauty->mShaderGroup;
+            shader.clearPermutations(); shader.mDefines = command.beauty->mDefines;
+            shader.addPermutation("AL_KEY_COVERAGE_OUT", "1");
+            if (!shader.createShader()) return false;
+            cached->hash = command.hash;
+        }
+        // The coverage linker can optimize colour-only samplers out. Keep the
+        // original unit map for system mesh binders and restore sampler values by name.
+        shader.mTexture = command.beauty->mTexture;
+        for (U32 mode = 0; mode < LLRender::NUM_MATRIX_MODES; ++mode)
+        {
+            gGL.matrixMode(static_cast<LLRender::eMatrixMode>(mode));
+            gGL.loadMatrix(glm::value_ptr(command.matrices[mode]));
+        }
+        gGL.matrixMode(LLRender::MM_MODELVIEW); gGLLastMatrix = nullptr;
+        shader.bind(); gGL.syncMatrices();
+        for (const auto& u : command.uniforms) if (!key_upload(shader.mProgramObject, u)) return false;
+        for (U32 unit = 0; unit < command.textures.size(); ++unit)
+            command.textures[unit].restore(*gGL.getTexUnit(unit));
+        shader.vertexAttrib4fv(LLVertexBuffer::TYPE_COLOR, command.colour.data());
+        LLGLState cull(GL_CULL_FACE, command.cull ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
+        glCullFace(command.cullMode);
+        glPolygonMode(GL_FRONT_AND_BACK, command.polygon[0]);
+        command.draw(shader);
+        trace.shared = 1; // One path per component; disjoint faces/slots remain separate commands.
+    }
+    // Include suppressed-without-capture components, rather than silently omitting zero Cover/hidden.
+    for (const auto* info : mBeautySuppressed) mDrawTrace[info];
+    for (const auto& key : mSystemSuppressed) mSystemTrace[key];
+    static LLCachedControl<U32> debug(gSavedSettings, "ActorKeyDebugView", 0);
+    if (debug)
+    {
+        for (const auto& entry : mDrawTrace)
+            LL_INFOS("ActorKey") << "CONTRIBUTOR draw=" << entry.first
+                << " suppressed=" << (mBeautySuppressed.count(entry.first) != 0)
+                << " native=" << entry.second.native << " WP1b=" << entry.second.shared
+                << " count=" << entry.second.native + entry.second.shared << LL_ENDL;
+        for (const auto& entry : mSystemTrace)
+            LL_INFOS("ActorKey") << "CONTRIBUTOR system=" << entry.first.id << " part=" << entry.first.part
+                << " suppressed=" << (mSystemSuppressed.count(entry.first) != 0)
+                << " native=" << entry.second.native << " WP1b=" << entry.second.shared
+                << " count=" << entry.second.native + entry.second.shared << LL_ENDL;
+    }
+    return true;
+}
+
+
+bool ALActorKeyCapture::beautyContext()
+{
+    return ALActorChromaKey::sActive && !ALActorChromaKey::suppressed() &&
+        LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD &&
+        !LLPipeline::sShadowRender && !LLPipeline::sVelocityRender &&
+        !LLPipeline::sReflectionRender && !LLPipeline::sImpostorRender &&
+        !LLPipeline::sRenderingHUDs && !LLPipeline::sPrismLensRender &&
+        !LLPipeline::sPrismPreviewRender && !gCubeSnapshot &&
+        !gPipeline.mHeroProbeManager.isMirrorPass() &&
+        !LLActorMover::instance().isRenderingSharedActorStyle();
 }

@@ -8,20 +8,20 @@
       "GENERATED": 723,
       "HOOK": 503,
       "OWNED": 900,
-      "TOOLING": 380
+      "TOOLING": 383
     },
     "dirty_product_inputs": [
-      "indra/newview/app_settings/shaders/class1/alchemy/actorKeyCompositeF.glsl",
-      "indra/newview/app_settings/shaders/class1/deferred/cineFisheyeF.glsl",
-      "indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl",
-      "indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterGatherF.glsl",
-      "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
+      "indra/newview/alactorchromakey.cpp",
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
+      "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
+      "indra/newview/llactormover.cpp",
+      "indra/newview/llactormover.h",
+      "indra/newview/lldrawpool.cpp",
+      "indra/newview/lldrawpoolavatar.cpp",
       "indra/newview/pipeline.cpp",
-      "indra/newview/pipeline.h",
-      "scripts/code_tools/actor_key_gl_check.py",
+      "scripts/code_tools/actor_key_draw_fixture.h",
       "scripts/code_tools/actor_key_wp2_check.py",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/sensor_post_dispatch_check.py"
+      "scripts/code_tools/director_actor_bar_check.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": false,
@@ -202,10 +202,10 @@
       },
       "wiring_rows": 2246
     },
-    "head_source_tree": "31a656559735b9f78afb12c62dd38c9fb3d72c5e",
+    "head_source_tree": "99d97ba2e9d4f7c8f3887ffe140c8a5fd007d5a3",
     "hook_files": 503,
     "hunks": 3058,
-    "input_sha256": "43275c62a83770e416d747518a73972a886dbefcc98986f2250aa20056fec23e",
+    "input_sha256": "bca8a912c52adc5e9be12a8930e670eae90a4228d8eb7ab080fc1f30425b5883",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
     "settings": 2048
   },
@@ -39225,6 +39225,45 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/actor_key_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_lens_fixture_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_lens_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/actor_key_lens_native_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

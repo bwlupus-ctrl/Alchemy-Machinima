@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alactorkeycapture.h"
 #include "alderenderlist.h"
 #include "llactormaskeligibility.h" // [ActorMask]
 
@@ -1107,7 +1108,12 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
     if (LLGhostAvatar::isRenderHidden(params.mAvatar, params.mActorFxOwner, params.mActorFxFallbackOwner) ||
         ALDerenderList::keepsAvatarLive(params.mAvatar) ||
         ALDerenderList::isHiddenSource(params.mActorFxOwner) ||
-        ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner)) return true;
+        ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner))
+    {
+        if (ALActorKeyCapture::sArmed && !depth_only && ALActorKeyCapture::beautyContext())
+            ALActorKeyCapture::instance().suppress(&params);
+        return true;
+    }
     if (params.mActorFxOwner.isNull())
     {
         return false;
@@ -1121,6 +1127,8 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
         shared_actor_fx_zero_cover(style))
     {
         if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
+        if (ALActorKeyCapture::sArmed && !depth_only && ALActorKeyCapture::beautyContext())
+            ALActorKeyCapture::instance().suppress(&params);
         return true;
     }
     if (!shared_actor_fx_beauty_context())
@@ -1137,6 +1145,8 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
     }
     const bool suppressed = shared_actor_fx_style_suppresses(owner, style);
     if (suppressed && LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
+    if (suppressed && ALActorKeyCapture::sArmed && !depth_only && ALActorKeyCapture::beautyContext())
+        ALActorKeyCapture::instance().suppress(&params);
     return suppressed;
 }
 
@@ -1147,7 +1157,12 @@ bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
     if (LLGhostAvatar::isRenderHidden(params.mAvatar, params.mActorFxOwner, params.mActorFxFallbackOwner) ||
         ALDerenderList::keepsAvatarLive(params.mAvatar) ||
         ALDerenderList::isHiddenSource(params.mActorFxOwner) ||
-        ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner)) return true;
+        ALDerenderList::isHiddenSource(params.mActorFxFallbackOwner))
+    {
+        if (ALActorKeyCapture::sArmed && !depth_only && ALActorKeyCapture::beautyContext())
+            ALActorKeyCapture::instance().suppress(&params);
+        return true;
+    }
     if (params.mActorFxOwner.isNull())
     {
         return false;
@@ -1161,6 +1176,8 @@ bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
         shared_actor_fx_zero_cover(style))
     {
         if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
+        if (ALActorKeyCapture::sArmed && !depth_only && ALActorKeyCapture::beautyContext())
+            ALActorKeyCapture::instance().suppress(&params);
         return true;
     }
     if (!shared_actor_fx_beauty_context())
@@ -1182,6 +1199,8 @@ bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
         return false;
     }
     if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
+        if (ALActorKeyCapture::sArmed && !depth_only && ALActorKeyCapture::beautyContext())
+            ALActorKeyCapture::instance().suppress(&params);
     return true;
 }
 

@@ -858,7 +858,11 @@ void main()
 #ifdef HAS_ACTOR_FX
     if (alrDebug()) color = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
 #endif
+#ifdef AL_KEY_COVERAGE_OUT
+    frag_color = vec4(clamp(output_alpha, 0.0, 1.0));
+#else
     frag_color = max(vec4(color * final_scale, output_alpha), vec4(0.0));
+#endif
 #ifdef ALR_RIMSPLIT_PARITY
     // Dedicated R8 diagnostic output; pipeline GL_MAX blending makes this a
     // frame-wide mismatch OR, so a later zero cannot erase an earlier one.

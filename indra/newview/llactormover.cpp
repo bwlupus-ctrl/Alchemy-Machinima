@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alactorkeycapture.h"
 #include "llviewerregion.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
 
@@ -13643,6 +13644,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 di->mVertexBuffer->drawRange(
                     LLRender::TRIANGLES, di->mStart, di->mEnd,
                     di->mCount, di->mOffset);
+                if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only && subset != SWEEP_GLOW)
+                    ALActorKeyCapture::instance().capture(di, di->mActorFxOwner,
+                        gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f,
+                        di->mVertexBuffer, di->mStart, di->mEnd, di->mCount, di->mOffset, false, is_blend);
                 continue;
             }
 
@@ -13676,6 +13681,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 di->mVertexBuffer->setBuffer();
                 di->mVertexBuffer->drawRange(LLRender::TRIANGLES, di->mStart,
                                              di->mEnd, di->mCount, di->mOffset);
+                if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only && subset != SWEEP_GLOW)
+                    ALActorKeyCapture::instance().capture(di, di->mActorFxOwner,
+                        gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f,
+                        di->mVertexBuffer, di->mStart, di->mEnd, di->mCount, di->mOffset, false, is_blend);
                 batch_shader->uniform1i(sMaskIndexed, 0);
                 batch_shader->uniform1i(sMaskMaterialSlots, 0);
                 continue;
@@ -13888,6 +13897,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 di->mVertexBuffer->setBuffer();
                 di->mVertexBuffer->drawRange(LLRender::TRIANGLES,
                                              di->mStart, di->mEnd, di->mCount, di->mOffset);
+                if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only && subset != SWEEP_GLOW)
+                    ALActorKeyCapture::instance().capture(di, di->mActorFxOwner,
+                        gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f,
+                        di->mVertexBuffer, di->mStart, di->mEnd, di->mCount, di->mOffset, false, is_blend);
             }
         }
         if (tex_mat_on)
@@ -14127,6 +14140,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
                           face->getGeomIndex() + face->getGeomCount() - 1,
                           face->getIndicesCount(), face->getIndicesStart());
+            if (ALActorKeyCapture::sArmed && gp.mWorldLinear && !coverage_mode && !gp.mDepthOnly && !glow_only)
+                ALActorKeyCapture::instance().capture(alr_di, alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                    gp.mCoverMode || gp.mCoverageLayerStrength >= 0.f, vb,
+                    face->getGeomIndex(), face->getGeomIndex() + face->getGeomCount() - 1,
+                    face->getIndicesCount(), face->getIndicesStart(), false, is_blend);
             gGL.popMatrix();
         }
         gGL.syncMatrices();
@@ -16718,7 +16736,7 @@ U32 LLActorMover::renderSystemActorMask(LLVOAvatar* avatar, U8 byte)
     return draws;
 }
 
-U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase)
+U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase, bool key)
 {
     if (!actorMaskAvatarEligible(avatar) || avatar->isControlAvatar()) return 0;
     LLGLSLShader* saved_avatar_shader = LLDrawPoolAvatar::sVertexProgram;
@@ -16755,7 +16773,18 @@ U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cove
         gravity = gravity * rot_mat;
         body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY, 1, gravity.mV);
     }
-    U32 draws = avatar->renderSkinned() ? 1 : 0;
+    U32 draws = 0;
+    if (!key) draws = avatar->renderSkinned() ? 1 : 0;
+    else
+    {
+        const SystemComponentKey body{ALActorKeyCapture::systemActorId(avatar), phase == 0
+            ? SystemComponentKey::BodyOpaque : SystemComponentKey::BodyTransparent};
+        if (ALActorKeyCapture::instance().native(body))
+        {
+            draws = avatar->renderSkinned() ? 1 : 0;
+            if (draws) ALActorKeyCapture::instance().contributed(body);
+        }
+    }
     body_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
     if (phase == 0)
     {
@@ -16766,7 +16795,17 @@ U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cove
         eye_shader.uniform2fv(sSilCover, 1, cover.mV);
         eye_shader.uniform1i(sSilBlended, 0);
         eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
-        draws += avatar->renderRigid() ? 1 : 0;
+        if (!key) draws += avatar->renderRigid() ? 1 : 0;
+        else
+        {
+            const SystemComponentKey eyes{ALActorKeyCapture::systemActorId(avatar), SystemComponentKey::RigidEyes};
+            if (ALActorKeyCapture::instance().native(eyes))
+            {
+                const U32 eye_draws = avatar->renderRigid() ? 1 : 0;
+                draws += eye_draws;
+                if (eye_draws) ALActorKeyCapture::instance().contributed(eyes);
+            }
+        }
         eye_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
     }
     LLDrawPoolAvatar::sVertexProgram = saved_avatar_shader;
@@ -17029,19 +17068,43 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY,
                                1, gravity.mV);
     }
+    U32 key_body_drawn = 0;
     if (blend_sweep)
     {
         // The stock transparent path assumes the opaque pass already uploaded
         // this program's palette. Shared alpha can be interleaved much later,
         // so explicitly seed it from the first available classic body mesh.
         avatar->uploadActorGhostPalette();
-        avatar->renderTransparent(true);
+        key_body_drawn = avatar->renderTransparent(true);
     }
     else
     {
         LLDrawPoolAvatar::sSkipOpaque = false;
         LLDrawPoolAvatar::sSkipTransparent = true;
-        avatar->renderSkinned();
+        key_body_drawn = avatar->renderSkinned();
+    }
+    if (ALActorKeyCapture::sArmed && !depth_only)
+    {
+        const SystemComponentKey component{ALActorKeyCapture::systemActorId(avatar), blend_sweep
+            ? SystemComponentKey::BodyTransparent : SystemComponentKey::BodyOpaque};
+        LLPointer<LLVOAvatar> source(avatar);
+        ALActorKeyCapture::instance().capture(component,
+            style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE || coverage_replacement,
+            key_body_drawn, [source, blend_sweep](LLGLSLShader& shader) mutable
+            {
+                LLGLSLShader* saved = LLDrawPoolAvatar::sVertexProgram;
+                const S32 channel = LLDrawPoolAvatar::sDiffuseChannel;
+                const bool opaque = LLDrawPoolAvatar::sSkipOpaque, transparent = LLDrawPoolAvatar::sSkipTransparent;
+                LLDrawPoolAvatar::sVertexProgram = &shader;
+                LLDrawPoolAvatar::sDiffuseChannel = shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+                LLDrawPoolAvatar::sSkipOpaque = blend_sweep;
+                LLDrawPoolAvatar::sSkipTransparent = !blend_sweep;
+                if (blend_sweep) { source->uploadActorGhostPalette(); source->renderTransparent(true); }
+                else source->renderSkinned();
+                shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+                LLDrawPoolAvatar::sVertexProgram = saved; LLDrawPoolAvatar::sDiffuseChannel = channel;
+                LLDrawPoolAvatar::sSkipOpaque = opaque; LLDrawPoolAvatar::sSkipTransparent = transparent;
+            });
     }
     body_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
 
@@ -17054,7 +17117,23 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         LLDrawPoolAvatar::sVertexProgram = &eye_shader;
         LLDrawPoolAvatar::sDiffuseChannel = eye_diffuse;
         upload(eye_shader, LLDrawPoolAvatar::sMinimumAlpha);
-        avatar->renderRigid();
+        const U32 key_eyes_drawn = avatar->renderRigid();
+        if (ALActorKeyCapture::sArmed && !depth_only)
+        {
+            LLPointer<LLVOAvatar> source(avatar);
+            ALActorKeyCapture::instance().capture({ALActorKeyCapture::systemActorId(avatar), SystemComponentKey::RigidEyes},
+                style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE || coverage_replacement,
+                key_eyes_drawn, [source](LLGLSLShader& shader) mutable
+                {
+                    LLGLSLShader* saved = LLDrawPoolAvatar::sVertexProgram;
+                    const S32 channel = LLDrawPoolAvatar::sDiffuseChannel;
+                    LLDrawPoolAvatar::sVertexProgram = &shader;
+                    LLDrawPoolAvatar::sDiffuseChannel = shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+                    source->renderRigid();
+                    shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+                    LLDrawPoolAvatar::sVertexProgram = saved; LLDrawPoolAvatar::sDiffuseChannel = channel;
+                });
+        }
         eye_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
     }
 
@@ -19188,6 +19267,14 @@ bool LLActorMover::renderSharedActorPBRCommands(
             // geometry exactly once. shared_replay preserves the proxy style
             // just uploaded above and bypasses only native-pass suppression.
             LLRenderPass::pushGLTFBatchIndexed(*draw_info, maps, true);
+            if (ALActorKeyCapture::sArmed && !depth && !glow && !topology_wire)
+            {
+                const bool double_sided = std::any_of(draw_info->mGLTFMaterialList.begin(),
+                    draw_info->mGLTFMaterialList.end(), [](const auto& slot) { return slot.notNull() && slot->mDoubleSided; });
+                ALActorKeyCapture::instance().capture(policy_info, policy_info ? policy_info->mActorFxOwner : proxy.mAvatar->getActorFxOwnerId(), true,
+                    vb, draw_info->mStart, draw_info->mEnd, draw_info->mCount, draw_info->mOffset, double_sided,
+                    command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND);
+            }
             if (glow && !synthetic)
             {
                 shader->uniform1i(sSyntheticEnabled, 0);
@@ -19253,6 +19340,13 @@ bool LLActorMover::renderSharedActorPBRCommands(
                           face->getGeomIndex() + face->getGeomCount() - 1,
                           face->getIndicesCount(), face->getIndicesStart());
         }
+        if (ALActorKeyCapture::sArmed && !depth && !glow && !topology_wire)
+            ALActorKeyCapture::instance().capture(policy_info, policy_info ? policy_info->mActorFxOwner : proxy.mAvatar->getActorFxOwnerId(), true, vb,
+                command.mRigged ? draw_info->mStart : face->getGeomIndex(),
+                command.mRigged ? draw_info->mEnd : face->getGeomIndex() + face->getGeomCount() - 1,
+                command.mRigged ? draw_info->mCount : face->getIndicesCount(),
+                command.mRigged ? draw_info->mOffset : face->getIndicesStart(), false,
+                command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND);
         if (uses_texture_matrix)
         {
             LLRenderPass::teardownGLTFTextureMatrix(texture_matrix);

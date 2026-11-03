@@ -28,6 +28,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alactorkeycapture.h"
 #include "alpovblink.h"
 #include "alcolorchart.h"
 #include "alpanelweathersettings.h"
@@ -8386,6 +8387,8 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
     LLAppViewer::instance()->pingMainloopTimeout("Pipeline:RenderGeomDeferred");
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL; //LL_RECORD_BLOCK_TIME(FTM_RENDER_GEOMETRY);
     LL_PROFILE_GPU_ZONE("renderGeomDeferred");
+    if (ALActorChromaKey::sActive && ALActorKeyCapture::beautyContext() && mRT == &mMainRT)
+        ALActorKeyCapture::instance().beginBeauty();
     // [ActorMask] The disarmed path is one cached branch, no recorder lookup.
     std::optional<LLActorMaskEligibility::Scope> actor_mask_scope;
     if (ALCineLightRigManager::anyActorOnly()) actor_mask_scope.emplace(actorMaskViewStamp());
@@ -29083,7 +29086,9 @@ bool LLPipeline::renderCover(U32 phase, const CoverPolicy& policy)
         if (!di || !visited.insert(di).second) return;
         LLVector2 cover;
         if (!policy.nativeCover(di->mActorFxOwner, di->mActorFxFallbackOwner, cover)) return;
-        drawSilCoverBatch(*di, pass, cover, blended);
+        if (policy.key && !ALActorKeyCapture::instance().native(di)) return;
+        if (drawSilCoverBatch(*di, pass, cover, blended) && policy.key)
+            ALActorKeyCapture::instance().contributed(di);
     };
 
     if (!blended)
@@ -29154,9 +29159,9 @@ bool LLPipeline::renderCover(U32 phase, const CoverPolicy& policy)
     for (LLVOAvatar* av : bodies)
     {
         LLVector2 cover;
-        const LLUUID key = policy.key ? av->getActorFxOwnerId() : ALAvatarLightResponse::keyForAvatar(av);
+        const LLUUID key = policy.key ? ALActorKeyCapture::systemActorId(av) : ALAvatarLightResponse::keyForAvatar(av);
         if (policy.nativeCover(key, LLUUID::null, cover))
-            mover.renderSystemSilCover(av, cover, phase);
+            mover.renderSystemSilCover(av, cover, phase, policy.key);
     }
     {
         ScopedSilCoverInvariant hook_invariant(
@@ -29252,6 +29257,7 @@ bool actor_key_copy(LLRenderTarget& target, const S32 (&viewport)[4])
 
 void LLPipeline::releaseActorKeyTargets()
 {
+    ALActorKeyCapture::instance().release();
     mKeyDiopterCov.release();
     for (auto& target : mKeyLensStage) target.release();
     for (auto& entry : sActorKeyLensPrograms) entry.second->shader.unload();
@@ -29662,6 +29668,7 @@ bool LLPipeline::actorKeyMatteValid() const
 void LLPipeline::buildActorKeyCoverageAndMatte()
 {
     if (!ALActorChromaKey::sActive) return;
+    struct EndBeautyCapture { ~EndBeautyCapture() { ALActorKeyCapture::sArmed = false; } } end_beauty_capture;
     mActorKeyCoverageFrame = mActorKeyMatteFrame = ~0u;
     if (mRT != &mMainRT || gCubeSnapshot || sPrismLensRender || sPrismPreviewRender ||
         sReflectionRender || sImpostorRender || sRenderingHUDs || ALActorChromaKey::suppressed() ||
@@ -29683,7 +29690,17 @@ void LLPipeline::buildActorKeyCoverageAndMatte()
         ScopedSilCoverState blend_state(phase != 0);
         if (!renderCover(phase, policy)) return;
     }
-    // WP1b interface: captured styled replay belongs HERE, before set occluders.
+    {
+        ScopedActorMaskState replay_state;
+        ScopedSilCoverState replay_blend(true);
+        LLGLDepthTest replay_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable replay_offset(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(0.f, policy.bias);
+        mActorKeyCoverage.bindTarget();
+        const bool complete = ALActorKeyCapture::instance().replay(alpha());
+        mActorKeyCoverage.flush();
+        if (!complete) { ALActorChromaKey::refuse("styled coverage capture/replay unavailable"); return; }
+    }
     renderActorKeyPrismOccluders(); // last coverage writer, in all output modes
     mActorKeyCoverageFrame = gFrameCount;
     buildActorKeyMatte();

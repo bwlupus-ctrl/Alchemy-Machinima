@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alactorkeycapture.h"
 #include "alenvintensity.h"
 
 #include "lldrawpoolavatar.h"
@@ -128,6 +129,11 @@ static LLUUID get_actor_fx_id(const LLVOAvatar* avatarp)
 {
     const LLVOAvatar* wearer = get_actor_fx_wearer(avatarp);
     return wearer ? wearer->getActorFxOwnerId() : LLUUID::null;
+}
+
+LLUUID ALActorKeyCapture::systemActorId(const LLVOAvatar* avatarp)
+{
+    return get_actor_fx_id(avatarp);
 }
 
 static bool has_enabled_actor_fx(const LLVOAvatar* avatarp)
@@ -1106,6 +1112,10 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     if (avatarp->isDead() || avatarp->mDrawable.isNull()
         || is_hidden_entity_clone(avatarp))
     {
+        if (ALActorKeyCapture::sArmed && ALActorKeyCapture::beautyContext() && pass > 0)
+            ALActorKeyCapture::instance().suppress({get_actor_fx_id(avatarp), pass == 1
+                ? SystemComponentKey::RigidEyes : sSkipOpaque
+                ? SystemComponentKey::BodyTransparent : SystemComponentKey::BodyOpaque});
         return;
     }
 
@@ -1226,6 +1236,8 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
         if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
         {
+            if (ALActorKeyCapture::sArmed && ALActorKeyCapture::beautyContext())
+                ALActorKeyCapture::instance().suppress({actor_fx_id, SystemComponentKey::RigidEyes});
             // Replace replays the rigid eyes through the dedicated world
             // actorghost shader. The helper is main-world/replay-ready gated;
             // every auxiliary view and link failure remains fail-open.
@@ -1270,6 +1282,9 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
     if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
     {
+        if (ALActorKeyCapture::sArmed && ALActorKeyCapture::beautyContext())
+            ALActorKeyCapture::instance().suppress({actor_fx_id, sSkipOpaque
+                ? SystemComponentKey::BodyTransparent : SystemComponentKey::BodyOpaque});
         // Replace replays opaque and alpha classic meshes in their shared
         // proxy stages. Layer still draws the authored base here with Actor FX
         // disabled, then composites the actorghost result over it.

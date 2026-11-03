@@ -12,6 +12,17 @@ from relight_area_policy_check import method as source_method
 def actor_key_baseline(source, name):
     """Reverse only the content-pinned WP01 delta before the old guard chain."""
     import hashlib, json
+    wp1b_raw = (Path(__file__).parent / "actor_key_wp1b_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(wp1b_raw).hexdigest() == "6cf233513c47a246e12ee9639c5fbdec4b71d488304a7b38d551d8afb1936cdc", "WP1b allowance pin"
+    wp1b = json.loads(wp1b_raw)
+    wp1b_path = "indra/newview/" + name
+    if wp1b_path in wp1b["files"]:
+        wp1b_base = subprocess.check_output(["git", "show", wp1b["base"] + ":" + wp1b_path]).decode("utf-8").replace("\r\n", "\n")
+        for hunk in wp1b["files"][wp1b_path]:
+            assert wp1b_base.count(hunk["before"]) == 1, ("WP1b baseline hunk", name)
+            assert source.count(hunk["after"]) == 1, ("WP1b exact hunk", name)
+            source = source.replace(hunk["after"], hunk["before"], 1)
+        assert source == wp1b_base, ("WP1b reversal must reproduce exact base", name)
     lens_raw = (Path(__file__).parent / "actor_key_lens_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(lens_raw).hexdigest() == "7bffb56abb89456172cfce66928590f96a2e3731b95cf5c29f6ccd1c38c05182", "WP-LENS allowance pin"
     lens = json.loads(lens_raw)

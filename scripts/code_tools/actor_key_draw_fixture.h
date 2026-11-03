@@ -89,3 +89,6 @@ LLViewerTexture* ghost_batch_texture(LLDrawInfo*){static LLViewerTexture tex;ret
 LLViewerTexture* ghost_batch_slot_texture(LLDrawInfo*,int,bool,float&,LLColor4&){return nullptr;}bool ghost_compose_khr_uv(const LLGLTFMaterial::TextureTransform&,LLMatrix4&){return false;}bool ghost_batch_uv_matrix(LLDrawInfo*,LLMatrix4&){return false;}
 LLGLSLShader gActorGhostProgram{1},gSkinnedActorGhostProgram{2},gWorldActorGhostProgram{5},gWorldSkinnedActorGhostIndexedProgram{6},gHighlightProgram{7},gHighlightSkin{8},gSilCoverProgram[2];
 enum{ACTOR_MASK_RIGGED,ACTOR_MASK_STATIC};struct KeyPrograms{LLGLSLShader gActorGhostKeyFillProgram{3},gSkinnedActorGhostKeyFillProgram{4};};auto sStudioKeyPrograms=std::make_unique<KeyPrograms>();
+
+// The legacy parity fixture is deliberately Key OFF. WP1b has its own armed path fixture.
+struct ALActorKeyCapture {inline static bool sArmed=false;static ALActorKeyCapture& instance(){static ALActorKeyCapture x;return x;}template<class... T>void capture(T...){}};

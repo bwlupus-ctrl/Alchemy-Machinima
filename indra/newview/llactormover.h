@@ -832,7 +832,7 @@ public:
     LLVOAvatar* sharedActorStyleProxyAvatar(size_t index) const; // [ActorMask]
     static bool actorMaskAvatarEligible(LLVOAvatar* avatar); // [ActorMask]
     U32 renderSystemActorMask(LLVOAvatar* avatar, U8 byte); // [ActorMask]
-    U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase);
+    U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase, bool key = false);
     void renderSharedProxySilCover(U32 phase, const CoverPolicy& policy);
     // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
     // before any native/shared alpha is drained so already-blended world alpha
