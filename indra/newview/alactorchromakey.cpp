@@ -77,6 +77,8 @@ std::vector<LLVOAvatar*> ALActorChromaKey::gatherKeyRecipients()
         if (!avatar || avatar->isDead()) return;
         if (avatar->isGhostAvatar() && !include_clones) return;
         if (avatar->isControlAvatar() && (!include_animesh || !avatar->isVisible())) return;
+        // Overlay helpers are private implementation actors, including their attachments.
+        if (ALGhostStudio::instance().isPrivateOverlayRuntime(avatar->getID())) return;
         if (std::find(result.begin(), result.end(), avatar) == result.end())
             result.push_back(avatar);
     };

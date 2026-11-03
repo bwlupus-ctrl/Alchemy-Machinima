@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alderenderlist.h"
+#include "alactorchromakey.h"
 #include "alavataranimspeed.h"
 #include "llcontrolavatar.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion for animesh
@@ -412,6 +413,12 @@ bool LLControlAvatar::computeNeedsUpdate()
 {
     computeUpdatePeriod();
     if (ALDerenderList::keepsAvatarLive(this)) return true;
+    if (ALActorChromaKey::keepsLive(this) && !isVisuallyMuted())
+    {
+        mNeedsImpostorUpdate = true;
+        mLastImpostorUpdateReason = 12;
+        return true;
+    }
 
     // Animesh attachments are a special case. Should have the same update cadence as their attached parent avatar.
     LLVOAvatar *attached_av = getAttachedAvatar();
@@ -747,6 +754,7 @@ bool LLControlAvatar::shouldRenderRigged() const
 // virtual
 bool LLControlAvatar::isImpostor()
 {
+    if (ALActorChromaKey::keepsLive(this) && !isVisuallyMuted()) return false;
     // Attached animated objects should match state of their attached av.
     LLVOAvatar *attached_av = getAttachedAvatar();
     if (attached_av)

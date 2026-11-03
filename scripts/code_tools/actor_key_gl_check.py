@@ -127,8 +127,9 @@ void main(){gl_Position=vec4(position,1);vary_position=position;vary_texcoord0=p
     silhouette_uniforms=uniforms+[('sil_cover',(.3,.7)),('sil_blended',0)]
     f.draw(cover,sil,silhouette_uniforms,[authored],True); before=f.read(sil)
     f.draw(cover,coverage,uniforms,[authored],True)
-    f.draw(cover,sil,silhouette_uniforms,[authored],True)
     assert np.array_equal(before,f.read(sil))
+    f.draw(cover,sil,uniforms,[authored],True)
+    assert not np.array_equal(before,f.read(sil)), "wrong-target negative control escaped"
     baseline=subprocess.check_output(['git','show','4afbf00ba09:indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl'])
     assert baseline.replace(b'\r\n',b'\n')==(SH/'deferred/silCoverF.glsl').read_bytes().replace(b'\r\n',b'\n')
     print('PASS: I-SILPARITY shader fixture RG(.3,.7) byte-identical after private key replay',flush=True)
@@ -168,6 +169,36 @@ void main(){gl_Position=vec4(position,1);vary_position=position;vary_texcoord0=p
     # A broken binary raw branch is detected by the authored fractional edge.
     assert not np.array_equal(remap(0.,0.), (edge[:,:,0]>.5).astype(np.uint8)*255)
     print('PASS: production blur/remap raw/full/half branches, exact endpoints, alpha, positive choke/negative grow; binary-raw negative control detected',flush=True)
+
+    # Impulse reference for each separable pass at full and half target sizes.
+    # Radius includes the target-height scaling used by the caller.
+    blur_text=(SH/'alchemy/actorKeyBlurF.glsl').read_text()
+    identity=f.program(blur_text.replace('total / weight', 'texture(keySource, vary_fragcoord).r'))
+    wrong=f.program(blur_text.replace('keyDirection * float(i)', 'keyDirection.yx * float(i)'))
+    def gaussian_check(program):
+        for size,scale in (((64,64),1.),((32,32),.5)):
+            for height_scale in (.5,1.,2.):
+                for radius in (2.,4.,8.):
+                    r=radius*scale*height_scale
+                    impulse=np.zeros((size[1],size[0],4),np.float32)
+                    impulse[size[1]//2,size[0]//2,0]=1; impulse[:,:,3]=1
+                    tex=f.texture(impulse,0x8229,size=size,linear=True)
+                    for axis in (0,1):
+                        dst=f.target(size=size); direction=(1./size[0],0.) if axis==0 else (0.,1./size[1])
+                        f.draw(program,dst,[('keySource',0),('keyDirection',direction),('keyRadius',r),('keyDownsample',0)],[tex])
+                        actual=f.read(dst)[:,:,0].astype(int)
+                        taps=min(16,max(1,int(np.ceil(r)))); sigma=max(r*.5,.25)
+                        weights=np.exp(-.5*np.arange(-taps,taps+1)**2/(sigma*sigma)); weights/=weights.sum()
+                        expected=np.zeros_like(actual); cy,cx=size[1]//2,size[0]//2
+                        for offset,w in zip(range(-taps,taps+1),weights):
+                            y,x=(cy,cx+offset) if axis==0 else (cy+offset,cx)
+                            if 0<=x<size[0] and 0<=y<size[1]: expected[y,x]=round(w*255)
+                        if np.max(np.abs(actual-expected))>1: return False
+        return True
+    assert gaussian_check(blur), 'Gaussian impulse reference failed'
+    assert not gaussian_check(identity), 'identity Gaussian negative control escaped'
+    assert not gaussian_check(wrong), 'wrong-axis Gaussian negative control escaped'
+    print('PASS: Gaussian impulse oracle full/half, both axes, radii and height scales; identity and wrong-axis rejected',flush=True)
 
     # Independent numerical remap reference over all 256 coverage codes. Feed a
     # known blur ramp directly, so the reference cannot inherit a blur defect.

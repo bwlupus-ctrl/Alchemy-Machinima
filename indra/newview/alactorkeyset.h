@@ -35,6 +35,11 @@ template<class Id> struct ALActorKeySet
                 for (const auto& inst : clones)
                     if (inst.entity == av.id && instances.count(inst.id)) { keyed = true; break; }
             }
+            // A control worn by an entity clone belongs to that instance's domain.
+            // Its selection must not re-admit an excluded clone through wearer owners.
+            for (const auto& inst : clones)
+                if (av.wearer != Id{} && inst.entity == av.wearer &&
+                    !instances.count(inst.id)) keyed = false;
             if (!keyed) continue;
             avatars.insert(av.id);
             owners.insert(av.owner);

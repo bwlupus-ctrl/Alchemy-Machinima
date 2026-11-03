@@ -101,62 +101,68 @@ std::cout<<"PASS: WP1 silhouette-OFF policy entry, gains haze=.3/rim=.7 independ
 #include "lluuid.h"
 #include "alactorkeyset.h"
 using U32=unsigned; using U64=unsigned long long;
-U32 subjects=0; bool includeClones=true;
+U32 subjects=0; bool includeClones=true, includeAnimesh=true;
 template<class T> struct LLCachedControl {
- LLCachedControl(int,const char*,T){} T operator()()const {
- if constexpr(std::is_same_v<T,bool>) return includeClones; else return subjects;
- }};
+ LLCachedControl(int,const char* n,T):name(n){} const char* name; T operator()()const {
+ if constexpr(std::is_same_v<T,bool>) return std::string(name)=="ActorKeyIncludeAnimesh" ? includeAnimesh : includeClones; else return subjects;
+ } operator T()const{return operator()();}};
 int gSavedSettings=0;
 struct LLCharacter {virtual ~LLCharacter()=default; inline static std::vector<LLCharacter*> sInstances;};
 struct LLVOAvatar:LLCharacter {
  LLUUID id,owner; bool ghost=false,dead=false; LLVOAvatar* wearer=nullptr;
  LLVOAvatar(int i,int o,bool g=false):id(i),owner(o),ghost(g){}
- bool isDead()const{return dead;} bool isControlAvatar()const{return wearer!=nullptr;}
+ bool isDead()const{return dead;} bool isVisible()const{return true;} bool isControlAvatar()const{return wearer!=nullptr;}
  bool isGhostAvatar()const{return ghost;} LLVOAvatar* getAttachedAvatar(){return wearer;}
  LLUUID getID()const{return id;} LLUUID getActorFxOwnerId()const{return owner;}
 };
 struct LLDirectorCast {
  std::vector<LLUUID> ids; static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
- const auto& getIds(){return ids;}
+ const auto& getIds(){return ids;} LLVOAvatar* resolve(LLUUID id){for(auto* c:LLCharacter::sInstances) if(auto* a=dynamic_cast<LLVOAvatar*>(c);a&&a->id==id)return a; return nullptr;}
 };
 struct ALGhostStudio {
  struct Instance {LLUUID mId,mSource,mEntityId;bool mDeleting=false,mSourceRemoved=false;};
  std::vector<Instance> instances;
  static ALGhostStudio& instance(){static ALGhostStudio s;return s;}
  const auto& getInstances(){return instances;}
+ bool isPrivateOverlayRuntime(LLUUID id){return id==LLUUID(6) || id==LLUUID(7);}
  static LLVOAvatar* resolveSourceAvatar(const Instance& i){
  for(auto* c:LLCharacter::sInstances) if(auto* a=dynamic_cast<LLVOAvatar*>(c);a&&a->id==i.mSource)return a;
  return nullptr;}
 };
+struct Ptr { LLVOAvatar* get()const{return nullptr;} }; Ptr gAgentAvatarp;
+struct ALCineLightRigManager { struct Recipient {Ptr mAvatar;}; static ALCineLightRigManager& instance(){static ALCineLightRigManager x;return x;} std::vector<Recipient> actorOnlyRecipients(){return {};} };
 std::vector<LLVOAvatar*> selection;
 struct ALActorChromaKey {
  inline static bool sActive=true; inline static ALActorKeySet<LLUUID> sKeyed;
  inline static U64 sRevision=1;
- static auto gatherKeyRecipients(){return selection;}
+ static std::vector<LLVOAvatar*> gatherKeyRecipients();
  static void tick(); static bool keepsLive(const LLVOAvatar*);
  static bool ownerKeyed(const LLUUID&,const LLUUID&); static bool instanceKeyed(const LLUUID&);
 };
 '''
-    for signature in ('void ALActorChromaKey::tick()', 'bool ALActorChromaKey::keepsLive(',
+    for signature in ('std::vector<LLVOAvatar*> ALActorChromaKey::gatherKeyRecipients()', 'void ALActorChromaKey::tick()', 'bool ALActorChromaKey::keepsLive(',
                       'bool ALActorChromaKey::ownerKeyed(', 'bool ALActorChromaKey::instanceKeyed('):
         tick_source += method(NV / 'alactorchromakey.cpp', signature) + '\n'
     tick_source += '''int main(){
-LLVOAvatar self(1,100),resident(2,200),entity(3,300,true),worn(4,400);worn.wearer=&self;
-LLCharacter::sInstances={&self,&resident,&entity,&worn}; selection={&self,&resident};
+LLVOAvatar self(1,100),resident(2,200),entity(3,3,true),worn(4,400), cloneworn(5,500), helper(6,6,true), helperworn(7,700);
+worn.wearer=&self; cloneworn.wearer=&entity; helperworn.wearer=&helper;
+LLCharacter::sInstances={&self,&resident,&entity,&worn,&cloneworn,&helper,&helperworn}; selection={&self,&resident};
 auto& studio=ALGhostStudio::instance();studio.instances={{30,1,3,true,false},{31,2,0,false,false}};
 using K=ALActorChromaKey;K::tick();
-assert(K::instanceKeyed(30)&&K::keepsLive(&entity)&&K::ownerKeyed(300,0));
+assert(K::instanceKeyed(30)&&K::keepsLive(&entity)&&K::ownerKeyed(3,0));
+assert(K::keepsLive(&cloneworn) && !K::keepsLive(&helperworn));
+includeClones=false;K::tick();assert(!K::keepsLive(&cloneworn) && !K::ownerKeyed(3,0) && !K::ownerKeyed(500,0) && !K::instanceKeyed(30) && !K::keepsLive(&helperworn)); includeClones=true;K::tick();
 auto revision=K::sRevision;K::tick();assert(K::sRevision==revision);
 for(auto who:{0u,3u})for(bool deferred:{false,true}){
  subjects=who;includeClones=false;selection={&self};K::tick();
- assert(K::keepsLive(&self)&&!K::keepsLive(&entity)&&!K::instanceKeyed(30));(void)deferred;
+ assert(!K::keepsLive(&entity)&&!K::instanceKeyed(30));(void)deferred;
 }
 subjects=1;includeClones=true;selection.clear();LLDirectorCast::instance().ids={30};K::tick();
 assert(K::instanceKeyed(30)&&K::keepsLive(&entity)&&!K::keepsLive(&self));
 studio.instances[0].mSourceRemoved=true;K::tick();assert(K::instanceKeyed(30)&&K::keepsLive(&entity));
 LLDirectorCast::instance().ids.clear();selection={&self};K::tick();assert(!K::instanceKeyed(30));
-selection={&worn};K::tick();assert(K::ownerKeyed(400,0)&&K::ownerKeyed(999,100));
-studio.instances.clear();selection.clear();K::tick();
+subjects=0;K::tick();assert(K::ownerKeyed(400,0)&&K::ownerKeyed(999,100));
+studio.instances.clear();subjects=2;selection.clear();K::tick();
 assert(K::sKeyed.avatars.empty()&&K::sKeyed.owners.empty()&&K::sKeyed.instances.empty());
 revision=K::sRevision;K::sActive=false;selection={&self};K::tick();
 assert(K::sRevision==revision&&!K::keepsLive(&self)&&!K::ownerKeyed(100,0)&&!K::instanceKeyed(30));
@@ -165,12 +171,49 @@ std::cout<<"PASS: actual tick/keep-live/revision, deleting-but-visible clone, so
 '''
     result = compile_run(OUT, tick_source, 'key_tick', [f'/I"{OUT}"', f'/I"{NV}"'])
     print(result.stdout, end=''); result.check_returncode()
+    negative = tick_source.replace('            // A control worn by an entity clone belongs', '            // A control worn by an entity clone belongs')
+    # Remove the production wearer-domain filter from the included template.
+    header_bad = header[header.index('            // A control worn'):header.index('            if (!keyed) continue;')]
+    negative = tick_source.replace('#include "alactorkeyset.h"', header.replace(header_bad, ''))
+    result = compile_run(OUT, negative, 'key_tick_bad_wearer', [f'/I"{OUT}"', f'/I"{NV}"'])
+    assert result.returncode, 'clone-wearer negative control escaped'
+    negative = tick_source.replace('        if (ALGhostStudio::instance().isPrivateOverlayRuntime(avatar->getID())) return;', '')
+    result = compile_run(OUT, negative, 'key_tick_bad_helper', [f'/I"{OUT}"', f'/I"{NV}"'])
+    assert result.returncode, 'private-helper negative control escaped'
+    print('PASS negative controls: clone wearer and private helper rejection')
     negative = tick_source.replace('        // Retiring instances stay visible',
                                   '        if (inst.mDeleting) continue;\n        // Retiring instances stay visible')
     assert negative != tick_source, 'fade-out negative control anchor moved'
     result = compile_run(OUT, negative, 'key_tick_bad_retirement', [f'/I"{OUT}"', f'/I"{NV}"'])
     assert result.returncode, 'premature retirement negative control escaped'
     print('PASS negative control: dropping a fading-out clone from tick is rejected')
+    # Exercise the real control overrides against an unselected budget-impostored wearer.
+    control_source = r'''#include <cassert>
+#include <iostream>
+struct LLUUID {};
+struct LLVOAvatar { bool muted=false, mNeedsImpostorUpdate=false; int mLastImpostorUpdateReason=0;
+ virtual bool computeNeedsUpdate(){mNeedsImpostorUpdate=false;return false;}
+ virtual bool isImpostor(){return true;} bool isVisuallyMuted(){return muted;}
+ bool hasEffectiveActorFx(){return false;} LLUUID getActorFxOwnerId(){return {};}
+ void computeUpdatePeriod(){} };
+struct ALDerenderList {static bool keepsAvatarLive(LLVOAvatar*){return false;}};
+struct ALActorChromaKey {inline static bool selected=true; static bool keepsLive(LLVOAvatar*){return selected;}};
+struct LLDirectorCast {static LLDirectorCast& instance(){static LLDirectorCast c;return c;} bool containsStored(LLUUID){return false;}};
+struct LLControlAvatar:LLVOAvatar {LLVOAvatar* wearer=nullptr; LLVOAvatar* getAttachedAvatar(){return wearer;}
+ bool computeNeedsUpdate() override; bool isImpostor() override;};
+''' + method(NV / 'llcontrolavatar.cpp', 'bool LLControlAvatar::computeNeedsUpdate()') + '\n' + method(NV / 'llcontrolavatar.cpp', 'bool LLControlAvatar::isImpostor()') + r'''
+int main(){LLVOAvatar wearer; LLControlAvatar control; control.wearer=&wearer;
+assert(control.computeNeedsUpdate() && !control.isImpostor());
+control.muted=true; assert(!control.computeNeedsUpdate() && control.isImpostor());
+control.muted=false; ALActorChromaKey::selected=false; assert(!control.computeNeedsUpdate() && control.isImpostor());
+std::cout<<"PASS: actual control overrides keep selected worn animesh live; mute and unselected veto\n";}
+'''
+    result = compile_run(OUT, control_source, 'key_control')
+    print(result.stdout, end=''); result.check_returncode()
+    negative = control_source.replace('ALActorChromaKey::keepsLive(this) && !isVisuallyMuted()', 'false')
+    result = compile_run(OUT, negative, 'key_control_bad')
+    assert result.returncode, 'control scheduling negative control escaped'
+    print('PASS negative control: removing control keep-live rejected')
     pipeline = (NV / 'pipeline.cpp').read_text(encoding='utf-8')
     prism = method(NV / 'pipeline.cpp', 'void LLPipeline::renderActorKeyPrismOccluders()')
     scope = prism[prism.index('    struct ScissorBoxScope'):prism.index('    mActorKeyCoverage.bindTarget();')]
@@ -203,6 +246,27 @@ glScissor(3,7,23,41); {
     assert key_entry.index('if (!ALActorChromaKey::sActive) return;') < key_entry.index('ScopedActorMaskState')
     assert key_entry.index('renderActorKeyPrismOccluders();') < key_entry.index('mActorKeyCoverageFrame = gFrameCount;') < key_entry.index('buildActorKeyMatte();')
     print('PASS: key-off call guards; replay has no silhouette gate; last-writer/stamp order; diagnostic avoids target self-bind and screen sidecars')
+
+    # Execute the production radius calculation at different target heights.
+    matte = method(NV / 'pipeline.cpp', 'void LLPipeline::buildActorKeyMatte()')
+    radius_code = matte[matte.index('    const F32 scale ='):matte.index('    glDisable(GL_SCISSOR_TEST);')]
+    radius_fixture = r'''#include <cassert>
+#include <cmath>
+#include <algorithm>
+using F32=float; using U32=unsigned;
+template<class T>T llclamp(T v,T lo,T hi){return std::clamp(v,lo,hi);}
+template<class T>T llmax(T a,T b){return std::max(a,b);}
+struct Setting{float v; float operator()(){return v;}};
+float calculate(U32 h,float fv,float cv){Setting feather{fv},choke{cv};
+''' + radius_code + r'''(void)raw;return radius;}
+int main(){assert(std::abs(calculate(540,4,0)-2)<.001);assert(std::abs(calculate(1080,4,0)-4)<.001);assert(std::abs(calculate(2160,4,0)-8)<.001);assert(std::abs(calculate(540,0,-6)-3)<.001);}
+'''
+    result=compile_run(OUT,radius_fixture,'key_radius_height'); result.check_returncode()
+    negative=radius_fixture.replace('h / 1080.f','1.f')
+    assert negative != radius_fixture
+    result=compile_run(OUT,negative,'key_radius_bad_height')
+    assert result.returncode, 'target-height scaling negative control escaped'
+    print('PASS: production radius scales with target height; fixed-scale mutation rejected')
 
     # Execute the exact I-MATRIX check, including release-mode fail-closed action.
     start = pipeline.index('    if (ALActorChromaKey::sActive && actorKeyMatteValid())')
