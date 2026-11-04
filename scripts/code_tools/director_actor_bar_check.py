@@ -51,6 +51,25 @@ def actor_key_baseline(source, name):
     return source
 
 
+def reverse_post_chroma_main(source, name):
+    """Reverse the pinned main edits made after the looks branch left it; the whole branch file must return."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "post_chroma_main_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == "39deffb197687a391641de1d4ab46ddda0a6b24bf4e804567f724837b99aa2b8", "post-chroma allowance pin"
+    data = json.loads(raw)
+    path = "indra/newview/" + name
+    if path not in data["files"]:
+        return source
+    for hunk in data["files"][path]:
+        assert source.count(hunk["after"]) == 1, ("post-chroma hunk", name)
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    base = subprocess.check_output(["git", "show", data["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    assert source == base, ("post-chroma reversal must reproduce the base", name)
+    return source
+
+
 def reverse_feature_allowance(source, name, filename, digest, label):
     """Reverse one pinned layer, then require its entire historical baseline."""
     import hashlib
@@ -147,7 +166,8 @@ def main():
         assert "\t" + widget + "\t" in index
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
-        guarded = actor_key_baseline((nv / path).read_text(encoding="utf-8"), path)
+        guarded = reverse_post_chroma_main((nv / path).read_text(encoding="utf-8"), path)
+        guarded = actor_key_baseline(guarded, path)
         if path == "pipeline.cpp":
             # Remove only the two pinned blink hooks before reversing clone QoL.
             import hashlib, json
@@ -206,7 +226,7 @@ def main():
     # Guard every additional file covered by the new layers, including Studio
     # where retirement and interplay both changed the Hot Gaze implementation.
     for name in ("alghoststudio.cpp", "llactormover.h"):
-        hot_gaze_baseline(actor_key_baseline((nv / name).read_text(encoding="utf-8"), name), name)
+        hot_gaze_baseline(actor_key_baseline(reverse_post_chroma_main((nv / name).read_text(encoding="utf-8"), name), name), name)
     guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
     # Reversal order: key WP5/WP4/WP1b/LENS/WP2/WP01, Matrix, retired looks, interplay, Hot Gaze, QoL, phase 2,
     # rekey, phase 1, then the unchanged original round-2 guard.
