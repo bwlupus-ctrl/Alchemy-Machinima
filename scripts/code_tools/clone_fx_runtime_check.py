@@ -14,6 +14,9 @@ WIDGETS=('slice','dropout','power_flicker','wipe','interlace','position_jitter')
 
 
 def check():
+    from clone_fx_fix1_check import source_assertions
+    from relight_3d_gl import SourceTree
+    assert source_assertions(SourceTree('WORKTREE')), 'FX fix round 1 source assertions'
     from clone_fx_safety_check import pre_fx_shader
     from clone_looks_gl_check import F,V,SH
     for shader in (F,V,SH+'avatar/avatarActorGhostV.glsl',SH+'avatar/eyeballActorGhostV.glsl'):

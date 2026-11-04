@@ -610,6 +610,13 @@ float ghostMotionTick(float ticksPerSecond)
 
 void main()
 {
+    // Uniform-only guard in EVERY permutation, before any discard. At zero FX
+    // no derivative runs; only FX consume this footprint, never the looks.
+    float fxFootprintZ = 0.0;
+    if (ghostFx2.x > 0.0 || ghostFx2.w > 0.0)
+    {
+        fxFootprintZ = fwidth(vary_object_position.z);
+    }
     bool matrixLook = ghostLook >= 78 && ghostLook <= 84;
     bool cinematicLook = ghostLook >= 85 && ghostLook <= 100;
     bool safeStudioLook = matrixLook || cinematicLook;
@@ -695,14 +702,16 @@ void main()
     if (any(greaterThan(ghostFx2, vec4(0.0))))
     {
         vec3 P = vary_object_position; // +X forward, Y lateral, ground-origin Z
+        if (vary_fx_body == 2) P.z = sl_eye; // effects only; eyes use head slab/plane
         float t = ghostFx3.w + ghostAux.w * 0.73;
-        if (vary_fx_body != 0 && ghostFx2.x > 0.0)
+        if (vary_fx_body == 1 && ghostFx2.x > 0.0)
         {
             float slabZ = mod(P.z, 0.22);
             float gap = 0.035 * clamp(ghostFx2.x, 0.0, 1.0);
-            if (min(slabZ, 0.22 - slabZ) < gap * 0.5) discard;
+            // Unresolved gaps crawl into dotted lines: omit them below one pixel.
+            if (gap >= fxFootprintZ && min(slabZ, 0.22 - slabZ) < gap * 0.5) discard;
         }
-        if (vary_fx_body != 0 && ghostFx2.y > 0.0)
+        if (vary_fx_body == 1 && ghostFx2.y > 0.0)
         {
             vec3 cell = floor(P / vec3(0.12, 0.16, 0.20));
             float tick = mod(floor(t * 4.0), 24576.0); // hard blocks held for 250 ms
@@ -720,18 +729,22 @@ void main()
             float amount = clamp(ghostFx2.z, 0.0, 1.0);
             if (hit > 0.5)
             {
-                if (u >= 0.18 && u < 0.18 + 0.30 * amount) discard;
-                if (u >= 0.10 && u < 0.62) cloneFxDim = 1.0 - 0.75 * amount;
+                if (u >= 0.18 && u < 0.18 + 0.30 * amount)
+                {
+                    if (amount >= 0.5) discard;
+                    cloneFxDim = 1.0 - 1.5 * amount;
+                }
+                if (u >= 0.10 && u < 0.62) cloneFxDim = min(cloneFxDim, 1.0 - 0.75 * amount);
             }
         }
         // Full hide is universal; only the partial anatomical plane skips
-        // rigid prim/eye-local geometry.
+        // rigid attachments (eyes use sl_eye).
         if (ghostFx2.w >= 1.0) discard;
         if (vary_fx_body != 0 && ghostFx2.w > 0.0)
         {
             float plane = mix(sl_foot, sl_top, clamp(ghostFx2.w, 0.0, 1.0));
             if (P.z < plane) discard;
-            float footprint = max(fwidth(P.z), 1e-5);
+            float footprint = max(fxFootprintZ, 1e-5);
             cloneFxWipeEdge = 1.0 - smoothstep(0.006, 0.006 + footprint, P.z - plane);
         }
     }
