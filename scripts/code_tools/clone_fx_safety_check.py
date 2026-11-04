@@ -23,7 +23,7 @@ TIMES = tuple(.17 + .41 * i for i in range(25))
 # Changes below these display-space amounts are not perceptible evidence.
 MIN_RGB_DELTA = .0015
 MIN_CHANGED_FRACTION = .008
-FX_SHADER_SHA256 = '6d85f4d123e4ba2384cfe22237ca0226ab2289314074412919172bbfc79ed7cc'
+FX_SHADER_SHA256 = '37376983ab6949160718894018f22b14741f7d204c6bca8705461869b04f0034'
 
 
 def pre_fx_shader(source, path):

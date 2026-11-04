@@ -15,7 +15,7 @@ def source_assertions(tree):
     for path in (V,SYSTEM,EYE):
         s=tree.read(path)
         block=s.split('// BEGIN STACKABLE CLONE FX VERTEX')[1].split('// END STACKABLE CLONE FX VERTEX')[0]
-        assert 'sin(' not in block and 'floatBitsToUint(p)' in block
+        assert 'sin(' not in block and 'uvec2(ivec2(floor(p * 4096.0)) + ivec2(0x40000000))' in block
         assert s.count('flat out int vary_fx_body;')==1
         for name in ('ghostAux','ghostFx2','ghostFx3','ghostTime','projection_matrix'):
             import re
@@ -36,6 +36,8 @@ def source_assertions(tree):
     assert 'cloneFxVertex(pos, 2);' in tree.read(EYE)
     assert 'vary_object_position = position;' in tree.read(EYE)
     assert 'float fxHeight = body == 2 ? 1.762 : position.z;' in blocks[0]
+    from clone_fx_fix2_check import source_assertions as fix2_source_assertions
+    fix2_source_assertions(tree, blocks[0])
     return hashlib.sha256(blocks[0].encode()).hexdigest()
 
 
@@ -95,7 +97,7 @@ def check(out=None, gl=None, tree=None):
             def read(self,path):
                 s=tree.read(path)
                 if path==F:s=s.replace('if (gap >= fxFootprintZ &&', 'if (false && gap >= fxFootprintZ &&')
-                if path==V:s=s.replace('floor(fxHeight / 0.22)', 'floor(1.762 / 0.22)')
+                if path==V:s=s.replace('floor((fxHeight + 0.11) / 0.22)', 'floor((1.762 + 0.11) / 0.22)')
                 return s
         if not deltas:head=r.program(NoGap(),('HAS_SKIN',))
         b=r.render(head,1,time=t,fx2=(1,0,0,0),mesh=body,scale=6.,mask=False,opacity=1.)
@@ -232,6 +234,8 @@ def check(out=None, gl=None, tree=None):
     real.camera_center_z=1.76
     save(real.frame(rp,1,time=slice_time,fx2=(1,0,0,0),scale=2.8),out/'slice_1_head_close.png')
     save(real.frame(rp,1,fx2=(0,0,0,.97),scale=2.8),out/'wipe_097_head_close.png')
+    from clone_fx_fix2_check import check as fix2_assertions
+    result['fix_round_2'] = fix2_assertions(tree, r.gl, real, rp)
     for clone_scale in (.5,2.):
         real.camera_center_z=sum(real.pose_bounds['bind'])*.5*clone_scale
         options=dict(object_matrix=transform(rot=(0,0,37)),clone_scale=clone_scale,scale=.92/max(1.,clone_scale))

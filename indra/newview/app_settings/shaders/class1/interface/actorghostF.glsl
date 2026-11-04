@@ -706,7 +706,7 @@ void main()
         float t = ghostFx3.w + ghostAux.w * 0.73;
         if (vary_fx_body == 1 && ghostFx2.x > 0.0)
         {
-            float slabZ = mod(P.z, 0.22);
+            float slabZ = mod(P.z + 0.11, 0.22);
             float gap = 0.035 * clamp(ghostFx2.x, 0.0, 1.0);
             // Unresolved gaps crawl into dotted lines: omit them below one pixel.
             if (gap >= fxFootprintZ && min(slabZ, 0.22 - slabZ) < gap * 0.5) discard;
@@ -732,7 +732,7 @@ void main()
                 if (u >= 0.18 && u < 0.18 + 0.30 * amount)
                 {
                     if (amount >= 0.5) discard;
-                    cloneFxDim = 1.0 - 1.5 * amount;
+                    cloneFxDim = 1.0 - 2.0 * amount;
                 }
                 if (u >= 0.10 && u < 0.62) cloneFxDim = min(cloneFxDim, 1.0 - 0.75 * amount);
             }
@@ -746,6 +746,7 @@ void main()
             if (P.z < plane) discard;
             float footprint = max(fxFootprintZ, 1e-5);
             cloneFxWipeEdge = 1.0 - smoothstep(0.006, 0.006 + footprint, P.z - plane);
+            if (vary_fx_body == 2) cloneFxWipeEdge = 0.0;
         }
     }
 
@@ -2663,13 +2664,18 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
 #endif
 #ifdef GHOST_WORLD_PASS
     vec3 worldLinearDissolveSource = worldDissolveSource;
+    float worldSignal = flicker * max(ghostFx.w, 0.0);
 #endif
     if (ghostFx2.z > 0.0 || ghostFx2.w > 0.0)
     {
-        rgb = mix(rgb, vec3(0.32, 0.82, 1.0), cloneFxWipeEdge * 0.75) * cloneFxDim;
+        rgb = mix(rgb, vec3(0.32, 0.82, 1.0), cloneFxWipeEdge * 0.75);
+        alpha *= cloneFxDim;
 #ifdef GHOST_WORLD_PASS
+        worldSignal *= cloneFxDim;
         worldRadiance *= cloneFxDim;
         worldBloomRadiance *= cloneFxDim;
+#else
+        rgb *= cloneFxDim;
 #endif
     }
     if (ghostWorldLinear != 0)
@@ -2706,7 +2712,6 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     // linear space. Additive lens/chromatic cues participate in the same
     // terminal signal envelope. Dissolve then interpolates two linear endpoints
     // so its Layer source never inherits treatment animation or brightness.
-    float worldSignal = flicker * max(ghostFx.w, 0.0);
     rgb = (rgb * worldDistortionCue + worldDistortionAdditive) * worldSignal;
     if (ghostLook == 10 && ghostCoverageLayerStrength >= 0.0)
     {

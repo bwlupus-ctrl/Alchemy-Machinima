@@ -33,7 +33,10 @@ flat out int vary_fx_body;
 float cloneFxHash(vec2 p)
 {
     // Integer avalanche; exact 24-bit result in every linked program.
-    uvec2 bits = floatBitsToUint(p);
+    // Bound even noncanonical mesh heights before the signed conversion/add.
+    // Normal slab/beat/phase inputs are unchanged; valid in GLSL 1.40.
+    p = clamp(p, vec2(-262144.0), vec2(262143.0));
+    uvec2 bits = uvec2(ivec2(floor(p * 4096.0)) + ivec2(0x40000000));
     uint h = bits.x ^ (bits.y * 0x9e3779b9u);
     h ^= h >> 16;
     h *= 0x7feb352du;
@@ -54,7 +57,7 @@ void cloneFxVertex(inout vec4 pos, int body)
     float fxHeight = body == 2 ? 1.762 : position.z; // sl_eye
     if (body != 0 && ghostFx2.x > 0.0)
     {
-        float slab = floor(fxHeight / 0.22);
+        float slab = floor((fxHeight + 0.11) / 0.22);
         float cycle = (t + cloneFxHash(vec2(slab, ghostAux.w))) / 2.4;
         float u = fract(cycle);
         float settle = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.30, 0.92, u));
