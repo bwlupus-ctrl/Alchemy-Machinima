@@ -59,9 +59,19 @@ def check():
     # Existing CPU clock and per-instance UUID seed reach the shared upload.
     assert 'actor_ghost_studio_frame_time(gp.mEffectFps, motion_period)' in draw
     assert 'const F64 motion_period = actor_ghost_motion_period(style);' in draw
+    assert not re.search(r'\bstyle\s*=(?!=)', draw[draw.index('const F64 motion_period'):]), 'look changed after clock selection'
     assert 'LLRenderPass::actorFxFrameTime(gp.mEffectFps, motion_period)' in draw
     system = method(path, 'bool LLActorMover::renderSystemActorGhost(')
     assert 'gp.mEffectFps, actor_ghost_motion_period(look)' in system
+    assert 'shader.uniform1i(sGhostLook, look)' in system
+    # Wrapped time is exclusively a shader uniform, never an age/progress operand.
+    for body in (draw,system):
+        uses=[line.strip() for line in body.splitlines() if 'ghost_now' in line]
+        assert len(uses)==2 and 'const F32 ghost_now =' in uses[0] and 'uniform1f(sGhostTime, ghost_now)' in uses[1], uses
+    assert source.count('F32 actor_ghost_studio_frame_time(')==1
+    assert '#include <cmath>' in source
+    assert '#include <cmath>' in Path('indra/newview/lldrawpool.cpp').read_text()
+    assert 'F64 wrap_period = 0.0' in Path('indra/newview/lldrawpool.h').read_text()
     assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
     assert 'inst.mId.mData[0] | (inst.mId.mData[1] << 8)' in overlay
     assert '++invocation;' in overlay
@@ -643,7 +653,7 @@ int main(){
  const double period=628.31853071795864769;
  for(double age : {period-1./60,period,period+1./60,86400.123456,31536000.123456}) {
    now=100.+age;++gFrameCount;
-   for(float fps : {0.f,12.f,30.f}) {
+   for(float fps : {0.f,10.f,12.f,30.f}) {
      const double stepped=fps>0 ? floor(age*fps)/fps : age;
      assert(actor_ghost_studio_frame_time(fps,period)==float(std::fmod(stepped,period)));
      assert(actor_ghost_studio_frame_time(fps)==float(stepped));
@@ -669,10 +679,22 @@ int main(){
     policy = clock[:clock.index('int main()')]+method(path, 'F64 actor_ghost_motion_period(')+r'''
 int main(){for(int look=0;look<128;++look){
  bool animated=look==64||look==66||look==67||look==71||look==76;
- assert(actor_ghost_motion_period(look)==(animated?628.31853071795864769:0.));}}
+ assert(actor_ghost_motion_period(look)==(animated?628.31853071795864769:0.));
+ if(!animated) for(double age : {0.,.501,628.30,628.34,86400.123456,31536000.123456}) {
+   now=100.+age;++gFrameCount;
+   for(float fps : {0.f,10.f,12.f,30.f}) {
+     const float old_upload=float(fps>0 ? floor(age*fps)/fps : age);
+     const float upload=actor_ghost_studio_frame_time(fps,actor_ghost_motion_period(look));
+     assert(std::memcmp(&old_upload,&upload,sizeof(float))==0);
+   }
+ }
+}}
 '''
+    policy = '#include <cstring>\n'+policy
     policy = policy.replace('using F32=float;', 'using S32=int;using F32=float;')
     results.append(execute('legacy_clock_scope',policy,True))
+    world_policy=policy.replace(studio_clock,shared_clock).replace('actor_ghost_studio_frame_time','world_frame_time')
+    results.append(execute('legacy_world_clock_scope',world_policy,True))
     assert clock.count('floor(real_time * fps) / fps')==1
     results.append(execute('matrix_clock_no_step',clock.replace('floor(real_time * fps) / fps','real_time'),False))
     # Compile the complete REAL parameter struct and the exact apply_program

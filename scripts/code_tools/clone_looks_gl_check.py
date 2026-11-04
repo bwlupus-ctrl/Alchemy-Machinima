@@ -1489,7 +1489,7 @@ def matrix_avatar_checks(out):
                                      frozen_time=True,frozen_seed=True,deja_offset=True,
                                      glyph_no_aa_p99=alias_p99)
     # Exact parity for unchanged looks, including Magma and retired IDs.
-    # LEGACY_ANIMATED uses real-avatar safety and t=0 similarity instead.
+    # LEGACY_ANIMATED uses real-avatar safety and cycle-averaged similarity instead.
     old=r.program(G.SourceTree('0288b1ed379'))
     parity=max(float(np.max(np.abs(r.render(old,i)-r.render(pr,i)))) for i in range(78) if i not in LEGACY_ANIMATED)
     assert parity==0.,('avatar all-existing-look parity',parity)

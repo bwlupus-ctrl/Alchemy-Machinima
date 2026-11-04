@@ -583,6 +583,28 @@ float cloneFadeCoverage(float progress)
     return (bayer[p.y*4+p.x]+0.5)/16.0-progress;
 }
 
+// Only the five bounded legacy clocks quantize optional shared FX rates.
+bool ghostBoundedMotion()
+{
+    return ghostLook == 64 || ghostLook == 66 || ghostLook == 67
+        || ghostLook == 71 || ghostLook == 76;
+}
+float ghostMotionPhase(float radiansPerSecond)
+{
+    float phaseTime = ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime;
+    return phaseTime * (round(radiansPerSecond * 100.0) * 0.01);
+}
+float ghostMotionTurns(float turnsPerSecond)
+{
+    float phaseTime = ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime;
+    return phaseTime * (round(turnsPerSecond * 628.318530718) / 628.318530718);
+}
+float ghostMotionTick(float ticksPerSecond)
+{
+    float ticks = max(1.0, round(ticksPerSecond * 628.318530718));
+    return float(int(floor(ghostTime * (ticks / 628.318530718))) % int(ticks));
+}
+
 void main()
 {
     bool matrixLook = ghostLook >= 78 && ghostLook <= 84;
@@ -701,12 +723,12 @@ void main()
     }
     else if (ghostDistort == 4 && distort > 0.001) // Wave / ripple
     {
-        uv += vec2(sin(uv.y * 42.0 + ghostTime * 4.2 + ghostAux.w),
-                   cos(uv.x * 35.0 - ghostTime * 3.4)) * (0.002 + 0.025 * distort);
+        uv += vec2(sin(uv.y * 42.0 + (ghostBoundedMotion() ? ghostMotionPhase(4.2) : ghostTime * 4.2) + ghostAux.w),
+                   cos(uv.x * 35.0 - (ghostBoundedMotion() ? ghostMotionPhase(3.4) : ghostTime * 3.4))) * (0.002 + 0.025 * distort);
     }
     else if (ghostDistort == 6 && distort > 0.001) // Block glitch
     {
-        float beat = floor(ghostTime * 7.0);
+        float beat = (ghostBoundedMotion() ? ghostMotionTick(7.0) : floor(ghostTime * 7.0));
         vec2 block = floor(uv * vec2(12.0, 22.0));
         float r = ghost_hash(block + vec2(beat, ghostAux.w));
         uv.x += step(1.0 - 0.38 * distort, r) * (r - 0.5) * 0.28 * distort;
@@ -714,16 +736,16 @@ void main()
     else if (ghostDistort == 7 && distort > 0.001) // Vertical tear
     {
         float slice = floor(fragCoord.x / 13.0);
-        float beat = floor(ghostTime * 8.0);
+        float beat = (ghostBoundedMotion() ? ghostMotionTick(8.0) : floor(ghostTime * 8.0));
         float r = ghost_hash(vec2(slice, beat + ghostAux.w));
         uv.y += step(1.0 - 0.35 * distort, r) * (r - 0.5) * 0.24 * distort;
     }
     else if (ghostDistort == 8 && distort > 0.001) // VHS / tracking
     {
-        float roll = fract(fragCoord.y / 180.0 - ghostTime * 0.32);
+        float roll = fract(fragCoord.y / 180.0 - (ghostBoundedMotion() ? ghostMotionTurns(0.32) : ghostTime * 0.32));
         vhsBand = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
         float lineNoise = ghost_hash(vec2(floor(fragCoord.y / 3.0),
-                                           floor(ghostTime * 12.0)));
+                                           (ghostBoundedMotion() ? ghostMotionTick(12.0) : floor(ghostTime * 12.0))));
         uv.x += (lineNoise - 0.5) * 0.035 * distort + vhsBand * 0.02 * distort;
     }
     // Clamp ONLY when a distortion actually offset the UV. Applying it to the
@@ -781,12 +803,12 @@ void main()
     }
     else if (ghostDistort == 4 && distort > 0.001) // Wave / ripple
     {
-        uv += vec2(sin(uv.y * 42.0 + ghostTime * 4.2 + ghostAux.w),
-                   cos(uv.x * 35.0 - ghostTime * 3.4)) * (0.002 + 0.025 * distort);
+        uv += vec2(sin(uv.y * 42.0 + (ghostBoundedMotion() ? ghostMotionPhase(4.2) : ghostTime * 4.2) + ghostAux.w),
+                   cos(uv.x * 35.0 - (ghostBoundedMotion() ? ghostMotionPhase(3.4) : ghostTime * 3.4))) * (0.002 + 0.025 * distort);
     }
     else if (ghostDistort == 6 && distort > 0.001) // Block glitch
     {
-        float beat = floor(ghostTime * 7.0);
+        float beat = (ghostBoundedMotion() ? ghostMotionTick(7.0) : floor(ghostTime * 7.0));
         vec2 block = floor(uv * vec2(12.0, 22.0));
         float r = ghost_hash(block + vec2(beat, ghostAux.w));
         uv.x += step(1.0 - 0.38 * distort, r) * (r - 0.5) * 0.28 * distort;
@@ -794,16 +816,16 @@ void main()
     else if (ghostDistort == 7 && distort > 0.001) // Vertical tear
     {
         float slice = floor(fragCoord.x / 13.0);
-        float beat = floor(ghostTime * 8.0);
+        float beat = (ghostBoundedMotion() ? ghostMotionTick(8.0) : floor(ghostTime * 8.0));
         float r = ghost_hash(vec2(slice, beat + ghostAux.w));
         uv.y += step(1.0 - 0.35 * distort, r) * (r - 0.5) * 0.24 * distort;
     }
     else if (ghostDistort == 8 && distort > 0.001) // VHS / tracking
     {
-        float roll = fract(fragCoord.y / 180.0 - ghostTime * 0.32);
+        float roll = fract(fragCoord.y / 180.0 - (ghostBoundedMotion() ? ghostMotionTurns(0.32) : ghostTime * 0.32));
         vhsBand = 1.0 - smoothstep(0.02, 0.12, abs(roll - 0.5));
         float lineNoise = ghost_hash(vec2(floor(fragCoord.y / 3.0),
-                                           floor(ghostTime * 12.0)));
+                                           (ghostBoundedMotion() ? ghostMotionTick(12.0) : floor(ghostTime * 12.0))));
         uv.x += (lineNoise - 0.5) * 0.035 * distort + vhsBand * 0.02 * distort;
     }
     // Clamp ONLY when a distortion actually offset the UV. Applying it to the
@@ -841,7 +863,7 @@ void main()
     if (glitch > 0.001)
     {
         float band_id = floor(fragCoord.y / 14.0);
-        float beat    = floor(ghostTime * 9.0);
+        float beat    = (ghostBoundedMotion() ? ghostMotionTick(9.0) : floor(ghostTime * 9.0));
         float r       = ghost_hash(vec2(band_id, beat + ghostAux.w));
         torn = step(1.0 - 0.35 * glitch, r);            // a minority of bands tear
         uv.x += torn * (r - 0.5) * 0.22 * glitch;       // sideways slice offset
@@ -950,7 +972,7 @@ void main()
     // animated screen-space scanlines, scrolling slowly upward
     float scan_amt = clamp(ghostParams.x, 0.0, 1.0);
     float period   = max(ghostParams.w, 2.0);
-    float band     = 0.5 + 0.5 * sin((fragCoord.y / period + ghostTime * 1.7) * 6.2831853);
+    float band     = 0.5 + 0.5 * sin((fragCoord.y / period + (ghostBoundedMotion() ? ghostMotionTurns(1.7) : ghostTime * 1.7)) * 6.2831853);
     float scan     = mix(1.0, 0.30 + 0.70 * band, scan_amt);
 
     // Fresnel-ish rim from the eye-space normal / view direction. Both the
@@ -973,7 +995,7 @@ void main()
     // parameterized cousin of the hologram flicker, phase-offset per instance
     // so a crowd of ghosts never strobes in lockstep. Intensity 0 = exactly 1.
     flicker *= 1.0 - clamp(ghostFx.y, 0.0, 1.0)
-                   * (0.5 + 0.5 * sin(ghostTime * max(ghostFx.x, 0.0) * 6.2831853
+                   * (0.5 + 0.5 * sin((ghostBoundedMotion() ? ghostMotionPhase(max(ghostFx.x, 0.0) * 6.2831853) : ghostTime * max(ghostFx.x, 0.0) * 6.2831853)
                                       + ghostAux.w)) * 0.6;
     // a torn glitch slice also pops brighter for that broken-signal read
     flicker *= 1.0 + torn * 0.35 * glitch;
@@ -1479,11 +1501,11 @@ void main()
     else if (ghostLook == 64) // Studio: Glass
     {
         // Host wraps these five looks at 200*pi seconds BEFORE the F32 cast.
+        // Center before multiplying: avoid large-angle F32 cancellation at the wrap.
         // Integer harmonics stay continuous; this clock is not a spawn age.
-        float cycle = ghostTime * (6.28318530718 / 628.318530718);
+        float cycle = (ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime) * 0.01;
         float phase = vary_object_position.z * 7.0 + vary_object_position.y * 3.0 + ghostAux.w;
-        float drift = sin(phase - cycle * 55.0) - sin(phase - cycle * 110.0);
-        float caustic = drift * 0.5;
+        float caustic = pow(0.5 + 0.5 * sin(phase - cycle * 85.0), 3.0);
         float F  = pow(1.0 - facing, 5.0);
         vec3  rimC = vec3(pow(1.0-facing, 4.2), pow(1.0-facing, 5.0), pow(1.0-facing, 6.2)); // dispersion-ish fringe
         const vec3 L1 = normalize(vec3( 0.35, 0.60, 0.72));  // fixed eye-space "studio lamps"
@@ -1499,7 +1521,6 @@ void main()
             // Fixed 18px at 1080p, proportional at 4K. Separate scene texture:
             // never sample the framebuffer attachment this sweep writes into.
             vec2 bend = n.xy * (1.0 - facing * 0.75) * 0.0167;
-            bend += vec2(drift, sin(ghostAux.w + cycle * 45.0) - sin(ghostAux.w + cycle * 90.0)) * 0.0002;
             vec2 halfTexel = 0.5 / ghostScreenSize;
             vec3 behind = texture(ghostSceneMap, clamp(screenUv + bend,
                                   halfTexel, vec2(1.0) - halfTexel)).rgb;
@@ -1520,19 +1541,18 @@ void main()
         float wash  = 1.0 - shade + (grain - 0.5) * 0.22;
         // Slow capillary breathing; keep paper registration and dry strokes.
         float phase = vary_object_position.z * 3.0 + ghostAux.w;
-        float cycle = ghostTime * (6.28318530718 / 628.318530718);
-        float breath = sin(phase - cycle * 75.0) - sin(phase);
-        wash += 0.055 * breath;
+        float cycle = (ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime) * 0.01;
+        float breath = pow(0.5 + 0.5 * sin(phase - cycle * 75.0), 3.0);
         float t1 = smoothstep(0.30, 0.42, wash), t2 = smoothstep(0.52, 0.64, wash), t3 = smoothstep(0.74, 0.86, wash);
         float inkAmt = (t1 * 0.35 + t2 * 0.35 + t3 * 0.30) * 1.0;
         // dry-brush outline: silhouette thickened, broken by streaky noise
         float streak = ghost_noise(vec2(fragCoord.x * 0.07, fragCoord.y * 0.9));
-        float outline = smoothstep(0.22, 0.55, edge + (streak - 0.5) * 0.3 + 0.055 * breath) * step(0.25, streak);
+        float outline = smoothstep(0.22, 0.55, edge + (streak - 0.5) * 0.3) * step(0.25, streak);
         inkAmt = max(inkAmt, outline * 0.95);
         inkAmt *= 1.0 - 0.25 * grain * (1.0 - inkAmt);                      // granulation where thin
         vec3 ink   = mix(vec3(0.03, 0.035, 0.05), color.rgb * 0.25, 0.3);
         vec3 paper = vec3(0.95, 0.92, 0.85);
-        rgb   = mix(paper, ink, inkAmt);
+        rgb   = mix(paper, ink, inkAmt) * (1.0 - 0.16 * breath);
         alpha = color.a * tex.a * mix(inkAmt, 1.0, 1.0);
     }
     else if (ghostLook == 78) // Studio: Decode
@@ -2081,10 +2101,9 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         stone *= 0.85 + 0.15 * lum;                                        // keep face/cloth folds
         rgb = mix(stone, vec3(0.28, 0.33, 0.30), clamp(vein, 0.0, 1.0)) * lam
             + vec3(0.35, 0.22, 0.14) * sss;
-        float cycle = ghostTime * (6.28318530718 / 628.318530718);
+        float cycle = (ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime) * 0.01;
         float phase = P.z*7.0 + P.y*2.0 + ghostAux.w;
-        float sheen = pow(0.5 + 0.5*sin(phase - cycle*75.0), 3.0)
-                    - pow(0.5 + 0.5*sin(phase), 3.0);
+        float sheen = pow(0.5 + 0.5*sin(phase - cycle*75.0), 3.0);
         rgb += min(vec3(0.12,0.115,0.105), max(vec3(0.0), vec3(0.98)-rgb)) * sheen;
         alpha = color.a * tex.a;
     }
@@ -2122,10 +2141,10 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     {
         vec3  P = vary_object_position;
         float h = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
-        float cycle = ghostTime * (6.28318530718 / 628.318530718);
+        float cycle = (ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime) * 0.01;
         // Authored .3 rad/s is harmonic 30 of the same 200*pi period.
         float prog = ghostDissolveProgress > 0.0 ? ghostDissolveProgress
-                   : 0.5 + 0.5 * sin(ghostTime * 0.3 + ghostAux.w);
+                   : 0.5 + 0.5 * sin(cycle * 30.0 + ghostAux.w);
         float front = prog * 1.15 - 0.07;                                    // overshoot so 0/1 are fully built/empty
         float d     = h - front;                                             // <0 built, >0 pending
         float fwz = fwP.z + 1e-6;
@@ -2141,15 +2160,15 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         // An inspection sheen travels across even a held build front.
         // Progress, print layers and authored alpha keep their original law.
         float phase = P.z * 7.0 + P.y * 2.0 + ghostAux.w;
-        float sheen = (sin(phase - cycle*55.0) - sin(phase - cycle*110.0)) * 0.5;
+        float sheen = pow(0.5 + 0.5*sin(phase - cycle*85.0), 3.0);
         float support = clamp(step(d, 0.0) + band + lattice * 0.55, 0.0, 1.0);
         // Bound the contribution AFTER authored coverage, so a faint lattice
         // can move without flooding the built body or lighting empty space.
         // Normalize only motif support; authored texture/operator alpha must
         // still attenuate the moving light, including during fades.
-        float coverage = max(support, 0.025);
+        float coverage = max(support, 0.25);
         vec3 room = max(vec3(0.0), vec3(0.90) / coverage - rgb);
-        rgb += min(planC * 0.40 / coverage, room) * sheen * step(0.00001, support);
+        rgb += min(planC * mix(0.55, 0.16, step(d, 0.0)) / coverage, room) * sheen * step(0.00001, support);
         alpha = color.a * tex.a * clamp(step(d, 0.0) + band + lattice * 0.55, 0.0, 1.0);
     }
     else if (ghostLook == 69) // Studio: Magma
@@ -2202,9 +2221,8 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         // Broad light wanders across fixed facets; each facet twinkles gently.
         // Blend out the cell phase at distance with the existing facet LOD.
         float phase = P.z * 7.0 + mix(0.5, ghost_hash3(c), detail) * 2.0 + ghostAux.w;
-        float cycle = ghostTime * (6.28318530718 / 628.318530718);
-        float glint = pow(0.5 + 0.5*sin(phase - cycle * 55.0), 3.0)
-                    - pow(0.5 + 0.5*sin(phase), 3.0);
+        float cycle = (ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime) * 0.01;
+        float glint = pow(0.5 + 0.5*sin(phase - cycle * 85.0), 3.0);
         rgb += min(mix(color.rgb, vec3(1.0), 0.65) * 0.28,
                    max(vec3(0.0), vec3(0.98)-rgb)) * glint;
         alpha = color.a * tex.a * clamp(0.45 + fF * 0.5 + flash, 0.0, 1.0);
@@ -2526,7 +2544,7 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         else if (ghostDistort == 4)
         {
             float cue = 0.88 + 0.12
-                * sin(fragCoord.y * 0.12 + ghostTime * 4.2) * distort;
+                * sin(fragCoord.y * 0.12 + (ghostBoundedMotion() ? ghostMotionPhase(4.2) : ghostTime * 4.2)) * distort;
 #ifdef GHOST_WORLD_PASS
             worldDistortionCue *= cue;
 #else
@@ -2546,7 +2564,7 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         {
             float cue = 0.82 + 0.18
                 * ghost_hash(floor(vary_texcoord0 * vec2(12.0, 22.0))
-                             + floor(ghostTime * 7.0)) * distort;
+                             + (ghostBoundedMotion() ? ghostMotionTick(7.0) : floor(ghostTime * 7.0))) * distort;
 #ifdef GHOST_WORLD_PASS
             worldDistortionCue *= cue;
 #else
@@ -2557,7 +2575,7 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         {
             float cue = 0.86 + 0.14
                 * ghost_hash(vec2(floor(fragCoord.x / 13.0),
-                                  floor(ghostTime * 8.0))) * distort;
+                                  (ghostBoundedMotion() ? ghostMotionTick(8.0) : floor(ghostTime * 8.0)))) * distort;
 #ifdef GHOST_WORLD_PASS
             worldDistortionCue *= cue;
 #else
