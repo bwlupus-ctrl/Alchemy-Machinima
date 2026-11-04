@@ -51,7 +51,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSnowSim.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSnowV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
 - `indra/newview/app_settings/windlight/skies/Luna%20Jubilee%20%2D%20Snowday.xml`
 - `indra/newview/llactormover.cpp`
@@ -72,7 +71,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5809,119"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@53,10", "indra/newview/llviewercontrol.cpp@1133,66", "indra/newview/llviewercontrol.cpp@1279,33"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2114,223"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1398"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1399"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@593,2064"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@785,16", "indra/newview/llviewerdisplay.cpp@887,16"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@27,11", "indra/newview/llvovolume.cpp@622,26", "indra/newview/llvovolume.cpp@4975,12", "indra/newview/llvovolume.cpp@4994,8", "indra/newview/llvovolume.cpp@5008,8", "indra/newview/llvovolume.cpp@5076,21"]}
@@ -246,7 +245,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSnowSim.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSnowV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`

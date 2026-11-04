@@ -42,7 +42,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/altoolghostplace.h`
 - `indra/newview/alvcammediafileio.cpp`
 - `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/llactormover.cpp`
 - `indra/newview/lldirectorcast.h`
 - `indra/newview/llfloaterdirector.cpp`
@@ -93,7 +92,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## shaders
 
 - `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`
 
 ## xui

@@ -136,7 +136,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/velocityCameraF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
 - `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
 - `indra/newview/llactormaskeligibility.h`
@@ -199,7 +198,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/fsfloaterposer.cpp", "hunks": ["indra/newview/fsfloaterposer.cpp@25,31", "indra/newview/fsfloaterposer.cpp@361,80", "indra/newview/fsfloaterposer.cpp@1435,57", "indra/newview/fsfloaterposer.cpp@1494,31", "indra/newview/fsfloaterposer.cpp@2518,320", "indra/newview/fsfloaterposer.cpp@2843,17", "indra/newview/fsfloaterposer.cpp@2868,22", "indra/newview/fsfloaterposer.cpp@2920,79", "indra/newview/fsfloaterposer.cpp@3022,27"]}
 - {"path": "indra/newview/fsfloaterposer.h", "hunks": ["indra/newview/fsfloaterposer.h@86,12", "indra/newview/fsfloaterposer.h@515,24"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,12", "indra/newview/llcontrolavatar.cpp@248,21"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1398"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1399"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,14", "indra/newview/lldrawpoolavatar.cpp@83,102", "indra/newview/lldrawpoolavatar.cpp@533,11", "indra/newview/lldrawpoolavatar.cpp@546,122", "indra/newview/lldrawpoolavatar.cpp@892,158", "indra/newview/lldrawpoolavatar.cpp@1111,13", "indra/newview/lldrawpoolavatar.cpp@1152,29", "indra/newview/lldrawpoolavatar.cpp@1233,89"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@30,24", "indra/newview/llreflectionmapmanager.cpp@593,2064"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@25,27", "indra/newview/llviewerdisplay.cpp@909,14", "indra/newview/llviewerdisplay.cpp@997,17", "indra/newview/llviewerdisplay.cpp@1122,36", "indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1191,82", "indra/newview/llviewerdisplay.cpp@1886,34", "indra/newview/llviewerdisplay.cpp@2083,28"]}
@@ -420,6 +419,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## generated runtime
 
+- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/skins/default/xui/en/director_kit_index.xml`
 - `indra/newview/skins/default/xui/en/floater_director_v2.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml`
@@ -720,8 +720,15 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## checks
 
+- `scripts/code_tools/clone_fx_fix1_check.py`
+- `scripts/code_tools/clone_fx_fix2_check.py`
+- `scripts/code_tools/clone_fx_runtime_check.py`
+- `scripts/code_tools/clone_fx_safety_check.py`
 - `scripts/code_tools/clone_looks_gl_check.py`
+- `scripts/code_tools/clone_looks_legacy_animation_check.py`
 - `scripts/code_tools/clone_looks_runtime_check.py`
+- `scripts/code_tools/clone_looks_safety_check.py`
+- `scripts/code_tools/clone_looks_scan_build_check.py`
 - `scripts/code_tools/director_clone_qol_check.py`
 - `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`

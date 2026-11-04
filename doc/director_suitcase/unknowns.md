@@ -390,25 +390,25 @@ All 3218 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llcontrolavatar.cpp@627,18`
 - `indra/newview/llcontrolavatar.cpp@754,7`
 - `indra/newview/lldrawpool.cpp@63,7`
-- `indra/newview/lldrawpool.cpp@2209,12`
-- `indra/newview/lldrawpool.cpp@2238,7`
-- `indra/newview/lldrawpool.cpp@2275,7`
-- `indra/newview/lldrawpool.cpp@2304,22`
-- `indra/newview/lldrawpool.cpp@2327,16`
-- `indra/newview/lldrawpool.cpp@2362,10`
-- `indra/newview/lldrawpool.cpp@2381,10`
-- `indra/newview/lldrawpool.cpp@2408,11`
-- `indra/newview/lldrawpool.cpp@2434,11`
-- `indra/newview/lldrawpool.cpp@2501,20`
-- `indra/newview/lldrawpool.cpp@2560,11`
-- `indra/newview/lldrawpool.cpp@2702,7`
-- `indra/newview/lldrawpool.cpp@2721,7`
-- `indra/newview/lldrawpool.cpp@2762,7`
-- `indra/newview/lldrawpool.cpp@2788,7`
-- `indra/newview/lldrawpool.cpp@2807,3`
+- `indra/newview/lldrawpool.cpp@2210,12`
+- `indra/newview/lldrawpool.cpp@2239,7`
+- `indra/newview/lldrawpool.cpp@2276,7`
+- `indra/newview/lldrawpool.cpp@2305,22`
+- `indra/newview/lldrawpool.cpp@2328,16`
+- `indra/newview/lldrawpool.cpp@2363,10`
+- `indra/newview/lldrawpool.cpp@2382,10`
+- `indra/newview/lldrawpool.cpp@2409,11`
+- `indra/newview/lldrawpool.cpp@2435,11`
+- `indra/newview/lldrawpool.cpp@2502,20`
+- `indra/newview/lldrawpool.cpp@2561,11`
+- `indra/newview/lldrawpool.cpp@2703,7`
+- `indra/newview/lldrawpool.cpp@2722,7`
+- `indra/newview/lldrawpool.cpp@2763,7`
+- `indra/newview/lldrawpool.cpp@2789,7`
+- `indra/newview/lldrawpool.cpp@2808,3`
 - `indra/newview/lldrawpool.h@42,31`
-- `indra/newview/lldrawpool.h@504,7`
-- `indra/newview/lldrawpool.h@516,9`
+- `indra/newview/lldrawpool.h@506,7`
+- `indra/newview/lldrawpool.h@518,9`
 - `indra/newview/lldrawpoolavatar.cpp@73,8`
 - `indra/newview/lldrawpoolavatar.cpp@253,24`
 - `indra/newview/lldrawpoolavatar.cpp@280,20`
@@ -2095,12 +2095,12 @@ All 3218 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llcontrolavatar.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@25,26`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpool.cpp@63,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@2807,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
+- `indra/newview/lldrawpool.cpp@2808,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
 - `indra/newview/lldrawpool.h@42,31`: unknown/non-function (class LLGLSLShader;)
 - `indra/newview/lldrawpool.h@136,15`: unknown/non-function (public:)
-- `indra/newview/lldrawpool.h@388,110`: unknown/non-function (public:)
-- `indra/newview/lldrawpool.h@504,7`: unknown/non-function (public:)
-- `indra/newview/lldrawpool.h@516,9`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@388,112`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@506,7`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@518,9`: unknown/non-function (public:)
 - `indra/newview/lldrawpoolavatar.cpp@25,14`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpoolavatar.cpp@47,17`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpoolavatar.cpp@73,8`: unknown/non-function (LLGLSLShader* LLDrawPoolAvatar::sVertexProgram = NULL;)

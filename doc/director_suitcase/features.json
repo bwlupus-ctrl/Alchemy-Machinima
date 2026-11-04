@@ -578,7 +578,7 @@
       {
         "hunks": [
           "indra/newview/lldrawpool.cpp@71,82",
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -3427,6 +3427,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -3436,6 +3437,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -3453,16 +3455,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -10905,7 +10911,7 @@
       {
         "hunks": [
           "indra/newview/lldrawpool.cpp@71,82",
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -11197,7 +11203,6 @@
       "indra/newview/animationexplorer.cpp",
       "indra/newview/animationexplorer.h",
       "indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
@@ -11272,7 +11277,6 @@
     ],
     "shaders": [
       "indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl"
     ],
@@ -13444,6 +13448,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -13453,6 +13458,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -13470,16 +13476,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -14407,11 +14417,6 @@
         "qualified_call_candidates": [
           "LLPipeline::renderTronWorld"
         ],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl": {
@@ -34826,7 +34831,7 @@
         "hunks": [
           "indra/newview/lldrawpool.cpp@71,82",
           "indra/newview/lldrawpool.cpp@333,32",
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -45129,8 +45134,15 @@
   "clones": {
     "checkpoint": "Spawn/delete independent clones, attachments, pitch/roll and looks; real avatar never teleports/detaches.",
     "checks": [
+      "scripts/code_tools/clone_fx_fix1_check.py",
+      "scripts/code_tools/clone_fx_fix2_check.py",
+      "scripts/code_tools/clone_fx_runtime_check.py",
+      "scripts/code_tools/clone_fx_safety_check.py",
       "scripts/code_tools/clone_looks_gl_check.py",
+      "scripts/code_tools/clone_looks_legacy_animation_check.py",
       "scripts/code_tools/clone_looks_runtime_check.py",
+      "scripts/code_tools/clone_looks_safety_check.py",
+      "scripts/code_tools/clone_looks_scan_build_check.py",
       "scripts/code_tools/director_clone_qol_check.py",
       "scripts/code_tools/director_clone_rekey_check.py",
       "scripts/code_tools/test_clone_pitch_roll.py",
@@ -46747,6 +46759,7 @@
       }
     ],
     "generated_runtime": [
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
@@ -46874,7 +46887,7 @@
       {
         "hunks": [
           "indra/newview/lldrawpool.cpp@25,26",
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -47627,7 +47640,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/velocityCameraF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
       "indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl",
       "indra/newview/llactormaskeligibility.h",
@@ -52971,6 +52983,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -52980,6 +52993,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -52997,16 +53011,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -54366,11 +54384,6 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/velocityCameraF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -70799,6 +70812,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -70808,6 +70822,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -70825,16 +70840,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -76639,6 +76658,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -76648,6 +76668,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -76665,16 +76686,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -83652,7 +83677,6 @@
       "indra/newview/altoolghostplace.h",
       "indra/newview/alvcammediafileio.cpp",
       "indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/llactormover.cpp",
       "indra/newview/lldirectorcast.h",
       "indra/newview/llfloaterdirector.cpp",
@@ -83688,7 +83712,6 @@
     ],
     "shaders": [
       "indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl"
     ],
     "source_dependencies": {
@@ -84844,6 +84867,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -84853,6 +84877,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -84870,16 +84895,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -85270,11 +85299,6 @@
         "qualified_call_candidates": [
           "LLPipeline::renderTronWorld"
         ],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl": {
@@ -89562,13 +89586,13 @@
       {
         "hunks": [
           "indra/newview/lldrawpool.cpp@71,82",
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.h@388,110"
+          "indra/newview/lldrawpool.h@388,112"
         ],
         "path": "indra/newview/lldrawpool.h"
       },
@@ -94953,6 +94977,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -94962,6 +94987,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -94979,16 +95005,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -111871,6 +111901,7 @@
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml"
@@ -112121,6 +112152,7 @@
       "indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
       "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml"
     ],
     "settings": [
@@ -113671,6 +113703,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -113680,6 +113713,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -113697,16 +113731,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -118352,6 +118390,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -118382,6 +118425,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -118399,12 +118447,14 @@
       "indra/newview/skins/default/xui/en/menu_viewer.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
       "indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
       "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
       "indra/newview/skins/default/xui/en/panel_temporal_capture.xml"
     ]
   },
@@ -119457,23 +119507,23 @@
       {
         "hunks": [
           "indra/newview/lldrawpool.cpp@25,26",
-          "indra/newview/lldrawpool.cpp@499,1398",
-          "indra/newview/lldrawpool.cpp@1898,136",
-          "indra/newview/lldrawpool.cpp@2036,92",
-          "indra/newview/lldrawpool.cpp@2130,10",
-          "indra/newview/lldrawpool.cpp@2170,7",
-          "indra/newview/lldrawpool.cpp@2186,13",
-          "indra/newview/lldrawpool.cpp@2447,29",
-          "indra/newview/lldrawpool.cpp@2592,13",
-          "indra/newview/lldrawpool.cpp@2606,11",
-          "indra/newview/lldrawpool.cpp@2621,27",
-          "indra/newview/lldrawpool.cpp@2651,24"
+          "indra/newview/lldrawpool.cpp@499,1399",
+          "indra/newview/lldrawpool.cpp@1899,136",
+          "indra/newview/lldrawpool.cpp@2037,92",
+          "indra/newview/lldrawpool.cpp@2131,10",
+          "indra/newview/lldrawpool.cpp@2171,7",
+          "indra/newview/lldrawpool.cpp@2187,13",
+          "indra/newview/lldrawpool.cpp@2448,29",
+          "indra/newview/lldrawpool.cpp@2593,13",
+          "indra/newview/lldrawpool.cpp@2607,11",
+          "indra/newview/lldrawpool.cpp@2622,27",
+          "indra/newview/lldrawpool.cpp@2652,24"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.h@388,110"
+          "indra/newview/lldrawpool.h@388,112"
         ],
         "path": "indra/newview/lldrawpool.h"
       },
@@ -120537,7 +120587,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherMaterialF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
       "indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
@@ -120778,7 +120827,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherMaterialF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
       "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl",
       "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl",
@@ -123179,6 +123227,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -123188,6 +123237,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -123205,16 +123255,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -124628,11 +124682,6 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -139486,6 +139535,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -139495,6 +139545,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -139512,16 +139563,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -151451,7 +151506,7 @@
       {
         "hunks": [
           "indra/newview/lldrawpool.cpp@25,26",
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -151920,7 +151975,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/tronTrailV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/visibleDiffuseSeedF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
       "indra/newview/llactormaskeligibility.cpp",
       "indra/newview/llactormaskeligibility.h",
@@ -152225,7 +152279,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/tronTrailV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/visibleDiffuseSeedF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl",
       "indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl",
@@ -155938,6 +155991,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -155947,6 +156001,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -155964,16 +156019,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -156849,11 +156908,6 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/visibleDiffuseSeedF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -164931,7 +164985,7 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -165370,7 +165424,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/weatherRainF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherShelterF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
       "indra/newview/app_settings/shaders/class3/deferred/volumetricLightF.glsl",
@@ -165500,7 +165553,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/weatherRainF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherShelterF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class1/windlight/atmosphericsFuncs.glsl",
       "indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl",
@@ -167429,6 +167481,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -167438,6 +167491,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -167455,16 +167509,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -167965,11 +168023,6 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -193920,7 +193973,7 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -194342,7 +194395,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/prismSignalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
       "indra/newview/llactormaskeligibility.cpp",
       "indra/newview/llactormaskeligibility.h",
@@ -194421,7 +194473,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
       "indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl"
     ],
@@ -197328,6 +197379,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -197337,6 +197389,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -197354,16 +197407,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -198325,11 +198382,6 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -207874,7 +207926,7 @@
       },
       {
         "hunks": [
-          "indra/newview/lldrawpool.cpp@499,1398"
+          "indra/newview/lldrawpool.cpp@499,1399"
         ],
         "path": "indra/newview/lldrawpool.cpp"
       },
@@ -208183,7 +208235,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/weatherSnowSim.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherSnowV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
       "indra/newview/app_settings/windlight/skies/Luna%20Jubilee%20%2D%20Snowday.xml",
       "indra/newview/llactormover.cpp",
@@ -208333,7 +208384,6 @@
       "indra/newview/app_settings/shaders/class1/deferred/weatherSnowSim.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherSnowV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
@@ -210789,6 +210839,7 @@
           "ALPanelGhostStudio::onDistortAmountCommit",
           "ALPanelGhostStudio::onDistortCommit",
           "ALPanelGhostStudio::onDriveModeCommit",
+          "ALPanelGhostStudio::onDropoutCommit",
           "ALPanelGhostStudio::onEffectFpsCommit",
           "ALPanelGhostStudio::onEntityLookCommit",
           "ALPanelGhostStudio::onFormationCommit",
@@ -210798,6 +210849,7 @@
           "ALPanelGhostStudio::onGroupMemberPinnedCommit",
           "ALPanelGhostStudio::onHeadingDialCommit",
           "ALPanelGhostStudio::onHueCommit",
+          "ALPanelGhostStudio::onInterlaceCommit",
           "ALPanelGhostStudio::onKeepFacingCommit",
           "ALPanelGhostStudio::onLensGazeSettingsCommit",
           "ALPanelGhostStudio::onLensGazeToggle",
@@ -210815,16 +210867,20 @@
           "ALPanelGhostStudio::onPixelCommit",
           "ALPanelGhostStudio::onPosCommit",
           "ALPanelGhostStudio::onPoseRateCommit",
+          "ALPanelGhostStudio::onPositionJitterCommit",
+          "ALPanelGhostStudio::onPowerFlickerCommit",
           "ALPanelGhostStudio::onResetNumeric",
           "ALPanelGhostStudio::onRotationCommit",
           "ALPanelGhostStudio::onScaleCommit",
           "ALPanelGhostStudio::onShimmerAmountCommit",
           "ALPanelGhostStudio::onShimmerSpeedCommit",
           "ALPanelGhostStudio::onShowAllToggle",
+          "ALPanelGhostStudio::onSliceCommit",
           "ALPanelGhostStudio::onSourceAnimationCommit",
           "ALPanelGhostStudio::onStyleCommit",
           "ALPanelGhostStudio::onToggleEditMode",
           "ALPanelGhostStudio::onVisibilityChange",
+          "ALPanelGhostStudio::onWipeCommit",
           "ALPanelGhostStudio::onYawCommit",
           "ALPanelGhostStudio::populateAnimationLibrary",
           "ALPanelGhostStudio::populateLensGazeCastTargets",
@@ -211497,11 +211553,6 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl": {
-        "includes": [],
-        "qualified_call_candidates": [],
-        "unresolved_includes": []
-      },
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
         "unresolved_includes": []

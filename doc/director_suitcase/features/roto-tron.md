@@ -101,7 +101,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/tronTrailV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/visibleDiffuseSeedF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
 - `indra/newview/llactormaskeligibility.cpp`
 - `indra/newview/llactormaskeligibility.h`
@@ -135,7 +134,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1244,18"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@57,31", "indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1955,92", "indra/newview/app_settings/settings_alchemy.xml@2792,235"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1398"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1399"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@47,17", "indra/newview/lldrawpoolavatar.cpp@546,122", "indra/newview/lldrawpoolavatar.cpp@1233,89"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@593,2064", "indra/newview/llreflectionmapmanager.cpp@2810,56"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1579,36"]}
@@ -466,7 +465,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/tronTrailV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/visibleDiffuseSeedF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl`
 - `indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`

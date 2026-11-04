@@ -340,8 +340,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/fsfloaterposer.h", "hunks": ["indra/newview/fsfloaterposer.h@247,23"]}
 - {"path": "indra/newview/fsposeranimator.h", "hunks": ["indra/newview/fsposeranimator.h@125,8"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,12", "indra/newview/llcontrolavatar.cpp@412,32"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@71,82", "indra/newview/lldrawpool.cpp@499,1398"]}
-- {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,110"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@71,82", "indra/newview/lldrawpool.cpp@499,1399"]}
+- {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,112"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,14", "indra/newview/lldrawpoolavatar.cpp@83,102"]}
 - {"path": "indra/newview/llfloaterpreference.cpp", "hunks": ["indra/newview/llfloaterpreference.cpp@2027,12", "indra/newview/llfloaterpreference.cpp@2070,8"]}
 - {"path": "indra/newview/llpopupview.cpp", "hunks": ["indra/newview/llpopupview.cpp@26,7", "indra/newview/llpopupview.cpp@119,8"]}

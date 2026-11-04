@@ -87,7 +87,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/weatherRainF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherShelterF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
 - `indra/newview/app_settings/shaders/class3/deferred/volumetricLightF.glsl`
@@ -123,7 +122,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@28,20", "indra/newview/llviewercontrol.cpp@1133,66"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@4,44", "indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1305,414", "indra/newview/app_settings/settings_alchemy.xml@1955,92", "indra/newview/app_settings/settings_alchemy.xml@3328,135", "indra/newview/app_settings/settings_alchemy.xml@3674,1119"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1398"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1399"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,14", "indra/newview/lldrawpoolavatar.cpp@1233,89"]}
 - {"path": "indra/newview/llfloaterpreference.cpp", "hunks": ["indra/newview/llfloaterpreference.cpp@31,7", "indra/newview/llfloaterpreference.cpp@1652,7"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@30,24", "indra/newview/llreflectionmapmanager.cpp@593,2064"]}
@@ -278,7 +277,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/weatherRainF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherShelterF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherSurfaceF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/windlight/atmosphericsFuncs.glsl`
 - `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`

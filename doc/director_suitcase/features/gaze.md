@@ -61,6 +61,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml`
 - `indra/newview/skins/default/xui/en/panel_ghost_studio.xml`
 - `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
+- `indra/newview/skins/default/xui/en/panel_path_editor.xml`
 - `indra/newview/skins/default/xui/en/panel_temporal_capture.xml`
 
 ## hooks
@@ -196,12 +197,14 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/menu_viewer.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml`
 - `indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml`
 - `indra/newview/skins/default/xui/en/panel_ghost_studio.xml`
 - `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
+- `indra/newview/skins/default/xui/en/panel_path_editor.xml`
 - `indra/newview/skins/default/xui/en/panel_temporal_capture.xml`
 
 ## generated runtime
@@ -210,6 +213,7 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/floater_director_v2.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml`

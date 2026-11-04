@@ -115,7 +115,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherMaterialF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
 - `indra/newview/app_settings/shaders/class1/windlight/cineHazeF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
@@ -157,8 +156,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1305,414", "indra/newview/app_settings/settings_alchemy.xml@1800,13", "indra/newview/app_settings/settings_alchemy.xml@1955,92", "indra/newview/app_settings/settings_alchemy.xml@2048,65", "indra/newview/app_settings/settings_alchemy.xml@2114,223", "indra/newview/app_settings/settings_alchemy.xml@3152,175", "indra/newview/app_settings/settings_alchemy.xml@3464,117", "indra/newview/app_settings/settings_alchemy.xml@3674,1119"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@412,32"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1398", "indra/newview/lldrawpool.cpp@1898,136", "indra/newview/lldrawpool.cpp@2036,92", "indra/newview/lldrawpool.cpp@2130,10", "indra/newview/lldrawpool.cpp@2170,7", "indra/newview/lldrawpool.cpp@2186,13", "indra/newview/lldrawpool.cpp@2447,29", "indra/newview/lldrawpool.cpp@2592,13", "indra/newview/lldrawpool.cpp@2606,11", "indra/newview/lldrawpool.cpp@2621,27", "indra/newview/lldrawpool.cpp@2651,24"]}
-- {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,110"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1399", "indra/newview/lldrawpool.cpp@1899,136", "indra/newview/lldrawpool.cpp@2037,92", "indra/newview/lldrawpool.cpp@2131,10", "indra/newview/lldrawpool.cpp@2171,7", "indra/newview/lldrawpool.cpp@2187,13", "indra/newview/lldrawpool.cpp@2448,29", "indra/newview/lldrawpool.cpp@2593,13", "indra/newview/lldrawpool.cpp@2607,11", "indra/newview/lldrawpool.cpp@2622,27", "indra/newview/lldrawpool.cpp@2652,24"]}
+- {"path": "indra/newview/lldrawpool.h", "hunks": ["indra/newview/lldrawpool.h@388,112"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@83,102", "indra/newview/lldrawpoolavatar.cpp@546,122", "indra/newview/lldrawpoolavatar.cpp@892,158", "indra/newview/lldrawpoolavatar.cpp@1111,13", "indra/newview/lldrawpoolavatar.cpp@1152,29", "indra/newview/lldrawpoolavatar.cpp@1186,22", "indra/newview/lldrawpoolavatar.cpp@1212,7", "indra/newview/lldrawpoolavatar.cpp@1233,89", "indra/newview/lldrawpoolavatar.cpp@1345,27"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@593,2064"]}
 - {"path": "indra/newview/llspatialpartition.h", "hunks": ["indra/newview/llspatialpartition.h@102,21"]}
@@ -490,7 +489,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherMaterialF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/weatherPrecipVeilF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
 - `indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskF.glsl`
 - `indra/newview/app_settings/shaders/class1/lighting/lightAlphaMaskNonIndexedF.glsl`

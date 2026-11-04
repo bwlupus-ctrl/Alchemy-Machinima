@@ -5,26 +5,12 @@
     "counts": {
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
-      "GENERATED": 727,
+      "GENERATED": 730,
       "HOOK": 523,
-      "OWNED": 906,
-      "TOOLING": 401
+      "OWNED": 905,
+      "TOOLING": 415
     },
     "dirty_product_inputs": [
-      "indra/newview/alghoststudio.h",
-      "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/alpanelghoststudio.h",
-      "indra/newview/aluiperfselftest.cpp",
-      "indra/newview/app_settings/shaders/class1/avatar/avatarActorGhostV.glsl",
-      "indra/newview/app_settings/shaders/class1/avatar/eyeballActorGhostV.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
-      "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
-      "indra/newview/lldrawpool.cpp",
-      "indra/newview/lldrawpool.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -67,30 +53,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
-      "scripts/code_tools/actor_key_draw_check.py",
-      "scripts/code_tools/actor_key_studio_gl_check.py",
-      "scripts/code_tools/clone_fx_mover_hunks.json",
-      "scripts/code_tools/clone_fx_runtime_check.py",
-      "scripts/code_tools/clone_fx_safety_check.py",
-      "scripts/code_tools/clone_fx_shader_hunks.json",
-      "scripts/code_tools/clone_looks_anatomy.py",
-      "scripts/code_tools/clone_looks_gl_check.py",
-      "scripts/code_tools/clone_looks_legacy_animation_check.py",
-      "scripts/code_tools/clone_looks_prebuild_gates.ps1",
-      "scripts/code_tools/clone_looks_runtime_check.py",
-      "scripts/code_tools/clone_looks_safety_check.py",
-      "scripts/code_tools/clone_looks_scan_build_check.py",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_functional_manifest.py",
-      "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit_gen.py",
-      "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/legacy_animation_clock_hunks.json",
-      "scripts/code_tools/legacy_animation_shared_hunks.json",
-      "scripts/code_tools/looks16_mover_hunks.json"
+      "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -208,7 +171,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 845
+        "xui_files": 846
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -273,10 +236,10 @@
       },
       "wiring_rows": 2286
     },
-    "head_source_tree": "b5b52c5fe9c538bd0395cd247cf2dda2e8798b03",
+    "head_source_tree": "64f241633fdba134c2259d6f796cd843cee89e45",
     "hook_files": 523,
     "hunks": 3218,
-    "input_sha256": "f661501af49f74977b45a18ffe565d07d2d5e0db91f942debdd38e486df67fba",
+    "input_sha256": "67d1a0b9b84c54a4fdd9efad4d1867b9db0a1d79284a42c3009510c71b25a3cc",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -2071,6 +2034,21 @@
       "git_status": "A",
       "layer": 4,
       "path": "doc/CLONE_FIDELITY_AUDIT_RECIPE.md",
+      "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "doc/CLONE_LOOKS_SAFETY_GATE.md",
       "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
     },
     {
@@ -17199,8 +17177,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "crowd"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -20610,6 +20587,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "looks"
       ],
       "class": "OWNED",
@@ -20646,6 +20624,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "looks"
       ],
       "class": "OWNED",
@@ -23780,29 +23759,19 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones"
-      ],
-      "class": "OWNED",
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
       "deleted": false,
       "feature_evidence": [
-        "path/prefix",
-        "owned source / hook delta identifiers and comments"
+        "path/prefix"
       ],
       "features": [
-        "actor-path",
-        "clones",
-        "crowd",
-        "looks",
-        "roto-tron",
-        "sensor",
-        "vcam",
-        "weather"
+        "clones"
       ],
       "git_status": "A",
-      "layer": 3,
+      "layer": 4,
       "path": "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
-      "reason": "absent at local base; drop-in source unit, dependencies still required"
+      "reason": "generator output; runtime XUI must be regenerated and shipped"
     },
     {
       "candidate_features_from_subjects": [
@@ -26668,8 +26637,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "gaze"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27218,6 +27186,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "roto-tron"
       ],
       "class": "HOOK",
@@ -36459,6 +36428,7 @@
         "actor-path",
         "clones",
         "director-shell",
+        "gaze",
         "roto-tron",
         "vcam"
       ],
@@ -37234,8 +37204,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -37245,6 +37214,7 @@
       "features": [
         "actor-path",
         "clones",
+        "gaze",
         "vcam"
       ],
       "git_status": "A",
@@ -40131,8 +40101,113 @@
       ],
       "git_status": "A",
       "layer": 4,
+      "path": "scripts/code_tools/clone_fx_fix1_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_fx_fix2_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_fx_mover_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_fx_runtime_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_fx_safety_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_fx_shader_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
       "path": "scripts/code_tools/clone_looks2_mover_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_looks_anatomy.py",
+      "reason": "generator output; runtime XUI must be regenerated and shipped"
     },
     {
       "candidate_features_from_subjects": [],
@@ -40161,7 +40236,67 @@
       ],
       "git_status": "A",
       "layer": 4,
+      "path": "scripts/code_tools/clone_looks_legacy_animation_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_looks_prebuild_gates.ps1",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
       "path": "scripts/code_tools/clone_looks_runtime_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_looks_safety_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_looks_scan_build_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -41562,6 +41697,32 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/legacy_animation_clock_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/legacy_animation_shared_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/local_light_size_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -41601,6 +41762,19 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/looks16_mover_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/matrix_mover_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -41628,6 +41802,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/nearby_lights_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/post_chroma_main_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

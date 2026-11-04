@@ -66,7 +66,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/prismSignalF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
 - `indra/newview/llactormaskeligibility.cpp`
 - `indra/newview/llactormaskeligibility.h`
@@ -106,7 +105,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@62,9", "indra/newview/alviewermenu.cpp@604,830"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3674,1119"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1398"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1399"]}
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@30,24", "indra/newview/llreflectionmapmanager.cpp@261,106", "indra/newview/llreflectionmapmanager.cpp@593,2064"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@67,11", "indra/newview/llviewerdisplay.cpp@887,16", "indra/newview/llviewerdisplay.cpp@968,10", "indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1886,34", "indra/newview/llviewerdisplay.cpp@2083,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
@@ -193,7 +192,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
 - `indra/newview/app_settings/shaders/class3/deferred/reflectionProbeF.glsl`
 

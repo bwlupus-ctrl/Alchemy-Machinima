@@ -74,7 +74,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/animationexplorer.cpp`
 - `indra/newview/animationexplorer.h`
 - `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
 - `indra/newview/llactormover.cpp`
 - `indra/newview/llactormover.h`
@@ -120,7 +119,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/fsfloaterposer.cpp", "hunks": ["indra/newview/fsfloaterposer.cpp@25,31", "indra/newview/fsfloaterposer.cpp@82,19", "indra/newview/fsfloaterposer.cpp@1435,57", "indra/newview/fsfloaterposer.cpp@2518,320", "indra/newview/fsfloaterposer.cpp@2843,17", "indra/newview/fsfloaterposer.cpp@2920,79"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,12", "indra/newview/llcontrolavatar.cpp@248,21"]}
-- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@71,82", "indra/newview/lldrawpool.cpp@499,1398"]}
+- {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@71,82", "indra/newview/lldrawpool.cpp@499,1399"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,14", "indra/newview/lldrawpoolavatar.cpp@83,102"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@25,27", "indra/newview/llviewerdisplay.cpp@909,14", "indra/newview/llviewerdisplay.cpp@997,17", "indra/newview/llviewerdisplay.cpp@1122,36", "indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1886,34", "indra/newview/llviewerdisplay.cpp@2083,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266", "indra/newview/llviewerfloaterreg.cpp@878,7"]}
@@ -188,7 +187,6 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## shaders
 
 - `indra/newview/app_settings/shaders/class1/deferred/tronWorldF.glsl`
-- `indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl`
 - `indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`
 
