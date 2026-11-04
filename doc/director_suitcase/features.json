@@ -634,8 +634,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31817,372"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31894,372"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -2361,6 +2361,7 @@
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewermenu.h",
           "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [
@@ -2589,6 +2590,7 @@
           "indra/llui/llcombobox.h",
           "indra/newview/alenvintensity.h",
           "indra/newview/allenslooks.h",
+          "indra/newview/allenslooks_vnd_mean.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/lldrawpool.h",
@@ -2614,6 +2616,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::settings",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALPresetLook::infraredGrainSettings",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
@@ -9274,6 +9279,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -10936,9 +10944,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@24,20",
-          "indra/newview/llviewerwindow.cpp@6334,13",
-          "indra/newview/llviewerwindow.cpp@6443,7"
+          "indra/newview/llviewerwindow.cpp@24,21",
+          "indra/newview/llviewerwindow.cpp@6342,13",
+          "indra/newview/llviewerwindow.cpp@6451,7"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -10972,8 +10980,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@161,12",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@32804,154"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@32881,154"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -11094,10 +11102,10 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@617,35",
-          "indra/newview/llviewershadermgr.cpp@2694,18",
-          "indra/newview/llviewershadermgr.cpp@4168,11",
-          "indra/newview/llviewershadermgr.cpp@6483,118"
+          "indra/newview/llviewershadermgr.cpp@618,35",
+          "indra/newview/llviewershadermgr.cpp@2696,18",
+          "indra/newview/llviewershadermgr.cpp@4170,11",
+          "indra/newview/llviewershadermgr.cpp@6476,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -19636,6 +19644,7 @@
           "indra/newview/alfloaterprogressview.h",
           "indra/newview/alhidecursor.h",
           "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
           "indra/newview/altoolcrowdplace.h",
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
@@ -21169,6 +21178,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -23150,14 +23162,14 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@2427,11"
+          "indra/newview/llviewerwindow.cpp@2428,11"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,29927"
+          "indra/newview/pipeline.cpp@1701,30004"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -23212,7 +23224,7 @@
       {
         "hunks": [
           "indra/newview/skins/default/xui/en/notifications.xml@9277,24",
-          "indra/newview/skins/default/xui/en/notifications.xml@13574,368"
+          "indra/newview/skins/default/xui/en/notifications.xml@13580,368"
         ],
         "path": "indra/newview/skins/default/xui/en/notifications.xml"
       },
@@ -32061,6 +32073,7 @@
           "indra/newview/alfloaterprogressview.h",
           "indra/newview/alhidecursor.h",
           "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
           "indra/newview/altoolcrowdplace.h",
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
@@ -33028,6 +33041,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -34796,8 +34812,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2760,10",
-          "indra/newview/app_settings/settings_alchemy.xml@2771,233"
+          "indra/newview/app_settings/settings_alchemy.xml@2770,10",
+          "indra/newview/app_settings/settings_alchemy.xml@2781,233"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -34883,10 +34899,10 @@
           "indra/newview/pipeline.cpp@1371,61",
           "indra/newview/pipeline.cpp@1436,15",
           "indra/newview/pipeline.cpp@1564,106",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31817,372",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@32959,331"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31894,372",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@33036,331"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -34955,22 +34971,22 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@339,32",
-          "indra/newview/llviewershadermgr.cpp@374,20",
-          "indra/newview/llviewershadermgr.cpp@436,143",
-          "indra/newview/llviewershadermgr.cpp@1564,18",
-          "indra/newview/llviewershadermgr.cpp@1598,14",
-          "indra/newview/llviewershadermgr.cpp@2151,40",
-          "indra/newview/llviewershadermgr.cpp@2494,28",
-          "indra/newview/llviewershadermgr.cpp@2806,312",
-          "indra/newview/llviewershadermgr.cpp@3918,67",
-          "indra/newview/llviewershadermgr.cpp@5496,299"
+          "indra/newview/llviewershadermgr.cpp@374,21",
+          "indra/newview/llviewershadermgr.cpp@437,143",
+          "indra/newview/llviewershadermgr.cpp@1566,18",
+          "indra/newview/llviewershadermgr.cpp@1600,14",
+          "indra/newview/llviewershadermgr.cpp@2153,40",
+          "indra/newview/llviewershadermgr.cpp@2496,28",
+          "indra/newview/llviewershadermgr.cpp@2808,312",
+          "indra/newview/llviewershadermgr.cpp@3920,67",
+          "indra/newview/llviewershadermgr.cpp@5498,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.h@434,34",
-          "indra/newview/llviewershadermgr.h@477,7"
+          "indra/newview/llviewershadermgr.h@435,34",
+          "indra/newview/llviewershadermgr.h@478,7"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -35008,7 +35024,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -44095,6 +44111,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -46812,9 +46831,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2771,233",
-          "indra/newview/app_settings/settings_alchemy.xml@3131,175",
-          "indra/newview/app_settings/settings_alchemy.xml@3307,135"
+          "indra/newview/app_settings/settings_alchemy.xml@2781,233",
+          "indra/newview/app_settings/settings_alchemy.xml@3141,175",
+          "indra/newview/app_settings/settings_alchemy.xml@3317,135"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -46908,9 +46927,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@179,8",
-          "indra/newview/llviewerwindow.cpp@3830,28",
-          "indra/newview/llviewerwindow.cpp@4049,19"
+          "indra/newview/llviewerwindow.cpp@180,8",
+          "indra/newview/llviewerwindow.cpp@3831,28",
+          "indra/newview/llviewerwindow.cpp@4050,19"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -46996,13 +47015,13 @@
           "indra/newview/pipeline.cpp@125,11",
           "indra/newview/pipeline.cpp@141,14",
           "indra/newview/pipeline.cpp@161,12",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@32592,180",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@33425,222",
-          "indra/newview/pipeline.cpp@34229,979",
-          "indra/newview/pipeline.cpp@35484,344",
-          "indra/newview/pipeline.cpp@39522,153"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@32669,180",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@33502,222",
+          "indra/newview/pipeline.cpp@34306,979",
+          "indra/newview/pipeline.cpp@35561,344",
+          "indra/newview/pipeline.cpp@39599,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -47149,12 +47168,12 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@690,32",
-          "indra/newview/llviewershadermgr.cpp@1758,259",
-          "indra/newview/llviewershadermgr.cpp@4593,633",
-          "indra/newview/llviewershadermgr.cpp@6353,8",
-          "indra/newview/llviewershadermgr.cpp@6393,70",
-          "indra/newview/llviewershadermgr.cpp@6483,118"
+          "indra/newview/llviewershadermgr.cpp@691,32",
+          "indra/newview/llviewershadermgr.cpp@1760,259",
+          "indra/newview/llviewershadermgr.cpp@4595,633",
+          "indra/newview/llviewershadermgr.cpp@6346,8",
+          "indra/newview/llviewershadermgr.cpp@6386,70",
+          "indra/newview/llviewershadermgr.cpp@6476,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -47240,10 +47259,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@200,26",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@742,175",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@975,29",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1058,172"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432",
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@749,175",
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@982,29",
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1065,172"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -52125,6 +52144,7 @@
           "indra/llui/llcombobox.h",
           "indra/newview/alenvintensity.h",
           "indra/newview/allenslooks.h",
+          "indra/newview/allenslooks_vnd_mean.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/lldrawpool.h",
@@ -52150,6 +52170,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::settings",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALPresetLook::infraredGrainSettings",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
@@ -63576,6 +63599,7 @@
           "indra/newview/alfloaterprogressview.h",
           "indra/newview/alhidecursor.h",
           "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
           "indra/newview/altoolcrowdplace.h",
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
@@ -65577,6 +65601,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -69416,6 +69443,7 @@
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewermenu.h",
           "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [
@@ -75412,7 +75440,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2771,233"
+          "indra/newview/app_settings/settings_alchemy.xml@2781,233"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -75440,9 +75468,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@202,7",
-          "indra/newview/llviewerwindow.cpp@263,272",
-          "indra/newview/llviewerwindow.cpp@3367,14"
+          "indra/newview/llviewerwindow.cpp@203,7",
+          "indra/newview/llviewerwindow.cpp@264,272",
+          "indra/newview/llviewerwindow.cpp@3368,14"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -75472,7 +75500,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@89,17",
-          "indra/newview/pipeline.cpp@1701,29927"
+          "indra/newview/pipeline.cpp@1701,30004"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -80705,6 +80733,7 @@
           "indra/newview/alfloaterprogressview.h",
           "indra/newview/alhidecursor.h",
           "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
           "indra/newview/altoolcrowdplace.h",
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
@@ -82238,6 +82267,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -83534,8 +83566,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@179,8",
-          "indra/newview/llviewerwindow.cpp@4049,19"
+          "indra/newview/llviewerwindow.cpp@180,8",
+          "indra/newview/llviewerwindow.cpp@4050,19"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -83560,9 +83592,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@617,35",
-          "indra/newview/llviewershadermgr.cpp@2694,18",
-          "indra/newview/llviewershadermgr.cpp@4168,11"
+          "indra/newview/llviewershadermgr.cpp@618,35",
+          "indra/newview/llviewershadermgr.cpp@2696,18",
+          "indra/newview/llviewershadermgr.cpp@4170,11"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       }
@@ -87207,6 +87239,7 @@
           "indra/newview/alfloaterprogressview.h",
           "indra/newview/alhidecursor.h",
           "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
           "indra/newview/altoolcrowdplace.h",
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
@@ -89479,7 +89512,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -89622,16 +89655,16 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerwindow.cpp@24,20",
-          "indra/newview/llviewerwindow.cpp@97,9",
-          "indra/newview/llviewerwindow.cpp@263,272",
-          "indra/newview/llviewerwindow.cpp@1304,55",
-          "indra/newview/llviewerwindow.cpp@1437,17",
-          "indra/newview/llviewerwindow.cpp@3605,10",
-          "indra/newview/llviewerwindow.cpp@3700,20",
-          "indra/newview/llviewerwindow.cpp@3876,18",
-          "indra/newview/llviewerwindow.cpp@3952,24",
-          "indra/newview/llviewerwindow.cpp@4011,14"
+          "indra/newview/llviewerwindow.cpp@24,21",
+          "indra/newview/llviewerwindow.cpp@98,9",
+          "indra/newview/llviewerwindow.cpp@264,272",
+          "indra/newview/llviewerwindow.cpp@1305,55",
+          "indra/newview/llviewerwindow.cpp@1438,17",
+          "indra/newview/llviewerwindow.cpp@3606,10",
+          "indra/newview/llviewerwindow.cpp@3701,20",
+          "indra/newview/llviewerwindow.cpp@3877,18",
+          "indra/newview/llviewerwindow.cpp@3953,24",
+          "indra/newview/llviewerwindow.cpp@4012,14"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -89661,8 +89694,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31817,372"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31894,372"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -89756,7 +89789,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/notifications.xml@13574,368"
+          "indra/newview/skins/default/xui/en/notifications.xml@13580,368"
         ],
         "path": "indra/newview/skins/default/xui/en/notifications.xml"
       },
@@ -93130,6 +93163,7 @@
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewermenu.h",
           "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [
@@ -93497,6 +93531,7 @@
           "indra/llui/llcombobox.h",
           "indra/newview/alenvintensity.h",
           "indra/newview/allenslooks.h",
+          "indra/newview/allenslooks_vnd_mean.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/lldrawpool.h",
@@ -93522,6 +93557,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::settings",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALPresetLook::infraredGrainSettings",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
@@ -103338,6 +103376,7 @@
           "indra/newview/alfloaterprogressview.h",
           "indra/newview/alhidecursor.h",
           "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
           "indra/newview/altoolcrowdplace.h",
           "indra/newview/altoolghostedit.h",
           "indra/newview/aluiperfselftest.h",
@@ -105250,6 +105289,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -107401,7 +107443,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -107414,7 +107456,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1701,29927"
+          "indra/newview/pipeline.cpp@1701,30004"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -107438,7 +107480,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/notifications.xml@13574,368"
+          "indra/newview/skins/default/xui/en/notifications.xml@13580,368"
         ],
         "path": "indra/newview/skins/default/xui/en/notifications.xml"
       },
@@ -107451,7 +107493,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@1476,26"
+          "indra/newview/llviewershadermgr.cpp@1478,26"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -110587,6 +110629,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -119189,6 +119234,18 @@
         "text": "llviewershadermgr.h"
       },
       {
+        "file": "indra/llwindow/CMakeLists.txt",
+        "line": 107,
+        "source": "indra/newview/llviewerwindow.cpp",
+        "text": "# llviewerwindow.cpp's (guarded) include still resolves."
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1068,
+        "source": "indra/newview/llviewerwindow.cpp",
+        "text": "llviewerwindow.cpp"
+      },
+      {
         "file": "indra/newview/CMakeLists.txt",
         "line": 1073,
         "source": "indra/newview/llvoavatar.cpp",
@@ -119265,6 +119322,7 @@
       "indra/newview/alcolorchartdata.h",
       "indra/newview/alfloaterlightbox.cpp",
       "indra/newview/alfloaterlightbox.h",
+      "indra/newview/allenslooks_vnd_mean.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
@@ -119364,12 +119422,12 @@
         "hunks": [
           "indra/newview/app_settings/settings_alchemy.xml@1308,411",
           "indra/newview/app_settings/settings_alchemy.xml@1789,13",
-          "indra/newview/app_settings/settings_alchemy.xml@1944,82",
-          "indra/newview/app_settings/settings_alchemy.xml@2027,65",
-          "indra/newview/app_settings/settings_alchemy.xml@2093,236",
-          "indra/newview/app_settings/settings_alchemy.xml@3131,175",
-          "indra/newview/app_settings/settings_alchemy.xml@3443,117",
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@1944,92",
+          "indra/newview/app_settings/settings_alchemy.xml@2037,65",
+          "indra/newview/app_settings/settings_alchemy.xml@2103,236",
+          "indra/newview/app_settings/settings_alchemy.xml@3141,175",
+          "indra/newview/app_settings/settings_alchemy.xml@3453,117",
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -119457,6 +119515,13 @@
       },
       {
         "hunks": [
+          "indra/newview/llviewerwindow.cpp@24,21",
+          "indra/newview/llviewerwindow.cpp@6163,14"
+        ],
+        "path": "indra/newview/llviewerwindow.cpp"
+      },
+      {
+        "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
           "indra/newview/llvoavatar.cpp@4233,13",
           "indra/newview/llvoavatar.cpp@4664,28",
@@ -119491,13 +119556,13 @@
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@184,7",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@32268,53",
-          "indra/newview/pipeline.cpp@32592,180",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@35484,344",
-          "indra/newview/pipeline.cpp@37593,1060",
-          "indra/newview/pipeline.cpp@39522,153"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@32345,53",
+          "indra/newview/pipeline.cpp@32669,180",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@35561,344",
+          "indra/newview/pipeline.cpp@37670,1060",
+          "indra/newview/pipeline.cpp@39599,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -119577,7 +119642,7 @@
       {
         "hunks": [
           "indra/newview/skins/default/xui/en/notifications.xml@6490,31",
-          "indra/newview/skins/default/xui/en/notifications.xml@13574,368"
+          "indra/newview/skins/default/xui/en/notifications.xml@13580,368"
         ],
         "path": "indra/newview/skins/default/xui/en/notifications.xml"
       },
@@ -119627,66 +119692,66 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@374,20",
-          "indra/newview/llviewershadermgr.cpp@401,22",
-          "indra/newview/llviewershadermgr.cpp@436,143",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@812,8",
-          "indra/newview/llviewershadermgr.cpp@826,29",
-          "indra/newview/llviewershadermgr.cpp@1082,31",
-          "indra/newview/llviewershadermgr.cpp@1121,9",
-          "indra/newview/llviewershadermgr.cpp@1275,52",
-          "indra/newview/llviewershadermgr.cpp@1476,26",
-          "indra/newview/llviewershadermgr.cpp@1509,13",
-          "indra/newview/llviewershadermgr.cpp@1758,259",
-          "indra/newview/llviewershadermgr.cpp@2075,10",
-          "indra/newview/llviewershadermgr.cpp@2095,46",
-          "indra/newview/llviewershadermgr.cpp@2199,7",
-          "indra/newview/llviewershadermgr.cpp@2214,117",
-          "indra/newview/llviewershadermgr.cpp@2340,12",
-          "indra/newview/llviewershadermgr.cpp@2355,13",
-          "indra/newview/llviewershadermgr.cpp@2383,13",
-          "indra/newview/llviewershadermgr.cpp@2398,13",
-          "indra/newview/llviewershadermgr.cpp@2442,10",
-          "indra/newview/llviewershadermgr.cpp@2559,11",
-          "indra/newview/llviewershadermgr.cpp@2605,14",
-          "indra/newview/llviewershadermgr.cpp@2630,15",
-          "indra/newview/llviewershadermgr.cpp@2673,12",
-          "indra/newview/llviewershadermgr.cpp@2694,18",
-          "indra/newview/llviewershadermgr.cpp@2760,18",
-          "indra/newview/llviewershadermgr.cpp@2806,312",
-          "indra/newview/llviewershadermgr.cpp@3164,7",
-          "indra/newview/llviewershadermgr.cpp@3177,7",
-          "indra/newview/llviewershadermgr.cpp@3502,17",
-          "indra/newview/llviewershadermgr.cpp@3613,16",
-          "indra/newview/llviewershadermgr.cpp@3638,17",
-          "indra/newview/llviewershadermgr.cpp@3681,13",
-          "indra/newview/llviewershadermgr.cpp@3728,14",
-          "indra/newview/llviewershadermgr.cpp@3777,12",
-          "indra/newview/llviewershadermgr.cpp@3821,12",
-          "indra/newview/llviewershadermgr.cpp@3835,49",
-          "indra/newview/llviewershadermgr.cpp@3886,14",
-          "indra/newview/llviewershadermgr.cpp@4066,7",
-          "indra/newview/llviewershadermgr.cpp@4079,7",
-          "indra/newview/llviewershadermgr.cpp@4098,7",
-          "indra/newview/llviewershadermgr.cpp@4113,7",
-          "indra/newview/llviewershadermgr.cpp@4135,7",
-          "indra/newview/llviewershadermgr.cpp@4151,7",
-          "indra/newview/llviewershadermgr.cpp@4168,11",
-          "indra/newview/llviewershadermgr.cpp@4208,8",
-          "indra/newview/llviewershadermgr.cpp@4241,7",
-          "indra/newview/llviewershadermgr.cpp@4259,7",
-          "indra/newview/llviewershadermgr.cpp@4273,7",
-          "indra/newview/llviewershadermgr.cpp@4285,7",
-          "indra/newview/llviewershadermgr.cpp@4318,15",
-          "indra/newview/llviewershadermgr.cpp@4351,14",
-          "indra/newview/llviewershadermgr.cpp@5496,299",
-          "indra/newview/llviewershadermgr.cpp@6051,80",
-          "indra/newview/llviewershadermgr.cpp@6137,115",
-          "indra/newview/llviewershadermgr.cpp@6285,12",
-          "indra/newview/llviewershadermgr.cpp@6368,12",
-          "indra/newview/llviewershadermgr.cpp@6393,70",
-          "indra/newview/llviewershadermgr.cpp@6483,118"
+          "indra/newview/llviewershadermgr.cpp@374,21",
+          "indra/newview/llviewershadermgr.cpp@402,22",
+          "indra/newview/llviewershadermgr.cpp@437,143",
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@813,8",
+          "indra/newview/llviewershadermgr.cpp@827,29",
+          "indra/newview/llviewershadermgr.cpp@1084,31",
+          "indra/newview/llviewershadermgr.cpp@1123,9",
+          "indra/newview/llviewershadermgr.cpp@1277,52",
+          "indra/newview/llviewershadermgr.cpp@1478,26",
+          "indra/newview/llviewershadermgr.cpp@1511,13",
+          "indra/newview/llviewershadermgr.cpp@1760,259",
+          "indra/newview/llviewershadermgr.cpp@2077,10",
+          "indra/newview/llviewershadermgr.cpp@2097,46",
+          "indra/newview/llviewershadermgr.cpp@2201,7",
+          "indra/newview/llviewershadermgr.cpp@2216,117",
+          "indra/newview/llviewershadermgr.cpp@2342,12",
+          "indra/newview/llviewershadermgr.cpp@2357,13",
+          "indra/newview/llviewershadermgr.cpp@2385,13",
+          "indra/newview/llviewershadermgr.cpp@2400,13",
+          "indra/newview/llviewershadermgr.cpp@2444,10",
+          "indra/newview/llviewershadermgr.cpp@2561,11",
+          "indra/newview/llviewershadermgr.cpp@2607,14",
+          "indra/newview/llviewershadermgr.cpp@2632,15",
+          "indra/newview/llviewershadermgr.cpp@2675,12",
+          "indra/newview/llviewershadermgr.cpp@2696,18",
+          "indra/newview/llviewershadermgr.cpp@2762,18",
+          "indra/newview/llviewershadermgr.cpp@2808,312",
+          "indra/newview/llviewershadermgr.cpp@3166,7",
+          "indra/newview/llviewershadermgr.cpp@3179,7",
+          "indra/newview/llviewershadermgr.cpp@3504,17",
+          "indra/newview/llviewershadermgr.cpp@3615,16",
+          "indra/newview/llviewershadermgr.cpp@3640,17",
+          "indra/newview/llviewershadermgr.cpp@3683,13",
+          "indra/newview/llviewershadermgr.cpp@3730,14",
+          "indra/newview/llviewershadermgr.cpp@3779,12",
+          "indra/newview/llviewershadermgr.cpp@3823,12",
+          "indra/newview/llviewershadermgr.cpp@3837,49",
+          "indra/newview/llviewershadermgr.cpp@3888,14",
+          "indra/newview/llviewershadermgr.cpp@4068,7",
+          "indra/newview/llviewershadermgr.cpp@4081,7",
+          "indra/newview/llviewershadermgr.cpp@4100,7",
+          "indra/newview/llviewershadermgr.cpp@4115,7",
+          "indra/newview/llviewershadermgr.cpp@4137,7",
+          "indra/newview/llviewershadermgr.cpp@4153,7",
+          "indra/newview/llviewershadermgr.cpp@4170,11",
+          "indra/newview/llviewershadermgr.cpp@4210,8",
+          "indra/newview/llviewershadermgr.cpp@4243,7",
+          "indra/newview/llviewershadermgr.cpp@4261,7",
+          "indra/newview/llviewershadermgr.cpp@4275,7",
+          "indra/newview/llviewershadermgr.cpp@4287,7",
+          "indra/newview/llviewershadermgr.cpp@4320,15",
+          "indra/newview/llviewershadermgr.cpp@4353,14",
+          "indra/newview/llviewershadermgr.cpp@5498,299",
+          "indra/newview/llviewershadermgr.cpp@6053,71",
+          "indra/newview/llviewershadermgr.cpp@6130,115",
+          "indra/newview/llviewershadermgr.cpp@6278,12",
+          "indra/newview/llviewershadermgr.cpp@6361,12",
+          "indra/newview/llviewershadermgr.cpp@6386,70",
+          "indra/newview/llviewershadermgr.cpp@6476,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -119696,9 +119761,9 @@
           "indra/newview/llviewershadermgr.h@160,17",
           "indra/newview/llviewershadermgr.h@247,23",
           "indra/newview/llviewershadermgr.h@280,14",
-          "indra/newview/llviewershadermgr.h@351,57",
-          "indra/newview/llviewershadermgr.h@417,8",
-          "indra/newview/llviewershadermgr.h@488,41"
+          "indra/newview/llviewershadermgr.h@351,58",
+          "indra/newview/llviewershadermgr.h@418,8",
+          "indra/newview/llviewershadermgr.h@489,41"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -119728,7 +119793,7 @@
         "hunks": [
           "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@4,11",
           "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -122237,6 +122302,7 @@
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewermenu.h",
           "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [
@@ -122321,6 +122387,7 @@
           "indra/llui/llcombobox.h",
           "indra/newview/alenvintensity.h",
           "indra/newview/allenslooks.h",
+          "indra/newview/allenslooks_vnd_mean.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/lldrawpool.h",
@@ -122346,6 +122413,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::settings",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALPresetLook::infraredGrainSettings",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
@@ -130993,6 +131063,512 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llviewerwindow.cpp": {
+        "includes": [
+          "indra/llappearance/lltexlayer.h",
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcleanup.h",
+          "indra/llcommon/lldate.h",
+          "indra/llcommon/llerrorcontrol.h",
+          "indra/llcommon/llstring.h",
+          "indra/llcommon/lltimer.h",
+          "indra/llcommon/lluuid.h",
+          "indra/llcommon/stringize.h",
+          "indra/llfilesystem/lldir.h",
+          "indra/llimage/llimage.h",
+          "indra/llimage/llimagej2c.h",
+          "indra/llimage/llimageworker.h",
+          "indra/llmath/llrect.h",
+          "indra/llmath/raytrace.h",
+          "indra/llmessage/llassetstorage.h",
+          "indra/llmessage/llxfermanager.h",
+          "indra/llmessage/message.h",
+          "indra/llprimitive/llmediaentry.h",
+          "indra/llprimitive/object_flags.h",
+          "indra/llrender/llfontfreetype.h",
+          "indra/llrender/llfontgl.h",
+          "indra/llrender/llfontregistry.h",
+          "indra/llrender/llglheaders.h",
+          "indra/llrender/llrender.h",
+          "indra/llrender/llrendersphere.h",
+          "indra/llui/llaccordionctrl.h",
+          "indra/llui/llchatentry.h",
+          "indra/llui/llconsole.h",
+          "indra/llui/llfloater.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llfocusmgr.h",
+          "indra/llui/lllineeditor.h",
+          "indra/llui/llmenugl.h",
+          "indra/llui/llmodaldialog.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llstatview.h",
+          "indra/llui/lltextbox.h",
+          "indra/llui/lltooltip.h",
+          "indra/llui/lltrans.h",
+          "indra/llui/llui.h",
+          "indra/llui/lluictrlfactory.h",
+          "indra/llui/llview.h",
+          "indra/llui/llviewereventrecorder.h",
+          "indra/llui/llviewquery.h",
+          "indra/llwindow/llkeyboard.h",
+          "indra/llwindow/llmousehandler.h",
+          "indra/llwindow/llwindowwin32.h",
+          "indra/llxml/llxmltree.h",
+          "indra/newview/alactorchromakey.h",
+          "indra/newview/alchatbar.h",
+          "indra/newview/aldirectorhotkeys.h",
+          "indra/newview/alfloaterprogressview.h",
+          "indra/newview/alhidecursor.h",
+          "indra/newview/alkithistory.h",
+          "indra/newview/allenslooks.h",
+          "indra/newview/altoolcrowdplace.h",
+          "indra/newview/altoolghostedit.h",
+          "indra/newview/aluiperfselftest.h",
+          "indra/newview/alviewfinder.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentbenefits.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llagentui.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/llbox.h",
+          "indra/newview/llchicletbar.h",
+          "indra/newview/llcommandhandler.h",
+          "indra/newview/llcommunicationchannel.h",
+          "indra/newview/llcylinder.h",
+          "indra/newview/lldebugview.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/lldrawpoolalpha.h",
+          "indra/newview/lldrawpoolbump.h",
+          "indra/newview/lldrawpoolwater.h",
+          "indra/newview/llface.h",
+          "indra/newview/llfeaturemanager.h",
+          "indra/newview/llfilepicker.h",
+          "indra/newview/llfirstuse.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatercamera.h",
+          "indra/newview/llfloaterimnearbychat.h",
+          "indra/newview/llfloaterinspect.h",
+          "indra/newview/llfloaterland.h",
+          "indra/newview/llfloaterlocalassets.h",
+          "indra/newview/llfloatermap.h",
+          "indra/newview/llfloaternamedesc.h",
+          "indra/newview/llfloaternotificationsconsole.h",
+          "indra/newview/llfloaterpreference.h",
+          "indra/newview/llfloatersnapshot.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llfloaterworldmap.h",
+          "indra/newview/llgesturemgr.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llhudmanager.h",
+          "indra/newview/llhudobject.h",
+          "indra/newview/llhudview.h",
+          "indra/newview/lllocalbitmaps.h",
+          "indra/newview/lllocalgltfmaterials.h",
+          "indra/newview/llmaniptranslate.h",
+          "indra/newview/llmenuoptionpathfindingrebakenavmesh.h",
+          "indra/newview/llmeshrepository.h",
+          "indra/newview/llmorphview.h",
+          "indra/newview/llmoveview.h",
+          "indra/newview/llnavigationbar.h",
+          "indra/newview/llnotificationhandler.h",
+          "indra/newview/llnotificationmanager.h",
+          "indra/newview/llpanellogin.h",
+          "indra/newview/llpaneltopinfobar.h",
+          "indra/newview/llpopupview.h",
+          "indra/newview/llpreviewtexture.h",
+          "indra/newview/llprogressview.h",
+          "indra/newview/llrootview.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llsetkeybinddialog.h",
+          "indra/newview/llsky.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llsurface.h",
+          "indra/newview/llsurfacepatch.h",
+          "indra/newview/lltexturecache.h",
+          "indra/newview/lltexturefetch.h",
+          "indra/newview/lltextureview.h",
+          "indra/newview/lltoast.h",
+          "indra/newview/lltool.h",
+          "indra/newview/lltoolbarview.h",
+          "indra/newview/lltoolcomp.h",
+          "indra/newview/lltooldraganddrop.h",
+          "indra/newview/lltoolface.h",
+          "indra/newview/lltoolfocus.h",
+          "indra/newview/lltoolgrab.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolmorph.h",
+          "indra/newview/lltoolpie.h",
+          "indra/newview/lltoolselectland.h",
+          "indra/newview/llurldispatcher.h",
+          "indra/newview/llversioninfo.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerdisplay.h",
+          "indra/newview/llviewergesture.h",
+          "indra/newview/llviewerinput.h",
+          "indra/newview/llviewerinventory.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermedia.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewermenufile.h",
+          "indra/newview/llviewermessage.h",
+          "indra/newview/llviewernetwork.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerstats.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llviewerwindowlistener.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llvopartgroup.h",
+          "indra/newview/llvovolume.h",
+          "indra/newview/llwearablelist.h",
+          "indra/newview/llwindowlistener.h",
+          "indra/newview/llworld.h",
+          "indra/newview/llworldmapview.h",
+          "indra/newview/pipeline.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlveffects.h",
+          "indra/newview/rlvhandler.h"
+        ],
+        "qualified_call_candidates": [
+          "ALActorChromaKey::finalizeSerial",
+          "ALActorChromaKey::reason",
+          "ALActorChromaKey::refuse",
+          "ALActorChromaKey::snapshotComplete",
+          "ALActorChromaKey::snapshotRefused",
+          "ALActorChromaKey::snapshotRequestAllowed",
+          "ALChatBar::startChat",
+          "ALDirectorHotkeys::handleKey",
+          "ALHideCursor::wantHidden",
+          "ALKitHistory::comboInputSource",
+          "ALKitHistory::noteKey",
+          "ALKitHistory::notePointer",
+          "ALToolCrowdPlace::getInstance",
+          "ALToolGhostEdit::getInstance",
+          "ALToolGhostEdit::handleKey",
+          "ALToolGhostEdit::instanceExists",
+          "ALUIPerfSelfTest::recordViewCounts",
+          "ALViewfinder::armLength",
+          "ALViewfinder::clampScale",
+          "ALViewfinder::fontSizeName",
+          "ALViewfinder::fontStep",
+          "ALViewfinder::formatValue",
+          "ALViewfinder::label",
+          "ALViewfinder::layout",
+          "LLAccordionCtrl::updateClass",
+          "LLActorMover::releaseStudioSnapshotScratch",
+          "LLApp::isExiting",
+          "LLApp::isStopped",
+          "LLAppViewer::getTextureCache",
+          "LLAppViewer::getTextureFetch",
+          "LLAppViewer::instance",
+          "LLChicletBar::getInstance",
+          "LLChicletBar::instanceExists",
+          "LLConsole::updateClass",
+          "LLDate::now",
+          "LLDefaultChildRegistry::instance",
+          "LLError::addRecorder",
+          "LLError::removeRecorder",
+          "LLFeatureManager::getInstance",
+          "LLFile::stat",
+          "LLFilePickerReplyThread::startPicker",
+          "LLFirstUse::notUsingDestinationGuide",
+          "LLFirstUse::notUsingSidePanel",
+          "LLFloater360Capture::capture360Images",
+          "LLFloaterReg::findInstance",
+          "LLFloaterReg::getInstance",
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterReg::toggleInstanceOrBringToFront",
+          "LLFontGL::consumePendingReload",
+          "LLFontGL::destroyAllGL",
+          "LLFontGL::destroyDefaultFonts",
+          "LLFontGL::getFont",
+          "LLFontGL::getFontMonospace",
+          "LLFontGL::getFontSansSerif",
+          "LLFontGL::getFontSansSerifBig",
+          "LLFontGL::getFontSansSerifSmall",
+          "LLFontGL::initClass",
+          "LLFontGL::loadCommonFonts",
+          "LLFontGL::sweepGlyphCaches",
+          "LLFontManager::initClass",
+          "LLGLState::restoreGL",
+          "LLGestureMgr::instance",
+          "LLGridManager::getInstance",
+          "LLHUDIcon::lineSegmentIntersectAll",
+          "LLHUDObject::reshapeAll",
+          "LLIMMgr::getInstance",
+          "LLImageFormatted::createFromType",
+          "LLImageGL::allocateConversionBuffer",
+          "LLImageGL::initClass",
+          "LLInventoryType::defaultForAssetType",
+          "LLLayoutStack::updateClass",
+          "LLLocalBitmapMgr::instance",
+          "LLLocalGLTFMaterialMgr::instance",
+          "LLManipTranslate::destroyGL",
+          "LLManipTranslate::restoreGL",
+          "LLMemory::getCurrentRSS",
+          "LLMemory::getMaxMemKB",
+          "LLMemory::tryToAlloc",
+          "LLMemory::updateMemoryInfo",
+          "LLMenuGL::getKeyboardMode",
+          "LLMenuOptionPathfindingRebakeNavmesh::getInstance",
+          "LLModalDialog::activeCount",
+          "LLModalDialog::onAppFocusGained",
+          "LLModalDialog::onAppFocusLost",
+          "LLModalDialog::shutdownModals",
+          "LLNavigationBar::deleteSingleton",
+          "LLNavigationBar::getInstance",
+          "LLNavigationBar::instanceExists",
+          "LLNotifications::instance",
+          "LLNotificationsUI::LLViewerAlertHandler",
+          "LLNotificationsUtil::add",
+          "LLPanelHideBeacon::getInstance",
+          "LLPanelLogin::reshapePanel",
+          "LLPanelStandStopFlying::getInstance",
+          "LLPanelTopInfoBar::getInstance",
+          "LLPanelTopInfoBar::instanceExists",
+          "LLPickInfo::LLPickInfo",
+          "LLPickInfo::fetchResults",
+          "LLPickInfo::getObject",
+          "LLPickInfo::getSurfaceInfo",
+          "LLPickInfo::isFlora",
+          "LLPickInfo::updateXYCoords",
+          "LLPipeline::getRenderBeacons",
+          "LLPipeline::getRenderMOAPBeacons",
+          "LLPipeline::getRenderParticleBeacons",
+          "LLPipeline::getRenderPhysicalBeacons",
+          "LLPipeline::getRenderScriptedBeacons",
+          "LLPipeline::getRenderScriptedTouchBeacons",
+          "LLPipeline::getRenderSoundBeacons",
+          "LLPipeline::toggleRenderDebugFeature",
+          "LLPipeline::toggleRenderTypeControlNegated",
+          "LLResMgr::getInstance",
+          "LLSelectMgr::getInstance",
+          "LLSelectMgr::instance",
+          "LLSetKeyBindDialog::recordKey",
+          "LLSplashScreen::update",
+          "LLStartUp::getStartupState",
+          "LLStringUtil::replaceChar",
+          "LLToast::cleanupToasts",
+          "LLToolCamera::getInstance",
+          "LLToolCompGun::getInstance",
+          "LLToolCompInspect::getInstance",
+          "LLToolCompRotate::getInstance",
+          "LLToolCompScale::getInstance",
+          "LLToolCompTranslate::getInstance",
+          "LLToolDragAndDrop::getInstance",
+          "LLToolGrab::getInstance",
+          "LLToolMgr::getInstance",
+          "LLToolPie::getInstance",
+          "LLToolTipMgr::instance",
+          "LLTrace::get_frame_recording",
+          "LLTrans::getString",
+          "LLUI::getInstance",
+          "LLUI::getScaleFactor",
+          "LLUI::popMatrix",
+          "LLUI::pushMatrix",
+          "LLUI::setLineWidth",
+          "LLUI::setScaleFactor",
+          "LLUI::translate",
+          "LLUIColorTable::instance",
+          "LLUICtrlFactory::getInstance",
+          "LLURLDispatcher::dispatch",
+          "LLUUID::generateNewID",
+          "LLUserWarningMsg::show",
+          "LLVOAvatar::destroyGL",
+          "LLVOAvatar::restoreGL",
+          "LLVOAvatar::rezStatusToString",
+          "LLVOPartGroup::destroyGL",
+          "LLVOPartGroup::restoreGL",
+          "LLVertexBuffer::initClass",
+          "LLVfxManager::instance",
+          "LLView::sMouseHandlerRecorder",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance",
+          "LLViewerDynamicTexture::destroyGL",
+          "LLViewerDynamicTexture::restoreGL",
+          "LLViewerEventRecorder::instance",
+          "LLViewerJoystick::getInstance",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerShaderMgr::instance",
+          "LLViewerShaderMgr::releaseInstance",
+          "LLViewerStats::instance",
+          "LLViewerTextureManager::cleanup",
+          "LLViewerTextureManager::getFetchedTexture",
+          "LLViewerTextureManager::init",
+          "LLViewerWindow::LLViewerWindow",
+          "LLViewerWindow::addPopup",
+          "LLViewerWindow::calcDisplayScale",
+          "LLViewerWindow::calcScaledRect",
+          "LLViewerWindow::checkSettings",
+          "LLViewerWindow::clearPopups",
+          "LLViewerWindow::clickPointInWorldGlobal",
+          "LLViewerWindow::clickPointOnSurfaceGlobal",
+          "LLViewerWindow::cubeSnapshot",
+          "LLViewerWindow::cursorIntersect",
+          "LLViewerWindow::cursorIntersectIcon",
+          "LLViewerWindow::destroyWindow",
+          "LLViewerWindow::draw",
+          "LLViewerWindow::drawDebugText",
+          "LLViewerWindow::drawMouselookInstructions",
+          "LLViewerWindow::dropToolMouseCaptureWhileWorldSuspended",
+          "LLViewerWindow::dumpState",
+          "LLViewerWindow::focusClient",
+          "LLViewerWindow::getChatConsoleBottomPad",
+          "LLViewerWindow::getChatConsoleRect",
+          "LLViewerWindow::getIndicatorsVisible",
+          "LLViewerWindow::getLastSnapshotDir",
+          "LLViewerWindow::getPlatformWindow",
+          "LLViewerWindow::getProgressView",
+          "LLViewerWindow::getRootView",
+          "LLViewerWindow::getShowProgress",
+          "LLViewerWindow::getUIVisibility",
+          "LLViewerWindow::getWindowHeightRaw",
+          "LLViewerWindow::getWindowHeightScaled",
+          "LLViewerWindow::getWindowWidthRaw",
+          "LLViewerWindow::getWindowWidthScaled",
+          "LLViewerWindow::getWorldViewAspectRatio",
+          "LLViewerWindow::getWorldViewHeightRaw",
+          "LLViewerWindow::getWorldViewHeightScaled",
+          "LLViewerWindow::getWorldViewRectScaled",
+          "LLViewerWindow::getWorldViewWidthRaw",
+          "LLViewerWindow::getWorldViewWidthScaled",
+          "LLViewerWindow::handleActivate",
+          "LLViewerWindow::handleActivateApp",
+          "LLViewerWindow::handleAnyMouseClick",
+          "LLViewerWindow::handleCloseRequest",
+          "LLViewerWindow::handleDPIChanged",
+          "LLViewerWindow::handleDataCopy",
+          "LLViewerWindow::handleDeviceChange",
+          "LLViewerWindow::handleDisplayChanged",
+          "LLViewerWindow::handleDoubleClick",
+          "LLViewerWindow::handleDragNDrop",
+          "LLViewerWindow::handleDragNDropDefault",
+          "LLViewerWindow::handleDragNDropFile",
+          "LLViewerWindow::handleFocus",
+          "LLViewerWindow::handleFocusLost",
+          "LLViewerWindow::handleKey",
+          "LLViewerWindow::handleKeyUp",
+          "LLViewerWindow::handleMenuSelect",
+          "LLViewerWindow::handleMiddleMouseDown",
+          "LLViewerWindow::handleMiddleMouseUp",
+          "LLViewerWindow::handleMouseDown",
+          "LLViewerWindow::handleMouseDragged",
+          "LLViewerWindow::handleMouseLeave",
+          "LLViewerWindow::handleMouseMove",
+          "LLViewerWindow::handleMouseUp",
+          "LLViewerWindow::handleOtherMouse",
+          "LLViewerWindow::handleOtherMouseDown",
+          "LLViewerWindow::handleOtherMouseUp",
+          "LLViewerWindow::handlePaint",
+          "LLViewerWindow::handlePauseWatchdog",
+          "LLViewerWindow::handlePieMenu",
+          "LLViewerWindow::handlePingWatchdog",
+          "LLViewerWindow::handleQuit",
+          "LLViewerWindow::handleResize",
+          "LLViewerWindow::handleResumeWatchdog",
+          "LLViewerWindow::handleRightMouseDown",
+          "LLViewerWindow::handleRightMouseUp",
+          "LLViewerWindow::handleScanKey",
+          "LLViewerWindow::handleScrollHWheel",
+          "LLViewerWindow::handleScrollWheel",
+          "LLViewerWindow::handleSessionExit",
+          "LLViewerWindow::handleTimerEvent",
+          "LLViewerWindow::handleTranslatedKeyDown",
+          "LLViewerWindow::handleTranslatedKeyUp",
+          "LLViewerWindow::handleUnicodeChar",
+          "LLViewerWindow::handleWindowBlock",
+          "LLViewerWindow::handleWindowDidChangeScreen",
+          "LLViewerWindow::handleWindowUnblock",
+          "LLViewerWindow::hideCursor",
+          "LLViewerWindow::initBase",
+          "LLViewerWindow::initFonts",
+          "LLViewerWindow::initGLDefaults",
+          "LLViewerWindow::initTextures",
+          "LLViewerWindow::initWorldUI",
+          "LLViewerWindow::isSnapshotLocSet",
+          "LLViewerWindow::mouseDirectionCamera",
+          "LLViewerWindow::mouseDirectionGlobal",
+          "LLViewerWindow::mousePointHUD",
+          "LLViewerWindow::mousePointOnLandGlobal",
+          "LLViewerWindow::mousePointOnPlaneGlobal",
+          "LLViewerWindow::moveCursorToCenter",
+          "LLViewerWindow::movieSize",
+          "LLViewerWindow::onDirectorySelected",
+          "LLViewerWindow::onSelectionFailure",
+          "LLViewerWindow::onSnapshotNotificationClick",
+          "LLViewerWindow::performPick",
+          "LLViewerWindow::pickAsync",
+          "LLViewerWindow::pickImmediate",
+          "LLViewerWindow::playSnapshotAnimAndSound",
+          "LLViewerWindow::rawSnapshot",
+          "LLViewerWindow::removePopup",
+          "LLViewerWindow::renderSelections",
+          "LLViewerWindow::requestResolutionUpdate",
+          "LLViewerWindow::resetSnapshotLoc",
+          "LLViewerWindow::resetStatusBarContainer",
+          "LLViewerWindow::reshape",
+          "LLViewerWindow::reshapeStatusBarContainer",
+          "LLViewerWindow::restoreGL",
+          "LLViewerWindow::returnEmptyPicks",
+          "LLViewerWindow::revealIntroPanel",
+          "LLViewerWindow::sMouseVelocityStat",
+          "LLViewerWindow::saveImageLocal",
+          "LLViewerWindow::saveImageNumbered",
+          "LLViewerWindow::saveLastMouse",
+          "LLViewerWindow::saveSnapshot",
+          "LLViewerWindow::schedulePick",
+          "LLViewerWindow::sendShapeToSim",
+          "LLViewerWindow::setBalanceVisible",
+          "LLViewerWindow::setCursor",
+          "LLViewerWindow::setMenuBackgroundColor",
+          "LLViewerWindow::setNormalControlsVisible",
+          "LLViewerWindow::setProgressCancelButtonVisible",
+          "LLViewerWindow::setProgressMessage",
+          "LLViewerWindow::setProgressPercent",
+          "LLViewerWindow::setProgressString",
+          "LLViewerWindow::setShowProgress",
+          "LLViewerWindow::setStartupComplete",
+          "LLViewerWindow::setUIVisibility",
+          "LLViewerWindow::setup2DRender",
+          "LLViewerWindow::setup2DViewport",
+          "LLViewerWindow::setup3DRender",
+          "LLViewerWindow::setup3DViewport",
+          "LLViewerWindow::showCursor",
+          "LLViewerWindow::shutdownGL",
+          "LLViewerWindow::shutdownViews",
+          "LLViewerWindow::simpleSnapshot",
+          "LLViewerWindow::stopGL",
+          "LLViewerWindow::thumbnailSnapshot",
+          "LLViewerWindow::translateString",
+          "LLViewerWindow::updateDebugText",
+          "LLViewerWindow::updateKeyboardFocus",
+          "LLViewerWindow::updateLayout",
+          "LLViewerWindow::updateMouseDelta",
+          "LLViewerWindow::updateUI",
+          "LLViewerWindow::updateWorldViewRect",
+          "LLVisualParamHint::requestHintUpdates",
+          "LLWearableList::instance",
+          "LLWindowManager::createWindow",
+          "LLWindowManager::destroyWindow",
+          "LLWorld::getInstance",
+          "LLWorldMapView::cleanupTextures",
+          "LLWorldMapView::initClass"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llvoavatar.cpp": {
         "includes": [
           "indra/llappearance/lldriverparam.h",
@@ -132445,6 +133021,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -134660,8 +135239,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@1944,82",
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@1944,92",
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -134768,24 +135347,24 @@
           "indra/newview/pipeline.cpp@1230,11",
           "indra/newview/pipeline.cpp@1348,21",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31817,372",
-          "indra/newview/pipeline.cpp@32203,38",
-          "indra/newview/pipeline.cpp@32268,53",
-          "indra/newview/pipeline.cpp@32352,37",
-          "indra/newview/pipeline.cpp@32390,17",
-          "indra/newview/pipeline.cpp@32408,20",
-          "indra/newview/pipeline.cpp@32453,18",
-          "indra/newview/pipeline.cpp@32488,27",
-          "indra/newview/pipeline.cpp@32517,30",
-          "indra/newview/pipeline.cpp@32569,18",
-          "indra/newview/pipeline.cpp@32592,180",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@33733,53",
-          "indra/newview/pipeline.cpp@33792,242",
-          "indra/newview/pipeline.cpp@34036,11",
-          "indra/newview/pipeline.cpp@37230,362",
-          "indra/newview/pipeline.cpp@37593,1060"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31894,372",
+          "indra/newview/pipeline.cpp@32280,38",
+          "indra/newview/pipeline.cpp@32345,53",
+          "indra/newview/pipeline.cpp@32429,37",
+          "indra/newview/pipeline.cpp@32467,17",
+          "indra/newview/pipeline.cpp@32485,20",
+          "indra/newview/pipeline.cpp@32530,18",
+          "indra/newview/pipeline.cpp@32565,27",
+          "indra/newview/pipeline.cpp@32594,30",
+          "indra/newview/pipeline.cpp@32646,18",
+          "indra/newview/pipeline.cpp@32669,180",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@33810,53",
+          "indra/newview/pipeline.cpp@33869,242",
+          "indra/newview/pipeline.cpp@34113,11",
+          "indra/newview/pipeline.cpp@37307,362",
+          "indra/newview/pipeline.cpp@37670,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -134899,24 +135478,24 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@194,22",
           "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@1758,259",
-          "indra/newview/llviewershadermgr.cpp@2026,8",
-          "indra/newview/llviewershadermgr.cpp@2095,46",
-          "indra/newview/llviewershadermgr.cpp@3218,23",
-          "indra/newview/llviewershadermgr.cpp@3256,23",
-          "indra/newview/llviewershadermgr.cpp@3292,22",
-          "indra/newview/llviewershadermgr.cpp@3327,85",
-          "indra/newview/llviewershadermgr.cpp@3918,67",
-          "indra/newview/llviewershadermgr.cpp@4593,633",
-          "indra/newview/llviewershadermgr.cpp@6137,115"
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@1760,259",
+          "indra/newview/llviewershadermgr.cpp@2028,8",
+          "indra/newview/llviewershadermgr.cpp@2097,46",
+          "indra/newview/llviewershadermgr.cpp@3220,23",
+          "indra/newview/llviewershadermgr.cpp@3258,23",
+          "indra/newview/llviewershadermgr.cpp@3294,22",
+          "indra/newview/llviewershadermgr.cpp@3329,85",
+          "indra/newview/llviewershadermgr.cpp@3920,67",
+          "indra/newview/llviewershadermgr.cpp@4595,633",
+          "indra/newview/llviewershadermgr.cpp@6130,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
       {
         "hunks": [
           "indra/newview/llviewershadermgr.h@297,15",
-          "indra/newview/llviewershadermgr.h@351,57"
+          "indra/newview/llviewershadermgr.h@351,58"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -134955,7 +135534,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1058,172"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1065,172"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -138191,6 +138770,7 @@
           "indra/llui/llcombobox.h",
           "indra/newview/alenvintensity.h",
           "indra/newview/allenslooks.h",
+          "indra/newview/allenslooks_vnd_mean.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/lldrawpool.h",
@@ -138216,6 +138796,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::settings",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALPresetLook::infraredGrainSettings",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
@@ -148586,6 +149169,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -150836,8 +151422,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@1944,82",
-          "indra/newview/app_settings/settings_alchemy.xml@2771,233"
+          "indra/newview/app_settings/settings_alchemy.xml@1944,92",
+          "indra/newview/app_settings/settings_alchemy.xml@2781,233"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -150903,19 +151489,19 @@
           "indra/newview/pipeline.cpp@1065,7",
           "indra/newview/pipeline.cpp@1348,21",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31817,372",
-          "indra/newview/pipeline.cpp@32203,38",
-          "indra/newview/pipeline.cpp@32268,53",
-          "indra/newview/pipeline.cpp@32352,37",
-          "indra/newview/pipeline.cpp@32408,20",
-          "indra/newview/pipeline.cpp@32592,180",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@33733,53",
-          "indra/newview/pipeline.cpp@33792,242",
-          "indra/newview/pipeline.cpp@37230,362",
-          "indra/newview/pipeline.cpp@37593,1060",
-          "indra/newview/pipeline.cpp@39522,153"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31894,372",
+          "indra/newview/pipeline.cpp@32280,38",
+          "indra/newview/pipeline.cpp@32345,53",
+          "indra/newview/pipeline.cpp@32429,37",
+          "indra/newview/pipeline.cpp@32485,20",
+          "indra/newview/pipeline.cpp@32669,180",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@33810,53",
+          "indra/newview/pipeline.cpp@33869,242",
+          "indra/newview/pipeline.cpp@37307,362",
+          "indra/newview/pipeline.cpp@37670,1060",
+          "indra/newview/pipeline.cpp@39599,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -150981,17 +151567,17 @@
           "indra/newview/llviewershadermgr.cpp@194,22",
           "indra/newview/llviewershadermgr.cpp@244,32",
           "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@690,32",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@1428,23",
-          "indra/newview/llviewershadermgr.cpp@1758,259",
-          "indra/newview/llviewershadermgr.cpp@2035,12",
-          "indra/newview/llviewershadermgr.cpp@2057,9",
-          "indra/newview/llviewershadermgr.cpp@2095,46",
-          "indra/newview/llviewershadermgr.cpp@3327,85",
-          "indra/newview/llviewershadermgr.cpp@3613,16",
-          "indra/newview/llviewershadermgr.cpp@4593,633",
-          "indra/newview/llviewershadermgr.cpp@6137,115"
+          "indra/newview/llviewershadermgr.cpp@691,32",
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@1430,23",
+          "indra/newview/llviewershadermgr.cpp@1760,259",
+          "indra/newview/llviewershadermgr.cpp@2037,12",
+          "indra/newview/llviewershadermgr.cpp@2059,9",
+          "indra/newview/llviewershadermgr.cpp@2097,46",
+          "indra/newview/llviewershadermgr.cpp@3329,85",
+          "indra/newview/llviewershadermgr.cpp@3615,16",
+          "indra/newview/llviewershadermgr.cpp@4595,633",
+          "indra/newview/llviewershadermgr.cpp@6130,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -151000,7 +151586,7 @@
           "indra/newview/llviewershadermgr.h@187,13",
           "indra/newview/llviewershadermgr.h@297,15",
           "indra/newview/llviewershadermgr.h@324,26",
-          "indra/newview/llviewershadermgr.h@351,57"
+          "indra/newview/llviewershadermgr.h@351,58"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -151043,8 +151629,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@742,175",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1058,172"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@749,175",
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1065,172"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -154474,6 +155060,7 @@
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewermenu.h",
           "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [
@@ -162323,6 +162910,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -164310,9 +164900,9 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings_alchemy.xml@1308,411",
-          "indra/newview/app_settings/settings_alchemy.xml@1944,82",
-          "indra/newview/app_settings/settings_alchemy.xml@3307,135",
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@1944,92",
+          "indra/newview/app_settings/settings_alchemy.xml@3317,135",
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -164367,16 +164957,16 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@222,16",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31817,372",
-          "indra/newview/pipeline.cpp@32323,13",
-          "indra/newview/pipeline.cpp@32352,37",
-          "indra/newview/pipeline.cpp@32408,20",
-          "indra/newview/pipeline.cpp@32453,18",
-          "indra/newview/pipeline.cpp@32569,18",
-          "indra/newview/pipeline.cpp@32592,180",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@37593,1060"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31894,372",
+          "indra/newview/pipeline.cpp@32400,13",
+          "indra/newview/pipeline.cpp@32429,37",
+          "indra/newview/pipeline.cpp@32485,20",
+          "indra/newview/pipeline.cpp@32530,18",
+          "indra/newview/pipeline.cpp@32646,18",
+          "indra/newview/pipeline.cpp@32669,180",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@37670,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -164410,7 +165000,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/notifications.xml@13574,368"
+          "indra/newview/skins/default/xui/en/notifications.xml@13580,368"
         ],
         "path": "indra/newview/skins/default/xui/en/notifications.xml"
       },
@@ -164432,11 +165022,11 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@374,20",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@1275,52",
-          "indra/newview/llviewershadermgr.cpp@1758,259",
-          "indra/newview/llviewershadermgr.cpp@4593,633"
+          "indra/newview/llviewershadermgr.cpp@374,21",
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@1277,52",
+          "indra/newview/llviewershadermgr.cpp@1760,259",
+          "indra/newview/llviewershadermgr.cpp@4595,633"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -164444,7 +165034,7 @@
         "hunks": [
           "indra/newview/llviewershadermgr.h@62,39",
           "indra/newview/llviewershadermgr.h@324,26",
-          "indra/newview/llviewershadermgr.h@351,57"
+          "indra/newview/llviewershadermgr.h@351,58"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -164469,7 +165059,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -164838,7 +165428,9 @@
       "RenderDynamicExposureSpeedError",
       "RenderDynamicExposureSpeedTarget",
       "RenderGradNDEnabled",
-      "RenderInfraredExposureEV"
+      "RenderInfraredExposureEV",
+      "RenderVariableNDEnabled",
+      "RenderVariableNDStops"
     ],
     "shaders": [
       "indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl",
@@ -165839,6 +166431,7 @@
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewermenu.h",
           "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewershadermgr.h",
           "indra/newview/llviewertexture.h"
         ],
         "qualified_call_candidates": [
@@ -166067,6 +166660,7 @@
           "indra/llui/llcombobox.h",
           "indra/newview/alenvintensity.h",
           "indra/newview/allenslooks.h",
+          "indra/newview/allenslooks_vnd_mean.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/lldirectorcast.h",
           "indra/newview/lldrawpool.h",
@@ -166092,6 +166686,9 @@
           "ALLensLooks::resolveFrame",
           "ALLensLooks::settings",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALPresetLook::infraredGrainSettings",
           "ALPresetLook::owned",
           "ALPresetLook::replaying",
@@ -173146,6 +173743,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -174646,8 +175246,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3307,135",
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3317,135",
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -174665,9 +175265,9 @@
           "indra/newview/pipeline.cpp@332,106",
           "indra/newview/pipeline.cpp@719,16",
           "indra/newview/pipeline.cpp@958,88",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@32959,331",
-          "indra/newview/pipeline.cpp@33792,242"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@33036,331",
+          "indra/newview/pipeline.cpp@33869,242"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -174720,20 +175320,20 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@280,47",
           "indra/newview/llviewershadermgr.cpp@339,32",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@1476,26",
-          "indra/newview/llviewershadermgr.cpp@1758,259",
-          "indra/newview/llviewershadermgr.cpp@2095,46",
-          "indra/newview/llviewershadermgr.cpp@2151,40",
-          "indra/newview/llviewershadermgr.cpp@4593,633",
-          "indra/newview/llviewershadermgr.cpp@5496,299"
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@1478,26",
+          "indra/newview/llviewershadermgr.cpp@1760,259",
+          "indra/newview/llviewershadermgr.cpp@2097,46",
+          "indra/newview/llviewershadermgr.cpp@2153,40",
+          "indra/newview/llviewershadermgr.cpp@4595,633",
+          "indra/newview/llviewershadermgr.cpp@5498,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.h@351,57",
-          "indra/newview/llviewershadermgr.h@434,34"
+          "indra/newview/llviewershadermgr.h@351,58",
+          "indra/newview/llviewershadermgr.h@435,34"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -174755,8 +175355,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425",
-          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@742,175"
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432",
+          "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@749,175"
         ],
         "path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl"
       },
@@ -179744,6 +180344,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -193286,7 +193889,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3653,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -193336,30 +193939,30 @@
           "indra/newview/pipeline.cpp@299,32",
           "indra/newview/pipeline.cpp@574,71",
           "indra/newview/pipeline.cpp@925,32",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@31668,30",
-          "indra/newview/pipeline.cpp@31719,16",
-          "indra/newview/pipeline.cpp@31803,7",
-          "indra/newview/pipeline.cpp@31817,372",
-          "indra/newview/pipeline.cpp@32203,38",
-          "indra/newview/pipeline.cpp@32352,37",
-          "indra/newview/pipeline.cpp@32390,17",
-          "indra/newview/pipeline.cpp@32592,180",
-          "indra/newview/pipeline.cpp@32804,154",
-          "indra/newview/pipeline.cpp@32959,331",
-          "indra/newview/pipeline.cpp@33302,15",
-          "indra/newview/pipeline.cpp@33363,15",
-          "indra/newview/pipeline.cpp@33425,222",
-          "indra/newview/pipeline.cpp@33733,53",
-          "indra/newview/pipeline.cpp@33792,242",
-          "indra/newview/pipeline.cpp@34103,15",
-          "indra/newview/pipeline.cpp@34127,7",
-          "indra/newview/pipeline.cpp@34138,59",
-          "indra/newview/pipeline.cpp@36021,47",
-          "indra/newview/pipeline.cpp@36467,78",
-          "indra/newview/pipeline.cpp@37230,362",
-          "indra/newview/pipeline.cpp@37593,1060",
-          "indra/newview/pipeline.cpp@39522,153"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@31745,30",
+          "indra/newview/pipeline.cpp@31796,16",
+          "indra/newview/pipeline.cpp@31880,7",
+          "indra/newview/pipeline.cpp@31894,372",
+          "indra/newview/pipeline.cpp@32280,38",
+          "indra/newview/pipeline.cpp@32429,37",
+          "indra/newview/pipeline.cpp@32467,17",
+          "indra/newview/pipeline.cpp@32669,180",
+          "indra/newview/pipeline.cpp@32881,154",
+          "indra/newview/pipeline.cpp@33036,331",
+          "indra/newview/pipeline.cpp@33379,15",
+          "indra/newview/pipeline.cpp@33440,15",
+          "indra/newview/pipeline.cpp@33502,222",
+          "indra/newview/pipeline.cpp@33810,53",
+          "indra/newview/pipeline.cpp@33869,242",
+          "indra/newview/pipeline.cpp@34180,15",
+          "indra/newview/pipeline.cpp@34204,7",
+          "indra/newview/pipeline.cpp@34215,59",
+          "indra/newview/pipeline.cpp@36098,47",
+          "indra/newview/pipeline.cpp@36544,78",
+          "indra/newview/pipeline.cpp@37307,362",
+          "indra/newview/pipeline.cpp@37670,1060",
+          "indra/newview/pipeline.cpp@39599,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -193417,10 +194020,10 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@175,11",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@1275,52",
-          "indra/newview/llviewershadermgr.cpp@2151,40",
-          "indra/newview/llviewershadermgr.cpp@2214,117"
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@1277,52",
+          "indra/newview/llviewershadermgr.cpp@2153,40",
+          "indra/newview/llviewershadermgr.cpp@2216,117"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -205279,6 +205882,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",
@@ -207237,7 +207843,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2093,236"
+          "indra/newview/app_settings/settings_alchemy.xml@2103,236"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -207276,8 +207882,8 @@
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@222,16",
           "indra/newview/pipeline.cpp@1211,16",
-          "indra/newview/pipeline.cpp@1701,29927",
-          "indra/newview/pipeline.cpp@34229,979"
+          "indra/newview/pipeline.cpp@1701,30004",
+          "indra/newview/pipeline.cpp@34306,979"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -207299,7 +207905,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/notifications.xml@13574,368"
+          "indra/newview/skins/default/xui/en/notifications.xml@13580,368"
         ],
         "path": "indra/newview/skins/default/xui/en/notifications.xml"
       },
@@ -207329,20 +207935,20 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@725,81",
-          "indra/newview/llviewershadermgr.cpp@1082,31",
-          "indra/newview/llviewershadermgr.cpp@1476,26",
-          "indra/newview/llviewershadermgr.cpp@2095,46",
-          "indra/newview/llviewershadermgr.cpp@4593,633",
-          "indra/newview/llviewershadermgr.cpp@6137,115",
-          "indra/newview/llviewershadermgr.cpp@6971,30"
+          "indra/newview/llviewershadermgr.cpp@726,81",
+          "indra/newview/llviewershadermgr.cpp@1084,31",
+          "indra/newview/llviewershadermgr.cpp@1478,26",
+          "indra/newview/llviewershadermgr.cpp@2097,46",
+          "indra/newview/llviewershadermgr.cpp@4595,633",
+          "indra/newview/llviewershadermgr.cpp@6130,115",
+          "indra/newview/llviewershadermgr.cpp@6964,30"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
       {
         "hunks": [
           "indra/newview/llviewershadermgr.h@160,17",
-          "indra/newview/llviewershadermgr.h@351,57"
+          "indra/newview/llviewershadermgr.h@351,58"
         ],
         "path": "indra/newview/llviewershadermgr.h"
       },
@@ -216257,6 +216863,9 @@
           "ALLensLooks::infrared",
           "ALLensLooks::resolveFrame",
           "ALLensLooks::softEdge",
+          "ALLensLooks::variableND",
+          "ALLensLooks::variableNDMeanLeak",
+          "ALLensLooks::variableNDSnapshot",
           "ALLocalFogManager::instance",
           "ALPOVBlink::releaseGL",
           "ALPanelWeatherSettings::suspendLibraryWeather",

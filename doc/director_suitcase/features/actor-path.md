@@ -125,10 +125,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@25,27", "indra/newview/llviewerdisplay.cpp@909,14", "indra/newview/llviewerdisplay.cpp@997,17", "indra/newview/llviewerdisplay.cpp@1122,36", "indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1886,34", "indra/newview/llviewerdisplay.cpp@2083,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266", "indra/newview/llviewerfloaterreg.cpp@878,7"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,24", "indra/newview/llviewerjoystick.cpp@1884,2002"]}
-- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,20", "indra/newview/llviewerwindow.cpp@6334,13", "indra/newview/llviewerwindow.cpp@6443,7"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,21", "indra/newview/llviewerwindow.cpp@6342,13", "indra/newview/llviewerwindow.cpp@6451,7"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@862,7", "indra/newview/llvoavatar.cpp@899,37", "indra/newview/llvoavatar.cpp@2440,14", "indra/newview/llvoavatar.cpp@2889,19", "indra/newview/llvoavatar.cpp@4198,14", "indra/newview/llvoavatar.cpp@4825,20", "indra/newview/llvoavatar.cpp@5144,25", "indra/newview/llvoavatar.cpp@5218,596", "indra/newview/llvoavatar.cpp@5914,45", "indra/newview/llvoavatar.cpp@8736,106", "indra/newview/llvoavatar.cpp@12827,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@550,45", "indra/newview/llvoavatar.h@1189,10", "indra/newview/llvoavatar.h@1207,11", "indra/newview/llvoavatar.h@1259,17"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@161,12", "indra/newview/pipeline.cpp@1701,29927", "indra/newview/pipeline.cpp@32804,154"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@161,12", "indra/newview/pipeline.cpp@1701,30004", "indra/newview/pipeline.cpp@32881,154"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1174,67"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,203"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,193"]}
@@ -145,7 +145,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llfloater360capture.cpp", "hunks": ["indra/newview/llfloater360capture.cpp@25,12", "indra/newview/llfloater360capture.cpp@606,8"]}
 - {"path": "indra/newview/llviewermessage.cpp", "hunks": ["indra/newview/llviewermessage.cpp@56,7", "indra/newview/llviewermessage.cpp@4371,58", "indra/newview/llviewermessage.cpp@4465,14"]}
 - {"path": "indra/newview/llviewerpartsim.cpp", "hunks": ["indra/newview/llviewerpartsim.cpp@25,9", "indra/newview/llviewerpartsim.cpp@1114,60"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@134,24", "indra/newview/llviewershadermgr.cpp@617,35", "indra/newview/llviewershadermgr.cpp@2694,18", "indra/newview/llviewershadermgr.cpp@4168,11", "indra/newview/llviewershadermgr.cpp@6483,118"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@134,24", "indra/newview/llviewershadermgr.cpp@618,35", "indra/newview/llviewershadermgr.cpp@2696,18", "indra/newview/llviewershadermgr.cpp@4170,11", "indra/newview/llviewershadermgr.cpp@6476,118"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@247,23"]}
 
 ## settings

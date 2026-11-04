@@ -122,7 +122,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@25,8", "indra/newview/llstartup.cpp@1490,10", "indra/newview/llstartup.cpp@1530,7", "indra/newview/llstartup.cpp@2648,19", "indra/newview/llstartup.cpp@2754,7"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@28,20", "indra/newview/llviewercontrol.cpp@1133,66"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@4,44", "indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
-- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1308,411", "indra/newview/app_settings/settings_alchemy.xml@1944,82", "indra/newview/app_settings/settings_alchemy.xml@3307,135", "indra/newview/app_settings/settings_alchemy.xml@3653,1119"]}
+- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1308,411", "indra/newview/app_settings/settings_alchemy.xml@1944,92", "indra/newview/app_settings/settings_alchemy.xml@3317,135", "indra/newview/app_settings/settings_alchemy.xml@3663,1119"]}
 - {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@499,1398"]}
 - {"path": "indra/newview/lldrawpoolavatar.cpp", "hunks": ["indra/newview/lldrawpoolavatar.cpp@25,14", "indra/newview/lldrawpoolavatar.cpp@1233,89"]}
 - {"path": "indra/newview/llfloaterpreference.cpp", "hunks": ["indra/newview/llfloaterpreference.cpp@31,7", "indra/newview/llfloaterpreference.cpp@1652,7"]}
@@ -130,18 +130,18 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@434,11", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@1884,2002"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@6033,19"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,45", "indra/newview/pipeline.cpp@222,16", "indra/newview/pipeline.cpp@1701,29927", "indra/newview/pipeline.cpp@31817,372", "indra/newview/pipeline.cpp@32323,13", "indra/newview/pipeline.cpp@32352,37", "indra/newview/pipeline.cpp@32408,20", "indra/newview/pipeline.cpp@32453,18", "indra/newview/pipeline.cpp@32569,18", "indra/newview/pipeline.cpp@32592,180", "indra/newview/pipeline.cpp@32804,154", "indra/newview/pipeline.cpp@37593,1060"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,45", "indra/newview/pipeline.cpp@222,16", "indra/newview/pipeline.cpp@1701,30004", "indra/newview/pipeline.cpp@31894,372", "indra/newview/pipeline.cpp@32400,13", "indra/newview/pipeline.cpp@32429,37", "indra/newview/pipeline.cpp@32485,20", "indra/newview/pipeline.cpp@32530,18", "indra/newview/pipeline.cpp@32646,18", "indra/newview/pipeline.cpp@32669,180", "indra/newview/pipeline.cpp@32881,154", "indra/newview/pipeline.cpp@37670,1060"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@1015,42", "indra/newview/pipeline.h@1992,270", "indra/newview/pipeline.h@2282,34"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@368,40", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@433,33", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@467,36", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@577,66", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@644,33", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
-- {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13574,368"]}
+- {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13580,368"]}
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@137,59", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@457,7"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@25,12", "indra/newview/lldrawpoolalpha.cpp@314,439", "indra/newview/lldrawpoolalpha.cpp@1164,157"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@244,32", "indra/newview/llviewershadermgr.cpp@374,20", "indra/newview/llviewershadermgr.cpp@725,81", "indra/newview/llviewershadermgr.cpp@1275,52", "indra/newview/llviewershadermgr.cpp@1758,259", "indra/newview/llviewershadermgr.cpp@4593,633"]}
-- {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@62,39", "indra/newview/llviewershadermgr.h@324,26", "indra/newview/llviewershadermgr.h@351,57"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@244,32", "indra/newview/llviewershadermgr.cpp@374,21", "indra/newview/llviewershadermgr.cpp@726,81", "indra/newview/llviewershadermgr.cpp@1277,52", "indra/newview/llviewershadermgr.cpp@1760,259", "indra/newview/llviewershadermgr.cpp@4595,633"]}
+- {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@62,39", "indra/newview/llviewershadermgr.h@324,26", "indra/newview/llviewershadermgr.h@351,58"]}
 - {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@1567,8", "indra/llrender/llshadermgr.cpp@1832,12", "indra/llrender/llshadermgr.cpp@1878,60", "indra/llrender/llshadermgr.cpp@2001,363"]}
 - {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@139,8", "indra/llrender/llshadermgr.h@391,12", "indra/llrender/llshadermgr.h@437,89", "indra/llrender/llshadermgr.h@589,396"]}
-- {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,425"]}
+- {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@158,108"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@70,296", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@576,7", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@588,23", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@646,7", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/globalF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/globalF.glsl@32,26"]}
@@ -229,6 +229,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `RenderDynamicExposureSpeedTarget`
 - `RenderGradNDEnabled`
 - `RenderInfraredExposureEV`
+- `RenderVariableNDEnabled`
+- `RenderVariableNDStops`
 
 ## shaders
 

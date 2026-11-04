@@ -1,7 +1,7 @@
 # Filters — Director Kit page contract
 
 Page key: `filters_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (39/44 setting-bound rows; 3 C++-referenced rows).
+Computed class: **code-driven** (43/48 setting-bound rows; 3 C++-referenced rows).
 
 ## Real owners
 
@@ -40,30 +40,34 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `polarizer` / `pol_glaredepth_slider` (Glare depth) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:129` | kit `slider` ↔ `RenderPolarizerGlareMaxDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:108` `pol_glaredepth_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:131` `pol_glaredepth_spinner` |
 | `polarizer` / `polarizer_auto_band_check` (Ease by sun) | none | kit `toggle` ↔ `RenderPolarizerAutoBand` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:113` `polarizer_auto_band_check` |
 | `polarizer` / `pol_bandrad_slider` (Band size) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:151` | kit `slider` ↔ `RenderPolarizerBandRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:116` `pol_bandrad_slider`, `indra/newview/skins/default/xui/en/panel_lens_looks.xml:153` `pol_bandrad_spinner` |
-| `lens_filter` / `lens_filter_preset` (Filter) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:85` | kit `combo` ↔ `RenderLensFilterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:123` `lens_filter_preset` |
-| `lens_filter` / `lens_filter_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:86` | kit `slider` ↔ `RenderLensFilterAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:138` `lens_filter_amount` |
+| `variable_nd` / `vnd_preset_combo` (Preset) | none | kit `combo` ↔ `RenderVariableNDPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:123` `vnd_preset_combo` |
+| `variable_nd` / `vnd_stops` (Dial) | none | kit `slider` ↔ `RenderVariableNDStops` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:133` `vnd_stops` |
+| `variable_nd` / `vnd_quality` (Quality) | none | kit `combo` ↔ `RenderVariableNDQuality` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:138` `vnd_quality` |
+| `variable_nd` / `vnd_cross_angle` (Cross angle) | none | kit `slider` ↔ `RenderVariableNDCrossAngle` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:147` `vnd_cross_angle` |
+| `lens_filter` / `lens_filter_preset` (Filter) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:85` | kit `combo` ↔ `RenderLensFilterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:154` `lens_filter_preset` |
+| `lens_filter` / `lens_filter_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:86` | kit `slider` ↔ `RenderLensFilterAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:169` `lens_filter_amount` |
 | `infrared` / `ir_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:158` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applyInfraredPreset()` (`indra/newview/alpanellenslooks.cpp:48`) | none |
-| `infrared` / `ir_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:160` | kit `combo` ↔ `RenderInfraredMode` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:159` `ir_mode` |
-| `infrared` / `ir_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:162` | kit `slider` ↔ `RenderInfraredStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:167` `ir_strength`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:120` `exp_ir_strength` |
+| `infrared` / `ir_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:160` | kit `combo` ↔ `RenderInfraredMode` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:190` `ir_mode` |
+| `infrared` / `ir_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:162` | kit `slider` ↔ `RenderInfraredStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:198` `ir_strength`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:120` `exp_ir_strength` |
 | `infrared` / `ir_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:164` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanellenslooks.cpp:60`) | none |
 | `softedge` / `softedge_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:169` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applySoftEdgePreset()` (`indra/newview/alpanellenslooks.cpp:54`) | none |
-| `softedge` / `softedge_blur_type` (Type) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:171` | kit `combo` ↔ `RenderSoftEdgeBlurType` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:190` `softedge_blur_type` |
-| `softedge` / `softedge_blur` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:173` | kit `slider` ↔ `RenderSoftEdgeBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:198` `softedge_blur`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` `exp_softedge_blur` |
+| `softedge` / `softedge_blur_type` (Type) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:171` | kit `combo` ↔ `RenderSoftEdgeBlurType` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:221` `softedge_blur_type` |
+| `softedge` / `softedge_blur` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:173` | kit `slider` ↔ `RenderSoftEdgeBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:229` `softedge_blur`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` `exp_softedge_blur` |
 | `pov_eye_blink` / `pov_blink_now` (Blink now) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `pov_eye_blink` / `pov_blink_held` (Hold closed) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `pov_eye_blink` / `pov_CloseMs` (Close (ms)) | none | kit `number` ↔ `POVBlinkCloseMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:211` `pov_CloseMs` |
-| `pov_eye_blink` / `pov_HoldMs` (Hold (ms)) | none | kit `number` ↔ `POVBlinkHoldMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:214` `pov_HoldMs` |
-| `pov_eye_blink` / `pov_OpenMs` (Open (ms)) | none | kit `number` ↔ `POVBlinkOpenMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:217` `pov_OpenMs` |
-| `pov_eye_blink` / `pov_Depth` (Depth) | none | kit `slider` ↔ `POVBlinkDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:220` `pov_Depth` |
-| `pov_eye_blink` / `pov_Curve` (Lid curve) | none | kit `slider` ↔ `POVBlinkCurve` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:225` `pov_Curve` |
-| `pov_eye_blink` / `pov_Softness` (Softness) | none | kit `slider` ↔ `POVBlinkSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:230` `pov_Softness` |
-| `pov_eye_blink` / `pov_Darken` (Darken) | none | kit `slider` ↔ `POVBlinkDarken` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:235` `pov_Darken` |
-| `pov_eye_blink` / `pov_Blur` (Blur) | none | kit `slider` ↔ `POVBlinkBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:240` `pov_Blur` |
-| `pov_eye_blink` / `pov_Style` (Style) | none | kit `combo` ↔ `POVBlinkStyle` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:245` `pov_Style` |
-| `pov_eye_blink` / `pov_Auto` (Auto blink) | none | kit `toggle` ↔ `POVBlinkAuto` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:253` `pov_Auto` |
-| `pov_eye_blink` / `pov_Rate` (Rate / min) | none | kit `number` ↔ `POVBlinkRate` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:256` `pov_Rate` |
-| `pov_eye_blink` / `pov_PadTap` (Pad blink) | none | kit `combo` ↔ `POVBlinkPadTap` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:259` `pov_PadTap` |
-| `pov_eye_blink` / `pov_PadHold` (Pad hold) | none | kit `combo` ↔ `POVBlinkPadHold` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:270` `pov_PadHold` |
+| `pov_eye_blink` / `pov_CloseMs` (Close (ms)) | none | kit `number` ↔ `POVBlinkCloseMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:242` `pov_CloseMs` |
+| `pov_eye_blink` / `pov_HoldMs` (Hold (ms)) | none | kit `number` ↔ `POVBlinkHoldMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:245` `pov_HoldMs` |
+| `pov_eye_blink` / `pov_OpenMs` (Open (ms)) | none | kit `number` ↔ `POVBlinkOpenMs` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:248` `pov_OpenMs` |
+| `pov_eye_blink` / `pov_Depth` (Depth) | none | kit `slider` ↔ `POVBlinkDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:251` `pov_Depth` |
+| `pov_eye_blink` / `pov_Curve` (Lid curve) | none | kit `slider` ↔ `POVBlinkCurve` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:256` `pov_Curve` |
+| `pov_eye_blink` / `pov_Softness` (Softness) | none | kit `slider` ↔ `POVBlinkSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:261` `pov_Softness` |
+| `pov_eye_blink` / `pov_Darken` (Darken) | none | kit `slider` ↔ `POVBlinkDarken` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:266` `pov_Darken` |
+| `pov_eye_blink` / `pov_Blur` (Blur) | none | kit `slider` ↔ `POVBlinkBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:271` `pov_Blur` |
+| `pov_eye_blink` / `pov_Style` (Style) | none | kit `combo` ↔ `POVBlinkStyle` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:276` `pov_Style` |
+| `pov_eye_blink` / `pov_Auto` (Auto blink) | none | kit `toggle` ↔ `POVBlinkAuto` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:284` `pov_Auto` |
+| `pov_eye_blink` / `pov_Rate` (Rate / min) | none | kit `number` ↔ `POVBlinkRate` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:287` `pov_Rate` |
+| `pov_eye_blink` / `pov_PadTap` (Pad blink) | none | kit `combo` ↔ `POVBlinkPadTap` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:290` `pov_PadTap` |
+| `pov_eye_blink` / `pov_PadHold` (Pad hold) | none | kit `combo` ↔ `POVBlinkPadHold` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml:301` `pov_PadHold` |
 
 ## Adapter extraction
 
@@ -82,7 +86,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **71 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **80 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -107,6 +111,15 @@ Manifest size: **71 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `polarizer_preset_combo-option-3` | Only `polarizer_preset_combo` selects `Landscape (sky + glare)`; other selectors remain default. |
 | `polarizer_preset_combo-option-4` | Only `polarizer_preset_combo` selects `Subtle`; other selectors remain default. |
 | `polarizer_auto_band_check-on` | Only `polarizer_auto_band_check` is on; dependent visibility is measured. |
+| `card-variable_nd-tallest-850` | Only `variable_nd` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-variable_nd-tallest-1160` | Only `variable_nd` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `vnd_preset_combo-option-0` | Only `vnd_preset_combo` selects `Custom (use sliders)`; other selectors remain default. |
+| `vnd_preset_combo-option-1` | Only `vnd_preset_combo` selects `Clean Pro`; other selectors remain default. |
+| `vnd_preset_combo-option-2` | Only `vnd_preset_combo` selects `Budget`; other selectors remain default. |
+| `vnd_preset_combo-option-3` | Only `vnd_preset_combo` selects `Pushed Too Far`; other selectors remain default. |
+| `vnd_quality-option-0` | Only `vnd_quality` selects `Pro`; other selectors remain default. |
+| `vnd_quality-option-1` | Only `vnd_quality` selects `Budget`; other selectors remain default. |
+| `vnd_quality-option-2` | Only `vnd_quality` selects `Cheap`; other selectors remain default. |
 | `card-lens_filter-tallest-850` | Only `lens_filter` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-lens_filter-tallest-1160` | Only `lens_filter` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `lens_filter_preset-option-0` | Only `lens_filter_preset` selects `Custom`; other selectors remain default. |
@@ -171,7 +184,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-56 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+61 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

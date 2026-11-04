@@ -5823,8 +5823,8 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:505",
-      "indra/newview/alkitpresets.cpp:675",
+      "indra/newview/alkitpresets.cpp:511",
+      "indra/newview/alkitpresets.cpp:681",
       "indra/newview/llfloaterdirector.cpp:4479"
     ],
     "scope": "review feature ownership",
@@ -11445,7 +11445,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:96",
-      "indra/newview/alkitpresets.cpp:131"
+      "indra/newview/alkitpresets.cpp:135"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -11983,7 +11983,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1601",
-      "indra/newview/alkitpresets.cpp:133",
+      "indra/newview/alkitpresets.cpp:137",
       "indra/newview/llfloaterdirector.cpp:4357"
     ],
     "scope": "review feature ownership",
@@ -12030,7 +12030,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1599",
-      "indra/newview/alkitpresets.cpp:134",
+      "indra/newview/alkitpresets.cpp:138",
       "indra/newview/llfloaterdirector.cpp:4358"
     ],
     "scope": "review feature ownership",
@@ -12054,7 +12054,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2507",
-      "indra/newview/alkitpresets.cpp:135"
+      "indra/newview/alkitpresets.cpp:139"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -12100,7 +12100,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2513",
-      "indra/newview/alkitpresets.cpp:136"
+      "indra/newview/alkitpresets.cpp:140"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12124,7 +12124,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2509",
-      "indra/newview/alkitpresets.cpp:135"
+      "indra/newview/alkitpresets.cpp:139"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12147,7 +12147,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2511",
-      "indra/newview/alkitpresets.cpp:135"
+      "indra/newview/alkitpresets.cpp:139"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12170,7 +12170,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2505",
-      "indra/newview/alkitpresets.cpp:136",
+      "indra/newview/alkitpresets.cpp:140",
       "indra/newview/llfloaterdirector.cpp:4362"
     ],
     "scope": "review feature ownership",
@@ -12315,7 +12315,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:95",
-      "indra/newview/alkitpresets.cpp:131"
+      "indra/newview/alkitpresets.cpp:135"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -12877,7 +12877,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1598",
-      "indra/newview/alkitpresets.cpp:133",
+      "indra/newview/alkitpresets.cpp:137",
       "indra/newview/llfloaterdirector.cpp:4356"
     ],
     "scope": "review feature ownership",
@@ -12922,7 +12922,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:95",
-      "indra/newview/alkitpresets.cpp:131"
+      "indra/newview/alkitpresets.cpp:135"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -13803,7 +13803,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:770",
       "indra/newview/alcinelightrig.cpp:1595",
-      "indra/newview/alkitpresets.cpp:132",
+      "indra/newview/alkitpresets.cpp:136",
       "indra/newview/llfloaterdirector.cpp:4353"
     ],
     "scope": "review feature ownership",
@@ -13828,7 +13828,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:775",
       "indra/newview/alcinelightrig.cpp:1597",
-      "indra/newview/alkitpresets.cpp:133",
+      "indra/newview/alkitpresets.cpp:137",
       "indra/newview/llfloaterdirector.cpp:4354"
     ],
     "scope": "review feature ownership",
@@ -13853,7 +13853,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1604",
       "indra/newview/alcinelightrig.cpp:4614",
-      "indra/newview/alkitpresets.cpp:134",
+      "indra/newview/alkitpresets.cpp:138",
       "indra/newview/llfloaterdirector.cpp:4364"
     ],
     "scope": "review feature ownership",
@@ -13936,7 +13936,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:108"
+      "indra/newview/alkitpresets.cpp:112"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -13978,7 +13978,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:108"
+      "indra/newview/alkitpresets.cpp:112"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -14040,7 +14040,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:108"
+      "indra/newview/alkitpresets.cpp:112"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -14230,7 +14230,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1521",
       "indra/newview/alcinelightrig.cpp:1753",
-      "indra/newview/alkitpresets.cpp:132",
+      "indra/newview/alkitpresets.cpp:136",
       "indra/newview/llfloaterdirector.cpp:4352"
     ],
     "scope": "review feature ownership",
@@ -14295,7 +14295,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1609",
       "indra/newview/alcinelightrig.cpp:1755",
-      "indra/newview/alkitpresets.cpp:132"
+      "indra/newview/alkitpresets.cpp:136"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14320,7 +14320,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1608",
       "indra/newview/alcinelightrig.cpp:1754",
-      "indra/newview/alkitpresets.cpp:132"
+      "indra/newview/alkitpresets.cpp:136"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -14344,7 +14344,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:96",
-      "indra/newview/alkitpresets.cpp:131"
+      "indra/newview/alkitpresets.cpp:135"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -14932,7 +14932,7 @@
       "indra/newview/alcinelightrig.cpp:2503",
       "indra/newview/alcinelightrig.cpp:3910",
       "indra/newview/alcinelightrig.cpp:3912",
-      "indra/newview/alkitpresets.cpp:135",
+      "indra/newview/alkitpresets.cpp:139",
       "indra/newview/llfloaterdirector.cpp:4368"
     ],
     "scope": "review feature ownership",
@@ -27370,7 +27370,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:127"
+      "indra/newview/alkitpresets.cpp:131"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -27392,7 +27392,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:126"
+      "indra/newview/alkitpresets.cpp:130"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -27414,7 +27414,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:126"
+      "indra/newview/alkitpresets.cpp:130"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -27456,7 +27456,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:126",
+      "indra/newview/alkitpresets.cpp:130",
       "indra/newview/llfloaterdirector.cpp:2113"
     ],
     "scope": "review feature ownership",
@@ -27499,7 +27499,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:127"
+      "indra/newview/alkitpresets.cpp:131"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -27521,7 +27521,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:127"
+      "indra/newview/alkitpresets.cpp:131"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -27543,7 +27543,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:126"
+      "indra/newview/alkitpresets.cpp:130"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -27985,7 +27985,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:117"
+      "indra/newview/alkitpresets.cpp:121"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -28809,7 +28809,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:117"
+      "indra/newview/alkitpresets.cpp:121"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -28891,7 +28891,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:117"
+      "indra/newview/alkitpresets.cpp:121"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29492,7 +29492,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:120"
+      "indra/newview/alkitpresets.cpp:124"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29556,7 +29556,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:120"
+      "indra/newview/alkitpresets.cpp:124"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29578,7 +29578,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:120"
+      "indra/newview/alkitpresets.cpp:124"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29600,7 +29600,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:120"
+      "indra/newview/alkitpresets.cpp:124"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -31018,7 +31018,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:163"
+      "indra/newview/alkitpresets.cpp:169"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -31226,7 +31226,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:163"
+      "indra/newview/alkitpresets.cpp:169"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -34591,7 +34591,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:177",
+      "indra/newview/alkitpresets.cpp:183",
       "indra/newview/llfloaterdirector.cpp:1224"
     ],
     "scope": "review feature ownership",
@@ -35687,7 +35687,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: appended kAllSettings (with scene exclusions) in altron.cpp",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:123"
+      "indra/newview/alkitpresets.cpp:127"
     ],
     "scope": "review feature ownership",
     "type": "Color3"
@@ -35722,7 +35722,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: appended kAllSettings (with scene exclusions) in altron.cpp",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:123"
+      "indra/newview/alkitpresets.cpp:127"
     ],
     "scope": "review feature ownership",
     "type": "Color3"
@@ -35757,7 +35757,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: appended kAllSettings (with scene exclusions) in altron.cpp",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:123"
+      "indra/newview/alkitpresets.cpp:127"
     ],
     "scope": "review feature ownership",
     "type": "Color3"
@@ -35792,7 +35792,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: appended kAllSettings (with scene exclusions) in altron.cpp",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:123"
+      "indra/newview/alkitpresets.cpp:127"
     ],
     "scope": "review feature ownership",
     "type": "Color3"
@@ -39992,7 +39992,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:100",
+      "indra/newview/alkitpresets.cpp:104",
       "indra/newview/llfloaterdirector.cpp:1749"
     ],
     "scope": "review feature ownership",
@@ -41056,7 +41056,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:105"
+      "indra/newview/alkitpresets.cpp:109"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -41078,7 +41078,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:105"
+      "indra/newview/alkitpresets.cpp:109"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -41160,7 +41160,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:104"
+      "indra/newview/alkitpresets.cpp:108"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -42358,7 +42358,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/alkitpresets.cpp:104"
+      "indra/newview/alkitpresets.cpp:108"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -43109,6 +43109,108 @@
     "file": "indra/newview/app_settings/settings_alchemy.xml",
     "head_declarations": [],
     "name": "RenderSoftEdgeTintAmount",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Variable ND ring rotation -90..90 degrees. Zero puts the dark X cross on the diagonals.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings_alchemy.xml",
+    "head_declarations": [],
+    "name": "RenderVariableNDCrossAngle",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Enable Variable ND artifacts while keeping exposure. Off is exactly identity.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "sensor"
+    ],
+    "file": "indra/newview/app_settings/settings_alchemy.xml",
+    "head_declarations": [],
+    "name": "RenderVariableNDEnabled",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [
+      "indra/newview/alkitpresets.cpp:101"
+    ],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Variable ND: 0 Custom, 1 Clean Pro, 2 Budget, 3 Pushed Too Far. Named presets override Custom sliders.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings_alchemy.xml",
+    "head_declarations": [],
+    "name": "RenderVariableNDPreset",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Variable ND optical grade: 0 Pro, 1 Budget, 2 Cheap. Artistic cross polarization, colour cast and IR pollution, not GPU quality.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings_alchemy.xml",
+    "head_declarations": [],
+    "name": "RenderVariableNDQuality",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "Variable ND dial 1..8 stops. Drives artifacts only; exposure stays unchanged.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "3",
+    "duplicate_note": "",
+    "features": [
+      "sensor"
+    ],
+    "file": "indra/newview/app_settings/settings_alchemy.xml",
+    "head_declarations": [],
+    "name": "RenderVariableNDStops",
     "persisted": "1",
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",

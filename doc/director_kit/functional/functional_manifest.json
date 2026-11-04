@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "d31a9fe12107a1dfa5becae62883885988a7acef234f6744cd69c2d9914b2630",
+  "csv_sha256": "19c5c21a9952cda45a09a8f60b461edc1a9ba51213ef270b1842970789318783",
   "interactive_rows": 2154,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -49,7 +49,7 @@
   "entries": 4758,
   "pages": 39,
   "settings_declared": 3898,
-  "xui_files": 845,
+  "xui_files": 846,
   "rim_presets": 40,
   "rim_preset_written_settings": [
    "CineRigRimMasterGain",
@@ -42875,7 +42875,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALLensLooks::bindFilterPresets",
-   "evidence": "setting RenderGradNDPreset (settings_alchemy.xml); literal-only allenslooks.cpp:337 ALLensLooks::bindFilterPresets",
+   "evidence": "setting RenderGradNDPreset (settings_alchemy.xml); literal-only allenslooks.cpp:351 ALLensLooks::bindFilterPresets",
    "options": [
     {
      "label": "Custom (use sliders)",
@@ -43480,7 +43480,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALLensLooks::bindFilterPresets",
-   "evidence": "setting RenderPolarizerPreset (settings_alchemy.xml); literal-only allenslooks.cpp:338 ALLensLooks::bindFilterPresets",
+   "evidence": "setting RenderPolarizerPreset (settings_alchemy.xml); literal-only allenslooks.cpp:352 ALLensLooks::bindFilterPresets",
    "options": [
     {
      "label": "Custom (use sliders)",
@@ -44139,7 +44139,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALLensLooks::bindFilterPresets",
-   "evidence": "setting RenderLensFilterPreset (settings_alchemy.xml); literal-only allenslooks.cpp:340 ALLensLooks::bindFilterPresets",
+   "evidence": "setting RenderLensFilterPreset (settings_alchemy.xml); literal-only allenslooks.cpp:354 ALLensLooks::bindFilterPresets",
    "options": [
     {
      "label": "Custom",
@@ -87017,7 +87017,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:21023 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashDensity (settings.xml); literal-only pipeline.cpp:21062 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87169,7 +87169,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:21025 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherSplashLifetime (settings.xml); literal-only pipeline.cpp:21064 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87271,7 +87271,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:21028 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessEnabled (settings.xml); literal-only pipeline.cpp:21067 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87323,7 +87323,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:21029 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherWetnessStrength (settings.xml); literal-only pipeline.cpp:21068 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87375,7 +87375,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:21030 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistEnabled (settings.xml); literal-only pipeline.cpp:21069 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87427,7 +87427,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:21031 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistStrength (settings.xml); literal-only pipeline.cpp:21070 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87479,7 +87479,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:21032 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherMistHeight (settings.xml); literal-only pipeline.cpp:21071 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87531,7 +87531,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:21033 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsEnabled (settings.xml); literal-only pipeline.cpp:21072 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87583,7 +87583,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:21034 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLensDropsStrength (settings.xml); literal-only pipeline.cpp:21073 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87685,7 +87685,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:21041 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionBias (settings.xml); literal-only pipeline.cpp:21080 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87737,7 +87737,7 @@
    "increment": 0.001,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:21043 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherRainOcclusionSoftness (settings.xml); literal-only pipeline.cpp:21082 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -87989,7 +87989,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21495 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBrightness (settings.xml); literal-only pipeline.cpp:21534 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -88189,7 +88189,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21496 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAmbient (settings.xml); literal-only pipeline.cpp:21535 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -88241,7 +88241,7 @@
    "increment": 0.25,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21494 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningBoltWidth (settings.xml); literal-only pipeline.cpp:21533 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -88692,7 +88692,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21506 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningAfterglowStrength (settings.xml); literal-only pipeline.cpp:21545 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",
@@ -88894,7 +88894,7 @@
    "increment": 1.0,
    "callbacks": null,
    "owner": "LLPipeline::renderWeather",
-   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21513 LLPipeline::renderWeather"
+   "evidence": "setting AlchemyWeatherLightningEnergyCeiling (settings.xml); literal-only pipeline.cpp:21552 LLPipeline::renderWeather"
   },
   {
    "page": "weather_tab",

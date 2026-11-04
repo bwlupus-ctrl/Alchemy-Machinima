@@ -3457,6 +3457,15 @@
   },
   {
     "action": "carry/adapt fork source",
+    "class": "GENERATED",
+    "consumer": "indra/newview/allenslooks.cpp",
+    "dependency": "indra/newview/allenslooks_vnd_mean.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "generator output; runtime XUI must be regenerated and shipped"
+  },
+  {
+    "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/allenslooks.cpp",
     "dependency": "indra/newview/alenvintensity.h",
@@ -11704,6 +11713,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llviewerwindow.cpp",
     "dependency": "indra/newview/alhidecursor.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llviewerwindow.cpp",
+    "dependency": "indra/newview/allenslooks.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
