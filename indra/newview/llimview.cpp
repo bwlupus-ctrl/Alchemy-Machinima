@@ -3361,7 +3361,11 @@ void LLIMMgr::addMessage(
             }
 
             //Play sound for new conversations
-            if (!skip_message && !gAgent.isDoNotDisturb() && (gSavedSettings.getBOOL("PlaySoundNewConversation")))
+            // The Group chat and Conference rows' Play sound also cover the first
+            // message; it uses the same sound, so it reads as those rows being ignored.
+            const bool row_silenced = (session->isGroupSessionType() && !gSavedSettings.getBOOL("PlaySoundGroupChatIM"))
+                || (session->isAdHocSessionType() && !gSavedSettings.getBOOL("PlaySoundConferenceIM"));
+            if (!skip_message && !row_silenced && !gAgent.isDoNotDisturb() && (gSavedSettings.getBOOL("PlaySoundNewConversation")))
             {
                 static LLCachedControl<bool> play_snd_mention_pref(gSavedSettings, "PlaySoundChatMention", false);
                 if (!play_snd_mention_pref || !LLUrlRegistry::getInstance()->containsAgentMention(msg))
