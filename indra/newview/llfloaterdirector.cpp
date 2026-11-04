@@ -15,6 +15,8 @@
 #include "aldirectortabmigration.h"
 #include "aldirectorqol.h"
 #include "aldirectortheme.h"
+#include "aldirectoralloff.h"
+#include "alsettingsundohistory.h"
 #include "alcameracurve.h"
 #include "alkitshell.h"
 #include "alkitbinding.h"
@@ -22,6 +24,7 @@
 #include "alkithistory.h"
 #include "aldiopterpresetbank.h"
 #include "alkitpage.h"
+#include "alkitlazypage.h"
 #include "alkitpopover.h"
 #include "alkitrow.h"
 #include "alkitmenu.h"
@@ -1816,6 +1819,7 @@ bool LLFloaterDirector::postBuildV2()
             {
                 ALColorGrade::populateLUTCombo(director->findChild<LLComboBox>("colorlut_combo"));
             }
+            if (page == "settings_group/director_settings_tab") director->refreshAllOffRestore();
             director->refreshWorldLensReadouts(page);
         });
     mScrollFit.setUnwrappedPages(mShell->unwrappedPages());
@@ -1850,7 +1854,14 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mTakeStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickTakeStop(); });
     mSetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetMarks(); });
     mResetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickResetMarks(); });
-    setDefaultBtn(mActionBtn);
+    // ALL OFF is mouse-only. The commit callback still handles ordinary ACTION
+    // and CUT; focused Return/Space must never open the reset confirmation.
+    mActionBtn->setMouseDownCallback([this](LLUICtrl*, const LLSD&)
+    {
+        if (mAllOffMode) requestAllOff();
+    });
+    mAllOffModeConnection = gSavedSettings.getControl("DirectorActionAllOffMode")->getSignal()->connect(
+        [this](LLControlVariable*, const LLSD&, const LLSD&) { updateAllOffMode(); });
 
     mSceneCombo = root->getChild<LLComboBox>("scene_combo");
     mSceneNameEditor = root->getChild<LLLineEditor>("scene_name_editor");
@@ -1996,6 +2007,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
 
     mStatusStrip = root->getChild<LLTextBox>("status_strip");
     mRecIndicator = root->getChild<LLTextBox>("rec_indicator");
+    updateAllOffMode();
     // [Connectedness B5] The kit_ui_ms readout was never authored in any XUI
     // file; its lookup, setting watch and per-frame EMA were dead and are gone.
     if(mShell)
@@ -2125,6 +2137,9 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
 
 void LLFloaterDirector::bindDirectorSettingsPage(LLView* root)
 {
+    mAllOffRestore = root->getChild<LLButton>("settings_restore_last_reset");
+    mAllOffRestore->setCommitCallback([this](LLUICtrl*, const LLSD&) { performAllOff(true); });
+    refreshAllOffRestore();
     mCrashBackupCombo = root->getChild<LLComboBox>("settings_crash_backups");
     mCrashBackupRestoreButton = root->getChild<LLButton>("settings_restore_backup");
     mCrashBackupRestoreButton->setCommitCallback([](LLUICtrl*, const LLSD&)
@@ -3896,6 +3911,7 @@ void LLFloaterDirector::setToolTipIfChanged(LLUICtrl* ctrl, const std::string& t
 void LLFloaterDirector::onClickAction()
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
+    if (mIsV2 && mAllOffMode && !cast.isRunning() && !cast.isCountingDown()) return;
     if (cast.isRunning() || cast.isCountingDown())
     {
         cast.cut();
@@ -3904,6 +3920,90 @@ void LLFloaterDirector::onClickAction()
     {
         cast.action();
     }
+}
+
+void LLFloaterDirector::updateAllOffMode()
+{
+    if (!mIsV2) return;
+    mAllOffMode = gSavedSettings.getBOOL("DirectorActionAllOffMode");
+    // Enter guard: ALL OFF never becomes the floater's default button.
+    setDefaultBtn(mAllOffMode ? nullptr : mActionBtn);
+    mActionBtn->setCommitOnReturn(!mAllOffMode);
+    mLastTransportActionState = -1;
+    if (mAllOffPopover) mAllOffPopover->hide();
+    refreshTransport();
+}
+
+void LLFloaterDirector::requestAllOff()
+{
+    auto& cast = LLDirectorCast::instance();
+    if (!mIsV2 || !mAllOffMode || cast.isCountingDown() || cast.isRunning()) return;
+    if (ALDirectorAllOff::cameraTakeActive())
+    {
+        showTransportToast("Stop the camera take before resetting Director features");
+        return;
+    }
+    if (!mAllOffPopover)
+    {
+        // Same shell-owned, anchored, themed confirmation as buildResetPopover.
+        ALKitPopover::Params params;
+        params.name = "director_all_off_confirm";
+        params.rect = LLRect(0, 126, 360, 0);
+        params.visible = false;
+        mAllOffPopover = LLUICtrlFactory::create<ALKitPopover>(params);
+        mShell->addChild(mAllOffPopover);
+        mAllOffPopover->bindAnchor(mActionBtn);
+        LLTextBox::Params text;
+        text.name = "director_all_off_message";
+        text.rect = LLRect(12, 114, 348, 48);
+        text.initial_value = "Switch Director features off and reset Personal Lighting and Avatar Light Response? Restore last reset keeps a backup.";
+        text.wrap = true;
+        mAllOffPopover->addChild(LLUICtrlFactory::create<LLTextBox>(text));
+        LLHandle<LLFloaterDirector> handle = getDerivedHandle<LLFloaterDirector>();
+        auto button = [&](const char* name, const char* label, S32 left, bool confirm)
+        {
+            LLButton::Params p;
+            p.name = name;
+            p.label = label;
+            p.rect = LLRect(left, 38, left + 98, 12);
+            LLButton* control = LLUICtrlFactory::create<LLButton>(p);
+            control->setCommitCallback([handle, confirm](LLUICtrl*, const LLSD&)
+            {
+                if (auto* director = handle.get())
+                {
+                    director->mAllOffPopover->hide();
+                    if (confirm) director->performAllOff(false);
+                }
+            });
+            mAllOffPopover->addChild(control);
+        };
+        button("director_all_off_cancel", "Cancel", 140, false);
+        button("director_all_off_apply", "All Off", 250, true);
+        ALKitStyle::styleTree(mAllOffPopover);
+    }
+    mAllOffPopover->toggle();
+}
+
+void LLFloaterDirector::performAllOff(bool restore)
+{
+    if (!mIsV2 || (!restore && !mAllOffMode)) return;
+    // Source the grouped exposure undo to its own page, even when lazily built.
+    if (auto* lazy = mShell->findChild<ALKitLazyPage>("exposure_tab")) lazy->ensureBuilt();
+    ALKitHistory::ScopedSource source(mShell->findBuiltPage("light_group/exposure_tab"));
+    std::string message;
+    if (restore) ALDirectorAllOff::restore(message);
+    else ALDirectorAllOff::reset(message); // rechecks countdown/running at confirmation time
+    showTransportToast(message);
+    refreshAllOffRestore();
+}
+
+void LLFloaterDirector::refreshAllOffRestore()
+{
+    if (!mAllOffRestore) return;
+    std::string reason;
+    const bool available = ALDirectorAllOff::available(reason);
+    mAllOffRestore->setEnabled(available);
+    mAllOffRestore->setToolTip(available ? "Restore the settings and actor switches saved before the last ALL OFF. Keeps the backup." : reason);
 }
 
 void LLFloaterDirector::onClickTakePlay()
@@ -3973,11 +4073,16 @@ void LLFloaterDirector::refreshTransport()
     const bool running = cast.isRunning();
     const bool transport_live = counting || running;
 
-    const S32 action_state = transport_live ? 1 : 0;
+    const bool all_off = mIsV2 && mAllOffMode;
+    const S32 action_state = (transport_live ? 1 : 0) | (all_off ? 2 : 0);
     if (mIsV2 && mLastTransportActionState != action_state)
     {
         mLastTransportActionState = action_state;
         ALKitStyle::styleTransportAction(mActionBtn, mCutBtn, mArmBtn, transport_live);
+        if (all_off && !transport_live)
+            ALKitStyle::styleTransportAction(mActionBtn, nullptr, nullptr, true);
+        mActionBtn->setLabel(LLStringExplicit(all_off ? "ALL OFF" : "ACTION")); // ui-draw-lint: allow(raw-write) finite transport state cache
+        mActionBtn->setImageOverlay(all_off ? "KitIcon_transport_action_stop_16" : "KitIcon_transport_action_play_16", LLFontGL::LEFT);
     }
 
     // ACTION morphs to CUT (danger styling from XML) while counting/running;
@@ -3996,8 +4101,10 @@ void LLFloaterDirector::refreshTransport()
         setToolTipIfChanged(mCutBtn, TOOLTIP_CUT);
     }
 
-    mActionBtn->setEnabled(mActionArmed);
-    setToolTipIfChanged(mActionBtn, mActionTooltip);
+    mActionBtn->setEnabled(all_off || mActionArmed);
+    setToolTipIfChanged(mActionBtn, all_off ? (ALDirectorAllOff::cameraTakeActive()
+        ? "Stop the camera take first. ALL OFF cannot reset features during recording, playback or paused playback."
+        : "Switch Director features off and reset Personal Lighting and Avatar Light Response. Asks first; Restore last reset is in Settings.") : mActionTooltip);
     setToolTipIfChanged(mArmBtn, mArmTooltip);
 
     if (mIsV2)

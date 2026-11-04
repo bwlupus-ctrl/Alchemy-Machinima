@@ -9,6 +9,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "aldirectoralloff.h"
 
 #include "alavatarlightresponse.h"
 
@@ -36,6 +37,7 @@
 #include <chrono>
 #include <ctime>
 #include <filesystem>
+#include <sstream>
 #include <system_error>
 
 namespace
@@ -482,7 +484,13 @@ void ALAvatarLightResponse::clearAll(bool save_now, bool user_action)
         }
         return;
     }
-    mEntries.clear();
+    if (mDirectorReset)
+    {
+        for (auto it = mEntries.begin(); it != mEntries.end();)
+            if (it->second.mKind != KIND_CLONE) it = mEntries.erase(it);
+            else ++it;
+    }
+    else mEntries.clear();
     mDirty = true;
     ++mRevision;
     LLVOAvatar::resetImpostors();
@@ -1094,6 +1102,126 @@ void ALAvatarLightResponse::loadFromFile()
             mPersistExtras[kv.first] = kv.second;
         }
     }
+}
+
+bool ALAvatarLightResponse::directorSnapshot(LLSD& data, std::string& reason) const
+{
+    data = LLSD::emptyMap();
+    data["live"] = LLSD::emptyMap();
+    data["extras"] = LLSD::emptyMap();
+    data["suppressed"] = LLSD::emptyArray();
+    for (const auto& entry : mEntries)
+    {
+        if (entry.second.mKind == KIND_CLONE) continue;
+        LLSD value = ALLightResponse::toLLSD(entry.second.mParams);
+        value["kind"] = kindToString(entry.second.mKind);
+        value["label"] = entry.second.mLabel;
+        data["live"][keyToString(entry.first)] = value;
+    }
+    for (const auto& entry : mPersistExtras)
+        data["extras"][keyToString(entry.first)] = entry.second;
+    for (const auto& key : mPersistSuppressed)
+        data["suppressed"].append(keyToString(key));
+    data["suppress_all"] = mPersistSuppressAll;
+    data["dirty"] = mSaveDirty;
+    data["load_failed"] = mLoadFailed;
+    data["edited_since_failure"] = mEditedSinceLoadFail;
+    const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME);
+    data["file_present"] = LLFile::exists(path);
+    data["file_bytes"] = LLSD::Binary();
+    if (data["file_present"].asBoolean())
+    {
+        // Read even when persistence is off: the saved table may never have
+        // entered this session. Preserve its exact bytes, including overflow.
+        llifstream in(path.c_str(), std::ios::binary);
+        std::ostringstream bytes;
+        if (in.is_open()) bytes << in.rdbuf();
+        if (!in.is_open() || in.bad() || bytes.fail())
+        {
+            reason = "ALL OFF aborted: Avatar Light Response file could not be backed up; nothing changed";
+            return false;
+        }
+        const std::string raw = bytes.str();
+        data["file_bytes"] = LLSD::Binary(raw.begin(), raw.end());
+    }
+    return true;
+}
+
+bool ALAvatarLightResponse::validDirectorSnapshot(const LLSD& data)
+{
+    if (!data.isMap() || !data["live"].isMap() || !data["extras"].isMap() ||
+        !data["suppressed"].isArray() || !data["suppress_all"].isBoolean() ||
+        !data["dirty"].isBoolean() || !data["load_failed"].isBoolean() ||
+        !data["edited_since_failure"].isBoolean() || !data["file_present"].isBoolean() ||
+        !data["file_bytes"].isBinary()) return false;
+    for (const char* group : {"live", "extras"})
+        for (const auto& entry : llsd::inMap(data[group]))
+            if (keyFromString(entry.first).isNull() || !entry.second.isMap() ||
+                kindFromString(entry.second["kind"].asString()) == KIND_CLONE) return false;
+    for (const auto& key : llsd::inArray(data["suppressed"]))
+        if (!key.isString() || keyFromString(key.asString()).isNull()) return false;
+    return true;
+}
+
+bool ALAvatarLightResponse::restoreDirectorSnapshot(const LLSD& data, std::string& reason)
+{
+    if (!validDirectorSnapshot(data))
+    {
+        reason = "Invalid Avatar Light Response backup; nothing restored";
+        return false;
+    }
+    const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, ALR_FILE_NAME);
+    const LLSD::Binary raw = data["file_bytes"].asBinary();
+    const bool disk_ok = data["file_present"].asBoolean()
+        ? ALDirectorAllOff::atomicWrite(path, std::string(raw.begin(), raw.end()))
+        : (!LLFile::exists(path) || LLFile::remove(path) == 0);
+    if (!disk_ok)
+    {
+        reason = "Avatar Light Response file could not be restored; nothing changed";
+        return false;
+    }
+    // Do not importMerge: it admits up to the live cap and changes file-only
+    // entries into live edits. Restore the two stores independently instead.
+    for (auto it = mEntries.begin(); it != mEntries.end();)
+        if (it->second.mKind != KIND_CLONE) it = mEntries.erase(it);
+        else ++it;
+    for (const auto& entry : llsd::inMap(data["live"]))
+    {
+        Entry value;
+        value.mKind = kindFromString(entry.second["kind"].asString());
+        value.mLabel = entry.second["label"].asString();
+        value.mParams = ALLightResponse::fromLLSD(entry.second);
+        const LLUUID key = keyFromString(entry.first);
+        const auto current = mEntries.find(key);
+        if (current == mEntries.end()) mEntries.emplace(key, value); // current clones win
+    }
+    mPersistExtras.clear();
+    for (const auto& entry : llsd::inMap(data["extras"]))
+        mPersistExtras[keyFromString(entry.first)] = entry.second;
+    mPersistSuppressed.clear();
+    for (const auto& key : llsd::inArray(data["suppressed"]))
+        mPersistSuppressed.insert(keyFromString(key.asString()));
+    mPersistSuppressAll = data["suppress_all"].asBoolean();
+    mSaveDirty = data["dirty"].asBoolean();
+    mLoadFailed = data["load_failed"].asBoolean();
+    mEditedSinceLoadFail = data["edited_since_failure"].asBoolean();
+    if (!mEntries.empty()) sEverActive = true;
+    mDirty = true;
+    ++mRevision;
+    LLVOAvatar::resetImpostors();
+    mChangeSignal();
+    return true;
+}
+
+void ALAvatarLightResponse::clearForDirector()
+{
+    struct PreserveClones
+    {
+        bool& flag;
+        explicit PreserveClones(bool& value) : flag(value) { flag = true; }
+        ~PreserveClones() { flag = false; }
+    } preserve(mDirectorReset);
+    clearAll(true, true);
 }
 
 LLSD ALAvatarLightResponse::exportFor(const std::vector<LLUUID>& ids) const

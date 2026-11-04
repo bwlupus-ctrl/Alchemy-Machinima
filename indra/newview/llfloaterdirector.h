@@ -39,6 +39,7 @@ class ALPanelPathEditor;
 class ALKitShell;
 class ALKitHistory;
 class ALKitBar;
+class ALKitPopover;
 class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
@@ -138,6 +139,10 @@ private:
     void refreshWorldLensReadouts(const std::string& page);
     // ---- transport ----
     void onClickAction();               // ACTION, or CUT while counting/running
+    void updateAllOffMode();
+    void requestAllOff();
+    void performAllOff(bool restore);
+    void refreshAllOffRestore();
     void onClickTakePlay();
     void onClickTakeStop();
     void onClickSetMarks();
@@ -331,6 +336,10 @@ private:
     std::string mArmTooltip;
     bool mActionArmed = false;
     S32 mLastTransportActionState = -1;
+    bool mAllOffMode = false;
+    ALKitPopover* mAllOffPopover = nullptr;
+    LLButton* mAllOffRestore = nullptr;
+    boost::signals2::scoped_connection mAllOffModeConnection;
     S64 mTimecodeFrame = -1;
     S32 mTimecodeFps = -1;
     bool mTimecodeHot = false;

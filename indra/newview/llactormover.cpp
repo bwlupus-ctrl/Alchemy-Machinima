@@ -2760,6 +2760,13 @@ bool LLActorMover::isGazeEnabled(const LLUUID& actor_id) const
     return it != mGazes.end() && it->second.mEnabled;
 }
 
+std::vector<LLUUID> LLActorMover::gazeActors() const
+{
+    std::vector<LLUUID> result;
+    for (const auto& gaze : mGazes) result.push_back(gaze.first);
+    return result;
+}
+
 void LLActorMover::setGazeTargetMode(const LLUUID& actor_id, S32 mode)
 {
     mGazes[path_key(actor_id)].mTarget = llclamp(mode, (S32)GAZE_TANGENT, (S32)GAZE_OBJECT);

@@ -105,6 +105,13 @@ public:
     // user_action = true only for the explicit "Reset all" confirmation: it counts as an edit even on an empty store.
     void clearAll(bool save_now = true, bool user_action = false);
 
+    // Full account reset snapshot, including dormant/file-only entries and the
+    // exact saved file. Session clone entries and master preferences are excluded.
+    bool directorSnapshot(LLSD& data, std::string& reason) const;
+    static bool validDirectorSnapshot(const LLSD& data);
+    bool restoreDirectorSnapshot(const LLSD& data, std::string& reason);
+    void clearForDirector();
+
     // ---- draw-time lookup (first non-null key with a slot terminates) ----
     // lookup: nullptr for absent OR identity.  peek: identical, kept as a
     // separate name for the non-counting call sites.
@@ -178,6 +185,7 @@ private:
 
     // Save gating (see flushIfDirty): never write an account file the session did not load or cannot read.
     bool                               mSaveDirty = false;         // user edit not yet on disk
+    bool                               mDirectorReset = false;    // preserve session clones around clearAll
     LLUUID                             mLoadedForAgent;            // account loadFromFile ran for (null = none yet)
     bool                               mLoadFailed = false;        // an existing file could not be read
     bool                               mEditedSinceLoadFail = false;

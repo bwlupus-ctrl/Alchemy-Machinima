@@ -599,6 +599,7 @@ public:
     void        setGazeEnabled(const LLUUID& actor_id, bool on);
     U64         getGazeRevision() const { return mGazeRevision; }
     bool        isGazeEnabled(const LLUUID& actor_id) const;
+    std::vector<LLUUID> gazeActors() const;
     // Exact joint writes from the latest gaze evaluation; retained across
     // skipped avatar updates. Read-only observer for Directed clone mirroring.
     ALGhostAnimMirrorMath::GazeWeights getGazeWrittenWeights(const LLUUID& actor_id) const;

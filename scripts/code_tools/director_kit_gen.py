@@ -22,6 +22,7 @@ from xml.etree import ElementTree as ET
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import director_theme_check as theme_check  # noqa: E402  (same-directory checker: theme validity and labels)
+import director_all_off_check as all_off_check  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -359,8 +360,9 @@ def validate_data(data: dict) -> None:
     # Hot targets: one selected-slot editor, +18 rows, 2400 -> 2418 (11/02).
     # Fix round 1: Object Centre / Picked spot, Point XYZ and reset nudge: +5, 2418 -> 2423.
     # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets + 30 Capture Key (D56 removes 3 ReShade rows) = 2485; Variable ND adds 4 = 2489; six clone FX sliders = 2495.
-    if len(pages) != 39 or row_count != 2495:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2495")
+    # ALL OFF adds two gear rows: the mode preference and Restore last reset.
+    if len(pages) != 39 or row_count != 2497:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2497")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1997,6 +1999,11 @@ def fill_theme_rows(data: dict) -> None:
 
 
 def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Path, bytes], dict[str, str]]:
+    errors = all_off_check.check(ROOT)
+    if not errors and all_off_check.selftest(quiet=True):
+        errors.append("planted bad-fixture selftest failed")
+    if errors:
+        raise GenError("Director ALL OFF contract: " + "; ".join(errors))
     data = json.loads(data_path.read_text(encoding="utf-8"))
     if VCAM_DATA.exists():
         vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))

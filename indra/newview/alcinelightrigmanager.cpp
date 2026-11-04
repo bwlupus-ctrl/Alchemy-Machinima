@@ -820,6 +820,24 @@ void ALCineLightRigManager::allOff()
     persist();
 }
 
+void ALCineLightRigManager::restoreEnabledMask(U32 mask, Slot selected, bool group)
+{
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    mRigSession.mGroup = group;
+    mSelected = selected;
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const bool enabled = (mask & (1u << i)) != 0;
+        mBlobs[i].mEnabled = enabled;
+        if (!enabled) shutdownSlot(i);
+    }
+    // The editor projection and enable are coupled: restoring a mask while
+    // editing a different slot would restore the wrong master Boolean. This
+    // ordinary guarded buffer swap retains every authored per-slot value.
+    writeSelectedSettings();
+    onEnabledChanged(mBlobs[slotIndex(mSelected)].mEnabled);
+}
+
 void ALCineLightRigManager::logSelectedTarget()
 {
     const ALCineLightRig& rig = selected();

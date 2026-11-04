@@ -1418,6 +1418,8 @@ public:
     void createRigGroup();
     void leaveRigGroup();
     void allOff();
+    // Restore only the all-slot power state; retain fixtures, cues and edit values.
+    void restoreEnabledMask(U32 mask, Slot selected, bool group);
 
     ALCineLightRig& at(Slot slot);
     const ALCineLightRig& at(Slot slot) const;
