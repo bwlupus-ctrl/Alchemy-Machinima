@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2656 classified paths.
+`inventory.csv` / `inventory.json` contain 2660 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -65,26 +65,26 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
-| [common-ui](features/common-ui.md) | 1 | 85 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 312 | 57 | 200 |
-| [actor-bar](features/actor-bar.md) | 3 | 65 | 14 | 0 |
-| [actor-path](features/actor-path.md) | 3 | 103 | 34 | 34 |
-| [camera](features/camera.md) | 3 | 77 | 31 | 492 |
+| [common-ui](features/common-ui.md) | 1 | 86 | 23 | 5 |
+| [director-shell](features/director-shell.md) | 2 | 315 | 57 | 201 |
+| [actor-bar](features/actor-bar.md) | 3 | 66 | 14 | 0 |
+| [actor-path](features/actor-path.md) | 3 | 104 | 34 | 34 |
+| [camera](features/camera.md) | 3 | 79 | 31 | 492 |
 | [composition](features/composition.md) | 3 | 41 | 23 | 12 |
-| [gaze](features/gaze.md) | 3 | 57 | 23 | 88 |
-| [stepped-animation](features/stepped-animation.md) | 3 | 27 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 177 | 83 | 82 |
+| [gaze](features/gaze.md) | 3 | 58 | 23 | 88 |
+| [stepped-animation](features/stepped-animation.md) | 3 | 28 | 20 | 53 |
+| [clones](features/clones.md) | 4 | 178 | 83 | 82 |
 | [crowd](features/crowd.md) | 4 | 47 | 10 | 19 |
-| [roto-tron](features/roto-tron.md) | 5 | 119 | 55 | 227 |
+| [roto-tron](features/roto-tron.md) | 5 | 120 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 68 | 58 | 17 |
-| [rig](features/rig.md) | 7 | 170 | 56 | 250 |
-| [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 62 | 24 | 104 |
+| [rig](features/rig.md) | 7 | 172 | 56 | 250 |
+| [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 63 | 24 | 104 |
 | [tracking](features/tracking.md) | 7 | 9 | 17 | 0 |
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
-| [weather](features/weather.md) | 8 | 57 | 40 | 104 |
-| [vcam](features/vcam.md) | 9 | 90 | 43 | 30 |
-| [looks](features/looks.md) | 10 | 136 | 129 | 100 |
-| [sensor](features/sensor.md) | 10 | 100 | 56 | 62 |
+| [weather](features/weather.md) | 8 | 58 | 40 | 104 |
+| [vcam](features/vcam.md) | 9 | 91 | 43 | 30 |
+| [looks](features/looks.md) | 10 | 138 | 129 | 100 |
+| [sensor](features/sensor.md) | 10 | 101 | 56 | 62 |
 
 These layers are a review order. A shared file/hunk can serve several layers and
 must be split by contract. There is no claim that mechanically applying a layer
@@ -211,8 +211,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2286 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2286, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2286, "unresolved_rows": 74}`.
+Existing evidence: 2288 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2288, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2288, "unresolved_rows": 75}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
@@ -238,7 +238,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 523 shared files / 3218 canonical
+The generated hook map covers 523 shared files / 3219 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and
