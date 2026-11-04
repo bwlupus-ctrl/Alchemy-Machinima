@@ -1,0 +1,28 @@
+{
+  "base": "95b4098e239",
+  "description": "Studio looks 85-100, whole-snapshot dimensions and stable avatar/node path-ghost seeds; sweep scheduling unchanged.",
+  "files": {
+    "llactormover.cpp": [
+      {
+        "before": "    GHOST_STYLE_OPERATOR = 82,\n    GHOST_STYLE_DIAL_OUT = 83,\n    GHOST_STYLE_SOURCE = 84,\n    GHOST_STYLE_STUDIO_END = 85, // exclusive; only implemented ids are valid\n};\nstatic_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,\n              \"Live Actor FX ids collide with the Studio overlay range\");\n",
+        "after": "    GHOST_STYLE_OPERATOR = 82,\n    GHOST_STYLE_DIAL_OUT = 83,\n    GHOST_STYLE_SOURCE = 84,\n    GHOST_STYLE_AUREOLE = 85,\n    GHOST_STYLE_CHOIR_LIGHT = 86,\n    GHOST_STYLE_FEATHERFALL = 87,\n    GHOST_STYLE_RAPTURE = 88,\n    GHOST_STYLE_EMITTER = 89,\n    GHOST_STYLE_BAD_RECEPTION = 90,\n    GHOST_STYLE_STATIC_VEIL = 91,\n    GHOST_STYLE_LATENCY = 92,\n    GHOST_STYLE_FACETS = 93,\n    GHOST_STYLE_COLD_GAZE = 94,\n    GHOST_STYLE_INTRUSION = 95,\n    GHOST_STYLE_OVERCLOCK = 96,\n    GHOST_STYLE_REFORM = 97,\n    GHOST_STYLE_TORN_HUSK = 98,\n    GHOST_STYLE_HUNTER_VISION = 99,\n    GHOST_STYLE_OOZE = 100,\n    GHOST_STYLE_STUDIO_END = 101, // exclusive; only implemented ids are valid\n};\nstatic_assert(LLDirectorCast::ACTOR_LOOK_MAX < GHOST_STYLE_STUDIO_BASE,\n              \"Live Actor FX ids collide with the Studio overlay range\");\n"
+      },
+      {
+        "before": "    bool glow_only = false;\n    // Matrix monitor looks use the whole snapshot field, including tile subregions.\n    const bool matrix_screen = !gp.mWorldLinear\n        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR);\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n",
+        "after": "    bool glow_only = false;\n    // Matrix monitor looks use the whole snapshot field, including tile subregions.\n    const bool matrix_screen = !gp.mWorldLinear\n        && (style == GHOST_STYLE_DEJA_VU || style == GHOST_STYLE_OPERATOR\n            || style == GHOST_STYLE_BAD_RECEPTION || style == GHOST_STYLE_STATIC_VEIL\n            || style == GHOST_STYLE_HUNTER_VISION);\n\n    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.\n    // Supply its bottom-up whole-image pixel origin so scanlines, noise and\n"
+      },
+      {
+        "before": "        LLVector3   mFace;      // horizontal travel direction (stick fallback)\n        F32         mHeight;    // figure height for the stick fallback, m\n        LLColor4    mTint;      // actor hue\n    };\n    std::vector<GhostItem> ghosts;\n\n",
+        "after": "        LLVector3   mFace;      // horizontal travel direction (stick fallback)\n        F32         mHeight;    // figure height for the stick fallback, m\n        LLColor4    mTint;      // actor hue\n        S32         mNode;      // stable seed survives distance sorting\n    };\n    std::vector<GhostItem> ghosts;\n\n"
+      },
+      {
+        "before": "                                   static_cast<F32>(event_tangent.mdV[VY]),\n                                   static_cast<F32>(event_tangent.mdV[VZ]));\n                    const F32 gh = path.mNodes[i].mRootAbove * 1.9f;\n                    ghosts.push_back({ av, base, face, gh, col_mid });\n                }\n\n                // authored camera on this node: a frustum gizmo at the camera\n",
+        "after": "                                   static_cast<F32>(event_tangent.mdV[VY]),\n                                   static_cast<F32>(event_tangent.mdV[VZ]));\n                    const F32 gh = path.mNodes[i].mRootAbove * 1.9f;\n                    ghosts.push_back({ av, base, face, gh, col_mid, i });\n                }\n\n                // authored camera on this node: a frustum gizmo at the camera\n"
+      },
+      {
+        "before": "                if (bit != mGhostBatches.end() && !bit->second.empty())\n                {\n                    LLActorMover::GhostDrawParams path_gp;\n                    path_gp.mEffectFps = (F32)gSavedSettings.getS32(\"PathGhostEffectFps\");\n                    path_gp.mDistort = (S32)ghost_distort;\n                    path_gp.mDistortAmount = (F32)ghost_distort_amount;\n",
+        "after": "                if (bit != mGhostBatches.end() && !bit->second.empty())\n                {\n                    LLActorMover::GhostDrawParams path_gp;\n                    path_gp.mPhase = std::fmod((F32)(g.mNode + 1) * 2.39996323f\n                        + (F32)(g.mAv->getID().mData[0] | (g.mAv->getID().mData[1] << 8))\n                            * (F_TWO_PI / 65536.f), F_TWO_PI);\n                    path_gp.mEffectFps = (F32)gSavedSettings.getS32(\"PathGhostEffectFps\");\n                    path_gp.mDistort = (S32)ghost_distort;\n                    path_gp.mDistortAmount = (F32)ghost_distort_amount;\n"
+      }
+    ]
+  }
+}

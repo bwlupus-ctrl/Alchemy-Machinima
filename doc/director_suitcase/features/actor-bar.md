@@ -75,7 +75,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,53", "indra/newview/CMakeLists.txt@333,117", "indra/newview/CMakeLists.txt@1136,56", "indra/newview/CMakeLists.txt@1288,167", "indra/newview/CMakeLists.txt@2849,32", "indra/newview/CMakeLists.txt@2955,185"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2614,53", "indra/newview/llappviewer.cpp@5660,49", "indra/newview/llappviewer.cpp@6471,45"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@6482,45"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@201,9", "indra/newview/llstartup.cpp@2647,19"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,12", "indra/newview/llcontrolavatar.cpp@412,32"]}
@@ -87,7 +87,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@4673,28", "indra/newview/llvoavatar.cpp@12836,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@551,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@83,8", "indra/newview/llvovolume.cpp@5690,87"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@107,8", "indra/newview/pipeline.cpp@1701,30004", "indra/newview/pipeline.cpp@31894,372"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@107,8", "indra/newview/pipeline.cpp@1701,30008", "indra/newview/pipeline.cpp@31898,372"]}
 
 ## settings
 

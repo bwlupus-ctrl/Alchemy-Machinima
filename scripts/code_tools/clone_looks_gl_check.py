@@ -23,6 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SH = G.SHADERS + '/class1/'
 F = SH + 'interface/actorghostF.glsl'
 V = SH + 'interface/actorghostV.glsl'
+# These reviewed animations use the real-avatar safety/similarity checks instead.
+LEGACY_ANIMATED = (64, 66, 67, 71, 76)
 NAMES = dict(zip((64,65,66,67,69,70,71,73,74,75,76,77),
                  ('Glass','Mercury','Marble','Crystal','Magma','Void','Sumi-e',
                   'Lidar','Code Rain','Datamosh','Scan Build','Contour')))
@@ -162,49 +164,60 @@ class Runner:
                mesh=None, palette=None, object_matrix=None, clone_scale=1., raw_time=False,
                effect_fps=0., params=(0.,1.,0.,8.),
                preserve_depth=False, prime=False, brightness=1.,
-               screen_size=None, frag_offset=(0.,0.), tile=None, pixel_size=0.):
+               screen_size=None, frag_offset=(0.,0.), tile=None, pixel_size=0., glitch=0.,
+               dissolve_progress=None, fx2=(0.,0.,0.,0.), fx3=(0.,0.), fx_time=None):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 76 and not raw_time:
             time += 6.0  # Mid-build plane/lattice, rather than the built endpoint.
         g.use(pr)
         loc = lambda name: g.loc(pr, name.encode())
+        self.render_uniforms = {}
         def floats(name, *v):
+            self.render_uniforms[name] = (False,v)
             g.uf[len(v)](loc(name), *v)
+        def integer(name, value):
+            self.render_uniforms[name] = (True,(value,))
+            g.ui(loc(name), value)
         for name, value in dict(ghostLook=look, ghostIsClone=0, ghostSlot=slot,
                                 ghostDistort=distort, ghostUseVertexAlpha=1,
                                 ghostAlphaCutoffMode=1,
                                 ghostWorldLinear=int('GHOST_WORLD_PASS' in defs)).items():
-            g.ui(loc(name), value)
+            integer(name, value)
         for name in ('color', 'ghostSystemColor'):
             floats(name, .42, .72, .94, opacity)
         floats('ghostFadeProgress', 1.-fade)
-        g.ui(loc('actorFxEnabled'), 2 if native_fade and fade < 1 else 0)
+        integer('actorFxEnabled', 2 if native_fade and fade < 1 else 0)
         floats('actorFxDissolveProgress', 1.-fade)
         floats('sil_clone_progress', 1.-fade)
         floats('sil_cover', 1., 1.)
-        g.ui(loc('sil_blended'), 0)
-        g.ui(loc('mask_vertex_alpha'), 0)
-        g.ui(loc('mask_indexed'), 0)
-        g.ui(loc('mask_material_slots'), 0)
-        g.ui(loc('mask_vec3_position'), 0)
-        for i in range(4): g.ui(loc('mask_textures[%d]' % i), 0)
+        integer('sil_blended', 0)
+        integer('mask_vertex_alpha', 0)
+        integer('mask_indexed', 0)
+        integer('mask_material_slots', 0)
+        integer('mask_vec3_position', 0)
+        for i in range(4): integer('mask_textures[%d]' % i, 0)
         for i in range(8): floats('mask_cutoff[%d]' % i, .5 if mask else -1.)
         floats('ghostTime', np.floor(time*effect_fps)/effect_fps if effect_fps else time)
         clone_fixture = getattr(self, 'avatar_fixture', False) and look == 1
         floats('ghostParams', *( (0., 0., 0., 8.) if clone_fixture else params))
         floats('ghostAux', .5 if mask else 0., 1., pixel_size, phase)
-        floats('ghostFx', 0., 0., 0., brightness)
+        floats('ghostFx', 0., 0., glitch, brightness)
+        floats('ghostFx2', *fx2)
+        fx_elapsed = time if fx_time is None else fx_time
+        fx_stepped = np.floor(fx_elapsed*effect_fps)/effect_fps if effect_fps else fx_elapsed
+        fx_now = fx_stepped % 6144. if any(fx2[:3]) or any(fx3) else 0.
+        floats('ghostFx3', *fx3, self.height, fx_now)
         floats('ghostAlpha', 0. if opaque else 1., 1.)
         floats('ghostDistortParams', .4 if distort else 0., .5, .5, 0.)
         floats('ghostScreenSize', *(screen_size or (self.width, self.height)))
         floats('ghostFragOffset', *frag_offset)
         floats('ghostScreenOrigin', 0., 0.)
         floats('ghostVelocity', *velocity)
-        g.ui(loc('ghostSceneValid'), int(scene))
-        g.ui(loc('ghostSceneMap'), 1)
-        floats('ghostDissolveProgress', self.draw_defaults['ghostDissolveProgress'] if look == 78 else (.28 if look == 10 else 0.))
-        g.ui(loc('ghostDecodeScrub'), self.draw_defaults['ghostDecodeScrub'])
+        integer('ghostSceneValid', int(scene))
+        integer('ghostSceneMap', 1)
+        floats('ghostDissolveProgress', dissolve_progress if dissolve_progress is not None else self.draw_defaults['ghostDissolveProgress'] if getattr(self, 'real_draw_defaults', False) or look in (76, 78) or 85 <= look <= 100 else (.28 if look == 10 else 0.))
+        integer('ghostDecodeScrub', self.draw_defaults['ghostDecodeScrub'])
         floats('ghostCoverageLayerStrength', -1.)
         floats('alrParams', 0., 0., 1., 0.)
         # Indexed fixture arrays: same material contract on each slot.
@@ -212,9 +225,17 @@ class Runner:
             floats('ghostIndexedMaterialFactor[%d]' % i, 1., 1., 1., 1.)
             floats('ghostIndexedTextureAlpha[%d]' % i, 1.)
             floats('ghostIndexedMinimumAlpha[%d]' % i, .5)
-            g.ui(loc('ghostIndexedUseVertexAlpha[%d]' % i), 1)
-            g.ui(loc('ghostIndexedAlphaCutoffMode[%d]' % i), 1)
+            integer('ghostIndexedUseVertexAlpha[%d]' % i, 1)
+            integer('ghostIndexedAlphaCutoffMode[%d]' % i, 1)
         view = np.array([[1,0,0,shift],[0,0,1,0],[0,-1,0,-4],[0,0,0,1]],np.float32)
+        if getattr(self, 'production_avatar_basis', False):
+            # Camera at +X, with Y across the image. Geometry itself is in
+            # production bind space; object_matrix remains a production pose.
+            view = view @ self.rest_basis.T
+        if getattr(self, 'camera_center_z', 0.):
+            center = np.eye(4,dtype=np.float32)
+            center[2,3] = -self.camera_center_z
+            view = view @ center
         pose = np.eye(4,dtype=np.float32)
         if held_pose is not None:
             x,y,angle = held_pose
@@ -231,6 +252,8 @@ class Runner:
         ac, asi = np.cos(attachment_rotation), np.sin(attachment_rotation)
         attach = np.array([[ac,0,asi,0],[0,1,0,0],[-asi,0,ac,0],[0,0,0,1]],np.float32)
         view = view @ attach
+        lateral = view @ np.array([0.,1.,0.,0.],np.float32)
+        floats('ghostFxLateral', *map(float,lateral[:3]))
         # Orthographic camera allows exact integer-pixel reprojection tests.
         proj = np.diag([scale*self.projection_x, scale*.85, -.1, 1.]).astype(np.float32)
         if tile is not None:
@@ -568,8 +591,8 @@ def avatar_animation_checks(runner, tree, base, out):
     rigid=np.array(ellipsoid((0,0,0),(.5,.5,.5)),np.float32)
     palette=np.eye(4,dtype=np.float32);palette[:3,3]=(.015,.01,0)
     attachment=np.array([[.28,0,0,.34],[0,.18,0,-.12],[0,0,.38,.10],[0,0,0,1]],np.float32)
-    animated=(2,10,13,15,16,17,20,21,22,23,24,26,27,65,69,70,73,74,75,76,77)
-    static=(0,1,4,5,6,7,8,9,11,12,14,18,19,25,64,66,67,71)
+    animated=(2,10,13,15,16,17,20,21,22,23,24,26,27,65,69,70,73,74,75,77)
+    static=(0,1,4,5,6,7,8,9,11,12,14,18,19,25)
     programs={label:(runner.program(src,('HAS_SKIN',)),runner.program(src))
               for label,src in (('before',base),('after',tree))}
     original=runner.diffuse
@@ -726,9 +749,17 @@ class AvatarRunner(Runner):
     entirely enclosed. Cards have actual holes, BLEND is a separate batch, and
     the rigid wrist attachment transports its own local coordinates (unit mesh
     scaled 0.16/0.08/0.10 m). It is intentionally not a viewer/world test.
+    Default bind basis matches avatar_skeleton.xml: +X forward, Y lateral.
+    production_basis=False preserves historical Matrix oracle inputs only.
     """
-    def __init__(self, width, height, gl=None):
+    def __init__(self, width, height, gl=None, production_basis=True):
         super().__init__(width, height, gl)
+        self.production_avatar_basis = production_basis
+        from clone_looks_anatomy import anatomy
+        self.anatomy, joints = anatomy()
+        a = self.anatomy
+        self.camera_center_z = (a['foot']+a['top'])*.5 if production_basis else 0.
+        self.rest_basis = np.array([[0,-1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]], np.float32)
         self.avatar_fixture = True
         self.hidden = True
         self.include_blend = False
@@ -754,6 +785,15 @@ class AvatarRunner(Runner):
                       ((side*.38,-.015,-.23),(.075,.09,.20)),
                       ((side*.12,0,-.65),(.10,.12,.35)),
                       ((side*.12,-.09,-.95),(.105,.19,.05))]
+        if production_basis:
+            parts=[((0,0,(a['pelvis']+a['neck'])*.5),(.245,.15,(a['neck']-a['pelvis'])*.5)),
+                   ((0,0,(a['head']+a['top'])*.5),(.145,.13,(a['top']-a['head'])*.5)),
+                   ((0,0,a['pelvis']),(.23,.145,.18))]
+            for side in (-1,1):
+                parts += [((side*.31,0,a['chest']),(.09,.105,.32)),
+                          ((side*.38,-.015,a['pelvis']),(.075,.09,.20)),
+                          ((side*.12,0,(a['ankle']+a['pelvis'])*.5),(.10,.12,(a['pelvis']-a['ankle'])*.5)),
+                          ((side*.12,-.09,a['foot']),(.105,.19,a['ankle']-a['foot']))]
         body=np.array([v for c,r in parts for v in ellipsoid(c,r)],np.float32)
         y,x=np.mgrid[:256,:256]/255.
         check=((np.floor(x*24)+np.floor(y*24))%2)
@@ -762,6 +802,8 @@ class AvatarRunner(Runner):
         poison=pixels.copy();poison[...,:3]=(1,0,1)
         hidden_tex=self.texture(poison,256,256,0x8814,'mip')
         def card(x0,x1,z0,z1,y):
+            if production_basis:
+                z0,z1 = z0+self.camera_center_z,z1+self.camera_center_z
             return np.array([[x,y,z,0,-1,0,u,v] for x,z,u,v in
                             ((x0,z0,0,0),(x1,z0,1,0),(x0,z1,0,1),
                              (x0,z1,0,1),(x1,z0,1,0),(x1,z1,1,1))],np.float32)
@@ -774,11 +816,19 @@ class AvatarRunner(Runner):
         zerotex=self.texture(zero,256,256,0x8814)
         self.hair_texture=hairtex
         def add(name,verts,texture,cutoff=0.,alpha_mode=False,transform=None):
+            transform = np.eye(4,dtype=np.float32) if transform is None else transform
+            if self.production_avatar_basis:
+                # Rotate positions AND normals before upload, including all
+                # hair cards and attachment bind coordinates, not just a pose.
+                verts = verts.copy()
+                verts[:,:3] = verts[:,:3] @ self.rest_basis[:3,:3].T
+                verts[:,3:6] = verts[:,3:6] @ self.rest_basis[:3,:3].T
+                transform = self.rest_basis @ transform @ self.rest_basis.T
             vbo=g.U();g.gen_buf(1,C.byref(vbo));g.bind_buf(0x8892,vbo)
             g.buffer_data(0x8892,verts.nbytes,verts.ctypes.data,0x88E4)
             self.batches.append(dict(name=name,vbo=vbo,count=len(verts),texture=texture,
                                      cutoff=cutoff,alpha_mode=alpha_mode,
-                                     transform=np.eye(4,dtype=np.float32) if transform is None else transform))
+                                     transform=transform))
         add('mesh',body,bodytex)
         under=np.array([v for c,radii in parts for v in ellipsoid(c,np.array(radii)*.8)],np.float32)
         add('system',under,hidden_tex)
@@ -786,6 +836,7 @@ class AvatarRunner(Runner):
         add('blend',card(-.24,.24,.50,1.05,-.20),blendtex,0,True)
         transform=np.diag([.16,.08,.10,1]).astype(np.float32)
         transform[:3,3]=(.44,-.14,-.25)
+        if production_basis:transform[2,3] = a['pelvis']-.25
         # Six planar faces provide hard attachment normals and independent scale.
         box=[]
         for axis in range(3):
@@ -1024,7 +1075,7 @@ def matrix_specific_checks(r, pr, tree, out):
     schedule=r.program(ScheduleTree())
     duty=[];windows=[]
     # Tiny mesh-only target makes the 300-frame schedule sampling inexpensive.
-    tiny=AvatarRunner(32,48,r.gl);tiny.only={'mesh'}
+    tiny=AvatarRunner(32,48,r.gl, production_basis=False);tiny.only={'mesh'}
     sched=tiny.program(ScheduleTree())
     for seed in (0.,2.,4.):
         wins=[]
@@ -1082,7 +1133,7 @@ def matrix_specific_checks(r, pr, tree, out):
     r.only=None
     # Real 4K close-up: texture-vs-glyph Laplacian energy, PNGs, and timed
     # production beauty (no readback, allocation or CPU setup in the query).
-    big=AvatarRunner(3840,2160,r.gl)
+    big=AvatarRunner(3840,2160,r.gl, production_basis=False)
     pbig=big.program(tree)
     clone=big.render(pbig,1,opacity=1)
     a=big.render(pbig,79,opacity=1)
@@ -1128,7 +1179,7 @@ class FragmentVariant:
 def matrix_fix_checks(tree, active_time, gl=None):
     """Round-1 reproductions: same assertions must reject each pre-fix defect."""
     result={}
-    r=AvatarRunner(384,512,gl)
+    r=AvatarRunner(384,512,gl, production_basis=False)
     pr=r.program(tree)
     r.only={'mesh'}
     def decode_checks(program):
@@ -1169,7 +1220,7 @@ def matrix_fix_checks(tree, active_time, gl=None):
     result['decode_parked_head_rejected']=rejected(lambda:head_motion(r.program(bad_head)),'Decode >0 head')
     result['decode_parked_rows_rejected']=rejected(lambda:decode_checks(r.program(bad_decode)),'Decode >0 rows')
     r.only=None
-    tiled=AvatarRunner(192,256,r.gl)
+    tiled=AvatarRunner(192,256,r.gl, production_basis=False)
     tile_pr=tiled.program(tree)
     def assembly(full_pr,part_pr,look,time,wrong_size=False,full_runner=r):
         full=full_runner.render(full_pr,look,time=time,phase=0,opacity=1)
@@ -1192,7 +1243,7 @@ def matrix_fix_checks(tree, active_time, gl=None):
     for look,times in ((1,(0.,)),(79,(.5,)),(81,(0.,active_time)),(82,(.1,1.,2.))):
         for t in times:
             result['snapshot_tiles'][f'{look}_{t}']=assembly(pr,tile_pr,look,t)
-    fractional=AvatarRunner(480,640,r.gl)
+    fractional=AvatarRunner(480,640,r.gl, production_basis=False)
     fractional_pr=fractional.program(tree)
     for look,t in ((1,0.),(79,.5),(81,active_time),(82,1.)):
         result['snapshot_tiles'][f'fractional_{look}']=assembly(fractional_pr,tile_pr,look,t,full_runner=fractional)
@@ -1208,7 +1259,7 @@ def matrix_fix_checks(tree, active_time, gl=None):
     result['tile_operator_rejected']=rejected(lambda:assembly(old_full,old_tile,82,1.,True),'Operator tiles')
     # Isolate hair and plausible 4x6cm rigid jewelry. Each region must pass;
     # neither may be diluted into a whole-avatar percentile.
-    aa=AvatarRunner(1024,1408,r.gl)
+    aa=AvatarRunner(1024,1408,r.gl, production_basis=False)
     aa_pr=aa.program(tree)
     attachment=next(b for b in aa.batches if b['name']=='attachment')
     attachment['transform']=np.diag([.04,.03,.06,1.]).astype(np.float32)
@@ -1256,13 +1307,13 @@ def matrix_fix_checks(tree, active_time, gl=None):
 
 
 def matrix_distortion_parity(tree, gl=None):
-    r=AvatarRunner(160,224,gl)
+    r=AvatarRunner(160,224,gl, production_basis=False)
     base=G.SourceTree('0288b1ed379')
     results={}
     for label,defs in (('static',()),('skinned',('HAS_SKIN',))):
         old=r.program(base,defs);new=r.program(tree,defs)
         maximum=0.;count=0
-        for look in range(78):
+        for look in (i for i in range(78) if i not in LEGACY_ANIMATED):
             for distort in range(9):
                 for fade in (1.,.43):
                     for slot in (-1,0,1):
@@ -1289,7 +1340,7 @@ def matrix_distortion_parity(tree, gl=None):
     control=FragmentVariant(tree,[(current[start:end],reviewed[old_start:old_end])])
     # Keep the review's original resolution so derivative-sensitive faces have
     # identical coverage, rather than depending on a coarse fixture to fail.
-    q=AvatarRunner(320,448,r.gl)
+    q=AvatarRunner(320,448,r.gl, production_basis=False)
     old=q.program(base);bad=q.program(control)
     errors=[]
     for slot in (-1,0):
@@ -1303,7 +1354,7 @@ def matrix_distortion_parity(tree, gl=None):
 
 def matrix_avatar_checks(out):
     out.mkdir(parents=True,exist_ok=True)
-    r=AvatarRunner(640,896)
+    r=AvatarRunner(640,896, production_basis=False)
     tree=G.SourceTree('WORKTREE')
     pr=r.program(tree)
     plain=r.render(pr,1,time=0,phase=0,opacity=1)
@@ -1444,14 +1495,14 @@ def matrix_avatar_checks(out):
     result['negative_controls']=dict(containment=True,alpha=True,hidden_body=True,blend_exclusion=True,
                                      frozen_time=True,frozen_seed=True,deja_offset=True,
                                      glyph_no_aa_p99=alias_p99)
-    # Exact parity against incoming main, including Glass, flowing Magma and
-    # the retired IDs, as well as the other pre-Matrix look footprints.
+    # Exact parity for unchanged looks, including Magma and retired IDs.
+    # LEGACY_ANIMATED uses real-avatar safety and cycle-averaged similarity instead.
     old=r.program(G.SourceTree('0288b1ed379'))
-    parity=max(float(np.max(np.abs(r.render(old,i)-r.render(pr,i)))) for i in range(78))
+    parity=max(float(np.max(np.abs(r.render(old,i)-r.render(pr,i)))) for i in range(78) if i not in LEGACY_ANIMATED)
     assert parity==0.,('avatar all-existing-look parity',parity)
     skin=r.program(tree,('HAS_SKIN',))
     oldskin=r.program(G.SourceTree('0288b1ed379'),('HAS_SKIN',))
-    skinparity=max(float(np.max(np.abs(r.render(oldskin,i)-r.render(skin,i)))) for i in range(78))
+    skinparity=max(float(np.max(np.abs(r.render(oldskin,i)-r.render(skin,i)))) for i in range(78) if i not in LEGACY_ANIMATED)
     assert skinparity==0.,('avatar all-existing-look skin parity',skinparity)
     for look in range(78,85):
         assert np.any(r.render(skin,look)[...,3]),('empty skinned avatar',look)
@@ -1470,6 +1521,355 @@ def matrix_avatar_checks(out):
     return result
 
 
+CINEMATIC_NAMES = ('Aureole', 'Choir Light', 'Featherfall', 'Rapture', 'Emitter',
+                   'Bad Reception', 'Static Veil', 'Latency', 'Facets', 'Cold Gaze',
+                   'Intrusion', 'Overclock', 'Reform', 'Torn Husk', 'Hunter Vision', 'Ooze')
+
+
+def cinematic_checks(out, parity=True):
+    """New range: production defaults, solid prime, real-scale multi-batch oracle.
+
+    BLEND is present in the fixture but excluded by the real Studio solid policy.
+    Separate BLEND replay checks alpha semantics; it is not a new viewer sweep.
+    """
+    out.mkdir(parents=True, exist_ok=True)
+    tree = G.SourceTree('WORKTREE')
+    r = AvatarRunner(448, 640)
+    pr = r.program(tree,('HAS_SKIN',))
+    position_probe = r.program(tree, probe=True)
+    plain = r.render(pr, 1, opacity=1)
+    mask = plain[..., 3] > .99
+    dilated = mask.copy()
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            dilated |= np.roll(np.roll(mask, dy, 0), dx, 1)
+    interior = mask.copy()
+    for axis in (0, 1):
+        interior &= np.roll(mask, 3, axis) & np.roll(mask, -3, axis)
+    result = dict(base='95b4098e239', defaults=r.draw_defaults, looks={})
+
+    def save(a, path):
+        rgb = a[..., :3] + .045 * (1-a[..., 3:4])
+        Image.fromarray((np.clip(rgb[::-1], 0, 1)*255+.5).astype(np.uint8)).save(out/path)
+
+    def aa_check(program, look, region, scale, rotation, time=2.37, phase=.73):
+        r.only = {'mesh'} if region == 'head' else ({region} if region else None)
+        opts = dict(time=time, phase=phase, opacity=1, scale=scale, rotation=rotation)
+        dx, dy = 2/(r.projection_x*r.width*scale), 2/(.85*r.height*scale)
+        actual = np.clip(r.render(program, look, shift=.5*dx, **opts), 0, 1)
+        ref = np.zeros_like(actual)
+        for jy in (-.375, -.125, .125, .375):
+            for jx in (-.375, -.125, .125, .375):
+                ref += np.clip(r.render(program, look, shift=(.5+jx)*dx,
+                                        shift_y=jy*dy, **opts), 0, 1)/16
+        valid = r.render(pr, 1, shift=.5*dx, **opts)[..., 3] > .99
+        original = valid.copy()
+        for axis in (0, 1):
+            valid &= np.roll(original, 2, axis) & np.roll(original, -2, axis)
+        if region == 'head':
+            positions = r.render(position_probe, 1, shift=.5*dx, **opts)
+            valid &= positions[..., 2] > r.anatomy['head']
+        assert valid.sum() >= 10, ('empty AA oracle', look, region, valid.sum())
+        error = actual[valid]-ref[valid]
+        values = dict(region=region or 'whole', scale=scale, rotation=rotation, time=time, seed=phase,
+                      pixels=int(valid.sum()), rms=float(np.sqrt(np.mean(error**2))),
+                      p99=float(np.quantile(np.abs(error), .99)))
+        assert values['rms'] < .04 and values['p99'] < .15, ('new look AA', look, values)
+        r.only = None
+        return values
+
+    for look, name in enumerate(CINEMATIC_NAMES, 85):
+        animation = []
+        for fps in (0, 12):
+            frames = [r.render(pr, look, time=t, effect_fps=fps, phase=.73, opacity=1)
+                      for t in (.17, .73, 1.61, 3.17, 5.43, 7.85, 8.65)]
+            for a in frames:
+                assert np.max(np.abs(a[~dilated])) == 0, (look, 'outside silhouette')
+                assert np.array_equal(a[..., 3], plain[..., 3]), (look, 'authored alpha changed')
+            differences = [float(np.mean(np.abs(a[interior, :3]-b[interior, :3])))
+                           for a, b in zip(frames, frames[1:])]
+            assert max(differences) > .01 and min(differences) > .0001, (look, fps, 'parked', differences)
+            if fps:
+                a = r.render(pr, look, time=.501, effect_fps=fps, opacity=1)
+                b = r.render(pr, look, time=.54, effect_fps=fps, opacity=1)
+                assert np.array_equal(a, b), (look, 'effect fps hold')
+            animation.append(dict(fps=fps, adjacent_mean_rgb=differences))
+        a = r.render(pr, look, time=.73, phase=.73, opacity=1)
+        assert np.array_equal(a, r.render(pr, look, time=.73, phase=.73, opacity=1)), (look, 'determinism')
+        seed = r.render(pr, look, time=.73, phase=2.47, opacity=1)
+        seed_error = float(np.mean(np.abs(a[interior]-seed[interior])))
+        assert seed_error > .002, (look, 'seed synchronized', seed_error)
+        r.hidden = False
+        hidden_error = float(np.max(np.abs(a-r.render(pr, look, time=.73, phase=.73, opacity=1))))
+        r.hidden = True
+        assert hidden_error < .005, (look, 'system body leaks', hidden_error)
+        r.only = {'invisible'}
+        assert not np.any(r.render(pr, look, opacity=1)), (look, 'alpha-zero prim')
+        r.only = {'hair'}
+        hair = r.render(pr, look, opacity=1)
+        assert np.array_equal(hair[..., 3], r.render(pr, 1, opacity=1)[..., 3]), (look, 'MASK alpha')
+        for fade in (1., .43):
+            authored = r.render(pr, 1, opacity=.4, fade=fade)[..., 3]
+            for distortion in range(9):
+                distorted = r.render(pr, look, opacity=.4, fade=fade, distort=distortion)
+                assert np.array_equal(distorted[..., 3], authored), (look, fade, distortion, 'distortion moved authored coverage')
+            for creative in (dict(pixel_size=7.), dict(glitch=.8)):
+                changed = r.render(pr, look, opacity=.4, fade=fade, **creative)
+                assert np.array_equal(changed[..., 3], authored), (look, fade, creative, 'creative FX moved authored coverage')
+        assert not np.any(r.render(pr, look, opacity=1, tint=(1, 1, 1, 0))), (look, 'vertex alpha zero')
+        r.only = {'blend'}; r.include_blend = True
+        blend = r.render(pr, look, opacity=1)
+        assert np.array_equal(blend[..., 3], r.render(pr, 1, opacity=1)[..., 3]), (look, 'BLEND alpha semantics')
+        r.only = None; r.include_blend = False
+        aa = [aa_check(pr, look, region, scale, rotation)
+              for region, scale, rotation in ((None, .4, 0.), ('hair', 1., .37), ('attachment', 1., .37))]
+        if look == 94:
+            aa += [aa_check(pr, look, 'head', scale, 0.) for scale in (.65, 1.)]
+        # Every new look gets the same phase/size envelope, including all
+        # hashed-cell looks. .25 is ~130 px body height on this render target.
+        aa += [aa_check(pr, look, 'mesh', scale, 0., time=time, phase=seed)
+               for scale in (.4, .25) for time, seed in ((2.37, .73), (5.5, 0.), (7.85, 0.))]
+        if look == 96:
+            # Isolate row reconstruction: the bounded crash/frenzy palette
+            # must not determine whether this filtering control is sensitive.
+            from clone_looks_safety_check import BranchProbe
+            rows = BranchProbe(tree,96,'vec3(row)')
+            filtered = r.program(rows)
+            unfiltered = r.program(FragmentVariant(rows, [('row = mix(row,adjacent,rowMix);', '')]))
+            r.only = {'mesh'}
+            opts = dict(scale=.25,time=5.5,phase=0.,opacity=1.)
+            good = r.render(filtered,look,**opts); bad = r.render(unfiltered,look,**opts)
+            error = float(np.max(np.abs(good-bad)))
+            assert error > .05, 'Overclock row reconstruction control insensitive'
+            result['overclock_unfiltered_control_rejected'] = dict(isolated_row_error=error)
+            r.only = None
+        for index, t in enumerate(np.arange(0, 9, .5)):
+            save(r.render(pr, look, time=float(t), phase=.73, opacity=1), f'{look}_sequence_{index:02d}.png')
+        save(a, f'{look}_{name.lower().replace(" ", "_")}.png')
+        result['looks'][str(look)] = dict(name=name, animation=animation, seed_mean_rgba=seed_error,
+                                         hidden_body_max_error=hidden_error, aa=aa)
+        print('PASS cinematic avatar/defaults/time/fps/alpha/seed/AA:', look, name, flush=True)
+
+    result['specific'] = cinematic_specific_checks(r, pr, tree, out)
+
+    # Screen motifs are evaluated using the whole image, at active phases.
+    whole = AvatarRunner(384, 512, r.gl); small = AvatarRunner(192, 256, r.gl)
+    wp = whole.program(tree); sp = small.program(tree)
+    tile_results = {}
+    for look in (90, 91, 99):
+        errors = []
+        for t in (.73, 2.37):
+            full = whole.render(wp, look, time=t, opacity=1, screen_size=(384, 512))
+            assembled = np.zeros_like(full)
+            for ty in range(2):
+                for tx in range(2):
+                    tile = small.render(sp, look, time=t, opacity=1, screen_size=(384, 512),
+                                        frag_offset=(tx*192, ty*256), tile=(tx, ty, 2, 2))
+                    assembled[ty*256:(ty+1)*256, tx*192:(tx+1)*192] = tile
+            error = float(np.max(np.abs(full-assembled)))
+            assert error < .004, (look, 'snapshot assembly', error)
+            errors.append(error)
+        tile_results[str(look)] = errors
+    result['snapshot_max_errors'] = tile_results
+
+    # Production fill variants must preserve all coverage and replace RGB only.
+    for defs in ((), ('HAS_SKIN',)):
+        normal = r.program(tree, defs); fill = r.program(tree, defs+('AL_KEY_FILL',))
+        for look in range(85, 101):
+            a = r.render(normal, look, opacity=1)
+            for colour in ((0., 177/255, 64/255), (1., 1., 1.), (0., 0., 0.)):
+                r.gl.use(fill); r.gl.uf[3](r.gl.loc(fill, b'ghostKeyFill'), *colour)
+                b = r.render(fill, look, opacity=1)
+                assert np.array_equal(a[..., 3], b[..., 3]), (defs, look, 'key alpha')
+                # AvatarRunner composites onto transparent black.
+                assert np.max(np.abs(b[..., :3]-b[..., 3:4]*colour)) < 1e-6, (defs, look, 'key RGB')
+    result['key_fill'] = 'static/skinned key/white/black RGB; exact alpha'
+
+    # Mutated production programs verify that animation and seed tests can fail.
+    frozen = r.program(FragmentVariant(tree, [('uniform float ghostTime;', 'const float ghostTime = 0.;')]))
+    class Seedless:
+        def read(self, path):
+            s = tree.read(path)
+            return s.replace('ghostAux.w', '0.0') if path == F else s
+    seedless = r.program(Seedless())
+    for look in range(85, 101):
+        assert np.array_equal(r.render(frozen, look, time=0), r.render(frozen, look, time=4)), (look, 'frozen control')
+        assert np.array_equal(r.render(seedless, look, phase=0), r.render(seedless, look, phase=2)), (look, 'seed control')
+    assert np.any(r.render(pr, 85, shift=.5)[~dilated]), 'containment control insensitive'
+    r.only = {'invisible'}; r.alpha_poison = True
+    assert r.render(pr, 85, opacity=1)[..., 3].max() > .5, 'alpha control insensitive'
+    r.only = None; r.alpha_poison = False; r.unprimed = True
+    a = r.render(pr, 90, time=.73, opacity=1); r.hidden = False
+    assert np.max(np.abs(a-r.render(pr, 90, time=.73, opacity=1))) > .005, 'prime control insensitive'
+    r.hidden = True; r.unprimed = False
+    # Omission of snapshot offset must fail the assembly oracle.
+    wrong = small.render(sp, 91, time=.73, opacity=1, screen_size=(384, 512), tile=(1, 1, 2, 2))
+    correct = small.render(sp, 91, time=.73, opacity=1, screen_size=(384, 512), frag_offset=(192, 256), tile=(1, 1, 2, 2))
+    assert np.max(np.abs(wrong-correct)) > .05, 'tile offset control insensitive'
+    result['negative_controls'] = dict(frozen_clock=True, seedless=True, displaced=True, alpha_poison=True,
+                                       missing_prime=True, tile_offset=True)
+
+    if parity:
+        p = AvatarRunner(160, 224, r.gl); base = G.SourceTree('95b4098e239')
+        result['existing_parity'] = {}
+        for label, defs in (('static', ()), ('skin', ('HAS_SKIN',))):
+            old = p.program(base, defs); new = p.program(tree, defs)
+            count = 0
+            for look in (i for i in list(range(28))+list(range(64, 85)) if i not in LEGACY_ANIMATED):
+                for distortion in range(9):
+                    for fade in (1., .43):
+                        for slot in (-1, 0, 1):
+                            opts = dict(distort=distortion, fade=fade, slot=slot, adjacent_slots=True)
+                            assert np.array_equal(p.render(old, look, **opts), p.render(new, look, **opts)), ('existing parity', label, look, opts)
+                            count += 1
+                for slot in (-1, 0, 1):
+                    for fade in (1., .43):
+                        opts = dict(pixel_size=7., fade=fade, slot=slot, adjacent_slots=True)
+                        assert np.array_equal(p.render(old, look, **opts), p.render(new, look, **opts)), ('pixel parity', label, look, opts)
+                        count += 1
+            result['existing_parity'][label] = dict(cases=count, max_error=0.0)
+            print('PASS all existing distortion/fade/slot/Pixel parity against 95b4098e239:', label, count, 'error 0.0', flush=True)
+
+    big = AvatarRunner(3840, 2160, r.gl); bp = big.program(tree)
+    result['4k'] = dict(renderer=big.gl.renderer, size=[3840, 2160], looks={},
+                        note='GPU beauty only; excludes depth prime, readback, CPU submission and viewer scene; synthetic fixture')
+    for look, name in enumerate(CINEMATIC_NAMES, 85):
+        a = big.render(bp, look, time=2.37, opacity=1)
+        save(a, f'{look}_avatar_4k.png')
+        big.avatar_timing = True; samples = []
+        for _ in range(5):
+            big.render(bp, look, time=2.37, opacity=1)
+            samples.append(big.avatar_ms)
+        big.avatar_timing = False
+        result['4k']['looks'][str(look)] = dict(name=name, beauty_gpu_ms_median=float(np.median(samples[2:])),
+                                               samples=samples, coverage_pixels=int(np.count_nonzero(a[..., 3])))
+    sheet = Image.new('RGB', (4*224, 4*352), '#111111'); draw = ImageDraw.Draw(sheet)
+    for i, name in enumerate(CINEMATIC_NAMES):
+        with Image.open(out/f'{85+i}_{name.lower().replace(" ", "_")}.png') as im:
+            im.thumbnail((224, 320), Image.Resampling.LANCZOS)
+            sheet.paste(im, (i%4*224, i//4*352+28))
+        draw.text((i%4*224+5, i//4*352+7), f'{85+i} {name}', fill='white')
+    sheet.save(out/'looks16_contact_sheet.png'); sheet.save(out/'contact_sheet.png')
+    (out/'looks16_metrics.json').write_text(json.dumps(result, indent=2)+'\n')
+    return result
+
+
+def cinematic_specific_checks(r, pr, tree, out):
+    """Semantic oracles reject brightness-only substitutes for specified motion."""
+    from clone_looks_safety_check import RealAvatar, anatomy, BranchProbe as RealProbe
+    real = RealAvatar(640,768,r.gl)
+    real_program = real.program(tree,('HAS_SKIN',))
+    results = dict(real_sl_anatomy=anatomy(real,tree,real_program))
+    class BranchProbe(RealProbe):
+        def __init__(self,look,expression):super().__init__(tree,look,expression)
+    r.only = {'mesh'}
+    position = r.program(tree,('HAS_SKIN',),probe=True)
+    positions = r.render(position,1,opacity=1)
+    mask = positions[...,3]>.99
+
+    # Nearest cutout hair has hidden, brightly poisoned texels. Displaced RGB
+    # must ignore those taps; original authored alpha must be bit-identical.
+    r.only = {'hair'}
+    batch = next(b for b in r.batches if b['name'] == 'hair')
+    original = batch['texture']
+    y, x = np.mgrid[:256, :256]/255.
+    alpha = np.where((np.floor(x*16)%3 == 0) | (y < .1), 0., 1.)
+    pixels = np.empty((256, 256, 4), np.float32)
+    pixels[..., :3] = (.12, .07, .03); pixels[..., 3] = alpha
+    poison = pixels.copy(); poison[alpha == 0, :3] = (19., 7., 31.)
+    clean = r.texture(pixels, 256, 256, 0x8814)
+    dirty = r.texture(poison, 256, 256, 0x8814)
+    def poison_error(program):
+        batch['texture'] = clean; a = r.render(program, 92, time=.73, phase=0, opacity=1)
+        batch['texture'] = dirty; b = r.render(program, 92, time=.73, phase=0, opacity=1)
+        batch['texture'] = original
+        assert np.array_equal(a[..., 3], b[..., 3]), 'Latency displaced alpha'
+        return float(np.max(np.abs(a-b)))
+    assert poison_error(pr) == 0., 'Latency samples invisible RGB'
+    ungated = r.program(FragmentVariant(tree, [
+        ('float tapCoverage = activeGhostAlpha.x > 0.5 ? step(1.0, tap.a) : 1.0;', 'float tapCoverage = 1.0;')]))
+    assert poison_error(ungated) > .1, 'Latency poison control insensitive'
+    # White hidden RGB is ordinary authored cutout content. Compare only
+    # originally opaque pixels whose unshifted Clone is bit-identical, so this
+    # isolates displaced-tap contamination from native filtering at hair edges.
+    old_weight = r.program(FragmentVariant(tree, [
+        ('float tapCoverage = activeGhostAlpha.x > 0.5 ? step(1.0, tap.a) : 1.0;',
+         'float tapCoverage = activeGhostAlpha.x > 0.5 ? tap.a : 1.0;')]))
+    white = pixels.copy(); white[alpha == 0, :3] = 1.
+    results['latency_filtered_hidden_white'] = {}
+    for filtering in ('linear', 'mip'):
+        clean = r.texture(pixels,256,256,0x8814,filtering)
+        dirty = r.texture(white,256,256,0x8814,filtering)
+        batch['texture'] = clean; clone_a = r.render(pr,1,opacity=1)
+        batch['texture'] = dirty; clone_b = r.render(pr,1,opacity=1)
+        same = (clone_a[...,3] == 1.) & np.all(clone_a == clone_b,axis=2)
+        assert same.sum() > 1000, (filtering, 'empty identical-source opaque control')
+        def filtered_error(program):
+            batch['texture'] = clean; a = r.render(program,92,time=.73,phase=0,opacity=1)
+            batch['texture'] = dirty; b = r.render(program,92,time=.73,phase=0,opacity=1)
+            assert np.array_equal(a[...,3],b[...,3]), (filtering,'filtered alpha moved')
+            return float(np.max(np.abs(a[same,:3]-b[same,:3])))
+        error, broken = filtered_error(pr), filtered_error(old_weight)
+        assert error < 1e-6, (filtering,'Latency imports hidden white',error)
+        assert broken > .05, (filtering,'partial-coverage negative control insensitive',broken)
+        results['latency_filtered_hidden_white'][filtering] = dict(pixels=int(same.sum()),
+                                                                  max_error=error, old_weight_error=broken)
+    batch['texture'] = original
+    r.only = {'mesh'}
+    no_shift = r.program(FragmentVariant(tree, [('offset /= max(1.0, length(offset / texel) / 3.0);', 'offset = vec2(0.0);')]))
+    a = r.render(pr, 92, time=.73, phase=0, opacity=1)
+    b = r.render(no_shift, 92, time=.73, phase=0, opacity=1)
+    results['latency_content_shift_error'] = float(np.mean(np.abs(a[mask]-b[mask])))
+    assert results['latency_content_shift_error'] > .002, 'Latency only brightness animates'
+    results['latency_poison_control_rejected'] = True
+    r.only = {'hair'}
+    alpha_signal = r.program(FragmentVariant(tree, [
+        ('    if (cinematicLook) alpha = color.a * tex.a;', '')]))
+    signal_args = dict(opacity=.4, glitch=.8)
+    correct = r.render(pr, 85, **signal_args)
+    broken = r.render(alpha_signal, 85, **signal_args)
+    assert np.max(np.abs(correct[..., 3]-broken[..., 3])) > .001, 'shared signal alpha control insensitive'
+    results['shared_signal_alpha_control_rejected'] = True
+    r.only = {'mesh'}
+
+    plane = r.program(BranchProbe(88, 'vec3(changed, sweep, plane)'),('HAS_SKIN',))
+    early = r.render(plane, 88, time=1.8, phase=0, opacity=1)
+    late = r.render(plane, 88, time=3.4, phase=0, opacity=1)
+    crossed = mask & (abs(positions[..., 2]-r.anatomy['pelvis']) < .08)
+    below = mask & (positions[..., 2] < r.anatomy['knee']*.6)
+    above = mask & (positions[..., 2] > r.anatomy['neck'])
+    assert early[crossed, 0].mean() < .1 and late[crossed, 0].mean() > .9, 'Rapture plane direction/coverage'
+    assert early[below, 0].mean() > .9 and late[above, 0].mean() < .1, 'Rapture changed-side reversed'
+    results['rapture_upward_plane'] = True
+
+    # Hold palette/pulse state constant; shard field itself must move.
+    facets = r.program(BranchProbe(93, 'vec3(piece, seam, 0.0)'))
+    frozen_shape = r.program(FragmentVariant(BranchProbe(93, 'vec3(piece, seam, 0.0)'), [
+        ('float shatter = sq(sin(t * 1.05 + rnd * 2.0));', 'float shatter = 0.0;')]))
+    def pattern_motion(program):
+        a = r.render(program, 93, time=.2, phase=0, opacity=1)
+        b = r.render(program, 93, time=1.3, phase=0, opacity=1)
+        return float(np.mean(np.abs(a[mask]-b[mask])))
+    results['facet_shape_motion'] = pattern_motion(facets)
+    assert results['facet_shape_motion'] > .02 and pattern_motion(frozen_shape) == 0., 'Facets brightness-only motion'
+
+    hunter = r.program(BranchProbe(99, 'vec3(hunt, target)'))
+    def target(program, time):
+        a = r.render(program, 99, time=time, phase=0, opacity=1)
+        return a[mask, :3].mean(axis=0)
+    before = target(hunter, 1.61); after = target(hunter, 1.69)
+    held1 = target(hunter, 2.0); held2 = target(hunter, 2.7)
+    assert before[0] > .99 and after[0] < .01, 'Hunter has no short acquisition snap'
+    assert np.array_equal(held1, held2) and held1[0] == 0., 'Hunter lock does not hold'
+    soft = r.program(FragmentVariant(BranchProbe(99, 'vec3(hunt, target)'), [
+        ('smoothstep(0.54,0.56,fract(t/3.0))', 'smoothstep(0.35,0.65,fract(t/3.0))')]))
+    assert target(soft, 1.61)[0] < .99, 'Hunter snap negative control insensitive'
+    results['hunter_hunt_snap_hold'] = True
+    r.only = None
+    print('PASS semantic motion/anatomy/Latency poison and sensitivity controls', flush=True)
+    return results
+
+
 def main():
     from clone_looks_runtime_check import check as runtime_check
     runtime_check()
@@ -1477,9 +1877,17 @@ def main():
     ap.add_argument('--base', default='ab2329ba39f')
     ap.add_argument('--width', type=int, default=768)
     ap.add_argument('--height', type=int, default=768)
-    ap.add_argument('--out', type=Path, default=ROOT/'.tmp/matrix_20261102/renders')
+    ap.add_argument('--out', type=Path, default=ROOT/'.tmp/looks16/renders')
+    ap.add_argument('--cinematic-only', action='store_true', help='run the new avatar/defaults/parity suite only')
+    ap.add_argument('--skip-cinematic-parity', action='store_true', help='development renders only; never a final gate')
     args = ap.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)
+    if args.cinematic_only:
+        cinematic_checks(args.out, parity=not args.skip_cinematic_parity)
+        from clone_looks_safety_check import check as safety_check
+        safety_check(args.out/'safety')
+        print('PASS cinematic checks', flush=True)
+        return
     runner = Runner(args.width,args.height)
     tree, base = G.SourceTree('WORKTREE'), G.SourceTree(args.base)
     stats = dict(renderer=runner.gl.renderer, size=[args.width,args.height], regressions=[], looks={})
@@ -1597,7 +2005,7 @@ def main():
     pr = runner.program(tree)
     for defs in ((), ('HAS_SKIN',)):
         current, previous = runner.program(tree,defs), runner.program(base,defs)
-        for look in list(range(28)) + list(range(64,85)):
+        for look in (i for i in list(range(28)) + list(range(64,85)) if i not in LEGACY_ANIMATED):
             for time in (2., 2.61):
                 for fade in (1., .45):
                     a = runner.render(previous,look,time=time,fade=fade)
@@ -1606,7 +2014,7 @@ def main():
     stats['requested_base_unchanged_max_error'] = 0.0
     print('PASS requested-base parity: all shared/Studio IDs including Magma and Matrix, static + rigged, two times/fades: 0.0',flush=True)
     phase1 = runner.program(G.SourceTree('24b2723dcd9'))
-    unchanged = [look for look in range(78) if look not in (64,68,69,72,75)]
+    unchanged = [look for look in range(78) if look not in (64,68,69,72,75) + LEGACY_ANIMATED]
     parity = max(float(np.max(np.abs(runner.render(pr,look)-runner.render(phase1,look))))
                  for look in unchanged)
     assert parity == 0., ('phase 1 unchanged looks',parity)
@@ -1617,7 +2025,7 @@ def main():
                       for look in unchanged)
     assert skin_parity == 0., ('phase 1 unchanged rigged looks',skin_parity)
     stats['phase1_unchanged_rigged_max_error'] = skin_parity
-    print('PASS phase-1 parity: all 73 unaffected Studio ids, static + rigged max error',parity,skin_parity,flush=True)
+    print('PASS phase-1 parity: unaffected Studio ids, static + rigged max error',parity,skin_parity,flush=True)
     runner.probe = runner.program(tree, probe=True)
     def save(a,name):
         rgb = a[...,:3]*np.clip(a[...,3:4],0,1)+.12*(1-np.clip(a[...,3:4],0,1))
@@ -1634,7 +2042,7 @@ def main():
         assert mid[3] == 0, (look,'alpha mask filled',mid)
         temporal = float(np.quantile(np.abs(a-b),.99))
         if look in (66,67,71):
-            assert temporal <= 1/255, (look,'static detail crawls',temporal)
+            assert temporal <= 1/255, (look,'subtle motion per-frame bound',temporal)
         moved = np.roll(c,-1,axis=1)
         interior = (a[...,3]>.8)&(moved[...,3]>.8)
         camera = float(np.quantile(np.abs(a[interior]-moved[interior]),.99)) if interior.any() else 0.
@@ -1687,6 +2095,9 @@ def main():
     sheet.save(args.out/'legacy_contact_sheet.png')
     stats['matrix_avatar'] = matrix_avatar_checks(args.out)
     stats['4k'] = four_k_check(args.out)
+    stats['cinematic'] = cinematic_checks(args.out)
+    from clone_looks_safety_check import check as safety_check
+    stats['safety'] = safety_check(args.out/'safety')
     (args.out/'metrics.json').write_text(json.dumps(stats,indent=2)+'\n',encoding='utf-8')
     print('PASS: all clone look GL checks; PNGs and metrics:',args.out,flush=True)
 

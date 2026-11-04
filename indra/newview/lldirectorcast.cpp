@@ -142,6 +142,12 @@ void sanitizeActorStyle(LLDirectorCast::ActorStyle& style)
     style.mGlitch = llclamp(
         std::isfinite(style.mGlitch) ? style.mGlitch : defaults.mGlitch,
         0.f, 1.f);
+    style.mSlice = llclamp(std::isfinite(style.mSlice) ? style.mSlice : 0.f, 0.f, 1.f);
+    style.mDropout = llclamp(std::isfinite(style.mDropout) ? style.mDropout : 0.f, 0.f, 1.f);
+    style.mPowerFlicker = llclamp(std::isfinite(style.mPowerFlicker) ? style.mPowerFlicker : 0.f, 0.f, 1.f);
+    style.mWipe = llclamp(std::isfinite(style.mWipe) ? style.mWipe : 0.f, 0.f, 1.f);
+    style.mInterlace = llclamp(std::isfinite(style.mInterlace) ? style.mInterlace : 0.f, 0.f, 1.f);
+    style.mPositionJitter = llclamp(std::isfinite(style.mPositionJitter) ? style.mPositionJitter : 0.f, 0.f, 1.f);
     style.mDistortion = llclamp(style.mDistortion, 0, 8);
     style.mDistortionAmount = llclamp(
         std::isfinite(style.mDistortionAmount) ? style.mDistortionAmount

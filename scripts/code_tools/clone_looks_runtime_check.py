@@ -11,6 +11,8 @@ from relight_area_policy_check import method
 
 
 def check():
+    from clone_fx_runtime_check import check as clone_fx_check
+    clone_fx_check()
     path = Path('indra/newview/llactormover.cpp')
     overlay = method(path, 'void LLActorMover::renderStudioGhosts(')
     draw = method(path, 'S32 drawGeometryGhost(')
@@ -19,10 +21,10 @@ def check():
     import re
     import xml.etree.ElementTree as ET
     source = path.read_text(encoding='utf-8')
-    names = ('DECODE', 'GLYPH_SKIN', 'CONSTRUCT_WIRE', 'DEJA_VU', 'OPERATOR', 'DIAL_OUT', 'SOURCE')
+    names = ('DECODE', 'GLYPH_SKIN', 'CONSTRUCT_WIRE', 'DEJA_VU', 'OPERATOR', 'DIAL_OUT', 'SOURCE', 'AUREOLE', 'CHOIR_LIGHT', 'FEATHERFALL', 'RAPTURE', 'EMITTER', 'BAD_RECEPTION', 'STATIC_VEIL', 'LATENCY', 'FACETS', 'COLD_GAZE', 'INTRUSION', 'OVERCLOCK', 'REFORM', 'TORN_HUSK', 'HUNTER_VISION', 'OOZE')
     for value, name in enumerate(names, 78):
         assert re.search(r'GHOST_STYLE_' + name + r'\s*=\s*' + str(value) + r'\b', source)
-    assert 'GHOST_STYLE_STUDIO_END = 85' in source
+    assert 'GHOST_STYLE_STUDIO_END = 101' in source
     assert 'style >= GHOST_STYLE_STUDIO_BASE && style < GHOST_STYLE_STUDIO_END' in draw
     assert '? static_cast<S32>(GHOST_STYLE_THERMAL) : style' in draw
     assert 'sh->uniform1i(sGhostLook, style)' in draw
@@ -33,20 +35,45 @@ def check():
     heading = method(path, 'void LLActorMover::renderHeadingPreview(')
     assert 'ALGhostStudio::resolveOverlayStyle((S32)ghost_style)' in heading
     assert 'ALGhostStudio::isOverlayStyle' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8') or 'isOverlayStyle(' in Path('indra/newview/alghoststudio.cpp').read_text(encoding='utf-8')
-    assert '(style >= 64 && style <= 84 && style != 68 && style != 72)' in Path('indra/newview/alghoststudio.h').read_text(encoding='utf-8')
+    assert '(style >= 64 && style <= 100 && style != 68 && style != 72)' in Path('indra/newview/alghoststudio.h').read_text(encoding='utf-8')
     xui = Path('indra/newview/skins/default/xui/en')
     selectors = 0
     for file in ('panel_ghost_studio.xml', 'panel_dpage_cast_ghosts.xml', 'panel_path_editor.xml', 'panel_dpage_cast_path.xml'):
         for combo in ET.parse(xui/file).iter('combo_box'):
             if combo.get('name') in ('style_combo','ghost_style_combo') or combo.get('name','').startswith('crowd_mix_look_'):
                 values = [n.get('value') for n in combo.findall('combo_box.item')]
-                assert all(values.count(str(i)) == 1 for i in range(78,85)), (file,combo.get('name'),values)
+                assert all(values.count(str(i)) == 1 for i in range(78,101)), (file,combo.get('name'),values)
                 selectors += 1
     assert selectors == 16, selectors
-    for look in range(78,85):
+    for look in range(78,101):
         assert f'case {look}: return ' in Path('indra/newview/alpanelghoststudio.cpp').read_text(encoding='utf-8')
+    cinematic_names = ('Aureole', 'Choir Light', 'Featherfall', 'Rapture', 'Emitter',
+                       'Bad Reception', 'Static Veil', 'Latency', 'Facets', 'Cold Gaze',
+                       'Intrusion', 'Overclock', 'Reform', 'Torn Husk', 'Hunter Vision', 'Ooze')
+    style_names = Path('indra/newview/alpanelghoststudio.cpp').read_text(encoding='utf-8')
+    for look, name in enumerate(cinematic_names, 85):
+        assert f'case {look}: return "{name}";' in style_names
+    for file in ('panel_ghost_studio.xml', 'panel_dpage_cast_ghosts.xml', 'panel_path_editor.xml', 'panel_dpage_cast_path.xml'):
+        for combo in ET.parse(xui/file).iter('combo_box'):
+            if combo.get('name') in ('style_combo','ghost_style_combo') or combo.get('name','').startswith('crowd_mix_look_'):
+                labels = {int(n.get('value')): n.get('label') for n in combo.findall('combo_box.item')}
+                assert all(labels[i] == name for i, name in enumerate(cinematic_names, 85))
     # Existing CPU clock and per-instance UUID seed reach the shared upload.
-    assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
+    assert 'actor_ghost_studio_frame_time(gp.mEffectFps, motion_period)' in draw
+    assert 'const F64 motion_period = actor_ghost_motion_period(style);' in draw
+    assert not re.search(r'\bstyle\s*=(?!=)', draw[draw.index('const F64 motion_period'):]), 'look changed after clock selection'
+    assert 'LLRenderPass::actorFxFrameTime(gp.mEffectFps, motion_period)' in draw
+    system = method(path, 'bool LLActorMover::renderSystemActorGhost(')
+    assert 'gp.mEffectFps, actor_ghost_motion_period(look)' in system
+    assert 'shader.uniform1i(sGhostLook, look)' in system
+    # Wrapped time is exclusively a shader uniform, never an age/progress operand.
+    for body in (draw,system):
+        uses=[line.strip() for line in body.splitlines() if 'ghost_now' in line]
+        assert len(uses)==2 and 'const F32 ghost_now =' in uses[0] and 'uniform1f(sGhostTime, ghost_now)' in uses[1], uses
+    assert source.count('F32 actor_ghost_studio_frame_time(')==1
+    assert '#include <cmath>' in source
+    assert '#include <cmath>' in Path('indra/newview/lldrawpool.cpp').read_text()
+    assert 'F64 wrap_period = 0.0' in Path('indra/newview/lldrawpool.h').read_text()
     assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
     assert 'inst.mId.mData[0] | (inst.mId.mData[1] << 8)' in overlay
     assert '++invocation;' in overlay
@@ -89,7 +116,7 @@ def check():
     studio = Path('indra/newview/alghoststudio.cpp').read_text()
     # Clock upload is outside all held-pose/fade/helper dispatch. Pose cadence
     # must change geometry sampling, never the independent creative FX clock.
-    assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
+    assert 'actor_ghost_studio_frame_time(gp.mEffectFps, motion_period)' in draw
     assert 'sh->uniform1f(sGhostTime, ghost_now);' in draw
     for field in ('gp.mEffectFps        = inst.mEffectFps;',
                   'gp.mFrozenPalettes = &inst.mOffsetPose->mFrozenPalettes;',
@@ -624,10 +651,52 @@ int main(){
  gSnapshot=true;++gFrameCount;now=101.;float frozen=actor_ghost_studio_frame_time(12);
  ++gFrameCount;now=105.;assert(actor_ghost_studio_frame_time(12)==frozen);
  gSnapshot=false;++gFrameCount;assert(actor_ghost_studio_frame_time(0)==5.f);
+ // Wrap after quantization, in double precision, even after a year.
+ const double period=628.31853071795864769;
+ for(double age : {period-1./60,period,period+1./60,86400.123456,31536000.123456}) {
+   now=100.+age;++gFrameCount;
+   for(float fps : {0.f,10.f,12.f,30.f}) {
+     const double stepped=fps>0 ? floor(age*fps)/fps : age;
+     assert(actor_ghost_studio_frame_time(fps,period)==float(std::fmod(stepped,period)));
+     assert(actor_ghost_studio_frame_time(fps)==float(stepped));
+   }
+ }
+ gSnapshot=true;++gFrameCount;now+=1.;
+ float phase=actor_ghost_studio_frame_time(12,period);
+ ++gFrameCount;now+=100.;assert(actor_ghost_studio_frame_time(12,period)==phase);
  std::cout<<"PASS production Studio Effect fps 0/12/30; per-clone rates, same-frame hold, frame advance, snapshot freeze\n";
 }
 '''
     results.append(execute('matrix_clock',clock,True))
+    studio_clock = method(path, 'F32 actor_ghost_studio_frame_time(')
+    shared_clock = method(Path('indra/newview/lldrawpool.cpp'), 'F32 LLRenderPass::actorFxFrameTime(')
+    shared_clock = shared_clock.replace('LLRenderPass::actorFxFrameTime(F32 requested_fps, F64 wrap_period)',
+                                        'world_frame_time(F32 requested_fps, F64 wrap_period = 0.0)')
+    world_clock = clock.replace(studio_clock, shared_clock).replace('actor_ghost_studio_frame_time', 'world_frame_time')
+    results.append(execute('legacy_shared_clock',world_clock,True))
+    for name, code in (('studio',clock),('shared',world_clock)):
+        bad = code.replace('std::fmod(stepped, wrap_period)', 'std::fmod(static_cast<F32>(stepped), wrap_period)')
+        assert bad != code
+        results.append(execute('legacy_'+name+'_precision_control',bad,False))
+    policy = clock[:clock.index('int main()')]+method(path, 'F64 actor_ghost_motion_period(')+r'''
+int main(){for(int look=0;look<128;++look){
+ bool animated=look==64||look==66||look==67||look==71||look==76;
+ assert(actor_ghost_motion_period(look)==(animated?628.31853071795864769:0.));
+ if(!animated) for(double age : {0.,.501,628.30,628.34,86400.123456,31536000.123456}) {
+   now=100.+age;++gFrameCount;
+   for(float fps : {0.f,10.f,12.f,30.f}) {
+     const float old_upload=float(fps>0 ? floor(age*fps)/fps : age);
+     const float upload=actor_ghost_studio_frame_time(fps,actor_ghost_motion_period(look));
+     assert(std::memcmp(&old_upload,&upload,sizeof(float))==0);
+   }
+ }
+}}
+'''
+    policy = '#include <cstring>\n'+policy
+    policy = policy.replace('using F32=float;', 'using S32=int;using F32=float;')
+    results.append(execute('legacy_clock_scope',policy,True))
+    world_policy=policy.replace(studio_clock,shared_clock).replace('actor_ghost_studio_frame_time','world_frame_time')
+    results.append(execute('legacy_world_clock_scope',world_policy,True))
     assert clock.count('floor(real_time * fps) / fps')==1
     results.append(execute('matrix_clock_no_step',clock.replace('floor(real_time * fps) / fps','real_time'),False))
     # Compile the complete REAL parameter struct and the exact apply_program
@@ -674,6 +743,23 @@ int main(){
     defaults = execute('matrix_draw_defaults', default_fixture, True)
     (directory/'matrix_draw_defaults.json').write_text(json.dumps(json.loads(defaults['stdout']),indent=2))
     results.append(defaults)
+    # Presets/settings and crowd mixes use this same production validator.
+    # Exercise every new numeric ID and both retired IDs without inventing a
+    # second persistence registry or broadening the shared-world look range.
+    style_contract = '#include <cassert>\nusing S32=int;\nstruct Styles {\n' + '\n'.join(
+        method(Path('indra/newview/alghoststudio.h'), signature) for signature in (
+            '    static S32 remapRetiredOverlayStyle(', '    static bool isOverlayStyle(',
+            '    static S32 resolveOverlayStyle(')) + r'''
+};
+int main(){
+ for(int i=85;i<=100;++i){assert(Styles::isOverlayStyle(i));assert(Styles::resolveOverlayStyle(i)==i);}
+ assert(!Styles::isOverlayStyle(68)&&!Styles::isOverlayStyle(72));
+ assert(Styles::resolveOverlayStyle(68)==1&&Styles::resolveOverlayStyle(72)==1);
+ assert(!Styles::isOverlayStyle(101)&&Styles::resolveOverlayStyle(101)==0);
+}
+'''
+    results.append(execute('cinematic_style_persistence', style_contract, True))
+    results.append(execute('cinematic_old_style_limit', style_contract.replace('style <= 100', 'style <= 84'), False))
     results.append(execute('matrix_default_scrub',default_fixture.replace('mDecodeScrub = false','mDecodeScrub = true'),False))
     snapshot = r'''
 #include <algorithm>

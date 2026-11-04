@@ -358,9 +358,9 @@ def validate_data(data: dict) -> None:
     # POV eye blink: exactly 15 Lens > Filters rows (13 workflow + 2 XInput mappings), 2417 -> 2432 (11/02).
     # Hot targets: one selected-slot editor, +18 rows, 2400 -> 2418 (11/02).
     # Fix round 1: Object Centre / Picked spot, Point XYZ and reset nudge: +5, 2418 -> 2423.
-    # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets + 30 Capture Key (D56 removes 3 ReShade rows) = 2485; Variable ND adds 4 = 2489.
-    if len(pages) != 39 or row_count != 2489:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2489")
+    # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets + 30 Capture Key (D56 removes 3 ReShade rows) = 2485; Variable ND adds 4 = 2489; six clone FX sliders = 2495.
+    if len(pages) != 39 or row_count != 2495:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2495")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

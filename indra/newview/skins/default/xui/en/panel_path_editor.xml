@@ -124,6 +124,22 @@
           <combo_box.item label="Operator" name="gs_operator" value="82" />
           <combo_box.item label="Dial Out" name="gs_dial_out" value="83" />
           <combo_box.item label="Source" name="gs_source" value="84" />
+          <combo_box.item label="Aureole" value="85" />
+          <combo_box.item label="Choir Light" value="86" />
+          <combo_box.item label="Featherfall" value="87" />
+          <combo_box.item label="Rapture" value="88" />
+          <combo_box.item label="Emitter" value="89" />
+          <combo_box.item label="Bad Reception" value="90" />
+          <combo_box.item label="Static Veil" value="91" />
+          <combo_box.item label="Latency" value="92" />
+          <combo_box.item label="Facets" value="93" />
+          <combo_box.item label="Cold Gaze" value="94" />
+          <combo_box.item label="Intrusion" value="95" />
+          <combo_box.item label="Overclock" value="96" />
+          <combo_box.item label="Reform" value="97" />
+          <combo_box.item label="Torn Husk" value="98" />
+          <combo_box.item label="Hunter Vision" value="99" />
+          <combo_box.item label="Ooze" value="100" />
         </combo_box>
         <button follows="left|top" height="18" layout="topleft" left="462" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_style" top="117"

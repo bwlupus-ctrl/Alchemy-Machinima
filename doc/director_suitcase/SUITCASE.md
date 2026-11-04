@@ -83,7 +83,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
 | [weather](features/weather.md) | 8 | 58 | 40 | 104 |
 | [vcam](features/vcam.md) | 9 | 91 | 43 | 30 |
-| [looks](features/looks.md) | 10 | 137 | 129 | 99 |
+| [looks](features/looks.md) | 10 | 137 | 129 | 100 |
 | [sensor](features/sensor.md) | 10 | 101 | 56 | 62 |
 
 These layers are a review order. A shared file/hunk can serve several layers and
@@ -211,8 +211,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2280 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2280, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2280, "unresolved_rows": 74}`.
+Existing evidence: 2286 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2286, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2286, "unresolved_rows": 74}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous

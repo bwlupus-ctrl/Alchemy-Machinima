@@ -39821,6 +39821,26 @@
   },
   {
     "change": "added",
+    "comment": "One-time move of profiles still on the old ACES default to AgX has run.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "looks"
+    ],
+    "file": "indra/newview/app_settings/settings_alchemy.xml",
+    "head_declarations": [],
+    "name": "AlchemyTonemapAgxMigrated",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "Keep tonemapping and exposure active on skies with Reflection Probe Ambiance 0, while preserving their legacy gamma curve. Viewer-side only; may look more contrasty.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

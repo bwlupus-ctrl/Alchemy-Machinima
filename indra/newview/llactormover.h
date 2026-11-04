@@ -1117,6 +1117,15 @@ public:
         F32        mShimmerIntensity = 0.f; // 0..1
         F32        mPixelSize = 0.f;        // screen px (0 = off)
         F32        mGlitch = 0.f;           // 0..1 slice offset + chroma split
+        F32 mSlice = 0.f; // session-only stackable clone FX, 0..1
+        F32 mDropout = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPowerFlicker = 0.f; // session-only stackable clone FX, 0..1
+        F32 mWipe = 0.f; // session-only stackable clone FX, 0..1
+        F32 mInterlace = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPositionJitter = 0.f; // session-only stackable clone FX, 0..1
+        // Authored clone body reference remains stable through held palettes.
+        LLQuaternion mFxBodyRotation;
+        bool mFxBodyRotationValid = false;
         S32        mDistort = 0;             // independent distortion selector
         F32        mDistortAmount = 0.5f;    // 0..1 selected distortion strength
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
@@ -1770,6 +1779,12 @@ private:
         F32 mShimmerSpeed = 0.f;
         F32 mShimmerAmount = 0.f;
         F32 mGlitch = 0.f;
+        F32 mSlice = 0.f; // session-only stackable clone FX, 0..1
+        F32 mDropout = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPowerFlicker = 0.f; // session-only stackable clone FX, 0..1
+        F32 mWipe = 0.f; // session-only stackable clone FX, 0..1
+        F32 mInterlace = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPositionJitter = 0.f; // session-only stackable clone FX, 0..1
         S32 mDistortion = 0;
         F32 mDistortionAmount = 0.f;
         F32 mBrightness = 1.f;

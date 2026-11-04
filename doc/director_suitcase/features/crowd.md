@@ -60,7 +60,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@333,117", "indra/newview/CMakeLists.txt@1288,167", "indra/newview/CMakeLists.txt@2849,32"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3458", "indra/newview/app_settings/settings.xml@6556,14744", "indra/newview/app_settings/settings.xml@22957,412", "indra/newview/app_settings/settings.xml@23480,362", "indra/newview/app_settings/settings.xml@29160,100", "indra/newview/app_settings/settings.xml@29305,2466"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@372,747"]}
-- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1789,13"]}
+- {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1800,13"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@2083,28"]}
 - {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@180,8", "indra/newview/llviewerwindow.cpp@4050,19"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}

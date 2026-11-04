@@ -194,6 +194,12 @@ public:
         F32             mShimmerSpeed = 1.f;
         F32             mShimmerAmount = 0.f;
         F32             mGlitch = 0.f;
+        F32 mSlice = 0.f; // session-only stackable clone FX, 0..1
+        F32 mDropout = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPowerFlicker = 0.f; // session-only stackable clone FX, 0..1
+        F32 mWipe = 0.f; // session-only stackable clone FX, 0..1
+        F32 mInterlace = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPositionJitter = 0.f; // session-only stackable clone FX, 0..1
         S32             mDistortion = 0;
         F32             mDistortionAmount = 0.5f;
         F32             mBrightness = 1.f;

@@ -11,7 +11,86 @@
       "TOOLING": 401
     },
     "dirty_product_inputs": [
-      "indra/newview/app_settings/settings_alchemy.xml"
+      "indra/newview/alghoststudio.h",
+      "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/alpanelghoststudio.h",
+      "indra/newview/aluiperfselftest.cpp",
+      "indra/newview/app_settings/shaders/class1/avatar/avatarActorGhostV.glsl",
+      "indra/newview/app_settings/shaders/class1/avatar/eyeballActorGhostV.glsl",
+      "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl",
+      "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl",
+      "indra/newview/llactormover.cpp",
+      "indra/newview/llactormover.h",
+      "indra/newview/lldirectorcast.cpp",
+      "indra/newview/lldirectorcast.h",
+      "indra/newview/lldrawpool.cpp",
+      "indra/newview/lldrawpool.h",
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
+      "indra/newview/skins/default/xui/en/panel_path_editor.xml",
+      "scripts/code_tools/actor_key_draw_check.py",
+      "scripts/code_tools/actor_key_studio_gl_check.py",
+      "scripts/code_tools/clone_fx_mover_hunks.json",
+      "scripts/code_tools/clone_fx_runtime_check.py",
+      "scripts/code_tools/clone_fx_safety_check.py",
+      "scripts/code_tools/clone_fx_shader_hunks.json",
+      "scripts/code_tools/clone_looks_anatomy.py",
+      "scripts/code_tools/clone_looks_gl_check.py",
+      "scripts/code_tools/clone_looks_legacy_animation_check.py",
+      "scripts/code_tools/clone_looks_prebuild_gates.ps1",
+      "scripts/code_tools/clone_looks_runtime_check.py",
+      "scripts/code_tools/clone_looks_safety_check.py",
+      "scripts/code_tools/clone_looks_scan_build_check.py",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_functional_manifest.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_page_sources.py",
+      "scripts/code_tools/legacy_animation_clock_hunks.json",
+      "scripts/code_tools/legacy_animation_shared_hunks.json",
+      "scripts/code_tools/looks16_mover_hunks.json"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -25,14 +104,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "19c5c21a9952cda45a09a8f60b461edc1a9ba51213ef270b1842970789318783",
+        "csv_sha256": "b108f08e687a5c2340f23486e2c53260ad6ebb84ae2acb05c070f906cf0e6d5a",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4758,
+        "entries": 4770,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -74,9 +153,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2558,
+        "generated_kit_rows": 2564,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2154,
+        "interactive_rows": 2160,
         "pages": 39,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -119,7 +198,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3898,
+        "settings_declared": 3899,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -129,7 +208,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 846
+        "xui_files": 845
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -185,19 +264,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2280,
+        "independent_json_rows": 2286,
         "multi_page_settings": 21,
         "owner_roots": 36,
         "pages": 39,
-        "rows": 2280,
+        "rows": 2286,
         "unresolved_rows": 74
       },
-      "wiring_rows": 2280
+      "wiring_rows": 2286
     },
-    "head_source_tree": "19f0267b69de9afb9a9b702b4ea32ed2fbfb9cb3",
+    "head_source_tree": "b5b52c5fe9c538bd0395cd247cf2dda2e8798b03",
     "hook_files": 523,
     "hunks": 3218,
-    "input_sha256": "8742586d7fe5b379354cb67eb7a1198cc1a14b40676ef41075aa216374b67adc",
+    "input_sha256": "f661501af49f74977b45a18ffe565d07d2d5e0db91f942debdd38e486df67fba",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -205,7 +284,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2053
+    "settings": 2054
   },
   "paths": [
     {

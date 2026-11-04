@@ -388,7 +388,7 @@ public:
     static bool isOverlayStyle(S32 style)
     {
         return (style >= 0 && style <= 27)
-            || (style >= 64 && style <= 84 && style != 68 && style != 72);
+            || (style >= 64 && style <= 100 && style != 68 && style != 72);
     }
     static S32 resolveOverlayStyle(S32 style)
     {
@@ -606,7 +606,7 @@ public:
         }
 
         // ---- look ----
-        S32         mStyle = 0;         // EGhostStyle: shared 0..27 or Studio-only 64..84
+        S32         mStyle = 0;         // EGhostStyle: shared 0..27 or Studio-only 64..100
         F32         mAlpha = 0.6f;      // base opacity (matches the path-ghost default)
         bool        mUseActorTint = true;   // tint from the source's stable path hue
         F32         mHue = 200.f;       // degrees 0..360, used when !mUseActorTint
@@ -622,6 +622,12 @@ public:
         F32         mShimmerIntensity = 0.f;  // 0..1 brightness/alpha wobble depth
         F32         mPixelSize = 0.f;         // screen-space pixelation block, px (0 = off)
         F32         mGlitch = 0.f;            // 0..1 slice-offset + chroma-split amount
+        F32 mSlice = 0.f; // session-only stackable clone FX, 0..1
+        F32 mDropout = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPowerFlicker = 0.f; // session-only stackable clone FX, 0..1
+        F32 mWipe = 0.f; // session-only stackable clone FX, 0..1
+        F32 mInterlace = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPositionJitter = 0.f; // session-only stackable clone FX, 0..1
         S32         mDistort = 0;              // independent EGhostDistortion id
         F32         mDistortAmount = 0.5f;     // 0..1 strength for selected distortion
 
