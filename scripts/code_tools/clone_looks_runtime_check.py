@@ -57,7 +57,11 @@ def check():
                 labels = {int(n.get('value')): n.get('label') for n in combo.findall('combo_box.item')}
                 assert all(labels[i] == name for i, name in enumerate(cinematic_names, 85))
     # Existing CPU clock and per-instance UUID seed reach the shared upload.
-    assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
+    assert 'actor_ghost_studio_frame_time(gp.mEffectFps, motion_period)' in draw
+    assert 'const F64 motion_period = actor_ghost_motion_period(style);' in draw
+    assert 'LLRenderPass::actorFxFrameTime(gp.mEffectFps, motion_period)' in draw
+    system = method(path, 'bool LLActorMover::renderSystemActorGhost(')
+    assert 'gp.mEffectFps, actor_ghost_motion_period(look)' in system
     assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
     assert 'inst.mId.mData[0] | (inst.mId.mData[1] << 8)' in overlay
     assert '++invocation;' in overlay
@@ -100,7 +104,7 @@ def check():
     studio = Path('indra/newview/alghoststudio.cpp').read_text()
     # Clock upload is outside all held-pose/fade/helper dispatch. Pose cadence
     # must change geometry sampling, never the independent creative FX clock.
-    assert 'actor_ghost_studio_frame_time(gp.mEffectFps)' in draw
+    assert 'actor_ghost_studio_frame_time(gp.mEffectFps, motion_period)' in draw
     assert 'sh->uniform1f(sGhostTime, ghost_now);' in draw
     for field in ('gp.mEffectFps        = inst.mEffectFps;',
                   'gp.mFrozenPalettes = &inst.mOffsetPose->mFrozenPalettes;',
@@ -635,10 +639,40 @@ int main(){
  gSnapshot=true;++gFrameCount;now=101.;float frozen=actor_ghost_studio_frame_time(12);
  ++gFrameCount;now=105.;assert(actor_ghost_studio_frame_time(12)==frozen);
  gSnapshot=false;++gFrameCount;assert(actor_ghost_studio_frame_time(0)==5.f);
+ // Wrap after quantization, in double precision, even after a year.
+ const double period=628.31853071795864769;
+ for(double age : {period-1./60,period,period+1./60,86400.123456,31536000.123456}) {
+   now=100.+age;++gFrameCount;
+   for(float fps : {0.f,12.f,30.f}) {
+     const double stepped=fps>0 ? floor(age*fps)/fps : age;
+     assert(actor_ghost_studio_frame_time(fps,period)==float(std::fmod(stepped,period)));
+     assert(actor_ghost_studio_frame_time(fps)==float(stepped));
+   }
+ }
+ gSnapshot=true;++gFrameCount;now+=1.;
+ float phase=actor_ghost_studio_frame_time(12,period);
+ ++gFrameCount;now+=100.;assert(actor_ghost_studio_frame_time(12,period)==phase);
  std::cout<<"PASS production Studio Effect fps 0/12/30; per-clone rates, same-frame hold, frame advance, snapshot freeze\n";
 }
 '''
     results.append(execute('matrix_clock',clock,True))
+    studio_clock = method(path, 'F32 actor_ghost_studio_frame_time(')
+    shared_clock = method(Path('indra/newview/lldrawpool.cpp'), 'F32 LLRenderPass::actorFxFrameTime(')
+    shared_clock = shared_clock.replace('LLRenderPass::actorFxFrameTime(F32 requested_fps, F64 wrap_period)',
+                                        'world_frame_time(F32 requested_fps, F64 wrap_period = 0.0)')
+    world_clock = clock.replace(studio_clock, shared_clock).replace('actor_ghost_studio_frame_time', 'world_frame_time')
+    results.append(execute('legacy_shared_clock',world_clock,True))
+    for name, code in (('studio',clock),('shared',world_clock)):
+        bad = code.replace('std::fmod(stepped, wrap_period)', 'std::fmod(static_cast<F32>(stepped), wrap_period)')
+        assert bad != code
+        results.append(execute('legacy_'+name+'_precision_control',bad,False))
+    policy = clock[:clock.index('int main()')]+method(path, 'F64 actor_ghost_motion_period(')+r'''
+int main(){for(int look=0;look<128;++look){
+ bool animated=look==64||look==66||look==67||look==71||look==76;
+ assert(actor_ghost_motion_period(look)==(animated?628.31853071795864769:0.));}}
+'''
+    policy = policy.replace('using F32=float;', 'using S32=int;using F32=float;')
+    results.append(execute('legacy_clock_scope',policy,True))
     assert clock.count('floor(real_time * fps) / fps')==1
     results.append(execute('matrix_clock_no_step',clock.replace('floor(real_time * fps) / fps','real_time'),False))
     # Compile the complete REAL parameter struct and the exact apply_program

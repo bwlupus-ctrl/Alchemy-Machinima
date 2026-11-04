@@ -49,6 +49,42 @@ Before/after strips at 0/2/4/6 s and 2x2 simultaneous crowd seed tiles at 4 s
 preserve the 600 px body height in cropped cells in `renders/legacy_anim/`,
 alongside metrics.
 
+Both clock providers retain their historical unwrapped values by default.
+Only 64/66/67/71/76 request a 200*pi-second period. FPS quantization and
+modulo occur in F64 before conversion to the shader's F32 input; native
+fixtures exercise same-frame coherence, snapshot freezes, the wrap, a day
+and a year, and reject conversion to F32 before modulo. All new sine rates
+are integer harmonics of that period (Scan's authored .3 rad/s is harmonic
+30). The shared frame clock is not a spawn age: there is no repeating wet
+ease. Motion vanishes at phase zero through differences of sine terms.
+
+`clone_looks_legacy_animation_check.py` is called by the normal safety suite.
+For these five looks it additionally counts silhouette pixels with ANY
+display RGB channel >= 1 after the same .035 background compositing. At
+each integer second from 2 through 10, the fraction must be <= the old
+`69cfd4637fd` fraction + .01. Both seeds, fps 0/12, all three poses/views,
+and both Glass paths are checked; Scan additionally checks its dynamic front
+and fully built endpoint. Old zero-coverage pixels must remain empty.
+
+Glass also compares the time-averaged display appearance centered at t=6
+against the old still: 32 midpoint samples over one complete 11.424-second
+caustic beat, with MAE <= .01 and p99 <= .03 in both paths. This supplements
+the unchanged t=0 .01/.03 gate. The authored scene-rim weight remains .65;
+each path adds the body caustic exactly once. The time average checks the
+material's steady appearance separately from visible moving illumination.
+
+Real-avatar frames straddling the host wrap must have MAE, p99 and maximum
+pixel-channel change no greater than normal frame steps (including the same
+step evaluated on the smooth unwrapped curve), allowing
+only .1% relative numerical error plus 1e-5 display units. The quantized test
+applies floor BEFORE modulo, matching the host. Controls reject the old
+re-easing/unwrapped shader and a single-channel clipped output. All existing
+perceptibility, seed, anti-strobe, alpha, containment and AA limits stay fixed.
+Scan normalizes only motif support when limiting its moving light. Authored
+texture/operator alpha still attenuates the signal; half operator opacity
+must reduce its mean rendered RGB to <= .55 of full opacity, and zero must
+produce no output.
+
 ## Fixtures and limits
 
 The loader reads the shipped head, upper/lower body, both eyes, eyelashes,

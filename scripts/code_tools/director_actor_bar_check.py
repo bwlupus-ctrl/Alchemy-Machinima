@@ -15,6 +15,8 @@ ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f52124006
 
 def actor_key_baseline(source, name):
     """Peel only exact key deltas; full-file equality rejects unrelated edits."""
+    source = reverse_feature_allowance(source, name, "legacy_animation_clock_hunks.json",
+        "a47ad5eb15ded19a917512b5f569847f22cfd9e7294e45d324c342685b4ae775", "legacy animation bounded clock")
     source = reverse_feature_allowance(source, name, "looks16_mover_hunks.json",
         "6a5a743be0cb78ff444140532b082538a94b71d38d5d6f5e846b99ef4747b029", "cinematic looks 85-100")
     import hashlib, json

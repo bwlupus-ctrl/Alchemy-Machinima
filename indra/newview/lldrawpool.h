@@ -431,7 +431,9 @@ public:
     // tiled snapshot and quantizes only at the final upload; frag offset and
     // screen size use raw framebuffer pixels so procedural motifs cannot seam
     // between legacy/PBR faces or snapshot tiles.
-    static F32 actorFxFrameTime(F32 requested_fps);
+    // Optional phase period is applied in F64 after fps quantization. The
+    // default retains the historical unwrapped clock for every other look.
+    static F32 actorFxFrameTime(F32 requested_fps, F64 wrap_period = 0.0);
     static LLVector2 actorFxFragOffset();
     static LLVector2 actorFxScreenSize();
     // Replace/Cover Actor FX is replayed from the shared live-proxy queue so it

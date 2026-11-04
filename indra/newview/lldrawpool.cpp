@@ -694,7 +694,7 @@ bool LLRenderPass::actorFxLookNeedsSyntheticBloom(S32 look)
 }
 
 // static
-F32 LLRenderPass::actorFxFrameTime(F32 requested_fps)
+F32 LLRenderPass::actorFxFrameTime(F32 requested_fps, F64 wrap_period)
 {
     static bool sClockInitialized = false;
     static F64 sClockEpoch = 0.0;
@@ -723,8 +723,9 @@ F32 LLRenderPass::actorFxFrameTime(F32 requested_fps)
     sWasSnapshot = gSnapshot;
     const F64 effect_fps = static_cast<F64>(
         llclamp(requested_fps, 0.f, 30.f));
-    return static_cast<F32>(effect_fps > 0.0
-        ? floor(real_time * effect_fps) / effect_fps : real_time);
+    const F64 stepped = effect_fps > 0.0
+        ? floor(real_time * effect_fps) / effect_fps : real_time;
+    return static_cast<F32>(wrap_period > 0.0 ? std::fmod(stepped, wrap_period) : stepped);
 }
 
 // static

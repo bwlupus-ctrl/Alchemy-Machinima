@@ -677,7 +677,7 @@ def perceptibility_failures(row):
     return failures
 
 
-def perceptibility_checks(out, r, tree, current):
+def perceptibility_checks(out, r, tree, current, looks=None):
     """600 px real SL avatar; report all 64-100, gate only reviewed five.
 
     MAE and p95 pool absolute R/G/B channel errors over the fixed neutral
@@ -692,7 +692,7 @@ def perceptibility_checks(out, r, tree, current):
                   size=600, times=PERCEPT_TIMES, seed_times=PERCEPT_TIMES[1:],
                   limits=PERCEPT_LIMITS, gated_ids=LEGACY_ANIMATED, looks={})
     names = dict(NAMES); names.update(dict(enumerate(MATRIX_NAMES,78))); names.update(dict(enumerate(CINEMATIC_NAMES,85)))
-    for look in range(64,101):
+    for look in range(64,101) if looks is None else looks:
         rows=[]
         for pose in ('bind','raised','turned'):
             r.pose=pose; r.camera_center_z=sum(r.pose_bounds[pose])*.5
@@ -890,6 +890,8 @@ def _check(out=None,looks=None):
         warnings=[], stale_entries=[], failures={}, negative_controls=legacy_controls)
     result['clone_seeds']=dict(uuid_low16=(7614,25764),phases=SEEDS)
     result['legacy_animation'] = legacy_animation_checks(out.parent/'legacy_anim', runners[1], tree, programs[1])
+    from clone_looks_legacy_animation_check import check as legacy_stability_check
+    result['legacy_animation_stability'] = legacy_stability_check(out.parent/'legacy_anim', runners[1], tree, programs[1])
     result['perceptibility'] = perceptibility_checks(out.parent/'legacy_anim', runners[1], tree, programs[1])
     result['anatomy']=anatomy(runners[1],tree,programs[1])
     result['negative_controls']=negative_controls(runners[1],tree,programs[1])

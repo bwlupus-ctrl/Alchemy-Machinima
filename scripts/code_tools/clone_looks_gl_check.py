@@ -164,7 +164,8 @@ class Runner:
                mesh=None, palette=None, object_matrix=None, clone_scale=1., raw_time=False,
                effect_fps=0., params=(0.,1.,0.,8.),
                preserve_depth=False, prime=False, brightness=1.,
-               screen_size=None, frag_offset=(0.,0.), tile=None, pixel_size=0., glitch=0.):
+               screen_size=None, frag_offset=(0.,0.), tile=None, pixel_size=0., glitch=0.,
+               dissolve_progress=None):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 76 and not raw_time:
@@ -210,7 +211,7 @@ class Runner:
         floats('ghostVelocity', *velocity)
         integer('ghostSceneValid', int(scene))
         integer('ghostSceneMap', 1)
-        floats('ghostDissolveProgress', self.draw_defaults['ghostDissolveProgress'] if getattr(self, 'real_draw_defaults', False) or look == 78 or 85 <= look <= 100 else (.28 if look == 10 else 0.))
+        floats('ghostDissolveProgress', dissolve_progress if dissolve_progress is not None else self.draw_defaults['ghostDissolveProgress'] if getattr(self, 'real_draw_defaults', False) or look == 78 or 85 <= look <= 100 else (.28 if look == 10 else 0.))
         integer('ghostDecodeScrub', self.draw_defaults['ghostDecodeScrub'])
         floats('ghostCoverageLayerStrength', -1.)
         floats('alrParams', 0., 0., 1., 0.)

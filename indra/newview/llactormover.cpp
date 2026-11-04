@@ -12653,7 +12653,7 @@ struct ScopedSharedActorHDRDrawBuffer
 // Preserve Ghost Studio's historical overlay clock. Shared world Actor FX uses
 // LLRenderPass::actorFxFrameTime() so legacy/system/PBR/authored-glow surfaces
 // all receive the exact same quantized phase and tiled-snapshot freeze.
-F32 actor_ghost_studio_frame_time(F32 requested_fps)
+F32 actor_ghost_studio_frame_time(F32 requested_fps, F64 wrap_period = 0.0)
 {
     static bool sInitialized = false;
     static F64 sEpoch = 0.0;
@@ -12680,8 +12680,16 @@ F32 actor_ghost_studio_frame_time(F32 requested_fps)
     const F64 real_time = gSnapshot ? sSnapshotTime : elapsed;
     sWasSnapshot = gSnapshot;
     const F64 fps = static_cast<F64>(llclamp(requested_fps, 0.f, 30.f));
-    return static_cast<F32>(fps > 0.0
-        ? floor(real_time * fps) / fps : real_time);
+    const F64 stepped = fps > 0.0 ? floor(real_time * fps) / fps : real_time;
+    return static_cast<F32>(wrap_period > 0.0 ? std::fmod(stepped, wrap_period) : stepped);
+}
+
+// Only the five reviewed legacy animations use this bounded phase clock.
+// Quantization and wrapping happen in F64, before any session-time F32 loss.
+F64 actor_ghost_motion_period(S32 look)
+{
+    return look == 64 || look == 66 || look == 67 || look == 71 || look == 76
+        ? 628.31853071795864769 : 0.0; // 200*pi seconds; shader uses integer harmonics
 }
 
 LLVector2 actor_ghost_frag_offset()
@@ -13181,9 +13189,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // (re)applied to whichever variant a sweep binds.
     LLColor4  style_color(1.f, 1.f, 1.f, alpha);    // set per style below
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);     // ghostParams per style
+    const F64 motion_period = actor_ghost_motion_period(style);
     const F32 ghost_now = gp.mWorldLinear
-        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)
-        : actor_ghost_studio_frame_time(gp.mEffectFps);
+        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps, motion_period)
+        : actor_ghost_studio_frame_time(gp.mEffectFps, motion_period);
     bool glow_only = false;
     // Matrix monitor looks use the whole snapshot field, including tile subregions.
     const bool matrix_screen = !gp.mWorldLinear
@@ -16932,7 +16941,8 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     gp.mPhase = (F32)(stable_id.mData[0] | (stable_id.mData[1] << 8))
         * (F_TWO_PI / 65536.f);
 
-    const F32 ghost_now = LLRenderPass::actorFxFrameTime(gp.mEffectFps);
+    const F32 ghost_now = LLRenderPass::actorFxFrameTime(
+        gp.mEffectFps, actor_ghost_motion_period(look));
     const LLVector2 frag_offset = LLRenderPass::actorFxFragOffset();
     const LLVector2 screen_size = LLRenderPass::actorFxScreenSize();
     bool glow_only = false;
