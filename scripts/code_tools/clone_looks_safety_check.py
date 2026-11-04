@@ -770,7 +770,9 @@ def legacy_animation_checks(out, r, tree, current):
     out.mkdir(parents=True, exist_ok=True)
     base_ref = '69cfd4637fd'
     base = G.SourceTree(base_ref)
-    previous = r.program(base, ('HAS_SKIN',))
+    from clone_looks_scan_build_check import ScanBuildReference, BUILD_PERIOD, PRE_FIX
+    previous = r.program(ScanBuildReference(base), ('HAS_SKIN',))
+    raw_previous = r.program(G.SourceTree(PRE_FIX), ('HAS_SKIN',))
     result = dict(base=base_ref, metric='silhouette display RGB absolute error',
                   limits=dict(mae=.02, p99=.06, static_pattern=.02, alpha_max_error=0.), looks={})
     # No shader edits outside the five reviewed branches, including uniforms.
@@ -818,14 +820,19 @@ def legacy_animation_checks(out, r, tree, current):
         images = {}
         cell_w, cell_h = 720, 656
         font = ImageFont.truetype('arial.ttf', 16)
-        for label, program in (('before', previous), ('after', current)):
-            strip = Image.new('RGB', (4*cell_w, 3*cell_h), '#111111')
+        strip_times = (0., 2., 4., 6.)
+        if look == 76:
+            start = (1.5*np.pi-SEEDS[0])/.3
+            strip_times = tuple(start + np.arange(5)*BUILD_PERIOD/4)
+        columns = len(strip_times)
+        for label, program in (('before', raw_previous if look == 76 else previous), ('after', current)):
+            strip = Image.new('RGB', (columns*cell_w, 3*cell_h), '#111111')
             draw = ImageDraw.Draw(strip)
             for row, (camera, angle) in enumerate(VIEWS.items()):
                 r.camera = angle
                 neutral = r.frame(current,1,scale=scale)[...,3]>0
                 yy,xx=np.where(neutral[::-1]); box=(max(0,int(xx.min())-12),max(0,int(yy.min())-12),min(r.width,int(xx.max())+13),min(r.height,int(yy.max())+13))
-                for col, time in enumerate((0., 2., 4., 6.)):
+                for col, time in enumerate(strip_times):
                     path = out/f'{look}_{label}_{camera}_{col}.png'
                     save(r.frame(program, look, time=time, scale=scale, phase=SEEDS[0]), path)
                     with Image.open(path) as thumb:
@@ -834,7 +841,7 @@ def legacy_animation_checks(out, r, tree, current):
                         strip.paste(thumb, (col*cell_w+(cell_w-thumb.width)//2, row*cell_h+28))
                     draw.text((col*cell_w+8, row*cell_h+8), f'{look} {NAMES[look]} {label} {camera} t={time}', fill='white', font=font)
             strip.save(out/f'{look}_{label}_strip.png'); images[label] = strip
-        comparison = Image.new('RGB', (4*cell_w, 6*cell_h), '#111111')
+        comparison = Image.new('RGB', (columns*cell_w, 6*cell_h), '#111111')
         comparison.paste(images['before'], (0, 0)); comparison.paste(images['after'], (0, 3*cell_h))
         comparison.save(out/f'{look}_comparison.png')
         r.camera=0.
@@ -896,6 +903,8 @@ def _check(out=None,looks=None):
         known=[dict(look=look, check=check, **meta) for (look,check),meta in sorted(LEGACY_KNOWN.items())],
         warnings=[], stale_entries=[], failures={}, negative_controls=legacy_controls)
     result['clone_seeds']=dict(uuid_low16=(7614,25764),phases=SEEDS)
+    from clone_looks_scan_build_check import check as scan_build_check
+    result['scan_build_defaults'] = scan_build_check(out.parent/'scan_build', runners[1], tree, programs[1])
     result['legacy_animation'] = legacy_animation_checks(out.parent/'legacy_anim', runners[1], tree, programs[1])
     from clone_looks_legacy_animation_check import check as legacy_stability_check
     result['legacy_animation_stability'] = legacy_stability_check(out.parent/'legacy_anim', runners[1], tree, programs[1])
@@ -970,8 +979,14 @@ def _check(out=None,looks=None):
         if not np.array_equal(a,b):fail('hidden system body changes replay',float(np.max(np.abs(a-b))))
         for part in ('extra_hair','extra_blend'):
             r.only={part};r.include_blend=True
-            a=r.frame(pr,look);b=r.frame(pr,1)
-            if not np.array_equal(a[...,3],b[...,3]):fail('authored hair alpha',[part,float(np.max(np.abs(a[...,3]-b[...,3])))])
+            # Scan's real default now animates, and t=2 happens to be fully
+            # built. Keep that sample and cover the whole construction cycle;
+            # one settled frame cannot retire an authored-alpha warning.
+            from clone_looks_scan_build_check import BUILD_PERIOD
+            alpha_times = (2.,) if look != 76 else (2., *np.linspace(0., BUILD_PERIOD, 9))
+            for alpha_time in alpha_times:
+                a=r.frame(pr,look,time=alpha_time);b=r.frame(pr,1,time=alpha_time)
+                if not np.array_equal(a[...,3],b[...,3]):fail('authored hair alpha',[part,float(alpha_time),float(np.max(np.abs(a[...,3]-b[...,3])))])
         r.only=None;r.include_blend=False
         held_a=r.frame(pr,look,time=.501,effect_fps=12)
         held_b=r.frame(pr,look,time=.54,effect_fps=12)

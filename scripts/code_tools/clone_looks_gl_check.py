@@ -211,7 +211,7 @@ class Runner:
         floats('ghostVelocity', *velocity)
         integer('ghostSceneValid', int(scene))
         integer('ghostSceneMap', 1)
-        floats('ghostDissolveProgress', dissolve_progress if dissolve_progress is not None else self.draw_defaults['ghostDissolveProgress'] if getattr(self, 'real_draw_defaults', False) or look == 78 or 85 <= look <= 100 else (.28 if look == 10 else 0.))
+        floats('ghostDissolveProgress', dissolve_progress if dissolve_progress is not None else self.draw_defaults['ghostDissolveProgress'] if getattr(self, 'real_draw_defaults', False) or look in (76, 78) or 85 <= look <= 100 else (.28 if look == 10 else 0.))
         integer('ghostDecodeScrub', self.draw_defaults['ghostDecodeScrub'])
         floats('ghostCoverageLayerStrength', -1.)
         floats('alrParams', 0., 0., 1., 0.)

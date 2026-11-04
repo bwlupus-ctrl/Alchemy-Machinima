@@ -2140,15 +2140,16 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     else if (ghostLook == 76) // Studio: Scan Build
     {
         vec3  P = vary_object_position;
-        float h = clamp((P.z + 1.15) / 2.25, 0.0, 1.0);
+        float h = clamp((P.z - sl_foot) / (sl_top - sl_foot), 0.0, 1.0);
         float cycle = (ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime) * 0.01;
         // Authored .3 rad/s is harmonic 30 of the same 200*pi period.
-        float prog = ghostDissolveProgress > 0.0 ? ghostDissolveProgress
-                   : 0.5 + 0.5 * sin(cycle * 30.0 + ghostAux.w);
+        // Scan Build has no progress UI. The shared dissolve default (.5)
+        // belongs to look 10; it must never hold this automatic build front.
+        float prog = 0.5 + 0.5 * sin(cycle * 30.0 + ghostAux.w);
         float front = prog * 1.15 - 0.07;                                    // overshoot so 0/1 are fully built/empty
         float d     = h - front;                                             // <0 built, >0 pending
         float fwz = fwP.z + 1e-6;
-        float band  = 1.0 - smoothstep(0.0, 0.012 + fwz * (2.0 / 2.25), abs(d));     // footprint-aware hot line
+        float band  = 1.0 - smoothstep(0.0, 0.012 + fwz * (2.0 / (sl_top - sl_foot)), abs(d)); // h-space footprint
         // print layers: rest-space horizontal slices, only in a thin zone above the front
         float layers = 0.5 + 0.5 * sin(P.z * 180.0 * 1.0);
         layers = smoothstep(0.6, 0.9, layers) * smoothstep(3.0, 6.0, (6.2831853 / 180.0) / fwz)   // >3 px pitch or drop
@@ -2157,8 +2158,7 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         vec3 bodyC = tex.rgb * color.rgb;
         vec3 planC = mix(vec3(1.0), color.rgb, 0.35);
         rgb   = bodyC * step(d, 0.0) + planC * (band * 3.0 + lattice * 0.6);
-        // An inspection sheen travels across even a held build front.
-        // Progress, print layers and authored alpha keep their original law.
+        // An inspection sheen travels across the build, including its holds.
         float phase = P.z * 7.0 + P.y * 2.0 + ghostAux.w;
         float sheen = pow(0.5 + 0.5*sin(phase - cycle*85.0), 3.0);
         float support = clamp(step(d, 0.0) + band + lattice * 0.55, 0.0, 1.0);
