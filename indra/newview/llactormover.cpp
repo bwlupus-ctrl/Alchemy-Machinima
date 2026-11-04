@@ -83,6 +83,8 @@
 #include "llviewertexture.h"        // sWhiteImagep (flat-tint texture for the model ghost)
 #include "llviewerwindow.h"         // raw snapshot tile dimensions for Actor FX
 #include "llvoavatar.h"
+#include "llinventorymodel.h"	// TEMPORARY clone frame log
+#include "llskinningutil.h"	// TEMPORARY clone frame log
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "llworld.h"                // resolveLandHeightAgent (pathing ground-follow)
 #include "pipeline.h"               // gPipeline.lineSegmentIntersectInWorld (raycast)
@@ -15344,6 +15346,125 @@ void LLActorMover::updateGhostImpostors()
 }
 
 // ---------------------------------------------------------------------------
+// TEMPORARY DIAGNOSTIC, remove with the clone rest-frame fix. Logs each worn
+// rigged mesh once: the position range the looks read (bind shape applied)
+// against the range after skinning. Their ratio shows whether stored positions
+// are metres on the avatar's scale. Read only.
+static void ghost_log_rigged_frames(LLVOAvatar* av)
+{
+    static std::set<LLUUID> seen;
+    static LLFrameTimer throttle;
+    if (!av || throttle.getElapsedTimeF32() < 2.f)
+    {
+        return;
+    }
+    throttle.reset();
+    const U32 max_joints = LLSkinningUtil::getMaxJointCount();
+    for (const auto& point : av->mAttachmentPoints)
+    {
+        LLViewerJointAttachment* attachment = point.second;
+        if (!attachment)
+        {
+            continue;
+        }
+        for (const auto& root : attachment->mAttachedObjects)
+        {
+            if (root.isNull())
+            {
+                continue;
+            }
+            std::vector<LLViewerObject*> objects{ root.get() };
+            for (LLViewerObject* child : root->getChildren())
+            {
+                objects.push_back(child);
+            }
+            const LLViewerInventoryItem* item = gInventory.getItem(root->getAttachmentItemID());
+            for (LLViewerObject* object : objects)
+            {
+                LLVOVolume* vol = dynamic_cast<LLVOVolume*>(object);
+                if (!vol || !vol->isRiggedMesh())
+                {
+                    continue;
+                }
+                const LLMeshSkinInfo* skin = vol->getSkinInfo();
+                LLVolume* volume = vol->getVolume();
+                if (!skin || !volume || !volume->isMeshAssetLoaded() || seen.count(skin->mMeshID))
+                {
+                    continue;
+                }
+                const LLVOAvatar::MatrixPaletteCache& palette = av->updateSkinInfoMatrixPalette(skin);
+                if (palette.mMatrixPalette.empty())
+                {
+                    continue;
+                }
+                const LLMatrix4a* mat = palette.mMatrixPalette.data();
+                F32 stored_min[3] = { 1e9f, 1e9f, 1e9f }, stored_max[3] = { -1e9f, -1e9f, -1e9f };
+                F32 skinned_min[3] = { 1e9f, 1e9f, 1e9f }, skinned_max[3] = { -1e9f, -1e9f, -1e9f };
+                S32 vertices = 0;
+                for (S32 f = 0; f < volume->getNumVolumeFaces(); ++f)
+                {
+                    const LLVolumeFace& face = volume->getVolumeFace(f);
+                    if (!face.mWeights || !face.mPositions)
+                    {
+                        continue;
+                    }
+                    for (S32 v = 0; v < face.mNumVertices; ++v)
+                    {
+                        LLMatrix4a final_mat;
+                        LLSkinningUtil::getPerVertexSkinMatrix(face.mWeights[v].getF32ptr(), mat, false,
+                                                               final_mat, max_joints);
+                        LLVector4a stored, skinned;
+                        skin->mBindShapeMatrix.affineTransform(face.mPositions[v], stored);
+                        final_mat.affineTransform(stored, skinned);
+                        for (S32 axis = 0; axis < 3; ++axis)
+                        {
+                            stored_min[axis] = llmin(stored_min[axis], stored[axis]);
+                            stored_max[axis] = llmax(stored_max[axis], stored[axis]);
+                            skinned_min[axis] = llmin(skinned_min[axis], skinned[axis]);
+                            skinned_max[axis] = llmax(skinned_max[axis], skinned[axis]);
+                        }
+                        ++vertices;
+                    }
+                }
+                if (!vertices)
+                {
+                    continue;
+                }
+                seen.insert(skin->mMeshID);
+                const LLVector3 feet = av->getPositionAgent();
+                const LLVector3 bind_scale(LLVector3(skin->mBindShapeMatrix.mMatrix[0].getF32ptr()).magVec(),
+                                           LLVector3(skin->mBindShapeMatrix.mMatrix[1].getF32ptr()).magVec(),
+                                           LLVector3(skin->mBindShapeMatrix.mMatrix[2].getF32ptr()).magVec());
+                const LLVector3 bind_move(skin->mBindShapeMatrix.mMatrix[3].getF32ptr());
+                LLVector3 inv_scale, inv_move;
+                if (!skin->mInvBindMatrix.empty())
+                {
+                    const LLMatrix4a& inv = skin->mInvBindMatrix[0];
+                    inv_scale.set(LLVector3(inv.mMatrix[0].getF32ptr()).magVec(),
+                                  LLVector3(inv.mMatrix[1].getF32ptr()).magVec(),
+                                  LLVector3(inv.mMatrix[2].getF32ptr()).magVec());
+                    inv_move.set(inv.mMatrix[3].getF32ptr());
+                }
+                LL_INFOS("CloneFrame") << "item='" << (item ? item->getName() : std::string("?"))
+                    << "' point=" << attachment->getName() << " mesh=" << skin->mMeshID
+                    << " verts=" << vertices << " joints=" << skin->mJointNames.size()
+                    << " first_joint=" << (skin->mJointNames.empty() ? std::string("-") : skin->mJointNames[0])
+                    << " alt_bind=" << skin->mAlternateBindMatrix.size()
+                    << " pelvis_offset=" << skin->mPelvisOffset
+                    << " stored_x=" << stored_min[0] << ".." << stored_max[0]
+                    << " stored_y=" << stored_min[1] << ".." << stored_max[1]
+                    << " stored_z=" << stored_min[2] << ".." << stored_max[2]
+                    << " skinned_span=" << skinned_max[0] - skinned_min[0] << ","
+                    << skinned_max[1] - skinned_min[1] << "," << skinned_max[2] - skinned_min[2]
+                    << " skinned_z_from_agent=" << skinned_min[2] - feet.mV[VZ] << ".."
+                    << skinned_max[2] - feet.mV[VZ]
+                    << " bind_scale=" << bind_scale << " bind_move=" << bind_move
+                    << " inv0_scale=" << inv_scale << " inv0_move=" << inv_move << LL_ENDL;
+            }
+        }
+    }
+}
+
 // Snapshot the rigged draw batches for each ghosted actor WHILE the frame's
 // render maps still hold world-camera geometry (called from display() after the
 // world render, before render_ui()). render_hud_attachments() re-runs stateSort
@@ -15714,6 +15835,7 @@ void LLActorMover::collectGhostBatches()
 
     for (LLVOAvatar* av : wanted)
     {
+        ghost_log_rigged_frames(av);
         std::vector<GhostBatch>& bucket = mGhostBatches[av->getID()];
         std::vector<GhostStaticFace>& faces = mGhostStaticFaces[av->getID()];
 
