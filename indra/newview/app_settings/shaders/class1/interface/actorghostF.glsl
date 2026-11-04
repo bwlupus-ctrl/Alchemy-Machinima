@@ -1478,6 +1478,12 @@ void main()
     }
     else if (ghostLook == 64) // Studio: Glass
     {
+        // Broad refracted caustics travel in rest space on the Effect-fps clock.
+        // Ease in from the authored still without a discontinuity at t=0.
+        float phase = vary_object_position.z * 7.0 + vary_object_position.y * 3.0 + ghostAux.w;
+        float wet = 1.0 - exp(-ghostTime * ghostTime * 0.8);
+        float caustic = pow(0.5 + 0.5*sin(phase - ghostTime * 0.85), 2.0);
+        float drift = sin(phase - ghostTime * 0.85) - sin(phase);
         float F  = pow(1.0 - facing, 5.0);
         vec3  rimC = vec3(pow(1.0-facing, 4.2), pow(1.0-facing, 5.0), pow(1.0-facing, 6.2)); // dispersion-ish fringe
         const vec3 L1 = normalize(vec3( 0.35, 0.60, 0.72));  // fixed eye-space "studio lamps"
@@ -1486,6 +1492,7 @@ void main()
         float s2 = pow(max(dot(n, normalize(L2 + v)), 0.0),  28.0) * 0.25;
         vec3 tint = mix(vec3(1.0), color.rgb, 0.5);
         rgb   = tint * rimC * 1.7 + vec3(s1 * 1.2 + s2) + tex.rgb * 0.05 * facing;   // tiny body hint keeps a face readable
+        rgb += tint * wet * caustic * 0.8;
         alpha = color.a * tex.a * clamp(0.05 + F * 0.9 + s1 * 0.8 + s2, 0.0, 1.0);
         if (ghostSceneValid != 0)
         {
@@ -1493,10 +1500,11 @@ void main()
             // Fixed 18px at 1080p, proportional at 4K. Separate scene texture:
             // never sample the framebuffer attachment this sweep writes into.
             vec2 bend = n.xy * (1.0 - facing * 0.75) * 0.0167;
+            bend += vec2(drift, sin(ghostAux.w + ghostTime * 0.45) - sin(ghostAux.w)) * 0.003;
             vec2 halfTexel = 0.5 / ghostScreenSize;
             vec3 behind = texture(ghostSceneMap, clamp(screenUv + bend,
                                   halfTexel, vec2(1.0) - halfTexel)).rgb;
-            rgb = behind * tint * (1.0 - F * 0.65) + rgb * 0.65;
+            rgb = behind * tint * (1.0 - F * 0.65) + rgb * mix(0.65, 0.18, wet) + tint * wet * caustic * 0.10;
             alpha = color.a * tex.a;
         }
     }
@@ -1506,11 +1514,15 @@ void main()
         float shade = 0.5 * max(dot(n, L), 0.0) + 0.5 * lum;                  // where ink goes (dark = inked)
         float grain = ghost_noise(fragCoord / 3.5) * 0.5 + ghost_noise(fragCoord / 11.0) * 0.5;  // paper, screen-locked
         float wash  = 1.0 - shade + (grain - 0.5) * 0.22;
+        // Slow capillary breathing; keep paper registration and dry strokes.
+        float phase = vary_object_position.z * 3.0 + ghostAux.w;
+        float breath = (1.0 - exp(-ghostTime * ghostTime * 0.8)) * sin(phase - ghostTime * 0.75);
+        wash += 0.055 * breath;
         float t1 = smoothstep(0.30, 0.42, wash), t2 = smoothstep(0.52, 0.64, wash), t3 = smoothstep(0.74, 0.86, wash);
         float inkAmt = (t1 * 0.35 + t2 * 0.35 + t3 * 0.30) * 1.0;
         // dry-brush outline: silhouette thickened, broken by streaky noise
         float streak = ghost_noise(vec2(fragCoord.x * 0.07, fragCoord.y * 0.9));
-        float outline = smoothstep(0.22, 0.55, edge + (streak - 0.5) * 0.3) * step(0.25, streak);
+        float outline = smoothstep(0.22, 0.55, edge + (streak - 0.5) * 0.3 + 0.055 * breath) * step(0.25, streak);
         inkAmt = max(inkAmt, outline * 0.95);
         inkAmt *= 1.0 - 0.25 * grain * (1.0 - inkAmt);                      // granulation where thin
         vec3 ink   = mix(vec3(0.03, 0.035, 0.05), color.rgb * 0.25, 0.3);
@@ -2047,6 +2059,8 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
     else if (ghostLook == 66) // Studio: Marble
     {
         vec3  P    = vary_object_position + vec3(cos(ghostAux.w), sin(ghostAux.w), 0.3*ghostAux.w) * 0.37;
+        // Slight vein flow beneath a slowly travelling polished sheen.
+        P += vec3(0.006, -0.004, 0.008) * (sin(ghostTime * 0.24 + ghostAux.w) - sin(ghostAux.w));
         float warp = ghost_fbm(P.xz * 1.9 + P.y * 0.6);
         float v1   = ghost_ridge(P.xy * 3.1 + warp * 1.6);                  // broad veins
         float v2 = 0.0;
@@ -2063,6 +2077,9 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         stone *= 0.85 + 0.15 * lum;                                        // keep face/cloth folds
         rgb = mix(stone, vec3(0.28, 0.33, 0.30), clamp(vein, 0.0, 1.0)) * lam
             + vec3(0.35, 0.22, 0.14) * sss;
+        float sheen = pow(0.5 + 0.5*sin(P.z*7.0 + P.y*2.0 - ghostTime*0.75 + ghostAux.w), 3.0);
+        float wet = 1.0 - exp(-ghostTime * ghostTime * 0.8);
+        rgb = rgb * (1.0 - wet*0.06) + vec3(0.12,0.115,0.105) * sheen * wet;
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 73) // Studio: Lidar
@@ -2113,6 +2130,11 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         vec3 bodyC = tex.rgb * color.rgb;
         vec3 planC = mix(vec3(1.0), color.rgb, 0.35);
         rgb   = bodyC * step(d, 0.0) + planC * (band * 3.0 + lattice * 0.6);
+        // An inspection sheen travels across even a held build front.
+        // Progress, print layers and authored alpha keep their original law.
+        float phase = P.z * 7.0 + P.y * 2.0 + ghostAux.w;
+        float sheen = pow(0.5 + 0.5*sin(phase - ghostTime * 0.8), 2.0);
+        rgb += planC * (1.0 - exp(-ghostTime * ghostTime * 0.8)) * sheen * 3.2;
         alpha = color.a * tex.a * clamp(step(d, 0.0) + band + lattice * 0.55, 0.0, 1.0);
     }
     else if (ghostLook == 69) // Studio: Magma
@@ -2162,6 +2184,12 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         float aa = max(max(qfw.x, qfw.y), qfw.z);
         float edgeLine = smoothstep(0.46 - aa, 0.49 + aa, max(fq.x, max(fq.y, fq.z))) * detail;
         rgb   = body * (0.35 + fF * 0.9) + disp * flash * 1.6 + edgeLine * color.rgb * 0.6 + edge * 0.4;
+        // Broad light wanders across fixed facets; each facet twinkles gently.
+        // Blend out the cell phase at distance with the existing facet LOD.
+        float phase = P.z * 7.0 + mix(0.5, ghost_hash3(c), detail) * 2.0 + ghostAux.w;
+        float glint = pow(0.5 + 0.5*sin(phase - ghostTime * 0.8), 3.0);
+        float wet = 1.0 - exp(-ghostTime * ghostTime * 0.8);
+        rgb = rgb * (1.0 - wet*0.06) + mix(color.rgb, vec3(1.0), 0.65) * glint * wet * 0.24;
         alpha = color.a * tex.a * clamp(0.45 + fF * 0.5 + flash, 0.0, 1.0);
     }
     else if (ghostLook == 65) // Studio: Mercury

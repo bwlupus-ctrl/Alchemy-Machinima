@@ -17,7 +17,7 @@ python scripts/code_tools/clone_looks_safety_check.py
 `--looks` is a standalone development subset, never used by the normal gate.
 The gate discovers every overlay ID >=64 in the Studio style selector; 68/72
 are retired. Adding another selector entry automatically expands the matrix.
-Only the 17 dated (look ID, check) pairs in `LEGACY_KNOWN` are reported as
+Only the eight dated authored-hair-alpha (look ID, check) pairs in `LEGACY_KNOWN` are reported as
 `WARN`, with context in the JSON `legacy_summary`. The SHA-256 pin covers
 the exact pairs, dates and reasons; any table edit requires explicit review.
 A listed pair that starts passing fails as stale and must be removed. All
@@ -27,6 +27,27 @@ Fix a new look instead of weakening the limits. Every new anatomical motif
 must extend the XML-derived semantic oracle and include a wrong-frame negative
 control. Prim-local rigid faces must suppress anatomy or receive a body-space
 reference before using it.
+
+The reviewed animations for 64/66/67/71/76 additionally require perceptible
+motion on the real SL avatar at 600 projected pixels. The metric pools absolute
+display R/G/B channel errors inside the fixed neutral silhouette, composited on
+RGB .035 and clipped to [0,1]. Every 2 s interval at 0/2/4/6/8/10 s, both seeds,
+three poses/views and Effect fps 0/12 must have MAE >= .012 and p95 >= .04.
+Glass is checked both with and without scene refraction. Two simultaneous
+seeds at 2/4/6/8/10 s require MAE >= .01, also after subtracting each seed's
+own t=0 still to isolate motion from existing seeded material patterns.
+At fps 0, both MAE and p95 for adjacent 1/60 s frames must be strictly below
+one quarter of the corresponding 2 s change. Effect fps 12 holds stay exact.
+The same metrics for all IDs 64-100 (including retired 68/72) are report-only
+outside these five IDs, in `perceptibility_table.md` and JSON. Existing safety
+criteria for every other look remain unchanged. The five reviewed looks' t=0
+real-SL-avatar stills are compared with pre-animation commit `69cfd4637fd`: display RGB
+mean absolute error must be <= .01 and its 99th percentile <= .03 (display
+RGB units, where 1.0 is reference white). Alpha stays exact at t=0, 2.37 and 9.97.
+Every other look retains exact parity, including 85-100 against that base.
+Before/after strips at 0/2/4/6 s and 2x2 simultaneous crowd seed tiles at 4 s
+preserve the 600 px body height in cropped cells in `renders/legacy_anim/`,
+alongside metrics.
 
 ## Fixtures and limits
 

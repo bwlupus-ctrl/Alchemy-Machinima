@@ -14,10 +14,10 @@ import re
 import xml.etree.ElementTree as ET
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 import relight_3d_gl as G
-from clone_looks_gl_check import Runner, AvatarRunner, F, V, ROOT, NAMES, MATRIX_NAMES, CINEMATIC_NAMES
+from clone_looks_gl_check import Runner, AvatarRunner, F, V, ROOT, NAMES, MATRIX_NAMES, CINEMATIC_NAMES, LEGACY_ANIMATED
 from clone_looks_anatomy import anatomy as skeleton_anatomy, verify as verify_anatomy
 
 CHAR = ROOT / 'indra/newview/character'
@@ -34,25 +34,16 @@ REPORT = ROOT / '.tmp/looks16/REPORT_SAFETY.md'
 # Reviewed pre-existing failures only. Every pair is visible, dated and pinned.
 # Removing a resolved pair requires an explicit review and pin update too.
 LEGACY_KNOWN = {
-    (64, 'frozen'): dict(date="2026-11-03", reason='Pre-existing static treatment; older-look motion decision pending.'),
-    (64, 'identical crowd seeds'): dict(date="2026-11-03", reason='Pre-existing synchronized crowd treatment; older-look seed decision pending.'),
     (64, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
-    (66, 'frozen'): dict(date="2026-11-03", reason='Pre-existing static treatment; older-look motion decision pending.'),
-    (67, 'frozen'): dict(date="2026-11-03", reason='Pre-existing static treatment; older-look motion decision pending.'),
-    (67, 'identical crowd seeds'): dict(date="2026-11-03", reason='Pre-existing synchronized crowd treatment; older-look seed decision pending.'),
     (67, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
-    (71, 'frozen'): dict(date="2026-11-03", reason='Pre-existing static treatment; older-look motion decision pending.'),
-    (71, 'identical crowd seeds'): dict(date="2026-11-03", reason='Pre-existing synchronized crowd treatment; older-look seed decision pending.'),
     (73, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
-    (76, 'frozen'): dict(date="2026-11-03", reason='Pre-existing static treatment; older-look motion decision pending.'),
-    (76, 'identical crowd seeds'): dict(date="2026-11-03", reason='Pre-existing synchronized crowd treatment; older-look seed decision pending.'),
     (76, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
     (77, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
     (78, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
     (80, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
     (83, 'authored hair alpha'): dict(date="2026-11-03", reason='Pre-existing authored hair alpha override; older-look alpha decision pending.'),
 }
-LEGACY_KNOWN_SHA256 = "b823a0f8dd9872df8f3d8018f02d894a8b6a730d0fa0f6bce5feeac78cac05a9"
+LEGACY_KNOWN_SHA256 = "1c2f46bcf992ae191b4ecba9738a444e99b8fd040bd0246b2139788130cd556e"
 
 
 def validate_legacy_known(table=None):
@@ -659,6 +650,221 @@ def discover_looks():
     return sorted(looks-{68,72})
 
 
+# Perceptibility is evaluated in display code values AFTER compositing and
+# clipping to [0,1], never on invisible HDR energy or alpha differences.
+PERCEPT_TIMES = (0., 2., 4., 6., 8., 10.)
+PERCEPT_LIMITS = dict(motion_mae=.012, motion_p95=.04, seed_mae=.01,
+                      adjacent_ratio=.25)
+
+
+def display_rgb(frame):
+    return np.clip(frame[..., :3] + .035*(1-frame[..., 3:4]), 0., 1.)
+
+
+def rgb_change(a, b, mask):
+    error = np.abs(display_rgb(a)[mask] - display_rgb(b)[mask])
+    return dict(mae=float(error.mean()), p95=float(np.quantile(error, .95)))
+
+
+def perceptibility_failures(row):
+    failures = []
+    if row['motion_mae'] < PERCEPT_LIMITS['motion_mae']: failures.append('imperceptible motion mean')
+    if row['motion_p95'] < PERCEPT_LIMITS['motion_p95']: failures.append('imperceptible motion p95')
+    if row['seed_mae'] < PERCEPT_LIMITS['seed_mae']: failures.append('imperceptible crowd seeds')
+    if row['motion_seed_mae'] < PERCEPT_LIMITS['seed_mae']: failures.append('unseeded motion')
+    if row['adjacent_mae_ratio'] >= PERCEPT_LIMITS['adjacent_ratio'] or row['adjacent_p95_ratio'] >= PERCEPT_LIMITS['adjacent_ratio']:
+        failures.append('animation strobing')
+    return failures
+
+
+def perceptibility_checks(out, r, tree, current):
+    """600 px real SL avatar; report all 64-100, gate only reviewed five.
+
+    MAE and p95 pool absolute R/G/B channel errors over the fixed neutral
+    silhouette. Motion uses EVERY consecutive 2 s pair from 0 through 10 s,
+    both seeds, fps 0/12, all poses/views. Crowd tests use t=2/4/6/8/10:
+    the authored t=0 still is deliberately identical for previously static
+    looks. Motion-only seed errors subtract each seed's own t=0 RGB first.
+    Smoothness compares 1/60 s vs 2 s at identical starts, fps 0 only.
+    """
+    out.mkdir(parents=True, exist_ok=True)
+    result = dict(metric='Absolute display RGB channel error over neutral silhouette, clipped [0,1], composited on RGB .035; mean and pooled-channel p95',
+                  size=600, times=PERCEPT_TIMES, seed_times=PERCEPT_TIMES[1:],
+                  limits=PERCEPT_LIMITS, gated_ids=LEGACY_ANIMATED, looks={})
+    names = dict(NAMES); names.update(dict(enumerate(MATRIX_NAMES,78))); names.update(dict(enumerate(CINEMATIC_NAMES,85)))
+    for look in range(64,101):
+        rows=[]
+        for pose in ('bind','raised','turned'):
+            r.pose=pose; r.camera_center_z=sum(r.pose_bounds[pose])*.5
+            scale=600/(.85*r.height*.5*(r.pose_bounds[pose][1]-r.pose_bounds[pose][0]))
+            for camera,angle in VIEWS.items():
+                r.camera=angle
+                mask=r.frame(current,1,scale=scale)[...,3]>0
+                for scene in ((False,True) if look==64 else (False,)):
+                    for fps in (0,12):
+                        opts=dict(scale=scale,scene=scene,effect_fps=fps)
+                        frames=[[r.frame(current,look,time=t,phase=seed,**opts) for t in PERCEPT_TIMES] for seed in SEEDS]
+                        motion=[];smooth=[];seed_errors=[];motion_seed=[]
+                        for seed,sequence in zip(SEEDS,frames):
+                            for t,a,b in zip(PERCEPT_TIMES,sequence,sequence[1:]):
+                                delta=rgb_change(a,b,mask);motion.append(dict(time=t,seed=seed,**delta))
+                                if fps==0:
+                                    near=r.frame(current,look,time=t+1/60,phase=seed,**opts)
+                                    short=rgb_change(a,near,mask)
+                                    smooth.append(dict(time=t,seed=seed,mae=short['mae'],p95=short['p95'],
+                                                       mae_ratio=short['mae']/max(delta['mae'],1e-12),
+                                                       p95_ratio=short['p95']/max(delta['p95'],1e-12)))
+                        for i,t in enumerate(PERCEPT_TIMES[1:],1):
+                            seed_errors.append(dict(time=t,**rgb_change(frames[0][i],frames[1][i],mask)))
+                            residual=[display_rgb(sequence[i])[mask]-display_rgb(sequence[0])[mask] for sequence in frames]
+                            motion_seed.append(float(np.abs(residual[0]-residual[1]).mean()))
+                        row=dict(pose=pose,camera=camera,fps=fps,scene=scene,
+                                 motion_mae=min(d['mae'] for d in motion),motion_p95=min(d['p95'] for d in motion),
+                                 seed_mae=min(d['mae'] for d in seed_errors),seed_p95=min(d['p95'] for d in seed_errors),
+                                 motion_seed_mae=min(motion_seed),
+                                 adjacent_mae_ratio=max((d['mae_ratio'] for d in smooth),default=0.),
+                                 adjacent_p95_ratio=max((d['p95_ratio'] for d in smooth),default=0.),
+                                 motion=motion,seeds=seed_errors,adjacent=smooth)
+                        rows.append(row)
+        summary={key:min(row[key] for row in rows) for key in ('motion_mae','motion_p95','seed_mae','seed_p95','motion_seed_mae')}
+        summary.update({key:max(row[key] for row in rows) for key in ('adjacent_mae_ratio','adjacent_p95_ratio')})
+        failures=[dict(reason=reason,context={k:row[k] for k in ('pose','camera','fps','scene')})
+                  for row in rows for reason in perceptibility_failures(row)] if look in LEGACY_ANIMATED else []
+        result['looks'][str(look)]=dict(name=names.get(look,'Retired (shader fallback)' if look in (68,72) else 'Legacy'),gated=look in LEGACY_ANIMATED,
+                                      summary=summary,failures=failures,matrix=rows)
+        print('PERCEPT',look,summary,'FAIL' if failures else 'PASS' if look in LEGACY_ANIMATED else 'REPORT ONLY',flush=True)
+        (out/'perceptibility_metrics.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    table=['| Look | 2 s MAE min | 2 s p95 min | Seed MAE min | Seed p95 min | Motion-only seed MAE min | 1/60 s / 2 s MAE max | p95 ratio max | Mode |',
+           '| --- | --- | --- | --- | --- | --- | --- | --- | --- |']
+    for look,data in result['looks'].items():
+        v=data['summary']
+        table.append(f"| {look} {data['name']} | {v['motion_mae']:.6f} | {v['motion_p95']:.6f} | {v['seed_mae']:.6f} | {v['seed_p95']:.6f} | {v['motion_seed_mae']:.6f} | {v['adjacent_mae_ratio']:.6f} | {v['adjacent_p95_ratio']:.6f} | {'GATE' if data['gated'] else 'report only'} |")
+    (out/'perceptibility_table.md').write_text(result['metric']+'\n\n'+'\n'.join(table)+'\n',encoding='utf-8')
+    # The same classifier must reject static, synchronized, low-amplitude and
+    # high-frequency motion; the pre-animation real rendering fails all five.
+    base=r.program(G.SourceTree('69cfd4637fd'),('HAS_SKIN',))
+    r.pose='bind';r.camera=0.;r.camera_center_z=sum(r.pose_bounds['bind'])*.5
+    scale=600/(.85*r.height*.5*(r.pose_bounds['bind'][1]-r.pose_bounds['bind'][0]))
+    mask=r.frame(current,1,scale=scale)[...,3]>0
+    controls={}
+    for look in LEGACY_ANIMATED:
+        delta=rgb_change(r.frame(base,look,time=2,scale=scale),r.frame(base,look,time=4,scale=scale),mask)
+        assert delta['mae'] < .012 or delta['p95'] < .04, ('pre-animation perceptibility control escaped',look,delta)
+        controls[str(look)]=delta
+    good=dict(motion_mae=.02,motion_p95=.06,seed_mae=.02,motion_seed_mae=.02,adjacent_mae_ratio=.01,adjacent_p95_ratio=.01)
+    for field,value in (('motion_mae',.0015),('motion_p95',.039),('seed_mae',.0005),('motion_seed_mae',0.),('adjacent_mae_ratio',.25),('adjacent_p95_ratio',.25)):
+        assert perceptibility_failures(dict(good,**{field:value})), ('perceptibility classifier insensitive',field)
+    result['negative_controls']=controls
+    (out/'perceptibility_metrics.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    r.pose='bind';r.camera=0.
+    return result
+
+
+def legacy_animation_checks(out, r, tree, current):
+    """Real SL still similarity replaces exact parity for LEGACY_ANIMATED.
+
+    At t=0, silhouette display RGB MAE <= .01 and p99 <= .03. Authored alpha
+    stays exact at three times. Every other look retains exact image parity
+    against the pre-animation commit, including looks 85-100.
+    """
+    out.mkdir(parents=True, exist_ok=True)
+    base_ref = '69cfd4637fd'
+    base = G.SourceTree(base_ref)
+    previous = r.program(base, ('HAS_SKIN',))
+    result = dict(base=base_ref, metric='silhouette display RGB absolute error',
+                  limits=dict(mae=.01, p99=.03, alpha_max_error=0.), looks={})
+    # No shader edits outside the five reviewed branches, including uniforms.
+    def untouched(source):
+        for look in LEGACY_ANIMATED:
+            pattern = r'    else if \(ghostLook == '+str(look)+r'\) // Studio:[\s\S]*?(?=    else if \(ghostLook ==)'
+            source, count = re.subn(pattern, f'    // reviewed legacy animation {look}\n', source)
+            assert count == 1, ('legacy branch boundary', look)
+        return source
+    assert untouched(base.read(F)) == untouched(tree.read(F)), 'unreviewed shader edit'
+    for look in LEGACY_ANIMATED:
+        rows = []
+        for pose in ('bind', 'raised', 'turned'):
+            r.pose = pose
+            bottom, top = r.pose_bounds[pose]
+            r.camera_center_z = (bottom+top)*.5
+            scale = 600/(.85*r.height*.5*(top-bottom))
+            for camera, angle in VIEWS.items():
+                r.camera = angle
+                mask = r.frame(current, 1, scale=scale)[..., 3] > 0
+                for seed in SEEDS:
+                    for scene in ((False, True) if look == 64 else (False,)):
+                        opts = dict(scale=scale, phase=seed, scene=scene)
+                        before = r.frame(previous, look, time=0., **opts)
+                        after = r.frame(current, look, time=0., **opts)
+                        error = np.abs(display_rgb(before)[mask]-display_rgb(after)[mask])
+                        mae, p99 = float(error.mean()), float(np.quantile(error, .99))
+                        assert mae <= .01 and p99 <= .03, ('legacy still similarity', look, pose, camera, seed, scene, mae, p99)
+                        for time in (0., 2.37, 9.97):
+                            a = r.frame(previous, look, time=time, **opts)
+                            b = r.frame(current, look, time=time, **opts)
+                            assert np.array_equal(a[..., 3], b[..., 3]), ('legacy authored alpha changed', look, pose, camera, seed, scene, time)
+                        rows.append(dict(pose=pose, camera=camera, seed=seed, scene=scene, mae=mae, p99=p99, alpha_max_error=0.))
+        result['looks'][str(look)] = rows
+        # Each strip has front/profile/back rows and four time columns.
+        r.pose = 'bind'; r.camera_center_z = sum(r.pose_bounds['bind'])*.5
+        scale = 600/(.85*r.height*.5*(r.pose_bounds['bind'][1]-r.pose_bounds['bind'][0]))
+        images = {}
+        cell_w, cell_h = 720, 656
+        font = ImageFont.truetype('arial.ttf', 16)
+        for label, program in (('before', previous), ('after', current)):
+            strip = Image.new('RGB', (4*cell_w, 3*cell_h), '#111111')
+            draw = ImageDraw.Draw(strip)
+            for row, (camera, angle) in enumerate(VIEWS.items()):
+                r.camera = angle
+                neutral = r.frame(current,1,scale=scale)[...,3]>0
+                yy,xx=np.where(neutral[::-1]); box=(max(0,int(xx.min())-12),max(0,int(yy.min())-12),min(r.width,int(xx.max())+13),min(r.height,int(yy.max())+13))
+                for col, time in enumerate((0., 2., 4., 6.)):
+                    path = out/f'{look}_{label}_{camera}_{col}.png'
+                    save(r.frame(program, look, time=time, scale=scale, phase=SEEDS[0]), path)
+                    with Image.open(path) as thumb:
+                        thumb=thumb.crop(box)
+                        thumb.save(path)
+                        strip.paste(thumb, (col*cell_w+(cell_w-thumb.width)//2, row*cell_h+28))
+                    draw.text((col*cell_w+8, row*cell_h+8), f'{look} {NAMES[look]} {label} {camera} t={time}', fill='white', font=font)
+            strip.save(out/f'{look}_{label}_strip.png'); images[label] = strip
+        comparison = Image.new('RGB', (4*cell_w, 6*cell_h), '#111111')
+        comparison.paste(images['before'], (0, 0)); comparison.paste(images['after'], (0, 3*cell_h))
+        comparison.save(out/f'{look}_comparison.png')
+        r.camera=0.
+        neutral=r.frame(current,1,scale=scale)[...,3]>0
+        yy,xx=np.where(neutral[::-1]);box=(max(0,int(xx.min())-12),max(0,int(yy.min())-12),min(r.width,int(xx.max())+13),min(r.height,int(yy.max())+13))
+        crowd=Image.new('RGB',(2*cell_w,2*cell_h),'#111111');draw=ImageDraw.Draw(crowd)
+        crowd_seeds=(*SEEDS,40123*(2*np.pi/65536.),59001*(2*np.pi/65536.))
+        for index,seed in enumerate(crowd_seeds):
+            row,col=divmod(index,2)
+            path=out/f'{look}_crowd_seed{index}.png'
+            save(r.frame(current,look,time=4.,phase=seed,scale=scale),path)
+            with Image.open(path) as im:
+                im=im.crop(box);im.save(path)
+                crowd.paste(im,(col*cell_w+(cell_w-im.width)//2,row*cell_h+28))
+            draw.text((col*cell_w+8,row*cell_h+8),f'{look} {NAMES[look]} seed={seed:.5f} t=4.0',fill='white',font=font)
+        crowd.save(out/f'{look}_crowd_seed_tile.png')
+    p = RealAvatar(320, 256, r.gl)
+    old, new = p.program(base, ('HAS_SKIN',)), p.program(tree, ('HAS_SKIN',))
+    count = 0
+    for look in discover_looks():
+        if look in LEGACY_ANIMATED:
+            continue
+        for pose in ('bind', 'raised', 'turned'):
+            p.pose = pose; p.camera_center_z = sum(p.pose_bounds[pose])*.5
+            for angle in VIEWS.values():
+                p.camera = angle
+                for time in (0., 2.37, 9.97):
+                    for seed in SEEDS:
+                        assert np.array_equal(p.frame(old, look, time=time, phase=seed), p.frame(new, look, time=time, phase=seed)), ('pre-animation exact parity', look, pose, angle, time, seed)
+                        count += 1
+    result['unchanged_parity'] = dict(cases=count, max_error=0.0)
+    result['crowd_tile'] = dict(time=4.,seeds=crowd_seeds,body_height_px=600)
+    (out/'legacy_animation_metrics.json').write_text(json.dumps(result, indent=2)+'\n', encoding='utf-8')
+    note(f'- PASS legacy t=0 similarity (silhouette display RGB MAE <= .01, p99 <= .03), exact authored alpha; all other looks parity 0.0 ({count} real-avatar cases).')
+    return result
+
+
 def _check(out=None,looks=None):
     out=out or ROOT/'.tmp/looks16/renders/safety'
     out.mkdir(parents=True,exist_ok=True)
@@ -678,11 +884,13 @@ def _check(out=None,looks=None):
                 skeleton_sha256=hashlib.sha256((CHAR/'avatar_skeleton.xml').read_bytes()).hexdigest(),
                 shader_sha256={p:hashlib.sha256(tree.read(p).encode()).hexdigest() for p in (V,F)},
                 thresholds=dict(luminance=LUMA_CEILING,white_fraction=.25,dilation_px=2,aa_rms=AA_RMS,aa_p99=AA_P99),
-                times=TIMES,looks={})
+                times=TIMES,perceptibility_limits=PERCEPT_LIMITS,looks={})
     result['legacy_summary']=dict(sha256=validate_legacy_known(),
         known=[dict(look=look, check=check, **meta) for (look,check),meta in sorted(LEGACY_KNOWN.items())],
         warnings=[], stale_entries=[], failures={}, negative_controls=legacy_controls)
     result['clone_seeds']=dict(uuid_low16=(7614,25764),phases=SEEDS)
+    result['legacy_animation'] = legacy_animation_checks(out.parent/'legacy_anim', runners[1], tree, programs[1])
+    result['perceptibility'] = perceptibility_checks(out.parent/'legacy_anim', runners[1], tree, programs[1])
     result['anatomy']=anatomy(runners[1],tree,programs[1])
     result['negative_controls']=negative_controls(runners[1],tree,programs[1])
     note('- Negative controls rejected: displaced white shell, static Magma, default-parked Decode, ignored texture alpha, wrong -Y anatomy, ignored clone seeds, NaN.')
@@ -703,7 +911,7 @@ def _check(out=None,looks=None):
                 masks[index,pose,camera]=(mask,mask_dilate(mask),scale)
     strips=[]
     for look in looks or discover_looks():
-        failures=[];rows=[];strip=Image.new('RGB',(3*288,3*356),'#111111');draw=ImageDraw.Draw(strip)
+        failures=list(result['perceptibility']['looks'][str(look)]['failures']);rows=[];strip=Image.new('RGB',(3*288,3*356),'#111111');draw=ImageDraw.Draw(strip)
         def fail(reason,context):
             if not any(f['reason']==reason for f in failures):failures.append(dict(reason=reason,context=context))
         for index,(r,pr) in enumerate(zip(runners,programs)):
@@ -736,6 +944,8 @@ def _check(out=None,looks=None):
                                     strip.paste(thumb,(col*288+(288-thumb.width)//2,row*356+28))
                                     draw.text((col*288+8,row*356+8),f'{look} {names.get(look,"New look")} {camera} t={t}',fill='white')
                         if max(deltas,default=0.)<=1e-6:fail('frozen',[index,pose,camera,fps,deltas])
+                        if look in LEGACY_ANIMATED and min(deltas,default=0.)<=1e-6:
+                            fail('static animation dwell',[index,pose,camera,fps,deltas])
                         b=r.frame(pr,look,time=TIMES[0],effect_fps=fps,phase=SEEDS[1],**opts)
                         seed_error=float(np.mean(np.abs(first[mask]-b[mask]))) if first is not None else 0.
                         if seed_error<=1e-6:fail('identical crowd seeds',[index,pose,camera,fps,seed_error])
@@ -764,6 +974,8 @@ def _check(out=None,looks=None):
             aa.append(dict(camera=camera,**metrics))
             if metrics['rms']>=AA_RMS or metrics['p99']>=AA_P99:fail('4K AA instability',aa[-1])
         strip.save(out/f'{look}_strip.png');strips.append((look,strip.copy()))
+        if look in LEGACY_ANIMATED and not any(f['reason'] != 'authored hair alpha' for f in failures):
+            note(f'- {look} {names[look]}: PASS motion, crowd seeds, Effect fps hold, no static dwell (authored hair alpha policy unchanged).')
         failures,warnings,stale=classify_legacy(look,failures)
         summary=result['legacy_summary']
         summary['warnings'].extend(warnings)

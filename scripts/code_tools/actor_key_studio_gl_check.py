@@ -8,7 +8,7 @@ import ctypes as C
 import numpy as np
 from PIL import Image
 import relight_3d_gl as G
-from clone_looks_gl_check import Runner,V
+from clone_looks_gl_check import Runner,V,LEGACY_ANIMATED
 from actor_key_gl_check import Fixture,SH
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -36,7 +36,9 @@ def main():
                             args['keep']=True
                         return runner.render(pr,look,**args)
                     a=render(normal)
-                    if look < 85:
+                    # Reviewed animations use real-avatar safety/t=0 similarity
+                    # in clone_looks_safety_check; fill/alpha still run here.
+                    if look < 85 and look not in LEGACY_ANIMATED:
                         b=render(reference)
                         assert np.array_equal(a,b),(skin,look,opacity,distort,'normal-program regression')
                     for colour in (key,np.ones(3,np.float32),np.zeros(3,np.float32)):
