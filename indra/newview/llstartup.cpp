@@ -993,7 +993,6 @@ bool idle_startup()
             initialize_spellcheck_menu();
             init_menus();
         }
-        show_release_notes_if_required();
 
         if (show_connect_box)
         {
