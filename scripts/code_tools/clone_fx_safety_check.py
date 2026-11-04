@@ -23,7 +23,7 @@ TIMES = tuple(.17 + .41 * i for i in range(25))
 # Changes below these display-space amounts are not perceptible evidence.
 MIN_RGB_DELTA = .0015
 MIN_CHANGED_FRACTION = .008
-FX_SHADER_SHA256 = 'c5778c400ec883808fd28f6ab87a5555082a50130131d72559051c64144a8819'
+FX_SHADER_SHA256 = '37376983ab6949160718894018f22b14741f7d204c6bca8705461869b04f0034'
 
 
 def pre_fx_shader(source, path):
@@ -202,6 +202,8 @@ def check(out=None, runner=None, tree=None, program=None):
                   permutations=permutation_checks(tree, out, runner.gl if runner else None),
                   clock_wrap=clock_wrap_checks(tree, runner.gl if runner else None),
                   effects={}, negative_controls={})
+    from clone_fx_fix1_check import check as fix1_assertions
+    result['fix_round_1'] = fix1_assertions(ROOT/'.tmp/looks16/renders/clone_fx_fix1', runner.gl if runner else None, tree)
     r = runner or RealAvatar(640, 640)
     pr = program or r.program(tree, ('HAS_SKIN',))
     # Always exercise this suite with the real-avatar front view and a metre

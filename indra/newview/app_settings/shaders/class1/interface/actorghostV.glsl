@@ -73,26 +73,39 @@ flat out int vary_fx_body;
 
 float cloneFxHash(vec2 p)
 {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+    // Integer avalanche; exact 24-bit result in every linked program.
+    // Bound even noncanonical mesh heights before the signed conversion/add.
+    // Normal slab/beat/phase inputs are unchanged; valid in GLSL 1.40.
+    p = clamp(p, vec2(-262144.0), vec2(262143.0));
+    uvec2 bits = uvec2(ivec2(floor(p * 4096.0)) + ivec2(0x40000000));
+    uint h = bits.x ^ (bits.y * 0x9e3779b9u);
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
+    return float(h >> 8) * (1.0 / 16777216.0);
 }
 
-void cloneFxVertex(inout vec4 pos, bool body)
+void cloneFxVertex(inout vec4 pos, int body)
 {
-    vary_fx_body = body ? 1 : 0;
+    vary_fx_body = body; // 0 rigid, 1 anatomical body, 2 eyes (no Dropout/Interlace)
     // Uniform early-out: the original position arithmetic is untouched at zero.
     if (ghostFx2.x <= 0.0 && ghostFx3.x <= 0.0 && ghostFx3.y <= 0.0) return;
     float offset = 0.0;
     float t = ghostFx3.w + ghostAux.w * 0.73;
-    if (body && ghostFx2.x > 0.0)
+    // FX-only eye height. Never alter the coordinates consumed by looks.
+    float fxHeight = body == 2 ? 1.762 : position.z; // sl_eye
+    if (body != 0 && ghostFx2.x > 0.0)
     {
-        float slab = floor(position.z / 0.22);
+        float slab = floor((fxHeight + 0.11) / 0.22);
         float cycle = (t + cloneFxHash(vec2(slab, ghostAux.w))) / 2.4;
         float u = fract(cycle);
         float settle = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.30, 0.92, u));
         offset += (2.0 * cloneFxHash(vec2(slab, mod(floor(cycle), 2560.0) + ghostAux.w)) - 1.0)
                   * 0.12 * clamp(ghostFx2.x, 0.0, 1.0) * settle;
     }
-    if (body && ghostFx3.x > 0.0)
+    if (body == 1 && ghostFx3.x > 0.0)
     {
         // Fixed 6 cm lines; suppress unresolved frequencies rather than changing
         // the lattice with camera distance. A line pair must span >= 4 pixels.
@@ -135,9 +148,9 @@ void main()
     vary_normal = normal_matrix * normal;
 #endif
 #ifdef HAS_SKIN
-    cloneFxVertex(pos, true);
+    cloneFxVertex(pos, 1);
 #else
-    cloneFxVertex(pos, false);
+    cloneFxVertex(pos, 0);
 #endif
     vary_position = pos.xyz;
     gl_Position = projection_matrix * pos;
