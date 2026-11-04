@@ -1875,6 +1875,18 @@ void ALGhostStudio::updateLookAt()
     }
 }
 
+// Avatar tag placement for a clone. Body size can still be zero while an outfit
+// loads, so keep a fixed clearance until it is known.
+static LLVector3 clone_name_tag_lift(const LLVector3& body_centre, const LLVector3& body_size,
+                                     const LLQuaternion& body_rot, F32 scale)
+{
+    if (body_size.mV[VZ] < 0.01f)
+    {
+        return LLVector3(0.f, 0.f, 0.16f * scale);
+    }
+    return LLVOAvatar::calcNameTagLift(body_centre, body_size * scale, body_rot);
+}
+
 bool ALGhostStudio::nameplateAnchor(
     const Instance& inst, LLVector3& anchor_agent) const
 {
@@ -1891,10 +1903,10 @@ bool ALGhostStudio::nameplateAnchor(
                 if (anchor_agent.isFinite())
                 {
                     LLJoint* root = ghost->getRootJoint();
-                    anchor_agent += LLVOAvatar::calcNameTagLift(
-                        anchor_agent,
-                        ghost->mBodySize * llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX),
-                        root ? root->getWorldRotation() : inst.mRotation);
+                    anchor_agent += clone_name_tag_lift(
+                        root ? root->getWorldPosition() : anchor_agent, ghost->mBodySize,
+                        root ? root->getWorldRotation() : inst.mRotation,
+                        llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX));
                     return anchor_agent.isFinite();
                 }
             }
@@ -1971,10 +1983,12 @@ bool ALGhostStudio::nameplateAnchor(
                            llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         offset *= source_to_instance;
         anchor_agent = placed_foot + offset;
-        anchor_agent += LLVOAvatar::calcNameTagLift(
-            anchor_agent,
-            source->mBodySize * llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX),
-            inst.mRotation);
+        // Same frame as the head offset above; the foot-to-head midpoint stands
+        // in for the pelvis the avatar version measures the camera from.
+        anchor_agent += clone_name_tag_lift(
+            placed_foot + offset * 0.5f, source->mBodySize,
+            source->getRootJoint()->getWorldRotation() * source_to_instance,
+            llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX));
         return anchor_agent.isFinite();
     }
 
