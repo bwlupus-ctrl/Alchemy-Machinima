@@ -24,7 +24,7 @@
 
 /*[EXTRA_CODE_HERE]*/
 
-// On-lens filters (Graduated ND + Polarizer + [LensLooks] colour grads +
+// On-lens filters (Graduated ND + Polarizer + Variable ND + [LensLooks] colour grads +
 // Infrared film) as a standalone PRE-PASS.
 //
 // Runs on the linear HDR scene buffer after exposure is METERED but before it is
@@ -48,7 +48,7 @@
 //                      so a driver failure can never take ND / Pol / Night
 //                      Mask down with it.
 // Pass order: Night Mask -> [ReShade raw capture, host] -> GradND -> grad tint
-// -> Polarizer -> frame filter -> IR.  Every addition early-outs on its own
+// -> Polarizer -> Variable ND -> frame filter -> IR. Every addition early-outs on its own
 // uniform (amount / strength 0 == exactly identity, before any fetch).
 
 out vec4 frag_color;
@@ -81,6 +81,9 @@ uniform vec4 on_lens_grads2;
 uniform vec4 gradnd_params;   // (density_stops, angle_rad, position, softness)
 uniform vec4 gradnd_params2;  // (sky_confine, sun_weight, sun_radius, flip)
 uniform vec4 gradnd_sun;      // (sun_uv.x, sun_uv.y, has_sun, aspect)
+
+// Shared with GradND/Polarizer in postEffectUtilsF.glsl.
+float lensSkyDepth(float depth);
 
 float lensGradNDMask(vec2 uv, sampler2D depth)
 {
@@ -115,7 +118,7 @@ float lensGradNDMask(vec2 uv, sampler2D depth)
     if (sky_confine > 0.0)
     {
         float d = texture(depth, uv).r;
-        float sky = smoothstep(0.9999, 1.0, d);
+        float sky = lensSkyDepth(d);
         t *= mix(1.0, sky, sky_confine);
     }
     return t;
@@ -201,15 +204,15 @@ float irHue(vec3 c)
 }
 
 // Chlorophyll score f and skin score s from an albedo-like colour A (linear).
-void irClassify(vec3 A, float metallic, float roughness, float tag, out float f, out float s)
+void irClassifyResponse(vec3 A, float metallic, float roughness, float tag, vec2 response, out float f, out float s)
 {
     float maxc = irMax3(A);
     float minc = irMin3(A);
     float sat  = (maxc - minc) / max(maxc, 1.0e-4);
     float hue  = irHue(A);
 
-    float dry  = clamp(on_lens_ir2.z, 0.0, 1.0);
-    float sens = clamp(on_lens_ir2.y, 0.0, 1.0);
+    float dry  = clamp(response.y, 0.0, 1.0);
+    float sens = clamp(response.x, 0.0, 1.0);
 
     // hue window yellow-green .. green; dry vegetation lets olive / straw in
     float hue_lo = mix(55.0, 38.0, dry);
@@ -240,16 +243,26 @@ void irClassify(vec3 A, float metallic, float roughness, float tag, out float f,
     f *= 1.0 - s;
 }
 
+void irClassify(vec3 A, float metallic, float roughness, float tag, out float f, out float s)
+{
+    irClassifyResponse(A, metallic, roughness, tag, on_lens_ir2.yz, f, s);
+}
+
 // NIR reflectance / visible luminance gain for one classified pixel.
-float irGain(vec3 A, float f, float s, float metallic, float emissive, float lumA)
+float irGainResponse(vec3 A, float f, float s, float metallic, float emissive, float lumA, vec2 response)
 {
     float rho_other = mix(lumA, A.r, 0.6);
-    float rho_leaf  = 0.5  * max(on_lens_ir2.x, 0.0);   // 2^FoliageEV folded in by the host
-    float rho_skin  = 0.55 * max(on_lens_ir3.y, 0.0);   // 2^SkinEV
+    float rho_leaf  = 0.5  * max(response.x, 0.0);   // 2^FoliageEV folded in by the host
+    float rho_skin  = 0.55 * max(response.y, 0.0);   // 2^SkinEV
     float rho = mix(mix(rho_other, rho_leaf, f), rho_skin, s);
     rho = mix(rho, lumA, clamp(metallic, 0.0, 1.0));
     float gain = clamp(rho / max(lumA, 0.02), 0.0, 16.0);
     return mix(gain, 1.0, clamp(emissive, 0.0, 1.0));
+}
+
+float irGain(vec3 A, float f, float s, float metallic, float emissive, float lumA)
+{
+    return irGainResponse(A, f, s, metallic, emissive, lumA, vec2(on_lens_ir2.x, on_lens_ir3.y));
 }
 
 // Water: the Tron geometric test -- a horizontal surface at the water plane
@@ -274,7 +287,7 @@ vec3 irApply(vec3 L, vec2 uv, float exposure_scale, inout float glow_a)
         return L; // off: untouched, before any fetch
 
     float d   = texture(depthMap, uv).r;
-    float sky = smoothstep(0.9999, 1.0, d);
+    float sky = lensSkyDepth(d);
 
     vec4  alb      = texture(onLensAlbedoMap, uv);  // linear (sRGB8 target)
     vec3  A        = max(alb.rgb, vec3(0.0));
@@ -380,6 +393,159 @@ vec3 irApply(vec3 L, vec2 uv, float exposure_scale, inout float glow_a)
 }
 #endif // ON_LENS_NO_IR
 
+// =============================================================================
+// Variable ND: artifacts at compensated exposure, never an ND exposure multiply.
+// =============================================================================
+// params: enabled, dial stops, optical grade (0 Pro / 1 Budget / 2 Cheap; worse upward), ring radians.
+// Named presets resolve these controls on the host: Clean Pro, Budget, Pushed Too Far.
+// lens: tan(vertical FOV / 2), full-frame aspect, radial-weighted mean leakage,
+//       material IR blend (zero selects the material-free shader on the host).
+// frame: tile-to-full-frame UV scale.xy, offset.zw (identity for ordinary views).
+uniform vec4 vnd_params;
+uniform vec4 vnd_lens;
+uniform vec4 vnd_frame;
+uniform vec4 vnd_draw_size; // actual scratch viewport.xy, full sensor extent.zw in render texels
+uniform vec4 vnd_ir; // fixed IR defaults: foliage gain, sensitivity, dry, skin gain
+uniform vec4 vnd_sun; // shared sun projection promoted to full-frame UV/visibility
+
+vec3 vndKeepLuma(vec3 original, vec3 shifted)
+{
+    float target = dot(original, LENS_LUMA);
+    float actual = dot(shifted, LENS_LUMA);
+    return target > 0.0 && actual > 1e-10 ? shifted * (target / actual) : original;
+}
+
+vec3 vndLimitRadiance(vec3 original, vec3 filtered)
+{
+    // The existing target is RGBA16F. A luminance ceiling alone cannot stop
+    // a saturated channel overflowing half-float after a warm/purple cast.
+    // Ease back toward the original colour as channel headroom runs out.
+    float input_peak = max(original.r, max(original.g, original.b));
+    if (!(input_peak < 65504.0)) return original;
+    float output_peak = max(filtered.r, max(filtered.g, filtered.b));
+    float headroom = clamp((65504.0 - input_peak) / max(output_peak - input_peak, 1e-6), 0.0, 1.0);
+    return mix(original, filtered, headroom);
+}
+
+vec3 vndPollution(vec3 color, vec2 uv, float sky)
+{
+#ifndef ON_LENS_NO_IR
+    if (vnd_lens.w <= 0.0) return color;
+    float foreground = 1.0 - sky;
+    if (foreground > 0.0)
+    {
+        vec4 alb = texture(onLensAlbedoMap, uv);
+        vec3 A = max(alb.rgb, vec3(0.0));
+        vec4 orm = texture(specularRect, uv);
+        vec4 nraw = getNormRaw(uv);
+        bool pbr = GET_GBUFFER_FLAG(nraw.w, GBUFFER_FLAG_HAS_PBR);
+        float metallic = pbr ? orm.b : 0.0;
+        float roughness = pbr ? orm.g : 1.0 - orm.a;
+        float f, s;
+        // Conservative warm-material protection without requiring an avatar tag:
+        // wood/brick/sand in the skin hue window are protected too. Fixed VND
+        // response stays independent of IR sliders, including when IR is enabled.
+        irClassifyResponse(A, metallic, roughness, 1.0, vnd_ir.yz, f, s);
+        float lumA = dot(A, LENS_LUMA);
+        float gain = irGainResponse(A, f, s, metallic, alb.a, lumA, vnd_ir.xw);
+        vec3 I = color / max(A, vec3(0.02));
+        float spread = (irMax3(I) - irMin3(I)) / max(dot(I, LENS_LUMA), 1e-4);
+        float confidence = (1.0 - smoothstep(0.6, 2.5, spread));
+        float fabric = (1.0 - smoothstep(0.025, 0.12, lumA)) *
+            smoothstep(0.3, 0.7, roughness) * (1.0 - metallic) * (1.0 - f);
+        float amount = foreground * vnd_lens.w * confidence * (1.0 - s) *
+            (1.0 - clamp(alb.a, 0.0, 1.0));
+        vec3 stain = mix(vec3(1.65, 1.0, 0.62), vec3(1.9, 0.62, 1.4), f);
+        amount *= max(f * clamp(gain * 0.25, 0.0, 1.0), fabric);
+        return vndKeepLuma(color, color * mix(vec3(1.0), stain, amount));
+    }
+#endif
+    return color;
+}
+
+// Each fixed-position band integrates to zero over the full sensor.
+float vndSkyBand(float y, float center)
+{
+    float t = (y - center) / 0.045;
+    float lo = center / 0.045;
+    float hi = (1.0 - center) / 0.045;
+    float mean = center * exp(-lo * lo) + (1.0 - center) * exp(-hi * hi);
+    return (1.0 - 2.0 * t * t) * exp(-t * t) - mean;
+}
+
+vec3 applyVariableND(vec3 color, vec2 uv, float exposure_scale)
+{
+    if (vnd_params.x < 0.5 || !(vnd_lens.z > 0.0 && vnd_lens.z < 1.0)) return color;
+
+    float stops = clamp(vnd_params.y, 1.0, 8.0);
+    float quality = clamp(vnd_params.z, 0.0, 2.0);
+    // This pass point-samples scene texels. Derive the same full-frame texel
+    // centre for a tiled snapshot and a single draw; interpolated UV rounding
+    // otherwise becomes visible along the sharper arms.
+    vec2 tile_size = max(vnd_draw_size.xy, vec2(1.0));
+    vec4 frame = vnd_frame.x <= 0.0 ? vec4(1.0, 1.0, 0.0, 0.0) : vnd_frame;
+    vec2 frame_size = vnd_frame.x <= 0.0 ? tile_size : max(vnd_draw_size.zw, vec2(1.0));
+    vec2 frame_uv = (floor(uv * tile_size) + 0.5 + frame.zw * frame_size) / frame_size;
+    vec2 ray = (2.0 * frame_uv - 1.0) * vec2(vnd_lens.y, 1.0) * vnd_lens.x;
+    float radius = length(ray);
+    float theta = atan(radius); // REAL lens ray angle, not radius in screen UV
+    float phi = radius > 1e-8 ? atan(ray.y, ray.x) : 0.0;
+    float corner = atan(length(vec2(vnd_lens.y, 1.0) * vnd_lens.x));
+    // True square-pixel azimuth, with the two zero-ring bands aimed at the
+    // rectangular sensor's corners. Rotate both physical bands with the ring.
+    float axis = atan(1.0 / max(vnd_lens.y, 1e-4));
+    float folded = atan(abs(sin(phi - vnd_params.w)), abs(cos(phi - vnd_params.w)));
+    float sector = folded < axis ? axis : 1.57079632679 - axis;
+    float leak = pow(abs(sin((folded - axis) * 1.57079632679 / max(sector, 1e-4))), 0.85);
+    // Rise early enough for bands to enter the centre, rather than making a
+    // corner vignette. FOV strength is separate so telephoto stays clean.
+    float radial = pow(clamp(theta / max(corner, 1e-4), 0.0, 1.0), 0.25);
+    float wide_strength = smoothstep(0.2, 0.7, vnd_lens.x);
+    float dial = (stops - 1.0) / 7.0;
+    // Keep both low-grade lenses nearly invisible through four stops; preserve
+    // Budget at 5/8 and Cheap at 8, while Cheap never has less X than Budget.
+    float budget = 0.82 * dial * dial * smoothstep(3.0, 5.0, stops);
+    float relative_leak = quality < 0.5 ? 0.002 * (exp2(stops) - 1.0) / 255.0 :
+        (quality < 1.5 ? budget : max(budget, 1.3 * max(exp2(stops) - 16.0, 0.0) / 240.0));
+    float bias = clamp(vnd_lens.z, 0.0, 1.0);
+    relative_leak = min(relative_leak, min(0.75 / max(bias, 1e-4), 0.5 / max(1.0 - bias, 1e-4)));
+    // A portrait/ultrawide crop lets one wedge dominate the sensor. Reduce
+    // redistribution there; this tends toward identity, never attenuation.
+    float sensor_balance = min(1.0, min(vnd_lens.y, 1.77777777778 / max(vnd_lens.y, 1e-4)));
+    relative_leak *= wide_strength * sensor_balance;
+    // The host integrates this SAME radial/angular profile over the full
+    // sensor. Mean preservation is approximate: table interpolation, gain bounds,
+    // partial sky masks and the highlight ceiling can shift scene mean luma.
+    float gain = clamp(1.0 + relative_leak * radial * (leak - bias), 0.25, 1.5);
+
+    // A narrow sun-phased sky band with bright shoulders. This Gaussian's
+    // derivative has an analytic zero-mean correction over the full sensor.
+    // Local darkening is visible without a broad sky-exposure reduction.
+    float sky = lensSkyDepth(texture(depthMap, uv).r);
+    float wide = clamp(vnd_lens.x * vnd_lens.x, 0.0, 1.0);
+    // Fade amplitudes, never move a band back across the frame as visibility falls.
+    float band = mix(vndSkyBand(frame_uv.y, 0.5),
+        vndSkyBand(frame_uv.y, clamp(vnd_sun.y, -0.2, 1.2)), vnd_sun.z);
+    gain = clamp(gain - sky * band * wide * 0.16 * (quality * 0.5) * dial * dial, 0.25, 1.5);
+
+    // Blue/purple leakage, optical-grade cast, and NIR contamination each
+    // preserve the incoming pixel's Rec.709 luminance, not just grey balance.
+    float tint = relative_leak * radial * leak * (0.08 + 0.10 * quality);
+    vec3 tinted = vndKeepLuma(color, color * mix(vec3(1.0), vec3(1.06, 0.94, 1.25), tint));
+    vec3 cast = quality < 0.5 ? vec3(1.008, 1.0, 0.994) :
+        (quality < 1.5 ? vec3(0.90, 1.0, 1.17) : vec3(1.24, 1.0, 0.76));
+    tinted = vndKeepLuma(tinted, tinted * mix(vec3(1.0), cast, (stops - 1.0) / 7.0));
+    tinted = vndPollution(tinted, uv, sky);
+
+    // Do not add energy to already-hot HDR highlights. Never clip existing
+    // radiance: the ceiling only limits VND's relative brightening. Dark arms
+    // still darken highlights, so highlight-dominated shots may lose mean luma.
+    float lum = max(dot(color, LENS_LUMA), 0.0);
+    float ceiling = max(lum, 16.0 / max(exposure_scale, 1e-4));
+    gain = min(gain, ceiling / max(lum, 1e-8));
+    return vndLimitRadiance(color, tinted * gain);
+}
+
 void main()
 {
     // Preserve the full texel — alpha carries the prim-glow tag that the bloom
@@ -400,6 +566,7 @@ void main()
     diff.rgb = applyGradND(diff.rgb, vary_fragcoord, depthMap);
     diff.rgb = lensGradTint(diff.rgb, vary_fragcoord, depthMap);        // [LensLooks]
     diff.rgb = applyPolarizer(diff.rgb, vary_fragcoord, depthMap, exposure_scale);
+    diff.rgb = applyVariableND(diff.rgb, vary_fragcoord, exposure_scale);
     diff.rgb = lensFrameFilter(diff.rgb);                                // [LensLooks]
 #ifndef ON_LENS_NO_IR
     diff.rgb = irApply(diff.rgb, vary_fragcoord, exposure_scale, diff.a); // [LensLooks]

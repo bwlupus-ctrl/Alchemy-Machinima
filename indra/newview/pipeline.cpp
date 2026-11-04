@@ -15279,7 +15279,7 @@ void LLPipeline::updateNightMaskAnchor()
     // applyOnLensFilters then skips the mask draw entirely via one of these
     // exact gates, permanently biasing exposure upward.
     // [TonemapLegacySky] Share the final post gate with applyOnLensFilters.
-    const bool will_render = gOnLensFiltersProgram.isComplete() && colorCorrectWillApplyExposure(true);
+    const bool will_render = gOnLensFiltersNoIRProgram.isComplete() && colorCorrectWillApplyExposure(true);
 
     static LLCachedControl<S32>  target_setting(gSavedSettings, "CineLightRigNightMaskTarget", 0);
     static LLCachedControl<S32>  shape_setting(gSavedSettings, "CineLightRigNightMaskShape", 1);
@@ -15512,10 +15512,10 @@ void LLPipeline::updateNightMaskAnchor()
 //     active (writing display values into a log image would corrupt it).
 void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
 {
-    if (!gOnLensFiltersProgram.isComplete())
+    if (!gOnLensFiltersNoIRProgram.isComplete())
         return;
 
-    // Cheap enable gate FIRST â€” when all three filters are off this returns before
+    // Cheap enable gate FIRST â€” when all lens filters are off this returns before
     // any GPU profiling zone, settings resolve, copy, or draw, keeping the disabled
     // hot path minimal. mNightMaskFrame.mActive was already resolved once this
     // frame by updateNightMaskAnchor() (called from renderFinalize before this),
@@ -15536,16 +15536,19 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     static LLCachedControl<bool> gnd_enabled(gSavedSettings, "RenderGradNDEnabled", false);
     static LLCachedControl<bool> pol_enabled(gSavedSettings, "RenderPolarizerEnabled", false);
     const ALLensLooks::InfraredParams ir = ALLensLooks::infrared();
+    const ALLensLooks::VariableNDParams vnd = ALLensLooks::variableND();
+    const bool material_ready = !gOnLensNoIR && gOnLensFiltersProgram.isComplete();
+    const bool ir_active = material_ready && ir.enabled && ir.strength > 0.f;
+    const bool material_active = material_ready && (ir_active || vnd.ir_blend > 0.f);
     static LLCachedControl<F32> grad_tint_amount(gSavedSettings, "RenderGradNDTintAmount", 0.f);
     static LLCachedControl<F32> frame_filter_amount(gSavedSettings, "RenderLensFilterAmount", 0.f);
     const F32 grad_amount = std::isfinite((F32)grad_tint_amount) ?
         llclamp((F32)grad_tint_amount, 0.f, 1.f) : 0.f;
     const F32 filter_amount = std::isfinite((F32)frame_filter_amount) ?
         llclamp((F32)frame_filter_amount, 0.f, 1.f) : 0.f;
-    const bool ir_active = ir.enabled && ir.strength > 0.f;
     const bool grads_active = (gnd_enabled() && grad_amount > 0.f) || filter_amount > 0.f;
     const bool night_active = mNightMaskFrame.mActive;
-    if (!gnd_enabled() && !pol_enabled() && !night_active && !ir_active && !grads_active)
+    if (!gnd_enabled() && !pol_enabled() && !night_active && !ir_active && !grads_active && !vnd.enabled)
         return;
 
     // "No post-processing" snapshots must stay filter-free.
@@ -15649,7 +15652,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     p_glare_depth = llclamp(p_glare_depth, 0.5f, 1.f);
 
     // Nothing to do â€” skip the pass entirely (byte-identical, zero cost).
-    if (density <= 0.f && p_strength <= 0.f && !night_active && !ir_active && !grads_active)
+    if (density <= 0.f && p_strength <= 0.f && !night_active && !ir_active && !grads_active && !vnd.enabled)
         return;
 
     // --- Night Mask -------------------------------------------------------
@@ -15680,7 +15683,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // Only needed while Night Mask actually contributes to a given sub-pass
     // (see draw_on_lens_pass below).
     const glm::mat4 night_inverse_projection =
-        (night_active || ir_active) ? glm::inverse(glm::make_mat4(gGLLastProjection)) : glm::mat4(1.f);
+        (night_active || material_active) ? glm::inverse(glm::make_mat4(gGLLastProjection)) : glm::mat4(1.f);
 
     // ReShade decouple: past every early-out, this pass WILL modify `screen`.
     // M8 ordering: Night Mask is a world-lighting fake, not a camera-lens
@@ -15691,7 +15694,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // pass therefore runs in TWO draws through the shared shader/program:
     //   1) Night Mask only, baked back into `screen`
     //   2) raw-scene capture (mask included, GradND/Polarizer NOT yet applied)
-    //   3) GradND/Polarizer only (Night Mask forced off â€” already applied)
+    //   3) Artistic lens filters (Night Mask forced off â€” already applied)
     // When Night Mask is inactive this collapses to the original single draw
     // with the capture BEFORE it, byte-identical to the pre-Night-Mask code.
     static LLCachedControl<bool> reshade_decouple(gSavedSettings, "RenderReShadeDecoupleOnLens", true);
@@ -15707,7 +15710,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
 
     F32 aspect  = (screen->getHeight() > 0) ? (F32)screen->getWidth() / (F32)screen->getHeight() : 1.f;
     F32 sun_u = 0.5f, sun_v = 0.5f, has_sun = 0.f;
-    bool need_sun = (density > 0.f && sun_weight > 0.f) || (p_strength > 0.f && p_auto_band > 0.5f);
+    bool need_sun = vnd.enabled || (density > 0.f && sun_weight > 0.f) || (p_strength > 0.f && p_auto_band > 0.5f);
     if (need_sun)
     {
         LLEnvironment& environment = LLEnvironment::instance();
@@ -15731,6 +15734,54 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         }
     }
 
+    // Saved WORLD projection includes the current camera FOV (including zoom).
+    // Undo only snapshot tiling, then evaluate every tile in full-frame UV.
+    // Do not use the live GL stack: Scene Monitor/UI may have replaced it.
+    F32 tile_width = gViewerWindow ? (F32)gViewerWindow->getWorldViewWidthRaw() : (F32)screen->getWidth();
+    F32 tile_height = gViewerWindow ? (F32)gViewerWindow->getWorldViewHeightRaw() : (F32)screen->getHeight();
+    const F32 snapshot_zoom = gSnapshot ? llmax(LLViewerCamera::getInstance()->getZoomFactor(), 1.f) : 1.f;
+    LLVector2 vnd_size(tile_width * snapshot_zoom, tile_height * snapshot_zoom);
+    LLVector2 vnd_offset = gSnapshot ? LLRenderPass::actorFxFragOffset() : LLVector2::zero;
+    if (gSnapshot)
+        if (const auto* snapshot = ALLensLooks::variableNDSnapshot())
+        {
+            vnd_size = snapshot->size;
+            tile_width = snapshot->tile.mV[VX];
+            tile_height = snapshot->tile.mV[VY];
+            vnd_offset = snapshot->offset;
+        }
+    // Guard every denominator before projection, offsets or extent uploads.
+    vnd_size.mV[VX] = llmax(vnd_size.mV[VX], 1.f);
+    vnd_size.mV[VY] = llmax(vnd_size.mV[VY], 1.f);
+    const F32 vnd_scale_x = llmax(tile_width, 1.f) / vnd_size.mV[VX];
+    const F32 vnd_scale_y = llmax(tile_height, 1.f) / vnd_size.mV[VY];
+    const F32 projection_y = fabsf((F32)gGLLastProjection[5]) * vnd_scale_y;
+    const F32 projection_x = fabsf((F32)gGLLastProjection[0]) * vnd_scale_x;
+    const F32 vnd_tan = std::isfinite(projection_y) && projection_y > 1.e-4f
+        ? 1.f / projection_y : 0.f;
+    const F32 vnd_aspect = std::isfinite(projection_x) && projection_x > 1.e-4f
+        ? projection_y / projection_x : 0.f;
+    // GradND/Polarizer keep their existing sun policy. VND projects the saved
+    // world direction even behind the camera, with a safe divisor and smooth
+    // visibility/front/elevation ramps. The shader crossfades fixed bands;
+    // sunset and the default-centre transition remain continuous.
+    const glm::vec4 vnd_sun_clip = glm::make_mat4(gGLLastProjection) * glm::make_mat4(gGLLastModelView) *
+        glm::vec4(mSunDir.mV[0], mSunDir.mV[1], mSunDir.mV[2], 0.f);
+    const F32 sun_divisor = llmax(vnd_sun_clip.z, .001f);
+    const F32 raw_sun_u = (vnd_sun_clip.x / sun_divisor * .5f + .5f) * vnd_scale_x + vnd_offset.mV[VX] / vnd_size.mV[VX];
+    const F32 raw_sun_v = (vnd_sun_clip.y / sun_divisor * .5f + .5f) * vnd_scale_y + vnd_offset.mV[VY] / vnd_size.mV[VY];
+    const auto smooth_ramp = [](F32 lo, F32 hi, F32 value)
+    {
+        const F32 t = llclamp((value - lo) / (hi - lo), 0.f, 1.f);
+        return t * t * (3.f - 2.f * t);
+    };
+    const F32 outside = llmax(llmax(-raw_sun_u, raw_sun_u - 1.f), llmax(-raw_sun_v, raw_sun_v - 1.f));
+    const F32 vnd_has_sun = (1.f - smooth_ramp(.25f, .75f, outside)) *
+        smooth_ramp(0.f, .25f, vnd_sun_clip.z) * smooth_ramp(-.05f, .05f, mSunDir.mV[2]);
+    const F32 vnd_sun_u = llclamp(raw_sun_u, -.75f, 1.75f);
+    const F32 vnd_sun_v = llclamp(raw_sun_v, -.75f, 1.75f);
+    const F32 vnd_mean = vnd.enabled ? ALLensLooks::variableNDMeanLeak(vnd_tan, vnd_aspect, vnd.angle_rad) : .5f;
+
     // Manual exposure knob; combined with the auto-exposure map in-shader so the
     // polarizer glare gate thresholds against the SAME exposed luma the tonemap
     // will apply later. The gate compares absolute luma and does NOT commute with
@@ -15750,17 +15801,26 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // Mask is the same "active<=0.5" early-out documented in applyNightMask.
     const auto draw_on_lens_pass = [&](bool include_night, bool include_gradnd_pol)
     {
+        // Night-only draws and clean/low-dial VND never bind material samplers.
+        LLGLSLShader& on_lens_program = include_gradnd_pol && material_active
+            ? gOnLensFiltersProgram : gOnLensFiltersNoIRProgram;
         mWaterDis.bindTarget();
         {
             LLGLDepthTest depth(GL_FALSE, GL_FALSE);
             LLGLDisable blend(GL_BLEND);
 
-            gOnLensFiltersProgram.bind();
-            gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, screen, false, LLTexUnit::TFO_POINT);
-            gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
-            gOnLensFiltersProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
-            gOnLensFiltersProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
+            on_lens_program.bind();
+            on_lens_program.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, screen, false, LLTexUnit::TFO_POINT);
+            on_lens_program.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
+            on_lens_program.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
+            on_lens_program.uniform1f(LLShaderMgr::EXPOSURE, exposure);
 
+            static LLStaticHashedString s_vnd("vnd_params");
+            static LLStaticHashedString s_vnd_lens("vnd_lens");
+            static LLStaticHashedString s_vnd_frame("vnd_frame");
+            static LLStaticHashedString s_vnd_draw_size("vnd_draw_size");
+            static LLStaticHashedString s_vnd_ir("vnd_ir");
+            static LLStaticHashedString s_vnd_sun("vnd_sun");
             static LLStaticHashedString s_grads("on_lens_grads");
             static LLStaticHashedString s_grads2("on_lens_grads2");
             static LLStaticHashedString s_ir("on_lens_ir");
@@ -15770,54 +15830,71 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
             static LLStaticHashedString s_ir5("on_lens_ir5");
             static LLStaticHashedString s_ir_up("on_lens_ir_up");
             const bool looks = include_gradnd_pol;
+            on_lens_program.uniform4f(s_vnd, looks && vnd.enabled ? 1.f : 0.f,
+                vnd.stops, (F32)vnd.quality, vnd.angle_rad);
+            on_lens_program.uniform4f(s_vnd_sun, vnd_sun_u, vnd_sun_v, vnd_has_sun, 0.f);
+            on_lens_program.uniform4f(s_vnd_lens, vnd_tan, vnd_aspect, vnd_mean, looks && material_ready ? vnd.ir_blend : 0.f);
+            on_lens_program.uniform4f(s_vnd_draw_size, (F32)mWaterDis.getWidth(), (F32)mWaterDis.getHeight(),
+                vnd_size.mV[VX] * mWaterDis.getWidth() / llmax(tile_width, 1.f),
+                vnd_size.mV[VY] * mWaterDis.getHeight() / llmax(tile_height, 1.f));
+            // Every draw uploads the transform, including identity after capture.
+            if (!gSnapshot)
+                on_lens_program.uniform4f(s_vnd_frame, 1.f, 1.f, 0.f, 0.f);
+            else
+                on_lens_program.uniform4f(s_vnd_frame, vnd_scale_x, vnd_scale_y,
+                    vnd_offset.mV[VX] / vnd_size.mV[VX], vnd_offset.mV[VY] / vnd_size.mV[VY]);
+            // Never borrow the user's IR sliders, even if IR is also enabled.
+            const ALLensLooks::InfraredParams vnd_ir_defaults;
+            on_lens_program.uniform4f(s_vnd_ir, vnd_ir_defaults.foliage_gain,
+                vnd_ir_defaults.sensitivity, vnd_ir_defaults.dry, vnd_ir_defaults.skin_gain);
             const LLColor3 grad = ALLensLooks::gradTintLinear();
             const LLColor3 filter_gain = ALLensLooks::frameFilterGain();
-            gOnLensFiltersProgram.uniform4f(s_grads,grad.mV[0],grad.mV[1],grad.mV[2],looks&&gnd_enabled()?grad_amount:0.f);
-            gOnLensFiltersProgram.uniform4f(s_grads2,filter_gain.mV[0],filter_gain.mV[1],filter_gain.mV[2],looks?filter_amount:0.f);
-            gOnLensFiltersProgram.uniform4f(s_ir,looks&&ir_active?ir.strength:0.f,(F32)ir.mode,ir.exposure_gain,ir.red_leak);
-            gOnLensFiltersProgram.uniform4f(s_ir2,ir.foliage_gain,ir.sensitivity,ir.dry,ir.sky_darken);
-            gOnLensFiltersProgram.uniform4f(s_ir3,ir.water_darken,ir.skin_gain,ir.shadow_depth,ir.halation);
-            gOnLensFiltersProgram.uniform4f(s_ir4,ir.aero_b,ir.aero_g,ir.aero_saturation,(F32)ir.debug_view);
-            gOnLensFiltersProgram.uniform4f(s_ir5,ir.water_darken>0.f?1.f:0.f,ALLensLooks::frame().mTagUsable?1.f:0.f,sUnderWaterRender?1.f:0.f,0.f);
+            on_lens_program.uniform4f(s_grads,grad.mV[0],grad.mV[1],grad.mV[2],looks&&gnd_enabled()?grad_amount:0.f);
+            on_lens_program.uniform4f(s_grads2,filter_gain.mV[0],filter_gain.mV[1],filter_gain.mV[2],looks?filter_amount:0.f);
+            on_lens_program.uniform4f(s_ir,looks&&ir_active?ir.strength:0.f,(F32)ir.mode,ir.exposure_gain,ir.red_leak);
+            on_lens_program.uniform4f(s_ir2,ir.foliage_gain,ir.sensitivity,ir.dry,ir.sky_darken);
+            on_lens_program.uniform4f(s_ir3,ir.water_darken,ir.skin_gain,ir.shadow_depth,ir.halation);
+            on_lens_program.uniform4f(s_ir4,ir.aero_b,ir.aero_g,ir.aero_saturation,(F32)ir.debug_view);
+            on_lens_program.uniform4f(s_ir5,ir.water_darken>0.f?1.f:0.f,ALLensLooks::frame().mTagUsable?1.f:0.f,sUnderWaterRender?1.f:0.f,0.f);
             glm::vec3 up_view = glm::mat3(glm::make_mat4(gGLLastModelView))*glm::vec3(0.f,0.f,1.f);
             const F32 water_delta = getRenderWaterHeight() -
                 gAgentCamera.getCameraPositionAgent().mV[VZ];
-            gOnLensFiltersProgram.uniform4f(s_ir_up,up_view.x,up_view.y,up_view.z,water_delta);
-            if (looks && ir_active)
+            on_lens_program.uniform4f(s_ir_up,up_view.x,up_view.y,up_view.z,water_delta);
+            if (looks && material_active)
             {
-                gOnLensFiltersProgram.bindTexture(LLShaderMgr::ON_LENS_ALBEDO,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,0);
-                gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_SPECULAR,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,1);
-                gOnLensFiltersProgram.bindTexture(LLShaderMgr::NORMAL_MAP,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,2);
-                gOnLensFiltersProgram.uniformMatrix4fv(LLShaderMgr::NIGHT_MASK_INV_PROJ,1,false,glm::value_ptr(night_inverse_projection));
+                on_lens_program.bindTexture(LLShaderMgr::ON_LENS_ALBEDO,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,0);
+                on_lens_program.bindTexture(LLShaderMgr::DEFERRED_SPECULAR,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,1);
+                on_lens_program.bindTexture(LLShaderMgr::NORMAL_MAP,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,2);
+                on_lens_program.uniformMatrix4fv(LLShaderMgr::NIGHT_MASK_INV_PROJ,1,false,glm::value_ptr(night_inverse_projection));
             }
 
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS,
+            on_lens_program.uniform4f(LLShaderMgr::GRADND_PARAMS,
                 include_gradnd_pol ? density : 0.f, angle_rad, position, softness);
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS,
+            on_lens_program.uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
+            on_lens_program.uniform4f(LLShaderMgr::POLARIZER_PARAMS,
                 include_gradnd_pol ? p_strength : 0.f, p_sky_sat, p_sky_darken, p_band_radius);
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::POLARIZER_PARAMS2, p_glare, p_glare_thr, p_glare_depth, p_auto_band);
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
+            on_lens_program.uniform4f(LLShaderMgr::POLARIZER_PARAMS2, p_glare, p_glare_thr, p_glare_depth, p_auto_band);
+            on_lens_program.uniform4f(LLShaderMgr::GRADND_SUN,        sun_u, sun_v, has_sun, aspect);
 
             // m-e: draw_night false uploads strength-0 Night Mask uniforms by
             // design (identity path â€” see applyNightMask's active<=0.5
             // early-out), exactly like a GradND/Polarizer-only draw uploads
             // density/strength 0 above.
             const bool draw_night = include_night && night_active;
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::NIGHT_MASK_PARAMS,
+            on_lens_program.uniform4f(LLShaderMgr::NIGHT_MASK_PARAMS,
                 draw_night ? 1.f : 0.f, night_distance, night_feather, night_darkness);
-            gOnLensFiltersProgram.uniform4f(LLShaderMgr::NIGHT_MASK_PARAMS2,
+            on_lens_program.uniform4f(LLShaderMgr::NIGHT_MASK_PARAMS2,
                 night_tint_strength, night_desaturation, 0.f, 0.f);
-            gOnLensFiltersProgram.uniform1i(LLShaderMgr::NIGHT_MASK_SHAPE, night_shape);
+            on_lens_program.uniform1i(LLShaderMgr::NIGHT_MASK_SHAPE, night_shape);
             if (draw_night)
             {
-                gOnLensFiltersProgram.uniform3f(LLShaderMgr::NIGHT_MASK_ANCHOR_VIEW,
+                on_lens_program.uniform3f(LLShaderMgr::NIGHT_MASK_ANCHOR_VIEW,
                     night_anchor_view.x, night_anchor_view.y, night_anchor_view.z);
-                gOnLensFiltersProgram.uniform3f(LLShaderMgr::NIGHT_MASK_TINT,
+                on_lens_program.uniform3f(LLShaderMgr::NIGHT_MASK_TINT,
                     night_tint.mV[0], night_tint.mV[1], night_tint.mV[2]);
                 if (night_shape == 2)
                 {
-                    gOnLensFiltersProgram.uniformMatrix3fv(LLShaderMgr::NIGHT_MASK_BOX_BASIS,
+                    on_lens_program.uniformMatrix3fv(LLShaderMgr::NIGHT_MASK_BOX_BASIS,
                         1, false, glm::value_ptr(night_box_basis));
                 }
                 // Major1: upload the DEDICATED night_mask_inv_proj uniform â€”
@@ -15826,14 +15903,14 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
                 // can silently re-upload from the LIVE projection AFTER this
                 // override and before the actual glDrawArrays. See the
                 // comment on night_inverse_projection above.
-                gOnLensFiltersProgram.uniformMatrix4fv(LLShaderMgr::NIGHT_MASK_INV_PROJ,
+                on_lens_program.uniformMatrix4fv(LLShaderMgr::NIGHT_MASK_INV_PROJ,
                     1, false, glm::value_ptr(night_inverse_projection));
             }
 
             mScreenTriangleVB->setBuffer();
             mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
 
-            gOnLensFiltersProgram.unbind();
+            on_lens_program.unbind();
         }
         mWaterDis.flush();
 
@@ -15854,16 +15931,16 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         // Pass 1: Night Mask only, baked into `screen`.
         draw_on_lens_pass(true, false);
 
-        // M8: raw-scene capture AFTER the mask, BEFORE GradND/Polarizer.
+        // M8: raw-scene capture AFTER the mask, BEFORE artistic lens filters.
         if (want_raw_capture)
         {
             capture_raw_scene();
         }
 
-        // Pass 2: GradND/Polarizer only (Night Mask already applied; forced
-        // off here so it isn't double-applied). Skipped entirely when neither
+        // Pass 2: artistic lens filters (Night Mask already applied; forced
+        // off here so it isn't double-applied). Skipped when none of the looks
         // wants to run, leaving the mask-only result as the final output.
-        if (density > 0.f || p_strength > 0.f || ir_active || grads_active)
+        if (density > 0.f || p_strength > 0.f || ir_active || grads_active || vnd.enabled)
         {
             draw_on_lens_pass(false, true);
         }

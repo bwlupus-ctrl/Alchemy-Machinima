@@ -374,7 +374,8 @@ LLGLSLShader            gCGColorgradeGammaProgram;
 LLGLSLShader            gCGColorgradeLegacyGammaProgram;
 LLGLSLShader            gCGTonemapColorgradeProgram;
 LLGLSLShader            gCGTonemapColorgradeLegacyGammaProgram;
-LLGLSLShader            gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
+LLGLSLShader            gOnLensFiltersProgram; // material-capable on-lens pre-pass
+LLGLSLShader            gOnLensFiltersNoIRProgram; // cheap on-lens permutation
 LLGLSLShader            gCineFlareEnergyProgram;
 LLGLSLShader            gLensSoftEdgeProgram;
 LLGLSLShader            gColorChartProgram;
@@ -874,6 +875,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gCGTonemapColorgradeProgram);
     mShaderList.push_back(&gCGTonemapColorgradeLegacyGammaProgram);
     mShaderList.push_back(&gOnLensFiltersProgram);
+    mShaderList.push_back(&gOnLensFiltersNoIRProgram);
     mShaderList.push_back(&gCineFlareEnergyProgram);
 
     // make sure there are no redundancies
@@ -6063,47 +6065,38 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gCineFlareEnergyProgram.createShader();
     }
 
-    // On-lens filters (Graduated ND + Polarizer) pre-pass. Runs on the linear
-    // HDR scene before bloom/flare. hasPostEffects attaches postEffectUtilsF,
-    // which defines applyGradND/applyPolarizer and the gradnd_*/polarizer_*
-    // uniforms this shader consumes.
+    // Always compile the material-free permutation. Select the IR-capable
+    // shader only when IR or VND pollution needs G-buffer material inputs.
     if (success)
     {
-        gOnLensFiltersProgram.mName = "On-Lens Filters Shader";
-        gOnLensFiltersProgram.mFeatures.isDeferred = true;
-        gOnLensFiltersProgram.mFeatures.hasPostEffects = true;
-        gOnLensFiltersProgram.mShaderFiles.clear();
-        gOnLensFiltersProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
-        gOnLensFiltersProgram.mShaderFiles.push_back(make_pair("alchemy/onLensFiltersF.glsl", GL_FRAGMENT_SHADER));
-        gOnLensFiltersProgram.clearPermutations();
-        gOnLensFiltersProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-        success = gOnLensFiltersProgram.createShader();
+        const auto create_on_lens = [&](LLGLSLShader& shader, bool no_ir)
+        {
+            shader.mName = no_ir ? "On-Lens Filters No IR Shader" : "On-Lens Filters Shader";
+            shader.mFeatures = LLShaderFeatures();
+            shader.mFeatures.isDeferred = true;
+            shader.mFeatures.hasPostEffects = true;
+            shader.mShaderFiles.clear();
+            shader.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair("alchemy/onLensFiltersF.glsl", GL_FRAGMENT_SHADER));
+            shader.clearPermutations();
+            if (no_ir) shader.addPermutation("ON_LENS_NO_IR", "1");
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            const bool compiled = shader.createShader();
+            return compiled && shader.mActiveTextureChannels <= gGLManager.mNumTextureImageUnits;
+        };
+        success = create_on_lens(gOnLensFiltersNoIRProgram, true);
+        gOnLensNoIR = true;
         if (success)
         {
-            LL_INFOS("LensLooks") << gOnLensFiltersProgram.mName
-                << " active_samplers=" << gOnLensFiltersProgram.mActiveTextureChannels
-                << " GL_MAX_TEXTURE_IMAGE_UNITS=" << gGLManager.mNumTextureImageUnits
-                << LL_ENDL;
-        }
-        const bool ir_overflow = success &&
-            gOnLensFiltersProgram.mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
-        if (!success || ir_overflow)
-        {
-            LL_WARNS("LensLooks") << "Infrared on-lens shader "
-                << (ir_overflow ? "exceeded the texture-unit limit" : "failed")
-                << "; retrying without IR" << LL_ENDL;
-            gOnLensFiltersProgram.clearPermutations();
-            gOnLensFiltersProgram.addPermutation("ON_LENS_NO_IR", "1");
-            gOnLensFiltersProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-            success = gOnLensFiltersProgram.createShader();
-            gOnLensNoIR = success;
-            if (success)
+            gOnLensNoIR = !create_on_lens(gOnLensFiltersProgram, false);
+            if (gOnLensNoIR)
             {
-                LL_INFOS("LensLooks") << gOnLensFiltersProgram.mName
-                    << " fallback_active_samplers=" << gOnLensFiltersProgram.mActiveTextureChannels
-                    << " GL_MAX_TEXTURE_IMAGE_UNITS=" << gGLManager.mNumTextureImageUnits
-                    << LL_ENDL;
+                gOnLensFiltersProgram.unload();
+                LL_WARNS("LensLooks") << "IR and VND pollution unavailable; using ON_LENS_NO_IR" << LL_ENDL;
             }
+            LL_INFOS("LensLooks") << "on-lens no_ir_samplers="
+                << gOnLensFiltersNoIRProgram.mActiveTextureChannels
+                << " ir_available=" << !gOnLensNoIR << LL_ENDL;
         }
         llassert(success);
     }

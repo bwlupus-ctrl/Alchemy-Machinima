@@ -1983,6 +1983,16 @@
         <key>RenderLensFilterPreset</key><map><key>Comment</key><string>0 custom, 1 85, 2 85B, 3 85C, 4 81A, 5 80A, 6 80B, 7 80C, 8 82A</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
         <key>RenderLensFilterMired</key><map><key>Comment</key><string>Custom full-frame filter shift -200..200 mired</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
         <key>RenderLensFilterAmount</key><map><key>Comment</key><string>Full-frame warming/cooling filter amount 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderVariableNDEnabled</key>
+        <map><key>Comment</key><string>Enable Variable ND artifacts while keeping exposure. Off is exactly identity.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+        <key>RenderVariableNDPreset</key>
+        <map><key>Comment</key><string>Variable ND: 0 Custom, 1 Clean Pro, 2 Budget, 3 Pushed Too Far. Named presets override Custom sliders.</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderVariableNDStops</key>
+        <map><key>Comment</key><string>Variable ND dial 1..8 stops. Drives artifacts only; exposure stays unchanged.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>3</real></map>
+        <key>RenderVariableNDQuality</key>
+        <map><key>Comment</key><string>Variable ND optical grade: 0 Pro, 1 Budget, 2 Cheap. Artistic cross polarization, colour cast and IR pollution, not GPU quality.</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderVariableNDCrossAngle</key>
+        <map><key>Comment</key><string>Variable ND ring rotation -90..90 degrees. Zero puts the dark X cross on the diagonals.</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
         <key>RenderGradNDEnabled</key>
         <map>
             <key>Comment</key>

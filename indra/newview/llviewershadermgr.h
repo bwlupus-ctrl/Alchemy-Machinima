@@ -396,7 +396,8 @@ extern LLGLSLShader         gDeferredWeatherLightningQualityProgram;
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;
-extern LLGLSLShader         gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
+extern LLGLSLShader         gOnLensFiltersProgram; // material-capable on-lens pre-pass
+extern LLGLSLShader         gOnLensFiltersNoIRProgram; // cheap on-lens permutation
 extern LLGLSLShader         gLensSoftEdgeProgram;
 extern LLGLSLShader         gColorChartProgram;
 extern LLGLSLShader         gColorChartExposureProgram;
