@@ -3697,6 +3697,29 @@ void LLIMMgr::inviteToSession(
     {
         bool isRejectGroupCall = (gSavedSettings.getBOOL("VoiceCallsRejectGroup") && (notify_box_type == "VoiceInviteGroup"));
         bool isRejectNonFriendCall = (gSavedPerAccountSettings.getBOOL("VoiceCallsFriendsOnly") && (LLAvatarTracker::instance().getBuddyInfo(caller_id) == NULL));
+        // "Reject Ad-Hoc (conferences)" (0 Off, 1 Friends Only, 2 All) also covers
+        // conference voice calls, mirroring the text-conference rule in processIMMessage.
+        bool isRejectAdHocCall = false;
+        if (!is_linden && notify_box_type == "VoiceInviteAdHoc")
+        {
+            const S32 reject_adhoc = gSavedPerAccountSettings.getS32("AlchemyIgnoreAdHocSessions");
+            isRejectAdHocCall = (reject_adhoc == 2)
+                || (reject_adhoc == 1 && !LLAvatarTracker::instance().isBuddy(caller_id));
+        }
+        if (isRejectAdHocCall)
+        {
+            LL_INFOS("IMVIEW") << "Rejecting conference (ad-hoc) voice call from " << caller_name << LL_ENDL;
+            if (gSavedPerAccountSettings.getBOOL("AlchemyReportIgnoredAdHocSession"))
+            {
+                LLSD args;
+                args["AVATAR_NAME"] = LLSLURL("agent", caller_id, "about").getSLURLString();
+                LLNotificationsUtil::add("IgnoredAdHocCall", args);
+            }
+            // silently decline the call
+            payload["voice_channel_info"] = voice_channel_info;
+            LLIncomingCallDialog::processCallResponse(1, payload);
+            return;
+        }
         if  (isRejectGroupCall || isRejectNonFriendCall || gAgent.isDoNotDisturb())
         {
             if (gAgent.isDoNotDisturb() && !isRejectGroupCall && !isRejectNonFriendCall)

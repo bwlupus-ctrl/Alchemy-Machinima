@@ -81,7 +81,7 @@
         name="adhoc_ignore_label"
         mouse_opaque="false"
         width="500">
-        Reject Ad-Hoc (conferences):
+        Reject Ad-Hoc (conference chats and calls):
         </text>
     <combo_box
       control_name="AlchemyIgnoreAdHocSessions"
@@ -110,5 +110,5 @@
       height="18"
       name="AlchemyReportIgnoredAdHocSession"
       control_name="AlchemyReportIgnoredAdHocSession"
-      label="Report ignored conference chats"/>
+      label="Report ignored conference chats and calls"/>
 </panel>

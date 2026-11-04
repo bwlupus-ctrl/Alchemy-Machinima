@@ -13552,6 +13552,12 @@ Incoming friendship requests will now be rejected with your configured autorespo
 You've been invited to a conference (ad-hoc) chat by [AVATAR_NAME], but the viewer automatically ignored it because of your settings.
   </notification>
   <notification
+     icon="notifytip.tga"
+     name="IgnoredAdHocCall"
+     type="notifytip">
+[AVATAR_NAME] invited you to a conference (ad-hoc) voice call, but the viewer automatically declined it because of your settings.
+  </notification>
+  <notification
    icon="alert.tga"
    name="AutoRespondModeSet"
    type="alert">
