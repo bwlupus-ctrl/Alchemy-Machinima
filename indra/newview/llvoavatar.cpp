@@ -4066,14 +4066,15 @@ void LLVOAvatar::invalidateNameTags()
 }
 
 // Compute name tag position during idle update
-LLVector3 LLVOAvatar::idleCalcNameTagPosition(const LLVector3 &root_pos_last)
+// Camera-facing lift from the head to the name tag. Shared with clones, which
+// have no avatar object of their own for overlay looks.
+LLVector3 LLVOAvatar::calcNameTagLift(const LLVector3& root_pos, const LLVector3& body_size, const LLQuaternion& root_rot)
 {
-    LLQuaternion root_rot = mRoot->getWorldRotation();
     LLQuaternion inv_root_rot = ~root_rot;
     LLVector3 pixel_right_vec;
     LLVector3 pixel_up_vec;
-    LLViewerCamera::getInstance()->getPixelVectors(root_pos_last, pixel_up_vec, pixel_right_vec);
-    LLVector3 camera_to_av = root_pos_last - LLViewerCamera::getInstance()->getOrigin();
+    LLViewerCamera::getInstance()->getPixelVectors(root_pos, pixel_up_vec, pixel_right_vec);
+    LLVector3 camera_to_av = root_pos - LLViewerCamera::getInstance()->getOrigin();
     camera_to_av.normalize();
     LLVector3 local_camera_at = camera_to_av * inv_root_rot;
     LLVector3 local_camera_up = camera_to_av % LLViewerCamera::getInstance()->getLeftAxis();
@@ -4081,12 +4082,21 @@ LLVector3 LLVOAvatar::idleCalcNameTagPosition(const LLVector3 &root_pos_last)
     local_camera_up = local_camera_up * inv_root_rot;
 
     // position is based on head position, does not require mAvatarOffset here. - Nyx
-    LLVector3 avatar_ellipsoid(mBodySize.mV[VX] * 0.4f,
-                                mBodySize.mV[VY] * 0.4f,
-                                mBodySize.mV[VZ] * NAMETAG_VERT_OFFSET_WEIGHT);
+    LLVector3 avatar_ellipsoid(body_size.mV[VX] * 0.4f,
+                                body_size.mV[VY] * 0.4f,
+                                body_size.mV[VZ] * NAMETAG_VERT_OFFSET_WEIGHT);
 
     local_camera_up.scaleVec(avatar_ellipsoid);
     local_camera_at.scaleVec(avatar_ellipsoid);
+
+    return (local_camera_up * root_rot) - (projected_vec(local_camera_at * root_rot, camera_to_av))
+        + pixel_up_vec * NAMETAG_VERTICAL_SCREEN_OFFSET;
+}
+
+LLVector3 LLVOAvatar::idleCalcNameTagPosition(const LLVector3 &root_pos_last)
+{
+    LLQuaternion root_rot = mRoot->getWorldRotation();
+    LLQuaternion inv_root_rot = ~root_rot;
 
     LLVector3 head_offset = (mHeadp->getLastWorldPosition() - mRoot->getLastWorldPosition()) * inv_root_rot;
 
@@ -4098,8 +4108,7 @@ LLVector3 LLVOAvatar::idleCalcNameTagPosition(const LLVector3 &root_pos_last)
     mCurRootToHeadOffset = lerp(mCurRootToHeadOffset, mTargetRootToHeadOffset, LLSmoothInterpolation::getInterpolant(0.2f));
 
     LLVector3 name_position = mRoot->getLastWorldPosition() + (mCurRootToHeadOffset * root_rot);
-    name_position += (local_camera_up * root_rot) - (projected_vec(local_camera_at * root_rot, camera_to_av));
-    name_position += pixel_up_vec * NAMETAG_VERTICAL_SCREEN_OFFSET;
+    name_position += calcNameTagLift(root_pos_last, mBodySize, root_rot);
 
     // Avoid of crossing the name tag by the water surface
     if (mNameText)

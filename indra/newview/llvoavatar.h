@@ -393,6 +393,7 @@ public:
     static void updateNearbyAvatarCount();
 
     LLVector3 idleCalcNameTagPosition(const LLVector3 &root_pos_last);
+    static LLVector3 calcNameTagLift(const LLVector3& root_pos, const LLVector3& body_size, const LLQuaternion& root_rot);
 
     //--------------------------------------------------------------------
     // Static preferences (controlled by user settings/menus)
