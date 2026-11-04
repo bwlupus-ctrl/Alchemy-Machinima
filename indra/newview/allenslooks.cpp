@@ -7,6 +7,7 @@
 #include "llcombobox.h"
 
 #include "allenslooks.h"
+#include "allenslooks_vnd_mean.h"
 
 #include "alenvintensity.h"
 #include "lldirectorcast.h"
@@ -176,6 +177,73 @@ ALLensLooks::SoftEdgeParams ALLensLooks::softEdge()
     return p;
 }
 
+ALLensLooks::VariableNDParams ALLensLooks::variableND()
+{
+    VariableNDParams p;
+    static LLCachedControl<bool> enabled(gSavedSettings, "RenderVariableNDEnabled", false);
+    p.enabled = enabled();
+    if (!p.enabled) return p;
+    static LLCachedControl<U32> preset(gSavedSettings, "RenderVariableNDPreset", 0);
+    static LLCachedControl<F32> stops(gSavedSettings, "RenderVariableNDStops", 3.f);
+    static LLCachedControl<U32> quality(gSavedSettings, "RenderVariableNDQuality", 0);
+    static LLCachedControl<F32> angle(gSavedSettings, "RenderVariableNDCrossAngle", 0.f);
+    // Named modes override ALL artistic controls without overwriting Custom.
+    switch (preset())
+    {
+        case 1: p.quality = 0; p.stops = 3.f; break; // Clean Pro
+        case 2: p.quality = 1; p.stops = 5.f; break; // Budget
+        case 3: p.quality = 2; p.stops = 8.f; break; // Pushed Too Far
+        default:
+            p.quality = llmin((U32)quality, 2u);
+            p.stops = sane(stops, 3.f, 1.f, 8.f);
+            p.angle_rad = sane(angle, 0.f, -90.f, 90.f) * DEG_TO_RAD;
+            break;
+    }
+    const F32 ir_dial = llmax((p.stops - 4.f) * .25f, 0.f);
+    static const F32 IR_BLEND[] = {.012f, .06f, .18f};
+    p.ir_blend = gOnLensNoIR ? 0.f : IR_BLEND[p.quality] * ir_dial * ir_dial;
+    // Below this blend, the material stain is sub-LSB in the intended output.
+    if (p.ir_blend < .002f) p.ir_blend = 0.f;
+    return p;
+}
+
+namespace
+{
+    const ALLensLooks::VariableNDSnapshotScope* sVNDSnapshot = nullptr;
+}
+
+ALLensLooks::VariableNDSnapshotScope::VariableNDSnapshotScope(F32 width, F32 height, F32 tile_width, F32 tile_height, F32 offset_x, F32 offset_y)
+    : size(width, height), tile(tile_width, tile_height), offset(offset_x, offset_y), previous(sVNDSnapshot)
+{
+    sVNDSnapshot = this;
+}
+
+ALLensLooks::VariableNDSnapshotScope::~VariableNDSnapshotScope() { sVNDSnapshot = previous; }
+const ALLensLooks::VariableNDSnapshotScope* ALLensLooks::variableNDSnapshot() { return sVNDSnapshot; }
+
+F32 ALLensLooks::variableNDMeanLeak(F32 tan_half_v, F32 aspect, F32 angle_rad)
+{
+    // Synchronous constant-cost lookup, including during animated FOV/ring.
+    // Dial and grade affect strength, never this normalized profile. The offline
+    // generator integrates the approved profile; interpolation is approximate.
+    // Zero means NOT READY (shader identity), never stale/invalid normalization.
+    if (!std::isfinite(tan_half_v) || tan_half_v <= 0.f ||
+        !std::isfinite(aspect) || aspect <= 0.f || !std::isfinite(angle_rad)) return 0.f;
+    const F32 t = llmin(tan_half_v / (1.f + tan_half_v) * 16.f, 16.f);
+    const F32 a = llclamp((log2f(aspect) + 4.f) * 8.f, 0.f, 64.f);
+    const F32 r = fabsf(remainderf(angle_rad, F_PI)) * (128.f / F_PI);
+    const S32 ti = llmin((S32)t, 15), ai = llmin((S32)a, 63), ri = llmin((S32)r, 63);
+    const F32 tf = t - ti, af = a - ai, rf = r - ri;
+    const auto along_ring = [&](S32 dt, S32 da)
+    {
+        const F32* row = VND_MEAN[ti + dt][ai + da];
+        return row[ri] + rf * (row[ri + 1] - row[ri]);
+    };
+    const F32 low = along_ring(0, 0) * (1.f - af) + along_ring(0, 1) * af;
+    const F32 high = along_ring(1, 0) * (1.f - af) + along_ring(1, 1) * af;
+    return low + tf * (high - low);
+}
+
 void ALLensLooks::resolveFrame()
 {
     if (gPipeline.mRT != &gPipeline.mMainRT) return;
@@ -282,6 +350,7 @@ void ALLensLooks::bindFilterPresets(LLView* root)
     static const Binding bindings[] = {
         {"gradnd_preset_combo", "RenderGradNDPreset", 6},
         {"polarizer_preset_combo", "RenderPolarizerPreset", 4},
+        {"vnd_preset_combo", "RenderVariableNDPreset", 3},
         {"lens_filter_preset", "RenderLensFilterPreset", 8}
     };
     for (const Binding& binding : bindings)
@@ -299,6 +368,6 @@ void ALLensLooks::bindFilterPresets(LLView* root)
 
 const std::vector<std::string>& ALLensLooks::settings()
 {
-    static const std::vector<std::string> keys={"RenderInfraredEnabled","RenderInfraredMode","RenderInfraredStrength","RenderInfraredExposureEV","RenderInfraredFoliageEV","RenderInfraredFoliageSensitivity","RenderInfraredDryVegetation","RenderInfraredSkyDarken","RenderInfraredWaterDarken","RenderInfraredSkinEV","RenderInfraredShadowDepth","RenderInfraredRedLeak","RenderInfraredHalation","RenderInfraredAeroFilter","RenderInfraredAeroSaturation","RenderInfraredDebugView","RenderInfraredPresetSetsGrain","RenderSoftEdgeEnabled","RenderSoftEdgeBlurType","RenderSoftEdgeShape","RenderSoftEdgeAnchor","RenderSoftEdgeCenterX","RenderSoftEdgeCenterY","RenderSoftEdgeSize","RenderSoftEdgeAspect","RenderSoftEdgeAngle","RenderSoftEdgeFeather","RenderSoftEdgeBlur","RenderSoftEdgeGlow","RenderSoftEdgeGlowThreshold","RenderSoftEdgeDesaturate","RenderSoftEdgeTint","RenderSoftEdgeTintAmount","RenderSoftEdgeShowMask","RenderGradNDTintColor","RenderGradNDTintAmount","RenderLensFilterPreset","RenderLensFilterMired","RenderLensFilterAmount"};
+    static const std::vector<std::string> keys={"RenderVariableNDEnabled","RenderVariableNDPreset","RenderVariableNDStops","RenderVariableNDQuality","RenderVariableNDCrossAngle","RenderInfraredEnabled","RenderInfraredMode","RenderInfraredStrength","RenderInfraredExposureEV","RenderInfraredFoliageEV","RenderInfraredFoliageSensitivity","RenderInfraredDryVegetation","RenderInfraredSkyDarken","RenderInfraredWaterDarken","RenderInfraredSkinEV","RenderInfraredShadowDepth","RenderInfraredRedLeak","RenderInfraredHalation","RenderInfraredAeroFilter","RenderInfraredAeroSaturation","RenderInfraredDebugView","RenderInfraredPresetSetsGrain","RenderSoftEdgeEnabled","RenderSoftEdgeBlurType","RenderSoftEdgeShape","RenderSoftEdgeAnchor","RenderSoftEdgeCenterX","RenderSoftEdgeCenterY","RenderSoftEdgeSize","RenderSoftEdgeAspect","RenderSoftEdgeAngle","RenderSoftEdgeFeather","RenderSoftEdgeBlur","RenderSoftEdgeGlow","RenderSoftEdgeGlowThreshold","RenderSoftEdgeDesaturate","RenderSoftEdgeTint","RenderSoftEdgeTintAmount","RenderSoftEdgeShowMask","RenderGradNDTintColor","RenderGradNDTintAmount","RenderLensFilterPreset","RenderLensFilterMired","RenderLensFilterAmount"};
     return keys;
 }

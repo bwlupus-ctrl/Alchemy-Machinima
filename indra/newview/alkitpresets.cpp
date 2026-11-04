@@ -96,6 +96,10 @@ const std::vector<std::string>& owned(Family family)
     case SOFT_EDGE:
         keys = select({"RenderSoftEdge"}, {"RenderSoftEdgeEnabled", "RenderSoftEdgeAnchor", "RenderSoftEdgeCenter", "RenderSoftEdgeShowMask"});
         break;
+    case VARIABLE_ND:
+        // Optical grade is artwork, not a GPU quality/performance preference.
+        keys = select({"RenderVariableND"}, {"RenderVariableNDEnabled"});
+        break;
     case HAZE:
         keys = select({"CineHaze"}, {"CineHazeEnable", "CineHazeDebug"});
         break;
@@ -157,6 +161,8 @@ std::vector<std::string> pageSettings(const std::string& page)
     if (page == "lens_group/filters_tab")
     {
         add(owned(INFRARED)); add(owned(SOFT_EDGE)); add(owned(GRAD_ND)); add(owned(POLARIZER)); add(owned(LENS_FILTER));
+        // Full saved page looks own VND artwork; named modes preserve Custom.
+        add(owned(VARIABLE_ND));
         // Own the complete blink look. Cadence/master and gamepad bindings are
         // user preferences; live blink/hold gestures have no saved settings.
         for (const std::string& name : select({"POVBlink"},

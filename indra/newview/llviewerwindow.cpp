@@ -36,6 +36,7 @@
 #include "llviewerwindow.h"
 #include "alkithistory.h"
 #include "alhidecursor.h"
+#include "allenslooks.h"
 
 #include <cmath>
 
@@ -6163,6 +6164,13 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
             {
                 const U32 subfield = subimage_x+(subimage_y*llceil(scale_factor));
                 const U64 key_before = ALActorChromaKey::sActive ? ALActorChromaKey::finalizeSerial() : 0;
+                // Use exactly the dimensions/offsets of the readback below,
+                // even when the UI window and world-view rectangle differ.
+                const ALLensLooks::VariableNDSnapshotScope vnd_snapshot(
+                    (F32)image_buffer_x, (F32)image_buffer_y,
+                    (F32)window_width, (F32)window_height,
+                    (F32)(subimage_x * window_width - buffer_x_offset),
+                    (F32)(subimage_y * window_height - buffer_y_offset));
                 display(do_rebuild, scale_factor, subfield, true);
 
                 if (!LLPipeline::sRenderDeferred)

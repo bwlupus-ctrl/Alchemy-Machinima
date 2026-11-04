@@ -487,6 +487,13 @@ uniform vec4 gradnd_params;
 uniform vec4 gradnd_params2;
 uniform vec4 gradnd_sun;
 
+// Shared hardware-depth convention for all on-lens sky masks, including VND.
+// Sky is far depth ~1; change here if the renderer adopts reversed Z.
+float lensSkyDepth(float depth)
+{
+    return smoothstep(0.9999, 1.0, depth);
+}
+
 vec3 applyGradND(vec3 color, vec2 uv, sampler2D depth)
 {
     float density = gradnd_params.x;
@@ -534,7 +541,7 @@ vec3 applyGradND(vec3 color, vec2 uv, sampler2D depth)
         float d = texture(depth, uv).r;
         // Tight far-plane band — only true sky (matches the lens-flare sky test).
         // A looser threshold lets distant-but-solid geometry read as partial sky.
-        float sky = smoothstep(0.9999, 1.0, d);
+        float sky = lensSkyDepth(d);
         t *= mix(1.0, sky, sky_confine);
     }
 
@@ -607,7 +614,7 @@ vec3 applyPolarizer(vec3 color, vec2 uv, sampler2D depth, float exposure_scale)
     }
 
     // --- Sky deepen: darken + gentle saturation, confined to sky -------------
-    float sky = smoothstep(0.9999, 1.0, d);
+    float sky = lensSkyDepth(d);
     if (sky > 0.0)
     {
         float skyW = sky * strength;

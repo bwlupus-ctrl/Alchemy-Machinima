@@ -151,6 +151,7 @@ private:
     LLFrameTimer   mFlashTimer;
     LLSD           mLastValue, mShownValue;
     U64            mCaptureQualityRevision = 0;
+    S32            mVNDPollutionAvailable = -1;
     bool           mSubjectDisplay = false;
     S32            mSubjectSelfValue = 0;
     S32            mSubjectAValue = 1;

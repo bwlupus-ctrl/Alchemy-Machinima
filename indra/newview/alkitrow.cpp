@@ -29,6 +29,7 @@
 #include "lluictrlfactory.h"
 #include "aluirefresh.h"
 #include "llviewertexture.h"
+#include "llviewershadermgr.h"
 #include "alcompassdial.h"
 #include "alkitswitch.h"
 #include "alkitqol.h"
@@ -1544,6 +1545,16 @@ void ALKitRow::styleValueEditor(bool active)
 void ALKitRow::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mMeta.setting == "RenderVariableNDQuality" && mVNDPollutionAvailable != (S32)!gOnLensNoIR)
+    {
+        mVNDPollutionAvailable = (S32)!gOnLensNoIR;
+        const std::string tip = mMeta.help + (gOnLensNoIR
+            ? " Material pollution unavailable: IR shader unsupported. X and colour cast remain active."
+            : " Material pollution available above 4 stops, strongest on Budget/Cheap grades; uses fixed response independent of IR controls.");
+        setToolTipIfChanged(this, tip);
+        setToolTipIfChanged(mControl, tip);
+        setToolTipIfChanged(mLabel, tip);
+    }
     if (mMeta.setting == "BDMergeCaptureModePin" &&
         mCaptureQualityRevision != LLViewerTexture::getCaptureQualityRevision())
     {
