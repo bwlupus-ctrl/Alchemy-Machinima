@@ -1875,6 +1875,31 @@ void ALGhostStudio::updateLookAt()
     }
 }
 
+// Same placement as LLVOAvatar::idleCalcNameTagPosition(): a camera-facing lift
+// off the head joint by the body ellipsoid, plus the fixed on-screen gap, so a
+// clone's tag clears the head and hair like a real avatar's from any angle.
+static LLVector3 clone_name_tag_lift(const LLVector3& head_agent, const LLVector3& body_size,
+                                     const LLQuaternion& body_rot, F32 scale)
+{
+    LLViewerCamera* camera = LLViewerCamera::getInstance();
+    LLVector3 camera_to_body = head_agent - camera->getOrigin();
+    camera_to_body.normalize();
+    const LLQuaternion inv_rot = ~body_rot;
+    const LLVector3 ellipsoid(body_size.mV[VX] * 0.4f * scale,
+                              body_size.mV[VY] * 0.4f * scale,
+                              body_size.mV[VZ] * 0.17f * scale);
+    LLVector3 local_at = camera_to_body * inv_rot;
+    LLVector3 local_up = camera_to_body % camera->getLeftAxis();
+    local_up.normalize();
+    local_up = local_up * inv_rot;
+    local_up.scaleVec(ellipsoid);
+    local_at.scaleVec(ellipsoid);
+    LLVector3 pixel_up;
+    LLVector3 pixel_right;
+    camera->getPixelVectors(head_agent, pixel_up, pixel_right);
+    return (local_up * body_rot) - projected_vec(local_at * body_rot, camera_to_body) + pixel_up * 25.f;
+}
+
 bool ALGhostStudio::nameplateAnchor(
     const Instance& inst, LLVector3& anchor_agent) const
 {
@@ -1890,8 +1915,11 @@ bool ALGhostStudio::nameplateAnchor(
                 anchor_agent = head->getWorldPosition();
                 if (anchor_agent.isFinite())
                 {
-                    anchor_agent.mV[VZ] +=
-                        0.16f * llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
+                    LLJoint* root = ghost->getRootJoint();
+                    anchor_agent += clone_name_tag_lift(
+                        anchor_agent, ghost->mBodySize,
+                        root ? root->getWorldRotation() : inst.mRotation,
+                        llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX));
                     return anchor_agent.isFinite();
                 }
             }
@@ -1968,8 +1996,9 @@ bool ALGhostStudio::nameplateAnchor(
                            llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
         offset *= source_to_instance;
         anchor_agent = placed_foot + offset;
-        anchor_agent.mV[VZ] +=
-            0.16f * llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
+        anchor_agent += clone_name_tag_lift(
+            anchor_agent, source->mBodySize, inst.mRotation,
+            llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX));
         return anchor_agent.isFinite();
     }
 
