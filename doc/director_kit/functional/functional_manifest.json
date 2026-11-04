@@ -55776,12 +55776,12 @@
    },
    "restore": {
     "setting": "AlchemyRenderTonemapType",
-    "value": 7
+    "value": 6
    },
    "setting": "AlchemyRenderTonemapType",
    "setting_source": "xui control_name",
    "setting_type": "S32",
-   "default": 7,
+   "default": 6,
    "min": null,
    "max": null,
    "increment": null,
@@ -63150,12 +63150,12 @@
    },
    "restore": {
     "setting": "AlchemyRenderTonemapType",
-    "value": 7
+    "value": 6
    },
    "setting": "AlchemyRenderTonemapType",
    "setting_source": "xui control_name",
    "setting_type": "S32",
-   "default": 7,
+   "default": 6,
    "min": null,
    "max": null,
    "increment": null,
@@ -206588,12 +206588,12 @@
    },
    "restore": {
     "setting": "AlchemyRenderTonemapType",
-    "value": 7
+    "value": 6
    },
    "setting": "AlchemyRenderTonemapType",
    "setting_source": "kit_row setting",
    "setting_type": "S32",
-   "default": 7,
+   "default": 6,
    "min": null,
    "max": null,
    "increment": null,
@@ -221067,12 +221067,12 @@
    },
    "restore": {
     "setting": "AlchemyRenderTonemapType",
-    "value": 7
+    "value": 6
    },
    "setting": "AlchemyRenderTonemapType",
    "setting_source": "kit_row setting",
    "setting_type": "S32",
-   "default": 7,
+   "default": 6,
    "min": null,
    "max": null,
    "increment": null,

@@ -140,8 +140,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llreflectionmapmanager.cpp", "hunks": ["indra/newview/llreflectionmapmanager.cpp@593,2064", "indra/newview/llreflectionmapmanager.cpp@2810,56"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1579,36"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@493,629"]}
-- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@4664,28"]}
-- {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@550,45"]}
+- {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@4673,28"]}
+- {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@551,45"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@7751,12"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,45", "indra/newview/pipeline.cpp@107,8", "indra/newview/pipeline.cpp@141,14", "indra/newview/pipeline.cpp@1065,7", "indra/newview/pipeline.cpp@1348,21", "indra/newview/pipeline.cpp@1371,61", "indra/newview/pipeline.cpp@1701,30004", "indra/newview/pipeline.cpp@31894,372", "indra/newview/pipeline.cpp@32280,38", "indra/newview/pipeline.cpp@32345,53", "indra/newview/pipeline.cpp@32429,37", "indra/newview/pipeline.cpp@32485,20", "indra/newview/pipeline.cpp@32669,180", "indra/newview/pipeline.cpp@32881,154", "indra/newview/pipeline.cpp@33810,53", "indra/newview/pipeline.cpp@33869,242", "indra/newview/pipeline.cpp@37307,362", "indra/newview/pipeline.cpp@37670,1060", "indra/newview/pipeline.cpp@39599,153"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@802,100", "indra/newview/pipeline.h@1015,42", "indra/newview/pipeline.h@1472,20", "indra/newview/pipeline.h@1992,270", "indra/newview/pipeline.h@2365,58"]}

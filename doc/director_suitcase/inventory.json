@@ -6,11 +6,12 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 727,
-      "HOOK": 511,
+      "HOOK": 523,
       "OWNED": 906,
       "TOOLING": 401
     },
     "dirty_product_inputs": [
+      "indra/newview/app_settings/settings_alchemy.xml",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -53,6 +54,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
@@ -236,10 +238,10 @@
       },
       "wiring_rows": 2280
     },
-    "head_source_tree": "a0f7817cfc3934a02f53c391fec3159520999910",
-    "hook_files": 511,
-    "hunks": 3194,
-    "input_sha256": "d15198afae7b054ba15bb79d3e4f7c6d69aa3bb67495d8dff06f3e1e98d66bb5",
+    "head_source_tree": "f1fdfd55881d84af0c70a1ccbfb8962e8b428d3a",
+    "hook_files": 523,
+    "hunks": 3217,
+    "input_sha256": "6d8077490df108f283924db883d468d23d7b2cb2ddd801b0a1094b96d530c827",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -31082,7 +31084,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -34555,6 +34557,19 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/da/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "sensor"
       ],
@@ -34567,6 +34582,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/skins/default/xui/de/floater_adjust_environment.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/de/panel_preferences_setup.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -35183,7 +35211,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
         "looks",
         "sensor"
       ],
@@ -37310,6 +37337,19 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/en/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "director-shell"
       ],
@@ -37694,6 +37734,19 @@
       ],
       "git_status": "M",
       "layer": 99,
+      "path": "indra/newview/skins/default/xui/es/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
       "path": "indra/newview/skins/default/xui/es/strings.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -37710,6 +37763,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/skins/default/xui/fr/floater_adjust_environment.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/fr/panel_preferences_setup.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -37750,6 +37816,19 @@
       ],
       "git_status": "M",
       "layer": 99,
+      "path": "indra/newview/skins/default/xui/it/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
       "path": "indra/newview/skins/default/xui/it/strings.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -37766,6 +37845,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/skins/default/xui/ja/floater_adjust_environment.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/ja/panel_preferences_setup.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -37797,6 +37889,19 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/pl/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "sensor"
       ],
@@ -37809,6 +37914,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/skins/default/xui/pt/floater_adjust_environment.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/pt/panel_preferences_setup.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -37849,6 +37967,19 @@
       ],
       "git_status": "M",
       "layer": 99,
+      "path": "indra/newview/skins/default/xui/ru/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
       "path": "indra/newview/skins/default/xui/ru/strings.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -37877,6 +38008,19 @@
       ],
       "git_status": "M",
       "layer": 99,
+      "path": "indra/newview/skins/default/xui/tr/panel_preferences_setup.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
       "path": "indra/newview/skins/default/xui/tr/strings.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -37893,6 +38037,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/skins/default/xui/zh/floater_adjust_environment.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/zh/panel_preferences_setup.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {

@@ -1314,7 +1314,7 @@
             <key>Type</key>
             <string>S32</string>
             <key>Value</key>
-            <integer>7</integer>
+            <integer>6</integer>
         </map>
         <!-- [TonemapLegacySky] Viewer-side opt-in; preserve the sky's legacy gamma. -->
         <key>AlchemyTonemapLegacyGammaSkies</key>

@@ -557,7 +557,7 @@
       {
         "hunks": [
           "indra/newview/llstartup.cpp@201,9",
-          "indra/newview/llstartup.cpp@2648,19"
+          "indra/newview/llstartup.cpp@2647,19"
         ],
         "path": "indra/newview/llstartup.cpp"
       },
@@ -613,14 +613,14 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4664,28",
-          "indra/newview/llvoavatar.cpp@12827,163"
+          "indra/newview/llvoavatar.cpp@4673,28",
+          "indra/newview/llvoavatar.cpp@12836,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@550,45"
+          "indra/newview/llvoavatar.h@551,45"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -2169,6 +2169,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -8145,6 +8146,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -10957,23 +10959,23 @@
           "indra/newview/llvoavatar.cpp@899,37",
           "indra/newview/llvoavatar.cpp@2440,14",
           "indra/newview/llvoavatar.cpp@2889,19",
-          "indra/newview/llvoavatar.cpp@4198,14",
-          "indra/newview/llvoavatar.cpp@4825,20",
-          "indra/newview/llvoavatar.cpp@5144,25",
-          "indra/newview/llvoavatar.cpp@5218,596",
-          "indra/newview/llvoavatar.cpp@5914,45",
-          "indra/newview/llvoavatar.cpp@8736,106",
-          "indra/newview/llvoavatar.cpp@12827,163"
+          "indra/newview/llvoavatar.cpp@4207,14",
+          "indra/newview/llvoavatar.cpp@4834,20",
+          "indra/newview/llvoavatar.cpp@5153,25",
+          "indra/newview/llvoavatar.cpp@5227,596",
+          "indra/newview/llvoavatar.cpp@5923,45",
+          "indra/newview/llvoavatar.cpp@8745,106",
+          "indra/newview/llvoavatar.cpp@12836,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@56,8",
-          "indra/newview/llvoavatar.h@550,45",
-          "indra/newview/llvoavatar.h@1189,10",
-          "indra/newview/llvoavatar.h@1207,11",
-          "indra/newview/llvoavatar.h@1259,17"
+          "indra/newview/llvoavatar.h@551,45",
+          "indra/newview/llvoavatar.h@1190,10",
+          "indra/newview/llvoavatar.h@1208,11",
+          "indra/newview/llvoavatar.h@1260,17"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -12629,6 +12631,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -20338,6 +20341,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -24535,6 +24539,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -34868,8 +34873,8 @@
         "hunks": [
           "indra/newview/llvoavatar.cpp@899,37",
           "indra/newview/llvoavatar.cpp@1632,21",
-          "indra/newview/llvoavatar.cpp@6324,49",
-          "indra/newview/llvoavatar.cpp@6545,9"
+          "indra/newview/llvoavatar.cpp@6333,49",
+          "indra/newview/llvoavatar.cpp@6554,9"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -42907,6 +42912,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -46810,7 +46816,7 @@
       {
         "hunks": [
           "indra/newview/llstartup.cpp@25,8",
-          "indra/newview/llstartup.cpp@3381,11"
+          "indra/newview/llstartup.cpp@3380,11"
         ],
         "path": "indra/newview/llstartup.cpp"
       },
@@ -46949,51 +46955,52 @@
           "indra/newview/llvoavatar.cpp@2948,33",
           "indra/newview/llvoavatar.cpp@3016,8",
           "indra/newview/llvoavatar.cpp@3547,12",
-          "indra/newview/llvoavatar.cpp@4213,8",
-          "indra/newview/llvoavatar.cpp@4609,7",
-          "indra/newview/llvoavatar.cpp@4664,28",
-          "indra/newview/llvoavatar.cpp@4749,10",
-          "indra/newview/llvoavatar.cpp@4865,8",
-          "indra/newview/llvoavatar.cpp@4944,7",
-          "indra/newview/llvoavatar.cpp@5002,19",
-          "indra/newview/llvoavatar.cpp@5028,18",
-          "indra/newview/llvoavatar.cpp@5061,21",
-          "indra/newview/llvoavatar.cpp@5144,25",
-          "indra/newview/llvoavatar.cpp@5218,596",
-          "indra/newview/llvoavatar.cpp@6324,49",
-          "indra/newview/llvoavatar.cpp@6609,7",
-          "indra/newview/llvoavatar.cpp@7329,7",
-          "indra/newview/llvoavatar.cpp@8736,106",
-          "indra/newview/llvoavatar.cpp@9705,14",
-          "indra/newview/llvoavatar.cpp@9871,7",
-          "indra/newview/llvoavatar.cpp@9963,8",
-          "indra/newview/llvoavatar.cpp@10078,12",
-          "indra/newview/llvoavatar.cpp@10093,7",
-          "indra/newview/llvoavatar.cpp@10140,12",
-          "indra/newview/llvoavatar.cpp@10171,11",
-          "indra/newview/llvoavatar.cpp@11311,101",
-          "indra/newview/llvoavatar.cpp@11513,10",
-          "indra/newview/llvoavatar.cpp@12503,7",
-          "indra/newview/llvoavatar.cpp@12526,8",
-          "indra/newview/llvoavatar.cpp@12540,10",
-          "indra/newview/llvoavatar.cpp@12827,163",
-          "indra/newview/llvoavatar.cpp@13086,7",
-          "indra/newview/llvoavatar.cpp@13125,7",
-          "indra/newview/llvoavatar.cpp@13678,7",
-          "indra/newview/llvoavatar.cpp@13937,7",
-          "indra/newview/llvoavatar.cpp@13952,7",
-          "indra/newview/llvoavatar.cpp@13970,9"
+          "indra/newview/llvoavatar.cpp@4066,15",
+          "indra/newview/llvoavatar.cpp@4222,8",
+          "indra/newview/llvoavatar.cpp@4618,7",
+          "indra/newview/llvoavatar.cpp@4673,28",
+          "indra/newview/llvoavatar.cpp@4758,10",
+          "indra/newview/llvoavatar.cpp@4874,8",
+          "indra/newview/llvoavatar.cpp@4953,7",
+          "indra/newview/llvoavatar.cpp@5011,19",
+          "indra/newview/llvoavatar.cpp@5037,18",
+          "indra/newview/llvoavatar.cpp@5070,21",
+          "indra/newview/llvoavatar.cpp@5153,25",
+          "indra/newview/llvoavatar.cpp@5227,596",
+          "indra/newview/llvoavatar.cpp@6333,49",
+          "indra/newview/llvoavatar.cpp@6618,7",
+          "indra/newview/llvoavatar.cpp@7338,7",
+          "indra/newview/llvoavatar.cpp@8745,106",
+          "indra/newview/llvoavatar.cpp@9714,14",
+          "indra/newview/llvoavatar.cpp@9880,7",
+          "indra/newview/llvoavatar.cpp@9972,8",
+          "indra/newview/llvoavatar.cpp@10087,12",
+          "indra/newview/llvoavatar.cpp@10102,7",
+          "indra/newview/llvoavatar.cpp@10149,12",
+          "indra/newview/llvoavatar.cpp@10180,11",
+          "indra/newview/llvoavatar.cpp@11320,101",
+          "indra/newview/llvoavatar.cpp@11522,10",
+          "indra/newview/llvoavatar.cpp@12512,7",
+          "indra/newview/llvoavatar.cpp@12535,8",
+          "indra/newview/llvoavatar.cpp@12549,10",
+          "indra/newview/llvoavatar.cpp@12836,163",
+          "indra/newview/llvoavatar.cpp@13095,7",
+          "indra/newview/llvoavatar.cpp@13134,7",
+          "indra/newview/llvoavatar.cpp@13687,7",
+          "indra/newview/llvoavatar.cpp@13946,7",
+          "indra/newview/llvoavatar.cpp@13961,7",
+          "indra/newview/llvoavatar.cpp@13979,9"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@287,25",
-          "indra/newview/llvoavatar.h@550,45",
-          "indra/newview/llvoavatar.h@614,11",
-          "indra/newview/llvoavatar.h@647,13",
-          "indra/newview/llvoavatar.h@713,7",
-          "indra/newview/llvoavatar.h@1024,12"
+          "indra/newview/llvoavatar.h@551,45",
+          "indra/newview/llvoavatar.h@615,11",
+          "indra/newview/llvoavatar.h@648,13",
+          "indra/newview/llvoavatar.h@714,7",
+          "indra/newview/llvoavatar.h@1025,12"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -47371,7 +47378,7 @@
         "hunks": [
           "indra/newview/llhudnametag.cpp@26,8",
           "indra/newview/llhudnametag.cpp@117,7",
-          "indra/newview/llhudnametag.cpp@234,7",
+          "indra/newview/llhudnametag.cpp@227,14",
           "indra/newview/llhudnametag.cpp@560,7"
         ],
         "path": "indra/newview/llhudnametag.cpp"
@@ -51953,6 +51960,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -64293,6 +64301,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -75478,22 +75487,22 @@
         "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
           "indra/newview/llvoavatar.cpp@2948,33",
-          "indra/newview/llvoavatar.cpp@5061,21",
-          "indra/newview/llvoavatar.cpp@5144,25",
-          "indra/newview/llvoavatar.cpp@5822,13",
-          "indra/newview/llvoavatar.cpp@5914,45",
-          "indra/newview/llvoavatar.cpp@9414,10",
-          "indra/newview/llvoavatar.cpp@9458,15",
-          "indra/newview/llvoavatar.cpp@9479,12",
-          "indra/newview/llvoavatar.cpp@12827,163"
+          "indra/newview/llvoavatar.cpp@5070,21",
+          "indra/newview/llvoavatar.cpp@5153,25",
+          "indra/newview/llvoavatar.cpp@5831,13",
+          "indra/newview/llvoavatar.cpp@5923,45",
+          "indra/newview/llvoavatar.cpp@9423,10",
+          "indra/newview/llvoavatar.cpp@9467,15",
+          "indra/newview/llvoavatar.cpp@9488,12",
+          "indra/newview/llvoavatar.cpp@12836,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@56,8",
-          "indra/newview/llvoavatar.h@550,45",
-          "indra/newview/llvoavatar.h@1259,17"
+          "indra/newview/llvoavatar.h@551,45",
+          "indra/newview/llvoavatar.h@1260,17"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -76413,6 +76422,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -81427,6 +81437,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -84506,6 +84517,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -89455,8 +89467,8 @@
       {
         "hunks": [
           "indra/newview/llstartup.cpp@201,9",
-          "indra/newview/llstartup.cpp@2264,11",
-          "indra/newview/llstartup.cpp@2648,19"
+          "indra/newview/llstartup.cpp@2263,11",
+          "indra/newview/llstartup.cpp@2647,19"
         ],
         "path": "indra/newview/llstartup.cpp"
       },
@@ -89671,16 +89683,16 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@5218,596",
-          "indra/newview/llvoavatar.cpp@5839,10",
-          "indra/newview/llvoavatar.cpp@5914,45",
-          "indra/newview/llvoavatar.cpp@12827,163"
+          "indra/newview/llvoavatar.cpp@5227,596",
+          "indra/newview/llvoavatar.cpp@5848,10",
+          "indra/newview/llvoavatar.cpp@5923,45",
+          "indra/newview/llvoavatar.cpp@12836,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@550,45"
+          "indra/newview/llvoavatar.h@551,45"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -92410,6 +92422,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -104070,6 +104083,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -111891,7 +111905,7 @@
       {
         "hunks": [
           "indra/newview/llstartup.cpp@201,9",
-          "indra/newview/llstartup.cpp@2264,11"
+          "indra/newview/llstartup.cpp@2263,11"
         ],
         "path": "indra/newview/llstartup.cpp"
       },
@@ -111945,8 +111959,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@5218,596",
-          "indra/newview/llvoavatar.cpp@5914,45"
+          "indra/newview/llvoavatar.cpp@5227,596",
+          "indra/newview/llvoavatar.cpp@5923,45"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -112956,6 +112970,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -117895,6 +117910,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -119393,7 +119409,7 @@
       {
         "hunks": [
           "indra/newview/llstartup.cpp@44,9",
-          "indra/newview/llstartup.cpp@1490,10"
+          "indra/newview/llstartup.cpp@1489,10"
         ],
         "path": "indra/newview/llstartup.cpp"
       },
@@ -119523,20 +119539,20 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4233,13",
-          "indra/newview/llvoavatar.cpp@4664,28",
-          "indra/newview/llvoavatar.cpp@6585,8",
-          "indra/newview/llvoavatar.cpp@8736,106",
-          "indra/newview/llvoavatar.cpp@12827,163",
-          "indra/newview/llvoavatar.cpp@13525,18",
-          "indra/newview/llvoavatar.cpp@13688,17"
+          "indra/newview/llvoavatar.cpp@4242,13",
+          "indra/newview/llvoavatar.cpp@4673,28",
+          "indra/newview/llvoavatar.cpp@6594,8",
+          "indra/newview/llvoavatar.cpp@8745,106",
+          "indra/newview/llvoavatar.cpp@12836,163",
+          "indra/newview/llvoavatar.cpp@13534,18",
+          "indra/newview/llvoavatar.cpp@13697,17"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@550,45",
-          "indra/newview/llvoavatar.h@647,13"
+          "indra/newview/llvoavatar.h@551,45",
+          "indra/newview/llvoavatar.h@648,13"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -131817,6 +131833,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -135317,7 +135334,7 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4664,28"
+          "indra/newview/llvoavatar.cpp@4673,28"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -138426,6 +138443,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -147862,6 +147880,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -151465,13 +151484,13 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4664,28"
+          "indra/newview/llvoavatar.cpp@4673,28"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@550,45"
+          "indra/newview/llvoavatar.h@551,45"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -154675,6 +154694,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -161719,6 +161739,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",
@@ -164876,10 +164897,10 @@
       {
         "hunks": [
           "indra/newview/llstartup.cpp@25,8",
-          "indra/newview/llstartup.cpp@1490,10",
-          "indra/newview/llstartup.cpp@1530,7",
-          "indra/newview/llstartup.cpp@2648,19",
-          "indra/newview/llstartup.cpp@2754,7"
+          "indra/newview/llstartup.cpp@1489,10",
+          "indra/newview/llstartup.cpp@1529,7",
+          "indra/newview/llstartup.cpp@2647,19",
+          "indra/newview/llstartup.cpp@2753,7"
         ],
         "path": "indra/newview/llstartup.cpp"
       },
@@ -181726,19 +181747,19 @@
           "indra/newview/llvoavatar.cpp@24,23",
           "indra/newview/llvoavatar.cpp@1349,7",
           "indra/newview/llvoavatar.cpp@3380,12",
-          "indra/newview/llvoavatar.cpp@5218,596",
-          "indra/newview/llvoavatar.cpp@7363,14",
-          "indra/newview/llvoavatar.cpp@7391,9",
-          "indra/newview/llvoavatar.cpp@9013,7",
-          "indra/newview/llvoavatar.cpp@11599,27",
-          "indra/newview/llvoavatar.cpp@11658,282"
+          "indra/newview/llvoavatar.cpp@5227,596",
+          "indra/newview/llvoavatar.cpp@7372,14",
+          "indra/newview/llvoavatar.cpp@7400,9",
+          "indra/newview/llvoavatar.cpp@9022,7",
+          "indra/newview/llvoavatar.cpp@11608,27",
+          "indra/newview/llvoavatar.cpp@11667,282"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@213,33",
-          "indra/newview/llvoavatar.h@977,21"
+          "indra/newview/llvoavatar.h@978,21"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -182949,6 +182970,7 @@
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
           "LLTimer::getTotalSeconds",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::updateCharacter",
           "LLViewerCamera::getInstance",
           "LLWorld::getInstance"
@@ -187232,6 +187254,7 @@
           "LLVOAvatar::cacheImpostorValues",
           "LLVOAvatar::calcMorphAmount",
           "LLVOAvatar::calcMutedAVColor",
+          "LLVOAvatar::calcNameTagLift",
           "LLVOAvatar::calcRiggedAlphaDepth",
           "LLVOAvatar::calculateSpatialExtents",
           "LLVOAvatar::calculateUpdateRenderComplexity",

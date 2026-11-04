@@ -464,15 +464,16 @@ HEAD coordinates; guards/features are candidate evidence
 | 201–209 (n=9) | unknown/non-function (declaration, XML, build list or global scope) | actor-bar, director-shell, gaze | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 459–465 (n=7) | idle_startup | unknown | unknown-review | unknown; no local conditional evidence | Edits ALUIPerfSelfTest |
 | 930–945 (n=16) | idle_startup | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The UI performance harness is deliberately login-screen-only. It must never consume saved AutoLogin credentials or command-line UserLoginInfo, even when those would normally bypass the login UI. |
-| 1029–1035 (n=7) | idle_startup | unknown | unknown-review | unknown; no local conditional evidence | Edits ALUIPerfSelfTest |
-| 1130–1136 (n=7) | idle_startup | unknown | unknown-review | unknown; conditional evidence present | Edits gRememberUser, ALUIPerfSelfTest |
-| 1490–1499 (n=10) | idle_startup | looks, sensor | creative-candidate | unknown; no local conditional evidence | Comment evidence: [AvatarLightResponse] per-account light-response entries. Loaded here, not in STATE_LOGIN_CLEANUP: the saved "self" entry resolves through gAgentID, which process_login_success_response() has only just set. |
-| 1530–1536 (n=7) | idle_startup | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
-| 2264–2274 (n=11) | idle_startup | director-shell, gaze | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Machinima] Drive Actor Gaze random-performance cycling from the idle list for the whole session (guarded), so persisted DirectorGazeRandomMode runs without needing the gaze floater opened first. |
-| 2648–2666 (n=19) | doOnIdleOneTime, idle_startup | actor-bar, director-shell, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: List the logged-in avatar in the Director cast by default (no subject/actor role). This initialization is explicitly non-dirty because the floater may already have established its baseline. Startup feature recommendations and command-line graphics overrides are initialization, no |
-| 2754–2760 (n=7) | login_callback | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
-| 3381–3391 (n=11) | LLStartUp::setStartupState | clones | creative-candidate | unknown; conditional evidence present | Edits LLPresentationTime |
-| 4292–4294 (n=3) | unknown/non-function (void handleLoadChatAlertSounds()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 993–998 (n=6) | idle_startup | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1028–1034 (n=7) | idle_startup | unknown | unknown-review | unknown; no local conditional evidence | Edits ALUIPerfSelfTest |
+| 1129–1135 (n=7) | idle_startup | unknown | unknown-review | unknown; conditional evidence present | Edits gRememberUser, ALUIPerfSelfTest |
+| 1489–1498 (n=10) | idle_startup | looks, sensor | creative-candidate | unknown; no local conditional evidence | Comment evidence: [AvatarLightResponse] per-account light-response entries. Loaded here, not in STATE_LOGIN_CLEANUP: the saved "self" entry resolves through gAgentID, which process_login_success_response() has only just set. |
+| 1529–1535 (n=7) | idle_startup | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
+| 2263–2273 (n=11) | idle_startup | director-shell, gaze | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Machinima] Drive Actor Gaze random-performance cycling from the idle list for the whole session (guarded), so persisted DirectorGazeRandomMode runs without needing the gaze floater opened first. |
+| 2647–2665 (n=19) | doOnIdleOneTime, idle_startup | actor-bar, director-shell, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: List the logged-in avatar in the Director cast by default (no subject/actor role). This initialization is explicitly non-dirty because the floater may already have established its baseline. Startup feature recommendations and command-line graphics overrides are initialization, no |
+| 2753–2759 (n=7) | login_callback | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
+| 3380–3390 (n=11) | LLStartUp::setStartupState | clones | creative-candidate | unknown; conditional evidence present | Edits LLPresentationTime |
+| 4291–4293 (n=3) | unknown/non-function (void handleLoadChatAlertSounds()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 1: `indra/newview/llviewercontrol.cpp`
 
@@ -1150,78 +1151,81 @@ HEAD coordinates; guards/features are candidate evidence
 | 3228–3245 (n=18) | LLVOAvatar::idleUpdateMisc | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: stamp the attachment's draw order onto its bridge; LLPipeline::postSort fans it out to the bridge's alpha groups, sorting the wearer's whole ensemble at one avatar depth. HUD alpha sorts in HUD space, so unrigged HUDs stay unstamped. |
 | 3380–3391 (n=12) | LLVOAvatar::idleUpdateLipSync | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: Lip-sync holds with the face bones: the actor's Face part (StepAnimFace off or Face part Smooth never holds; a coarser Face part releases on its own refresh frames). |
 | 3547–3558 (n=12) | LLVOAvatar::idleUpdateNameTag | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone has no resident identity -- no name tag. |
-| 4198–4211 (n=14) | LLVOAvatar::isVisuallyMuted, LLVOAvatar::slamPosition | actor-path | creative-candidate | unknown; conditional evidence present | Comment evidence: [Machinima] A position slam (teleport / region cross) is a discontinuity: drop Pose Polish shadow state so it never smooths across the jump. |
-| 4213–4220 (n=8) | LLVOAvatar::isVisuallyMuted | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: * a client-only Ghost Studio clone is never visually muted |
-| 4233–4245 (n=13) | LLVOAvatar::isVisuallyMuted | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Actor FX needs the authored live avatar, not a complexity/ART stand-in. Explicit mute-list and Never Render policy above remain authoritative; only automatic performance muting is bypassed. |
-| 4609–4615 (n=7) | LLVOAvatar::updateFootstepSounds | clones | creative-candidate | unknown; conditional evidence present | Edits gAudiop |
-| 4664–4691 (n=28) | LLVOAvatar::computeUpdatePeriod | actor-bar, clones, looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Ghost clones and styled cinematic actors always update their authored skeleton every frame. Actor FX cannot use temporally throttled jelly or impostor state without visibly freezing animation and attachments. [AvatarLightResponse] An adjusted avatar is kept live: full geometry an |
-| 4749–4758 (n=10) | LLVOAvatar::updateOrientation | clones | creative-candidate | unknown; conditional evidence present | Edits ALAvatarAnimationTime |
-| 4825–4844 (n=20) | LLVOAvatar::updateOrientation | actor-path | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World: stop avatars from rotating while the world is frozen (donor: Black Dragon b4cfc2cb83) |
-| 4847–4862 (n=16) | LLVOAvatar::updateOrientation | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 4865–4872 (n=8) | LLVOAvatar::updateOrientation | clones | creative-candidate | unknown; no local conditional evidence | Edits LLFrameTimer, ALAvatarAnimationTime |
-| 4895–4912 (n=18) | LLVOAvatar::updateOrientation | unknown | unknown-review | unknown; conditional evidence present | Edits gAgent |
-| 4944–4950 (n=7) | LLVOAvatar::updateTimeStep | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 5002–5020 (n=19) | LLVOAvatar::updateRootPositionAndRotation | clones | creative-candidate | unknown; conditional evidence present | Edits LLMotionController, ALAvatarAnimationTime |
-| 5028–5045 (n=18) | LLVOAvatar::updateRootPositionAndRotation | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [GhostClone] A ghost clone's object position is ALREADY its intended render root (LLGhostAvatar::ghostSlamPosition stores foot + pelvisToFoot). The stock bbox-center + hover adjustments below move the root to a point that the per-frame ghost foot-lock then re-slams back down -- b |
-| 5061–5081 (n=21) | LLVOAvatar::updateRootPositionAndRotation | clones, composition | creative-candidate | unknown; conditional evidence present | Comment evidence: of the agent's physical representation of the agent's physical representation ([GhostClone] skip for ghosts: their object position is already the intended root -- see note above) [ClientHeight] local, render-only offset; after mInAir above, so footsteps / in-air state keep using  |
-| 5144–5168 (n=25) | LLVOAvatar::updateRootPositionAndRotation | actor-path, clones, composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ClientHeight] WORLD-vertical lift; mRoot is seat-local here, so express it in the seat's frame (the camera's world-Z subtraction then matches exactly). [ActorMover] local ghost locomotion: when this avatar is being moved by the Actor Mover, override the rendered root pose AFTER  |
-| 5218–5813 (n=596) | ALPosePolish::invalidateSkeleton, ALPosePolish::reset, ALPosePolish::run, ALPosePolish::runContact, ALPosePolish::runInertialization, ALPosePolish::runSecondary, LLVOAvatar::updateCharacter | actor-path, clones, director-shell, gaze, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: ------------------------------------------------------------------------ [Machinima] Post-blend Pose Polish stage (alposepolish.h). Defined here because it operates on the full LLVOAvatar. Master gate ALPolishEnabled defaults false -> pure no-op, displayed pose bit-identical to t |
-| 5822–5834 (n=13) | LLVOAvatar::updateCharacter | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] Resolve the local height offset BEFORE computeNeedsUpdate(): a changed offset must force one update on a LOD-throttled / impostored avatar, and LLControlAvatar::computeNeedsUpdate() overwrites mNeedsImpostorUpdate with the wearer's value, so the flag is re-asserted |
-| 5839–5848 (n=10) | LLVOAvatar::updateCharacter | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Director still has to process release gates on LOD-skipped frames; otherwise a deselection/safety change can leave its root and local turn motion owned until the next detailed impostor update. |
-| 5914–5958 (n=45) | LLVOAvatar::updateCharacter | actor-path, composition, director-shell, gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: [Machinima] Pose Polish: on the freshly blended pose, repair transition discontinuities and stabilize foot contact BEFORE the gaze layer paints on top, so gaze solves against a continuous, grounded pose. No-op unless ALPolishEnabled. See docs/pose_polish_integration_plan.md.  [Al |
-| 5982–6090 (n=109) | LLVOAvatar::updateHeadOffset, LLVOAvatar::updateMouselookHeadBoneScale | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: updateHeadOffset() updateMouselookHeadBoneScale() [BDMerge B12] (EXPERIMENTAL) Scale down own head bone in mouselook. Donor: Black Dragon indra/newview/bdanimator.cpp (BDAnimator::update(), commit 605f6a7416 "Changed: (EXPERIMENTAL) Scale down head bones while in mouselook to pre |
-| 6164–6176 (n=13) | LLVOAvatar::postPelvisSetRecalc | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B12] Skip while our own head bone is force-scaled to zero for mouselook -- mHead's scale feeds directly into computeBodySize()'s height math and would otherwise shrink mBodySize for the duration of mouselook (the "feet clipping into the floor" regression BD fixed in 518b |
-| 6277–6285 (n=9) | LLVOAvatar::updateVisibility | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Render suppression must not release the source mesh or pause fetch callbacks. |
-| 6324–6372 (n=49) | LLScopedAvatarOuterModelView, LLVOAvatar::renderSkinned, ~LLScopedAvatarOuterModelView | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Edits LLScopedAvatarOuterModelView, LLVOAvatar, gGL, LLRender, gGLModelView, LLMatrix4, LLDrawPoolAvatar, LLRenderPass |
-| 6545–6553 (n=9) | LLVOAvatar::renderSkinned | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [AlphaVel] The velocity target is replace-only; do not let classic skirt/hair/eyelash rendering override the stage's blend disable. |
-| 6585–6592 (n=8) | LLVOAvatar::renderTransparent | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6609–6615 (n=7) | LLVOAvatar::renderRigid | clones | creative-candidate | unknown; no local conditional evidence | Edits LLScopedAvatarOuterModelView |
-| 6912–6918 (n=7) | LLVOAvatar::updateTextures | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
-| 6971–6979 (n=9) | LLVOAvatar::updateTextures | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
-| 7316–7327 (n=12) | LLVOAvatar::processSingleAnimationStateChange | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B12] See postPelvisSetRecalc() above for why this is skipped while mouselook head-bone scaling is active. |
-| 7329–7335 (n=7) | LLVOAvatar::processSingleAnimationStateChange | clones | creative-candidate | unknown; conditional evidence present | Edits gAudiop, gSavedSettings |
-| 7363–7376 (n=14) | LLVOAvatar::processSingleAnimationStateChange | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: Reflect consumes only live intent records. An expired STOP or no intent falls through to the stock original start in this same call. |
-| 7391–7399 (n=9) | LLVOAvatar::processSingleAnimationStateChange | stepped-animation | creative-candidate | unknown; conditional evidence present | Edits ALReflectAnim |
-| 7421–7458 (n=38) | LLVOAvatar::resetAnimations | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Stock: rebuild every active motion instance and restart it at its current time offset. Unchanged for normal (non-self) avatars. [Alchemy] Animesh: flushAllMotions() RESTARTS whatever is active, so a stranded local driver (poser default motions, an FSPosingMotion, a switchboard or |
-| 7811–7817 (n=7) | LLVOAvatar::rebuildAttachmentOverrides | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7985–7991 (n=7) | LLVOAvatar::addAttachmentOverridesForObject | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 8240–8246 (n=7) | LLVOAvatar::removeAttachmentOverridesForObject | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 8269–8275 (n=7) | LLVOAvatar::removeAttachmentOverridesForObject | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 8538–8549 (n=12) | LLVOAvatar::updateVisualParams | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B12] See postPelvisSetRecalc() above for why this is skipped while mouselook head-bone scaling is active. |
-| 8736–8841 (n=106) | LLVOAvatar::isActorGhostSystemReplayReady, LLVOAvatar::uploadActorGhostPalette | actor-path, clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Every weighted classic body mesh uses the same reference palette.  Pick the first built core mesh; doing the private lookup here avoids exposing mesh-LOD internals to ActorMover while keeping an interleaved alpha replay independent of whichever actor last used the shader program. |
-| 9013–9019 (n=7) | LLVOAvatar::attachObject | stepped-animation | creative-candidate | unknown; no local conditional evidence | Edits ALAvatarAnimSpeed |
-| 9414–9423 (n=10) | LLVOAvatar::sitOnObject | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] sitOnObject runs outside the avatar update (and a LOD-skipped avatar never reaches the root writer that frame), so it carries the world-vertical term itself. |
-| 9458–9472 (n=15) | LLVOAvatar::getOffObject | composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ClientHeight] The fallback becomes the drawable's position, so it must be the BASE (un-offset) cache; the root write below re-adds the local height offset. |
-| 9479–9490 (n=12) | LLVOAvatar::getOffObject | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] world write (the parent is null now): re-add the local height offset. |
-| 9705–9718 (n=14) | LLVOAvatar::isVisible | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: This is update visibility. Actual draws/picks are gated independently. |
-| 9871–9877 (n=7) | LLVOAvatar::logPendingPhasesAllAvatars | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 9963–9970 (n=8) | LLVOAvatar::updateRuthTimer | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A ghost's id is synthetic -- never emit a server avatar-textures request for it. |
-| 10078–10089 (n=12) | LLVOAvatar::isTooComplex | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone is never too-complex (it must render through the real path). Checked FIRST, before the isRlvSilhouette branch below. |
-| 10093–10099 (n=7) | LLVOAvatar::isTooComplex | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 10105–10122 (n=18) | LLVOAvatar::isTooComplex | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: while filming, disable the complexity / surface-area auto-mute path (equivalent to RenderAvatarMaxComplexity=0 and RenderAutoMuteSurfaceAreaLimit=0) so distant/complex avatars stay full 3D. Manual mutes (AV_DO_NOT_RENDER / mute list, handled a |
-| 10127–10133 (n=7) | LLVOAvatar::isTooComplex | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 10140–10151 (n=12) | LLVOAvatar::isTooSlow | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone is never throttled as too-slow. |
-| 10171–10181 (n=11) | LLVOAvatar::updateTooSlow | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone never participates in ART / too-slow accounting. |
-| 11311–11411 (n=101) | LLVOAvatar::copyAppearanceFrom | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [GhostStudio] Copy a source avatar's appearance onto this one, BY VALUE.  The hazard this exists to avoid: applyParsedAppearanceMessage() below calls param->setWeight() / setAnimationTarget() on contents.mParams[i]. Those are pointers into whichever avatar PARSED the message. Han |
-| 11513–11522 (n=10) | LLVOAvatar::applyParsedAppearanceMessage | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: (never for a client-only ghost -- its id is synthetic, no server object) |
-| 11599–11625 (n=27) | LLVOAvatar::updateSkinInfoMatrixPalette | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A5.4-1b] Stash the outgoing palette as the previous frame's before rebuilding (velocity pass). swap() instead of copy: mGLMp is resized+rewritten just below, so this is allocation-free steady-state. |
-| 11658–11939 (n=282) | LLVOAvatar::captureStepAnimRenderState, LLVOAvatar::clearStepAnimRenderState, LLVOAvatar::invalidateSkinPalettesAfterOverlay, LLVOAvatar::invalidateSkinPalettesForOverlay, LLVOAvatar::markStepAnimPoseChanged, LLVOAvatar::restoreStepAnimLabels, LLVOAvatar::shiftStepAnimLabels, LLVOAvatar::syncStepAnimAttachmentMatrices, LLVOAvatar::verifyStepAnimRenderState, void | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: Retain normal spatial processing once per changed linkset. Child matrices are already current and must not enter updateMove(), where spinning children would dirty their spatial groups. |
-| 11995–12001 (n=7) | LLVOAvatar::onBakedTextureMasksLoaded | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: setManualImage rewrites GL_ALPHA8 / GL_ALPHA → GL_R8 / GL_RED setManualImage rewrites GL_ALPHA8 / GL_ALPHA â†’ GL_R8 / GL_RED |
-| 12503–12509 (n=7) | LLVOAvatar::getUnbakedPixelAreaRank | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 12526–12533 (n=8) | LLVOAvatar::cullAvatarsByPixelArea | clones | creative-candidate | unknown; no local conditional evidence | Edits ALDerenderList |
-| 12540–12549 (n=10) | LLVOAvatar::cullAvatarsByPixelArea | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 12827–12989 (n=163) | LLVOAvatar::getActorFxOwnerId, LLVOAvatar::getBaseRootPosition, LLVOAvatar::getClientHeightZ, LLVOAvatar::getEffectiveClientHeightZ, LLVOAvatar::hasEffectiveActorFx, LLVOAvatar::isHardVisualMute, LLVOAvatar::isImpostor, LLVOAvatar::refreshClientHeight, LLVOAvatar::resolveClientHeight, LLVOAvatar::shouldImpostor, refresh | actor-bar, actor-path, clones, composition, director-shell, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ClientHeight] --------------------------------------------------------------- Cheap live approximation of the key; the real resolve runs only when the stamp says so (ALClientHeightModel::needsResolve). [/ClientHeight] ------------------------------------------------------------- |
-| 12991–13002 (n=12) | LLVOAvatar::shouldImpostor | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: never rank-impostor while filming. |
-| 13086–13092 (n=7) | LLVOAvatar::idleUpdateRenderComplexity | clones | creative-candidate | unknown; no local conditional evidence | Edits LLPerfStats |
-| 13125–13131 (n=7) | LLVOAvatar::updateNearbyAvatarCount | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 13525–13542 (n=18) | LLVOAvatar::setOverallAppearanceNormal | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Control avatars do not rebuild the system-avatar skeleton, but they still need alternate-bind position/scale overrides from their live animated linkset when Actor FX lifts a performance-jelly state. Animation messages received while performance-jellied retain their signaled state |
-| 13668–13675 (n=8) | LLVOAvatar::getOverallAppearance | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep the data path normal; the separate render gate hides every surface. |
-| 13678–13684 (n=7) | LLVOAvatar::getOverallAppearance | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 13688–13704 (n=17) | LLVOAvatar::getOverallAppearance | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A styled cinematic actor needs its authored skeleton, animation, attachments, mesh visibility/extents and root placement. Treat it as normal only after the hard visibility policy above. |
-| 13937–13943 (n=7) | LLVOAvatar::getTotalGPURenderTime | clones | creative-candidate | unknown; conditional evidence present | Edits LLVOAvatar |
-| 13952–13958 (n=7) | LLVOAvatar::getMaxGPURenderTime | clones | creative-candidate | unknown; conditional evidence present | Edits LLVOAvatar |
-| 13970–13978 (n=9) | LLVOAvatar::getAverageGPURenderTime | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: isTooSlow() now returns false for ghosts, so exclude them explicitly or a client-only clone would skew the average avatar GPU time. |
-| 14005–14007 (n=3) | unknown/non-function (bool LLVOAvatar::isBuddy() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 4066–4080 (n=15) | LLVOAvatar::calcNameTagLift | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Camera-facing lift from the head to the name tag. Shared with clones, which have no avatar object of their own for overlay looks. |
+| 4082–4103 (n=22) | LLVOAvatar::calcNameTagLift, LLVOAvatar::idleCalcNameTagPosition | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3, LLVOAvatar, LLQuaternion |
+| 4108–4114 (n=7) | LLVOAvatar::idleCalcNameTagPosition | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 4207–4220 (n=14) | LLVOAvatar::isVisuallyMuted, LLVOAvatar::slamPosition | actor-path | creative-candidate | unknown; conditional evidence present | Comment evidence: [Machinima] A position slam (teleport / region cross) is a discontinuity: drop Pose Polish shadow state so it never smooths across the jump. |
+| 4222–4229 (n=8) | LLVOAvatar::isVisuallyMuted | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: * a client-only Ghost Studio clone is never visually muted |
+| 4242–4254 (n=13) | LLVOAvatar::isVisuallyMuted | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Actor FX needs the authored live avatar, not a complexity/ART stand-in. Explicit mute-list and Never Render policy above remain authoritative; only automatic performance muting is bypassed. |
+| 4618–4624 (n=7) | LLVOAvatar::updateFootstepSounds | clones | creative-candidate | unknown; conditional evidence present | Edits gAudiop |
+| 4673–4700 (n=28) | LLVOAvatar::computeUpdatePeriod | actor-bar, clones, looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Ghost clones and styled cinematic actors always update their authored skeleton every frame. Actor FX cannot use temporally throttled jelly or impostor state without visibly freezing animation and attachments. [AvatarLightResponse] An adjusted avatar is kept live: full geometry an |
+| 4758–4767 (n=10) | LLVOAvatar::updateOrientation | clones | creative-candidate | unknown; conditional evidence present | Edits ALAvatarAnimationTime |
+| 4834–4853 (n=20) | LLVOAvatar::updateOrientation | actor-path | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World: stop avatars from rotating while the world is frozen (donor: Black Dragon b4cfc2cb83) |
+| 4856–4871 (n=16) | LLVOAvatar::updateOrientation | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 4874–4881 (n=8) | LLVOAvatar::updateOrientation | clones | creative-candidate | unknown; no local conditional evidence | Edits LLFrameTimer, ALAvatarAnimationTime |
+| 4904–4921 (n=18) | LLVOAvatar::updateOrientation | unknown | unknown-review | unknown; conditional evidence present | Edits gAgent |
+| 4953–4959 (n=7) | LLVOAvatar::updateTimeStep | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 5011–5029 (n=19) | LLVOAvatar::updateRootPositionAndRotation | clones | creative-candidate | unknown; conditional evidence present | Edits LLMotionController, ALAvatarAnimationTime |
+| 5037–5054 (n=18) | LLVOAvatar::updateRootPositionAndRotation | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [GhostClone] A ghost clone's object position is ALREADY its intended render root (LLGhostAvatar::ghostSlamPosition stores foot + pelvisToFoot). The stock bbox-center + hover adjustments below move the root to a point that the per-frame ghost foot-lock then re-slams back down -- b |
+| 5070–5090 (n=21) | LLVOAvatar::updateRootPositionAndRotation | clones, composition | creative-candidate | unknown; conditional evidence present | Comment evidence: of the agent's physical representation of the agent's physical representation ([GhostClone] skip for ghosts: their object position is already the intended root -- see note above) [ClientHeight] local, render-only offset; after mInAir above, so footsteps / in-air state keep using  |
+| 5153–5177 (n=25) | LLVOAvatar::updateRootPositionAndRotation | actor-path, clones, composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ClientHeight] WORLD-vertical lift; mRoot is seat-local here, so express it in the seat's frame (the camera's world-Z subtraction then matches exactly). [ActorMover] local ghost locomotion: when this avatar is being moved by the Actor Mover, override the rendered root pose AFTER  |
+| 5227–5822 (n=596) | ALPosePolish::invalidateSkeleton, ALPosePolish::reset, ALPosePolish::run, ALPosePolish::runContact, ALPosePolish::runInertialization, ALPosePolish::runSecondary, LLVOAvatar::updateCharacter | actor-path, clones, director-shell, gaze, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: ------------------------------------------------------------------------ [Machinima] Post-blend Pose Polish stage (alposepolish.h). Defined here because it operates on the full LLVOAvatar. Master gate ALPolishEnabled defaults false -> pure no-op, displayed pose bit-identical to t |
+| 5831–5843 (n=13) | LLVOAvatar::updateCharacter | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] Resolve the local height offset BEFORE computeNeedsUpdate(): a changed offset must force one update on a LOD-throttled / impostored avatar, and LLControlAvatar::computeNeedsUpdate() overwrites mNeedsImpostorUpdate with the wearer's value, so the flag is re-asserted |
+| 5848–5857 (n=10) | LLVOAvatar::updateCharacter | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Director still has to process release gates on LOD-skipped frames; otherwise a deselection/safety change can leave its root and local turn motion owned until the next detailed impostor update. |
+| 5923–5967 (n=45) | LLVOAvatar::updateCharacter | actor-path, composition, director-shell, gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: [Machinima] Pose Polish: on the freshly blended pose, repair transition discontinuities and stabilize foot contact BEFORE the gaze layer paints on top, so gaze solves against a continuous, grounded pose. No-op unless ALPolishEnabled. See docs/pose_polish_integration_plan.md.  [Al |
+| 5991–6089 (n=99) | LLVOAvatar::updateHeadOffset, LLVOAvatar::updateMouselookHeadBoneScale | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: updateHeadOffset() updateMouselookHeadBoneScale() [BDMerge B12] (EXPERIMENTAL) Scale down own head bone in mouselook. Donor: Black Dragon indra/newview/bdanimator.cpp (BDAnimator::update(), commit 605f6a7416 "Changed: (EXPERIMENTAL) Scale down head bones while in mouselook to pre |
+| 6173–6185 (n=13) | LLVOAvatar::postPelvisSetRecalc | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B12] Skip while our own head bone is force-scaled to zero for mouselook -- mHead's scale feeds directly into computeBodySize()'s height math and would otherwise shrink mBodySize for the duration of mouselook (the "feet clipping into the floor" regression BD fixed in 518b |
+| 6286–6294 (n=9) | LLVOAvatar::updateVisibility | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Render suppression must not release the source mesh or pause fetch callbacks. |
+| 6333–6381 (n=49) | LLScopedAvatarOuterModelView, LLVOAvatar::renderSkinned, ~LLScopedAvatarOuterModelView | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Edits LLScopedAvatarOuterModelView, LLVOAvatar, gGL, LLRender, gGLModelView, LLMatrix4, LLDrawPoolAvatar, LLRenderPass |
+| 6554–6562 (n=9) | LLVOAvatar::renderSkinned | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [AlphaVel] The velocity target is replace-only; do not let classic skirt/hair/eyelash rendering override the stage's blend disable. |
+| 6594–6601 (n=8) | LLVOAvatar::renderTransparent | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6618–6624 (n=7) | LLVOAvatar::renderRigid | clones | creative-candidate | unknown; no local conditional evidence | Edits LLScopedAvatarOuterModelView |
+| 6921–6927 (n=7) | LLVOAvatar::updateTextures | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
+| 6980–6988 (n=9) | LLVOAvatar::updateTextures | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
+| 7325–7336 (n=12) | LLVOAvatar::processSingleAnimationStateChange | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B12] See postPelvisSetRecalc() above for why this is skipped while mouselook head-bone scaling is active. |
+| 7338–7344 (n=7) | LLVOAvatar::processSingleAnimationStateChange | clones | creative-candidate | unknown; conditional evidence present | Edits gAudiop, gSavedSettings |
+| 7372–7385 (n=14) | LLVOAvatar::processSingleAnimationStateChange | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: Reflect consumes only live intent records. An expired STOP or no intent falls through to the stock original start in this same call. |
+| 7400–7408 (n=9) | LLVOAvatar::processSingleAnimationStateChange | stepped-animation | creative-candidate | unknown; conditional evidence present | Edits ALReflectAnim |
+| 7430–7467 (n=38) | LLVOAvatar::resetAnimations | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Stock: rebuild every active motion instance and restart it at its current time offset. Unchanged for normal (non-self) avatars. [Alchemy] Animesh: flushAllMotions() RESTARTS whatever is active, so a stranded local driver (poser default motions, an FSPosingMotion, a switchboard or |
+| 7820–7826 (n=7) | LLVOAvatar::rebuildAttachmentOverrides | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7994–8000 (n=7) | LLVOAvatar::addAttachmentOverridesForObject | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 8249–8255 (n=7) | LLVOAvatar::removeAttachmentOverridesForObject | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 8278–8284 (n=7) | LLVOAvatar::removeAttachmentOverridesForObject | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 8547–8558 (n=12) | LLVOAvatar::updateVisualParams | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge B12] See postPelvisSetRecalc() above for why this is skipped while mouselook head-bone scaling is active. |
+| 8745–8850 (n=106) | LLVOAvatar::isActorGhostSystemReplayReady, LLVOAvatar::uploadActorGhostPalette | actor-path, clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Every weighted classic body mesh uses the same reference palette.  Pick the first built core mesh; doing the private lookup here avoids exposing mesh-LOD internals to ActorMover while keeping an interleaved alpha replay independent of whichever actor last used the shader program. |
+| 9022–9028 (n=7) | LLVOAvatar::attachObject | stepped-animation | creative-candidate | unknown; no local conditional evidence | Edits ALAvatarAnimSpeed |
+| 9423–9432 (n=10) | LLVOAvatar::sitOnObject | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] sitOnObject runs outside the avatar update (and a LOD-skipped avatar never reaches the root writer that frame), so it carries the world-vertical term itself. |
+| 9467–9481 (n=15) | LLVOAvatar::getOffObject | composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ClientHeight] The fallback becomes the drawable's position, so it must be the BASE (un-offset) cache; the root write below re-adds the local height offset. |
+| 9488–9499 (n=12) | LLVOAvatar::getOffObject | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] world write (the parent is null now): re-add the local height offset. |
+| 9714–9727 (n=14) | LLVOAvatar::isVisible | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: This is update visibility. Actual draws/picks are gated independently. |
+| 9880–9886 (n=7) | LLVOAvatar::logPendingPhasesAllAvatars | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 9972–9979 (n=8) | LLVOAvatar::updateRuthTimer | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A ghost's id is synthetic -- never emit a server avatar-textures request for it. |
+| 10087–10098 (n=12) | LLVOAvatar::isTooComplex | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone is never too-complex (it must render through the real path). Checked FIRST, before the isRlvSilhouette branch below. |
+| 10102–10108 (n=7) | LLVOAvatar::isTooComplex | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 10114–10131 (n=18) | LLVOAvatar::isTooComplex | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: while filming, disable the complexity / surface-area auto-mute path (equivalent to RenderAvatarMaxComplexity=0 and RenderAutoMuteSurfaceAreaLimit=0) so distant/complex avatars stay full 3D. Manual mutes (AV_DO_NOT_RENDER / mute list, handled a |
+| 10136–10142 (n=7) | LLVOAvatar::isTooComplex | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 10149–10160 (n=12) | LLVOAvatar::isTooSlow | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone is never throttled as too-slow. |
+| 10180–10190 (n=11) | LLVOAvatar::updateTooSlow | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A client-only ghost clone never participates in ART / too-slow accounting. |
+| 11320–11420 (n=101) | LLVOAvatar::copyAppearanceFrom | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [GhostStudio] Copy a source avatar's appearance onto this one, BY VALUE.  The hazard this exists to avoid: applyParsedAppearanceMessage() below calls param->setWeight() / setAnimationTarget() on contents.mParams[i]. Those are pointers into whichever avatar PARSED the message. Han |
+| 11522–11531 (n=10) | LLVOAvatar::applyParsedAppearanceMessage | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: (never for a client-only ghost -- its id is synthetic, no server object) |
+| 11608–11634 (n=27) | LLVOAvatar::updateSkinInfoMatrixPalette | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A5.4-1b] Stash the outgoing palette as the previous frame's before rebuilding (velocity pass). swap() instead of copy: mGLMp is resized+rewritten just below, so this is allocation-free steady-state. |
+| 11667–11948 (n=282) | LLVOAvatar::captureStepAnimRenderState, LLVOAvatar::clearStepAnimRenderState, LLVOAvatar::invalidateSkinPalettesAfterOverlay, LLVOAvatar::invalidateSkinPalettesForOverlay, LLVOAvatar::markStepAnimPoseChanged, LLVOAvatar::restoreStepAnimLabels, LLVOAvatar::shiftStepAnimLabels, LLVOAvatar::syncStepAnimAttachmentMatrices, LLVOAvatar::verifyStepAnimRenderState, void | stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: Retain normal spatial processing once per changed linkset. Child matrices are already current and must not enter updateMove(), where spinning children would dirty their spatial groups. |
+| 12004–12010 (n=7) | LLVOAvatar::onBakedTextureMasksLoaded | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: setManualImage rewrites GL_ALPHA8 / GL_ALPHA → GL_R8 / GL_RED setManualImage rewrites GL_ALPHA8 / GL_ALPHA â†’ GL_R8 / GL_RED |
+| 12512–12518 (n=7) | LLVOAvatar::getUnbakedPixelAreaRank | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 12535–12542 (n=8) | LLVOAvatar::cullAvatarsByPixelArea | clones | creative-candidate | unknown; no local conditional evidence | Edits ALDerenderList |
+| 12549–12558 (n=10) | LLVOAvatar::cullAvatarsByPixelArea | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 12836–12998 (n=163) | LLVOAvatar::getActorFxOwnerId, LLVOAvatar::getBaseRootPosition, LLVOAvatar::getClientHeightZ, LLVOAvatar::getEffectiveClientHeightZ, LLVOAvatar::hasEffectiveActorFx, LLVOAvatar::isHardVisualMute, LLVOAvatar::isImpostor, LLVOAvatar::refreshClientHeight, LLVOAvatar::resolveClientHeight, LLVOAvatar::shouldImpostor, refresh | actor-bar, actor-path, clones, composition, director-shell, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ClientHeight] --------------------------------------------------------------- Cheap live approximation of the key; the real resolve runs only when the stamp says so (ALClientHeightModel::needsResolve). [/ClientHeight] ------------------------------------------------------------- |
+| 13000–13011 (n=12) | LLVOAvatar::shouldImpostor | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: never rank-impostor while filming. |
+| 13095–13101 (n=7) | LLVOAvatar::idleUpdateRenderComplexity | clones | creative-candidate | unknown; no local conditional evidence | Edits LLPerfStats |
+| 13134–13140 (n=7) | LLVOAvatar::updateNearbyAvatarCount | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 13534–13551 (n=18) | LLVOAvatar::setOverallAppearanceNormal | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Control avatars do not rebuild the system-avatar skeleton, but they still need alternate-bind position/scale overrides from their live animated linkset when Actor FX lifts a performance-jelly state. Animation messages received while performance-jellied retain their signaled state |
+| 13677–13684 (n=8) | LLVOAvatar::getOverallAppearance | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep the data path normal; the separate render gate hides every surface. |
+| 13687–13693 (n=7) | LLVOAvatar::getOverallAppearance | clones | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 13697–13713 (n=17) | LLVOAvatar::getOverallAppearance | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A styled cinematic actor needs its authored skeleton, animation, attachments, mesh visibility/extents and root placement. Treat it as normal only after the hard visibility policy above. |
+| 13946–13952 (n=7) | LLVOAvatar::getTotalGPURenderTime | clones | creative-candidate | unknown; conditional evidence present | Edits LLVOAvatar |
+| 13961–13967 (n=7) | LLVOAvatar::getMaxGPURenderTime | clones | creative-candidate | unknown; conditional evidence present | Edits LLVOAvatar |
+| 13979–13987 (n=9) | LLVOAvatar::getAverageGPURenderTime | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: isTooSlow() now returns false for ghosts, so exclude them explicitly or a client-only clone would skew the average avatar GPU time. |
+| 14014–14016 (n=3) | unknown/non-function (bool LLVOAvatar::isBuddy() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/llvoavatar.h`
 
@@ -1234,19 +1238,20 @@ HEAD coordinates; guards/features are candidate evidence
 | 213–245 (n=33) | getCollisionVolumeJoint, getCollisionVolumeJointCount, getCreationSerial, getJointOverrideEpoch, getSteppedSkeletonSerial | stepped-animation | creative-candidate | unknown; no local conditional evidence | Edits LLJoint, LLVector3 |
 | 287–311 (n=25) | getUniformScale, isGhostAvatar | capture-sidecar, clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [GhostStudio] True if this is a scene-lit clone (no associated user). Unlike control/UI avatars this one has mIsDummy == false, so it takes the REAL render path; every site that assumes a server-backed identity (world enumeration, name cache, mute state, autotune, sounds, sim req |
 | 326–332 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 525–541 (n=17) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B12] Experimental mouselook head-bone scaling. Donor: Black Dragon bdanimator.cpp (BDAnimator::update) + llagentcamera.cpp (commit 605f6a7416 and follow-ups). Reimplemented here without BD's Poser subsystem: applied/restored per-frame from idleUpdate() instead of on came |
-| 550–594 (n=45) | unknown/non-function (public:) | actor-bar, actor-path, clones, composition, director-shell, looks, roto-tron | creative-candidate | unknown; no local conditional evidence | Comment evidence: Hard user/privacy suppression is stronger than cinematic Actor FX. The effective-style helper deliberately excludes performance jelly/impostor state so a styled actor can remain live without reviving hidden actors. Canonical resident/linkset key used by render hot paths. Unlike t |
-| 614–624 (n=11) | setVisualMuteSettingsLocal | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Set the local visual-mute state WITHOUT persisting it to LLRenderMuteList (unlike setVisualMuteSettings()). A client-only avatar with a synthetic id (LLGhostAvatar) uses this to undo the base ctor's saved-mute lookup -- persisting would write, and later read back, a STRANGER's sa |
-| 647–659 (n=13) | unknown/non-function (public:) | clones, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Upload the classic 45-matrix system-avatar palette to the currently bound replay shader.  Shared Actor FX alpha can be interleaved long after the opaque sweep, so it cannot rely on that sweep's program uniforms. Conservative same-frame proof that every classic/system mesh the nat |
-| 713–719 (n=7) | unknown/non-function (private:) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 948–968 (n=21) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1b] Previous frame's GL palette for the velocity pass (donor: Black Dragon llvoavatar.h MatrixPaletteCache). mLastFrame is the gFrameCount mLastGLMp was CURRENT for; consumers must treat it as valid only when mLastFrame == gFrameCount - 1 (contiguous), else the avat |
-| 977–997 (n=21) | unknown/non-function (public:) | stepped-animation | creative-candidate | unknown; no local conditional evidence | Edits LLPointer, LLViewerObject, LLMatrix4, LLMatrix4a |
-| 1024–1035 (n=12) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [GhostStudio] Copy shape + baked textures from another avatar BY VALUE. Never share the source's LLAppearanceMessageContents directly: applyParsedAppearanceMessage calls setWeight() on contents.mParams[i] (see llvoavatar.cpp), so a shared struct would mutate the SOURCE's LLVisual |
-| 1170–1177 (n=8) | isTyping | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar shows a typing indicator; mTyping is private (FS parity getter) |
-| 1189–1198 (n=10) | setMoverContactHints | actor-path | creative-candidate | unknown; no local conditional evidence | Edits ALPosePolish |
-| 1207–1217 (n=11) | unknown/non-function (private:) | actor-path | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Machinima] Post-blend Pose Polish stage (continuity/grounding/secondary). Session-only, disabled by default; see alposepolish.h. |
-| 1259–1275 (n=17) | unknown/non-function (private:) | actor-path, composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] mLastRootPos minus the effective client offset, captured on the same line. mLastRootPos stays VISUAL (name tag, voice); only getOffObject's standoff fallback (which becomes the drawable's position) needs the BASE value. [ClientHeight] cached own / effective offset  |
-| 1440–1442 (n=3) | unknown/non-function (void dump_sequential_xml(const std::string outprefix, const LLSD& content);) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 393–399 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3, LLQuaternion |
+| 526–542 (n=17) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B12] Experimental mouselook head-bone scaling. Donor: Black Dragon bdanimator.cpp (BDAnimator::update) + llagentcamera.cpp (commit 605f6a7416 and follow-ups). Reimplemented here without BD's Poser subsystem: applied/restored per-frame from idleUpdate() instead of on came |
+| 551–595 (n=45) | unknown/non-function (public:) | actor-bar, actor-path, clones, composition, director-shell, looks, roto-tron | creative-candidate | unknown; no local conditional evidence | Comment evidence: Hard user/privacy suppression is stronger than cinematic Actor FX. The effective-style helper deliberately excludes performance jelly/impostor state so a styled actor can remain live without reviving hidden actors. Canonical resident/linkset key used by render hot paths. Unlike t |
+| 615–625 (n=11) | setVisualMuteSettingsLocal | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Set the local visual-mute state WITHOUT persisting it to LLRenderMuteList (unlike setVisualMuteSettings()). A client-only avatar with a synthetic id (LLGhostAvatar) uses this to undo the base ctor's saved-mute lookup -- persisting would write, and later read back, a STRANGER's sa |
+| 648–660 (n=13) | unknown/non-function (public:) | clones, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Upload the classic 45-matrix system-avatar palette to the currently bound replay shader.  Shared Actor FX alpha can be interleaved long after the opaque sweep, so it cannot rely on that sweep's program uniforms. Conservative same-frame proof that every classic/system mesh the nat |
+| 714–720 (n=7) | unknown/non-function (private:) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 949–969 (n=21) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1b] Previous frame's GL palette for the velocity pass (donor: Black Dragon llvoavatar.h MatrixPaletteCache). mLastFrame is the gFrameCount mLastGLMp was CURRENT for; consumers must treat it as valid only when mLastFrame == gFrameCount - 1 (contiguous), else the avat |
+| 978–998 (n=21) | unknown/non-function (public:) | stepped-animation | creative-candidate | unknown; no local conditional evidence | Edits LLPointer, LLViewerObject, LLMatrix4, LLMatrix4a |
+| 1025–1036 (n=12) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [GhostStudio] Copy shape + baked textures from another avatar BY VALUE. Never share the source's LLAppearanceMessageContents directly: applyParsedAppearanceMessage calls setWeight() on contents.mParams[i] (see llvoavatar.cpp), so a shared struct would mutate the SOURCE's LLVisual |
+| 1171–1178 (n=8) | isTyping | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar shows a typing indicator; mTyping is private (FS parity getter) |
+| 1190–1199 (n=10) | setMoverContactHints | actor-path | creative-candidate | unknown; no local conditional evidence | Edits ALPosePolish |
+| 1208–1218 (n=11) | unknown/non-function (private:) | actor-path | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Machinima] Post-blend Pose Polish stage (continuity/grounding/secondary). Session-only, disabled by default; see alposepolish.h. |
+| 1260–1276 (n=17) | unknown/non-function (private:) | actor-path, composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ClientHeight] mLastRootPos minus the effective client offset, captured on the same line. mLastRootPos stays VISUAL (name tag, voice); only getOffObject's standoff fallback (which becomes the drawable's position) needs the BASE value. [ClientHeight] cached own / effective offset  |
+| 1441–1443 (n=3) | unknown/non-function (void dump_sequential_xml(const std::string outprefix, const LLSD& content);) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/llvovolume.cpp`
 
@@ -2770,7 +2775,8 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 26–33 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 117–123 (n=7) | LLHUDNameTag::lineSegmentIntersect | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, ALDerenderList |
-| 234–240 (n=7) | LLHUDNameTag::renderText | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, ALDerenderList |
+| 227–240 (n=14) | LLHUDNameTag::render, LLHUDNameTag::renderText | clones | creative-candidate | unknown; conditional evidence present | Edits LLGLDepthTest, LLGhostAvatar, ALDerenderList |
+| 294–300 (n=7) | LLHUDNameTag::renderText | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLDepthTest |
 | 560–566 (n=7) | LLHUDNameTag::updateVisibility | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, ALDerenderList |
 
 ## Slice 4: `indra/newview/llhudtext.cpp`
@@ -6493,6 +6499,14 @@ binary/mode-only/deletion without textual hunks; review file-level delta
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 
+## Slice 99: `indra/newview/skins/default/xui/da/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 38–41 (n=4) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/de/floater_adjust_environment.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6500,6 +6514,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/skins/default/xui/de/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/de/strings.xml`
 
@@ -6605,6 +6627,19 @@ HEAD coordinates; guards/features are candidate evidence
 | 151–166 (n=16) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 292–298 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/en/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 60–66 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 114–120 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 124–130 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 134–140 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 144–150 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 161–166 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/en/panel_presets_camera_pulldown.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6646,6 +6681,14 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/es/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/es/strings.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6662,6 +6705,14 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/fr/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/fr/strings.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6677,6 +6728,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/skins/default/xui/it/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/it/strings.xml`
 
@@ -6695,6 +6754,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 9–16 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 99–104 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/ja/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 18–23 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/ja/strings.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6712,6 +6779,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 1–7 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 85–90 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/pl/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 20–25 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <combo_box.item label="Pytaj przed instalacją" name="Install_ask" /> --> |
+
 ## Slice 99: `indra/newview/skins/default/xui/pt/floater_adjust_environment.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6719,6 +6794,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/skins/default/xui/pt/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/pt/strings.xml`
 
@@ -6736,6 +6819,14 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/ru/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/ru/strings.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6752,6 +6843,14 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/skins/default/xui/tr/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/tr/strings.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6767,6 +6866,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 1–28 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 22–27 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/zh/strings.xml`
 
