@@ -915,6 +915,17 @@ bool LLAppViewer::init()
         // quit immediately
         return false;
     }
+    // ACES was the default until 8/2026, so older profiles and graphics presets
+    // can still hold it. Move those to AgX once; a later ACES choice is kept.
+    if (!gSavedSettings.getBOOL("AlchemyTonemapAgxMigrated"))
+    {
+        gSavedSettings.setBOOL("AlchemyTonemapAgxMigrated", true);
+        if (gSavedSettings.getS32("AlchemyRenderTonemapType") == 1)
+        {
+            gSavedSettings.setS32("AlchemyRenderTonemapType", 6);
+        }
+    }
+
     ALSteppedAnimRuntime::initialize();
     ALActorChromaKey::initialize();
 
