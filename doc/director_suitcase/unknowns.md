@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3217 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3218 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (169)
 
@@ -1856,7 +1856,7 @@ All 3217 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml@22,6`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 
-## Unknown/non-function contexts (1192)
+## Unknown/non-function contexts (1193)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -2067,14 +2067,15 @@ All 3217 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/settings_alchemy.xml@1789,13`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@1944,92`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@2037,65`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings_alchemy.xml@2103,236`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2103,234`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@2770,10`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings_alchemy.xml@2781,233`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@2781,235`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@3141,175`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@3317,135`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@3453,117`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings_alchemy.xml@3571,91`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/settings_alchemy.xml@3663,1119`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@3663,858`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/settings_alchemy.xml@4522,260`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/toolbars.xml@9,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/fsfloaterposer.cpp@25,31`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/fsfloaterposer.cpp@58,8`: unknown/non-function (declaration, XML, build list or global scope)

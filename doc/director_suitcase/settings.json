@@ -39445,7 +39445,7 @@
     "comment": "What tonemapper to use: 0 = Khronos Neutral, 1 = ACES Hill, 2 = ACES Boosted, 3 = Reinhard, 4 = Filmic, 5 = GT, 6 = AgX, 7 = AMD LPM, 8 = S-Log3 Capture",
     "declaration_count_base": 1,
     "declaration_count_head": 1,
-    "default": "7",
+    "default": "6",
     "duplicate_note": "",
     "features": [
       "looks"

@@ -1305,6 +1305,17 @@
             <key>Value</key>
             <integer>30</integer>
         </map>
+        <key>AlchemyTonemapAgxMigrated</key>
+        <map>
+            <key>Comment</key>
+            <string>One-time move of profiles still on the old ACES default to AgX has run.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
         <key>AlchemyRenderTonemapType</key>
         <map>
             <key>Comment</key>

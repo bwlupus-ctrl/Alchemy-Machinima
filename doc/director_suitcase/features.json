@@ -34818,7 +34818,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings_alchemy.xml@2770,10",
-          "indra/newview/app_settings/settings_alchemy.xml@2781,233"
+          "indra/newview/app_settings/settings_alchemy.xml@2781,235"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -46837,7 +46837,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2781,233",
+          "indra/newview/app_settings/settings_alchemy.xml@2781,235",
           "indra/newview/app_settings/settings_alchemy.xml@3141,175",
           "indra/newview/app_settings/settings_alchemy.xml@3317,135"
         ],
@@ -75449,7 +75449,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2781,233"
+          "indra/newview/app_settings/settings_alchemy.xml@2781,235"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -89524,7 +89524,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@4522,260"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -107457,7 +107457,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,858"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -119440,10 +119440,10 @@
           "indra/newview/app_settings/settings_alchemy.xml@1789,13",
           "indra/newview/app_settings/settings_alchemy.xml@1944,92",
           "indra/newview/app_settings/settings_alchemy.xml@2037,65",
-          "indra/newview/app_settings/settings_alchemy.xml@2103,236",
+          "indra/newview/app_settings/settings_alchemy.xml@2103,234",
           "indra/newview/app_settings/settings_alchemy.xml@3141,175",
           "indra/newview/app_settings/settings_alchemy.xml@3453,117",
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,858"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -135257,7 +135257,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings_alchemy.xml@1944,92",
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,858"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -151442,7 +151442,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings_alchemy.xml@1944,92",
-          "indra/newview/app_settings/settings_alchemy.xml@2781,233"
+          "indra/newview/app_settings/settings_alchemy.xml@2781,235"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -164923,7 +164923,8 @@
           "indra/newview/app_settings/settings_alchemy.xml@1308,411",
           "indra/newview/app_settings/settings_alchemy.xml@1944,92",
           "indra/newview/app_settings/settings_alchemy.xml@3317,135",
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,858",
+          "indra/newview/app_settings/settings_alchemy.xml@4522,260"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -175268,7 +175269,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings_alchemy.xml@3317,135",
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,858"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -193912,7 +193913,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@3663,1119"
+          "indra/newview/app_settings/settings_alchemy.xml@3663,858"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
@@ -207866,7 +207867,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings_alchemy.xml@2103,236"
+          "indra/newview/app_settings/settings_alchemy.xml@2103,234"
         ],
         "path": "indra/newview/app_settings/settings_alchemy.xml"
       },
