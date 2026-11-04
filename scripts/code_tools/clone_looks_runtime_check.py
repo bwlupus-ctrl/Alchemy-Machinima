@@ -11,6 +11,8 @@ from relight_area_policy_check import method
 
 
 def check():
+    from clone_fx_runtime_check import check as clone_fx_check
+    clone_fx_check()
     path = Path('indra/newview/llactormover.cpp')
     overlay = method(path, 'void LLActorMover::renderStudioGhosts(')
     draw = method(path, 'S32 drawGeometryGhost(')

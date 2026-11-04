@@ -622,6 +622,12 @@ public:
         F32         mShimmerIntensity = 0.f;  // 0..1 brightness/alpha wobble depth
         F32         mPixelSize = 0.f;         // screen-space pixelation block, px (0 = off)
         F32         mGlitch = 0.f;            // 0..1 slice-offset + chroma-split amount
+        F32 mSlice = 0.f; // session-only stackable clone FX, 0..1
+        F32 mDropout = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPowerFlicker = 0.f; // session-only stackable clone FX, 0..1
+        F32 mWipe = 0.f; // session-only stackable clone FX, 0..1
+        F32 mInterlace = 0.f; // session-only stackable clone FX, 0..1
+        F32 mPositionJitter = 0.f; // session-only stackable clone FX, 0..1
         S32         mDistort = 0;              // independent EGhostDistortion id
         F32         mDistortAmount = 0.5f;     // 0..1 strength for selected distortion
 

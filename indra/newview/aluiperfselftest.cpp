@@ -3565,6 +3565,17 @@ private:
         return true;
     }
 
+    static F32 cloneFxValue(const ALGhostStudio::Instance& clone, const std::string& widget)
+    {
+        if (widget == "slice_slider") return clone.mSlice;
+        if (widget == "dropout_slider") return clone.mDropout;
+        if (widget == "power_flicker_slider") return clone.mPowerFlicker;
+        if (widget == "wipe_slider") return clone.mWipe;
+        if (widget == "interlace_slider") return clone.mInterlace;
+        if (widget == "position_jitter_slider") return clone.mPositionJitter;
+        return -1.f;
+    }
+
     // ui-draw-lint: allow-function(setting,lookup,raw-write) isolated test-only prerequisite setup
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
@@ -7196,6 +7207,16 @@ private:
             mFunctionalDanceStatusRevisionBefore =
                 ALDanceBall::instance().statusRevision();
         }
+        else if (owner_probe == "clone_fx")
+        {
+            mFunctionalOwnerModelBefore = LLSD::emptyMap();
+            const ALGhostStudio& studio = ALGhostStudio::instance();
+            if (const auto* clone = studio.getInstance(studio.getSelected()))
+            {
+                mFunctionalOwnerModelBefore["id"] = clone->mId;
+                mFunctionalOwnerModelBefore["value"] = cloneFxValue(*clone, entry["widget_name"].asString());
+            }
+        }
         else if (owner_probe == "clone_rotation")
         {
             mFunctionalOwnerModelBefore = LLSD::emptyMap();
@@ -7220,6 +7241,7 @@ private:
         else if (owner_probe == "switcher_bank")
         {
             mFunctionalOwnerModelBefore =
+                // ui-draw-lint: allow(setting) Opt-in functional test captures the bank once before exercising this manifest entry.
                 gSavedSettings.getLLSD("DirectorSwitcherBank");
         }
         else if (owner_probe == "vcam_media" && mFunctionalVCamModel)
@@ -8407,6 +8429,20 @@ private:
             observable = owner_ok;
             expected_ok = expected_ok && owner_ok;
             if (!owner_ok) assertion_failure = "dance control did not move its ALDanceBall owner state";
+        }
+        else if (owner_probe == "clone_fx")
+        {
+            const ALGhostStudio& studio = ALGhostStudio::instance();
+            const auto* clone = studio.getInstance(studio.getSelected());
+            const F32 value = clone ? cloneFxValue(*clone, widget_name) : -1.f;
+            const bool owner_ok = clone && clone->mId == mFunctionalOwnerModelBefore["id"].asUUID() &&
+                std::fabs(value - entry["test_value"].asReal()) < .00001 &&
+                std::fabs(value - mFunctionalOwnerModelBefore["value"].asReal()) > .00001 &&
+                std::fabs(value - control->getValue().asReal()) < .00001;
+            mFunctionalObserved["clone_fx"]["value"] = value;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "clone FX slider did not update the selected clone model and read-back";
         }
         else if (owner_probe == "clone_rotation")
         {
@@ -12681,9 +12717,17 @@ private:
         {
             if (child->getName() == "take_timecode") timecode = child;
             if (child->getName() == "status_strip") status = child;
+            if (child->getName() == "btn_action") action = dynamic_cast<LLButton*>(child);
+            if (child->getName() == "btn_cut") cut = dynamic_cast<LLButton*>(child);
+            if (child->getName() == "transport_action_group")
+            {
+                for (LLView* button : *child->getChildList())
+                {
+                    if (button->getName() == "btn_action") action = dynamic_cast<LLButton*>(button);
+                    if (button->getName() == "btn_cut") cut = dynamic_cast<LLButton*>(button);
+                }
+            }
         }
-        action = bar->findChild<LLButton>("btn_action");
-        cut = bar->findChild<LLButton>("btn_cut");
         if (!timecode || !timecode->getVisible())
             addFinding("TRANSPORT_FLEX_MIN", semanticLeaf(timecode ? timecode : bar, floater), nullptr,
                        "timecode must remain visible at every approved size");

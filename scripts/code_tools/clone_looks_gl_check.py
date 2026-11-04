@@ -165,7 +165,7 @@ class Runner:
                effect_fps=0., params=(0.,1.,0.,8.),
                preserve_depth=False, prime=False, brightness=1.,
                screen_size=None, frag_offset=(0.,0.), tile=None, pixel_size=0., glitch=0.,
-               dissolve_progress=None):
+               dissolve_progress=None, fx2=(0.,0.,0.,0.), fx3=(0.,0.), fx_time=None):
         g = self.gl
         defs, vertex = self.definitions[pr]
         if look == 76 and not raw_time:
@@ -203,6 +203,11 @@ class Runner:
         floats('ghostParams', *( (0., 0., 0., 8.) if clone_fixture else params))
         floats('ghostAux', .5 if mask else 0., 1., pixel_size, phase)
         floats('ghostFx', 0., 0., glitch, brightness)
+        floats('ghostFx2', *fx2)
+        fx_elapsed = time if fx_time is None else fx_time
+        fx_stepped = np.floor(fx_elapsed*effect_fps)/effect_fps if effect_fps else fx_elapsed
+        fx_now = fx_stepped % 6144. if any(fx2[:3]) or any(fx3) else 0.
+        floats('ghostFx3', *fx3, self.height, fx_now)
         floats('ghostAlpha', 0. if opaque else 1., 1.)
         floats('ghostDistortParams', .4 if distort else 0., .5, .5, 0.)
         floats('ghostScreenSize', *(screen_size or (self.width, self.height)))
@@ -247,6 +252,8 @@ class Runner:
         ac, asi = np.cos(attachment_rotation), np.sin(attachment_rotation)
         attach = np.array([[ac,0,asi,0],[0,1,0,0],[-asi,0,ac,0],[0,0,0,1]],np.float32)
         view = view @ attach
+        lateral = view @ np.array([0.,1.,0.,0.],np.float32)
+        floats('ghostFxLateral', *map(float,lateral[:3]))
         # Orthographic camera allows exact integer-pixel reprojection tests.
         proj = np.diag([scale*self.projection_x, scale*.85, -.1, 1.]).astype(np.float32)
         if tile is not None:

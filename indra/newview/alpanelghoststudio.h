@@ -228,6 +228,12 @@ private:
     void onShimmerAmountCommit();
     void onPixelCommit();
     void onGlitchCommit();
+    void onSliceCommit();
+    void onDropoutCommit();
+    void onPowerFlickerCommit();
+    void onWipeCommit();
+    void onInterlaceCommit();
+    void onPositionJitterCommit();
     void onDistortCommit();
     void onDistortAmountCommit();
     void onBrightnessCommit();      // [R2-1] night-scene output dimmer
@@ -415,6 +421,12 @@ private:
     LLSliderCtrl*     mShimmerAmountSlider = nullptr;
     LLSliderCtrl*     mPixelSlider = nullptr;
     LLSliderCtrl*     mGlitchSlider = nullptr;
+    LLSliderCtrl*     mSliceSlider = nullptr;
+    LLSliderCtrl*     mDropoutSlider = nullptr;
+    LLSliderCtrl*     mPowerFlickerSlider = nullptr;
+    LLSliderCtrl*     mWipeSlider = nullptr;
+    LLSliderCtrl*     mInterlaceSlider = nullptr;
+    LLSliderCtrl*     mPositionJitterSlider = nullptr;
     LLComboBox*       mDistortCombo = nullptr;
     LLSliderCtrl*     mDistortAmountSlider = nullptr;
     LLSliderCtrl*     mBrightnessSlider = nullptr;    // [R2-1]

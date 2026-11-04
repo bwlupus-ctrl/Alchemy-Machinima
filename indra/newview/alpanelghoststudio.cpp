@@ -641,6 +641,12 @@ bool ALPanelGhostStudio::postBuild()
     mShimmerAmountSlider = getChild<LLSliderCtrl>("shimmer_amount_slider");
     mPixelSlider    = getChild<LLSliderCtrl>("pixel_slider");
     mGlitchSlider   = getChild<LLSliderCtrl>("glitch_slider");
+    mSliceSlider = getChild<LLSliderCtrl>("slice_slider");
+    mDropoutSlider = getChild<LLSliderCtrl>("dropout_slider");
+    mPowerFlickerSlider = getChild<LLSliderCtrl>("power_flicker_slider");
+    mWipeSlider = getChild<LLSliderCtrl>("wipe_slider");
+    mInterlaceSlider = getChild<LLSliderCtrl>("interlace_slider");
+    mPositionJitterSlider = getChild<LLSliderCtrl>("position_jitter_slider");
     mDistortCombo   = getChild<LLComboBox>("distort_combo");
     mDistortAmountSlider = getChild<LLSliderCtrl>("distort_amount_slider");
     mBrightnessSlider = getChild<LLSliderCtrl>("brightness_slider");
@@ -663,7 +669,8 @@ bool ALPanelGhostStudio::postBuild()
     {
         mLookControls = { mStyleCombo, mDistortCombo, mDistortAmountSlider, mActorTintCheck,
                           mHueSlider, mAlphaSlider, mBrightnessSlider, mPixelSlider,
-                          mShimmerAmountSlider, mShimmerSpeedSlider, mGlitchSlider, mEffectFps };
+                          mShimmerAmountSlider, mShimmerSpeedSlider, mGlitchSlider, mEffectFps,
+                          mSliceSlider, mDropoutSlider, mPowerFlickerSlider, mWipeSlider, mInterlaceSlider, mPositionJitterSlider };
         for (const char* card_name : { "kc_tint", "kc_motion_fx", "kc_ghost_look" })
             if (ALKitCard* card = findChild<ALKitCard>(card_name))
                 mLookCards.push_back(card);
@@ -879,6 +886,12 @@ bool ALPanelGhostStudio::postBuild()
     mShimmerAmountSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShimmerAmountCommit(); });
     mPixelSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPixelCommit(); });
     mGlitchSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGlitchCommit(); });
+    mSliceSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliceCommit(); });
+    mDropoutSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDropoutCommit(); });
+    mPowerFlickerSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPowerFlickerCommit(); });
+    mWipeSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onWipeCommit(); });
+    mInterlaceSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onInterlaceCommit(); });
+    mPositionJitterSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPositionJitterCommit(); });
     mDistortCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDistortCommit(); });
     mDistortAmountSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDistortAmountCommit(); });
     mBrightnessSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBrightnessCommit(); });
@@ -1026,6 +1039,12 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_shimmer_speed", "shimmer_speed_slider" },
         { "reset_shimmer_amount", "shimmer_amount_slider" },
         { "reset_glitch", "glitch_slider" },
+        { "reset_slice", "slice_slider" },
+        { "reset_dropout", "dropout_slider" },
+        { "reset_power_flicker", "power_flicker_slider" },
+        { "reset_wipe", "wipe_slider" },
+        { "reset_interlace", "interlace_slider" },
+        { "reset_position_jitter", "position_jitter_slider" },
         { "reset_distort_amount", "distort_amount_slider" },
         { "reset_brightness", "brightness_slider" },
         { "reset_chaos", "chaos_slider" },
@@ -1965,6 +1984,12 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mShimmerAmountSlider, overlay);
     setEnabledIfChanged(mPixelSlider, overlay);
     setEnabledIfChanged(mGlitchSlider, overlay);
+    setEnabledIfChanged(mSliceSlider, overlay);
+    setEnabledIfChanged(mDropoutSlider, overlay);
+    setEnabledIfChanged(mPowerFlickerSlider, overlay);
+    setEnabledIfChanged(mWipeSlider, overlay);
+    setEnabledIfChanged(mInterlaceSlider, overlay);
+    setEnabledIfChanged(mPositionJitterSlider, overlay);
     setEnabledIfChanged(mDistortCombo, overlay);
     setEnabledIfChanged(mDistortAmountSlider,
         overlay && inst->mDistort != 0);
@@ -2262,6 +2287,12 @@ void ALPanelGhostStudio::refreshDetail()
     setValueIfChanged(mShimmerAmountSlider, LLSD((F64)inst->mShimmerIntensity), force);
     setValueIfChanged(mPixelSlider, LLSD((F64)inst->mPixelSize), force);
     setValueIfChanged(mGlitchSlider, LLSD((F64)inst->mGlitch), force);
+    setValueIfChanged(mSliceSlider, LLSD((F64)inst->mSlice), force);
+    setValueIfChanged(mDropoutSlider, LLSD((F64)inst->mDropout), force);
+    setValueIfChanged(mPowerFlickerSlider, LLSD((F64)inst->mPowerFlicker), force);
+    setValueIfChanged(mWipeSlider, LLSD((F64)inst->mWipe), force);
+    setValueIfChanged(mInterlaceSlider, LLSD((F64)inst->mInterlace), force);
+    setValueIfChanged(mPositionJitterSlider, LLSD((F64)inst->mPositionJitter), force);
     setValueIfChanged(mDistortCombo, LLSD((S32)inst->mDistort), force);
     setValueIfChanged(mDistortAmountSlider, LLSD((F64)inst->mDistortAmount), force);
     setValueIfChanged(mBrightnessSlider, LLSD((F64)inst->mBrightness), force);
@@ -3709,6 +3740,60 @@ void ALPanelGhostStudio::onGlitchCommit()
         if (ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().getInstance(id))
             inst->mGlitch = (F32)mGlitchSlider->getValue().asReal();
+    }
+}
+
+void ALPanelGhostStudio::onSliceCommit()
+{
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id))
+            inst->mSlice = llclamp((F32)mSliceSlider->getValue().asReal(), 0.f, 1.f);
+    }
+}
+
+void ALPanelGhostStudio::onDropoutCommit()
+{
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id))
+            inst->mDropout = llclamp((F32)mDropoutSlider->getValue().asReal(), 0.f, 1.f);
+    }
+}
+
+void ALPanelGhostStudio::onPowerFlickerCommit()
+{
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id))
+            inst->mPowerFlicker = llclamp((F32)mPowerFlickerSlider->getValue().asReal(), 0.f, 1.f);
+    }
+}
+
+void ALPanelGhostStudio::onWipeCommit()
+{
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id))
+            inst->mWipe = llclamp((F32)mWipeSlider->getValue().asReal(), 0.f, 1.f);
+    }
+}
+
+void ALPanelGhostStudio::onInterlaceCommit()
+{
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id))
+            inst->mInterlace = llclamp((F32)mInterlaceSlider->getValue().asReal(), 0.f, 1.f);
+    }
+}
+
+void ALPanelGhostStudio::onPositionJitterCommit()
+{
+    for (const LLUUID& id : selectedInstances())
+    {
+        if (ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id))
+            inst->mPositionJitter = llclamp((F32)mPositionJitterSlider->getValue().asReal(), 0.f, 1.f);
     }
 }
 

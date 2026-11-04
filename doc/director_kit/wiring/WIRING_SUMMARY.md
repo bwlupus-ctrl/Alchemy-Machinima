@@ -5,15 +5,15 @@ Per-control rows: `doc/director_kit/wiring/wiring_table.csv`.
 
 Versions: **ORIG** = commit 9c25f75491a (git blobs); **V1** = working tree `floater_director.xml` + owner panels; **V2** = working tree `floater_director_v2.xml` + `panel_dpage_*.xml` + kit rows.
 
-Interactive controls: 2150 (of 2276 catalog rows; readout/text rows excluded from counts).
+Interactive controls: 2156 (of 2282 catalog rows; readout/text rows excluded from counts).
 
 ## Totals
 
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ORIG | 1617 | 1035 | 1 | 581 | 0 | 54 | 479 |
-| V1 | 1721 | 1089 | 1 | 631 | 0 | 55 | 374 |
-| V2 | 1949 | 1376 | 0 | 573 | 71 | 97 | 33 |
+| ORIG | 1617 | 1035 | 1 | 581 | 0 | 54 | 485 |
+| V1 | 1727 | 1089 | 1 | 637 | 0 | 55 | 374 |
+| V2 | 1955 | 1376 | 0 | 579 | 71 | 97 | 33 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
@@ -22,7 +22,7 @@ Interactive controls: 2150 (of 2276 catalog rows; readout/text rows excluded fro
 | move_tab (Move) | Cast | 22 | 16 | 21 | 14 | 7 | 0 | 1 | 0 |
 | path_tab (Path) | Cast | 55 | 55 | 55 | 55 | 0 | 0 | 0 | 0 |
 | props_tab (Props) | Cast | 31 | 31 | 31 | 29 | 0 | 0 | 2 | 0 |
-| ghosts_tab (Clones) | Cast | 146 | 113 | 142 | 145 | 0 | 0 | 1 | 0 |
+| ghosts_tab (Clones) | Cast | 152 | 113 | 148 | 151 | 0 | 0 | 1 | 0 |
 | dance_tab (Dance) | Cast | 76 | 76 | 76 | 75 | 1 | 0 | 0 | 0 |
 | animate_tab (Animate) | Performance | 20 | 20 | 20 | 6 | 14 | 0 | 0 | 0 |
 | switchboard_tab (Switchboard) | Performance | 28 | 16 | 16 | 16 | 0 | 12 | 0 | 0 |
@@ -61,7 +61,7 @@ Interactive controls: 2150 (of 2276 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1912 mockup rows + 364 page_sources-only (page, widget) rows = 2276 controls. page_sources.json lists 2276 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Catalog = 1918 mockup rows + 364 page_sources-only (page, widget) rows = 2282 controls. page_sources.json lists 2282 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
 Of the page_sources-only rows, 360 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
@@ -190,11 +190,11 @@ Names present in the ORIG page closure but absent from the V1 closure: 258 entri
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-kit=1, kit=18, none=33, xui=2098.
+- V2 resolution by source: alias-kit=1, kit=18, none=33, xui=2104.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
 - Launcher-stub pages (V2 opens V1 floater): none.
 - Interactive rows missing in ALL three versions (mockup-only, never implemented): 1.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2150 interactive.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2156 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 
@@ -203,7 +203,7 @@ Names present in the ORIG page closure but absent from the V1 closure: 258 entri
 - Static analysis only. A C++ match inside a FLOATER-owned postBuild (LLFloaterDirector) does not prove the V2 copy is wired; such V2 controls are flagged `V2_SUSPECT_FLOATER_SCOPED` unless the enclosing function mentions `DirectorUIV2`. This flag is conservative and needs in-world confirmation.
 - A panel class counts as instantiated for a V2 page only when its XML is embedded in that page closure (`LLPanelInjector` registration name = file stem).
 - Kit rows (V2 `kit_row`/`kit_switch` with `widget=`) have no per-widget C++; WIRED_SETTING means the bound setting is declared (kit binding is generic in alkit*.cpp), not that the in-world behaviour was checked.
-- Control universe = the mockup rows (2150 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
+- Control universe = the mockup rows (2156 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
 - ORIG page owners are the HEAD owner files that exist at ORIG; ORIG floater_director.xml is always searched. ORIG C++ is read from the commit; V1/V2 C++ is the working tree.
 - Callbacks count as WIRED only when the name is referenced (not just defined) in top-level indra/newview/*.cpp. Registry names are matched as literals or identifiers.
 - Widget literal hits require a getChild/findChild/childSet/setCommitCallback/Registrar token within 3 lines before (or 1 line after) the literal, and the enclosing class must be one of the page owner classes from page_sources.json.

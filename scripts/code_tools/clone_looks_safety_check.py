@@ -777,6 +777,11 @@ def legacy_animation_checks(out, r, tree, current):
                   limits=dict(mae=.02, p99=.06, static_pattern=.02, alpha_max_error=0.), looks={})
     # No shader edits outside the five reviewed branches, including uniforms.
     def untouched(source):
+        # The new independent, default-off clone layer is reversed EXACTLY to
+        # its complete 66e124787e6 source before the older animation guard runs.
+        if 'uniform vec4 ghostFx2;' in source:
+            from clone_fx_safety_check import pre_fx_shader
+            source = pre_fx_shader(source, F)
         # Exact reversible shared edits are individually pinned; no broad allowance.
         manifest = ROOT/'scripts/code_tools/legacy_animation_shared_hunks.json'
         assert hashlib.sha256(manifest.read_bytes().replace(b'\r\n', b'\n')).hexdigest() == '1a769d7a632a721493f70f88f745b8317e99cc856f14084ecec3e6e1fa2c32cd'
@@ -893,12 +898,15 @@ def _check(out=None,looks=None):
     runners[1]=RealAvatar(1024,768,runners[0].gl)
     runners[2]=RealAvatar(320,256,runners[0].gl)
     programs=[r.program(tree,('HAS_SKIN',)) for r in runners]
+    from clone_fx_safety_check import check as clone_fx_check
+    clone_fx_result = clone_fx_check(runner=runners[1], tree=tree, program=programs[1])
     names=dict(NAMES);names.update(dict(enumerate(MATRIX_NAMES,78)));names.update(dict(enumerate(CINEMATIC_NAMES,85)))
     result=dict(renderer=runners[0].gl.renderer,assets=runners[0].assets,
                 skeleton_sha256=hashlib.sha256((CHAR/'avatar_skeleton.xml').read_bytes()).hexdigest(),
                 shader_sha256={p:hashlib.sha256(tree.read(p).encode()).hexdigest() for p in (V,F)},
                 thresholds=dict(luminance=LUMA_CEILING,white_fraction=.25,dilation_px=2,aa_rms=AA_RMS,aa_p99=AA_P99),
                 times=TIMES,perceptibility_limits=PERCEPT_LIMITS,looks={})
+    result['clone_fx'] = clone_fx_result
     result['legacy_summary']=dict(sha256=validate_legacy_known(),
         known=[dict(look=look, check=check, **meta) for (look,check),meta in sorted(LEGACY_KNOWN.items())],
         warnings=[], stale_entries=[], failures={}, negative_controls=legacy_controls)

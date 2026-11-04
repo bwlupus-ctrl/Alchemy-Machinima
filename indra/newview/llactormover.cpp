@@ -12091,6 +12091,37 @@ static LLStaticHashedString sGhostTime("ghostTime");
 static LLStaticHashedString sGhostParams("ghostParams");
 static LLStaticHashedString sGhostAux("ghostAux");
 static LLStaticHashedString sGhostFx("ghostFx");
+static LLStaticHashedString sGhostFx2("ghostFx2"), sGhostFx3("ghostFx3"),
+    sGhostFxLateral("ghostFxLateral");
+
+// Capture once before any per-face attachment model matrix. All clone parts
+// must jump together, independent of local attachment axes or scale.
+static glm::vec3 ghost_fx_lateral(LLVOAvatar* avatar, const LLQuaternion& rotation, F32 scale,
+                                const LLQuaternion* body_rotation = nullptr)
+{
+    LLVector3 lateral(0.f, 1.f, 0.f);
+    if (body_rotation)
+    {
+        lateral = lateral * *body_rotation;
+    }
+    else
+    {
+        if (avatar && avatar->getRootJoint()) lateral = lateral * avatar->getRootJoint()->getWorldRotation();
+        lateral = lateral * rotation;
+    }
+    lateral *= scale;
+    return glm::vec3(gGL.getModelviewMatrix() * glm::vec4(lateral.mV[VX], lateral.mV[VY], lateral.mV[VZ], 0.f));
+}
+
+static F32 ghost_fx_viewport_height(F32 interlace)
+{
+    if (!(interlace > 0.f)) return 0.f;
+    // Pair the actual viewport with projection_matrix. Whole snapshot height
+    // would count the tile magnification twice and under-filter crowd lines.
+    GLint viewport[4] = {0, 0, 1, 1};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    return static_cast<F32>(llmax(viewport[3], 1));
+}
 static LLStaticHashedString sGhostSlot("ghostSlot");
 static LLStaticHashedString sGhostLook("ghostLook");
 static LLStaticHashedString sGhostIsClone("ghostIsClone");
@@ -13193,6 +13224,13 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     const F32 ghost_now = gp.mWorldLinear
         ? LLRenderPass::actorFxFrameTime(gp.mEffectFps, motion_period)
         : actor_ghost_studio_frame_time(gp.mEffectFps, motion_period);
+    // Independent integer-period clock: changing/wrapping a look must not
+    // restart the bounded two-Hz power envelope. No extra clock work at zero.
+    const bool fx_animated = gp.mSlice > 0.f || gp.mDropout > 0.f || gp.mPowerFlicker > 0.f
+        || gp.mInterlace > 0.f || gp.mPositionJitter > 0.f;
+    const F32 fx_now = fx_animated ? (gp.mWorldLinear
+        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps, 6144.0)
+        : actor_ghost_studio_frame_time(gp.mEffectFps, 6144.0)) : 0.f;
     bool glow_only = false;
     // Matrix monitor looks use the whole snapshot field, including tile subregions.
     const bool matrix_screen = !gp.mWorldLinear
@@ -13209,6 +13247,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         ? LLRenderPass::actorFxScreenSize()
         : (matrix_screen ? actor_ghost_screen_size() : LLVector2(1.f, 1.f));
     F32 coverage_fade = 0.f;
+    const bool fx_displaces = gp.mSlice > 0.f || gp.mInterlace > 0.f || gp.mPositionJitter > 0.f;
+    const glm::vec3 fx_lateral = fx_displaces
+        ? ghost_fx_lateral(av, gp.mRotation, scale,
+            gp.mFxBodyRotationValid ? &gp.mFxBodyRotation : nullptr) : glm::vec3(0.f);
+    const F32 fx_height = ghost_fx_viewport_height(gp.mInterlace);
     auto apply_program = [&](LLGLSLShader* sh)
     {
         if (!sh || !sh->mProgramObject) return; // optional static FX may fail independently
@@ -13243,6 +13286,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform4f(sGhostAux, 0.f, 0.f, gp.mPixelSize, gp.mPhase);
             sh->uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
                           gp.mGlitch, llclamp(gp.mBrightness, 0.05f, 1.5f));
+            sh->uniform4f(sGhostFx2, gp.mSlice, gp.mDropout, gp.mPowerFlicker, gp.mWipe);
+            sh->uniform4f(sGhostFx3, gp.mInterlace, gp.mPositionJitter, fx_height, fx_now);
+            sh->uniform3f(sGhostFxLateral, fx_lateral.x, fx_lateral.y, fx_lateral.z);
             sh->uniform1i(sGhostSlot, -1);
             sh->uniform1i(sGhostLook, style);
             sh->uniform1i(sGhostIsClone, gp.mIsClone ? 1 : 0);
@@ -16502,6 +16548,14 @@ void LLActorMover::renderStudioGhosts()
         gp.mShimmerIntensity = inst.mShimmerIntensity;
         gp.mPixelSize        = inst.mPixelSize;
         gp.mGlitch           = inst.mGlitch;
+        gp.mSlice = llclamp(inst.mSlice, 0.f, 1.f);
+        gp.mDropout = llclamp(inst.mDropout, 0.f, 1.f);
+        gp.mPowerFlicker = llclamp(inst.mPowerFlicker, 0.f, 1.f);
+        gp.mWipe = llclamp(inst.mWipe, 0.f, 1.f);
+        gp.mInterlace = llclamp(inst.mInterlace, 0.f, 1.f);
+        gp.mPositionJitter = llclamp(inst.mPositionJitter, 0.f, 1.f);
+        gp.mFxBodyRotation = inst.mRotation;
+        gp.mFxBodyRotationValid = true;
         gp.mDistort          = inst.mDistort;
         gp.mDistortAmount    = inst.mDistortAmount;
         gp.mBrightness       = inst.mBrightness;      // [R2-1] night-scene dimmer
@@ -16932,6 +16986,12 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     gp.mShimmerSpeed = llmax(0.f, style.mShimmerSpeed);
     gp.mShimmerIntensity = llclamp(style.mShimmerAmount, 0.f, 1.f);
     gp.mGlitch = llclamp(style.mGlitch, 0.f, 1.f);
+    gp.mSlice = llclamp(style.mSlice, 0.f, 1.f);
+    gp.mDropout = llclamp(style.mDropout, 0.f, 1.f);
+    gp.mPowerFlicker = llclamp(style.mPowerFlicker, 0.f, 1.f);
+    gp.mWipe = llclamp(style.mWipe, 0.f, 1.f);
+    gp.mInterlace = llclamp(style.mInterlace, 0.f, 1.f);
+    gp.mPositionJitter = llclamp(style.mPositionJitter, 0.f, 1.f);
     gp.mDistort = llmax(0, style.mDistortion);
     gp.mDistortAmount = llclamp(style.mDistortionAmount, 0.f, 1.f);
     gp.mBrightness = llclamp(style.mBrightness, 0.05f, 1.5f);
@@ -16943,9 +17003,17 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
 
     const F32 ghost_now = LLRenderPass::actorFxFrameTime(
         gp.mEffectFps, actor_ghost_motion_period(look));
+    const bool fx_animated = gp.mSlice > 0.f || gp.mDropout > 0.f || gp.mPowerFlicker > 0.f
+        || gp.mInterlace > 0.f || gp.mPositionJitter > 0.f;
+    const F32 fx_now = fx_animated
+        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps, 6144.0) : 0.f;
     const LLVector2 frag_offset = LLRenderPass::actorFxFragOffset();
     const LLVector2 screen_size = LLRenderPass::actorFxScreenSize();
     bool glow_only = false;
+    const bool fx_displaces = gp.mSlice > 0.f || gp.mInterlace > 0.f || gp.mPositionJitter > 0.f;
+    const glm::vec3 fx_lateral = fx_displaces
+        ? ghost_fx_lateral(avatar, LLQuaternion::DEFAULT, 1.f) : glm::vec3(0.f);
+    const F32 fx_height = ghost_fx_viewport_height(gp.mInterlace);
     auto upload = [&](LLGLSLShader& shader, F32 cutoff)
     {
         // Shared system-body replays must retain only the resident's
@@ -16960,6 +17028,9 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
                          gp.mPixelSize, gp.mPhase);
         shader.uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
                          gp.mGlitch, gp.mBrightness);
+        shader.uniform4f(sGhostFx2, gp.mSlice, gp.mDropout, gp.mPowerFlicker, gp.mWipe);
+        shader.uniform4f(sGhostFx3, gp.mInterlace, gp.mPositionJitter, fx_height, fx_now);
+        shader.uniform3f(sGhostFxLateral, fx_lateral.x, fx_lateral.y, fx_lateral.z);
         shader.uniform1i(sGhostSlot, -1);
         shader.uniform1i(sGhostLook, look);
         shader.uniform1i(sGhostIsClone, 0); // Actor FX look 1 is not a Studio Clone.
@@ -18745,6 +18816,12 @@ void LLActorMover::buildSharedActorStyleQueue()
         proxy.mShimmerSpeed = style.mShimmerSpeed;
         proxy.mShimmerAmount = style.mShimmerAmount;
         proxy.mGlitch = style.mGlitch;
+        proxy.mSlice = llclamp(style.mSlice, 0.f, 1.f);
+        proxy.mDropout = llclamp(style.mDropout, 0.f, 1.f);
+        proxy.mPowerFlicker = llclamp(style.mPowerFlicker, 0.f, 1.f);
+        proxy.mWipe = llclamp(style.mWipe, 0.f, 1.f);
+        proxy.mInterlace = llclamp(style.mInterlace, 0.f, 1.f);
+        proxy.mPositionJitter = llclamp(style.mPositionJitter, 0.f, 1.f);
         proxy.mDistortion = style.mDistortion;
         proxy.mDistortionAmount = style.mDistortionAmount;
         proxy.mBrightness = style.mBrightness;
@@ -19840,6 +19917,12 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
     params.mShimmerSpeed = llmax(0.f, proxy.mShimmerSpeed);
     params.mShimmerIntensity = llclamp(proxy.mShimmerAmount, 0.f, 1.f);
     params.mGlitch = llclamp(proxy.mGlitch, 0.f, 1.f);
+    params.mSlice = llclamp(proxy.mSlice, 0.f, 1.f);
+    params.mDropout = llclamp(proxy.mDropout, 0.f, 1.f);
+    params.mPowerFlicker = llclamp(proxy.mPowerFlicker, 0.f, 1.f);
+    params.mWipe = llclamp(proxy.mWipe, 0.f, 1.f);
+    params.mInterlace = llclamp(proxy.mInterlace, 0.f, 1.f);
+    params.mPositionJitter = llclamp(proxy.mPositionJitter, 0.f, 1.f);
     params.mDistort = llmax(0, proxy.mDistortion);
     params.mDistortAmount = llclamp(proxy.mDistortionAmount, 0.f, 1.f);
     params.mBrightness = llclamp(proxy.mBrightness, 0.05f, 1.5f);

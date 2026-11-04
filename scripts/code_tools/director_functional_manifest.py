@@ -1918,6 +1918,13 @@ def add_runtime_prerequisites(entries):
             entry.update(probe="clone_rotation", prereq="ghost_selected_formation", known_gap=False)
             entry.pop("no_state_oracle", None)
         elif page == "ghosts_tab" and widget in {
+                "slice_slider", "dropout_slider", "power_flicker_slider",
+                "wipe_slider", "interlace_slider", "position_jitter_slider"}:
+            condition = "clone selected"
+            entry.update(probe="clone_fx", prereq="ghost_selected_formation",
+                         test_value=.5, known_gap=False)
+            entry.pop("no_state_oracle", None)
+        elif page == "ghosts_tab" and widget in {
                 "animation_library_combo", "array_parameter_spinner", "formation_motion_combo",
                 "brigade_columns_spinner", "brigade_rows_spinner", "brigade_file_spacing_spinner",
                 "brigade_rank_spacing_spinner"}:

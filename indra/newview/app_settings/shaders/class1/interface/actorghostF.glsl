@@ -104,6 +104,9 @@ uniform float ghostTime;
 uniform vec4 ghostParams;
 uniform vec4 ghostAux;
 uniform vec4 ghostFx;
+uniform vec4 ghostFx2;
+uniform vec4 ghostFx3;
+flat in int vary_fx_body;
 uniform int ghostLook;
 // Explicit draw provenance. Actor FX forward-fallback look 1 shares Clone's
 // numeric look value but must never receive Clone-only Light Response trims.
@@ -684,6 +687,53 @@ void main()
     if (ghostSlot >= 0 && vary_texture_index != ghostSlot)
     {
         discard;
+    }
+
+    float cloneFxDim = 1.0;
+    float cloneFxWipeEdge = 0.0;
+    // The disabled uniform path does no field, hash, derivative or colour work.
+    if (any(greaterThan(ghostFx2, vec4(0.0))))
+    {
+        vec3 P = vary_object_position; // +X forward, Y lateral, ground-origin Z
+        float t = ghostFx3.w + ghostAux.w * 0.73;
+        if (vary_fx_body != 0 && ghostFx2.x > 0.0)
+        {
+            float slabZ = mod(P.z, 0.22);
+            float gap = 0.035 * clamp(ghostFx2.x, 0.0, 1.0);
+            if (min(slabZ, 0.22 - slabZ) < gap * 0.5) discard;
+        }
+        if (vary_fx_body != 0 && ghostFx2.y > 0.0)
+        {
+            vec3 cell = floor(P / vec3(0.12, 0.16, 0.20));
+            float tick = mod(floor(t * 4.0), 24576.0); // hard blocks held for 250 ms
+            float random = ghost_hash(cell.xy + vec2(cell.z * 13.0 + tick, ghostAux.w));
+            if (random < 0.32 * clamp(ghostFx2.y, 0.0, 1.0)) discard;
+        }
+        if (ghostFx2.z > 0.0)
+        {
+            // At most TWO blackouts/second, independent of amount or FPS.
+            // Random burst windows and quiet rests, no sinusoidal strobe.
+            float slot = mod(floor(t * 2.0), 12288.0);
+            float u = fract(t * 2.0);
+            float burst = step(0.40, ghost_hash(vec2(floor(slot / 6.0), ghostAux.w + 3.0)));
+            float hit = burst * step(0.40, ghost_hash(vec2(slot, ghostAux.w + 7.0)));
+            float amount = clamp(ghostFx2.z, 0.0, 1.0);
+            if (hit > 0.5)
+            {
+                if (u >= 0.18 && u < 0.18 + 0.30 * amount) discard;
+                if (u >= 0.10 && u < 0.62) cloneFxDim = 1.0 - 0.75 * amount;
+            }
+        }
+        // Full hide is universal; only the partial anatomical plane skips
+        // rigid prim/eye-local geometry.
+        if (ghostFx2.w >= 1.0) discard;
+        if (vary_fx_body != 0 && ghostFx2.w > 0.0)
+        {
+            float plane = mix(sl_foot, sl_top, clamp(ghostFx2.w, 0.0, 1.0));
+            if (P.z < plane) discard;
+            float footprint = max(fwidth(P.z), 1e-5);
+            cloneFxWipeEdge = 1.0 - smoothstep(0.006, 0.006 + footprint, P.z - plane);
+        }
     }
 
     vec2 uv = vary_texcoord0.xy;
@@ -2601,6 +2651,14 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
 #ifdef GHOST_WORLD_PASS
     vec3 worldLinearDissolveSource = worldDissolveSource;
 #endif
+    if (ghostFx2.z > 0.0 || ghostFx2.w > 0.0)
+    {
+        rgb = mix(rgb, vec3(0.32, 0.82, 1.0), cloneFxWipeEdge * 0.75) * cloneFxDim;
+#ifdef GHOST_WORLD_PASS
+        worldRadiance *= cloneFxDim;
+        worldBloomRadiance *= cloneFxDim;
+#endif
+    }
     if (ghostWorldLinear != 0)
     {
         // actorghostF authors its looks in display/sRGB space.  Convert only

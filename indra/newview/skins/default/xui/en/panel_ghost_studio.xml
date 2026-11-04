@@ -128,13 +128,13 @@
 
           <panel border="false" follows="all" height="490" label="Style" layout="topleft" name="style_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="style_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="324" layout="topleft" left="0" name="style_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" layout="topleft" left="0" name="style_scroll_body" top="0" width="484">
 
         <!-- Look -->
         <text follows="left|top|right" height="40" layout="topleft" left="8" mouse_opaque="false" name="entity_style_hint" right="-8" text_color="LtGray_50" top="0" visible="false" word_wrap="true">
           Style options apply to overlay clones. Entity clones use the avatar/deferred path and inherit their source appearance.
         </text>
-        <panel follows="left|top" height="280" layout="topleft" left="0" name="look_section" top="44" width="484">
+        <panel follows="left|top" height="412" layout="topleft" left="0" name="look_section" top="44" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="look_lbl" right="-8" top="8">Look</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="style_combo" top="27"
            tool_tip="Overlay render look. Glass refracts the scene; Magma has flowing, pulsing lava cracks. Body fields use mesh rest coordinates. Datamosh stacks with Block Glitch and Vertical Tear. Colour, alpha, brightness and distortions still apply." width="142">
@@ -234,15 +234,33 @@
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Glitch" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="glitch_slider" right="-32" top="165"
            tool_tip="Broken-signal effect: horizontal slices tear sideways with a chroma split. 0 = off" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_glitch" right="-8" top="165" tool_tip="Reset glitch to default" width="22" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Distort amt" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="distort_amount_slider" right="-32" top="187"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Slice" label_width="94" layout="topleft" left="8" max_val="1" min_val="0" name="slice_slider" right="-32" top="187"
+           tool_tip="Horizontal body slabs slide sideways and settle, with real transparent gaps. Amount sets gap width and travel (up to 12 cm). Rigid attachments skip slabs. 0 = off." />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_slice" right="-8" top="187" tool_tip="Reset slice to off" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Dropout" label_width="94" layout="topleft" left="8" max_val="1" min_val="0" name="dropout_slider" right="-32" top="209"
+           tool_tip="Random solid chunks blink out in body rest space, held for several frames. Rigid attachments skip chunks. 0 = off." />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_dropout" right="-8" top="209" tool_tip="Reset dropout to off" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Power flicker" label_width="94" layout="topleft" left="8" max_val="1" min_val="0" name="power_flicker_slider" right="-32" top="231"
+           tool_tip="Irregular power stutter with dim transitions, bursts and rests. At most two blackouts per second. 0 = off." />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_power_flicker" right="-8" top="231" tool_tip="Reset power flicker to off" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Wipe" label_width="94" layout="topleft" left="8" max_val="1" min_val="0" name="wipe_slider" right="-32" top="253"
+           tool_tip="Cut upward from the feet with a thin bright edge. Plane position: 0 = fully visible, 1 = fully hidden. Rigid attachments skip partial cuts; 1 hides every part." />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_wipe" right="-8" top="253" tool_tip="Reset wipe to off" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Interlace" label_width="94" layout="topleft" left="8" max_val="1" min_val="0" name="interlace_slider" right="-32" top="275"
+           tool_tip="Alternating body lines shift left and right (up to 1.8 cm), fading below the pixel footprint. Rigid attachments skip lines. 0 = off." />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_interlace" right="-8" top="275" tool_tip="Reset interlace to off" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Position jitter" label_width="94" layout="topleft" left="8" max_val="1" min_val="0" name="position_jitter_slider" right="-32" top="297"
+           tool_tip="Whole clone briefly jumps sideways up to 3.5 cm and snaps back; all parts share the same offset. 0 = off." />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_position_jitter" right="-8" top="297" tool_tip="Reset position jitter to off" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Distort amt" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="distort_amount_slider" right="-32" top="319"
            tool_tip="Strength of the selected independent distortion" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_distort_amount" right="-8" top="187" tool_tip="Reset distortion amount" width="22" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1.0" label="Brightness" label_width="74" layout="topleft" left="8" max_val="1.5" min_val="0.05" name="brightness_slider" right="-32" top="209"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_distort_amount" right="-8" top="319" tool_tip="Reset distortion amount" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1.0" label="Brightness" label_width="74" layout="topleft" left="8" max_val="1.5" min_val="0.05" name="brightness_slider" right="-32" top="341"
            tool_tip="Output brightness: an overlay clone is unlit, so it reads fullbright in a night scene. Dial down (~0.3-0.5) to sit it into dark sets; 1 = as authored" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_brightness" right="-8" top="209" tool_tip="Reset brightness to default" width="22" />
-          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Effect fps" label_width="74" layout="topleft" left="8" max_val="30" min_val="0" name="effect_fps_spinner" top="231"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_brightness" right="-8" top="341" tool_tip="Reset brightness to default" width="22" />
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Effect fps" label_width="74" layout="topleft" left="8" max_val="30" min_val="0" name="effect_fps_spinner" top="363"
            tool_tip="Per-clone shader animation cadence. 0 is smooth; 1-30 holds animated looks and distortions for stop motion. Separate from Pose fps." width="138" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_effect_fps" top="231" tool_tip="Reset Effect fps to smooth" width="22" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_effect_fps" top="363" tool_tip="Reset Effect fps to smooth" width="22" />
         </panel>
               </panel>
             </scroll_container>
