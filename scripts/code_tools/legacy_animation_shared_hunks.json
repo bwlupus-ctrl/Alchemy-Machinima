@@ -1,0 +1,52 @@
+[
+  {
+    "before": "void main()\n{",
+    "after": "// Only the five bounded legacy clocks quantize optional shared FX rates.\nbool ghostBoundedMotion()\n{\n    return ghostLook == 64 || ghostLook == 66 || ghostLook == 67\n        || ghostLook == 71 || ghostLook == 76;\n}\nfloat ghostMotionPhase(float radiansPerSecond)\n{\n    float phaseTime = ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime;\n    return phaseTime * (round(radiansPerSecond * 100.0) * 0.01);\n}\nfloat ghostMotionTurns(float turnsPerSecond)\n{\n    float phaseTime = ghostTime > 314.159265359 ? ghostTime - 628.318530718 : ghostTime;\n    return phaseTime * (round(turnsPerSecond * 628.318530718) / 628.318530718);\n}\nfloat ghostMotionTick(float ticksPerSecond)\n{\n    float ticks = max(1.0, round(ticksPerSecond * 628.318530718));\n    return float(int(floor(ghostTime * (ticks / 628.318530718))) % int(ticks));\n}\n\nvoid main()\n{",
+    "count": 1
+  },
+  {
+    "before": "ghostTime * 4.2",
+    "after": "(ghostBoundedMotion() ? ghostMotionPhase(4.2) : ghostTime * 4.2)",
+    "count": 3
+  },
+  {
+    "before": "ghostTime * 3.4",
+    "after": "(ghostBoundedMotion() ? ghostMotionPhase(3.4) : ghostTime * 3.4)",
+    "count": 2
+  },
+  {
+    "before": "ghostTime * 0.32",
+    "after": "(ghostBoundedMotion() ? ghostMotionTurns(0.32) : ghostTime * 0.32)",
+    "count": 2
+  },
+  {
+    "before": "ghostTime * 1.7",
+    "after": "(ghostBoundedMotion() ? ghostMotionTurns(1.7) : ghostTime * 1.7)",
+    "count": 1
+  },
+  {
+    "before": "ghostTime * max(ghostFx.x, 0.0) * 6.2831853",
+    "after": "(ghostBoundedMotion() ? ghostMotionPhase(max(ghostFx.x, 0.0) * 6.2831853) : ghostTime * max(ghostFx.x, 0.0) * 6.2831853)",
+    "count": 1
+  },
+  {
+    "before": "floor(ghostTime * 7.0)",
+    "after": "(ghostBoundedMotion() ? ghostMotionTick(7.0) : floor(ghostTime * 7.0))",
+    "count": 3
+  },
+  {
+    "before": "floor(ghostTime * 8.0)",
+    "after": "(ghostBoundedMotion() ? ghostMotionTick(8.0) : floor(ghostTime * 8.0))",
+    "count": 3
+  },
+  {
+    "before": "floor(ghostTime * 9.0)",
+    "after": "(ghostBoundedMotion() ? ghostMotionTick(9.0) : floor(ghostTime * 9.0))",
+    "count": 1
+  },
+  {
+    "before": "floor(ghostTime * 12.0)",
+    "after": "(ghostBoundedMotion() ? ghostMotionTick(12.0) : floor(ghostTime * 12.0))",
+    "count": 2
+  }
+]
