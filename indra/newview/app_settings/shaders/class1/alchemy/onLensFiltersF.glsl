@@ -463,6 +463,16 @@ vec3 vndPollution(vec3 color, vec2 uv, float sky)
     return color;
 }
 
+// Each fixed-position band integrates to zero over the full sensor.
+float vndSkyBand(float y, float center)
+{
+    float t = (y - center) / 0.045;
+    float lo = center / 0.045;
+    float hi = (1.0 - center) / 0.045;
+    float mean = center * exp(-lo * lo) + (1.0 - center) * exp(-hi * hi);
+    return (1.0 - 2.0 * t * t) * exp(-t * t) - mean;
+}
+
 vec3 applyVariableND(vec3 color, vec2 uv, float exposure_scale)
 {
     if (vnd_params.x < 0.5 || !(vnd_lens.z > 0.0 && vnd_lens.z < 1.0)) return color;
@@ -513,13 +523,9 @@ vec3 applyVariableND(vec3 color, vec2 uv, float exposure_scale)
     // Local darkening is visible without a broad sky-exposure reduction.
     float sky = lensSkyDepth(texture(depthMap, uv).r);
     float wide = clamp(vnd_lens.x * vnd_lens.x, 0.0, 1.0);
-    float band_center = mix(0.5, vnd_sun.y, vnd_sun.z);
-    float band_t = (frame_uv.y - band_center) / 0.045;
-    float band_lo = band_center / 0.045;
-    float band_hi = (1.0 - band_center) / 0.045;
-    float band_mean = band_center * exp(-band_lo * band_lo) +
-        (1.0 - band_center) * exp(-band_hi * band_hi);
-    float band = (1.0 - 2.0 * band_t * band_t) * exp(-band_t * band_t) - band_mean;
+    // Fade amplitudes, never move a band back across the frame as visibility falls.
+    float band = mix(vndSkyBand(frame_uv.y, 0.5),
+        vndSkyBand(frame_uv.y, clamp(vnd_sun.y, -0.2, 1.2)), vnd_sun.z);
     gain = clamp(gain - sky * band * wide * 0.16 * (quality * 0.5) * dial * dial, 0.25, 1.5);
 
     // Blue/purple leakage, optical-grade cast, and NIR contamination each

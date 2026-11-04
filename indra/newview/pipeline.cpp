@@ -15763,8 +15763,8 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         ? projection_y / projection_x : 0.f;
     // GradND/Polarizer keep their existing sun policy. VND projects the saved
     // world direction even behind the camera, with a safe divisor and smooth
-    // visibility/front ramps. Clamping before mixing prevents 0 * huge UV and
-    // makes the default-centre transition continuous through z=0.
+    // visibility/front/elevation ramps. The shader crossfades fixed bands;
+    // sunset and the default-centre transition remain continuous.
     const glm::vec4 vnd_sun_clip = glm::make_mat4(gGLLastProjection) * glm::make_mat4(gGLLastModelView) *
         glm::vec4(mSunDir.mV[0], mSunDir.mV[1], mSunDir.mV[2], 0.f);
     const F32 sun_divisor = llmax(vnd_sun_clip.z, .001f);
@@ -15776,7 +15776,8 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         return t * t * (3.f - 2.f * t);
     };
     const F32 outside = llmax(llmax(-raw_sun_u, raw_sun_u - 1.f), llmax(-raw_sun_v, raw_sun_v - 1.f));
-    const F32 vnd_has_sun = (1.f - smooth_ramp(.25f, .75f, outside)) * smooth_ramp(0.f, .25f, vnd_sun_clip.z);
+    const F32 vnd_has_sun = (1.f - smooth_ramp(.25f, .75f, outside)) *
+        smooth_ramp(0.f, .25f, vnd_sun_clip.z) * smooth_ramp(-.05f, .05f, mSunDir.mV[2]);
     const F32 vnd_sun_u = llclamp(raw_sun_u, -.75f, 1.75f);
     const F32 vnd_sun_v = llclamp(raw_sun_v, -.75f, 1.75f);
     const F32 vnd_mean = vnd.enabled ? ALLensLooks::variableNDMeanLeak(vnd_tan, vnd_aspect, vnd.angle_rad) : .5f;

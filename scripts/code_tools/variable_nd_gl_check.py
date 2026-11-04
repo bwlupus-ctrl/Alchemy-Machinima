@@ -65,13 +65,13 @@ def pollution_blend(quality, stops, enabled=True):
     return blend if blend >= .002 else 0.
 
 
-def sun_uniform(u, v, z=1.):
+def sun_uniform(u, v, z=1., elevation=1.):
     """Host ramp reference, after projection to full-sensor UV."""
     def ramp(lo, hi, value):
         t = max(0., min(1., (value-lo)/(hi-lo)))
         return t*t*(3-2*t)
     outside = max(-u, u-1, -v, v-1)
-    weight = (1-ramp(.25, .75, outside))*ramp(0., .25, z)
+    weight = (1-ramp(.25, .75, outside))*ramp(0., .25, z)*ramp(-.05, .05, elevation)
     return max(-.75, min(1.75, u)), max(-.75, min(1.75, v)), weight, 0.
 
 
@@ -710,6 +710,62 @@ def run():
               '1.f - smooth_ramp(.25f, .75f, outside)', 'smooth_ramp(0.f, .25f, vnd_sun_clip.z)',
               'sun_divisor = llmax(vnd_sun_clip.z, .001f)', 'llclamp(raw_sun_v, -.75f, 1.75f)')),
           dict(steps=len(sun_steps), uv_or_z_step=.0005, max_rgb_step=max(sun_steps), bound=.003))
+
+    # Read the actual blended production band, without X/cast/clamp effects.
+    # A crossfade has two peaks: the global argmax may switch between them.
+    # Track each component instead, recovering the sun band from the blend.
+    band_line = 'gain = clamp(gain - sky * band * wide * 0.16 * (quality * 0.5) * dial * dial, 0.25, 1.5);'
+    band_probe = (band_line, 'return vec3(band);')
+    peak_height = 2048
+    peak_scene = scene(4, peak_height, grey=True, all_sky=True)
+
+    def band_profile(u, v, weight):
+        return f.render(peak_scene, 2, 8., 90., no_ir=True, mutation=band_probe,
+                        extra={'vnd_sun': (u, v, weight, 0.)})[:, 0, 0].astype(float)
+
+    mid_band = band_profile(.2, .5, 0.)
+    peak_excess, blend_errors, band_means = [], [], [abs(float(mid_band.mean()))]
+    for path in ('pan', 'tilt'):
+        previous = None
+        for value in np.linspace(0., 1., 181):
+            u, v = (.2 + 1.5*value, .85) if path == 'pan' else (.2, .05 + .9*value)
+            weight = sun_uniform(u, v)[2]
+            sun_band = band_profile(u, v, 1.)
+            mixed = band_profile(u, v, weight)
+            blend_errors.append(float(abs(mixed - ((1-weight)*mid_band + weight*sun_band)).max()))
+            band_means.extend((abs(float(sun_band.mean())), abs(float(mixed.mean()))))
+            if weight < .01:
+                continue
+            tracked = (mixed - (1-weight)*mid_band)/weight
+            peak = (int(np.argmax(tracked)) + .5)/peak_height
+            if previous is not None:
+                peak_excess.append(abs(peak-previous[0]) - abs(v-previous[1]))
+            previous = peak, v
+    check('sky band crossfades fixed zero-mean components; component peak speed <= sun speed + one texel',
+          max(blend_errors) < 2e-6 and max(band_means) < 2e-6 and
+          max(peak_excess) <= 1/peak_height + 1e-7,
+          dict(max_blend_error=max(blend_errors), max_absolute_mean=max(band_means),
+               max_peak_step_excess=max(peak_excess), epsilon=1/peak_height))
+
+    sunset_steps, sunset_weights = [], []
+    previous = None
+    night = f.render(small_sky, 2, 8., 90., no_ir=True,
+                     extra={'vnd_sun': sun_uniform(.2, .85, elevation=-.05)})
+    for elevation in np.linspace(-.1, .1, 401):
+        sun = sun_uniform(.2, .85, elevation=elevation)
+        sunset_weights.append(sun[2])
+        result = f.render(small_sky, 2, 8., 90., no_ir=True, extra={'vnd_sun': sun})
+        if previous is not None:
+            sunset_steps.append(float(abs(result[...,:3]-previous[...,:3]).max()))
+        previous = result
+    night_moved = f.render(small_sky, 2, 8., 90., no_ir=True,
+                           extra={'vnd_sun': sun_uniform(.8, .2, elevation=-.1)})
+    check('sun elevation fades continuously at sunset and below-horizon sun cannot track',
+          max(sunset_steps) < .003 and np.array_equal(night, night_moved) and
+          sunset_weights[0] == 0. and sunset_weights[-1] == 1. and
+          all(a <= b for a, b in zip(sunset_weights, sunset_weights[1:])) and
+          'smooth_ramp(-.05f, .05f, mSunDir.mV[2])' in block,
+          dict(steps=len(sunset_steps), elevation_step=.0005, max_rgb_step=max(sunset_steps), bound=.003))
 
     guarded = []
     for width, height in itertools.product((0., 1., 72., 1920.), repeat=2):
