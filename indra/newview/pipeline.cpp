@@ -31364,7 +31364,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                     contact_fade.mV[i] = fade;
                 }
                 const glm::vec3 centre = mul_mat4_vec3(view,glm::make_vec3(drawable->getPositionAgent().mV));
-                noteAreaDepthLight(plane*4+i,drawable,volume,centre,light_scale);
+                // Shadow depth is a full-screen ambient cut with no actor gate, so an
+                // actor-only light must not reach it or its shadow darkens the set.
+                const bool depth_on_actors_only = actor_only && !actor_as_world &&
+                    registry.actorOnlyBits(volume->getID()) != 0;
+                noteAreaDepthLight(plane*4+i,drawable,volume,centre,depth_on_actors_only ? 0.f : light_scale);
                 lights[i].set(centre.x,centre.y,centre.z,area_source_radius(volume));
                 U32 hash = 2166136261u;
                 for (U8 byte : id.mData) hash = (hash^byte)*16777619u;
