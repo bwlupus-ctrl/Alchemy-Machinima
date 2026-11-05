@@ -4409,6 +4409,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -4431,11 +4432,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -4523,6 +4522,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -4811,8 +4811,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -10712,6 +10710,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -11190,11 +11194,11 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@618,35",
-          "indra/newview/llviewershadermgr.cpp@2696,18",
-          "indra/newview/llviewershadermgr.cpp@4170,11",
-          "indra/newview/llviewershadermgr.cpp@6476,118"
+          "indra/newview/llviewershadermgr.cpp@129,24",
+          "indra/newview/llviewershadermgr.cpp@613,35",
+          "indra/newview/llviewershadermgr.cpp@2603,18",
+          "indra/newview/llviewershadermgr.cpp@4077,11",
+          "indra/newview/llviewershadermgr.cpp@6383,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -14730,6 +14734,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -14752,11 +14757,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -14844,6 +14847,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -15132,8 +15136,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -17634,6 +17636,46 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llhudeffectlookat.cpp": {
         "includes": [
           "indra/llmessage/llavatarnamecache.h",
@@ -19653,8 +19695,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -19665,7 +19705,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -19685,7 +19724,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -22882,6 +22920,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -26057,6 +26101,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -26079,11 +26124,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -26171,6 +26214,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -26459,8 +26503,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -28605,6 +28647,46 @@
           "indra/llmath/v3math.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/llhudeffectlookat.cpp": {
@@ -34757,6 +34839,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -35205,16 +35293,16 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@339,32",
-          "indra/newview/llviewershadermgr.cpp@374,21",
-          "indra/newview/llviewershadermgr.cpp@437,143",
-          "indra/newview/llviewershadermgr.cpp@1566,18",
-          "indra/newview/llviewershadermgr.cpp@1600,14",
-          "indra/newview/llviewershadermgr.cpp@2153,40",
-          "indra/newview/llviewershadermgr.cpp@2496,28",
-          "indra/newview/llviewershadermgr.cpp@2808,312",
-          "indra/newview/llviewershadermgr.cpp@3920,67",
-          "indra/newview/llviewershadermgr.cpp@5498,299"
+          "indra/newview/llviewershadermgr.cpp@334,32",
+          "indra/newview/llviewershadermgr.cpp@369,21",
+          "indra/newview/llviewershadermgr.cpp@432,143",
+          "indra/newview/llviewershadermgr.cpp@1473,18",
+          "indra/newview/llviewershadermgr.cpp@1507,14",
+          "indra/newview/llviewershadermgr.cpp@2060,40",
+          "indra/newview/llviewershadermgr.cpp@2403,28",
+          "indra/newview/llviewershadermgr.cpp@2715,321",
+          "indra/newview/llviewershadermgr.cpp@3827,67",
+          "indra/newview/llviewershadermgr.cpp@5405,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -35239,7 +35327,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -35738,6 +35826,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -35763,6 +35852,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -35772,6 +35862,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -37692,6 +37783,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -37714,11 +37806,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -37806,6 +37896,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -38094,8 +38185,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -40869,6 +40958,46 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llhudeffectlookat.cpp": {
         "includes": [
           "indra/llmessage/llavatarnamecache.h",
@@ -42797,8 +42926,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -42809,7 +42936,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -42829,7 +42955,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -45373,6 +45498,8 @@
       "scripts/code_tools/clone_looks_runtime_check.py",
       "scripts/code_tools/clone_looks_safety_check.py",
       "scripts/code_tools/clone_looks_scan_build_check.py",
+      "scripts/code_tools/clone_rest_frame_check.py",
+      "scripts/code_tools/clone_rest_frame_native_check.py",
       "scripts/code_tools/director_clone_qol_check.py",
       "scripts/code_tools/director_clone_rekey_check.py",
       "scripts/code_tools/test_clone_pitch_roll.py",
@@ -46635,6 +46762,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -47423,13 +47556,13 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@691,32",
-          "indra/newview/llviewershadermgr.cpp@1760,259",
-          "indra/newview/llviewershadermgr.cpp@4595,633",
-          "indra/newview/llviewershadermgr.cpp@6346,8",
-          "indra/newview/llviewershadermgr.cpp@6386,70",
-          "indra/newview/llviewershadermgr.cpp@6476,118"
+          "indra/newview/llviewershadermgr.cpp@129,24",
+          "indra/newview/llviewershadermgr.cpp@686,32",
+          "indra/newview/llviewershadermgr.cpp@1667,259",
+          "indra/newview/llviewershadermgr.cpp@4502,633",
+          "indra/newview/llviewershadermgr.cpp@6253,8",
+          "indra/newview/llviewershadermgr.cpp@6293,70",
+          "indra/newview/llviewershadermgr.cpp@6383,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -47473,8 +47606,8 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1878,60",
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@2053,60",
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -47815,6 +47948,7 @@
       "indra/newview/alghostplacementadapter.h",
       "indra/newview/alghostplacementresolver.cpp",
       "indra/newview/alghostplacementresolver.h",
+      "indra/newview/alghostrestframe.h",
       "indra/newview/alghostrotation.h",
       "indra/newview/alghostspawnengine.cpp",
       "indra/newview/alghostspawnengine.h",
@@ -48635,6 +48769,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -48660,6 +48795,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -48669,6 +48805,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -51993,6 +52130,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/alghostrestframe.h": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/alghostrotation.h": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -54895,6 +55037,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -54917,11 +55060,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -55009,6 +55150,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -55297,8 +55439,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -59440,6 +59580,46 @@
           "indra/llcommon/stdtypes.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/llhudeffectlookat.cpp": {
@@ -63763,8 +63943,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -63775,7 +63953,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -63795,7 +63972,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -72136,6 +72312,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -72158,11 +72335,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -72250,6 +72425,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -72538,8 +72714,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -75619,6 +75793,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -77589,6 +77769,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -77611,11 +77792,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -77703,6 +77882,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -77991,8 +78171,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -79639,6 +79817,46 @@
           "ALGhostStudio::updatePostObjectList",
           "LLCharacter::updateMotions",
           "LLVOAvatar::slamPosition"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
         ],
         "unresolved_includes": []
       },
@@ -84012,9 +84230,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@618,35",
-          "indra/newview/llviewershadermgr.cpp@2696,18",
-          "indra/newview/llviewershadermgr.cpp@4170,11"
+          "indra/newview/llviewershadermgr.cpp@613,35",
+          "indra/newview/llviewershadermgr.cpp@2603,18",
+          "indra/newview/llviewershadermgr.cpp@4077,11"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       }
@@ -85733,6 +85951,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -85755,11 +85974,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -85847,6 +86064,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -86135,8 +86353,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -87546,8 +87762,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -87558,7 +87772,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -87578,7 +87791,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -89470,6 +89682,12 @@
         "line": 1452,
         "source": "indra/newview/llflycamrecorder.h",
         "text": "llflycamrecorder.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -97327,6 +97545,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -97349,11 +97568,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -97441,6 +97658,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -97729,8 +97947,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -100407,6 +100623,46 @@
           "indra/llmath/v3math.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/llhudeffectlookat.cpp": {
@@ -107968,6 +108224,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 706,
         "source": "indra/newview/llinventorybridge.cpp",
         "text": "llinventorybridge.cpp"
@@ -108122,13 +108384,13 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@1478,26"
+          "indra/newview/llviewershadermgr.cpp@1381,26"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@429,15"
+          "indra/llrender/llshadermgr.cpp@435,15"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -108347,6 +108609,7 @@
     "source_dependencies": {
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -108372,6 +108635,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -108381,6 +108645,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -109815,6 +110080,46 @@
           }
         ]
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llinventorybridge.cpp": {
         "includes": [
           "indra/llinventory/llinventorydefines.h",
@@ -110955,8 +111260,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -110967,7 +111270,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -110987,7 +111289,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -112407,6 +112708,12 @@
         "line": 1679,
         "source": "indra/newview/llghostavatar.h",
         "text": "llghostavatar.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -114830,6 +115137,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -114852,11 +115160,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -114944,6 +115250,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -115232,8 +115539,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -117335,6 +117640,46 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llhudeffecttrail.cpp": {
         "includes": [
           "indra/llmessage/message.h",
@@ -119124,6 +119469,12 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
+        "line": 15,
+        "source": "indra/llrender/llglslshader.cpp",
+        "text": "llglslshader.cpp"
+      },
+      {
+        "file": "indra/llrender/CMakeLists.txt",
         "line": 45,
         "source": "indra/llrender/llglslshader.h",
         "text": "llglslshader.h"
@@ -120422,67 +120773,67 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@374,21",
-          "indra/newview/llviewershadermgr.cpp@402,22",
-          "indra/newview/llviewershadermgr.cpp@437,143",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@813,8",
-          "indra/newview/llviewershadermgr.cpp@827,29",
-          "indra/newview/llviewershadermgr.cpp@1084,31",
-          "indra/newview/llviewershadermgr.cpp@1123,9",
-          "indra/newview/llviewershadermgr.cpp@1277,52",
-          "indra/newview/llviewershadermgr.cpp@1478,26",
-          "indra/newview/llviewershadermgr.cpp@1511,13",
-          "indra/newview/llviewershadermgr.cpp@1760,259",
-          "indra/newview/llviewershadermgr.cpp@2077,10",
-          "indra/newview/llviewershadermgr.cpp@2097,46",
-          "indra/newview/llviewershadermgr.cpp@2201,7",
-          "indra/newview/llviewershadermgr.cpp@2216,117",
-          "indra/newview/llviewershadermgr.cpp@2342,12",
-          "indra/newview/llviewershadermgr.cpp@2357,13",
-          "indra/newview/llviewershadermgr.cpp@2385,13",
-          "indra/newview/llviewershadermgr.cpp@2400,13",
-          "indra/newview/llviewershadermgr.cpp@2444,10",
-          "indra/newview/llviewershadermgr.cpp@2561,11",
-          "indra/newview/llviewershadermgr.cpp@2607,14",
-          "indra/newview/llviewershadermgr.cpp@2632,15",
-          "indra/newview/llviewershadermgr.cpp@2675,12",
-          "indra/newview/llviewershadermgr.cpp@2696,18",
-          "indra/newview/llviewershadermgr.cpp@2762,18",
-          "indra/newview/llviewershadermgr.cpp@2808,312",
-          "indra/newview/llviewershadermgr.cpp@3166,7",
-          "indra/newview/llviewershadermgr.cpp@3179,7",
-          "indra/newview/llviewershadermgr.cpp@3504,17",
-          "indra/newview/llviewershadermgr.cpp@3615,16",
-          "indra/newview/llviewershadermgr.cpp@3640,17",
-          "indra/newview/llviewershadermgr.cpp@3683,13",
-          "indra/newview/llviewershadermgr.cpp@3730,14",
-          "indra/newview/llviewershadermgr.cpp@3779,12",
-          "indra/newview/llviewershadermgr.cpp@3823,12",
-          "indra/newview/llviewershadermgr.cpp@3837,49",
-          "indra/newview/llviewershadermgr.cpp@3888,14",
-          "indra/newview/llviewershadermgr.cpp@4068,7",
-          "indra/newview/llviewershadermgr.cpp@4081,7",
-          "indra/newview/llviewershadermgr.cpp@4100,7",
-          "indra/newview/llviewershadermgr.cpp@4115,7",
-          "indra/newview/llviewershadermgr.cpp@4137,7",
-          "indra/newview/llviewershadermgr.cpp@4153,7",
-          "indra/newview/llviewershadermgr.cpp@4170,11",
-          "indra/newview/llviewershadermgr.cpp@4210,8",
-          "indra/newview/llviewershadermgr.cpp@4243,7",
-          "indra/newview/llviewershadermgr.cpp@4261,7",
-          "indra/newview/llviewershadermgr.cpp@4275,7",
-          "indra/newview/llviewershadermgr.cpp@4287,7",
-          "indra/newview/llviewershadermgr.cpp@4320,15",
-          "indra/newview/llviewershadermgr.cpp@4353,14",
-          "indra/newview/llviewershadermgr.cpp@5498,299",
-          "indra/newview/llviewershadermgr.cpp@6053,71",
-          "indra/newview/llviewershadermgr.cpp@6130,115",
-          "indra/newview/llviewershadermgr.cpp@6278,12",
-          "indra/newview/llviewershadermgr.cpp@6361,12",
-          "indra/newview/llviewershadermgr.cpp@6386,70",
-          "indra/newview/llviewershadermgr.cpp@6476,118"
+          "indra/newview/llviewershadermgr.cpp@239,32",
+          "indra/newview/llviewershadermgr.cpp@369,21",
+          "indra/newview/llviewershadermgr.cpp@397,22",
+          "indra/newview/llviewershadermgr.cpp@432,143",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@808,8",
+          "indra/newview/llviewershadermgr.cpp@822,29",
+          "indra/newview/llviewershadermgr.cpp@987,31",
+          "indra/newview/llviewershadermgr.cpp@1026,9",
+          "indra/newview/llviewershadermgr.cpp@1180,52",
+          "indra/newview/llviewershadermgr.cpp@1381,26",
+          "indra/newview/llviewershadermgr.cpp@1414,21",
+          "indra/newview/llviewershadermgr.cpp@1667,259",
+          "indra/newview/llviewershadermgr.cpp@1984,10",
+          "indra/newview/llviewershadermgr.cpp@2004,46",
+          "indra/newview/llviewershadermgr.cpp@2108,7",
+          "indra/newview/llviewershadermgr.cpp@2123,117",
+          "indra/newview/llviewershadermgr.cpp@2249,12",
+          "indra/newview/llviewershadermgr.cpp@2264,13",
+          "indra/newview/llviewershadermgr.cpp@2292,13",
+          "indra/newview/llviewershadermgr.cpp@2307,13",
+          "indra/newview/llviewershadermgr.cpp@2351,10",
+          "indra/newview/llviewershadermgr.cpp@2468,11",
+          "indra/newview/llviewershadermgr.cpp@2514,14",
+          "indra/newview/llviewershadermgr.cpp@2539,15",
+          "indra/newview/llviewershadermgr.cpp@2582,12",
+          "indra/newview/llviewershadermgr.cpp@2603,18",
+          "indra/newview/llviewershadermgr.cpp@2669,18",
+          "indra/newview/llviewershadermgr.cpp@2715,321",
+          "indra/newview/llviewershadermgr.cpp@3073,7",
+          "indra/newview/llviewershadermgr.cpp@3086,7",
+          "indra/newview/llviewershadermgr.cpp@3411,17",
+          "indra/newview/llviewershadermgr.cpp@3522,16",
+          "indra/newview/llviewershadermgr.cpp@3547,17",
+          "indra/newview/llviewershadermgr.cpp@3590,13",
+          "indra/newview/llviewershadermgr.cpp@3637,14",
+          "indra/newview/llviewershadermgr.cpp@3686,12",
+          "indra/newview/llviewershadermgr.cpp@3730,12",
+          "indra/newview/llviewershadermgr.cpp@3744,49",
+          "indra/newview/llviewershadermgr.cpp@3795,14",
+          "indra/newview/llviewershadermgr.cpp@3975,7",
+          "indra/newview/llviewershadermgr.cpp@3988,7",
+          "indra/newview/llviewershadermgr.cpp@4007,7",
+          "indra/newview/llviewershadermgr.cpp@4022,7",
+          "indra/newview/llviewershadermgr.cpp@4044,7",
+          "indra/newview/llviewershadermgr.cpp@4060,7",
+          "indra/newview/llviewershadermgr.cpp@4077,11",
+          "indra/newview/llviewershadermgr.cpp@4117,8",
+          "indra/newview/llviewershadermgr.cpp@4150,7",
+          "indra/newview/llviewershadermgr.cpp@4168,7",
+          "indra/newview/llviewershadermgr.cpp@4182,7",
+          "indra/newview/llviewershadermgr.cpp@4194,7",
+          "indra/newview/llviewershadermgr.cpp@4227,15",
+          "indra/newview/llviewershadermgr.cpp@4260,14",
+          "indra/newview/llviewershadermgr.cpp@5405,299",
+          "indra/newview/llviewershadermgr.cpp@5960,71",
+          "indra/newview/llviewershadermgr.cpp@6037,115",
+          "indra/newview/llviewershadermgr.cpp@6185,12",
+          "indra/newview/llviewershadermgr.cpp@6268,12",
+          "indra/newview/llviewershadermgr.cpp@6293,70",
+          "indra/newview/llviewershadermgr.cpp@6383,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -120500,14 +120851,14 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@47,7",
-          "indra/llrender/llshadermgr.cpp@69,95",
-          "indra/llrender/llshadermgr.cpp@283,57",
-          "indra/llrender/llshadermgr.cpp@454,12",
-          "indra/llrender/llshadermgr.cpp@1346,16",
-          "indra/llrender/llshadermgr.cpp@1403,15",
-          "indra/llrender/llshadermgr.cpp@1832,12",
-          "indra/llrender/llshadermgr.cpp@1878,60"
+          "indra/llrender/llshadermgr.cpp@53,7",
+          "indra/llrender/llshadermgr.cpp@75,95",
+          "indra/llrender/llshadermgr.cpp@289,57",
+          "indra/llrender/llshadermgr.cpp@460,12",
+          "indra/llrender/llshadermgr.cpp@1519,19",
+          "indra/llrender/llshadermgr.cpp@1578,16",
+          "indra/llrender/llshadermgr.cpp@2007,12",
+          "indra/llrender/llshadermgr.cpp@2053,60"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -120787,6 +121138,12 @@
           "indra/newview/llsettingsvo.cpp@915,59"
         ],
         "path": "indra/newview/llsettingsvo.cpp"
+      },
+      {
+        "hunks": [
+          "indra/llrender/llglslshader.cpp@2129,78"
+        ],
+        "path": "indra/llrender/llglslshader.cpp"
       },
       {
         "hunks": [
@@ -121112,12 +121469,6 @@
           "indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@271,25"
         ],
         "path": "indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl"
-      },
-      {
-        "hunks": [
-          "indra/newview/llheroprobemanager.cpp@86,15"
-        ],
-        "path": "indra/newview/llheroprobemanager.cpp"
       },
       {
         "hunks": [
@@ -121550,6 +121901,98 @@
         ],
         "unresolved_includes": []
       },
+      "indra/llrender/llglslshader.cpp": {
+        "includes": [
+          "indra/llcommon/hbxxh.h",
+          "indra/llcommon/linden_common.h",
+          "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdserialize.h",
+          "indra/llfilesystem/lldir.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llrender.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llshadermgr.h",
+          "indra/llrender/llvertexbuffer.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFile::isfile",
+          "LLGLSLShader::LLGLSLShader",
+          "LLGLSLShader::addConstant",
+          "LLGLSLShader::addPermutation",
+          "LLGLSLShader::attachFragmentObject",
+          "LLGLSLShader::attachObject",
+          "LLGLSLShader::attachObjects",
+          "LLGLSLShader::attachVertexObject",
+          "LLGLSLShader::bind",
+          "LLGLSLShader::bindTexture",
+          "LLGLSLShader::clearPermutations",
+          "LLGLSLShader::clearStats",
+          "LLGLSLShader::createShader",
+          "LLGLSLShader::disableTexture",
+          "LLGLSLShader::dumpStats",
+          "LLGLSLShader::enableTexture",
+          "LLGLSLShader::fastUniform1f",
+          "LLGLSLShader::finishProfile",
+          "LLGLSLShader::getAttribLocation",
+          "LLGLSLShader::getTextureChannel",
+          "LLGLSLShader::getUniformLocation",
+          "LLGLSLShader::hash",
+          "LLGLSLShader::initProfile",
+          "LLGLSLShader::isCompute",
+          "LLGLSLShader::link",
+          "LLGLSLShader::mapAttributes",
+          "LLGLSLShader::mapUniform",
+          "LLGLSLShader::mapUniformTextureChannel",
+          "LLGLSLShader::mapUniforms",
+          "LLGLSLShader::placeProfileQuery",
+          "LLGLSLShader::readProfileQuery",
+          "LLGLSLShader::removePermutation",
+          "LLGLSLShader::setLabel",
+          "LLGLSLShader::setMinimumAlpha",
+          "LLGLSLShader::startProfile",
+          "LLGLSLShader::stopProfile",
+          "LLGLSLShader::unbind",
+          "LLGLSLShader::unbindTexture",
+          "LLGLSLShader::uniform1f",
+          "LLGLSLShader::uniform1fv",
+          "LLGLSLShader::uniform1i",
+          "LLGLSLShader::uniform1iv",
+          "LLGLSLShader::uniform1ui",
+          "LLGLSLShader::uniform2f",
+          "LLGLSLShader::uniform2fv",
+          "LLGLSLShader::uniform2i",
+          "LLGLSLShader::uniform3f",
+          "LLGLSLShader::uniform3fv",
+          "LLGLSLShader::uniform4f",
+          "LLGLSLShader::uniform4fv",
+          "LLGLSLShader::uniform4iv",
+          "LLGLSLShader::uniform4uiv",
+          "LLGLSLShader::uniformMatrix2fv",
+          "LLGLSLShader::uniformMatrix3fv",
+          "LLGLSLShader::uniformMatrix3x4fv",
+          "LLGLSLShader::uniformMatrix4fv",
+          "LLGLSLShader::unload",
+          "LLGLSLShader::unloadInternal",
+          "LLGLSLShader::vertexAttrib4f",
+          "LLGLSLShader::vertexAttrib4fv",
+          "LLSD::Integer",
+          "LLSD::emptyArray",
+          "LLSD::emptyMap",
+          "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::instance",
+          "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderUniforms::apply",
+          "LLVertexBuffer::setupClientArrays",
+          "LLVertexBuffer::unbind"
+        ],
+        "unresolved_includes": [
+          {
+            "candidates": [],
+            "include": "OpenGL/OpenGL.h"
+          }
+        ]
+      },
       "indra/llrender/llglslshader.h": {
         "includes": [
           "indra/llcommon/llsd.h",
@@ -121662,6 +122105,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -121687,6 +122131,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -121696,6 +122141,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -125611,6 +126057,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -125633,11 +126080,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -125725,6 +126170,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -126013,8 +126459,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -128877,8 +129321,7 @@
           "LLHeroProbeManager::updateUniforms",
           "LLStartUp::getStartupState",
           "LLViewerCamera::getInstance",
-          "LLViewerCamera::instance",
-          "LLViewerShaderMgr::instance"
+          "LLViewerCamera::instance"
         ],
         "unresolved_includes": []
       },
@@ -131794,8 +132237,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -131806,7 +132247,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -131826,7 +132266,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -135664,6 +136103,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -136306,19 +136751,19 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@194,22",
-          "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@1760,259",
-          "indra/newview/llviewershadermgr.cpp@2028,8",
-          "indra/newview/llviewershadermgr.cpp@2097,46",
-          "indra/newview/llviewershadermgr.cpp@3220,23",
-          "indra/newview/llviewershadermgr.cpp@3258,23",
-          "indra/newview/llviewershadermgr.cpp@3294,22",
-          "indra/newview/llviewershadermgr.cpp@3329,85",
-          "indra/newview/llviewershadermgr.cpp@3920,67",
-          "indra/newview/llviewershadermgr.cpp@4595,633",
-          "indra/newview/llviewershadermgr.cpp@6130,115"
+          "indra/newview/llviewershadermgr.cpp@189,22",
+          "indra/newview/llviewershadermgr.cpp@275,47",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@1667,259",
+          "indra/newview/llviewershadermgr.cpp@1935,8",
+          "indra/newview/llviewershadermgr.cpp@2004,46",
+          "indra/newview/llviewershadermgr.cpp@3127,23",
+          "indra/newview/llviewershadermgr.cpp@3165,23",
+          "indra/newview/llviewershadermgr.cpp@3201,22",
+          "indra/newview/llviewershadermgr.cpp@3236,85",
+          "indra/newview/llviewershadermgr.cpp@3827,67",
+          "indra/newview/llviewershadermgr.cpp@4502,633",
+          "indra/newview/llviewershadermgr.cpp@6037,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -136352,7 +136797,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -136500,8 +136945,8 @@
         "hunks": [
           "indra/newview/llviewerregion.cpp@62,7",
           "indra/newview/llviewerregion.cpp@1852,8",
-          "indra/newview/llviewerregion.cpp@2841,12",
-          "indra/newview/llviewerregion.cpp@2881,10"
+          "indra/newview/llviewerregion.cpp@2837,12",
+          "indra/newview/llviewerregion.cpp@2877,10"
         ],
         "path": "indra/newview/llviewerregion.cpp"
       },
@@ -137305,6 +137750,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -137330,6 +137776,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -137339,6 +137786,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -143970,6 +144418,46 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llhudeffectlookat.cpp": {
         "includes": [
           "indra/llmessage/llavatarnamecache.h",
@@ -148054,7 +148542,6 @@
           "LLViewerRegionImpl::requestBaseCapabilitiesCompleteCoro",
           "LLViewerRegionImpl::requestBaseCapabilitiesCoro",
           "LLViewerRegionImpl::requestSimulatorFeatureCoro",
-          "LLViewerShaderMgr::instance",
           "LLViewerStatsRecorder::instance",
           "LLWeb::loadURL",
           "LLWorld::getInstance",
@@ -148100,8 +148587,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -148112,7 +148597,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -148132,7 +148616,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -152055,6 +152538,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 683,
         "source": "indra/newview/llhudeffectlookat.cpp",
         "text": "llhudeffectlookat.cpp"
@@ -152473,22 +152962,22 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@52,7",
-          "indra/newview/llviewershadermgr.cpp@134,24",
-          "indra/newview/llviewershadermgr.cpp@194,22",
-          "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@691,32",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@1430,23",
-          "indra/newview/llviewershadermgr.cpp@1760,259",
-          "indra/newview/llviewershadermgr.cpp@2037,12",
-          "indra/newview/llviewershadermgr.cpp@2059,9",
-          "indra/newview/llviewershadermgr.cpp@2097,46",
-          "indra/newview/llviewershadermgr.cpp@3329,85",
-          "indra/newview/llviewershadermgr.cpp@3615,16",
-          "indra/newview/llviewershadermgr.cpp@4595,633",
-          "indra/newview/llviewershadermgr.cpp@6130,115"
+          "indra/newview/llviewershadermgr.cpp@47,7",
+          "indra/newview/llviewershadermgr.cpp@129,24",
+          "indra/newview/llviewershadermgr.cpp@189,22",
+          "indra/newview/llviewershadermgr.cpp@239,32",
+          "indra/newview/llviewershadermgr.cpp@275,47",
+          "indra/newview/llviewershadermgr.cpp@686,32",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@1333,23",
+          "indra/newview/llviewershadermgr.cpp@1667,259",
+          "indra/newview/llviewershadermgr.cpp@1944,12",
+          "indra/newview/llviewershadermgr.cpp@1966,9",
+          "indra/newview/llviewershadermgr.cpp@2004,46",
+          "indra/newview/llviewershadermgr.cpp@3236,85",
+          "indra/newview/llviewershadermgr.cpp@3522,16",
+          "indra/newview/llviewershadermgr.cpp@4502,633",
+          "indra/newview/llviewershadermgr.cpp@6037,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -152527,8 +153016,8 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@819,36",
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@825,36",
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -153486,6 +153975,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -153511,6 +154001,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -153520,6 +154011,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -157938,6 +158430,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -157960,11 +158453,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -158052,6 +158543,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -158340,8 +158832,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -160472,6 +160962,46 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llhudeffectlookat.cpp": {
         "includes": [
           "indra/llmessage/llavatarnamecache.h",
@@ -162124,8 +162654,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -162136,7 +162664,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -162156,7 +162683,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -165523,6 +166049,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 728,
         "source": "indra/newview/lllocalmesh.cpp",
         "text": "lllocalmesh.cpp"
@@ -165968,12 +166500,12 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@244,32",
-          "indra/newview/llviewershadermgr.cpp@374,21",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@1277,52",
-          "indra/newview/llviewershadermgr.cpp@1760,259",
-          "indra/newview/llviewershadermgr.cpp@4595,633"
+          "indra/newview/llviewershadermgr.cpp@239,32",
+          "indra/newview/llviewershadermgr.cpp@369,21",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@1180,52",
+          "indra/newview/llviewershadermgr.cpp@1667,259",
+          "indra/newview/llviewershadermgr.cpp@4502,633"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -165987,10 +166519,10 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1567,8",
-          "indra/llrender/llshadermgr.cpp@1832,12",
-          "indra/llrender/llshadermgr.cpp@1878,60",
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@1742,8",
+          "indra/llrender/llshadermgr.cpp@2007,12",
+          "indra/llrender/llshadermgr.cpp@2053,60",
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -166442,6 +166974,7 @@
     "source_dependencies": {
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -166467,6 +167000,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -166476,6 +167010,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -171344,6 +171879,46 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/lllocalmesh.cpp": {
         "includes": [
           "indra/llappearance/lljointdata.h",
@@ -173831,8 +174406,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -173843,7 +174416,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -173863,7 +174435,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -176023,6 +176594,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 728,
         "source": "indra/newview/lllocalmesh.cpp",
         "text": "lllocalmesh.cpp"
@@ -176325,15 +176902,15 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@339,32",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@1478,26",
-          "indra/newview/llviewershadermgr.cpp@1760,259",
-          "indra/newview/llviewershadermgr.cpp@2097,46",
-          "indra/newview/llviewershadermgr.cpp@2153,40",
-          "indra/newview/llviewershadermgr.cpp@4595,633",
-          "indra/newview/llviewershadermgr.cpp@5498,299"
+          "indra/newview/llviewershadermgr.cpp@275,47",
+          "indra/newview/llviewershadermgr.cpp@334,32",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@1381,26",
+          "indra/newview/llviewershadermgr.cpp@1667,259",
+          "indra/newview/llviewershadermgr.cpp@2004,46",
+          "indra/newview/llviewershadermgr.cpp@2060,40",
+          "indra/newview/llviewershadermgr.cpp@4502,633",
+          "indra/newview/llviewershadermgr.cpp@5405,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -176346,10 +176923,10 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@358,10",
-          "indra/llrender/llshadermgr.cpp@385,9",
-          "indra/llrender/llshadermgr.cpp@429,15",
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@364,10",
+          "indra/llrender/llshadermgr.cpp@391,9",
+          "indra/llrender/llshadermgr.cpp@435,15",
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -176608,6 +177185,7 @@
     "source_dependencies": {
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -176633,6 +177211,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -176642,6 +177221,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -179437,6 +180017,46 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/lllocalmesh.cpp": {
         "includes": [
           "indra/llappearance/lljointdata.h",
@@ -180812,8 +181432,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -180824,7 +181442,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -180844,7 +181461,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -184614,6 +185230,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -184636,11 +185253,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -184728,6 +185343,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -185016,8 +185632,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -194542,6 +195156,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 702,
         "source": "indra/newview/llinspectobject.cpp",
         "text": "llinspectobject.cpp"
@@ -195104,11 +195724,11 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@175,11",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@1277,52",
-          "indra/newview/llviewershadermgr.cpp@2153,40",
-          "indra/newview/llviewershadermgr.cpp@2216,117"
+          "indra/newview/llviewershadermgr.cpp@170,11",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@1180,52",
+          "indra/newview/llviewershadermgr.cpp@2060,40",
+          "indra/newview/llviewershadermgr.cpp@2123,117"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -195120,7 +195740,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1553,8"
+          "indra/llrender/llshadermgr.cpp@1728,8"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -195730,6 +196350,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -195755,6 +196376,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -195764,6 +196386,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -199519,6 +200142,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -199541,11 +200165,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -199633,6 +200255,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -199921,8 +200544,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -202102,6 +202723,46 @@
           "LLInventorySort::operator",
           "LLStringUtil::compareDict",
           "LLToolDragAndDrop::getInstance"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
         ],
         "unresolved_includes": []
       },
@@ -206407,8 +207068,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -206419,7 +207078,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -206439,7 +207097,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",
@@ -208708,6 +209365,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 909,
+        "source": "indra/newview/llheroprobemanager.cpp",
+        "text": "llheroprobemanager.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 715,
         "source": "indra/newview/llinventorymodel.cpp",
         "text": "llinventorymodel.cpp"
@@ -209052,14 +209715,14 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@280,47",
-          "indra/newview/llviewershadermgr.cpp@726,81",
-          "indra/newview/llviewershadermgr.cpp@1084,31",
-          "indra/newview/llviewershadermgr.cpp@1478,26",
-          "indra/newview/llviewershadermgr.cpp@2097,46",
-          "indra/newview/llviewershadermgr.cpp@4595,633",
-          "indra/newview/llviewershadermgr.cpp@6130,115",
-          "indra/newview/llviewershadermgr.cpp@6964,30"
+          "indra/newview/llviewershadermgr.cpp@275,47",
+          "indra/newview/llviewershadermgr.cpp@721,81",
+          "indra/newview/llviewershadermgr.cpp@987,31",
+          "indra/newview/llviewershadermgr.cpp@1381,26",
+          "indra/newview/llviewershadermgr.cpp@2004,46",
+          "indra/newview/llviewershadermgr.cpp@4502,633",
+          "indra/newview/llviewershadermgr.cpp@6037,115",
+          "indra/newview/llviewershadermgr.cpp@6871,30"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -209072,10 +209735,10 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@69,95",
-          "indra/llrender/llshadermgr.cpp@283,57",
-          "indra/llrender/llshadermgr.cpp@1468,13",
-          "indra/llrender/llshadermgr.cpp@2001,363"
+          "indra/llrender/llshadermgr.cpp@75,95",
+          "indra/llrender/llshadermgr.cpp@289,57",
+          "indra/llrender/llshadermgr.cpp@1643,13",
+          "indra/llrender/llshadermgr.cpp@2176,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -209083,7 +209746,7 @@
         "hunks": [
           "indra/llrender/llshadermgr.h@51,13",
           "indra/llrender/llshadermgr.h@589,396",
-          "indra/llrender/llshadermgr.h@994,21"
+          "indra/llrender/llshadermgr.h@994,30"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -209174,7 +209837,8 @@
         "hunks": [
           "indra/llrender/llglslshader.cpp@454,16",
           "indra/llrender/llglslshader.cpp@820,35",
-          "indra/llrender/llglslshader.cpp@1112,19"
+          "indra/llrender/llglslshader.cpp@1112,19",
+          "indra/llrender/llglslshader.cpp@2129,78"
         ],
         "path": "indra/llrender/llglslshader.cpp"
       },
@@ -209548,6 +210212,7 @@
           "LLSD::emptyMap",
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::instance",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderUniforms::apply",
           "LLVertexBuffer::setupClientArrays",
@@ -209672,6 +210337,7 @@
       },
       "indra/llrender/llshadermgr.cpp": {
         "includes": [
+          "indra/llcommon/fsyspath.h",
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
@@ -209697,6 +210363,7 @@
           "LLShaderMgr::computeShadersSupported",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
           "LLShaderMgr::instance",
@@ -209706,6 +210373,7 @@
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
+          "LLShaderMgr::readShaderSource",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::validateProgramObject",
@@ -212720,6 +213388,7 @@
           "indra/newview/algazemotor.h",
           "indra/newview/alghostanimmirrormath.h",
           "indra/newview/alghostattachmentenumerator.h",
+          "indra/newview/alghostrestframe.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkithistory.h",
           "indra/newview/alkitpage.h",
@@ -212742,11 +213411,9 @@
           "indra/newview/llfetchedgltfmaterial.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llghostavatar.h",
-          "indra/newview/llinventorymodel.h",
           "indra/newview/llpathcamera.h",
           "indra/newview/llpresentationtime.h",
           "indra/newview/llprismlens.h",
-          "indra/newview/llskinningutil.h",
           "indra/newview/llspatialpartition.h",
           "indra/newview/lltoolmgr.h",
           "indra/newview/llviewercamera.h",
@@ -212834,6 +213501,7 @@
           "ALGazeNoise::unitHash",
           "ALGazePolicy::eyeInHeadFromWorldGaze",
           "ALGhostAttachmentEnumerator::visitWorldRoots",
+          "ALGhostRestFrame::compute",
           "ALGhostStudio::instance",
           "ALGhostStudio::remapRetiredOverlayStyle",
           "ALGhostStudio::resolveOverlayAvatar",
@@ -213122,8 +213790,6 @@
           "LLRenderTarget::getCurrentBoundTarget",
           "LLSD::emptyArray",
           "LLSD::emptyMap",
-          "LLSkinningUtil::getMaxJointCount",
-          "LLSkinningUtil::getPerVertexSkinMatrix",
           "LLTimer::getTotalSeconds",
           "LLToolMgr::getInstance",
           "LLUUID::parseUUID",
@@ -215111,6 +215777,46 @@
           "LLViewerTexture::isCaptureModeActive",
           "LLViewerTexture::isCaptureQualityPinActive",
           "LLViewerTexture::isVRAMPressureActive"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llheroprobemanager.cpp": {
+        "includes": [
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llheroprobemanager.h",
+          "indra/newview/llreflectionmapmanager.h",
+          "indra/newview/llspatialpartition.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerjoystick.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewershadermgr.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLHeroProbeManager::LLHeroProbeManager",
+          "LLHeroProbeManager::cleanup",
+          "LLHeroProbeManager::doOcclusion",
+          "LLHeroProbeManager::generateRadiance",
+          "LLHeroProbeManager::initReflectionMaps",
+          "LLHeroProbeManager::registerViewerObject",
+          "LLHeroProbeManager::renderDebug",
+          "LLHeroProbeManager::renderProbes",
+          "LLHeroProbeManager::reset",
+          "LLHeroProbeManager::unregisterViewerObject",
+          "LLHeroProbeManager::update",
+          "LLHeroProbeManager::updateProbeFace",
+          "LLHeroProbeManager::updateUniforms",
+          "LLStartUp::getStartupState",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::instance"
         ],
         "unresolved_includes": []
       },
@@ -217103,8 +217809,6 @@
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
-          "indra/llcommon/fsyspath.h",
-          "indra/llcommon/hbxxh.h",
           "indra/llcommon/llerrorcontrol.h",
           "indra/llcommon/llfile.h",
           "indra/llrender/llrender.h",
@@ -217115,7 +217819,6 @@
           "indra/newview/llskinningutil.h",
           "indra/newview/llsky.h",
           "indra/newview/llspatialpartition.h",
-          "indra/newview/llversioninfo.h",
           "indra/newview/llviewercontrol.h",
           "indra/newview/llviewerobjectlist.h",
           "indra/newview/llviewerprecompiledheaders.h",
@@ -217135,7 +217838,6 @@
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::instance",
           "LLSkinningUtil::getMaxJointCount",
-          "LLVersionInfo::instance",
           "LLVertexBuffer::unbind",
           "LLViewerShaderMgr::LLViewerShaderMgr",
           "LLViewerShaderMgr::beginShaders",

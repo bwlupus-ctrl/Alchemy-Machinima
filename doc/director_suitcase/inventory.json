@@ -7,8 +7,8 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 730,
       "HOOK": 523,
-      "OWNED": 907,
-      "TOOLING": 417
+      "OWNED": 908,
+      "TOOLING": 426
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -53,7 +53,8 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/shader_load_check.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -236,10 +237,10 @@
       },
       "wiring_rows": 2288
     },
-    "head_source_tree": "fe45d8ac43536f86c7109f229a707da7a3e7a9f2",
+    "head_source_tree": "3419bf8933b24ab590dbe685ab634e15e958dba9",
     "hook_files": 523,
-    "hunks": 3219,
-    "input_sha256": "330fa09e87bb10f850e85fb9dbe87585f6cf78f5595f5277935a1d4d1e71adad",
+    "hunks": 3228,
+    "input_sha256": "ac2f1c8cd0888a7195b39b7531c584caccde2667893289d4a8f0cb58cee23f2b",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -11015,6 +11016,7 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "looks",
         "weather"
       ],
       "git_status": "M",
@@ -11162,8 +11164,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "roto-tron",
-        "sensor",
-        "weather"
+        "sensor"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -11191,8 +11192,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "roto-tron",
-        "sensor",
-        "weather"
+        "sensor"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -15437,6 +15437,24 @@
       "git_status": "A",
       "layer": 4,
       "path": "indra/newview/alghostplacementresolver.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alghostrestframe.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -20642,8 +20660,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "looks"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -20679,8 +20696,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "looks"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -28668,13 +28684,27 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "owned source / hook delta identifiers and comments"
+        "one-hop include neighbors; tentative, not required closure"
       ],
       "features": [
-        "looks"
+        "actor-path",
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "environment",
+        "gaze",
+        "looks",
+        "rig",
+        "roto-tron",
+        "sensor",
+        "shafts-volumetrics",
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
-      "layer": 10,
+      "layer": 2,
       "path": "indra/newview/llheroprobemanager.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -30414,8 +30444,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
-        "weather"
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -30921,8 +30950,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "roto-tron",
-        "weather"
+        "roto-tron"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -40395,6 +40423,96 @@
         "path/prefix"
       ],
       "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_rest_frame_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_rest_frame_fix1_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_rest_frame_mover_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_rest_frame_native_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_rest_frame_pins.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_rest_frame_shader_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
         "looks"
       ],
       "git_status": "A",
@@ -43128,6 +43246,45 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/sensor_quant_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_load_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_load_epochs.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_load_fixture.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

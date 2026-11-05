@@ -212,11 +212,11 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llsurfacepatch.cpp", "hunks": ["indra/newview/llsurfacepatch.cpp@32,7", "indra/newview/llsurfacepatch.cpp@1057,9"]}
 - {"path": "indra/newview/llviewermessage.cpp", "hunks": ["indra/newview/llviewermessage.cpp@25,11", "indra/newview/llviewermessage.cpp@3994,10"]}
 - {"path": "indra/newview/llviewerobject.cpp", "hunks": ["indra/newview/llviewerobject.cpp@58,7", "indra/newview/llviewerobject.cpp@103,7", "indra/newview/llviewerobject.cpp@960,35", "indra/newview/llviewerobject.cpp@1014,7", "indra/newview/llviewerobject.cpp@1044,7", "indra/newview/llviewerobject.cpp@5533,11", "indra/newview/llviewerobject.cpp@7888,20", "indra/newview/llviewerobject.cpp@7918,11"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@194,22", "indra/newview/llviewershadermgr.cpp@280,47", "indra/newview/llviewershadermgr.cpp@726,81", "indra/newview/llviewershadermgr.cpp@1760,259", "indra/newview/llviewershadermgr.cpp@2028,8", "indra/newview/llviewershadermgr.cpp@2097,46", "indra/newview/llviewershadermgr.cpp@3220,23", "indra/newview/llviewershadermgr.cpp@3258,23", "indra/newview/llviewershadermgr.cpp@3294,22", "indra/newview/llviewershadermgr.cpp@3329,85", "indra/newview/llviewershadermgr.cpp@3920,67", "indra/newview/llviewershadermgr.cpp@4595,633", "indra/newview/llviewershadermgr.cpp@6130,115"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@189,22", "indra/newview/llviewershadermgr.cpp@275,47", "indra/newview/llviewershadermgr.cpp@721,81", "indra/newview/llviewershadermgr.cpp@1667,259", "indra/newview/llviewershadermgr.cpp@1935,8", "indra/newview/llviewershadermgr.cpp@2004,46", "indra/newview/llviewershadermgr.cpp@3127,23", "indra/newview/llviewershadermgr.cpp@3165,23", "indra/newview/llviewershadermgr.cpp@3201,22", "indra/newview/llviewershadermgr.cpp@3236,85", "indra/newview/llviewershadermgr.cpp@3827,67", "indra/newview/llviewershadermgr.cpp@4502,633", "indra/newview/llviewershadermgr.cpp@6037,115"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@297,15", "indra/newview/llviewershadermgr.h@351,58"]}
 - {"path": "indra/llrender/llrender.cpp", "hunks": ["indra/llrender/llrender.cpp@641,15", "indra/llrender/llrender.cpp@659,25", "indra/llrender/llrender.cpp@903,37", "indra/llrender/llrender.cpp@954,17", "indra/llrender/llrender.cpp@972,37", "indra/llrender/llrender.cpp@1693,41"]}
 - {"path": "indra/llrender/llrender.h", "hunks": ["indra/llrender/llrender.h@262,9", "indra/llrender/llrender.h@287,9", "indra/llrender/llrender.h@411,17", "indra/llrender/llrender.h@479,71", "indra/llrender/llrender.h@588,12"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@2001,363"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@2176,363"]}
 - {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@589,396"]}
 - {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1065,172"]}
 - {"path": "indra/newview/lldrawable.cpp", "hunks": ["indra/newview/lldrawable.cpp@48,8", "indra/newview/lldrawable.cpp@627,7", "indra/newview/lldrawable.cpp@822,36", "indra/newview/lldrawable.cpp@888,34", "indra/newview/lldrawable.cpp@1057,7", "indra/newview/lldrawable.cpp@1125,11"]}
@@ -233,7 +233,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llreflectionmap.cpp", "hunks": ["indra/newview/llreflectionmap.cpp@291,18"]}
 - {"path": "indra/newview/llreflectionmap.h", "hunks": ["indra/newview/llreflectionmap.h@26,7"]}
 - {"path": "indra/newview/llreflectionmapmanager.h", "hunks": ["indra/newview/llreflectionmapmanager.h@26,15", "indra/newview/llreflectionmapmanager.h@112,9", "indra/newview/llreflectionmapmanager.h@135,46", "indra/newview/llreflectionmapmanager.h@283,62", "indra/newview/llreflectionmapmanager.h@379,148"]}
-- {"path": "indra/newview/llviewerregion.cpp", "hunks": ["indra/newview/llviewerregion.cpp@62,7", "indra/newview/llviewerregion.cpp@1852,8", "indra/newview/llviewerregion.cpp@2841,12", "indra/newview/llviewerregion.cpp@2881,10"]}
+- {"path": "indra/newview/llviewerregion.cpp", "hunks": ["indra/newview/llviewerregion.cpp@62,7", "indra/newview/llviewerregion.cpp@1852,8", "indra/newview/llviewerregion.cpp@2837,12", "indra/newview/llviewerregion.cpp@2877,10"]}
 - {"path": "indra/newview/llviewertexturelist.cpp", "hunks": ["indra/newview/llviewertexturelist.cpp@62,7", "indra/newview/llviewertexturelist.cpp@1211,12"]}
 - {"path": "indra/newview/llvograss.cpp", "hunks": ["indra/newview/llvograss.cpp@42,7", "indra/newview/llvograss.cpp@368,9", "indra/newview/llvograss.cpp@383,8"]}
 - {"path": "indra/newview/llvotree.cpp", "hunks": ["indra/newview/llvotree.cpp@50,7", "indra/newview/llvotree.cpp@378,9"]}
@@ -668,6 +668,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 667, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 346, "text": "llghostdeferreddiagnostics.cpp", "source": "indra/newview/llghostdeferreddiagnostics.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1306, "text": "llghostdeferreddiagnostics.h", "source": "indra/newview/llghostdeferreddiagnostics.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 909, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 683, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 728, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 746, "text": "llmediactrl.cpp", "source": "indra/newview/llmediactrl.cpp"}

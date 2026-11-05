@@ -75,6 +75,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alghostplacementadapter.h`
 - `indra/newview/alghostplacementresolver.cpp`
 - `indra/newview/alghostplacementresolver.h`
+- `indra/newview/alghostrestframe.h`
 - `indra/newview/alghostrotation.h`
 - `indra/newview/alghostspawnengine.cpp`
 - `indra/newview/alghostspawnengine.h`
@@ -228,14 +229,14 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@106,7", "indra/newview/llselectmgr.cpp@141,68", "indra/newview/llselectmgr.cpp@266,13", "indra/newview/llselectmgr.cpp@4376,35", "indra/newview/llselectmgr.cpp@4559,28", "indra/newview/llselectmgr.cpp@4826,11"]}
 - {"path": "indra/newview/llviewerobject.cpp", "hunks": ["indra/newview/llviewerobject.cpp@25,12", "indra/newview/llviewerobject.cpp@78,7", "indra/newview/llviewerobject.cpp@123,27", "indra/newview/llviewerobject.cpp@240,12", "indra/newview/llviewerobject.cpp@2577,23", "indra/newview/llviewerobject.cpp@4670,16", "indra/newview/llviewerobject.cpp@5209,211", "indra/newview/llviewerobject.cpp@5421,11", "indra/newview/llviewerobject.cpp@5482,14", "indra/newview/llviewerobject.cpp@5505,18", "indra/newview/llviewerobject.cpp@5581,7", "indra/newview/llviewerobject.cpp@5951,10", "indra/newview/llviewerobject.cpp@5972,10", "indra/newview/llviewerobject.cpp@6210,12", "indra/newview/llviewerobject.cpp@7888,20"]}
 - {"path": "indra/newview/llviewerpartsim.cpp", "hunks": ["indra/newview/llviewerpartsim.cpp@25,9", "indra/newview/llviewerpartsim.cpp@841,35"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@134,24", "indra/newview/llviewershadermgr.cpp@691,32", "indra/newview/llviewershadermgr.cpp@1760,259", "indra/newview/llviewershadermgr.cpp@4595,633", "indra/newview/llviewershadermgr.cpp@6346,8", "indra/newview/llviewershadermgr.cpp@6386,70", "indra/newview/llviewershadermgr.cpp@6476,118"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@129,24", "indra/newview/llviewershadermgr.cpp@686,32", "indra/newview/llviewershadermgr.cpp@1667,259", "indra/newview/llviewershadermgr.cpp@4502,633", "indra/newview/llviewershadermgr.cpp@6253,8", "indra/newview/llviewershadermgr.cpp@6293,70", "indra/newview/llviewershadermgr.cpp@6383,118"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@247,23"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_edit_hover_height.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_edit_hover_height.xml@17,127"]}
 - {"path": "indra/llcharacter/lleditingmotion.cpp", "hunks": ["indra/llcharacter/lleditingmotion.cpp@28,7", "indra/llcharacter/lleditingmotion.cpp@165,10", "indra/llcharacter/lleditingmotion.cpp@241,11"]}
 - {"path": "indra/llrender/llrender.cpp", "hunks": ["indra/llrender/llrender.cpp@1310,15"]}
 - {"path": "indra/llrender/llrender.h", "hunks": ["indra/llrender/llrender.h@411,17"]}
 - {"path": "indra/llrender/llrendertarget.h", "hunks": ["indra/llrender/llrendertarget.h@173,21"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@1878,60", "indra/llrender/llshadermgr.cpp@2001,363"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@2053,60", "indra/llrender/llshadermgr.cpp@2176,363"]}
 - {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@437,89", "indra/llrender/llshadermgr.h@589,396"]}
 - {"path": "indra/llwindow/llwindowwin32.cpp", "hunks": ["indra/llwindow/llwindowwin32.cpp@2114,226"]}
 - {"path": "indra/newview/alderenderlist.cpp", "hunks": ["indra/newview/alderenderlist.cpp@13,23", "indra/newview/alderenderlist.cpp@156,72", "indra/newview/alderenderlist.cpp@411,16", "indra/newview/alderenderlist.cpp@454,96"]}
@@ -649,6 +650,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1305, "text": "llghostcoverage.h", "source": "indra/newview/llghostcoverage.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 346, "text": "llghostdeferreddiagnostics.cpp", "source": "indra/newview/llghostdeferreddiagnostics.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1306, "text": "llghostdeferreddiagnostics.h", "source": "indra/newview/llghostdeferreddiagnostics.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 909, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 683, "text": "llhudeffectlookat.cpp", "source": "indra/newview/llhudeffectlookat.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 685, "text": "llhudeffecttrail.cpp", "source": "indra/newview/llhudeffecttrail.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 688, "text": "llhudicon.cpp", "source": "indra/newview/llhudicon.cpp"}
@@ -731,6 +733,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `scripts/code_tools/clone_looks_runtime_check.py`
 - `scripts/code_tools/clone_looks_safety_check.py`
 - `scripts/code_tools/clone_looks_scan_build_check.py`
+- `scripts/code_tools/clone_rest_frame_check.py`
+- `scripts/code_tools/clone_rest_frame_native_check.py`
 - `scripts/code_tools/director_clone_qol_check.py`
 - `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`

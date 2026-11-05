@@ -236,18 +236,25 @@ def unpinned_sites(path, source):
 
 def injection_site_errors(root, files):
     # llbakingShaderMgr is the appearance baker, never initializes binary caching.
-    found = subprocess.run(['rg', '-l', INJECTION_PATTERN, 'indra', '-g', '*.cpp', '-g', '!Reeelight*', '-g', '!MartysMods_RELIGHT*'], cwd=root, capture_output=True, text=True)
-    if found.returncode not in (0, 1):
+    # git, not rg: the prebuild shell has no ripgrep. Tracked plus new files,
+    # the same set rg would see, minus the private reference trees.
+    found = subprocess.run(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '--', 'indra/*.cpp'],
+                           cwd=root, capture_output=True, text=True, encoding='utf-8')
+    if found.returncode:
         return ['shader injection call-site scan failed: ' + found.stderr]
     errors = []
     for path in found.stdout.splitlines():
         path = path.replace('\\', '/')
-        if path == 'indra/llappearanceutility/llbakingshadermgr.cpp':
+        if (path == 'indra/llappearanceutility/llbakingshadermgr.cpp'
+                or 'Reeelight' in path or 'MartysMods_RELIGHT' in path):
             continue
         source = files.get(path)
         if source is None:
-            source = (root / path).read_text(encoding='utf-8')
-        if unpinned_sites(path, source):
+            full = root / path
+            if not full.is_file():
+                continue
+            source = full.read_text(encoding='utf-8', errors='replace')
+        if re.search(INJECTION_PATTERN, source) and unpinned_sites(path, source):
             errors.append('new unpinned shader injection/attachment call site: ' + path)
     return errors
 

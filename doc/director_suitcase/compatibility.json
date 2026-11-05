@@ -99,6 +99,15 @@
     "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "base-owned",
+    "consumer": "indra/llrender/llshadermgr.cpp",
+    "dependency": "indra/llcommon/fsyspath.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at base"
+  },
+  {
     "action": "OUT: remove unrelated caller or adapt creative caller to a minimal target contract; do not port excluded feature",
     "class": "EXCLUDED-PERF",
     "consumer": "indra/llrender/llvertexbuffer.cpp",
@@ -7374,6 +7383,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.cpp",
+    "dependency": "indra/newview/alghostrestframe.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.cpp",
     "dependency": "indra/newview/alkithistory.h",
     "excluded": false,
     "origin": "fork-added",
@@ -11716,15 +11734,6 @@
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
-    "consumer": "indra/newview/llviewershadermgr.cpp",
-    "dependency": "indra/llcommon/fsyspath.h",
-    "excluded": false,
-    "origin": "present at local Alchemy base",
-    "reason": "present at base"
   },
   {
     "action": "carry/adapt fork source",
