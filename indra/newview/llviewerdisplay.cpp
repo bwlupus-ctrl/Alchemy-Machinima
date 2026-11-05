@@ -786,7 +786,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             LL_PROFILE_GPU_ZONE("hero manager")
             gPipeline.mHeroProbeManager.update();
         }
-        // Hero initialization can reload shaders and release the surface map.
+        // Hero initialization can rebuild GL buffers and release the surface map.
         // Publish once after that invalidation, before mirrors or the main view.
         if (!for_snapshot && gFrameCount > 1)
         {

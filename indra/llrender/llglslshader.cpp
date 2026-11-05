@@ -2105,6 +2105,7 @@ void LLShaderUniforms::apply(LLGLSLShader* shader)
 
 LLUUID LLGLSLShader::hash()
 {
+    mShaderCacheEligible = true;
     HBXXH128 hash_obj;
     hash_obj.update(mName);
     hash_obj.update(&mShaderGroup, sizeof(mShaderGroup));
@@ -2128,48 +2129,76 @@ LLUUID LLGLSLShader::hash()
         hash_obj.update(define_pair.second);
 
     }
-    hash_obj.update(&mFeatures, sizeof(LLShaderFeatures));
+    // Hash declared fields only: LLShaderFeatures can have padding whose bytes
+    // differ between otherwise identical (including heap-allocated) variants.
+    hash_obj.update(&mFeatures.mIndexedTextureChannels, sizeof(mFeatures.mIndexedTextureChannels));
+    hash_obj.update(&mFeatures.mIndexedMaterialChannels, sizeof(mFeatures.mIndexedMaterialChannels));
+    hash_obj.update(&mFeatures.calculatesLighting, sizeof(mFeatures.calculatesLighting));
+    hash_obj.update(&mFeatures.calculatesAtmospherics, sizeof(mFeatures.calculatesAtmospherics));
+    hash_obj.update(&mFeatures.hasLighting, sizeof(mFeatures.hasLighting));
+    hash_obj.update(&mFeatures.isAlphaLighting, sizeof(mFeatures.isAlphaLighting));
+    hash_obj.update(&mFeatures.isSpecular, sizeof(mFeatures.isSpecular));
+    hash_obj.update(&mFeatures.hasTransport, sizeof(mFeatures.hasTransport));
+    hash_obj.update(&mFeatures.hasSkinning, sizeof(mFeatures.hasSkinning));
+    hash_obj.update(&mFeatures.hasObjectSkinning, sizeof(mFeatures.hasObjectSkinning));
+    hash_obj.update(&mFeatures.mGLTF, sizeof(mFeatures.mGLTF));
+    hash_obj.update(&mFeatures.hasAtmospherics, sizeof(mFeatures.hasAtmospherics));
+    hash_obj.update(&mFeatures.hasGamma, sizeof(mFeatures.hasGamma));
+    hash_obj.update(&mFeatures.hasShadows, sizeof(mFeatures.hasShadows));
+    hash_obj.update(&mFeatures.hasAmbientOcclusion, sizeof(mFeatures.hasAmbientOcclusion));
+    hash_obj.update(&mFeatures.hasSrgb, sizeof(mFeatures.hasSrgb));
+    hash_obj.update(&mFeatures.isDeferred, sizeof(mFeatures.isDeferred));
+    hash_obj.update(&mFeatures.hasFullGBuffer, sizeof(mFeatures.hasFullGBuffer));
+    hash_obj.update(&mFeatures.hasScreenSpaceReflections, sizeof(mFeatures.hasScreenSpaceReflections));
+    hash_obj.update(&mFeatures.hasAlphaMask, sizeof(mFeatures.hasAlphaMask));
+    hash_obj.update(&mFeatures.hasReflectionProbes, sizeof(mFeatures.hasReflectionProbes));
+    hash_obj.update(&mFeatures.attachNothing, sizeof(mFeatures.attachNothing));
+    hash_obj.update(&mFeatures.hasHeroProbes, sizeof(mFeatures.hasHeroProbes));
+    hash_obj.update(&mFeatures.isPBRTerrain, sizeof(mFeatures.isPBRTerrain));
+    hash_obj.update(&mFeatures.hasTonemap, sizeof(mFeatures.hasTonemap));
+    hash_obj.update(&mFeatures.hasColorGrade, sizeof(mFeatures.hasColorGrade));
+    hash_obj.update(&mFeatures.hasPostEffects, sizeof(mFeatures.hasPostEffects));
+    hash_obj.update(&mFeatures.hasActorFx, sizeof(mFeatures.hasActorFx));
+    hash_obj.update(&mFeatures.hasWeatherMaterial, sizeof(mFeatures.hasWeatherMaterial));
+    hash_obj.update(&mFeatures.hasActorFxShadow, sizeof(mFeatures.hasActorFxShadow));
     hash_obj.update(gGLManager.mGLVendor);
     hash_obj.update(gGLManager.mGLRenderer);
     hash_obj.update(gGLManager.mGLVersionString);
 
-    // [BDMerge ShaderCacheFix] include shader SOURCE CONTENTS in the cache
-    // key. Stock hashes only file names/defines/features/GL strings, so
-    // editing a .glsl file silently kept serving the stale cached binary
-    // (observed: NSpot spot-shadow chain changes in shadowUtil.glsl ignored
-    // until the cache was invalidated). Mirrors loadShaderFile's class-level
-    // fallback when resolving which file would actually be loaded.
+    auto* manager = LLShaderMgr::instance();
+    hash_obj.update(manager->mSharedShaderFingerprint.asString());
+    hash_obj.update(manager->mShaderCacheFeatureHash.asString());
+    const U32 epoch = LLShaderMgr::SHADER_CACHE_EPOCH;
+    hash_obj.update(&epoch, sizeof(epoch));
+    hash_obj.update(&sIndexedTextureChannels, sizeof(sIndexedTextureChannels));
+    for (const auto& attribute : manager->mReservedAttribs)
+    {
+        const auto length = attribute.size();
+        hash_obj.update(&length, sizeof(length));
+        hash_obj.update(attribute);
+    }
+
+    // Hash every possible class fallback, including lower classes used after a
+    // compile failure. Only programs naming this root depend on these contents.
     for (const auto& shdr_pair : mShaderFiles)
     {
-        std::string found;
-        for (S32 lvl = mShaderLevel; lvl > 0; lvl--)
+        bool found = false;
+        for (S32 level = mShaderLevel; level > 0; --level)
         {
-            std::string path = LLShaderMgr::instance()->getShaderDirPrefix() + llformat("%d", lvl) + gDirUtilp->getDirDelimiter() + shdr_pair.first;
-            if (LLFile::isfile(path))
+            const std::string path = manager->getShaderDirPrefix() + llformat("%d", level) +
+                gDirUtilp->getDirDelimiter() + shdr_pair.first;
+            if (!LLFile::isfile(path)) continue;
+            found = true;
+            std::string source;
+            if (!LLShaderMgr::readShaderSource(path, source))
             {
-                found = path;
-                break;
+                mShaderCacheEligible = false;
+                continue;
             }
+            hash_obj.update(&level, sizeof(level));
+            hash_obj.update(source);
         }
-        if (found.empty())
-        {
-            std::string path = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, "shaders", shdr_pair.first);
-            if (LLFile::isfile(path))
-            {
-                found = path;
-            }
-        }
-        if (!found.empty())
-        {
-            llifstream fin(found, std::ios::in | std::ios::binary);
-            if (fin.is_open())
-            {
-                std::stringstream buf;
-                buf << fin.rdbuf();
-                const std::string contents = buf.str();
-                hash_obj.update(contents);
-            }
-        }
+        if (!found) mShaderCacheEligible = false;
     }
 
     return hash_obj.digest();

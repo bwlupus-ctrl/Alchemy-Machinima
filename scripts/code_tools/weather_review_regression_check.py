@@ -51,6 +51,8 @@ def reload_check(tree, out):
 #include <type_traits>
 #include <chrono>
 struct LLSD {};
+using U64=unsigned long long;
+U64 sShaderChangeCount=0;
 int destroyed=0,restored=0,reloads=0,releases=0;
 bool supported=true;
 void set(const char*,bool);
@@ -127,6 +129,10 @@ def display_check(tree, out, mutation=None):
     shader_calls = '\n'.join(line for line in shader.splitlines() if 'gPipeline.releaseGLBuffers();' in line)
     code = r'''
 #include <iostream>
+#include <sstream>
+#include <vector>
+#define LL_INFOS(x) std::ostringstream()
+#define LL_ENDL std::endl
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY(x)
 #define LL_PROFILE_GPU_ZONE(x)
 using U32=unsigned;
@@ -140,9 +146,10 @@ int gSavedSettings=0;
 template<class T>struct LLCachedControl{LLCachedControl(int&,const char*,T){}operator T(){return T{};}};
 int failures=0,publications=0,captures=0,shader_releases=0;
 struct Surface{U32 frame=0;void release(){frame=0;++shader_releases;}};
-struct Hero{bool mInitialized=false;void update();void renderProbes();};
+struct Hero{std::vector<int> mHeroVOList{1};bool mInitialized=false;void update();void renderProbes();};
 struct Pipeline{bool RenderMirrors=true;Surface mWeatherSurfaces;Hero mHeroProbeManager;
  void releaseGLBuffers(){RELEASE}
+ void createGLBuffers(){}
  void generateWeatherSurfaceCover(LLViewerCamera&){++publications;mWeatherSurfaces.frame=gFrameCount;}
  void generateWeatherAdvancedShelter(LLViewerCamera&){}
 }gPipeline;
@@ -153,7 +160,14 @@ void Hero::renderProbes(){++captures;if(gPipeline.mWeatherSurfaces.frame!=gFrame
  ++failures;std::cerr<<"hero probes lack current-frame cover after resource invalidation; ";}}
 void frame(){SCHEDULE}
 int main(){
- frame();if(shader_releases!=1){std::cerr<<"fixture did not exercise hero shader invalidation";return 1;}
+ // With no registered mirror, initialization must stay inert; cover publication
+ // and its ordering must still be correct. Then exercise the first mirror.
+ gPipeline.mHeroProbeManager.mHeroVOList.clear();frame();
+ if(shader_releases!=0||gPipeline.mHeroProbeManager.mInitialized||failures){
+  std::cerr<<"no-mirror frame rebuilt buffers or damaged cover";return 1;}
+ gPipeline.mHeroProbeManager.mHeroVOList.push_back(1);
+ publications=0;captures=0;
+ frame();if(shader_releases!=1){std::cerr<<"fixture did not exercise hero buffer invalidation";return 1;}
  if(publications!=1||captures!=1||gPipeline.mWeatherSurfaces.frame!=gFrameCount)++failures;
  ++gFrameCount;frame();if(publications!=2||captures!=2||shader_releases!=1)++failures;
  gPipeline.RenderMirrors=false;++gFrameCount;frame();

@@ -35,6 +35,12 @@
 #include "llsdutil.h"
 #include "llsdserialize.h"
 #include "hbxxh.h"
+#include "fsyspath.h"
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <limits>
 
 #if LL_DARWIN
 #include "OpenGL/OpenGL.h"
@@ -1230,55 +1236,209 @@ bool LLShaderMgr::validateProgramObject(GLuint obj)
     return success;
 }
 
-void LLShaderMgr::initShaderCache(bool enabled, const LLUUID& old_cache_version, const LLUUID& current_cache_version, bool second_instance)
+bool LLShaderMgr::readShaderSource(const std::string& filename, std::string& source)
+{
+    namespace fs = std::filesystem;
+    const fs::path path = fsyspath(filename);
+    std::error_code ec;
+    const auto size = fs::file_size(path, ec);
+    if (ec || size > static_cast<std::uintmax_t>(std::numeric_limits<std::streamsize>::max())) return false;
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream.is_open()) return false;
+    source.resize(static_cast<size_t>(size));
+    stream.read(source.data(), static_cast<std::streamsize>(size));
+    if (stream.bad() || stream.fail() || stream.gcount() != static_cast<std::streamsize>(size)) return false;
+    // Detect truncation, growth and read errors, rather than hashing a prefix.
+    if (stream.peek() != std::ifstream::traits_type::eof() || stream.bad()) return false;
+    return fs::file_size(path, ec) == size && !ec;
+}
+
+// A stage root owns main(); everything else can be linked as a shared module.
+// Treat closed comments as whitespace so documentation cannot hide a dependency.
+static bool shader_source_has_main(const std::string& source) noexcept
+{
+    struct MainMatch
+    {
+        size_t matched = 0;
+        bool in_word = false;
+
+        bool feed(char c) noexcept
+        {
+            const bool word = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                              (c >= '0' && c <= '9') || c == '_';
+            const bool space = c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v';
+            if (matched == 4 && (space || c == '('))
+            {
+                in_word = false;
+                return c == '(';
+            }
+            if (!in_word && c == 'm') matched = 1;
+            else if (word && matched > 0 && matched < 4 && c == "main"[matched]) ++matched;
+            else matched = 0;
+            in_word = word;
+            return false;
+        }
+    } match;
+
+    size_t i = 0;
+    while (i < source.size())
+    {
+        if (source[i] == '/' && i + 1 < source.size())
+        {
+            if (source[i + 1] == '/')
+            {
+                match.feed(' ');
+                i += 2;
+                while (i < source.size() && source[i] != '\r' && source[i] != '\n') ++i;
+                continue;
+            }
+            if (source[i + 1] == '*')
+            {
+                match.feed(' ');
+                i += 2;
+                // Preserve the old classifier's treatment of an unterminated
+                // block: its bytes remain source (with line comments removed).
+                // Track that possibility while skipping, without a second pass.
+                MainMatch unterminated;
+                bool line_comment = false;
+                bool found = false;
+                while (i < source.size() && !(source[i] == '*' && i + 1 < source.size() && source[i + 1] == '/'))
+                {
+                    const char c = source[i++];
+                    if (line_comment)
+                    {
+                        if (c == '\r' || c == '\n') line_comment = false;
+                    }
+                    else if (c == '/' && i < source.size() && source[i] == '/')
+                    {
+                        unterminated.feed(' ');
+                        line_comment = true;
+                        ++i;
+                    }
+                    else found = unterminated.feed(c) || found;
+                }
+                if (i == source.size()) return found;
+                i += 2;
+                continue;
+            }
+        }
+        if (match.feed(source[i++])) return true;
+    }
+    return false;
+}
+
+static bool shader_shared_source_fingerprint(const std::string& prefix, LLUUID& fingerprint)
+{
+    try
+    {
+        namespace fs = std::filesystem;
+        const fs::path shader_root = fsyspath(prefix).parent_path();
+        std::error_code ec;
+        if (shader_root.empty() || !fs::is_directory(shader_root, ec) || ec) return false;
+        std::vector<fs::path> files;
+        // Do not skip permission errors: a partial fingerprint is unsafe.
+        for (fs::recursive_directory_iterator it(shader_root, ec), end;
+             !ec && it != end; it.increment(ec))
+        {
+            std::error_code file_ec;
+            const bool regular = it->is_regular_file(file_ec);
+            if (file_ec) return false;
+            if (regular && it->path().extension() == ".glsl") files.push_back(it->path());
+        }
+        if (ec || files.empty()) return false;
+        std::sort(files.begin(), files.end());
+        HBXXH128 hash_obj;
+        for (const fs::path& path : files)
+        {
+            const auto relative_path = fs::relative(path, shader_root, ec).generic_u8string();
+            const std::string relative(relative_path.begin(), relative_path.end());
+            if (ec) return false;
+            std::string source;
+            if (!LLShaderMgr::readShaderSource(fsyspath(path).string(), source)) return false;
+            if (!shader_source_has_main(source))
+            {
+                const auto length = source.size();
+                hash_obj.update(relative);
+                hash_obj.update(&length, sizeof(length));
+                hash_obj.update(source);
+            }
+        }
+        fingerprint = hash_obj.digest();
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+void LLShaderMgr::hashShaderCacheFeatures()
+{
+    HBXXH128 hash_obj;
+    // Alias names AND assembled-text keys: never hash process-local GL handles.
+    for (const auto* aliases : { &mVertexShaderObjects, &mFragmentShaderObjects })
+    {
+        for (const auto& alias : *aliases)
+        {
+            const auto object = std::find_if(mShaderObjects.begin(), mShaderObjects.end(),
+                [&alias](const auto& entry) { return entry.second == alias.second; });
+            if (object == mShaderObjects.end())
+            {
+                disableShaderCache();
+                return;
+            }
+            hash_obj.update(alias.first);
+            hash_obj.update(object->first);
+        }
+    }
+    mShaderCacheFeatureHash = hash_obj.digest();
+}
+
+void LLShaderMgr::initShaderCache(bool enabled, bool second_instance)
 {
     LL_PROFILE_ZONE_SCOPED;
     LL_INFOS("ShaderMgr") << "Initializing shader cache" << LL_ENDL;
 
-    mShaderCacheEnabled = gGLManager.mGLVersion >= 4.09 && enabled;
-
-    if(!mShaderCacheEnabled || mShaderCacheVersion.notNull())
-        return;
-
-    mShaderCacheVersion = current_cache_version;
-
-    mShaderCacheDir = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "shader_cache");
-    LLFile::mkdir(mShaderCacheDir);
+    mShaderCacheReadOnly = second_instance;
+    if (!mShaderCacheScanAttempted)
     {
-        std::string meta_out_path = gDirUtilp->add(mShaderCacheDir, "shaderdata.llsd");
-        if (gDirUtilp->fileExists(meta_out_path))
+        mShaderCacheScanAttempted = true;
+        mShaderCacheSourceValid = shader_shared_source_fingerprint(getShaderDirPrefix(), mSharedShaderFingerprint);
+        if (!mShaderCacheSourceValid)
         {
-            LL_PROFILE_ZONE_NAMED("shader_cache");
-            LL_INFOS("ShaderMgr") << "Loading shader cache metadata" << LL_ENDL;
-
-            llifstream instream(meta_out_path, std::ifstream::in | std::ifstream::binary);
-            LLSD in_data;
-            // todo: this is likely very expensive to parse, should use binary
-            LLSDSerialize::fromBinary(in_data, instream, LLSDSerialize::SIZE_UNLIMITED);
-            instream.close();
-
-            if (old_cache_version == current_cache_version
-                && in_data["version"].asUUID() == current_cache_version)
-            {
-                for (const auto& data_pair : llsd::inMap(in_data["shaders"]))
-                {
-                    ProgramBinaryData binary_info = ProgramBinaryData();
-                    binary_info.mBinaryFormat = data_pair.second["binary_format"].asInteger();
-                    binary_info.mBinaryLength = data_pair.second["binary_size"].asInteger();
-                    binary_info.mLastUsedTime = (F32)data_pair.second["last_used"].asReal();
-                    mShaderBinaryCache.insert_or_assign(LLUUID(data_pair.first), binary_info);
-                }
-            }
-            else if (!second_instance)
-            {
-                LL_INFOS("ShaderMgr") << "Shader cache version mismatch detected. Purging." << LL_ENDL;
-                clearShaderCache();
-            }
-            else
-            {
-                LL_INFOS("ShaderMgr") << "Shader cache version mismatch detected." << LL_ENDL;
-            }
+            LL_WARNS("ShaderMgr") << "Shader source scan failed; binary cache disabled for this run" << LL_ENDL;
         }
+    }
+    mShaderCacheEnabled = gGLManager.mGLVersion >= 4.09 && enabled && mShaderCacheSourceValid;
+    if (!mShaderCacheEnabled || mShaderCacheVersion.notNull()) return;
+
+    mShaderCacheVersion = LLUUID(SHADER_CACHE_SCHEMA);
+    mShaderCacheDir = gDirUtilp->getExpandedFilename(LL_PATH_CACHE, "shader_cache");
+    if (!second_instance) LLFile::mkdir(mShaderCacheDir);
+    const std::string meta_path = gDirUtilp->add(mShaderCacheDir, "shaderdata.llsd");
+    llifstream instream(meta_path, std::ifstream::in | std::ifstream::binary);
+    LLSD in_data;
+    const bool metadata_readable = instream.is_open() &&
+        LLSDSerialize::fromBinary(in_data, instream, LLSDSerialize::SIZE_UNLIMITED) > 0 &&
+        in_data.isMap() && in_data["shaders"].isMap();
+    instream.close();
+
+    // The cache is authoritative even if the viewer never saved its settings.
+    if (metadata_readable && in_data["version"].asUUID() == mShaderCacheVersion)
+    {
+        for (const auto& data_pair : llsd::inMap(in_data["shaders"]))
+        {
+            ProgramBinaryData binary_info;
+            binary_info.mBinaryFormat = data_pair.second["binary_format"].asInteger();
+            binary_info.mBinaryLength = data_pair.second["binary_size"].asInteger();
+            binary_info.mLastUsedTime = (F32)data_pair.second["last_used"].asReal();
+            mShaderBinaryCache.insert_or_assign(LLUUID(data_pair.first), binary_info);
+        }
+    }
+    else if (!second_instance)
+    {
+        LL_INFOS("ShaderMgr") << "Shader cache schema mismatch or unreadable metadata. Purging." << LL_ENDL;
+        clearShaderCache();
     }
 }
 
@@ -1293,7 +1453,7 @@ void LLShaderMgr::clearShaderCache()
 
 void LLShaderMgr::persistShaderCacheMetadata()
 {
-    if(!mShaderCacheEnabled) return;
+    if (!mShaderCacheEnabled || mShaderCacheReadOnly) return;
     if (mShaderCacheVersion.isNull())
     {
         LL_WARNS("ShaderMgr") << "Attempted to save shader cache with no version set" << LL_ENDL;
@@ -1303,15 +1463,12 @@ void LLShaderMgr::persistShaderCacheMetadata()
     LL_INFOS("ShaderMgr") << "Persisting shader cache metadata to disk" << LL_ENDL;
 
     LLSD out;
-    // Settings and shader cache get saved at different time, thus making
-    // RenderShaderCacheVersion unreliable when running multiple viewer
-    // instances, or for cases where viewer crashes before saving settings.
-    // Duplicate version to the cache itself.
+    // Schema lives in metadata; settings may be stale after a crash.
     out["version"] = mShaderCacheVersion;
     out["shaders"] = LLSD::emptyMap();
     LLSD &shaders = out["shaders"];
 
-    static const F32 LRU_TIME = (60.f * 60.f) * 24.f * 7.f; // 14 days
+    static const F32 LRU_TIME = (60.f * 60.f) * 24.f * 7.f; // 7 days
     const F32 current_time = (F32)LLTimer::getTotalSeconds();
     for (auto it = mShaderBinaryCache.begin(); it != mShaderBinaryCache.end();)
     {
@@ -1330,6 +1487,22 @@ void LLShaderMgr::persistShaderCacheMetadata()
             data["last_used"] = LLSD::Real(shader_metadata.mLastUsedTime);
             shaders[it->first.asString()] = data;
             ++it;
+        }
+    }
+
+    // A crash can leave binaries saved before their metadata. Reap these too;
+    // otherwise they are invisible to the age-based LRU on subsequent launches.
+    std::error_code scan_ec;
+    namespace fs = std::filesystem;
+    for (fs::directory_iterator it(fsyspath(mShaderCacheDir), scan_ec), end;
+         !scan_ec && it != end; it.increment(scan_ec))
+    {
+        const auto& path = it->path();
+        if (path.extension() == ".shaderbin" &&
+            !shaders.has(path.stem().string()))
+        {
+            std::error_code remove_ec;
+            fs::remove(path, remove_ec);
         }
     }
 
@@ -1356,7 +1529,9 @@ bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
         return false;
     }
 
-    if (!mShaderCacheEnabled) return false;
+    // hash() has already checked this program's roots. Never use a partial key,
+    // or a key made while the shared-source scan disabled caching.
+    if (!mShaderCacheEnabled || !shader->mShaderCacheEligible) return false;
 
     glProgramParameteri(shader->mProgramObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
 
@@ -1395,7 +1570,7 @@ bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
         }
         //an error occured, normally we would print log but in this case it means the shader needs recompiling.
         LL_INFOS() << "Failed to load cached binary for shader: " << shader->mName << " falling back to compilation" << LL_ENDL;
-        LLFile::remove(in_path);
+        if (!mShaderCacheReadOnly) LLFile::remove(in_path);
         mShaderBinaryCache.erase(binary_iter);
     }
     return false;
@@ -1412,7 +1587,7 @@ bool LLShaderMgr::saveCachedProgramBinary(LLGLSLShader* shader)
         return true;
     }
 
-    if (!mShaderCacheEnabled) return true;
+    if (!mShaderCacheEnabled || mShaderCacheReadOnly || !shader->mShaderCacheEligible) return true;
 
     ProgramBinaryData binary_info = ProgramBinaryData();
     glGetProgramiv(shader->mProgramObject, GL_PROGRAM_BINARY_LENGTH, &binary_info.mBinaryLength);

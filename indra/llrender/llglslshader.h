@@ -364,6 +364,8 @@ public:
     defines_map_t mDefines;
     static defines_map_t sGlobalDefines;
     LLUUID mShaderHash;
+    // A missing/unreadable root affects this program, not the shared cache.
+    bool mShaderCacheEligible = true;
     bool mUsingBinaryProgram = false;
 
     //statistics for profiling shader performance

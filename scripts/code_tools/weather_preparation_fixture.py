@@ -62,7 +62,9 @@ def source(tree, out, mutation=None, particles=False):
 #include <stdexcept>
 namespace WeatherPreparationFixture {
 U64 reads=0, terrain=0, refreshes=0, notifications=0;
+U64 sShaderChangeCount=0; // Instrumentation counter used by the extracted settings listener.
 struct LLSD {};
+#define LL_PROFILE_ZONE_NAMED_CATEGORY_APP(x)
 #define llassert(x) do { if(!(x)) throw std::runtime_error(#x); } while(0)
 U32 sSettingsBatchDepth=0;bool sLightningDistancesDirty=false;
 struct LLControlVariable {

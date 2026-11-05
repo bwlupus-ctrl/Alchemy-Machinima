@@ -80,23 +80,16 @@ void LLHeroProbeManager::update()
         return;
     }
 
-    // Part of a hacky workaround to fix #3331.
-    // For some reason clearing shaders will cause mirrors to actually work.
-    // There's likely some deeper state issue that needs to be resolved.
-    // - Geenz 2025-02-25
-    if (!mInitialized && LLStartUp::getStartupState() > STATE_PRECACHE)
+    // #3331: retain the buffer reset from the old shader-reload workaround.
+    // Only do this once a mirror has registered, before taking any probe refs.
+    if (!mInitialized && !mHeroVOList.empty() && LLStartUp::getStartupState() > STATE_PRECACHE)
     {
-        // [ShaderLoadTime] The reload is what makes mirrors work; wiping the whole binary cache
-        // first forced a second COLD compile of every program at login (~45 s+ in this fork with
-        // its 44 shared Actor FX variants). Keep the cache by default so the reload is mostly
-        // cache hits; RenderHeroProbeClearShaderCache restores the exact stock workaround.
-        static LLCachedControl<bool> clear_cache(gSavedSettings, "RenderHeroProbeClearShaderCache", false);
-        if (clear_cache)
-        {
-            LLViewerShaderMgr::instance()->clearShaderCache();
-        }
-        LLViewerShaderMgr::instance()->setShaders();
+        gPipeline.releaseGLBuffers();
+        gPipeline.createGLBuffers();
         mInitialized = true;
+        LL_INFOS("MirrorInit") << "First registered mirror: rebuilt GL buffers without reloading shaders" << LL_ENDL;
+        // releaseGLBuffers cleans up hero maps. The initReflectionMaps and
+        // scratch-target allocation below must run before renderProbes this frame.
     }
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;

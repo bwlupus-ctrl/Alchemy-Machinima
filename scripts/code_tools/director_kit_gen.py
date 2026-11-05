@@ -2687,6 +2687,17 @@ def main(argv: list[str] | None = None) -> int:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(content)
     if args.check:
+        # prebuild_guard already runs this gate in every worktree. Its external
+        # installed copy may predate clone_looks_prebuild_gates.ps1 dot-sourcing.
+        import shader_load_check
+        shader_errors = shader_load_check.check(ROOT)
+        if shader_errors:
+            for error in shader_errors:
+                print("shader_load_check: " + error, file=sys.stderr)
+            return 1
+        if shader_load_check.selftest(quiet=True):
+            return 1
+        shader_load_check.native_check(ROOT)
         for path in stale:
             print(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
         return 1 if stale else 0
