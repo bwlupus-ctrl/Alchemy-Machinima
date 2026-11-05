@@ -19,11 +19,11 @@ def source_assertions(tree, block):
     shifted = quantized + 0x40000000
     assert np.all(quantized >= -(2**31)) and np.all(quantized < 2**31)
     assert np.all(shifted >= -(2**31)) and np.all(shifted < 2**31)
-    assert 'float slab = floor((fxHeight + 0.11) / 0.22);' in block
+    assert 'float slab = floor((fxHeight + 0.08) / 0.22);' in block
     fs = tree.read(F)
-    assert 'float slabZ = mod(P.z + 0.11, 0.22);' in fs
+    assert 'float slabZ = mod(P.z + 0.08, 0.22);' in fs
     eye = float(re.search(r'const float sl_eye = ([0-9.]+);', fs)[1])
-    fraction = (eye + .11) % .22
+    fraction = (eye + .08) % .22
     assert min(fraction, .22 - fraction) >= .08, 'eye height too close to a Slice boundary'
     assert 'if (vary_fx_body == 2) cloneFxWipeEdge = 0.0;' in fs
     assert 'cloneFxDim = 1.0 - 2.0 * amount;' in fs

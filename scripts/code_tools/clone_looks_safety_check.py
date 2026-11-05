@@ -324,6 +324,11 @@ class RealAvatar(Runner):
             rigid = b['name']=='extra_attachment'
             pr = self.rigid_programs.get(main_pr,main_pr) if rigid else main_pr
             g.use(pr)
+            # Optional foreign-rest fixture data. Zero is the production
+            # no-correction contract and is reset for every submitted batch.
+            delta = np.ascontiguousarray(b.get('rest_delta', np.zeros((3,4))), dtype=np.float32)
+            if not getattr(self, 'omit_rest_upload', False):  # planted missing-upload fixture only
+                g.u4fv(loc('ghostRestDelta[0]'), 3, delta.ctypes.data_as(C.POINTER(g.F)))
             if rigid and pr != main_pr:
                 for uniform,(integer,values) in self.render_uniforms.items():
                     (g.ui if integer else g.uf[len(values)])(loc(uniform),*values)
@@ -335,6 +340,8 @@ class RealAvatar(Runner):
                 m=np.eye(4)
                 if name:
                     m=world[name]@np.linalg.inv(self.skeleton.bind[name])
+                    if 'inverse_binds' in b:
+                        m=world[name]@b['inverse_binds'][name]
                 elif 'transform' in b:
                     m=b['transform']
                 # objectSkinV consumes mat3(matrixPalette) as COLUMN vectors,
@@ -907,6 +914,8 @@ def _check(out=None,looks=None):
                 thresholds=dict(luminance=LUMA_CEILING,white_fraction=.25,dilation_px=2,aa_rms=AA_RMS,aa_p99=AA_P99),
                 times=TIMES,perceptibility_limits=PERCEPT_LIMITS,looks={})
     result['clone_fx'] = clone_fx_result
+    from clone_rest_frame_check import check as rest_frame_check
+    result['rest_frame'] = rest_frame_check(gl=runners[1].gl)
     result['legacy_summary']=dict(sha256=validate_legacy_known(),
         known=[dict(look=look, check=check, **meta) for (look,check),meta in sorted(LEGACY_KNOWN.items())],
         warnings=[], stale_entries=[], failures={}, negative_controls=legacy_controls)

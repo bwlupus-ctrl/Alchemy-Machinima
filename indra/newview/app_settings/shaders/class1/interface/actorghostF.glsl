@@ -706,7 +706,7 @@ void main()
         float t = ghostFx3.w + ghostAux.w * 0.73;
         if (vary_fx_body == 1 && ghostFx2.x > 0.0)
         {
-            float slabZ = mod(P.z + 0.11, 0.22);
+            float slabZ = mod(P.z + 0.08, 0.22);
             float gap = 0.035 * clamp(ghostFx2.x, 0.0, 1.0);
             // Unresolved gaps crawl into dotted lines: omit them below one pixel.
             if (gap >= fxFootprintZ && min(slabZ, 0.22 - slabZ) < gap * 0.5) discard;

@@ -15,6 +15,8 @@ ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f52124006
 
 def actor_key_baseline(source, name):
     """Peel only exact key deltas; full-file equality rejects unrelated edits."""
+    from clone_rest_frame_pins import reverse_rest_frame_mover
+    source = reverse_rest_frame_mover(source, name)
     source = reverse_feature_allowance(source, name, "clone_fx_mover_hunks.json",
         "9ccf4c83774ff89260a93adb6b76706773b88da5bc5389b2fa85d61bc48fa846", "six session-only clone FX")
     source = reverse_feature_allowance(source, name, "legacy_animation_clock_hunks.json",

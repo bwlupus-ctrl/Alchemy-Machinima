@@ -58,6 +58,8 @@ out vec3 vary_object_position;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
+// Delta rows, not a matrix: never-uploaded uniforms are zero and inert.
+uniform vec4 ghostRestDelta[3];
 #endif
 #ifdef GHOST_WORLD_PASS
 void calcAtmospherics(vec3 inPositionEye);
@@ -87,7 +89,7 @@ float cloneFxHash(vec2 p)
     return float(h >> 8) * (1.0 / 16777216.0);
 }
 
-void cloneFxVertex(inout vec4 pos, int body)
+void cloneFxVertex(inout vec4 pos, int body, vec3 rest)
 {
     vary_fx_body = body; // 0 rigid, 1 anatomical body, 2 eyes (no Dropout/Interlace)
     // Uniform early-out: the original position arithmetic is untouched at zero.
@@ -95,10 +97,10 @@ void cloneFxVertex(inout vec4 pos, int body)
     float offset = 0.0;
     float t = ghostFx3.w + ghostAux.w * 0.73;
     // FX-only eye height. Never alter the coordinates consumed by looks.
-    float fxHeight = body == 2 ? 1.762 : position.z; // sl_eye
+    float fxHeight = body == 2 ? 1.762 : rest.z; // sl_eye
     if (body != 0 && ghostFx2.x > 0.0)
     {
-        float slab = floor((fxHeight + 0.11) / 0.22);
+        float slab = floor((fxHeight + 0.08) / 0.22);
         float cycle = (t + cloneFxHash(vec2(slab, ghostAux.w))) / 2.4;
         float u = fract(cycle);
         float settle = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.30, 0.92, u));
@@ -113,7 +115,7 @@ void cloneFxVertex(inout vec4 pos, int body)
         float pixel = 2.0 * eyeDepth / max(abs(projection_matrix[1][1])
                       * max(ghostFx3.z, 1.0) * length(ghostFxLateral), 1e-6);
         float detail = 1.0 - smoothstep(0.012, 0.030, pixel);
-        float line = mod(floor(position.z / 0.06), 2.0) * 2.0 - 1.0;
+        float line = mod(floor(rest.z / 0.06), 2.0) * 2.0 - 1.0;
         float beat = mod(floor(t * 4.0), 24576.0);
         float direction = cloneFxHash(vec2(beat, ghostAux.w)) > 0.5 ? 1.0 : -1.0;
         offset += line * direction * 0.018 * clamp(ghostFx3.x, 0.0, 1.0) * detail;
@@ -134,6 +136,21 @@ void cloneFxVertex(inout vec4 pos, int body)
 
 void main()
 {
+    vec3 rest = position;
+#ifdef HAS_SKIN
+    // Keep the exact raw path for normal/unset batches. Reconstruct the
+    // corrected rows before the dot products: adding a delta to large stored
+    // centimetre coordinates afterwards needlessly cancels significant bits.
+    if (any(notEqual(ghostRestDelta[0], vec4(0.0))) ||
+        any(notEqual(ghostRestDelta[1], vec4(0.0))) ||
+        any(notEqual(ghostRestDelta[2], vec4(0.0))))
+    {
+        vec4 p = vec4(position, 1.0);
+        rest = vec3(dot(ghostRestDelta[0] + vec4(1.0, 0.0, 0.0, 0.0), p),
+                    dot(ghostRestDelta[1] + vec4(0.0, 1.0, 0.0, 0.0), p),
+                    dot(ghostRestDelta[2] + vec4(0.0, 0.0, 1.0, 0.0), p));
+    }
+#endif
 #ifdef HAS_SKIN
     // the rigged palette is world-space (invBind * joint world) -- the same
     // seam the ghost placement rides -- so modelview * skin takes the vertex
@@ -148,9 +165,9 @@ void main()
     vary_normal = normal_matrix * normal;
 #endif
 #ifdef HAS_SKIN
-    cloneFxVertex(pos, 1);
+    cloneFxVertex(pos, 1, rest);
 #else
-    cloneFxVertex(pos, 0);
+    cloneFxVertex(pos, 0, rest);
 #endif
     vary_position = pos.xyz;
     gl_Position = projection_matrix * pos;
@@ -168,5 +185,5 @@ void main()
     vary_texture_index = texture_index;
 #endif
     vary_vertex_color = diffuse_color;
-    vary_object_position = position.xyz;
+    vary_object_position = rest;
 }

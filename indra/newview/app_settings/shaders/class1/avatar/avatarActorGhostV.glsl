@@ -58,7 +58,7 @@ float cloneFxHash(vec2 p)
     return float(h >> 8) * (1.0 / 16777216.0);
 }
 
-void cloneFxVertex(inout vec4 pos, int body)
+void cloneFxVertex(inout vec4 pos, int body, vec3 rest)
 {
     vary_fx_body = body; // 0 rigid, 1 anatomical body, 2 eyes (no Dropout/Interlace)
     // Uniform early-out: the original position arithmetic is untouched at zero.
@@ -66,10 +66,10 @@ void cloneFxVertex(inout vec4 pos, int body)
     float offset = 0.0;
     float t = ghostFx3.w + ghostAux.w * 0.73;
     // FX-only eye height. Never alter the coordinates consumed by looks.
-    float fxHeight = body == 2 ? 1.762 : position.z; // sl_eye
+    float fxHeight = body == 2 ? 1.762 : rest.z; // sl_eye
     if (body != 0 && ghostFx2.x > 0.0)
     {
-        float slab = floor((fxHeight + 0.11) / 0.22);
+        float slab = floor((fxHeight + 0.08) / 0.22);
         float cycle = (t + cloneFxHash(vec2(slab, ghostAux.w))) / 2.4;
         float u = fract(cycle);
         float settle = smoothstep(0.0, 0.12, u) * (1.0 - smoothstep(0.30, 0.92, u));
@@ -84,7 +84,7 @@ void cloneFxVertex(inout vec4 pos, int body)
         float pixel = 2.0 * eyeDepth / max(abs(projection_matrix[1][1])
                       * max(ghostFx3.z, 1.0) * length(ghostFxLateral), 1e-6);
         float detail = 1.0 - smoothstep(0.012, 0.030, pixel);
-        float line = mod(floor(position.z / 0.06), 2.0) * 2.0 - 1.0;
+        float line = mod(floor(rest.z / 0.06), 2.0) * 2.0 - 1.0;
         float beat = mod(floor(t * 4.0), 24576.0);
         float direction = cloneFxHash(vec2(beat, ghostAux.w)) > 0.5 ? 1.0 : -1.0;
         offset += line * direction * 0.018 * clamp(ghostFx3.x, 0.0, 1.0) * detail;
@@ -161,7 +161,7 @@ void main()
     pos.z = dot(skin[2], offsetPos);
 #endif
 
-    cloneFxVertex(pos, 1);
+    cloneFxVertex(pos, 1, position);
     vary_texcoord0 = texcoord0;
     vary_position = pos.xyz;
     vary_normal = normalize(norm);

@@ -33,9 +33,9 @@ def source_assertions(tree):
     assert 'fwidth(' not in fx and 'dFdx(' not in fx and 'dFdy(' not in fx
     assert 'if (vary_fx_body == 2) P.z = sl_eye;' in fx
     assert 'if (vary_fx_body == 1 && ghostFx2.y > 0.0)' in fx
-    assert 'cloneFxVertex(pos, 2);' in tree.read(EYE)
+    assert 'cloneFxVertex(pos, 2, position);' in tree.read(EYE)
     assert 'vary_object_position = position;' in tree.read(EYE)
-    assert 'float fxHeight = body == 2 ? 1.762 : position.z;' in blocks[0]
+    assert 'float fxHeight = body == 2 ? 1.762 : rest.z;' in blocks[0]
     from clone_fx_fix2_check import source_assertions as fix2_source_assertions
     fix2_source_assertions(tree, blocks[0])
     return hashlib.sha256(blocks[0].encode()).hexdigest()
@@ -97,7 +97,7 @@ def check(out=None, gl=None, tree=None):
             def read(self,path):
                 s=tree.read(path)
                 if path==F:s=s.replace('if (gap >= fxFootprintZ &&', 'if (false && gap >= fxFootprintZ &&')
-                if path==V:s=s.replace('floor((fxHeight + 0.11) / 0.22)', 'floor((1.762 + 0.11) / 0.22)')
+                if path==V:s=s.replace('floor((fxHeight + 0.08) / 0.22)', 'floor((1.762 + 0.08) / 0.22)')
                 return s
         if not deltas:head=r.program(NoGap(),('HAS_SKIN',))
         b=r.render(head,1,time=t,fx2=(1,0,0,0),mesh=body,scale=6.,mask=False,opacity=1.)

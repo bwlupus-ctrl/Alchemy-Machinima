@@ -35,6 +35,8 @@ def pre_fx_shader(source, path):
     assert data['base']==BASE
     original=G.SourceTree(BASE).read(path)
     if source==original:return source
+    from clone_rest_frame_pins import reverse_rest_frame_shader
+    source=reverse_rest_frame_shader(source,path)
     for hunk in data['files'][path]:
         assert original.count(hunk['before'])==1, ('FX baseline hunk',path)
         assert source.count(hunk['after'])==1, ('exact FX hunk',path)
