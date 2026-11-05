@@ -36,6 +36,9 @@ def build(tree, out, gl, extend=None):
         'bool LLShaderMgr::computeShadersSupported(', 'S32 LLShaderMgr::shaderLanguageVersion(',
         'bool LLShaderMgr::ownsShaderObject(', 'void LLShaderMgr::clearShaderObjects(',
         'GLuint LLShaderMgr::loadShaderFile(', 'bool LLShaderMgr::linkProgramObject('))
+    cache_reader = 'bool LLShaderMgr::readShaderSource(' in manager
+    if cache_reader:
+        methods += '\n' + function(manager, 'bool LLShaderMgr::readShaderSource(')
     methods += '\n' + '\n'.join(function(shader, signature) for signature in (
         'bool LLGLSLShader::isCompute(', 'void LLGLSLShader::unloadInternal(',
         'bool LLGLSLShader::createShader(', 'bool LLGLSLShader::link(',
@@ -88,6 +91,7 @@ def build(tree, out, gl, extend=None):
 #include <vector>
 #include <filesystem>
 #include <stdexcept>
+#include <limits>
 #define LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_SHADER(x)
 #define LL_DEBUGS(x) NullLog{}
@@ -162,6 +166,26 @@ struct LLGLSLShader {
  static void unbind(){glUseProgram(0);sCurBoundShaderPtr=nullptr;}
 };
 '''
+    if cache_reader:
+        # These are filesystem/cache services. Keep the production reader and
+        # hash bodies intact; this fixture already disables program-binary I/O.
+        prefix = re.sub(r'struct LLShaderFeatures \{[^}]*\};',
+                        lambda _: function(tree.read('indra/llrender/llglslshader.h'), 'class LLShaderFeatures') + ';', prefix)
+        prefix = prefix.replace('bool mUsingBinaryProgram=false;',
+                                'bool mUsingBinaryProgram=false,mShaderCacheEligible=true;')
+        epoch = re.search(r'static constexpr U32 SHADER_CACHE_EPOCH\s*=\s*\d+;',
+                          tree.read('indra/llrender/llshadermgr.h'))
+        assert epoch, 'production cache epoch missing'
+        prefix = prefix.replace(' std::string root;int features',
+            ' LLUUID mSharedShaderFingerprint,mShaderCacheFeatureHash;\n ' + epoch[0] +
+            '\n bool mShaderCacheEnabled=false;\n void disableShaderCache(){mShaderCacheEnabled=false;}\n'
+            ' static bool readShaderSource(const std::string&,std::string&);\n std::string root;int features')
+        prefix = prefix.replace('struct LLShaderMgr {', r'''
+struct fsyspath:std::filesystem::path {
+ fsyspath(const std::string& p):std::filesystem::path(std::filesystem::u8path(p)){}
+ std::string string()const{return u8string();}
+};
+struct LLShaderMgr {''')
     prefix = prefix.replace('CONTEXT_DECLARATION', declaration(tree.read('indra/llrender/llshadermgr.h'), 'sContextGeneration'))
     # Run the native uniform discovery, ordering and sampler-channel assignment.
     from weather_native_fixture import build as mapper_parts

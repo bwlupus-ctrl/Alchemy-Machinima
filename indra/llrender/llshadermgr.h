@@ -1011,7 +1011,13 @@ public:
     virtual void updateWeatherUniforms(LLGLSLShader* shader) {} // Per-view material bindings, no simulation.
     virtual void updateShaderUniforms(LLGLSLShader * shader) = 0; // Pure Virtual
 
-    void initShaderCache(bool enabled, const LLUUID& old_cache_version, const LLUUID& current_cache_version, bool second_instance);
+    // Schema changes discard metadata. Epoch changes invalidate program keys.
+    static constexpr const char* SHADER_CACHE_SCHEMA = "620ec4f7-831c-40d2-b391-8b1c94813245";
+    static constexpr U32 SHADER_CACHE_EPOCH = 1;
+    static bool readShaderSource(const std::string& filename, std::string& source);
+    void initShaderCache(bool enabled, bool second_instance);
+    void hashShaderCacheFeatures();
+    void disableShaderCache() { mShaderCacheSourceValid = false; mShaderCacheEnabled = false; }
     void clearShaderCache();
     void persistShaderCacheMetadata();
 
@@ -1040,6 +1046,11 @@ public:
     std::map<LLUUID, ProgramBinaryData> mShaderBinaryCache;
     LLUUID mShaderCacheVersion;
     bool mShaderCacheEnabled = false;
+    bool mShaderCacheReadOnly = false;
+    bool mShaderCacheScanAttempted = false;
+    bool mShaderCacheSourceValid = false;
+    LLUUID mSharedShaderFingerprint;
+    LLUUID mShaderCacheFeatureHash;
     std::string mShaderCacheDir;
 
 protected:
